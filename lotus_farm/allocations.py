@@ -33,6 +33,26 @@ def _active_for_line(line):
     return future + physical
 
 
+def _item_supply(supply, item):
+    if supply.output_plan:
+        output = next((row for row in supply.output_plan if row.item == item), None)
+        if not output:
+            frappe.throw("Sales Order Item is not included in this forecast output plan.")
+        return output, float(output.safe_commit_kg or 0), float(output.materialized_qty_kg or 0)
+    if item != supply.item:
+        frappe.throw("Select the exact Sales Order Item matching forecast supply.")
+    return None, float(supply.safe_saleable_kg or 0), float(supply.materialized_qty_kg or 0)
+
+
+def _item_atp(supply, item):
+    if supply.output_plan:
+        output = next((row for row in supply.output_plan if row.item == item), None)
+        if not output:
+            return 0
+        return output.available_to_promise_kg
+    return supply.available_to_promise_kg
+
+
 @frappe.whitelist(methods=["POST"])
 def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     require_role("Lotus Sales Planner")
@@ -62,19 +82,22 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     ):
         frappe.throw("Sales Order must be open, submitted and belong to the Farm Company.")
     line = next((r for r in order.items if r.name == sales_order_item), None)
-    if not line or line.item_code != supply.item:
-        frappe.throw("Select the exact Sales Order Item matching forecast supply.")
-    validate_item(supply.item)
+    if not line:
+        frappe.throw("Select an exact Sales Order Item row.")
+    output, safe_commit, materialized = _item_supply(supply, line.item_code)
+    validate_item(line.item_code)
     # ERPNext stock_qty is already converted to Item stock UOM (Kg). Delivered qty is in sales UOM.
     remaining_demand = max(
         float(line.stock_qty) - float(line.delivered_qty or 0) * float(line.conversion_factor), 0
     )
     committed = sum(
-        float(r.reserved_qty_kg) for r in supply.allocations or [] if r.allocation_state == "Reserved"
+        float(r.reserved_qty_kg)
+        for r in supply.allocations or []
+        if r.allocation_state == "Reserved" and r.item == line.item_code
     )
     try:
         amount = reserve_limit(
-            max(float(supply.safe_saleable_kg) - float(supply.materialized_qty_kg or 0), 0),
+            max(safe_commit - materialized, 0),
             committed,
             qty_kg,
             max(remaining_demand - _active_for_line(line.name), 0),
@@ -97,6 +120,8 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
             dict(
                 sales_order=sales_order,
                 sales_order_item=line.name,
+                item=line.item_code,
+                forecast_output=output.name if output else None,
                 reserved_qty_kg=amount,
                 allocation_state="Reserved",
                 allocated_by=frappe.session.user,
@@ -105,7 +130,12 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
         )
     with command(supply, "allocation"):
         supply.save()
-    result = {"forecast": supply.name, "allocation": row.name, "atp_kg": supply.available_to_promise_kg}
+    result = {
+        "forecast": supply.name,
+        "allocation": row.name,
+        "item": line.item_code,
+        "atp_kg": _item_atp(supply, line.item_code),
+    }
     event = frappe.get_doc(
         dict(
             doctype="Integration Event",
@@ -131,10 +161,11 @@ def release(forecast, allocation):
         frappe.throw("Allocation does not belong to this forecast.")
     if row.allocation_state == "Materialized":
         frappe.throw("Release physical reservations through ERPNext.")
+    item = row.item
     row.allocation_state = "Released"
     with command(supply, "allocation"):
         supply.save()
-    return {"atp_kg": supply.available_to_promise_kg}
+    return {"item": item, "atp_kg": _item_atp(supply, item)}
 
 
 def sales_order_cancel(doc, method=None):
