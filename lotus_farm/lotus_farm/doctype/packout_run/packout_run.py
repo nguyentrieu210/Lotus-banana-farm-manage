@@ -1,6 +1,6 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, get_datetime, now_datetime
+from frappe.utils import flt, getdate, get_datetime, now_datetime
 from lotus_farm.controls import lock, positive, require_role, validate_item, validate_warehouse
 from lotus_farm.rules import reconcile_mass, RuleError
 
@@ -28,16 +28,27 @@ class PackoutRun(Document):
             source_fields = ("name", "idx", "harvest_lot", "input_kg")
             output_fields = ("name", "idx", "item", "net_kg", "cartons", "batch", "quality_standard", "standard_version")
             def rows(doc, table, fields):
-                return [tuple(row.get(f) for f in fields) for row in doc.get(table)]
-            if (
-                getdate(before.packing_date) != getdate(self.packing_date)
-                or rows(before, "sources", source_fields) != rows(self, "sources", source_fields)
-                or rows(before, "outputs", output_fields) != rows(self, "outputs", output_fields)
-                or before.qc_released_by != self.qc_released_by
-                or get_datetime(before.qc_released_at) != get_datetime(self.qc_released_at)
-                or before.stock_entry != self.stock_entry
-            ):
-                frappe.throw("QC released packout weights and audit fields are immutable.")
+                numeric = {"idx", "input_kg", "net_kg", "cartons", "standard_version"}
+                return [tuple(flt(row.get(f), 3) if f in numeric else (row.get(f) or "") for f in fields) for row in doc.get(table)]
+            old_values = dict(
+                packing_date=getdate(before.packing_date),
+                sources=rows(before, "sources", source_fields),
+                outputs=rows(before, "outputs", output_fields),
+                qc_released_by=before.qc_released_by,
+                qc_released_at=get_datetime(before.qc_released_at),
+                stock_entry=before.stock_entry or "",
+            )
+            new_values = dict(
+                packing_date=getdate(self.packing_date),
+                sources=rows(self, "sources", source_fields),
+                outputs=rows(self, "outputs", output_fields),
+                qc_released_by=self.qc_released_by,
+                qc_released_at=get_datetime(self.qc_released_at),
+                stock_entry=self.stock_entry or "",
+            )
+            changed = [key for key in old_values if old_values[key] != new_values[key]]
+            if changed:
+                frappe.throw("QC released packout is immutable: " + ", ".join(changed))
         if self.qc_state == "Released" and (not before or before.qc_state != "Released"):
             require_role("Lotus QC Manager")
             self.qc_released_by = frappe.session.user
