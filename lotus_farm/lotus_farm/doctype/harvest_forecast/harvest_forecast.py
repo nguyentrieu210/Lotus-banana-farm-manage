@@ -149,16 +149,15 @@ class HarvestForecast(Document):
                 r.allocation_state == "Reserved" for r in previous.allocations or []
             ):
                 frappe.throw("Release previous reservations before superseding the forecast.")
-            if any(
-                self.get(f) != previous.get(f)
-                for f in (
+            scope_fields = (
                     "farm",
                     "crop_cycle",
                     "sucker_selection_batch",
                     "item",
-                    "period_start_date",
-                    "period_end_date",
-                )
+            )
+            if any(self.get(f) != previous.get(f) for f in scope_fields) or any(
+                getdate(self.get(f)) != getdate(previous.get(f))
+                for f in ("period_start_date", "period_end_date")
             ):
                 frappe.throw("Revision must retain the same supply scope and period.")
             if not self.revision_reason:

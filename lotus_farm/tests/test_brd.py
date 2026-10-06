@@ -217,6 +217,18 @@ class TestBRDOnSite(unittest.TestCase):
         release(supply.name, first["allocation"])
         supply.reload()
         self.assertAlmostEqual(supply.available_to_promise_kg, 17803.38, places=2)
+        revised = frappe.copy_doc(supply)
+        revised.allocations = []
+        revised.supersedes = supply.name
+        revised.revision_reason = "Reviewed planning revision"
+        revised.period_start_date = str(revised.period_start_date)
+        revised.period_end_date = str(revised.period_end_date)
+        revised.insert()
+        supply.reload()
+        self.assertEqual(supply.supply_state, "Superseded")
+        self.assertEqual(supply.available_to_promise_kg, 0)
+        self.assertEqual(supply.snapshot_hash, original_hash)
+        self.assertEqual(revised.revision_no, 2)
 
     def test_idempotent_operations_and_scales(self):
         args = ("event-" + self.tag, self.farm, self.block, self.cycle, nowdate(), "Cut Bud", 1000)
