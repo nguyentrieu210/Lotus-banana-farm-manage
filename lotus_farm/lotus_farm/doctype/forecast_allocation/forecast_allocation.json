@@ -11,6 +11,7 @@
     "notes",
     "sales_order_item",
     "item",
+    "forecast_output",
     "allocation_state",
     "allocated_by",
     "allocated_at",
@@ -60,6 +61,12 @@
       "label": "Item",
       "read_only": 1,
       "options": "Item"
+    },
+    {
+      "fieldname": "forecast_output",
+      "fieldtype": "Data",
+      "label": "Forecast Output Row",
+      "read_only": 1
     },
     {
       "fieldname": "allocation_state",
