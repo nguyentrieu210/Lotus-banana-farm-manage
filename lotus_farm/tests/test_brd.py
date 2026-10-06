@@ -121,6 +121,8 @@ class TestBRDOnSite(unittest.TestCase):
             variety=self.variety,
             approval_state="Approved",
             valid_from=add_days(nowdate(), -500),
+            sucker_to_harvest_days=130,
+            shooting_to_harvest_days=90,
             cut_bud_to_harvest_days=30,
             avg_bunch_weight_kg=25,
             bunch_survival_rate_percent=97,
@@ -229,6 +231,71 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(supply.available_to_promise_kg, 0)
         self.assertEqual(supply.snapshot_hash, original_hash)
         self.assertEqual(revised.revision_no, 2)
+
+    def test_forecast_evidence_ladder_sucker_to_shooting_to_cut_bud(self):
+        import json
+
+        sucker = self.make(
+            "Harvest Forecast",
+            farm=self.farm,
+            farm_block=self.block,
+            crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,
+            harvest_profile=self.profile,
+            packout_profile=self.pack_profile,
+            item=self.item,
+            forecast_basis="Sucker Selection",
+            period_start_date=self.start,
+            period_end_date=add_days(self.start, 6),
+            supply_state="Released",
+        )
+        self.assertEqual(sucker.source_bunch_qty, 1000)
+        self.assertEqual(json.loads(sucker.source_snapshot)["basis"], "Sucker Selection")
+
+        create_operation(
+            "shoot-" + self.tag,
+            self.farm,
+            self.block,
+            self.cycle,
+            add_days(nowdate(), -60),
+            "Shooting",
+            950,
+            sucker_selection_batch=self.cohort,
+            harvest_profile=self.profile,
+        )
+        shooting = frappe.copy_doc(sucker)
+        shooting.supersedes = sucker.name
+        shooting.revision_reason = "Replace early sucker estimate with observed shooting"
+        shooting.forecast_basis = "Shooting Operations"
+        shooting.insert()
+        sucker.reload()
+        self.assertEqual(sucker.supply_state, "Superseded")
+        self.assertEqual(shooting.source_bunch_qty, 950)
+        shooting_source = json.loads(shooting.source_snapshot)
+        self.assertEqual(shooting_source["basis"], "Shooting Operations")
+        self.assertEqual(shooting_source["rows"][0]["expected_harvest_date"], str(self.start))
+
+        create_operation(
+            "cut-" + self.tag,
+            self.farm,
+            self.block,
+            self.cycle,
+            nowdate(),
+            "Cut Bud",
+            900,
+            sucker_selection_batch=self.cohort,
+            harvest_profile=self.profile,
+        )
+        cut = frappe.copy_doc(shooting)
+        cut.supersedes = shooting.name
+        cut.revision_reason = "Replace shooting estimate with cut-bud evidence"
+        cut.forecast_basis = "Cut Bud Operations"
+        cut.insert()
+        shooting.reload()
+        self.assertEqual(shooting.supply_state, "Superseded")
+        self.assertEqual(cut.source_bunch_qty, 900)
+        self.assertEqual(json.loads(cut.source_snapshot)["basis"], "Cut Bud Operations")
+        self.assertEqual(cut.formula_version, "lotus-forecast/3")
 
     def test_idempotent_operations_and_scales(self):
         args = ("event-" + self.tag, self.farm, self.block, self.cycle, nowdate(), "Cut Bud", 1000)
