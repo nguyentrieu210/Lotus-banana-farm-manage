@@ -478,3 +478,35 @@ class TestBRDOnSite(unittest.TestCase):
         )
         self.assertTrue(gl, "Perpetual inventory must create GL entries through ERPNext.")
         self.assertAlmostEqual(sum(float(r.debit) - float(r.credit) for r in gl), 0, places=2)
+
+        # Lotus-linked stock cannot be cancelled directly: the forecast impact must be reviewed first.
+        with self.assertRaises(frappe.ValidationError):
+            entry.cancel()
+        entry.reload()
+        self.assertEqual(entry.docstatus, 1)
+
+        request = self.make(
+            "Supply Reconciliation",
+            farm=self.farm,
+            reconciliation_type="Stock Entry Reversal",
+            stock_entry=entry.name,
+            reason="Test reviewed reversal",
+        )
+        request.submit()
+        self.assertEqual(request.state, "Approved")
+        from lotus_farm.reconciliation import execute
+
+        result = execute(request.name)
+        self.assertEqual(result["state"], "Applied")
+        entry.reload()
+        supply.reload()
+        request.reload()
+        self.assertEqual(entry.docstatus, 2)
+        self.assertEqual(request.state, "Applied")
+        self.assertAlmostEqual(supply.materialized_qty_kg, 0, places=2)
+        self.assertAlmostEqual(supply.available_to_promise_kg, 17803.38, places=2)
+
+        # A cancelled bridge entry remains audit history but must not prevent a corrected draft.
+        replacement_entry = make_repack_entry(run.name)
+        self.assertNotEqual(replacement_entry["stock_entry"], entry.name)
+        self.assertEqual(replacement_entry["docstatus"], 0)
