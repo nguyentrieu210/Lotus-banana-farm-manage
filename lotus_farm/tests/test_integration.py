@@ -15,6 +15,10 @@ class LotusIntegrationTest(unittest.TestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self.tag = uuid4().hex[:8]
+        stock_settings = frappe.get_single("Stock Settings")
+        stock_settings.enable_serial_and_batch_no_for_item = 1
+        stock_settings.use_serial_batch_fields = 1
+        stock_settings.save()
         # ERP install alone does not run the setup wizard. Seed only the masters this fixture needs.
         masters = [
             ("Warehouse Type", "Transit", {}),
