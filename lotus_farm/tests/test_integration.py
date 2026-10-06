@@ -15,6 +15,24 @@ class LotusIntegrationTest(unittest.TestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         self.tag = uuid4().hex[:8]
+        # ERP install alone does not run the setup wizard. Seed only the masters this fixture needs.
+        masters = [
+            ("Warehouse Type", "Transit", {}),
+            ("Stock Entry Type", "Material Receipt", {"purpose": "Material Receipt"}),
+            ("UOM", "Kg", {"uom_name": "Kg"}),
+            ("Item Group", "All Item Groups", {"item_group_name": "All Item Groups", "is_group": 1}),
+            ("Customer Group", "All Customer Groups", {"customer_group_name": "All Customer Groups", "is_group": 1}),
+            ("Territory", "All Territories", {"territory_name": "All Territories", "is_group": 1}),
+        ]
+        for doctype, name, values in masters:
+            if not frappe.db.exists(doctype, name):
+                frappe.get_doc({"doctype": doctype, "name": name, **values}).insert()
+        self.item_group = frappe.get_doc({"doctype": "Item Group", "item_group_name": f"Bananas {self.tag}",
+                                          "parent_item_group": "All Item Groups"}).insert()
+        self.customer_group = frappe.get_doc({"doctype": "Customer Group", "customer_group_name": f"Buyers {self.tag}",
+                                              "parent_customer_group": "All Customer Groups"}).insert()
+        self.territory = frappe.get_doc({"doctype": "Territory", "territory_name": f"Region {self.tag}",
+                                         "parent_territory": "All Territories"}).insert()
         self.company = frappe.get_doc({"doctype": "Company", "company_name": f"Lotus Test {self.tag}",
                                        "abbr": self.tag, "country": "Vietnam", "default_currency": "VND"}).insert()
         self.price_list = frappe.get_doc({"doctype": "Price List", "price_list_name": f"Selling {self.tag}",
@@ -24,11 +42,11 @@ class LotusIntegrationTest(unittest.TestCase):
             frappe.get_doc({"doctype": "Fiscal Year", "year": str(year), "year_start_date": f"{year}-01-01",
                             "year_end_date": f"{year}-12-31"}).insert()
         self.item = frappe.get_doc({"doctype": "Item", "item_code": f"BAN-{self.tag}",
-                                    "item_name": "Banana", "item_group": "All Item Groups", "stock_uom": "Kg",
+                                    "item_name": "Banana", "item_group": self.item_group.name, "stock_uom": "Kg",
                                     "is_stock_item": 1, "has_batch_no": 1}).insert()
         self.customer = frappe.get_doc({"doctype": "Customer", "customer_name": f"Buyer {self.tag}",
-                                        "customer_type": "Company", "customer_group": "All Customer Groups",
-                                        "territory": "All Territories"}).insert()
+                                        "customer_type": "Company", "customer_group": self.customer_group.name,
+                                        "territory": self.territory.name}).insert()
         self.farm = frappe.get_doc({"doctype": "Farm", "farm_name": "Test Farm", "farm_code": f"F-{self.tag}",
                                     "company": self.company.name, "area_ha": 1}).insert()
         self.block = frappe.get_doc({"doctype": "Farm Block", "farm": self.farm.name, "block_name": "A1",
