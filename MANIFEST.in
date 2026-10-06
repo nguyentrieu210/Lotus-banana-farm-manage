@@ -1,0 +1,1 @@
+recursive-include lotus_farm *.css *.csv *.html *.ico *.js *.json *.md *.png *.py *.svg *.txt

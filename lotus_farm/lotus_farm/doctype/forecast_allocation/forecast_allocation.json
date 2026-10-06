@@ -1,0 +1,14 @@
+{
+  "doctype": "DocType",
+  "name": "Forecast Allocation",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "field_order": ["sales_order", "customer", "delivery_date", "reserved_qty_kg", "notes"],
+  "fields": [
+    {"fieldname": "sales_order", "fieldtype": "Link", "label": "Sales Order", "options": "Sales Order", "reqd": 1},
+    {"fieldname": "customer", "fieldtype": "Link", "label": "Customer", "options": "Customer", "read_only": 1},
+    {"fieldname": "delivery_date", "fieldtype": "Date", "label": "Delivery Date", "read_only": 1},
+    {"fieldname": "reserved_qty_kg", "fieldtype": "Float", "label": "Reserved Qty (kg)", "reqd": 1, "non_negative": 1},
+    {"fieldname": "notes", "fieldtype": "Data", "label": "Notes"}
+  ]
+}

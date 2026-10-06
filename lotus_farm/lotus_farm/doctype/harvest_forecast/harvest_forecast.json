@@ -1,0 +1,28 @@
+{
+  "doctype": "DocType",
+  "name": "Harvest Forecast",
+  "module": "Lotus Farm",
+  "autoname": "format:HF-{#####}",
+  "track_changes": 1,
+  "field_order": ["farm", "farm_block", "period_start_date", "period_end_date", "source_bunch_qty", "avg_bunch_weight_kg", "gross_forecast_kg", "expected_defect_rate_percent", "saleable_forecast_kg", "safety_buffer_percent", "safe_saleable_kg", "allocations", "committed_qty_kg", "available_to_promise_kg", "shortage_kg", "availability_status", "notes"],
+  "fields": [
+    {"fieldname": "farm", "fieldtype": "Link", "label": "Farm", "options": "Farm", "reqd": 1},
+    {"fieldname": "farm_block", "fieldtype": "Link", "label": "Farm Block", "options": "Farm Block"},
+    {"fieldname": "period_start_date", "fieldtype": "Date", "label": "Period Start Date", "reqd": 1},
+    {"fieldname": "period_end_date", "fieldtype": "Date", "label": "Period End Date", "reqd": 1},
+    {"fieldname": "source_bunch_qty", "fieldtype": "Int", "label": "Source Bunch Qty", "reqd": 1, "non_negative": 1},
+    {"fieldname": "avg_bunch_weight_kg", "fieldtype": "Float", "label": "Average Bunch Weight (kg)", "reqd": 1, "non_negative": 1},
+    {"fieldname": "gross_forecast_kg", "fieldtype": "Float", "label": "Gross Forecast (kg)", "read_only": 1},
+    {"fieldname": "expected_defect_rate_percent", "fieldtype": "Percent", "label": "Expected Defect Rate (%)"},
+    {"fieldname": "saleable_forecast_kg", "fieldtype": "Float", "label": "Saleable Forecast (kg)", "read_only": 1},
+    {"fieldname": "safety_buffer_percent", "fieldtype": "Percent", "label": "Safety Buffer (%)"},
+    {"fieldname": "safe_saleable_kg", "fieldtype": "Float", "label": "Safe Saleable Qty (kg)", "read_only": 1},
+    {"fieldname": "allocations", "fieldtype": "Table", "label": "Sales Order Allocations", "options": "Forecast Allocation"},
+    {"fieldname": "committed_qty_kg", "fieldtype": "Float", "label": "Committed Qty (kg)", "read_only": 1},
+    {"fieldname": "available_to_promise_kg", "fieldtype": "Float", "label": "Available to Promise (kg)", "read_only": 1},
+    {"fieldname": "shortage_kg", "fieldtype": "Float", "label": "Shortage (kg)", "read_only": 1},
+    {"fieldname": "availability_status", "fieldtype": "Select", "label": "Availability Status", "options": "Available\nTight\nOvercommitted", "read_only": 1},
+    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+  ],
+  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1}]
+}

@@ -1,0 +1,21 @@
+{
+  "doctype": "DocType",
+  "name": "Farm Block",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "title_field": "block_name",
+  "track_changes": 1,
+  "field_order": ["farm", "block_name", "block_code", "area_ha", "variety", "active", "notes"],
+  "fields": [
+    {"fieldname": "farm", "fieldtype": "Link", "label": "Farm", "options": "Farm", "reqd": 1},
+    {"fieldname": "block_name", "fieldtype": "Data", "label": "Block Name", "reqd": 1},
+    {"fieldname": "block_code", "fieldtype": "Data", "label": "Block Code", "reqd": 1},
+    {"fieldname": "area_ha", "fieldtype": "Float", "label": "Area (ha)", "non_negative": 1},
+    {"fieldname": "variety", "fieldtype": "Data", "label": "Variety"},
+    {"default": "1", "fieldname": "active", "fieldtype": "Check", "label": "Active"},
+    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+  ],
+  "permissions": [
+    {"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1, "email": 1, "share": 1}
+  ]
+}
