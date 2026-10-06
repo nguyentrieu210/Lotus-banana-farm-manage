@@ -366,7 +366,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertAlmostEqual(supply.available_to_promise_kg, 5803.38, places=2)
 
     def test_received_raw_stock_to_repack_replaces_future_supply(self):
-        from lotus_farm.stock_bridge import make_repack_entry
+        from lotus_farm.stock_bridge import link_stock_reservation, make_repack_entry
 
         supply = self.forecast()
         raw_item = self.make(
@@ -393,6 +393,35 @@ class TestBRDOnSite(unittest.TestCase):
             company=self.company, account=raw_account,
         ).name
         finished = self.make("Warehouse", warehouse_name="Finished " + self.tag, company=self.company).name
+        order = self.make(
+            "Sales Order",
+            company=self.company,
+            customer=self.customer,
+            transaction_date=nowdate(),
+            delivery_date=self.start,
+            currency="INR",
+            conversion_rate=1,
+            selling_price_list="Standard Selling",
+            items=[
+                dict(
+                    item_code=self.item,
+                    qty=2000,
+                    uom="Kg",
+                    conversion_factor=1,
+                    rate=1,
+                    delivery_date=self.start,
+                    warehouse=finished,
+                )
+            ],
+        )
+        order.submit()
+        allocation = reserve(
+            supply.name,
+            order.name,
+            order.items[0].name,
+            1000,
+            "physical-" + self.tag,
+        )
         batch = self.make("Batch", batch_id="RAW-" + self.tag, item=raw_item).name
         receipt = self.make(
             "Stock Entry",
@@ -479,6 +508,60 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(gl, "Perpetual inventory must create GL entries through ERPNext.")
         self.assertAlmostEqual(sum(float(r.debit) - float(r.credit) for r in gl), 0, places=2)
 
+        reservation = self.make(
+            "Stock Reservation Entry",
+            voucher_type="Sales Order",
+            voucher_no=order.name,
+            voucher_detail_no=order.items[0].name,
+            voucher_qty=2000,
+            available_qty=18740.4,
+            reserved_qty=1000,
+            item_code=self.item,
+            warehouse=finished,
+            stock_uom="Kg",
+            company=self.company,
+            has_batch_no=1,
+            reservation_based_on="Qty",
+        )
+        reservation.submit()
+        link_stock_reservation(supply.name, allocation["allocation"], reservation.name)
+        supply.reload()
+        linked = next(row for row in supply.allocations if row.name == allocation["allocation"])
+        self.assertEqual(linked.allocation_state, "Materialized")
+
+        with self.assertRaises(frappe.ValidationError):
+            reservation.cancel()
+        reservation.reload()
+        self.assertEqual(reservation.docstatus, 1)
+
+        # Stock reversal is not reviewable while physical commitments still point at the output.
+        blocked = self.make(
+            "Supply Reconciliation",
+            farm=self.farm,
+            reconciliation_type="Stock Entry Reversal",
+            stock_entry=entry.name,
+            reason="Must cancel the physical reservation first",
+        )
+        with self.assertRaises(frappe.ValidationError):
+            blocked.submit()
+
+        from lotus_farm.reconciliation import execute
+
+        reservation_request = self.make(
+            "Supply Reconciliation",
+            farm=self.farm,
+            reconciliation_type="Stock Reservation Cancellation",
+            stock_reservation=reservation.name,
+            reason="Buyer reservation released during reviewed correction",
+        )
+        reservation_request.submit()
+        execute(reservation_request.name)
+        reservation.reload()
+        supply.reload()
+        linked = next(row for row in supply.allocations if row.name == allocation["allocation"])
+        self.assertEqual(reservation.docstatus, 2)
+        self.assertEqual(linked.allocation_state, "Released")
+
         # Lotus-linked stock cannot be cancelled directly: the forecast impact must be reviewed first.
         with self.assertRaises(frappe.ValidationError):
             entry.cancel()
@@ -494,8 +577,6 @@ class TestBRDOnSite(unittest.TestCase):
         )
         request.submit()
         self.assertEqual(request.state, "Approved")
-        from lotus_farm.reconciliation import execute
-
         result = execute(request.name)
         self.assertEqual(result["state"], "Applied")
         entry.reload()
