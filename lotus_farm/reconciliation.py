@@ -178,13 +178,32 @@ def execute(reconciliation):
             else "reconciliation_cancel_release"
         )
     target.check_permission("cancel")
-    # The approved reconciliation itself must not block the cancellation it authorizes.
-    # Keep every other Frappe backlink check active.
-    ignored = set(target.get("ignore_linked_doctypes") or [])
-    ignored.add("Supply Reconciliation")
-    target.set("ignore_linked_doctypes", sorted(ignored))
-    with command(target, action):
-        target.cancel()
+    # The approved request is itself a submitted backlink to the target. Temporarily
+    # clear only that exact link while core cancel checks every other backlink normally.
+    target_field = (
+        "stock_entry"
+        if request.reconciliation_type == "Stock Entry Reversal"
+        else "stock_reservation"
+    )
+    target_name = request.get(target_field)
+    frappe.db.set_value(
+        "Supply Reconciliation",
+        request.name,
+        target_field,
+        None,
+        update_modified=False,
+    )
+    try:
+        with command(target, action):
+            target.cancel()
+    finally:
+        frappe.db.set_value(
+            "Supply Reconciliation",
+            request.name,
+            target_field,
+            target_name,
+            update_modified=False,
+        )
 
     applied_at = now_datetime()
     frappe.db.set_value(
