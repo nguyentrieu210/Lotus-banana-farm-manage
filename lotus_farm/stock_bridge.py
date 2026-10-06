@@ -32,7 +32,8 @@ def set_output_valuation(packout, rates):
         row.valuation_rate = positive(rates[row.item], f"Valuation rate for {row.item}")
         row.valuation_set_by = frappe.session.user
         row.valuation_set_at = reviewed_at
-    run.save()
+    with command(run, "valuation"):
+        run.save()
     return {
         "packout": run.name,
         "items": [
@@ -166,6 +167,12 @@ def validate_entry(doc, method=None):
         key = (output.item, run.target_warehouse, output.batch)
         add(expected_outputs, key, output.net_kg)
         if len(run.outputs) > 1:
+            if (
+                flt(output.valuation_rate) <= 0
+                or not output.valuation_set_by
+                or not output.valuation_set_at
+            ):
+                frappe.throw("Multi-Item Packout must have reviewed valuation rates before Stock Entry.")
             expected_output_rates[key] = flt(output.valuation_rate, 6)
     inputs, outputs = {}, {}
     for row in doc.items:
