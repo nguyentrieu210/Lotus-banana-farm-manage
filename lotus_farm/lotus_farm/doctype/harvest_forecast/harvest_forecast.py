@@ -1,6 +1,6 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, get_datetime, now_datetime
+from frappe.utils import add_days, cint, flt, getdate, get_datetime, now_datetime
 from lotus_farm.controls import command, command_allowed, lock, require_role, validate_item
 from lotus_farm.rules import canonical_hash
 
@@ -22,7 +22,7 @@ class HarvestForecast(Document):
         self._pull_source_qty()
         self._hydrate_allocations()
         self._calculate()
-        self.formula_version = "lotus-forecast/2"
+        self.formula_version = "lotus-forecast/3"
         self.calculated_at = now_datetime()
         self.source_cutoff = self.calculated_at
         self.snapshot_hash = canonical_hash(self._snapshot())
@@ -332,34 +332,136 @@ class HarvestForecast(Document):
         if self._is_blank(self.safety_buffer_percent):
             self.safety_buffer_percent = settings.safety_buffer_percent or 0
 
+    def _profile_days(self, fieldname, label):
+        if not self.harvest_profile:
+            frappe.throw(f"{label} forecast requires an approved Harvest Profile.")
+        days = frappe.db.get_value("Harvest Profile", self.harvest_profile, fieldname)
+        if days in (None, "") or cint(days) <= 0:
+            frappe.throw(f"Harvest Profile must define a positive {label} day offset.")
+        return cint(days)
+
     def _pull_source_qty(self):
         import json
 
         if self.forecast_basis == "Manual":
             self.source_snapshot = json.dumps(
-                {"basis": "Manual", "reason": self.notes, "qty": self.source_bunch_qty}
+                {"basis": "Manual", "reason": self.notes, "qty": self.source_bunch_qty},
+                default=str,
+                sort_keys=True,
             )
             if self.supply_state == "Released" and not self.notes:
                 frappe.throw("Manual supply requires a source/reconciliation explanation.")
             return
-        filters = {
-            "farm": self.farm,
-            "farm_block": self.farm_block,
-            "crop_cycle": self.crop_cycle,
-            "operation_type": "Cut Bud",
-            "docstatus": 1,
-            "expected_harvest_date": ["between", [self.period_start_date, self.period_end_date]],
-        }
-        if self.sucker_selection_batch:
-            filters["sucker_selection_batch"] = self.sucker_selection_batch
-        rows = frappe.get_all(
-            "Bunch Operation",
-            filters=filters,
-            fields=["name", "modified", "net_bunch_qty", "expected_harvest_date"],
-            order_by="name",
-        )
-        self.source_bunch_qty = sum(flt(row.net_bunch_qty) for row in rows)
-        self.source_snapshot = json.dumps(rows, default=str, sort_keys=True)
+
+        if self.forecast_basis == "Sucker Selection":
+            if not self.sucker_selection_batch:
+                frappe.throw("Sucker Selection forecast requires a Sucker Selection Batch.")
+            days = self._profile_days("sucker_to_harvest_days", "Sucker-to-Harvest")
+            batch = frappe.db.get_value(
+                "Sucker Selection Batch",
+                self.sucker_selection_batch,
+                ["name", "selection_date", "selected_sucker_qty", "expected_productive_qty", "modified"],
+                as_dict=True,
+            )
+            if not batch:
+                frappe.throw("Sucker Selection Batch does not exist.")
+            expected_date = getdate(add_days(batch.selection_date, days))
+            if not getdate(self.period_start_date) <= expected_date <= getdate(self.period_end_date):
+                frappe.throw("Sucker Selection cohort does not mature inside this forecast period.")
+            self.source_bunch_qty = flt(batch.selected_sucker_qty)
+            self.source_snapshot = json.dumps(
+                {
+                    "basis": self.forecast_basis,
+                    "profile_days": days,
+                    "rows": [
+                        {
+                            "name": batch.name,
+                            "modified": batch.modified,
+                            "selection_date": batch.selection_date,
+                            "selected_sucker_qty": batch.selected_sucker_qty,
+                            "expected_productive_qty": batch.expected_productive_qty,
+                            "expected_harvest_date": expected_date,
+                        }
+                    ],
+                },
+                default=str,
+                sort_keys=True,
+            )
+            return
+
+        if self.forecast_basis == "Shooting Operations":
+            days = self._profile_days("shooting_to_harvest_days", "Shooting-to-Harvest")
+            rows = frappe.get_all(
+                "Bunch Operation",
+                filters={
+                    "farm": self.farm,
+                    "farm_block": self.farm_block,
+                    "crop_cycle": self.crop_cycle,
+                    "operation_type": "Shooting",
+                    "docstatus": 1,
+                    "operation_date": [
+                        "between",
+                        [
+                            add_days(self.period_start_date, -days),
+                            add_days(self.period_end_date, -days),
+                        ],
+                    ],
+                    **(
+                        {"sucker_selection_batch": self.sucker_selection_batch}
+                        if self.sucker_selection_batch
+                        else {}
+                    ),
+                },
+                fields=["name", "modified", "operation_date", "net_bunch_qty"],
+                order_by="name",
+            )
+            snapshot_rows = []
+            for row in rows:
+                expected_date = getdate(add_days(row.operation_date, days))
+                if getdate(self.period_start_date) <= expected_date <= getdate(self.period_end_date):
+                    snapshot_rows.append(
+                        {
+                            "name": row.name,
+                            "modified": row.modified,
+                            "operation_date": row.operation_date,
+                            "net_bunch_qty": row.net_bunch_qty,
+                            "expected_harvest_date": expected_date,
+                        }
+                    )
+            self.source_bunch_qty = sum(flt(row["net_bunch_qty"]) for row in snapshot_rows)
+            self.source_snapshot = json.dumps(
+                {"basis": self.forecast_basis, "profile_days": days, "rows": snapshot_rows},
+                default=str,
+                sort_keys=True,
+            )
+            return
+
+        if self.forecast_basis == "Cut Bud Operations":
+            filters = {
+                "farm": self.farm,
+                "farm_block": self.farm_block,
+                "crop_cycle": self.crop_cycle,
+                "operation_type": "Cut Bud",
+                "docstatus": 1,
+                "expected_harvest_date": ["between", [self.period_start_date, self.period_end_date]],
+            }
+            if self.sucker_selection_batch:
+                filters["sucker_selection_batch"] = self.sucker_selection_batch
+            rows = frappe.get_all(
+                "Bunch Operation",
+                filters=filters,
+                fields=["name", "modified", "net_bunch_qty", "expected_harvest_date"],
+                order_by="name",
+            )
+            self.source_bunch_qty = sum(flt(row.net_bunch_qty) for row in rows)
+            self.source_snapshot = json.dumps(
+                {"basis": self.forecast_basis, "rows": rows},
+                default=str,
+                sort_keys=True,
+            )
+            return
+
+        frappe.throw("Unsupported Forecast Basis.")
 
     def _hydrate_allocations(self):
         if self.allocations and self.supply_state == "Draft":
