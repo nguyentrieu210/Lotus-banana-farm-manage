@@ -57,7 +57,7 @@ jobs:
           bench --site lotus_test install-app erpnext
           bench --site lotus_test install-app lotus_farm
           bench --site lotus_test migrate
-          bench --site lotus_test set-config allow_tests true --parse
+          bench --site lotus_test set-config allow_tests 1 --parse
       - name: Farm to stock integration tests
         working-directory: bench
         run: bench --site lotus_test run-tests --app lotus_farm --module lotus_farm.tests.test_integration

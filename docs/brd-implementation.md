@@ -62,7 +62,7 @@ Disposable ERPNext v16 site (Python 3.14, Node 24, MariaDB 11.8):
 ```bash
 bench --site lotus_test install-app lotus_farm
 bench --site lotus_test migrate
-bench --site lotus_test set-config allow_tests true --parse
+bench --site lotus_test set-config allow_tests 1 --parse
 bench --site lotus_test run-tests --app lotus_farm --module lotus_farm.tests.test_integration
 bench --site lotus_test execute lotus_farm.tests.concurrency.run
 ```
