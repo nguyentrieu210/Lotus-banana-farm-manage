@@ -74,7 +74,7 @@ ERPNext remains responsible for standard commercial and inventory objects such a
 
 The BRD implementation branch adds immutable released forecasts, atomic SO Item allocations, versioned QC, traced harvest lots, reconciled Packout Runs, immutable scale readings and a draft ERPNext Repack bridge.
 
-See [BRD implementation and readiness](docs/BRD_IMPLEMENTATION.md) for migration steps, APIs, verification and the remaining enterprise requirements. Early supply can now be revised from Sucker Selection → Shooting → Cut Bud evidence without double-counting the same cohort. QR, GIS, offline mobile, multi-grade forecasting and automatic delivery fulfilment are not completed.
+See [BRD implementation and readiness](docs/BRD_IMPLEMENTATION.md) for migration steps, APIs, verification and the remaining enterprise requirements. Early supply can now be revised from Sucker Selection → Shooting → Cut Bud evidence without double-counting the same cohort. One biological forecast can also split finished supply across multiple approved Items without duplicating the source crop. QR, GIS, offline mobile and automatic delivery fulfilment are not completed.
 
 ## Install
 
