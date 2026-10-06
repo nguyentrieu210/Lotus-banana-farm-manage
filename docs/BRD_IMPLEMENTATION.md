@@ -19,7 +19,8 @@ This change implements the planning and field-to-packhouse core. It does **not**
 | Lot → packout | Locked input lots, QC release role, per-output standards, Kg mass balance | Packing line/labor/cost analytics not implemented |
 | Raw scale evidence | Immutable reading, device/reading key, tare validation, idempotent API | Device allowlist/auth binding, physical scale linkage still needed; timestamp inputs normalize to site timezone |
 | ERPNext stock bridge | Idempotent Batch creation and **draft Repack Stock Entry** from received raw stock | Warehouse user must review/submit standard ERPNext entry; no custom ledger/GL |
-| Physical supply replacement | Stock Entry submission reduces remaining forecast ATP by traced finished output | Must be exercised against core Batch/Bundle and stock ledger on site |
+| Physical supply replacement | Stock Entry submission reduces remaining forecast ATP by traced finished output | Site test covers stock/GL creation and forecast replacement |
+| Reviewed reversal/reconciliation | Submitted Supply Reconciliation snapshots the exact reversal effect; direct Lotus-linked Stock Entry/SRE cancel is blocked; approved execution uses ERPNext cancel then updates Lotus trace state | Delivered/consumed physical reservations still require downstream delivery reconciliation first |
 | Forecast → stock reservation | Explicit link to submitted SRE matching SO Item; removes future commitment | Whole-allocation linking only; partial transitions and delivered-consumption audit remain |
 | Farm data isolation | Fail-closed Farm grants, list/document/write checks | Full API/file/export/Company permission matrix remains |
 | Profile learning | Weighted kg/bunch and field-release proposal from matched submitted actuals | No auto-approval; persisted calibration runs, holdout backtests/vintage report remain |
@@ -63,6 +64,7 @@ Call authenticated Frappe method endpoints under `/api/method/`:
 | `lotus_farm.allocations.release` | forecast, allocation |
 | `lotus_farm.stock_bridge.make_repack_entry` | submitted packout name |
 | `lotus_farm.stock_bridge.link_stock_reservation` | forecast, allocation, stock_reservation |
+| `lotus_farm.reconciliation.execute` | submitted Supply Reconciliation name |
 | `lotus_farm.api.availability` | period_start, period_end; optional Farm/Item |
 | `lotus_farm.learning.propose_profile` | matching farm/block/cycle and historical from_date/to_date |
 
@@ -70,7 +72,7 @@ Side-effect commands only allow POST. Permission checks still apply; an API toke
 
 ## Deliberate pilot limits
 
-Do not use this branch for unattended stock/accounting operations. Repack cancellation and cancellation of linked physical reservations are blocked pending a reviewed reversal/reconciliation flow; this must be implemented and tested before operational rollout. Stock reservations remain standard ERPNext actions. No automated Delivery Note creation/consumption, approved overcommit override, offline mobile queue, GIS boundary versioning, photo retention, outbox/webhook delivery, legacy importer, production backup/restore or performance proof exists yet.
+Do not use this branch for unattended stock/accounting operations. Lotus-linked Repack and physical-reservation cancellation now require a submitted reviewed Supply Reconciliation, and execution still delegates the actual cancellation to standard ERPNext permissions and accounting/stock validation. Reservations with delivered, consumed or transferred quantity remain blocked until downstream delivery reconciliation exists. No automated Delivery Note creation/consumption, approved overcommit override, offline mobile queue, GIS boundary versioning, photo retention, outbox/webhook delivery, legacy importer, production backup/restore or performance proof exists yet.
 
 The site test is for a disposable test database. Its concurrency test commits test fixtures so two independent connections can see them; never run it on a live business site.
 
