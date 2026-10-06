@@ -47,3 +47,7 @@ def scale_reading(user=None):
 
 def integration_event(user=None):
     return query_condition("Integration Event", user)
+
+
+def supply_reconciliation(user=None):
+    return query_condition("Supply Reconciliation", user)
