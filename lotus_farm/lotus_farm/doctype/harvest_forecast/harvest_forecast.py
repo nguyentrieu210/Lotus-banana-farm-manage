@@ -1,6 +1,6 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, now_datetime
+from frappe.utils import flt, getdate, get_datetime, now_datetime
 from lotus_farm.controls import command, command_allowed, lock, require_role, validate_item
 from lotus_farm.rules import canonical_hash
 
@@ -32,7 +32,7 @@ class HarvestForecast(Document):
             frappe.throw("Only Draft forecasts can be released.")
 
     def _snapshot(self):
-        return {
+        values = {
             name: self.get(name)
             for name in (
                 "farm",
@@ -67,12 +67,19 @@ class HarvestForecast(Document):
                 "revision_reason",
             )
         }
+        for name in ("period_start_date", "period_end_date"):
+            if values[name]:
+                values[name] = str(getdate(values[name]))
+        for name in ("calculated_at", "source_cutoff"):
+            if values[name]:
+                values[name] = str(get_datetime(values[name]))
+        return values
 
     def _validate_frozen(self, before):
         if (
             self.snapshot_hash != before.snapshot_hash
             or self.released_by != before.released_by
-            or self.released_at != before.released_at
+            or get_datetime(self.released_at) != get_datetime(before.released_at)
         ):
             frappe.throw("Release audit fields cannot be edited.")
         if self._snapshot() != before._snapshot():
@@ -132,6 +139,12 @@ class HarvestForecast(Document):
             previous = frappe.get_doc("Harvest Forecast", self.supersedes)
             previous.check_permission("write")
             lock("Harvest Forecast", previous.name)
+            if previous.materialized_qty_kg or frappe.db.exists(
+                "Harvest Actual", {"forecast": previous.name, "docstatus": 1}
+            ):
+                frappe.throw(
+                    "Already harvested supply cannot be re-released as a full forecast. Reconcile residual supply first."
+                )
             if previous.supply_state != "Released" or any(
                 r.allocation_state == "Reserved" for r in previous.allocations or []
             ):
@@ -157,6 +170,7 @@ class HarvestForecast(Document):
         self.released_by = frappe.session.user
         self.released_at = now_datetime()
         self.snapshot_hash = canonical_hash(self._snapshot())
+        self._calculate_remaining()
 
     def _calculate_remaining(self):
         self.committed_qty_kg = sum(

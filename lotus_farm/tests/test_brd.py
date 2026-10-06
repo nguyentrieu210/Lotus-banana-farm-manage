@@ -14,6 +14,9 @@ class TestBRDOnSite(unittest.TestCase):
         from erpnext.setup.setup_wizard.operations.install_fixtures import install
 
         install("India")
+        settings = frappe.get_single("Stock Settings")
+        settings.enable_serial_and_batch_no_for_item = 1
+        settings.save()
         frappe.db.commit()
 
     def setUp(self):
@@ -28,6 +31,7 @@ class TestBRDOnSite(unittest.TestCase):
             default_currency="INR",
             create_chart_of_accounts_based_on="Standard Template",
             chart_of_accounts="Standard",
+            enable_perpetual_inventory=1,
         ).name
         self.farm = self.make("Farm", farm_code="F-" + self.tag, farm_name="Test", company=self.company).name
         self.variety = self.make("Banana Variety", variety_code="V-" + self.tag, variety_name="Test").name
@@ -325,3 +329,104 @@ class TestBRDOnSite(unittest.TestCase):
         supply.reload()
         self.assertAlmostEqual(supply.committed_qty_kg, 12000, places=3)
         self.assertAlmostEqual(supply.available_to_promise_kg, 5803.38, places=2)
+
+    def test_received_raw_stock_to_repack_replaces_future_supply(self):
+        from lotus_farm.stock_bridge import make_repack_entry
+
+        supply = self.forecast()
+        raw_item = self.make(
+            "Item",
+            item_code="RAW-" + self.tag,
+            item_name="Raw Test",
+            item_group="All Item Groups",
+            stock_uom="Kg",
+            is_stock_item=1,
+            has_batch_no=1,
+        ).name
+        raw_warehouse = self.make("Warehouse", warehouse_name="Raw " + self.tag, company=self.company).name
+        finished = self.make("Warehouse", warehouse_name="Finished " + self.tag, company=self.company).name
+        batch = self.make("Batch", batch_id="RAW-" + self.tag, item=raw_item).name
+        receipt = self.make(
+            "Stock Entry",
+            stock_entry_type="Material Receipt",
+            purpose="Material Receipt",
+            company=self.company,
+            posting_date=nowdate(),
+            items=[
+                dict(
+                    item_code=raw_item,
+                    t_warehouse=raw_warehouse,
+                    qty=22310,
+                    uom="Kg",
+                    stock_uom="Kg",
+                    conversion_factor=1,
+                    basic_rate=1,
+                    batch_no=batch,
+                    use_serial_batch_fields=1,
+                )
+            ],
+        )
+        receipt.submit()
+        actual = self.make(
+            "Harvest Actual",
+            farm=self.farm,
+            farm_block=self.block,
+            crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,
+            harvest_date=nowdate(),
+            forecast=supply.name,
+            harvested_bunch_qty=970,
+            gross_weight_kg=24250,
+            rejected_weight_kg=1940,
+        )
+        actual.submit()
+        lot = self.make(
+            "Harvest Lot",
+            farm=self.farm,
+            received_date=nowdate(),
+            raw_item=raw_item,
+            raw_warehouse=raw_warehouse,
+            raw_batch=batch,
+            sources=[dict(harvest_actual=actual.name, contributed_kg=22310)],
+        )
+        lot.submit()
+        run = self.make(
+            "Packout Run",
+            farm=self.farm,
+            company=self.company,
+            packing_date=nowdate(),
+            quality_standard=self.standard,
+            target_warehouse=finished,
+            sources=[dict(harvest_lot=lot.name, input_kg=22310)],
+            outputs=[dict(item=self.item, net_kg=18740.4)],
+            reject_kg=3569.6,
+            other_loss_kg=0,
+            qc_state="Released",
+        )
+        run.submit()
+        draft = make_repack_entry(run.name)
+        self.assertEqual(draft["docstatus"], 0)
+        self.assertEqual(make_repack_entry(run.name), draft)
+        entry = frappe.get_doc("Stock Entry", draft["stock_entry"])
+        entry.submit()
+        supply.reload()
+        self.assertAlmostEqual(supply.materialized_qty_kg, 18740.4, places=2)
+        self.assertEqual(supply.available_to_promise_kg, 0)
+        sle = frappe.get_all(
+            "Stock Ledger Entry",
+            filters={
+                "voucher_type": "Stock Entry",
+                "voucher_no": entry.name,
+                "item_code": self.item,
+                "warehouse": finished,
+            },
+            fields=["actual_qty"],
+        )
+        self.assertAlmostEqual(sum(r.actual_qty for r in sle), 18740.4, places=2)
+        gl = frappe.get_all(
+            "GL Entry",
+            filters={"voucher_type": "Stock Entry", "voucher_no": entry.name},
+            fields=["debit", "credit"],
+        )
+        self.assertTrue(gl, "Perpetual inventory must create GL entries through ERPNext.")
+        self.assertAlmostEqual(sum(float(r.debit) - float(r.credit) for r in gl), 0, places=2)

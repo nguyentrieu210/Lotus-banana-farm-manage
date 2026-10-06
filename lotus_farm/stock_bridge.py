@@ -75,6 +75,7 @@ def make_repack_entry(packout):
                 conversion_factor=1,
                 batch_no=batch.name,
                 use_serial_batch_fields=1,
+                is_finished_item=1,
             ),
         )
     entry.insert()  # Core checks permissions, quantities, valuation and serial/batch rules.

@@ -49,7 +49,7 @@ Field rejection is applied once. A buồng with two defects is still one defecti
 5. Existing forecasts remain Draft. Do not delete their legacy allocation rows. Reconcile each row to the exact submitted SO Item and its outstanding Kg demand, then create a separate released forecast and reserve through the API. This branch intentionally refuses to guess row mappings or turn legacy totals into active reservations.
 6. Resolve duplicate `(farm, block_code)`, `(block, cycle_no)` or profile key/version values before unique-index migration. No silent merge/deletion.
 7. Grant each business/API user an explicit Farm User Permission and the necessary standard ERPNext roles. System Manager alone does not approve Lotus assumptions or gain access to every farm; Administrator is the bootstrap exception.
-8. Receive physical raw fruit through standard ERPNext stock documents with Finance-approved valuation. Map raw Item/Warehouse/Batch to the lot before creating a Repack draft. Lotus forecast records never create stock.
+8. Enable ERPNext Stock Settings “Activate Serial / Batch No for Item” before creating traceable Items. Receive physical raw fruit through standard ERPNext stock documents with Finance-approved valuation. Map raw Item/Warehouse/Batch to the lot before creating a Repack draft. Lotus forecast records never create stock.
 
 ## API examples
 
