@@ -113,6 +113,7 @@ def _stock_reservation_effect(request):
         "stock_reservation": reservation.name,
         "sales_order": reservation.voucher_no,
         "sales_order_item": reservation.voucher_detail_no,
+        "reservation_disposition": request.reservation_disposition,
         "allocation_impacts": effects,
     }
 
@@ -153,10 +154,16 @@ def execute(reconciliation):
 
     if request.reconciliation_type == "Stock Entry Reversal":
         target = frappe.get_doc("Stock Entry", request.stock_entry)
+        action = "reconciliation_cancel"
     else:
         target = frappe.get_doc("Stock Reservation Entry", request.stock_reservation)
+        action = (
+            "reconciliation_cancel_restore"
+            if request.reservation_disposition == "Restore Future Reservation"
+            else "reconciliation_cancel_release"
+        )
     target.check_permission("cancel")
-    with command(target, "reconciliation_cancel"):
+    with command(target, action):
         target.cancel()
 
     applied_at = now_datetime()
