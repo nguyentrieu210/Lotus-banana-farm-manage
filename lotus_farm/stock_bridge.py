@@ -140,15 +140,22 @@ def _forecast_outputs(run):
             actual = frappe.get_doc("Harvest Actual", contribution.harvest_actual)
             if not actual.forecast:
                 continue
-            item = frappe.db.get_value("Harvest Forecast", actual.forecast, "item")
-            net = sum(float(o.net_kg) for o in run.outputs if o.item == item)
+            supply = frappe.get_doc("Harvest Forecast", actual.forecast)
+            planned_items = (
+                {row.item for row in supply.output_plan}
+                if supply.output_plan
+                else ({supply.item} if supply.item else set())
+            )
             share = (
                 float(source.input_kg)
                 / float(run.input_kg)
                 * float(contribution.contributed_kg)
                 / float(lot.released_raw_kg)
             )
-            totals[actual.forecast] = totals.get(actual.forecast, 0) + net * share
+            bucket = totals.setdefault(actual.forecast, {})
+            for output in run.outputs:
+                if output.item in planned_items:
+                    bucket[output.item] = bucket.get(output.item, 0) + float(output.net_kg) * share
     return totals
 
 
@@ -157,11 +164,19 @@ def stock_posted(doc, method=None):
         return
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
     frappe.db.set_value("Packout Run", run.name, "stock_entry", doc.name)
-    # Physical finished stock replaces future supply; no duplicated forecast + stock ATP.
-    for name, amount in sorted(_forecast_outputs(run).items()):
+    # Physical finished stock replaces future supply per Item; no duplicated forecast + stock ATP.
+    for name, item_amounts in sorted(_forecast_outputs(run).items()):
         lock("Harvest Forecast", name)
         supply = frappe.get_doc("Harvest Forecast", name)
-        supply.materialized_qty_kg = float(supply.materialized_qty_kg or 0) + amount
+        if supply.output_plan:
+            output_by_item = {row.item: row for row in supply.output_plan}
+            for item, amount in item_amounts.items():
+                output = output_by_item.get(item)
+                if output:
+                    output.materialized_qty_kg = float(output.materialized_qty_kg or 0) + amount
+        else:
+            amount = item_amounts.get(supply.item, 0)
+            supply.materialized_qty_kg = float(supply.materialized_qty_kg or 0) + amount
         with command(supply, "supply"):
             supply.save(ignore_permissions=True)  # Authorized Stock Entry event, farm read checked above.
 
@@ -181,14 +196,30 @@ def stock_reversed(doc, method=None):
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
     impacts = _forecast_outputs(run)
     supplies = {}
-    for name, amount in sorted(impacts.items()):
+    for name, item_amounts in sorted(impacts.items()):
         lock("Harvest Forecast", name)
         supply = frappe.get_doc("Harvest Forecast", name)
-        if float(supply.materialized_qty_kg or 0) + 0.0005 < float(amount):
-            frappe.throw("Forecast materialized quantity is smaller than the stock reversal.")
-        supplies[name] = (supply, float(amount))
-    for supply, amount in supplies.values():
-        supply.materialized_qty_kg = max(float(supply.materialized_qty_kg or 0) - amount, 0)
+        if supply.output_plan:
+            output_by_item = {row.item: row for row in supply.output_plan}
+            for item, amount in item_amounts.items():
+                output = output_by_item.get(item)
+                if not output or float(output.materialized_qty_kg or 0) + 0.0005 < float(amount):
+                    frappe.throw("Per-Item forecast materialized quantity is smaller than the stock reversal.")
+        else:
+            amount = item_amounts.get(supply.item, 0)
+            if float(supply.materialized_qty_kg or 0) + 0.0005 < float(amount):
+                frappe.throw("Forecast materialized quantity is smaller than the stock reversal.")
+        supplies[name] = (supply, item_amounts)
+
+    for supply, item_amounts in supplies.values():
+        if supply.output_plan:
+            output_by_item = {row.item: row for row in supply.output_plan}
+            for item, amount in item_amounts.items():
+                output = output_by_item[item]
+                output.materialized_qty_kg = max(float(output.materialized_qty_kg or 0) - amount, 0)
+        else:
+            amount = item_amounts.get(supply.item, 0)
+            supply.materialized_qty_kg = max(float(supply.materialized_qty_kg or 0) - amount, 0)
         with command(supply, "supply"):
             supply.save(ignore_permissions=True)
 
