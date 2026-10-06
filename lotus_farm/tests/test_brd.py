@@ -366,7 +366,20 @@ class TestBRDOnSite(unittest.TestCase):
             is_stock_item=1,
             has_batch_no=1,
         ).name
-        raw_warehouse = self.make("Warehouse", warehouse_name="Raw " + self.tag, company=self.company).name
+        stock_account = frappe.db.get_value(
+            "Account", {"company": self.company, "account_type": "Stock", "is_group": 0}, "name"
+        )
+        raw_account = self.make(
+            "Account", account_name="Raw Inventory " + self.tag,
+            company=self.company, account_type="Stock", is_group=0,
+            parent_account=frappe.db.get_value("Account", stock_account, "parent_account"),
+        ).name
+        # Distinct inventory accounts make Repack produce meaningful GL entries;
+        # equal-cost transfers within one account can legitimately net to zero GL.
+        raw_warehouse = self.make(
+            "Warehouse", warehouse_name="Raw " + self.tag,
+            company=self.company, account=raw_account,
+        ).name
         finished = self.make("Warehouse", warehouse_name="Finished " + self.tag, company=self.company).name
         batch = self.make("Batch", batch_id="RAW-" + self.tag, item=raw_item).name
         receipt = self.make(
