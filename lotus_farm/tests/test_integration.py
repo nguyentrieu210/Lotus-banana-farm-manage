@@ -3,7 +3,7 @@ import unittest
 from uuid import uuid4
 
 import frappe
-from frappe.utils import add_days, today
+from frappe.utils import add_days, getdate, today
 
 from lotus_farm.api.v1.allocations import release, reserve
 from lotus_farm.api.v1.operations import create
@@ -17,6 +17,12 @@ class LotusIntegrationTest(unittest.TestCase):
         self.tag = uuid4().hex[:8]
         self.company = frappe.get_doc({"doctype": "Company", "company_name": f"Lotus Test {self.tag}",
                                        "abbr": self.tag, "country": "Vietnam", "default_currency": "VND"}).insert()
+        self.price_list = frappe.get_doc({"doctype": "Price List", "price_list_name": f"Selling {self.tag}",
+                                          "currency": "VND", "selling": 1, "enabled": 1}).insert()
+        year = getdate(today()).year
+        if not frappe.db.exists("Fiscal Year", {"year_start_date": f"{year}-01-01", "year_end_date": f"{year}-12-31"}):
+            frappe.get_doc({"doctype": "Fiscal Year", "year": str(year), "year_start_date": f"{year}-01-01",
+                            "year_end_date": f"{year}-12-31"}).insert()
         self.item = frappe.get_doc({"doctype": "Item", "item_code": f"BAN-{self.tag}",
                                     "item_name": "Banana", "item_group": "All Item Groups", "stock_uom": "Kg",
                                     "is_stock_item": 1, "has_batch_no": 1}).insert()
@@ -47,7 +53,7 @@ class LotusIntegrationTest(unittest.TestCase):
         self.forecast.submit()
         self.so = frappe.get_doc({"doctype": "Sales Order", "company": self.company.name,
                                   "customer": self.customer.name, "transaction_date": today(),
-                                  "delivery_date": today(), "currency": "VND", "selling_price_list": "Standard Selling",
+                                  "delivery_date": today(), "currency": "VND", "selling_price_list": self.price_list.name,
                                   "items": [{"item_code": self.item.name, "qty": 10000, "rate": 100,
                                              "delivery_date": today()}]}).insert()
         self.so.submit()
@@ -107,6 +113,13 @@ class LotusIntegrationTest(unittest.TestCase):
         entry.submit()
         self.assertEqual(availability(self.forecast)['available_to_promise_kg'], 2000)
         self.assertTrue(frappe.db.exists('Stock Ledger Entry', {'voucher_no': entry_name, 'is_cancelled': 0}))
+        stock_qty = frappe.db.sql("SELECT SUM(actual_qty) FROM `tabStock Ledger Entry` WHERE voucher_no=%s AND is_cancelled=0",
+                                 (entry_name,))[0][0]
+        self.assertEqual(float(stock_qty), 7800)
+        gl = frappe.db.sql("SELECT SUM(debit), SUM(credit) FROM `tabGL Entry` WHERE voucher_no=%s AND is_cancelled=0",
+                            (entry_name,))[0]
+        self.assertIsNotNone(gl[0])
+        self.assertEqual(gl[0], gl[1])
         self.assertTrue(frappe.db.exists('Forecast Materialization', {'stock_entry': entry_name, 'docstatus': 1}))
         entry.cancel()
         self.assertEqual(availability(self.forecast)['available_to_promise_kg'], 10000)
