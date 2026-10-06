@@ -88,7 +88,7 @@ def ingest_scale(farm, device_id, reading_id, captured_at, gross_kg, tare_kg):
 
 @frappe.whitelist()
 def availability(period_start, period_end, farm=None, item=None):
-    # get_list enforces role + Farm User Permission and custom query hooks.
+    # Parent get_list enforces role + Farm User Permission and custom query hooks.
     filters = {
         "supply_state": "Released",
         "period_start_date": ["<=", period_end],
@@ -96,9 +96,8 @@ def availability(period_start, period_end, farm=None, item=None):
     }
     if farm:
         filters["farm"] = farm
-    if item:
-        filters["item"] = item
-    return frappe.get_list(
+
+    forecasts = frappe.get_list(
         "Harvest Forecast",
         filters=filters,
         fields=[
@@ -125,3 +124,52 @@ def availability(period_start, period_end, farm=None, item=None):
         order_by="period_start_date, farm",
         limit_page_length=500,
     )
+
+    result = []
+    for forecast in forecasts:
+        outputs = frappe.get_all(
+            "Forecast Output Plan",
+            filters={
+                "parent": forecast.name,
+                "parenttype": "Harvest Forecast",
+                "parentfield": "output_plan",
+            },
+            fields=[
+                "name",
+                "item",
+                "yield_percent",
+                "expected_packed_kg",
+                "safe_commit_kg",
+                "materialized_qty_kg",
+                "committed_qty_kg",
+                "available_to_promise_kg",
+                "shortage_kg",
+                "availability_status",
+            ],
+            order_by="idx",
+        )
+        if outputs:
+            for output in outputs:
+                if item and output.item != item:
+                    continue
+                row = dict(forecast)
+                row.update(
+                    {
+                        "forecast_output": output.name,
+                        "item": output.item,
+                        "yield_percent": output.yield_percent,
+                        "packed_forecast_kg": output.expected_packed_kg,
+                        "safe_saleable_kg": output.safe_commit_kg,
+                        "materialized_qty_kg": output.materialized_qty_kg,
+                        "committed_qty_kg": output.committed_qty_kg,
+                        "available_to_promise_kg": output.available_to_promise_kg,
+                        "shortage_kg": output.shortage_kg,
+                        "availability_status": output.availability_status,
+                    }
+                )
+                result.append(row)
+        elif not item or forecast.item == item:
+            row = dict(forecast)
+            row["forecast_output"] = None
+            result.append(row)
+    return result
