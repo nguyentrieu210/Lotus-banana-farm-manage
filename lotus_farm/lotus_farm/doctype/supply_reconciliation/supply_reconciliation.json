@@ -11,6 +11,7 @@
     "reconciliation_type",
     "stock_entry",
     "stock_reservation",
+    "reservation_disposition",
     "reason",
     "state",
     "effect_json",
@@ -48,6 +49,14 @@
       "fieldtype": "Link",
       "label": "Stock Reservation",
       "options": "Stock Reservation Entry"
+    },
+    {
+      "fieldname": "reservation_disposition",
+      "fieldtype": "Select",
+      "label": "Reservation Disposition",
+      "options": "Restore Future Reservation\nRelease Commitment",
+      "default": "Restore Future Reservation",
+      "depends_on": "eval:doc.reconciliation_type=='Stock Reservation Cancellation'"
     },
     {
       "fieldname": "reason",
