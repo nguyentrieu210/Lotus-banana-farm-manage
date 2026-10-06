@@ -5,9 +5,6 @@ from frappe import _
 def execute(filters=None):
     filters = frappe._dict(filters or {})
     db_filters = {"supply_state": "Released"}
-    if filters.item:
-        db_filters["item"] = filters.item
-
     if filters.farm:
         db_filters["farm"] = filters.farm
     if filters.from_date:
@@ -21,6 +18,8 @@ def execute(filters=None):
         fields=[
             "name",
             "item",
+            "forecast_basis",
+            "packout_rate_percent",
             "materialized_qty_kg",
             "farm",
             "farm_block",
@@ -42,8 +41,56 @@ def execute(filters=None):
         limit_page_length=10000,
     )
 
+    expanded = []
+    for row in rows:
+        outputs = frappe.get_all(
+            "Forecast Output Plan",
+            filters={
+                "parent": row.name,
+                "parenttype": "Harvest Forecast",
+                "parentfield": "output_plan",
+            },
+            fields=[
+                "item",
+                "yield_percent",
+                "expected_packed_kg",
+                "safe_commit_kg",
+                "materialized_qty_kg",
+                "committed_qty_kg",
+                "available_to_promise_kg",
+                "shortage_kg",
+                "availability_status",
+            ],
+            order_by="idx",
+        )
+        if outputs:
+            for output in outputs:
+                if filters.item and output.item != filters.item:
+                    continue
+                item_row = frappe._dict(row.copy())
+                item_row.update(
+                    {
+                        "item": output.item,
+                        "yield_percent": output.yield_percent,
+                        "packed_forecast_kg": output.expected_packed_kg,
+                        "safe_saleable_kg": output.safe_commit_kg,
+                        "materialized_qty_kg": output.materialized_qty_kg,
+                        "committed_qty_kg": output.committed_qty_kg,
+                        "available_to_promise_kg": output.available_to_promise_kg,
+                        "shortage_kg": output.shortage_kg,
+                        "availability_status": output.availability_status,
+                    }
+                )
+                expanded.append(item_row)
+        elif not filters.item or row.item == filters.item:
+            row.yield_percent = row.packout_rate_percent
+            expanded.append(row)
+    rows = expanded
+
     columns = [
         {"label": _("Item"), "fieldname": "item", "fieldtype": "Link", "options": "Item", "width": 160},
+        {"label": _("Basis"), "fieldname": "forecast_basis", "fieldtype": "Data", "width": 130},
+        {"label": _("Yield %"), "fieldname": "yield_percent", "fieldtype": "Percent", "width": 85},
         {
             "label": _("Already in stock kg"),
             "fieldname": "materialized_qty_kg",
