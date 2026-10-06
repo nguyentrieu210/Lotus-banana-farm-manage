@@ -297,6 +297,203 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(json.loads(cut.source_snapshot)["basis"], "Cut Bud Operations")
         self.assertEqual(cut.formula_version, "lotus-forecast/3")
 
+    def test_multi_item_forecast_reserves_and_materializes_each_finished_item(self):
+        from lotus_farm.api import availability
+        from lotus_farm.stock_bridge import make_repack_entry
+
+        item_b = self.make(
+            "Item",
+            item_code="B-" + self.tag,
+            item_name="Grade B",
+            item_group="All Item Groups",
+            stock_uom="Kg",
+            is_stock_item=1,
+            has_batch_no=1,
+        ).name
+        standard_b = self.make(
+            "Quality Standard",
+            standard_code="QS-B-" + self.tag,
+            version=1,
+            item=item_b,
+            approval_state="Approved",
+            valid_from=add_days(nowdate(), -500),
+            max_defective_percent=20,
+        ).name
+        profile_b = self.make(
+            "Packout Profile",
+            profile_name="PP-B-" + self.tag,
+            version=1,
+            farm=self.farm,
+            variety=self.variety,
+            item=item_b,
+            quality_standard=standard_b,
+            approval_state="Approved",
+            valid_from=add_days(nowdate(), -500),
+            yield_percent=15,
+        ).name
+
+        create_operation(
+            "multi-cut-" + self.tag,
+            self.farm,
+            self.block,
+            self.cycle,
+            nowdate(),
+            "Cut Bud",
+            1000,
+            sucker_selection_batch=self.cohort,
+            harvest_profile=self.profile,
+        )
+        supply = self.make(
+            "Harvest Forecast",
+            farm=self.farm,
+            farm_block=self.block,
+            crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,
+            harvest_profile=self.profile,
+            forecast_basis="Cut Bud Operations",
+            period_start_date=self.start,
+            period_end_date=add_days(self.start, 6),
+            output_plan=[
+                dict(item=self.item, packout_profile=self.pack_profile),
+                dict(item=item_b, packout_profile=profile_b),
+            ],
+            supply_state="Released",
+        )
+        outputs = {row.item: row for row in supply.output_plan}
+        self.assertAlmostEqual(outputs[self.item].safe_commit_kg, 17803.38, places=2)
+        self.assertAlmostEqual(outputs[item_b].safe_commit_kg, 3179.175, places=2)
+        self.assertAlmostEqual(supply.safe_saleable_kg, 20982.555, places=2)
+
+        rows = [row for row in availability(self.start, add_days(self.start, 6), farm=self.farm) if row["name"] == supply.name]
+        self.assertEqual({row["item"] for row in rows}, {self.item, item_b})
+        filtered = availability(self.start, add_days(self.start, 6), farm=self.farm, item=item_b)
+        self.assertEqual([row["item"] for row in filtered if row["name"] == supply.name], [item_b])
+
+        finished = self.make("Warehouse", warehouse_name="Multi Finished " + self.tag, company=self.company).name
+        order = self.make(
+            "Sales Order",
+            company=self.company,
+            customer=self.customer,
+            transaction_date=nowdate(),
+            delivery_date=self.start,
+            currency="INR",
+            conversion_rate=1,
+            selling_price_list="Standard Selling",
+            items=[
+                dict(
+                    item_code=self.item,
+                    qty=16000,
+                    uom="Kg",
+                    conversion_factor=1,
+                    rate=1,
+                    delivery_date=self.start,
+                    warehouse=finished,
+                ),
+                dict(
+                    item_code=item_b,
+                    qty=4000,
+                    uom="Kg",
+                    conversion_factor=1,
+                    rate=1,
+                    delivery_date=self.start,
+                    warehouse=finished,
+                ),
+            ],
+        )
+        order.submit()
+        reserve(supply.name, order.name, order.items[0].name, 15000, "multi-a-" + self.tag)
+        reserve(supply.name, order.name, order.items[1].name, 3000, "multi-b-" + self.tag)
+        with self.assertRaises(frappe.ValidationError):
+            reserve(supply.name, order.name, order.items[1].name, 500, "multi-b-over-" + self.tag)
+        supply.reload()
+        outputs = {row.item: row for row in supply.output_plan}
+        self.assertAlmostEqual(outputs[self.item].available_to_promise_kg, 2803.38, places=2)
+        self.assertAlmostEqual(outputs[item_b].available_to_promise_kg, 179.175, places=2)
+
+        raw_item = self.make(
+            "Item",
+            item_code="RAW-M-" + self.tag,
+            item_name="Raw Multi",
+            item_group="All Item Groups",
+            stock_uom="Kg",
+            is_stock_item=1,
+            has_batch_no=1,
+        ).name
+        raw_warehouse = self.make("Warehouse", warehouse_name="Multi Raw " + self.tag, company=self.company).name
+        raw_batch = self.make("Batch", batch_id="RAW-M-" + self.tag, item=raw_item).name
+        receipt = self.make(
+            "Stock Entry",
+            stock_entry_type="Material Receipt",
+            purpose="Material Receipt",
+            company=self.company,
+            posting_date=nowdate(),
+            items=[
+                dict(
+                    item_code=raw_item,
+                    t_warehouse=raw_warehouse,
+                    qty=22310,
+                    uom="Kg",
+                    stock_uom="Kg",
+                    conversion_factor=1,
+                    basic_rate=1,
+                    batch_no=raw_batch,
+                    use_serial_batch_fields=1,
+                )
+            ],
+        )
+        receipt.submit()
+        actual = self.make(
+            "Harvest Actual",
+            farm=self.farm,
+            farm_block=self.block,
+            crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,
+            harvest_date=nowdate(),
+            forecast=supply.name,
+            harvested_bunch_qty=970,
+            gross_weight_kg=24250,
+            rejected_weight_kg=1940,
+        )
+        actual.submit()
+        lot = self.make(
+            "Harvest Lot",
+            farm=self.farm,
+            received_date=nowdate(),
+            raw_item=raw_item,
+            raw_warehouse=raw_warehouse,
+            raw_batch=raw_batch,
+            sources=[dict(harvest_actual=actual.name, contributed_kg=22310)],
+        )
+        lot.submit()
+        run = self.make(
+            "Packout Run",
+            farm=self.farm,
+            company=self.company,
+            packing_date=nowdate(),
+            quality_standard=self.standard,
+            target_warehouse=finished,
+            sources=[dict(harvest_lot=lot.name, input_kg=22310)],
+            outputs=[
+                dict(item=self.item, net_kg=18000),
+                dict(item=item_b, net_kg=3000, quality_standard=standard_b),
+            ],
+            reject_kg=1310,
+            other_loss_kg=0,
+            qc_state="Released",
+        )
+        run.submit()
+        draft = make_repack_entry(run.name)
+        entry = frappe.get_doc("Stock Entry", draft["stock_entry"])
+        entry.submit()
+
+        supply.reload()
+        outputs = {row.item: row for row in supply.output_plan}
+        self.assertAlmostEqual(outputs[self.item].materialized_qty_kg, 18000, places=2)
+        self.assertAlmostEqual(outputs[item_b].materialized_qty_kg, 3000, places=2)
+        self.assertAlmostEqual(supply.materialized_qty_kg, 21000, places=2)
+        self.assertLess(outputs[self.item].available_to_promise_kg, 0)
+        self.assertLess(outputs[item_b].available_to_promise_kg, 0)
+
     def test_idempotent_operations_and_scales(self):
         args = ("event-" + self.tag, self.farm, self.block, self.cycle, nowdate(), "Cut Bud", 1000)
         first = create_operation(*args, sucker_selection_batch=self.cohort, harvest_profile=self.profile)
