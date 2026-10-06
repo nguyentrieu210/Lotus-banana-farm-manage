@@ -18,7 +18,7 @@ This change implements the planning and field-to-packhouse core. It does **not**
 | Harvest actual → lot | Submitted actuals; reconciled contributions; cannot consume actual weight twice | Input lot can contain multiple actual sources within a Farm |
 | Lot → packout | Locked input lots, QC release role, per-output standards, Kg mass balance | Packing line/labor/cost analytics not implemented |
 | Raw scale evidence | Immutable reading, device/reading key, tare validation, idempotent API | Device allowlist/auth binding, physical scale linkage still needed; timestamp inputs normalize to site timezone |
-| ERPNext stock bridge | Idempotent Batch creation and **draft Repack Stock Entry** from received raw stock | Warehouse user must review/submit standard ERPNext entry; no custom ledger/GL |
+| ERPNext stock bridge | Idempotent Batch creation and **draft Repack Stock Entry** from received raw stock; multi-Item Repack requires reviewed per-Item valuation rates | Stock reviewer supplies valuation only after QC; standard ERPNext still owns ledger/GL and submit validation |
 | Physical supply replacement | Stock Entry submission reduces remaining forecast ATP by traced finished output | Site test covers stock/GL creation and forecast replacement |
 | Reviewed reversal/reconciliation | Submitted Supply Reconciliation snapshots the exact reversal effect; direct Lotus-linked Stock Entry/SRE cancel is blocked; approved execution uses ERPNext cancel then updates Lotus trace state; SRE cancellation explicitly chooses whether to restore the future customer commitment or release it | Delivered/consumed physical reservations still require downstream delivery reconciliation first |
 | Forecast → stock reservation | Explicit link to submitted SRE matching SO Item; removes future commitment | Whole-allocation linking only; partial transitions and delivered-consumption audit remain |
@@ -39,7 +39,7 @@ For each finished Item, `released raw × that Item's approved packout yield = ex
 
 Remaining future supply = max(safe commit − traced posted output, 0). Future ATP = remaining future supply − Reserved future allocations. ATP remains negative when commitments exceed remaining supply. ERPNext separately owns physical inventory and physical reservations.
 
-Field rejection is applied once. A buồng with two defects is still one defective unit. Packout balances input against finished net kg + reject + other recorded loss; tolerance is an explicit site setting, defaulting to zero.
+Field rejection is applied once. A buồng with two defects is still one defective unit. Packout balances input against finished net kg + reject + other recorded loss; tolerance is an explicit site setting, defaulting to zero.\n\nMulti-Item Repack valuation is intentionally not guessed from kg. After QC freezes output quantities, a `Lotus Stock Reviewer` records the valuation rate per finished Item. Those reviewed rates are audit-stamped and the Stock Entry bridge rejects missing or changed rates.
 
 ## Existing-data upgrade
 
@@ -62,7 +62,7 @@ Call authenticated Frappe method endpoints under `/api/method/`:
 | `lotus_farm.api.ingest_scale` | farm, device_id, reading_id, captured_at, gross_kg, tare_kg |
 | `lotus_farm.allocations.reserve` | forecast, sales_order, sales_order_item, qty_kg, client_event_id |
 | `lotus_farm.allocations.release` | forecast, allocation |
-| `lotus_farm.stock_bridge.make_repack_entry` | submitted packout name |
+| `lotus_farm.stock_bridge.set_output_valuation` | submitted multi-Item packout name + exact Item→rate map |\n| `lotus_farm.stock_bridge.make_repack_entry` | submitted packout name; multi-Item requires reviewed valuation first |
 | `lotus_farm.stock_bridge.link_stock_reservation` | forecast, allocation, stock_reservation |
 | `lotus_farm.reconciliation.execute` | submitted Supply Reconciliation name |
 | `lotus_farm.api.availability` | period_start, period_end; optional Farm/Item |
