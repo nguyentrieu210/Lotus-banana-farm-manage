@@ -11,7 +11,7 @@ class BunchOperation(Document):
         self._validate_quantities()
         self.net_bunch_qty = cint(self.bunch_qty) - cint(self.rejected_qty)
 
-        if self.operation_type == "Cut Bud":
+        if self.operation_type in ("Shooting", "Cut Bud"):
             self._set_expected_harvest()
 
         if self.expected_harvest_date:
@@ -63,13 +63,18 @@ class BunchOperation(Document):
         if self.expected_harvest_date:
             return
 
+        fieldname = {
+            "Shooting": "shooting_to_harvest_days",
+            "Cut Bud": "cut_bud_to_harvest_days",
+        }.get(self.operation_type)
+        if not fieldname:
+            return
+
         harvest_age_days = None
         if self.harvest_profile:
-            harvest_age_days = frappe.db.get_value(
-                "Harvest Profile", self.harvest_profile, "cut_bud_to_harvest_days"
-            )
+            harvest_age_days = frappe.db.get_value("Harvest Profile", self.harvest_profile, fieldname)
 
-        if harvest_age_days is None:
+        if harvest_age_days is None and self.operation_type == "Cut Bud":
             harvest_age_days = frappe.db.get_single_value("Lotus Farm Settings", "default_harvest_age_days")
 
         if harvest_age_days:
