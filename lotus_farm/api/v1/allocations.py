@@ -14,6 +14,9 @@ def reserve(forecast, sales_order, sales_order_item, reserved_qty_kg, client_eve
             forecast, sales_order, sales_order_item, flt(reserved_qty_kg)
         ):
             frappe.throw("Client event ID was already used for a different reservation.")
+        if doc.docstatus == 0:
+            doc.check_permission("submit")
+            doc.submit()
         return {"name": doc.name, "docstatus": doc.docstatus}
     doc = frappe.get_doc({"doctype": "Forecast Reservation", "forecast": forecast,
                           "sales_order": sales_order, "sales_order_item": sales_order_item,

@@ -68,3 +68,7 @@ bench --site lotus_test execute lotus_farm.tests.concurrency.run
 ```
 
 The concurrency command commits disposable fixtures and opens two independent connections. Never run it against live business data.
+
+### Transaction retry contract
+
+MariaDB can abort a contending transaction with Frappe `QueryDeadlockError` (including MariaDB error 1020). An API consumer must retry the entire failed request in a fresh transaction, up to three attempts, using the same `client_event_id`. Never retry just the capacity query or generate a new event ID. The reservation command also submits a matching existing draft; an already submitted or cancelled event returns its existing status. The service does not roll back unrelated work inside a caller-owned transaction. The concurrency gate exercises these request-level retries and still requires exactly one 8,000 kg reservation against a 10,000 kg pool.
