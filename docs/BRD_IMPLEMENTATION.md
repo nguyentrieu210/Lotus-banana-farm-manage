@@ -17,7 +17,7 @@ This change implements the planning and field-to-packhouse core. It does **not**
 | Field QC | Approved/versioned standard; distinct defective units vs defect occurrences; required measurements | Per-parameter sampling statistics and photo evidence not implemented |
 | Harvest actual → lot | Submitted actuals; reconciled contributions; cannot consume actual weight twice | Input lot can contain multiple actual sources within a Farm |
 | Lot → packout | Locked input lots, QC release role, per-output standards, Kg mass balance | Packing line/labor/cost analytics not implemented |
-| Raw scale evidence | Immutable reading, device/reading key, tare validation, idempotent API | Device allowlist/auth binding, physical scale linkage and timezone handling still needed |
+| Raw scale evidence | Immutable reading, device/reading key, tare validation, idempotent API | Device allowlist/auth binding, physical scale linkage still needed; timestamp inputs normalize to site timezone |
 | ERPNext stock bridge | Idempotent Batch creation and **draft Repack Stock Entry** from received raw stock | Warehouse user must review/submit standard ERPNext entry; no custom ledger/GL |
 | Physical supply replacement | Stock Entry submission reduces remaining forecast ATP by traced finished output | Must be exercised against core Batch/Bundle and stock ledger on site |
 | Forecast → stock reservation | Explicit link to submitted SRE matching SO Item; removes future commitment | Whole-allocation linking only; partial transitions and delivered-consumption audit remain |
@@ -76,4 +76,4 @@ The site test is for a disposable test database. Its concurrency test commits te
 
 ## Validation evidence
 
-Executed locally: 12 pure formula/schema tests, Python compilation and Ruff F/E9 checks. These do not prove installability, DB concurrency, Farm permission isolation or accounting reconciliation. The separate site suite covers actual document lifecycle, reservation limits/retries, lot/packout overspend, approved-profile immutability, farm grants and two-connection allocation concurrency. Those tests require the provisioned ERPNext site and must pass in CI; no passing site result is claimed in this document.
+Executed locally: 18 pure formula/schema/server-guard tests, Python compilation and Ruff F/E9 checks. These do not prove installability, DB concurrency, Farm permission isolation or accounting reconciliation. The separate site suite covers actual document lifecycle, reservation limits/retries, lot/packout overspend, approved-profile immutability, farm grants and two-connection allocation concurrency. Those tests require the provisioned ERPNext site and must pass in CI; no passing site result is claimed in this document.

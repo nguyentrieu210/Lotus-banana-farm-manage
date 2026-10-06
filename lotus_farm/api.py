@@ -1,6 +1,5 @@
 import frappe
-from frappe.utils import get_datetime
-from lotus_farm.controls import require_role
+from lotus_farm.controls import require_role, local_timestamp, whole_count
 from lotus_farm.rules import canonical_hash
 
 
@@ -53,10 +52,10 @@ def create_operation(
         farm=farm,
         farm_block=farm_block,
         crop_cycle=crop_cycle,
-        operation_date=str(get_datetime(operation_date).date()),
+        operation_date=str(local_timestamp(operation_date).date()),
         operation_type=operation_type,
-        bunch_qty=int(bunch_qty),
-        rejected_qty=int(rejected_qty),
+        bunch_qty=whole_count(bunch_qty, "Bunch quantity"),
+        rejected_qty=whole_count(rejected_qty, "Rejected bunch quantity"),
         sucker_selection_batch=sucker_selection_batch,
         harvest_profile=harvest_profile,
     )
@@ -78,7 +77,7 @@ def ingest_scale(farm, device_id, reading_id, captured_at, gross_kg, tare_kg):
         farm=farm,
         device_id=device_id,
         reading_id=reading_id,
-        captured_at=str(get_datetime(captured_at)),
+        captured_at=str(local_timestamp(captured_at)),
         gross_kg=float(gross_kg),
         tare_kg=float(tare_kg),
     )

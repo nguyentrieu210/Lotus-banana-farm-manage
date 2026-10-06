@@ -8,7 +8,10 @@ class ForecastInputError(ValueError):
 def _number(value, default=0):
     if value is None or value == "":
         return float(default)
-    result = float(value)
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise ForecastInputError("Forecast quantities must be numeric.") from None
     if not math.isfinite(result):
         raise ForecastInputError("Forecast quantities must be finite.")
     return result

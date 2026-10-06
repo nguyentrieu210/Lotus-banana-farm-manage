@@ -1,9 +1,10 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
+from zoneinfo import ZoneInfo
 import frappe
-from frappe.utils import getdate
+from frappe.utils import getdate, get_datetime, get_system_timezone
 
-from lotus_farm.rules import RuleError, quantity
+from lotus_farm.rules import RuleError, quantity, integer_quantity
 
 
 def require_role(*roles):
@@ -174,3 +175,17 @@ def command(doc, action):
         yield
     finally:
         _authorized_commands.reset(token)
+
+
+def local_timestamp(value):
+    timestamp = get_datetime(value)
+    if timestamp.tzinfo:
+        timestamp = timestamp.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
+    return timestamp
+
+
+def whole_count(value, label):
+    try:
+        return integer_quantity(value, label)
+    except RuleError as exc:
+        frappe.throw(str(exc))

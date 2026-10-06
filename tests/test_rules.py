@@ -8,6 +8,7 @@ from lotus_farm.rules import (
     calibration,
     forecast_accuracy,
     canonical_hash,
+    integer_quantity,
     RuleError,
 )
 
@@ -68,6 +69,8 @@ class TestBRDRules(unittest.TestCase):
 
     def test_scale_tare_cannot_exceed_gross(self):
         self.assertEqual(scale_net(1275.4, 84.7), 1190.7)
+        with self.assertRaises(RuleError):
+            integer_quantity(1.5)
         with self.assertRaises(RuleError):
             scale_net(10, 11)
 

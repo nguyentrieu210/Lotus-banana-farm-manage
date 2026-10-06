@@ -81,3 +81,10 @@ def forecast_accuracy(pairs):
         "wape": float(sum((abs(f - a) for f, a in pairs), Decimal(0)) / total),
         "sample_count": len(pairs),
     }
+
+
+def integer_quantity(value, label="Count"):
+    result = quantity(value, label)
+    if result != result.to_integral_value():
+        raise RuleError(f"{label} must be a whole number.")
+    return int(result)

@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now_datetime, get_datetime
+from frappe.utils import now_datetime
+from lotus_farm.controls import local_timestamp
 from lotus_farm.rules import canonical_hash, scale_net, RuleError
 
 
@@ -8,7 +9,8 @@ class ScaleReading(Document):
     def validate(self):
         if not self.is_new():
             frappe.throw("Raw Scale Readings are immutable. Record corrections separately.")
-        if get_datetime(self.captured_at) > now_datetime():
+        self.captured_at = local_timestamp(self.captured_at)
+        if self.captured_at > now_datetime():
             frappe.throw("Scale capture time cannot be in the future.")
         self.event_key = canonical_hash([self.farm, self.device_id, self.reading_id])
         try:
