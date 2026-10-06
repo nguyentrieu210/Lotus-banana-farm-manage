@@ -91,7 +91,7 @@
       "fieldname": "forecast_basis",
       "fieldtype": "Select",
       "label": "Forecast Basis",
-      "options": "Manual\nCut Bud Operations",
+      "options": "Manual\nSucker Selection\nShooting Operations\nCut Bud Operations",
       "default": "Cut Bud Operations",
       "reqd": 1
     },
