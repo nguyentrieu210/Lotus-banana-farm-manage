@@ -3,13 +3,57 @@
   "name": "Lotus Farm Settings",
   "module": "Lotus Farm",
   "issingle": 1,
-  "field_order": ["default_harvest_age_days", "default_avg_bunch_weight_kg", "default_defect_rate_percent", "safety_buffer_percent", "configuration_note"],
-  "fields": [
-    {"fieldname": "default_harvest_age_days", "fieldtype": "Int", "label": "Default Harvest Age (days)", "non_negative": 1},
-    {"fieldname": "default_avg_bunch_weight_kg", "fieldtype": "Float", "label": "Default Average Bunch Weight (kg)", "non_negative": 1},
-    {"fieldname": "default_defect_rate_percent", "fieldtype": "Percent", "label": "Default Defect Rate (%)"},
-    {"fieldname": "safety_buffer_percent", "fieldtype": "Percent", "label": "Sales Safety Buffer (%)"},
-    {"default": "Set these values from Lotus actual field data. V0 intentionally ships without generic banana assumptions.", "fieldname": "configuration_note", "fieldtype": "Small Text", "label": "Configuration Note", "read_only": 1}
+  "field_order": [
+    "default_harvest_age_days",
+    "default_avg_bunch_weight_kg",
+    "default_defect_rate_percent",
+    "safety_buffer_percent",
+    "configuration_note",
+    "mass_balance_tolerance_kg"
   ],
-  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1}]
+  "fields": [
+    {
+      "fieldname": "default_harvest_age_days",
+      "fieldtype": "Int",
+      "label": "Default Harvest Age (days)",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "default_avg_bunch_weight_kg",
+      "fieldtype": "Float",
+      "label": "Default Average Bunch Weight (kg)",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "default_defect_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Default Defect Rate (%)"
+    },
+    {
+      "fieldname": "safety_buffer_percent",
+      "fieldtype": "Percent",
+      "label": "Sales Safety Buffer (%)"
+    },
+    {
+      "default": "Set these values from Lotus actual field data. V0 intentionally ships without generic banana assumptions.",
+      "fieldname": "configuration_note",
+      "fieldtype": "Small Text",
+      "label": "Configuration Note",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mass_balance_tolerance_kg",
+      "fieldtype": "Float",
+      "label": "Mass Balance Tolerance Kg",
+      "default": "0"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1
+    }
+  ]
 }

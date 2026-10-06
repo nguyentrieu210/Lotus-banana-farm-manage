@@ -1,0 +1,135 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Run",
+  "module": "Lotus Farm",
+  "field_order": [
+    "farm",
+    "company",
+    "packing_date",
+    "target_warehouse",
+    "sources",
+    "outputs",
+    "recorded_loss_kg",
+    "input_kg",
+    "output_kg",
+    "mass_variance_kg",
+    "qc_status",
+    "qc_notes",
+    "stock_entry",
+    "amended_from"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "reqd": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "reqd": 1,
+      "options": "Company"
+    },
+    {
+      "fieldname": "packing_date",
+      "fieldtype": "Date",
+      "label": "Packing Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "target_warehouse",
+      "fieldtype": "Link",
+      "label": "Target Warehouse",
+      "reqd": 1,
+      "options": "Warehouse"
+    },
+    {
+      "fieldname": "sources",
+      "fieldtype": "Table",
+      "label": "Sources",
+      "reqd": 1,
+      "options": "Packout Run Source"
+    },
+    {
+      "fieldname": "outputs",
+      "fieldtype": "Table",
+      "label": "Outputs",
+      "reqd": 1,
+      "options": "Packout Output"
+    },
+    {
+      "fieldname": "recorded_loss_kg",
+      "fieldtype": "Float",
+      "label": "Recorded Loss Kg",
+      "default": "0"
+    },
+    {
+      "fieldname": "input_kg",
+      "fieldtype": "Float",
+      "label": "Input Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "output_kg",
+      "fieldtype": "Float",
+      "label": "Output Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mass_variance_kg",
+      "fieldtype": "Float",
+      "label": "Mass Variance Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "qc_status",
+      "fieldtype": "Select",
+      "label": "Qc Status",
+      "default": "Hold",
+      "reqd": 1,
+      "options": "Hold\nReleased"
+    },
+    {
+      "fieldname": "qc_notes",
+      "fieldtype": "Small Text",
+      "label": "Qc Notes"
+    },
+    {
+      "fieldname": "stock_entry",
+      "fieldtype": "Link",
+      "label": "Stock Entry",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Stock Entry"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Packout Run"
+    }
+  ],
+  "is_submittable": 1,
+  "autoname": "format:PR-{#####}",
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

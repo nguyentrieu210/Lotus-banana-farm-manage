@@ -81,7 +81,7 @@
       "fieldname": "severity",
       "fieldtype": "Select",
       "label": "Severity",
-      "options": "Minor\\nMajor\\nCritical"
+      "options": "Minor\nMajor\nCritical"
     },
     {
       "fieldname": "notes",

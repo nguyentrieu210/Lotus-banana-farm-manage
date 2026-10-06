@@ -18,7 +18,8 @@
     "forecast_saleable_kg",
     "variance_kg",
     "variance_percent",
-    "notes"
+    "notes",
+    "amended_from"
   ],
   "fields": [
     {
@@ -108,6 +109,14 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Harvest Actual"
     }
   ],
   "permissions": [
@@ -119,7 +128,11 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
     }
-  ]
+  ],
+  "is_submittable": 1
 }

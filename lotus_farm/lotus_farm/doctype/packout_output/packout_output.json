@@ -1,0 +1,53 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Output",
+  "module": "Lotus Farm",
+  "field_order": [
+    "output_type",
+    "item_code",
+    "net_kg",
+    "cartons",
+    "valuation_rate",
+    "batch"
+  ],
+  "fields": [
+    {
+      "fieldname": "output_type",
+      "fieldtype": "Select",
+      "label": "Output Type",
+      "default": "Saleable",
+      "reqd": 1,
+      "options": "Saleable\nByproduct\nWaste"
+    },
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Item Code",
+      "options": "Item"
+    },
+    {
+      "fieldname": "net_kg",
+      "fieldtype": "Float",
+      "label": "Net Kg",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cartons",
+      "fieldtype": "Int",
+      "label": "Cartons"
+    },
+    {
+      "fieldname": "valuation_rate",
+      "fieldtype": "Currency",
+      "label": "Valuation Rate"
+    },
+    {
+      "fieldname": "batch",
+      "fieldtype": "Link",
+      "label": "Batch",
+      "read_only": 1,
+      "options": "Batch"
+    }
+  ],
+  "istable": 1
+}

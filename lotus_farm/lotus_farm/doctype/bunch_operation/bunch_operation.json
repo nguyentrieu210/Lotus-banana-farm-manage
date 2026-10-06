@@ -19,7 +19,12 @@
     "expected_harvest_week",
     "team",
     "supervisor",
-    "notes"
+    "notes",
+    "client_event_id",
+    "device_timestamp",
+    "server_received_at",
+    "amended_from",
+    "request_payload_snapshot"
   ],
   "fields": [
     {
@@ -59,7 +64,7 @@
       "fieldname": "operation_type",
       "fieldtype": "Select",
       "label": "Operation Type",
-      "options": "Shooting\\nCut Bud\\nSpray\\nBag\\nCare\\nInspection",
+      "options": "Shooting\nCut Bud\nSpray\nBag\nCare\nInspection",
       "reqd": 1
     },
     {
@@ -114,6 +119,39 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "client_event_id",
+      "fieldtype": "Data",
+      "label": "Client Event Id",
+      "unique": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "device_timestamp",
+      "fieldtype": "Datetime",
+      "label": "Device Timestamp"
+    },
+    {
+      "fieldname": "server_received_at",
+      "fieldtype": "Datetime",
+      "label": "Server Received At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Bunch Operation"
+    },
+    {
+      "fieldname": "request_payload_snapshot",
+      "label": "Original Request",
+      "fieldtype": "Long Text",
+      "read_only": 1,
+      "no_copy": 1
     }
   ],
   "permissions": [
@@ -125,7 +163,11 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
     }
-  ]
+  ],
+  "is_submittable": 1
 }

@@ -1,0 +1,73 @@
+{
+  "doctype": "DocType",
+  "name": "Forecast Materialization",
+  "module": "Lotus Farm",
+  "field_order": [
+    "farm",
+    "forecast",
+    "packout_run",
+    "stock_entry",
+    "retired_forecast_kg",
+    "source_raw_kg"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "reqd": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "forecast",
+      "fieldtype": "Link",
+      "label": "Forecast",
+      "reqd": 1,
+      "options": "Harvest Forecast"
+    },
+    {
+      "fieldname": "packout_run",
+      "fieldtype": "Link",
+      "label": "Packout Run",
+      "reqd": 1,
+      "options": "Packout Run"
+    },
+    {
+      "fieldname": "stock_entry",
+      "fieldtype": "Link",
+      "label": "Stock Entry",
+      "reqd": 1,
+      "options": "Stock Entry"
+    },
+    {
+      "fieldname": "retired_forecast_kg",
+      "fieldtype": "Float",
+      "label": "Retired Forecast Kg",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_raw_kg",
+      "fieldtype": "Float",
+      "label": "Source Raw Kg",
+      "reqd": 1
+    }
+  ],
+  "is_submittable": 1,
+  "autoname": "format:FM-{#####}",
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

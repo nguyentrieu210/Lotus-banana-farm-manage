@@ -19,7 +19,9 @@
     "packout_rate_percent",
     "safety_buffer_percent",
     "active",
-    "notes"
+    "notes",
+    "profile_version",
+    "amended_from"
   ],
   "fields": [
     {
@@ -106,6 +108,21 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "profile_version",
+      "fieldtype": "Int",
+      "label": "Profile Version",
+      "default": "1",
+      "reqd": 1
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Harvest Profile"
     }
   ],
   "permissions": [
@@ -117,7 +134,11 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
     }
-  ]
+  ],
+  "is_submittable": 1
 }

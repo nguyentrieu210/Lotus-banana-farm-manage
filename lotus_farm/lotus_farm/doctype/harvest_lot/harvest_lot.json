@@ -1,0 +1,106 @@
+{
+  "doctype": "DocType",
+  "name": "Harvest Lot",
+  "module": "Lotus Farm",
+  "field_order": [
+    "harvest_actual",
+    "farm",
+    "farm_block",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "forecast",
+    "raw_weight_kg",
+    "qc_status",
+    "qc_notes",
+    "amended_from"
+  ],
+  "fields": [
+    {
+      "fieldname": "harvest_actual",
+      "fieldtype": "Link",
+      "label": "Harvest Actual",
+      "reqd": 1,
+      "options": "Harvest Actual"
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "read_only": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "read_only": 1,
+      "options": "Farm Block"
+    },
+    {
+      "fieldname": "crop_cycle",
+      "fieldtype": "Link",
+      "label": "Crop Cycle",
+      "read_only": 1,
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "fieldtype": "Link",
+      "label": "Sucker Selection Batch",
+      "read_only": 1,
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "forecast",
+      "fieldtype": "Link",
+      "label": "Forecast",
+      "read_only": 1,
+      "options": "Harvest Forecast"
+    },
+    {
+      "fieldname": "raw_weight_kg",
+      "fieldtype": "Float",
+      "label": "Raw Weight Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "qc_status",
+      "fieldtype": "Select",
+      "label": "Qc Status",
+      "default": "Hold",
+      "reqd": 1,
+      "options": "Hold\nReleased"
+    },
+    {
+      "fieldname": "qc_notes",
+      "fieldtype": "Small Text",
+      "label": "Qc Notes"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Harvest Lot"
+    }
+  ],
+  "is_submittable": 1,
+  "autoname": "format:HL-{#####}",
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

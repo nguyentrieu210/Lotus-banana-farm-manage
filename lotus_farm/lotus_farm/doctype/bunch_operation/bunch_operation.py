@@ -1,10 +1,15 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import add_days, cint, getdate
+from frappe.utils import add_days, cint, getdate, now_datetime
 
 
 class BunchOperation(Document):
     def validate(self):
+        old = self.get_doc_before_save()
+        if old and old.docstatus == 1:
+            return
+        if not self.server_received_at:
+            self.server_received_at = now_datetime()
         self._validate_scope()
         self._validate_quantities()
         self.net_bunch_qty = cint(self.bunch_qty) - cint(self.rejected_qty)
@@ -48,6 +53,15 @@ class BunchOperation(Document):
                 or batch.crop_cycle != self.crop_cycle
             ):
                 frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+
+    def before_cancel(self):
+        from lotus_farm.supply import lock_document
+        lock_document("Crop Cycle", self.crop_cycle)
+        for row in frappe.get_all("Harvest Forecast", filters={"crop_cycle": self.crop_cycle, "docstatus": 1},
+                                  fields=["source_snapshot"]):
+            import json
+            if any(source.get("name") == self.name for source in json.loads(row.source_snapshot or "[]")):
+                frappe.throw("Cancel the released forecast that includes this operation first.")
 
     def _validate_quantities(self):
         bunch_qty = cint(self.bunch_qty)

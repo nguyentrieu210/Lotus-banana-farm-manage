@@ -1,0 +1,111 @@
+{
+  "doctype": "DocType",
+  "name": "Forecast Reservation",
+  "module": "Lotus Farm",
+  "field_order": [
+    "forecast",
+    "farm",
+    "sales_order",
+    "sales_order_item",
+    "item_code",
+    "customer",
+    "delivery_date",
+    "reserved_qty_kg",
+    "notes",
+    "amended_from",
+    "client_event_id"
+  ],
+  "fields": [
+    {
+      "fieldname": "forecast",
+      "fieldtype": "Link",
+      "label": "Forecast",
+      "reqd": 1,
+      "options": "Harvest Forecast"
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "read_only": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "sales_order",
+      "fieldtype": "Link",
+      "label": "Sales Order",
+      "reqd": 1,
+      "options": "Sales Order"
+    },
+    {
+      "fieldname": "sales_order_item",
+      "fieldtype": "Data",
+      "label": "Sales Order Item",
+      "reqd": 1
+    },
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Item Code",
+      "read_only": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "read_only": 1,
+      "options": "Customer"
+    },
+    {
+      "fieldname": "delivery_date",
+      "fieldtype": "Date",
+      "label": "Delivery Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reserved_qty_kg",
+      "fieldtype": "Float",
+      "label": "Reserved Qty Kg",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Forecast Reservation"
+    },
+    {
+      "fieldname": "client_event_id",
+      "label": "Client Event ID",
+      "fieldtype": "Data",
+      "unique": 1,
+      "no_copy": 1
+    }
+  ],
+  "is_submittable": 1,
+  "autoname": "format:FR-{#####}",
+  "track_changes": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

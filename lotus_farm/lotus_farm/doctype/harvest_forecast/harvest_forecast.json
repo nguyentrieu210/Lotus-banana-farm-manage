@@ -31,7 +31,14 @@
     "shortage_kg",
     "availability_status",
     "confidence",
-    "notes"
+    "notes",
+    "item_code",
+    "profile_version_snapshot",
+    "formula_version",
+    "source_snapshot",
+    "calculated_at",
+    "calculated_by",
+    "amended_from"
   ],
   "fields": [
     {
@@ -159,8 +166,9 @@
     {
       "fieldname": "allocations",
       "fieldtype": "Table",
-      "label": "Sales Order Allocations",
-      "options": "Forecast Allocation"
+      "label": "Legacy allocations (migrate to Forecast Reservation)",
+      "options": "Forecast Allocation",
+      "read_only": 1
     },
     {
       "fieldname": "committed_qty_kg",
@@ -200,6 +208,52 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Item Code",
+      "reqd": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "profile_version_snapshot",
+      "fieldtype": "Int",
+      "label": "Profile Version Snapshot",
+      "read_only": 1
+    },
+    {
+      "fieldname": "formula_version",
+      "fieldtype": "Data",
+      "label": "Formula Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_snapshot",
+      "fieldtype": "Long Text",
+      "label": "Source Snapshot",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculated_at",
+      "fieldtype": "Datetime",
+      "label": "Calculated At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculated_by",
+      "fieldtype": "Link",
+      "label": "Calculated By",
+      "read_only": 1,
+      "options": "User"
+    },
+    {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "read_only": 1,
+      "no_copy": 1,
+      "options": "Harvest Forecast"
     }
   ],
   "permissions": [
@@ -211,7 +265,11 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
     }
-  ]
+  ],
+  "is_submittable": 1
 }

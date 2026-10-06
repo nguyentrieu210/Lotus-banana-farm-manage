@@ -1,0 +1,25 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Run Source",
+  "module": "Lotus Farm",
+  "field_order": [
+    "harvest_lot",
+    "source_kg"
+  ],
+  "fields": [
+    {
+      "fieldname": "harvest_lot",
+      "fieldtype": "Link",
+      "label": "Harvest Lot",
+      "reqd": 1,
+      "options": "Harvest Lot"
+    },
+    {
+      "fieldname": "source_kg",
+      "fieldtype": "Float",
+      "label": "Source Kg",
+      "reqd": 1
+    }
+  ],
+  "istable": 1
+}

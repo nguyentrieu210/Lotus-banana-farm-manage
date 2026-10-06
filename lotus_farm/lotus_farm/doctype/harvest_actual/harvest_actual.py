@@ -1,14 +1,23 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, flt
+from frappe.utils import cint, flt, getdate
+from lotus_farm.domain import SupplyError, quantity
 
 
 class HarvestActual(Document):
     def validate(self):
+        old = self.get_doc_before_save()
+        if old and old.docstatus == 1:
+            return
         self._validate_scope()
 
         gross_weight = flt(self.gross_weight_kg)
         rejected_weight = flt(self.rejected_weight_kg)
+        try:
+            quantity(self.gross_weight_kg, "Gross harvest kg", positive=True)
+            quantity(self.rejected_weight_kg, "Rejected harvest kg")
+        except SupplyError as exc:
+            frappe.throw(str(exc))
         if cint(self.harvested_bunch_qty) < 0 or gross_weight < 0 or rejected_weight < 0:
             frappe.throw("Harvest quantities cannot be negative.")
         if rejected_weight > gross_weight:
@@ -23,11 +32,16 @@ class HarvestActual(Document):
             forecast = frappe.db.get_value(
                 "Harvest Forecast",
                 self.forecast,
-                ["farm", "farm_block", "crop_cycle", "sucker_selection_batch", "saleable_forecast_kg"],
+                ["farm", "farm_block", "crop_cycle", "sucker_selection_batch", "saleable_forecast_kg",
+                 "docstatus", "period_start_date", "period_end_date"],
                 as_dict=True,
             )
             if not forecast:
                 frappe.throw("Harvest Forecast does not exist.")
+            if forecast.docstatus != 1:
+                frappe.throw("Harvest Actual must link to a submitted forecast.")
+            if not getdate(forecast.period_start_date) <= getdate(self.harvest_date) <= getdate(forecast.period_end_date):
+                frappe.throw("Harvest date must be inside the forecast period.")
             if (
                 forecast.farm != self.farm
                 or forecast.farm_block != self.farm_block
@@ -70,3 +84,11 @@ class HarvestActual(Document):
             )
             if batch_cycle != self.crop_cycle:
                 frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+
+    def on_submit(self):
+        # Create a draft lot on QC hold. Stock is NOT created by harvesting.
+        frappe.get_doc({"doctype": "Harvest Lot", "harvest_actual": self.name, "qc_status": "Hold"}).insert()
+
+    def before_cancel(self):
+        if frappe.db.exists("Harvest Lot", {"harvest_actual": self.name, "docstatus": ["!=", 2]}):
+            frappe.throw("Cancel or delete the linked Harvest Lot before cancelling Harvest Actual.")

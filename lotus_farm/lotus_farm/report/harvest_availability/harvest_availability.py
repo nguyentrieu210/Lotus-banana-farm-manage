@@ -1,10 +1,11 @@
 import frappe
 from frappe import _
+from lotus_farm.supply import availability
 
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
-    db_filters = {}
+    db_filters = {"docstatus": 1}
 
     if filters.farm:
         db_filters["farm"] = filters.farm
@@ -13,11 +14,12 @@ def execute(filters=None):
     if filters.to_date:
         db_filters["period_end_date"] = ["<=", filters.to_date]
 
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Harvest Forecast",
         filters=db_filters,
         fields=[
             "name",
+            "item_code",
             "farm",
             "farm_block",
             "crop_cycle",
@@ -35,9 +37,14 @@ def execute(filters=None):
             "confidence",
         ],
         order_by="period_start_date asc, farm asc",
+        limit_page_length=0,
     )
+    for row in rows:
+        row.update(availability(row))
 
     columns = [
+        {"label": _("Item"), "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 130},
+        {"label": _("Materialized kg"), "fieldname": "materialized_qty_kg", "fieldtype": "Float", "width": 120},
         {"label": _("Forecast"), "fieldname": "name", "fieldtype": "Link", "options": "Harvest Forecast", "width": 120},
         {"label": _("Farm"), "fieldname": "farm", "fieldtype": "Link", "options": "Farm", "width": 110},
         {"label": _("Block"), "fieldname": "farm_block", "fieldtype": "Link", "options": "Farm Block", "width": 110},

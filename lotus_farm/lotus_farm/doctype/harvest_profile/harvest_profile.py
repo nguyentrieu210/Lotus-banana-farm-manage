@@ -5,9 +5,20 @@ from frappe.utils import cint, flt, getdate
 
 class HarvestProfile(Document):
     def validate(self):
+        old = self.get_doc_before_save()
+        if old and old.docstatus == 1:
+            return
         self._validate_scope()
         self._validate_dates()
         self._validate_values()
+        if cint(self.profile_version) < 1:
+            frappe.throw("Profile Version must be positive.")
+
+    def before_submit(self):
+        if frappe.db.exists("Harvest Profile", {"profile_name": self.profile_name,
+                                              "profile_version": self.profile_version,
+                                              "name": ["!=", self.name]}):
+            frappe.throw("This profile name/version already exists. Create a new version.")
 
     def _validate_scope(self):
         if self.farm_block:

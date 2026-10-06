@@ -70,9 +70,17 @@ For `Harvest Forecast`, `Forecast Basis = Cut Bud Operations` automatically sums
 
 ERPNext remains responsible for standard commercial and inventory objects such as Item, Customer, Sales Order, Warehouse, Stock, Delivery and Finance. Lotus Farm adds farm-specific production and forecast context and links forecast allocation to submitted ERPNext Sales Orders.
 
+## BRD implementation: planning and packout pilot
+
+The BRD implementation now adds immutable submitted profiles/forecast snapshots, exact Sales Order Item reservations with database locking, retry-safe operation commands, submitted actuals, QC-held Harvest Lots, measured Packout Runs, mass reconciliation and a standard ERPNext receipt bridge. Availability is calculated from active reservations and stock-backed forecast retirement rather than mutable order-level child rows.
+
+The receipt bridge is for first recognition of finished fruit into ERP stock and uses stock UOM `Kg`. It is not suitable for raw fruit already present in ERP stock. Finance supplies valuation before standard ERPNext receipt submission.
+
+See [BRD implementation and migration checklist](docs/brd-implementation.md) for the exact scope, existing-data preparation and incomplete requirements. The GitHub integration workflow provisions a disposable ERPNext v16 site; its success must be checked separately from pure unit tests.
+
 ## Not yet included
 
-V1 does not yet include QR per bunch, GIS, AI prediction, mobile app, automated Sales Order item-to-farm matching, or a full packing transaction workflow.
+The full BRD is not complete: structured/versioned QC specifications, shared multi-grade forecast supply, non-Kg stock UOMs, automatic forecast-to-stock reservation conversion, delivery consumption, scale integration, calibration, farm operator workflows/permissions, offline mobile, GIS and production UAT remain open.
 
 ## Install
 

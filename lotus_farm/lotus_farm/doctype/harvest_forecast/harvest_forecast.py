@@ -1,12 +1,18 @@
+import json
+
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt, getdate
+from frappe.utils import flt, getdate, now_datetime
 
 from lotus_farm.forecasting import ForecastInputError, calculate_availability
+from lotus_farm.supply import lock_document
 
 
 class HarvestForecast(Document):
     def validate(self):
+        old = self.get_doc_before_save()
+        if old and old.docstatus == 1:
+            return  # Frappe disallows submitted edits; never recalculate a released vintage.
         self._validate_period()
         self._validate_scope()
         self._apply_profile_defaults()
@@ -14,6 +20,35 @@ class HarvestForecast(Document):
         self._pull_source_qty()
         self._hydrate_allocations()
         self._calculate()
+
+    def before_submit(self):
+        lock_document("Crop Cycle", self.crop_cycle)
+        self.validate()
+        if not self.item_code or not self.harvest_profile:
+            frappe.throw("A released forecast requires an Item and an approved Harvest Profile.")
+        item = frappe.db.get_value("Item", self.item_code, ["stock_uom", "disabled", "is_stock_item"], as_dict=True)
+        if not item or item.disabled or not item.is_stock_item or item.stock_uom != "Kg":
+            frappe.throw("Pilot forecast Item must be an enabled stock Item with stock UOM Kg.")
+        # Single-output pilot: sharing a cohort across Item forecasts would count raw supply twice.
+        overlap = frappe.db.sql("""SELECT name FROM `tabHarvest Forecast`
+            WHERE crop_cycle=%s AND COALESCE(sucker_selection_batch,'')=%s
+            AND docstatus=1 AND name!=%s AND period_start_date<=%s AND period_end_date>=%s FOR UPDATE""",
+            (self.crop_cycle, self.sucker_selection_batch or "", self.name,
+             self.period_end_date, self.period_start_date))
+        if overlap:
+            frappe.throw("A released forecast already covers this cohort and harvest period.")
+        self.formula_version = "lotus-availability-2"
+        self.calculated_at = now_datetime()
+        self.calculated_by = frappe.session.user
+        self.profile_version_snapshot = frappe.db.get_value("Harvest Profile", self.harvest_profile, "profile_version")
+        self.source_snapshot = json.dumps(getattr(self, "_source_rows", []), sort_keys=True, default=str)
+
+    def before_cancel(self):
+        lock_document("Harvest Forecast", self.name)
+        if frappe.db.sql("SELECT name FROM `tabForecast Reservation` WHERE forecast=%s AND docstatus=1 FOR UPDATE", (self.name,)):
+            frappe.throw("Cancel active reservations before cancelling this forecast.")
+        if frappe.db.sql("SELECT name FROM `tabForecast Materialization` WHERE forecast=%s AND docstatus=1 FOR UPDATE", (self.name,)):
+            frappe.throw("Reverse physical stock materialization before cancelling this forecast.")
 
     def _validate_period(self):
         if (
@@ -74,6 +109,7 @@ class HarvestForecast(Document):
             self.harvest_profile,
             [
                 "active",
+                "docstatus",
                 "farm",
                 "farm_block",
                 "variety",
@@ -91,6 +127,8 @@ class HarvestForecast(Document):
             frappe.throw("Harvest Profile does not exist.")
         if not profile.active:
             frappe.throw("Harvest Profile is inactive.")
+        if profile.docstatus != 1:
+            frappe.throw("Harvest Profile must be submitted before use.")
         if profile.farm and profile.farm != self.farm:
             frappe.throw("Harvest Profile does not apply to the selected Farm.")
         if profile.farm_block and profile.farm_block != self.farm_block:
@@ -103,7 +141,7 @@ class HarvestForecast(Document):
         on_date = getdate(self.period_start_date)
         if profile.valid_from and on_date < getdate(profile.valid_from):
             frappe.throw("Harvest Profile is not valid yet for this forecast period.")
-        if profile.valid_to and on_date > getdate(profile.valid_to):
+        if profile.valid_to and getdate(self.period_end_date) > getdate(profile.valid_to):
             frappe.throw("Harvest Profile has expired for this forecast period.")
 
         for fieldname in (
@@ -143,6 +181,7 @@ class HarvestForecast(Document):
             "farm_block": self.farm_block,
             "crop_cycle": self.crop_cycle,
             "operation_type": "Cut Bud",
+            "docstatus": 1,
             "expected_harvest_date": [
                 "between",
                 [self.period_start_date, self.period_end_date],
@@ -154,11 +193,15 @@ class HarvestForecast(Document):
         rows = frappe.get_all(
             "Bunch Operation",
             filters=filters,
-            fields=["net_bunch_qty"],
+            fields=["name", "net_bunch_qty", "modified", "expected_harvest_date"],
+            order_by="name asc",
         )
+        self._source_rows = [dict(row) for row in rows]
         self.source_bunch_qty = sum(flt(row.net_bunch_qty) for row in rows)
 
     def _hydrate_allocations(self):
+        if self.allocations:
+            frappe.throw("Legacy order-level allocations cannot be released. Use Forecast Reservation by Sales Order Item.")
         seen_orders = set()
         for row in self.allocations or []:
             if flt(row.reserved_qty_kg) < 0:

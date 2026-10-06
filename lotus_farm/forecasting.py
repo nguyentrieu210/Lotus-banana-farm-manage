@@ -1,3 +1,6 @@
+import math
+
+
 class ForecastInputError(ValueError):
     pass
 
@@ -5,7 +8,13 @@ class ForecastInputError(ValueError):
 def _number(value, default=0):
     if value is None or value == "":
         return float(default)
-    return float(value)
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise ForecastInputError("Forecast values must be numbers.") from None
+    if not math.isfinite(result):
+        raise ForecastInputError("Forecast values must be finite.")
+    return result
 
 
 def _rate(value, label, default):
