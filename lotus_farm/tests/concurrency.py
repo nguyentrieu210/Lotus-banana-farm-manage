@@ -58,5 +58,10 @@ def run():
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(worker, drafts))
     assert sorted(result[0] for result in results) == ["rejected", "reserved"], results
+    # The observer's repeatable-read snapshot may predate worker commits.
+    # Verify committed state as a fresh request, using a current read as well.
+    frappe.db.rollback()
+    total = reservation_total(forecast=fixture.forecast.name, locking=True)
+    assert total == 8000, {"results": results, "committed_reserved_kg": total}
     assert reservation_total(forecast=fixture.forecast.name) == 8000
-    return {"results": results, "reserved_kg": 8000, "safe_supply_kg": 10000}
+    return {"results": results, "reserved_kg": total, "safe_supply_kg": 10000}
