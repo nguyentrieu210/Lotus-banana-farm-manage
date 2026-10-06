@@ -1,6 +1,6 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime
+from frappe.utils import getdate, get_datetime, now_datetime
 from lotus_farm.controls import lock, positive, require_role, validate_item, validate_warehouse
 from lotus_farm.rules import reconcile_mass, RuleError
 
@@ -15,20 +15,29 @@ class PackoutRun(Document):
         before = self.get_doc_before_save()
         if before and before.qc_state == "Released":
             names = (
-                "sources",
-                "outputs",
                 "reject_kg",
                 "other_loss_kg",
-                "packing_date",
                 "farm",
                 "company",
                 "quality_standard",
                 "target_warehouse",
             )
-            old, new = before.as_dict(), self.as_dict()
             for name in names:
-                if old.get(name) != new.get(name):
+                if before.get(name) != self.get(name):
                     frappe.throw("QC released packout is immutable. Cancel/amend to correct weights.")
+            source_fields = ("name", "idx", "harvest_lot", "input_kg")
+            output_fields = ("name", "idx", "item", "net_kg", "cartons", "batch", "quality_standard", "standard_version")
+            def rows(doc, table, fields):
+                return [tuple(row.get(f) for f in fields) for row in doc.get(table)]
+            if (
+                getdate(before.packing_date) != getdate(self.packing_date)
+                or rows(before, "sources", source_fields) != rows(self, "sources", source_fields)
+                or rows(before, "outputs", output_fields) != rows(self, "outputs", output_fields)
+                or before.qc_released_by != self.qc_released_by
+                or get_datetime(before.qc_released_at) != get_datetime(self.qc_released_at)
+                or before.stock_entry != self.stock_entry
+            ):
+                frappe.throw("QC released packout weights and audit fields are immutable.")
         if self.qc_state == "Released" and (not before or before.qc_state != "Released"):
             require_role("Lotus QC Manager")
             self.qc_released_by = frappe.session.user

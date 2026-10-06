@@ -173,6 +173,7 @@ class TestBRDOnSite(unittest.TestCase):
         )
 
     def order(self, qty):
+        warehouse = self.make("Warehouse", warehouse_name="Sales " + self.tag, company=self.company).name
         doc = self.make(
             "Sales Order",
             company=self.company,
@@ -190,6 +191,7 @@ class TestBRDOnSite(unittest.TestCase):
                     conversion_factor=1,
                     rate=1,
                     delivery_date=self.start,
+                    warehouse=warehouse,
                 )
             ],
         )

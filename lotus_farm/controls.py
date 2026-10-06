@@ -88,10 +88,12 @@ def farm_allowed(farm, user=None):
 def farm_permission(doc, user=None, permission_type=None):
     farm = doc.name if doc.doctype == "Farm" else doc.get("farm")
     if not farm:
-        return None
+        return True
     if not farm_allowed(farm, user):
         return False
-    return None  # Never grant beyond normal DocType permissions.
+    # Frappe v16 treats any falsy hook result as denial; role/User Permissions
+    # are independently evaluated after this controller restriction.
+    return True
 
 
 def query_condition(doctype, user=None):
