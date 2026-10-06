@@ -163,6 +163,11 @@ def execute(reconciliation):
             else "reconciliation_cancel_release"
         )
     target.check_permission("cancel")
+    # The approved reconciliation itself must not block the cancellation it authorizes.
+    # Keep every other Frappe backlink check active.
+    ignored = set(target.get("ignore_linked_doctypes") or [])
+    ignored.add("Supply Reconciliation")
+    target.ignore_linked_doctypes = sorted(ignored)
     with command(target, action):
         target.cancel()
 
