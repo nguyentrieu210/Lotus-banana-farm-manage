@@ -1,0 +1,61 @@
+{
+  "doctype": "DocType",
+  "name": "Defect Reason",
+  "module": "Lotus Farm",
+  "autoname": "field:defect_code",
+  "title_field": "defect_name",
+  "track_changes": 1,
+  "field_order": [
+    "defect_code",
+    "defect_name",
+    "category",
+    "active",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "defect_code",
+      "fieldtype": "Data",
+      "label": "Defect Code",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "defect_name",
+      "fieldtype": "Data",
+      "label": "Defect Name",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "category",
+      "fieldtype": "Select",
+      "label": "Category",
+      "options": "Pest\\nDisease\\nSunburn\\nSize\\nShape\\nMechanical\\nMaturity\\nOther"
+    },
+    {
+      "fieldname": "active",
+      "fieldtype": "Check",
+      "label": "Active",
+      "default": "1"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

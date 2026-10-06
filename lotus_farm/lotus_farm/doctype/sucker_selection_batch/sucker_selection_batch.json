@@ -1,0 +1,102 @@
+{
+  "doctype": "DocType",
+  "name": "Sucker Selection Batch",
+  "module": "Lotus Farm",
+  "autoname": "format:SSB-{#####}",
+  "title_field": "farm_block",
+  "track_changes": 1,
+  "field_order": [
+    "farm",
+    "farm_block",
+    "crop_cycle",
+    "selection_date",
+    "selected_sucker_qty",
+    "expected_productive_qty",
+    "team",
+    "supervisor",
+    "status",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "fieldtype": "Link",
+      "label": "Crop Cycle",
+      "options": "Crop Cycle",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "selection_date",
+      "fieldtype": "Date",
+      "label": "Selection Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "selected_sucker_qty",
+      "fieldtype": "Int",
+      "label": "Selected Sucker Qty",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "expected_productive_qty",
+      "fieldtype": "Int",
+      "label": "Expected Productive Qty",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "team",
+      "fieldtype": "Data",
+      "label": "Team"
+    },
+    {
+      "fieldname": "supervisor",
+      "fieldtype": "Link",
+      "label": "Supervisor",
+      "options": "User"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Open\\nIn Production\\nHarvesting\\nClosed",
+      "default": "Open",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

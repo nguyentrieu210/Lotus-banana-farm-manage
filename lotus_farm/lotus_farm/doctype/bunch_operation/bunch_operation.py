@@ -5,7 +5,7 @@ from frappe.utils import add_days, cint, getdate
 
 class BunchOperation(Document):
     def validate(self):
-        self._validate_block()
+        self._validate_scope()
         self._validate_quantities()
         self.net_bunch_qty = cint(self.bunch_qty) - cint(self.rejected_qty)
 
@@ -15,12 +15,34 @@ class BunchOperation(Document):
         if self.expected_harvest_date:
             self.expected_harvest_week = getdate(self.expected_harvest_date).isocalendar().week
 
-    def _validate_block(self):
-        if not self.farm_block:
-            return
+    def _validate_scope(self):
         block_farm = frappe.db.get_value("Farm Block", self.farm_block, "farm")
         if block_farm and block_farm != self.farm:
             frappe.throw("Farm Block must belong to the selected Farm.")
+
+        cycle = frappe.db.get_value(
+            "Crop Cycle", self.crop_cycle, ["farm", "farm_block"], as_dict=True
+        )
+        if not cycle:
+            frappe.throw("Crop Cycle does not exist.")
+        if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
+            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+
+        if self.sucker_selection_batch:
+            batch = frappe.db.get_value(
+                "Sucker Selection Batch",
+                self.sucker_selection_batch,
+                ["farm", "farm_block", "crop_cycle"],
+                as_dict=True,
+            )
+            if not batch:
+                frappe.throw("Sucker Selection Batch does not exist.")
+            if (
+                batch.farm != self.farm
+                or batch.farm_block != self.farm_block
+                or batch.crop_cycle != self.crop_cycle
+            ):
+                frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
 
     def _validate_quantities(self):
         bunch_qty = cint(self.bunch_qty)
@@ -33,6 +55,19 @@ class BunchOperation(Document):
     def _set_expected_harvest(self):
         if self.expected_harvest_date:
             return
-        harvest_age_days = frappe.db.get_single_value("Lotus Farm Settings", "default_harvest_age_days")
+
+        harvest_age_days = None
+        if self.harvest_profile:
+            harvest_age_days = frappe.db.get_value(
+                "Harvest Profile", self.harvest_profile, "cut_bud_to_harvest_days"
+            )
+
+        if harvest_age_days is None:
+            harvest_age_days = frappe.db.get_single_value(
+                "Lotus Farm Settings", "default_harvest_age_days"
+            )
+
         if harvest_age_days:
-            self.expected_harvest_date = add_days(self.operation_date, cint(harvest_age_days))
+            self.expected_harvest_date = add_days(
+                self.operation_date, cint(harvest_age_days)
+            )

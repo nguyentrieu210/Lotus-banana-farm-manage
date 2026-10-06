@@ -1,0 +1,123 @@
+{
+  "doctype": "DocType",
+  "name": "Harvest Profile",
+  "module": "Lotus Farm",
+  "autoname": "format:HP-{#####}",
+  "title_field": "profile_name",
+  "track_changes": 1,
+  "field_order": [
+    "profile_name",
+    "farm",
+    "farm_block",
+    "variety",
+    "valid_from",
+    "valid_to",
+    "cut_bud_to_harvest_days",
+    "avg_bunch_weight_kg",
+    "bunch_survival_rate_percent",
+    "quality_pass_rate_percent",
+    "packout_rate_percent",
+    "safety_buffer_percent",
+    "active",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "profile_name",
+      "fieldtype": "Data",
+      "label": "Profile Name",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm"
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block"
+    },
+    {
+      "fieldname": "variety",
+      "fieldtype": "Link",
+      "label": "Variety",
+      "options": "Banana Variety"
+    },
+    {
+      "fieldname": "valid_from",
+      "fieldtype": "Date",
+      "label": "Valid From",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "fieldtype": "Date",
+      "label": "Valid To"
+    },
+    {
+      "fieldname": "cut_bud_to_harvest_days",
+      "fieldtype": "Int",
+      "label": "Cut Bud to Harvest (days)",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "avg_bunch_weight_kg",
+      "fieldtype": "Float",
+      "label": "Average Bunch Weight (kg)",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "bunch_survival_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Bunch Survival Rate (%)",
+      "default": "100"
+    },
+    {
+      "fieldname": "quality_pass_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Quality Pass Rate (%)",
+      "default": "100"
+    },
+    {
+      "fieldname": "packout_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Packout Rate (%)",
+      "default": "100"
+    },
+    {
+      "fieldname": "safety_buffer_percent",
+      "fieldtype": "Percent",
+      "label": "Safety Buffer (%)",
+      "default": "0"
+    },
+    {
+      "fieldname": "active",
+      "fieldtype": "Check",
+      "label": "Active",
+      "default": "1"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

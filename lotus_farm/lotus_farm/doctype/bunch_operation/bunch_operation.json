@@ -4,20 +4,128 @@
   "module": "Lotus Farm",
   "autoname": "format:BOP-{#####}",
   "track_changes": 1,
-  "field_order": ["farm", "farm_block", "operation_date", "operation_type", "bunch_qty", "rejected_qty", "net_bunch_qty", "expected_harvest_date", "expected_harvest_week", "team", "supervisor", "notes"],
-  "fields": [
-    {"fieldname": "farm", "fieldtype": "Link", "label": "Farm", "options": "Farm", "reqd": 1},
-    {"fieldname": "farm_block", "fieldtype": "Link", "label": "Farm Block", "options": "Farm Block", "reqd": 1},
-    {"fieldname": "operation_date", "fieldtype": "Date", "label": "Operation Date", "reqd": 1},
-    {"fieldname": "operation_type", "fieldtype": "Select", "label": "Operation Type", "options": "Cut Bud\nSpray\nBag\nCare\nInspection", "reqd": 1},
-    {"fieldname": "bunch_qty", "fieldtype": "Int", "label": "Bunch Qty", "reqd": 1, "non_negative": 1},
-    {"default": "0", "fieldname": "rejected_qty", "fieldtype": "Int", "label": "Rejected Bunch Qty", "non_negative": 1},
-    {"fieldname": "net_bunch_qty", "fieldtype": "Int", "label": "Net Bunch Qty", "read_only": 1},
-    {"fieldname": "expected_harvest_date", "fieldtype": "Date", "label": "Expected Harvest Date"},
-    {"fieldname": "expected_harvest_week", "fieldtype": "Int", "label": "Expected Harvest ISO Week", "read_only": 1},
-    {"fieldname": "team", "fieldtype": "Data", "label": "Team"},
-    {"fieldname": "supervisor", "fieldtype": "Link", "label": "Supervisor", "options": "User"},
-    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+  "field_order": [
+    "farm",
+    "farm_block",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "operation_date",
+    "operation_type",
+    "bunch_qty",
+    "rejected_qty",
+    "net_bunch_qty",
+    "harvest_profile",
+    "expected_harvest_date",
+    "expected_harvest_week",
+    "team",
+    "supervisor",
+    "notes"
   ],
-  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1}]
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "fieldtype": "Link",
+      "label": "Crop Cycle",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "fieldtype": "Link",
+      "label": "Sucker Selection Batch",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "operation_date",
+      "fieldtype": "Date",
+      "label": "Operation Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "operation_type",
+      "fieldtype": "Select",
+      "label": "Operation Type",
+      "options": "Shooting\\nCut Bud\\nSpray\\nBag\\nCare\\nInspection",
+      "reqd": 1
+    },
+    {
+      "fieldname": "bunch_qty",
+      "fieldtype": "Int",
+      "label": "Bunch Qty",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "rejected_qty",
+      "fieldtype": "Int",
+      "label": "Rejected Bunch Qty",
+      "default": "0",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "net_bunch_qty",
+      "fieldtype": "Int",
+      "label": "Net Bunch Qty",
+      "read_only": 1
+    },
+    {
+      "fieldname": "harvest_profile",
+      "fieldtype": "Link",
+      "label": "Harvest Profile",
+      "options": "Harvest Profile"
+    },
+    {
+      "fieldname": "expected_harvest_date",
+      "fieldtype": "Date",
+      "label": "Expected Harvest Date"
+    },
+    {
+      "fieldname": "expected_harvest_week",
+      "fieldtype": "Int",
+      "label": "Expected Harvest ISO Week",
+      "read_only": 1
+    },
+    {
+      "fieldname": "team",
+      "fieldtype": "Data",
+      "label": "Team"
+    },
+    {
+      "fieldname": "supervisor",
+      "fieldtype": "Link",
+      "label": "Supervisor",
+      "options": "User"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
 }

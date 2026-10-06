@@ -4,20 +4,122 @@
   "module": "Lotus Farm",
   "autoname": "format:HA-{#####}",
   "track_changes": 1,
-  "field_order": ["farm", "farm_block", "harvest_date", "forecast", "harvested_bunch_qty", "gross_weight_kg", "rejected_weight_kg", "saleable_weight_kg", "forecast_saleable_kg", "variance_kg", "variance_percent", "notes"],
-  "fields": [
-    {"fieldname": "farm", "fieldtype": "Link", "label": "Farm", "options": "Farm", "reqd": 1},
-    {"fieldname": "farm_block", "fieldtype": "Link", "label": "Farm Block", "options": "Farm Block", "reqd": 1},
-    {"fieldname": "harvest_date", "fieldtype": "Date", "label": "Harvest Date", "reqd": 1},
-    {"fieldname": "forecast", "fieldtype": "Link", "label": "Harvest Forecast", "options": "Harvest Forecast"},
-    {"fieldname": "harvested_bunch_qty", "fieldtype": "Int", "label": "Harvested Bunch Qty", "non_negative": 1},
-    {"fieldname": "gross_weight_kg", "fieldtype": "Float", "label": "Gross Weight (kg)", "reqd": 1, "non_negative": 1},
-    {"default": "0", "fieldname": "rejected_weight_kg", "fieldtype": "Float", "label": "Rejected Weight (kg)", "non_negative": 1},
-    {"fieldname": "saleable_weight_kg", "fieldtype": "Float", "label": "Saleable Weight (kg)", "read_only": 1},
-    {"fieldname": "forecast_saleable_kg", "fieldtype": "Float", "label": "Forecast Saleable (kg)", "read_only": 1},
-    {"fieldname": "variance_kg", "fieldtype": "Float", "label": "Variance (kg)", "read_only": 1},
-    {"fieldname": "variance_percent", "fieldtype": "Percent", "label": "Variance (%)", "read_only": 1},
-    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+  "field_order": [
+    "farm",
+    "farm_block",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "harvest_date",
+    "forecast",
+    "harvested_bunch_qty",
+    "gross_weight_kg",
+    "rejected_weight_kg",
+    "saleable_weight_kg",
+    "forecast_saleable_kg",
+    "variance_kg",
+    "variance_percent",
+    "notes"
   ],
-  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1}]
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "fieldtype": "Link",
+      "label": "Crop Cycle",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "fieldtype": "Link",
+      "label": "Sucker Selection Batch",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "harvest_date",
+      "fieldtype": "Date",
+      "label": "Harvest Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "forecast",
+      "fieldtype": "Link",
+      "label": "Harvest Forecast",
+      "options": "Harvest Forecast"
+    },
+    {
+      "fieldname": "harvested_bunch_qty",
+      "fieldtype": "Int",
+      "label": "Harvested Bunch Qty",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "gross_weight_kg",
+      "fieldtype": "Float",
+      "label": "Gross Weight (kg)",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "rejected_weight_kg",
+      "fieldtype": "Float",
+      "label": "Rejected Weight (kg)",
+      "default": "0",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "saleable_weight_kg",
+      "fieldtype": "Float",
+      "label": "Saleable Field Weight (kg)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "forecast_saleable_kg",
+      "fieldtype": "Float",
+      "label": "Forecast Saleable Field Weight (kg)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "variance_kg",
+      "fieldtype": "Float",
+      "label": "Variance (kg)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "variance_percent",
+      "fieldtype": "Percent",
+      "label": "Variance (%)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
 }

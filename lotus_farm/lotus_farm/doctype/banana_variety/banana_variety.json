@@ -1,0 +1,54 @@
+{
+  "doctype": "DocType",
+  "name": "Banana Variety",
+  "module": "Lotus Farm",
+  "autoname": "field:variety_code",
+  "title_field": "variety_name",
+  "track_changes": 1,
+  "field_order": [
+    "variety_code",
+    "variety_name",
+    "active",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "variety_code",
+      "fieldtype": "Data",
+      "label": "Variety Code",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "variety_name",
+      "fieldtype": "Data",
+      "label": "Variety Name",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "active",
+      "fieldtype": "Check",
+      "label": "Active",
+      "default": "1"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

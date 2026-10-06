@@ -4,17 +4,101 @@
   "module": "Lotus Farm",
   "autoname": "format:DI-{#####}",
   "track_changes": 1,
-  "field_order": ["farm", "farm_block", "inspection_date", "inspected_qty", "defect_qty", "defect_rate_percent", "defect_type", "severity", "notes"],
-  "fields": [
-    {"fieldname": "farm", "fieldtype": "Link", "label": "Farm", "options": "Farm", "reqd": 1},
-    {"fieldname": "farm_block", "fieldtype": "Link", "label": "Farm Block", "options": "Farm Block", "reqd": 1},
-    {"fieldname": "inspection_date", "fieldtype": "Date", "label": "Inspection Date", "reqd": 1},
-    {"fieldname": "inspected_qty", "fieldtype": "Int", "label": "Inspected Qty", "reqd": 1, "non_negative": 1},
-    {"fieldname": "defect_qty", "fieldtype": "Int", "label": "Defect Qty", "reqd": 1, "non_negative": 1},
-    {"fieldname": "defect_rate_percent", "fieldtype": "Percent", "label": "Defect Rate (%)", "read_only": 1},
-    {"fieldname": "defect_type", "fieldtype": "Select", "label": "Defect Type", "options": "Pest\nSunburn\nSize\nShape\nMechanical\nMaturity\nOther"},
-    {"fieldname": "severity", "fieldtype": "Select", "label": "Severity", "options": "Minor\nMajor\nCritical"},
-    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+  "field_order": [
+    "farm",
+    "farm_block",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "inspection_date",
+    "inspected_qty",
+    "defect_qty",
+    "defect_rate_percent",
+    "defect_reason",
+    "severity",
+    "notes"
   ],
-  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1}]
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "fieldtype": "Link",
+      "label": "Crop Cycle",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "fieldtype": "Link",
+      "label": "Sucker Selection Batch",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "inspection_date",
+      "fieldtype": "Date",
+      "label": "Inspection Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "inspected_qty",
+      "fieldtype": "Int",
+      "label": "Inspected Qty",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "defect_qty",
+      "fieldtype": "Int",
+      "label": "Defect Qty",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "defect_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Defect Rate (%)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "defect_reason",
+      "fieldtype": "Link",
+      "label": "Defect Reason",
+      "options": "Defect Reason"
+    },
+    {
+      "fieldname": "severity",
+      "fieldtype": "Select",
+      "label": "Severity",
+      "options": "Minor\\nMajor\\nCritical"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
 }

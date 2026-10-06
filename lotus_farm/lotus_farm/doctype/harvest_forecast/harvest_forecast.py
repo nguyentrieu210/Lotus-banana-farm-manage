@@ -8,39 +8,142 @@ from lotus_farm.forecasting import ForecastInputError, calculate_availability
 class HarvestForecast(Document):
     def validate(self):
         self._validate_period()
-        self._validate_block()
-        self._apply_settings_defaults()
+        self._validate_scope()
+        self._apply_profile_defaults()
+        self._apply_settings_fallback()
+        self._pull_source_qty()
         self._hydrate_allocations()
         self._calculate()
 
     def _validate_period(self):
-        if self.period_start_date and self.period_end_date and getdate(self.period_end_date) < getdate(self.period_start_date):
-            frappe.throw("Period End Date cannot be before Period Start Date.")
+        if (
+            self.period_start_date
+            and self.period_end_date
+            and getdate(self.period_end_date) < getdate(self.period_start_date)
+        ):
+            frappe.throw("Harvest Period End cannot be before Harvest Period Start.")
 
-    def _validate_block(self):
-        if not self.farm_block:
-            return
-        block_farm = frappe.db.get_value("Farm Block", self.farm_block, "farm")
-        if block_farm and block_farm != self.farm:
+    def _validate_scope(self):
+        block = frappe.db.get_value(
+            "Farm Block", self.farm_block, ["farm", "variety"], as_dict=True
+        )
+        if not block:
+            frappe.throw("Farm Block does not exist.")
+        if block.farm != self.farm:
             frappe.throw("Farm Block must belong to the selected Farm.")
 
-    def _apply_settings_defaults(self):
-        if not self.is_new():
+        cycle = frappe.db.get_value(
+            "Crop Cycle", self.crop_cycle, ["farm", "farm_block"], as_dict=True
+        )
+        if not cycle:
+            frappe.throw("Crop Cycle does not exist.")
+        if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
+            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+
+        if self.sucker_selection_batch:
+            batch = frappe.db.get_value(
+                "Sucker Selection Batch",
+                self.sucker_selection_batch,
+                ["farm", "farm_block", "crop_cycle"],
+                as_dict=True,
+            )
+            if not batch:
+                frappe.throw("Sucker Selection Batch does not exist.")
+            if (
+                batch.farm != self.farm
+                or batch.farm_block != self.farm_block
+                or batch.crop_cycle != self.crop_cycle
+            ):
+                frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+
+    @staticmethod
+    def _is_blank(value):
+        return value is None or value == ""
+
+    def _apply_profile_defaults(self):
+        if not self.harvest_profile:
             return
+
+        profile = frappe.db.get_value(
+            "Harvest Profile",
+            self.harvest_profile,
+            [
+                "avg_bunch_weight_kg",
+                "bunch_survival_rate_percent",
+                "quality_pass_rate_percent",
+                "packout_rate_percent",
+                "safety_buffer_percent",
+            ],
+            as_dict=True,
+        )
+        if not profile:
+            frappe.throw("Harvest Profile does not exist.")
+
+        for fieldname in (
+            "avg_bunch_weight_kg",
+            "bunch_survival_rate_percent",
+            "quality_pass_rate_percent",
+            "packout_rate_percent",
+            "safety_buffer_percent",
+        ):
+            if self._is_blank(self.get(fieldname)):
+                self.set(fieldname, profile.get(fieldname))
+
+    def _apply_settings_fallback(self):
         settings = frappe.get_single("Lotus Farm Settings")
-        if not self.avg_bunch_weight_kg and settings.default_avg_bunch_weight_kg:
-            self.avg_bunch_weight_kg = settings.default_avg_bunch_weight_kg
-        if not self.expected_defect_rate_percent and settings.default_defect_rate_percent:
-            self.expected_defect_rate_percent = settings.default_defect_rate_percent
-        if not self.safety_buffer_percent and settings.safety_buffer_percent:
-            self.safety_buffer_percent = settings.safety_buffer_percent
+
+        if self._is_blank(self.avg_bunch_weight_kg):
+            self.avg_bunch_weight_kg = settings.default_avg_bunch_weight_kg or 0
+
+        if self._is_blank(self.bunch_survival_rate_percent):
+            self.bunch_survival_rate_percent = 100
+
+        if self._is_blank(self.quality_pass_rate_percent):
+            defect_rate = flt(settings.default_defect_rate_percent or 0)
+            self.quality_pass_rate_percent = 100 - defect_rate
+
+        if self._is_blank(self.packout_rate_percent):
+            self.packout_rate_percent = 100
+
+        if self._is_blank(self.safety_buffer_percent):
+            self.safety_buffer_percent = settings.safety_buffer_percent or 0
+
+    def _pull_source_qty(self):
+        if self.forecast_basis != "Cut Bud Operations":
+            return
+
+        filters = {
+            "farm": self.farm,
+            "farm_block": self.farm_block,
+            "crop_cycle": self.crop_cycle,
+            "operation_type": "Cut Bud",
+            "expected_harvest_date": [
+                "between",
+                [self.period_start_date, self.period_end_date],
+            ],
+        }
+        if self.sucker_selection_batch:
+            filters["sucker_selection_batch"] = self.sucker_selection_batch
+
+        rows = frappe.get_all(
+            "Bunch Operation",
+            filters=filters,
+            fields=["net_bunch_qty"],
+        )
+        self.source_bunch_qty = sum(flt(row.net_bunch_qty) for row in rows)
 
     def _hydrate_allocations(self):
+        seen_orders = set()
         for row in self.allocations or []:
             if flt(row.reserved_qty_kg) < 0:
                 frappe.throw("Reserved Qty cannot be negative.")
             if not row.sales_order:
                 continue
+            if row.sales_order in seen_orders:
+                frappe.throw(
+                    f"Sales Order {row.sales_order} is allocated more than once in this forecast."
+                )
+            seen_orders.add(row.sales_order)
 
             so = frappe.db.get_value(
                 "Sales Order",
@@ -51,18 +154,24 @@ class HarvestForecast(Document):
             if not so:
                 frappe.throw(f"Sales Order {row.sales_order} does not exist.")
             if so.docstatus != 1:
-                frappe.throw(f"Sales Order {row.sales_order} must be submitted before it can reserve forecast.")
+                frappe.throw(
+                    f"Sales Order {row.sales_order} must be submitted before it can reserve forecast."
+                )
 
             row.customer = so.customer
             row.delivery_date = so.delivery_date
 
     def _calculate(self):
-        committed_qty_kg = sum(flt(row.reserved_qty_kg) for row in (self.allocations or []))
+        committed_qty_kg = sum(
+            flt(row.reserved_qty_kg) for row in (self.allocations or [])
+        )
         try:
             values = calculate_availability(
                 source_bunch_qty=self.source_bunch_qty,
                 avg_bunch_weight_kg=self.avg_bunch_weight_kg,
-                expected_defect_rate_percent=self.expected_defect_rate_percent,
+                bunch_survival_rate_percent=self.bunch_survival_rate_percent,
+                quality_pass_rate_percent=self.quality_pass_rate_percent,
+                packout_rate_percent=self.packout_rate_percent,
                 safety_buffer_percent=self.safety_buffer_percent,
                 committed_qty_kg=committed_qty_kg,
             )

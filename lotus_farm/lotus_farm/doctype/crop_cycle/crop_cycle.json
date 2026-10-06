@@ -1,0 +1,95 @@
+{
+  "doctype": "DocType",
+  "name": "Crop Cycle",
+  "module": "Lotus Farm",
+  "autoname": "format:CYCLE-{#####}",
+  "title_field": "farm_block",
+  "track_changes": 1,
+  "field_order": [
+    "farm",
+    "farm_block",
+    "cycle_no",
+    "cycle_type",
+    "parent_cycle",
+    "variety",
+    "planting_date",
+    "status",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Farm Block",
+      "options": "Farm Block",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "cycle_no",
+      "fieldtype": "Int",
+      "label": "Cycle No.",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "cycle_type",
+      "fieldtype": "Select",
+      "label": "Cycle Type",
+      "options": "Plant Crop\\nRatoon",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "parent_cycle",
+      "fieldtype": "Link",
+      "label": "Parent Cycle",
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "variety",
+      "fieldtype": "Link",
+      "label": "Variety",
+      "options": "Banana Variety"
+    },
+    {
+      "fieldname": "planting_date",
+      "fieldtype": "Date",
+      "label": "Planting Date"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Planned\\nActive\\nHarvesting\\nClosed",
+      "default": "Planned",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}
