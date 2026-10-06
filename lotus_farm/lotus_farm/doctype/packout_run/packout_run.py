@@ -1,7 +1,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt, getdate, get_datetime, now_datetime
-from lotus_farm.controls import lock, positive, require_role, validate_item, validate_warehouse
+from lotus_farm.controls import command_allowed, lock, positive, require_role, validate_item, validate_warehouse
 from lotus_farm.rules import reconcile_mass, RuleError
 
 
@@ -49,6 +49,20 @@ class PackoutRun(Document):
             changed = [key for key in old_values if old_values[key] != new_values[key]]
             if changed:
                 frappe.throw("QC released packout is immutable: " + ", ".join(changed))
+
+            def valuation_rows(doc):
+                return [
+                    (
+                        row.name,
+                        flt(row.valuation_rate, 6),
+                        row.valuation_set_by or "",
+                        get_datetime(row.valuation_set_at) if row.valuation_set_at else None,
+                    )
+                    for row in doc.outputs
+                ]
+
+            if valuation_rows(self) != valuation_rows(before) and not command_allowed(self, "valuation"):
+                frappe.throw("Use the reviewed Packout valuation command to change finished-item rates.")
         if self.qc_state == "Released" and (not before or before.qc_state != "Released"):
             require_role("Lotus QC Manager")
             self.qc_released_by = frappe.session.user
