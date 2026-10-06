@@ -32,7 +32,7 @@
       "fieldname": "category",
       "fieldtype": "Select",
       "label": "Category",
-      "options": "Pest\\nDisease\\nSunburn\\nSize\\nShape\\nMechanical\\nMaturity\\nOther"
+      "options": "Pest\nDisease\nSunburn\nSize\nShape\nMechanical\nMaturity\nOther"
     },
     {
       "fieldname": "active",

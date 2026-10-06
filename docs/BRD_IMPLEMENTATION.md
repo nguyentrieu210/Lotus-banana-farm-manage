@@ -23,7 +23,7 @@ This change implements the planning and field-to-packhouse core. It does **not**
 | Forecast → stock reservation | Explicit link to submitted SRE matching SO Item; removes future commitment | Whole-allocation linking only; partial transitions and delivered-consumption audit remain |
 | Farm data isolation | Fail-closed Farm grants, list/document/write checks | Full API/file/export/Company permission matrix remains |
 | Profile learning | Weighted kg/bunch and field-release proposal from matched submitted actuals | No auto-approval; persisted calibration runs, holdout backtests/vintage report remain |
-| Availability | Permission-aware API returns traced Item/cohort periods, signed ATP/shortage | Full Desk dashboard/workspace remains |
+| Availability | Permission-aware API returns traced Item/cohort periods, signed ATP/shortage | Existing Desk availability report now filters released Item supply and Farm permissions; full workspace remains |
 | Real install/migrate checks | GitHub workflow builds ERPNext v16, installs app, migrates twice, runs site tests | CI must pass before merging/pilot |
 
 ## Metric contracts
@@ -76,4 +76,4 @@ The site test is for a disposable test database. Its concurrency test commits te
 
 ## Validation evidence
 
-Executed locally: 18 pure formula/schema/server-guard tests, Python compilation and Ruff F/E9 checks. These do not prove installability, DB concurrency, Farm permission isolation or accounting reconciliation. The separate site suite covers actual document lifecycle, reservation limits/retries, lot/packout overspend, approved-profile immutability, farm grants and two-connection allocation concurrency. Those tests require the provisioned ERPNext site and must pass in CI; no passing site result is claimed in this document.
+Executed locally: 22 pure formula/schema/server-guard tests (including 4 original forecasting tests), Python compilation and Ruff F/E9 checks. These do not prove installability, DB concurrency, Farm permission isolation or accounting reconciliation. The separate site suite covers actual document lifecycle, reservation limits/retries, lot/packout overspend, approved-profile immutability, farm grants and two-connection allocation concurrency. Those tests require the provisioned ERPNext site and must pass in CI; no passing site result is claimed in this document.

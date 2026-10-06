@@ -50,3 +50,8 @@ for _name in ("Bunch Operation", "Harvest Actual", "Defect Inspection"):
 has_permission["Integration Event"] = "lotus_farm.controls.farm_permission"
 permission_query_conditions["Integration Event"] = "lotus_farm.permissions.integration_event"
 doc_events["Integration Event"] = {"validate": "lotus_farm.controls.check_farm"}
+
+doctype_js = {
+    "Harvest Forecast": "public/js/harvest_forecast.js",
+    "Packout Run": "public/js/packout_run.js",
+}
