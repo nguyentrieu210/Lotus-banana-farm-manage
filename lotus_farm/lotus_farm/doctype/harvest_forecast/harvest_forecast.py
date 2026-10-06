@@ -1,6 +1,8 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, flt, getdate
+from frappe.utils import flt, getdate
+
+from lotus_farm.forecasting import ForecastInputError, calculate_availability
 
 
 class HarvestForecast(Document):
@@ -39,37 +41,33 @@ class HarvestForecast(Document):
                 frappe.throw("Reserved Qty cannot be negative.")
             if not row.sales_order:
                 continue
-            so = frappe.db.get_value("Sales Order", row.sales_order, ["customer", "delivery_date", "docstatus"], as_dict=True)
+
+            so = frappe.db.get_value(
+                "Sales Order",
+                row.sales_order,
+                ["customer", "delivery_date", "docstatus"],
+                as_dict=True,
+            )
             if not so:
                 frappe.throw(f"Sales Order {row.sales_order} does not exist.")
             if so.docstatus != 1:
                 frappe.throw(f"Sales Order {row.sales_order} must be submitted before it can reserve forecast.")
+
             row.customer = so.customer
             row.delivery_date = so.delivery_date
 
     def _calculate(self):
-        source_bunch_qty = cint(self.source_bunch_qty)
-        avg_weight = flt(self.avg_bunch_weight_kg)
-        defect_rate = flt(self.expected_defect_rate_percent)
-        safety_buffer = flt(self.safety_buffer_percent)
+        committed_qty_kg = sum(flt(row.reserved_qty_kg) for row in (self.allocations or []))
+        try:
+            values = calculate_availability(
+                source_bunch_qty=self.source_bunch_qty,
+                avg_bunch_weight_kg=self.avg_bunch_weight_kg,
+                expected_defect_rate_percent=self.expected_defect_rate_percent,
+                safety_buffer_percent=self.safety_buffer_percent,
+                committed_qty_kg=committed_qty_kg,
+            )
+        except ForecastInputError as exc:
+            frappe.throw(str(exc))
 
-        if source_bunch_qty < 0 or avg_weight < 0:
-            frappe.throw("Forecast quantities cannot be negative.")
-        if not 0 <= defect_rate <= 100:
-            frappe.throw("Expected Defect Rate must be between 0 and 100.")
-        if not 0 <= safety_buffer <= 100:
-            frappe.throw("Safety Buffer must be between 0 and 100.")
-
-        self.gross_forecast_kg = flt(source_bunch_qty * avg_weight, 3)
-        self.saleable_forecast_kg = flt(self.gross_forecast_kg * (1 - defect_rate / 100), 3)
-        self.safe_saleable_kg = flt(self.saleable_forecast_kg * (1 - safety_buffer / 100), 3)
-        self.committed_qty_kg = flt(sum(flt(row.reserved_qty_kg) for row in (self.allocations or [])), 3)
-        self.available_to_promise_kg = flt(self.safe_saleable_kg - self.committed_qty_kg, 3)
-        self.shortage_kg = flt(max(self.committed_qty_kg - self.safe_saleable_kg, 0), 3)
-
-        if self.shortage_kg > 0:
-            self.availability_status = "Overcommitted"
-        elif self.safe_saleable_kg and self.available_to_promise_kg / self.safe_saleable_kg <= 0.1:
-            self.availability_status = "Tight"
-        else:
-            self.availability_status = "Available"
+        for fieldname, value in values.items():
+            setattr(self, fieldname, value)

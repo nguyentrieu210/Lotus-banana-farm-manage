@@ -1,0 +1,30 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python
+        run: python -m compileall lotus_farm
+      - name: Validate JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          files = list(Path("lotus_farm").rglob("*.json"))
+          for path in files:
+              with path.open(encoding="utf-8") as f:
+                  json.load(f)
+          print(f"validated {len(files)} json files")
+          PY
+      - name: Run pure domain tests
+        run: python -m unittest discover -s tests -v

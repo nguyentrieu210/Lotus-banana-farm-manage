@@ -1,0 +1,11 @@
+{
+  "add_total_row": 1,
+  "doctype": "Report",
+  "is_standard": "Yes",
+  "module": "Lotus Farm",
+  "name": "Harvest Availability",
+  "ref_doctype": "Harvest Forecast",
+  "report_name": "Harvest Availability",
+  "report_type": "Script Report",
+  "roles": [{"role": "System Manager"}]
+}
