@@ -552,7 +552,8 @@ class TestBRDOnSite(unittest.TestCase):
             farm=self.farm,
             reconciliation_type="Stock Reservation Cancellation",
             stock_reservation=reservation.name,
-            reason="Buyer reservation released during reviewed correction",
+            reservation_disposition="Restore Future Reservation",
+            reason="Correct stock documents without dropping the customer commitment",
         )
         reservation_request.submit()
         execute(reservation_request.name)
@@ -560,7 +561,7 @@ class TestBRDOnSite(unittest.TestCase):
         supply.reload()
         linked = next(row for row in supply.allocations if row.name == allocation["allocation"])
         self.assertEqual(reservation.docstatus, 2)
-        self.assertEqual(linked.allocation_state, "Released")
+        self.assertEqual(linked.allocation_state, "Reserved")
 
         # Lotus-linked stock cannot be cancelled directly: the forecast impact must be reviewed first.
         with self.assertRaises(frappe.ValidationError):
@@ -585,7 +586,8 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(entry.docstatus, 2)
         self.assertEqual(request.state, "Applied")
         self.assertAlmostEqual(supply.materialized_qty_kg, 0, places=2)
-        self.assertAlmostEqual(supply.available_to_promise_kg, 17803.38, places=2)
+        self.assertAlmostEqual(supply.committed_qty_kg, 1000, places=2)
+        self.assertAlmostEqual(supply.available_to_promise_kg, 16803.38, places=2)
 
         # A cancelled bridge entry remains audit history but must not prevent a corrected draft.
         replacement_entry = make_repack_entry(run.name)
