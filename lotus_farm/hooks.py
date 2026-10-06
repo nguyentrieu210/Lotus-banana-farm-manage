@@ -59,4 +59,5 @@ doc_events["Integration Event"] = {"validate": "lotus_farm.controls.check_farm"}
 doctype_js = {
     "Harvest Forecast": "public/js/harvest_forecast.js",
     "Packout Run": "public/js/packout_run.js",
+    "Supply Reconciliation": "public/js/supply_reconciliation.js",
 }
