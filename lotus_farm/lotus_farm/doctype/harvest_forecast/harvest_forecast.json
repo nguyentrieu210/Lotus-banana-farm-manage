@@ -25,6 +25,7 @@
     "packed_forecast_kg",
     "safety_buffer_percent",
     "safe_saleable_kg",
+    "output_plan",
     "allocations",
     "committed_qty_kg",
     "available_to_promise_kg",
@@ -171,6 +172,12 @@
       "label": "Safe Commit Qty (kg)",
       "read_only": 1,
       "in_list_view": 1
+    },
+    {
+      "fieldname": "output_plan",
+      "fieldtype": "Table",
+      "label": "Expected Finished Items",
+      "options": "Forecast Output Plan"
     },
     {
       "fieldname": "allocations",
