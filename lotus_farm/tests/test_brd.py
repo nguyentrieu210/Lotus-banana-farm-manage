@@ -299,7 +299,7 @@ class TestBRDOnSite(unittest.TestCase):
 
     def test_multi_item_forecast_reserves_and_materializes_each_finished_item(self):
         from lotus_farm.api import availability
-        from lotus_farm.stock_bridge import make_repack_entry
+        from lotus_farm.stock_bridge import make_repack_entry, set_output_valuation
 
         item_b = self.make(
             "Item",
@@ -489,8 +489,28 @@ class TestBRDOnSite(unittest.TestCase):
             qc_state="Released",
         )
         run.submit()
+        with self.assertRaises(frappe.ValidationError):
+            make_repack_entry(run.name)
+
+        set_output_valuation(
+            run.name,
+            {
+                self.item: 1,
+                item_b: 4310 / 3000,
+            },
+        )
+        run.reload()
+        valued = {row.item: row for row in run.outputs}
+        self.assertEqual(valued[self.item].valuation_set_by, "Administrator")
+        self.assertAlmostEqual(valued[self.item].valuation_rate, 1, places=6)
+        self.assertAlmostEqual(valued[item_b].valuation_rate, 4310 / 3000, places=6)
+
         draft = make_repack_entry(run.name)
         entry = frappe.get_doc("Stock Entry", draft["stock_entry"])
+        finished_rows = {row.item_code: row for row in entry.items if row.t_warehouse}
+        self.assertTrue(all(row.set_basic_rate_manually for row in finished_rows.values()))
+        self.assertAlmostEqual(finished_rows[self.item].basic_rate, 1, places=6)
+        self.assertAlmostEqual(finished_rows[item_b].basic_rate, 4310 / 3000, places=6)
         entry.submit()
 
         supply.reload()
