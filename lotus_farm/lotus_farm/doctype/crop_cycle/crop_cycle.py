@@ -44,8 +44,8 @@ class CropCycle(Document):
                 frappe.throw("Parent Cycle does not exist.")
             if parent.farm != self.farm or parent.farm_block != self.farm_block:
                 frappe.throw("Parent Cycle must belong to the same Farm Block.")
-            if cint(parent.cycle_no) >= cycle_no:
-                frappe.throw("Parent Cycle must have a lower Cycle No.")
+            if cint(parent.cycle_no) != cycle_no - 1:
+                frappe.throw("Parent Cycle must be the immediately previous cycle.")
 
     def _set_variety(self):
         if not self.variety:

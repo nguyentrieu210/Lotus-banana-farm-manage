@@ -21,12 +21,17 @@ class BunchOperation(Document):
             frappe.throw("Farm Block must belong to the selected Farm.")
 
         cycle = frappe.db.get_value(
-            "Crop Cycle", self.crop_cycle, ["farm", "farm_block"], as_dict=True
+            "Crop Cycle",
+            self.crop_cycle,
+            ["farm", "farm_block", "cycle_type"],
+            as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+            frappe.throw("Ratoon operations must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:
             batch = frappe.db.get_value(

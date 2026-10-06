@@ -34,12 +34,8 @@ class HarvestActual(Document):
                 or forecast.crop_cycle != self.crop_cycle
             ):
                 frappe.throw("Harvest Forecast must belong to the same Farm, Block and Crop Cycle.")
-            if (
-                self.sucker_selection_batch
-                and forecast.sucker_selection_batch
-                and forecast.sucker_selection_batch != self.sucker_selection_batch
-            ):
-                frappe.throw("Harvest Forecast belongs to a different Sucker Selection Batch.")
+            if forecast.sucker_selection_batch != self.sucker_selection_batch:
+                frappe.throw("Harvest Forecast must belong to the same Sucker Selection Batch.")
 
             self.forecast_saleable_kg = flt(forecast.saleable_forecast_kg or 0, 3)
             self.variance_kg = flt(
@@ -56,12 +52,17 @@ class HarvestActual(Document):
             frappe.throw("Farm Block must belong to the selected Farm.")
 
         cycle = frappe.db.get_value(
-            "Crop Cycle", self.crop_cycle, ["farm", "farm_block"], as_dict=True
+            "Crop Cycle",
+            self.crop_cycle,
+            ["farm", "farm_block", "cycle_type"],
+            as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+            frappe.throw("Ratoon harvests must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:
             batch_cycle = frappe.db.get_value(

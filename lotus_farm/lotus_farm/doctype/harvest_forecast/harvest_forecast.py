@@ -33,12 +33,17 @@ class HarvestForecast(Document):
             frappe.throw("Farm Block must belong to the selected Farm.")
 
         cycle = frappe.db.get_value(
-            "Crop Cycle", self.crop_cycle, ["farm", "farm_block"], as_dict=True
+            "Crop Cycle",
+            self.crop_cycle,
+            ["farm", "farm_block", "cycle_type"],
+            as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+            frappe.throw("Ratoon forecasts must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:
             batch = frappe.db.get_value(
@@ -68,6 +73,12 @@ class HarvestForecast(Document):
             "Harvest Profile",
             self.harvest_profile,
             [
+                "active",
+                "farm",
+                "farm_block",
+                "variety",
+                "valid_from",
+                "valid_to",
                 "avg_bunch_weight_kg",
                 "bunch_survival_rate_percent",
                 "quality_pass_rate_percent",
@@ -78,6 +89,22 @@ class HarvestForecast(Document):
         )
         if not profile:
             frappe.throw("Harvest Profile does not exist.")
+        if not profile.active:
+            frappe.throw("Harvest Profile is inactive.")
+        if profile.farm and profile.farm != self.farm:
+            frappe.throw("Harvest Profile does not apply to the selected Farm.")
+        if profile.farm_block and profile.farm_block != self.farm_block:
+            frappe.throw("Harvest Profile does not apply to the selected Farm Block.")
+
+        block_variety = frappe.db.get_value("Farm Block", self.farm_block, "variety")
+        if profile.variety and block_variety and profile.variety != block_variety:
+            frappe.throw("Harvest Profile does not apply to the Farm Block variety.")
+
+        on_date = getdate(self.period_start_date)
+        if profile.valid_from and on_date < getdate(profile.valid_from):
+            frappe.throw("Harvest Profile is not valid yet for this forecast period.")
+        if profile.valid_to and on_date > getdate(profile.valid_to):
+            frappe.throw("Harvest Profile has expired for this forecast period.")
 
         for fieldname in (
             "avg_bunch_weight_kg",
@@ -86,8 +113,7 @@ class HarvestForecast(Document):
             "packout_rate_percent",
             "safety_buffer_percent",
         ):
-            if self._is_blank(self.get(fieldname)):
-                self.set(fieldname, profile.get(fieldname))
+            self.set(fieldname, profile.get(fieldname))
 
     def _apply_settings_fallback(self):
         settings = frappe.get_single("Lotus Farm Settings")
