@@ -34,4 +34,11 @@ class TestSchema(unittest.TestCase):
             (ROOT / "lotus_farm/lotus_farm/doctype/forecast_allocation/forecast_allocation.json").read_text()
         )
         self.assertIn("sales_order_item", doc["field_order"])
+        self.assertIn("forecast_output", doc["field_order"])
         self.assertEqual(doc["istable"], 1)  # Existing child table identity preserved for migration.
+
+        forecast = json.loads(
+            (ROOT / "lotus_farm/lotus_farm/doctype/harvest_forecast/harvest_forecast.json").read_text()
+        )
+        output = next(field for field in forecast["fields"] if field["fieldname"] == "output_plan")
+        self.assertEqual(output["options"], "Forecast Output Plan")
