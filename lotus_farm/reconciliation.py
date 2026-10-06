@@ -167,7 +167,7 @@ def execute(reconciliation):
     # Keep every other Frappe backlink check active.
     ignored = set(target.get("ignore_linked_doctypes") or [])
     ignored.add("Supply Reconciliation")
-    target.ignore_linked_doctypes = sorted(ignored)
+    target.set("ignore_linked_doctypes", sorted(ignored))
     with command(target, action):
         target.cancel()
 
