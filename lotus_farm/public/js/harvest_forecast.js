@@ -1,6 +1,9 @@
 frappe.ui.form.on('Harvest Forecast', {
     refresh(frm) {
         frm.set_df_property('allocations', 'read_only', 1);
+        frm.set_df_property('output_plan', 'read_only', frm.doc.supply_state !== 'Draft');
+        const plannedItems = (frm.doc.output_plan || []).map(row => row.item).filter(Boolean);
+        const allowedItems = new Set(plannedItems.length ? plannedItems : [frm.doc.item].filter(Boolean));
         if (frm.is_new() || frm.is_dirty()) return;
         if (frm.doc.supply_state === 'Draft' && frappe.user.has_role('Lotus Farm Manager')) {
             frm.add_custom_button(__('Duyệt dự thu'), () => {
@@ -22,9 +25,10 @@ frappe.ui.form.on('Harvest Forecast', {
                         dialog.set_value('sales_order_item', '');
                         if (!name) return;
                         const result = await frappe.call('frappe.client.get', { doctype: 'Sales Order', name });
-                        const rows = result.message.items.filter(row => row.item_code === frm.doc.item);
+                        const rows = result.message.items.filter(row => allowedItems.has(row.item_code));
                         dialog.set_df_property('sales_order_item', 'options', rows.map(row => ({
-                            value: row.name, label: `${row.idx} — ${row.item_name} — ${row.qty} ${row.uom}`
+                            value: row.name,
+                            label: `${row.idx} — ${row.item_code} — ${row.item_name} — ${row.qty} ${row.uom}`
                         })));
                       } },
                     { fieldname: 'sales_order_item', fieldtype: 'Select', label: __('Dòng sản phẩm'), options: [], reqd: 1 },
