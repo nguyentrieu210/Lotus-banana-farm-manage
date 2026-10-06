@@ -146,3 +146,5 @@ class LotusIntegrationTest(unittest.TestCase):
         self.assertTrue(frappe.db.exists('Forecast Materialization', {'stock_entry': entry_name, 'docstatus': 1}))
         entry.cancel()
         self.assertEqual(availability(self.forecast)['available_to_promise_kg'], 10000)
+        self.assertFalse(frappe.db.exists('Forecast Materialization', {'stock_entry': entry_name, 'docstatus': 1}))
+        self.assertFalse(frappe.db.exists('GL Entry', {'voucher_no': entry_name, 'is_cancelled': 0}))

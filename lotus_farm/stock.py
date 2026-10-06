@@ -112,3 +112,7 @@ def receipt_cancelled(doc, method=None):
         event.flags.from_stock_hook = True
         event.flags.ignore_permissions = True
         event.cancel()
+    # The measured run stays submitted as historical evidence after its receipt
+    # is reversed. Allow only this reciprocal link through Frappe's cancellation
+    # check; standard downstream stock/accounting links still block cancellation.
+    doc.ignore_linked_doctypes = list(doc.get("ignore_linked_doctypes") or []) + ["Packout Run"]
