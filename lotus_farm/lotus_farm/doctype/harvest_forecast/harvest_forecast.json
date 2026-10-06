@@ -173,29 +173,27 @@
     {
       "fieldname": "committed_qty_kg",
       "fieldtype": "Float",
-      "label": "Committed Qty (kg)",
+      "label": "Committed Qty (kg) At Calculation",
       "read_only": 1
     },
     {
       "fieldname": "available_to_promise_kg",
       "fieldtype": "Float",
-      "label": "Available to Promise (kg)",
-      "read_only": 1,
-      "in_list_view": 1
+      "label": "Available to Promise (kg) At Calculation",
+      "read_only": 1
     },
     {
       "fieldname": "shortage_kg",
       "fieldtype": "Float",
-      "label": "Shortage (kg)",
+      "label": "Shortage (kg) At Calculation",
       "read_only": 1
     },
     {
       "fieldname": "availability_status",
       "fieldtype": "Select",
-      "label": "Availability Status",
+      "label": "Availability Status At Calculation",
       "options": "Available\nTight\nOvercommitted",
-      "read_only": 1,
-      "in_list_view": 1
+      "read_only": 1
     },
     {
       "fieldname": "confidence",

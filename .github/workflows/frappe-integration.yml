@@ -2,7 +2,7 @@ name: Frappe ERPNext integration
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feature/brd-planning-packout]
   workflow_dispatch:
 permissions:
   contents: read
