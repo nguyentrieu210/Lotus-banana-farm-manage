@@ -42,7 +42,8 @@
       "fieldname": "area_ha",
       "fieldtype": "Float",
       "label": "Area (ha)",
-      "non_negative": 1
+      "non_negative": 1,
+      "reqd": 1
     },
     {
       "fieldname": "variety",

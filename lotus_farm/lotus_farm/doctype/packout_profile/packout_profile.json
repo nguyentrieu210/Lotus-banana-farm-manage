@@ -1,0 +1,127 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Profile",
+  "module": "Lotus Farm",
+  "field_order": [
+    "profile_name",
+    "version",
+    "approval_state",
+    "farm",
+    "variety",
+    "quality_standard",
+    "item",
+    "yield_percent",
+    "valid_from",
+    "valid_to"
+  ],
+  "fields": [
+    {
+      "fieldname": "profile_name",
+      "fieldtype": "Data",
+      "label": "Profile Name",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "fieldtype": "Int",
+      "label": "Version",
+      "default": "1",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "fieldtype": "Select",
+      "label": "Approval State",
+      "default": "Draft",
+      "reqd": 1,
+      "options": "Draft\nApproved"
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm"
+    },
+    {
+      "fieldname": "variety",
+      "fieldtype": "Link",
+      "label": "Variety",
+      "options": "Banana Variety"
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "reqd": 1,
+      "options": "Quality Standard"
+    },
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "reqd": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "yield_percent",
+      "fieldtype": "Percent",
+      "label": "Yield Percent",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "fieldtype": "Date",
+      "label": "Valid From",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "fieldtype": "Date",
+      "label": "Valid To"
+    }
+  ],
+  "autoname": "format:PP-{#####}",
+  "track_changes": 1,
+  "is_submittable": 0,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    }
+  ]
+}

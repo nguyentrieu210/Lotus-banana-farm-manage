@@ -72,7 +72,9 @@ ERPNext remains responsible for standard commercial and inventory objects such a
 
 ## Not yet included
 
-V1 does not yet include QR per bunch, GIS, AI prediction, mobile app, automated Sales Order item-to-farm matching, or a full packing transaction workflow.
+The BRD implementation branch adds immutable released forecasts, atomic SO Item allocations, versioned QC, traced harvest lots, reconciled Packout Runs, immutable scale readings and a draft ERPNext Repack bridge.
+
+See [BRD implementation and readiness](docs/BRD_IMPLEMENTATION.md) for migration steps, APIs, verification and the remaining enterprise requirements. QR, GIS, offline mobile, multi-grade forecasting, automatic delivery fulfilment and production reversal/reconciliation are not completed.
 
 ## Install
 
@@ -83,3 +85,20 @@ bench --site <site> migrate
 ```
 
 ERPNext is required. Runtime installation on a real Frappe site is still required before calling this production-ready.
+
+
+## Tests
+
+Pure checks without a Frappe installation:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+On a **disposable** ERPNext v16 site:
+
+```bash
+bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+```
+
+The site suite includes a concurrency test with committed test fixtures. Never run it on production. The GitHub `Lotus BRD checks` workflow provisions that disposable site and migrates twice.

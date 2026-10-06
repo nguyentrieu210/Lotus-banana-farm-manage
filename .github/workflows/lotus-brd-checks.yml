@@ -1,0 +1,72 @@
+name: Lotus BRD checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q lotus_farm
+  frappe-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmariadb-dev libldap2-dev libsasl2-dev libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
+          npm install --global yarn
+          python -m pip install frappe-bench uv
+      - name: Create disposable Frappe and ERPNext site
+        run: |
+          bench init --frappe-branch version-16 --skip-assets --skip-redis-config-generation --python "$(which python)" /tmp/lotus-bench
+          cd /tmp/lotus-bench
+          bench set-config -g redis_cache redis://127.0.0.1:6379
+          bench set-config -g redis_queue redis://127.0.0.1:6379
+          bench set-config -g redis_socketio redis://127.0.0.1:6379
+          bench get-app --branch version-16 https://github.com/frappe/erpnext.git
+          bench get-app "$GITHUB_WORKSPACE"
+          bench new-site lotus.test --db-host 127.0.0.1 --db-port 3306 --db-root-username root --db-root-password root --admin-password ci-only
+          bench --site lotus.test install-app erpnext
+          bench --site lotus.test install-app lotus_farm
+          bench --site lotus.test set-config allow_tests true
+          bench --site lotus.test migrate
+          bench --site lotus.test migrate
+      - name: Run real document and permission tests
+        working-directory: /tmp/lotus-bench
+        run: bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+      - name: Collect failing site logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lotus-site-logs
+          path: /tmp/lotus-bench/logs

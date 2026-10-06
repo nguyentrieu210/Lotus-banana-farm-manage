@@ -1,19 +1,20 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, flt, getdate
+from lotus_farm.controls import validate_version
+from lotus_farm.rules import quantity, RuleError
 
 
 class HarvestProfile(Document):
     def validate(self):
+        validate_version(self, "profile_name", ("Lotus Farm Manager",))
         self._validate_scope()
         self._validate_dates()
         self._validate_values()
 
     def _validate_scope(self):
         if self.farm_block:
-            block = frappe.db.get_value(
-                "Farm Block", self.farm_block, ["farm", "variety"], as_dict=True
-            )
+            block = frappe.db.get_value("Farm Block", self.farm_block, ["farm", "variety"], as_dict=True)
             if not block:
                 frappe.throw("Farm Block does not exist.")
             if self.farm and block.farm != self.farm:
@@ -28,7 +29,11 @@ class HarvestProfile(Document):
             frappe.throw("Valid To cannot be before Valid From.")
 
     def _validate_values(self):
-        if flt(self.avg_bunch_weight_kg) < 0 or cint(self.cut_bud_to_harvest_days) < 0:
+        try:
+            quantity(self.avg_bunch_weight_kg, "Average bunch weight", positive=True)
+        except RuleError as exc:
+            frappe.throw(str(exc))
+        if cint(self.cut_bud_to_harvest_days) < 0:
             frappe.throw("Harvest Profile quantities cannot be negative.")
 
         for fieldname, label in (
@@ -40,3 +45,7 @@ class HarvestProfile(Document):
             value = flt(self.get(fieldname))
             if not 0 <= value <= 100:
                 frappe.throw(f"{label} must be between 0 and 100.")
+
+    def on_trash(self):
+        if self.approval_state == "Approved":
+            frappe.throw("Approved profiles cannot be deleted.")

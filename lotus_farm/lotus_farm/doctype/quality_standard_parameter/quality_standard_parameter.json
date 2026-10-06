@@ -1,0 +1,41 @@
+{
+  "doctype": "DocType",
+  "name": "Quality Standard Parameter",
+  "module": "Lotus Farm",
+  "field_order": [
+    "parameter",
+    "uom",
+    "minimum",
+    "maximum"
+  ],
+  "fields": [
+    {
+      "fieldname": "parameter",
+      "fieldtype": "Data",
+      "label": "Parameter",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "fieldtype": "Link",
+      "label": "Uom",
+      "reqd": 1,
+      "options": "UOM"
+    },
+    {
+      "fieldname": "minimum",
+      "fieldtype": "Float",
+      "label": "Minimum",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "maximum",
+      "fieldtype": "Float",
+      "label": "Maximum",
+      "precision": "3",
+      "reqd": 1
+    }
+  ],
+  "istable": 1
+}

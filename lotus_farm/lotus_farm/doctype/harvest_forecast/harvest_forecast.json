@@ -31,7 +31,23 @@
     "shortage_kg",
     "availability_status",
     "confidence",
-    "notes"
+    "notes",
+    "item",
+    "packout_profile",
+    "supply_state",
+    "profile_version",
+    "packout_profile_version",
+    "formula_version",
+    "calculated_at",
+    "source_cutoff",
+    "source_snapshot",
+    "snapshot_hash",
+    "revision_no",
+    "supersedes",
+    "revision_reason",
+    "released_by",
+    "released_at",
+    "materialized_qty_kg"
   ],
   "fields": [
     {
@@ -200,6 +216,105 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "options": "Item"
+    },
+    {
+      "fieldname": "packout_profile",
+      "fieldtype": "Link",
+      "label": "Packout Profile",
+      "options": "Packout Profile"
+    },
+    {
+      "fieldname": "supply_state",
+      "fieldtype": "Select",
+      "label": "Supply State",
+      "default": "Draft",
+      "reqd": 1,
+      "options": "Draft\nReleased\nSuperseded\nClosed"
+    },
+    {
+      "fieldname": "profile_version",
+      "fieldtype": "Int",
+      "label": "Profile Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "packout_profile_version",
+      "fieldtype": "Int",
+      "label": "Packout Profile Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "formula_version",
+      "fieldtype": "Data",
+      "label": "Formula Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculated_at",
+      "fieldtype": "Datetime",
+      "label": "Calculated At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_cutoff",
+      "fieldtype": "Datetime",
+      "label": "Source Cutoff",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_snapshot",
+      "fieldtype": "Long Text",
+      "label": "Source Snapshot",
+      "read_only": 1
+    },
+    {
+      "fieldname": "snapshot_hash",
+      "fieldtype": "Data",
+      "label": "Snapshot Hash",
+      "read_only": 1
+    },
+    {
+      "fieldname": "revision_no",
+      "fieldtype": "Int",
+      "label": "Revision No",
+      "read_only": 1,
+      "default": "1"
+    },
+    {
+      "fieldname": "supersedes",
+      "fieldtype": "Link",
+      "label": "Supersedes",
+      "options": "Harvest Forecast"
+    },
+    {
+      "fieldname": "revision_reason",
+      "fieldtype": "Small Text",
+      "label": "Revision Reason"
+    },
+    {
+      "fieldname": "released_by",
+      "fieldtype": "Link",
+      "label": "Released By",
+      "read_only": 1,
+      "options": "User"
+    },
+    {
+      "fieldname": "released_at",
+      "fieldtype": "Datetime",
+      "label": "Released At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "materialized_qty_kg",
+      "fieldtype": "Float",
+      "label": "Materialized Qty Kg",
+      "read_only": 1
     }
   ],
   "permissions": [
@@ -212,6 +327,30 @@
       "report": 1,
       "export": 1,
       "print": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 1,
+      "create": 1,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 1,
+      "create": 1,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
     }
   ]
 }

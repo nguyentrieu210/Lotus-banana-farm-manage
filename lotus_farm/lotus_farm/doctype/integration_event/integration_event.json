@@ -1,0 +1,51 @@
+{
+  "doctype": "DocType",
+  "name": "Integration Event",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "label": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "event_key",
+      "fieldtype": "Data",
+      "label": "Event Key",
+      "unique": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "payload_hash",
+      "fieldtype": "Data",
+      "label": "Payload Hash",
+      "reqd": 1
+    },
+    {
+      "fieldname": "result_json",
+      "fieldtype": "Long Text",
+      "label": "Result JSON",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "event_key",
+    "payload_hash",
+    "result_json"
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "create": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1
+    }
+  ]
+}

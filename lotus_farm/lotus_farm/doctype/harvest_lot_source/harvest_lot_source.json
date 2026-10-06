@@ -1,0 +1,26 @@
+{
+  "doctype": "DocType",
+  "name": "Harvest Lot Source",
+  "module": "Lotus Farm",
+  "field_order": [
+    "harvest_actual",
+    "contributed_kg"
+  ],
+  "fields": [
+    {
+      "fieldname": "harvest_actual",
+      "fieldtype": "Link",
+      "label": "Harvest Actual",
+      "reqd": 1,
+      "options": "Harvest Actual"
+    },
+    {
+      "fieldname": "contributed_kg",
+      "fieldtype": "Float",
+      "label": "Contributed Kg",
+      "precision": "3",
+      "reqd": 1
+    }
+  ],
+  "istable": 1
+}

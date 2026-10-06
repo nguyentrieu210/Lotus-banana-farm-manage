@@ -1,0 +1,54 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Output",
+  "module": "Lotus Farm",
+  "field_order": [
+    "item",
+    "net_kg",
+    "cartons",
+    "batch",
+    "quality_standard",
+    "standard_version"
+  ],
+  "fields": [
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "reqd": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "net_kg",
+      "fieldtype": "Float",
+      "label": "Net Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cartons",
+      "fieldtype": "Int",
+      "label": "Cartons"
+    },
+    {
+      "fieldname": "batch",
+      "fieldtype": "Link",
+      "label": "Batch",
+      "read_only": 1,
+      "options": "Batch"
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "options": "Quality Standard"
+    },
+    {
+      "fieldname": "standard_version",
+      "fieldtype": "Int",
+      "label": "Standard Version",
+      "read_only": 1
+    }
+  ],
+  "istable": 1
+}

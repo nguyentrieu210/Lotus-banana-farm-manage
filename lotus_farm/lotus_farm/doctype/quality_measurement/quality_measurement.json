@@ -1,0 +1,32 @@
+{
+  "doctype": "DocType",
+  "name": "Quality Measurement",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "fields": [
+    {
+      "fieldname": "parameter",
+      "fieldtype": "Data",
+      "label": "Parameter",
+      "reqd": 1
+    },
+    {
+      "fieldname": "value",
+      "fieldtype": "Float",
+      "label": "Value",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "fieldtype": "Link",
+      "label": "UOM",
+      "options": "UOM",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "parameter",
+    "value",
+    "uom"
+  ]
+}

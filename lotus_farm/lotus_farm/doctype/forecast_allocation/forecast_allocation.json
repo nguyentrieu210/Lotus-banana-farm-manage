@@ -3,12 +3,91 @@
   "name": "Forecast Allocation",
   "module": "Lotus Farm",
   "istable": 1,
-  "field_order": ["sales_order", "customer", "delivery_date", "reserved_qty_kg", "notes"],
+  "field_order": [
+    "sales_order",
+    "customer",
+    "delivery_date",
+    "reserved_qty_kg",
+    "notes",
+    "sales_order_item",
+    "item",
+    "allocation_state",
+    "allocated_by",
+    "allocated_at",
+    "stock_reservation"
+  ],
   "fields": [
-    {"fieldname": "sales_order", "fieldtype": "Link", "label": "Sales Order", "options": "Sales Order", "reqd": 1},
-    {"fieldname": "customer", "fieldtype": "Link", "label": "Customer", "options": "Customer", "read_only": 1},
-    {"fieldname": "delivery_date", "fieldtype": "Date", "label": "Delivery Date", "read_only": 1},
-    {"fieldname": "reserved_qty_kg", "fieldtype": "Float", "label": "Reserved Qty (kg)", "reqd": 1, "non_negative": 1},
-    {"fieldname": "notes", "fieldtype": "Data", "label": "Notes"}
+    {
+      "fieldname": "sales_order",
+      "fieldtype": "Link",
+      "label": "Sales Order",
+      "options": "Sales Order",
+      "reqd": 1
+    },
+    {
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "options": "Customer",
+      "read_only": 1
+    },
+    {
+      "fieldname": "delivery_date",
+      "fieldtype": "Date",
+      "label": "Delivery Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reserved_qty_kg",
+      "fieldtype": "Float",
+      "label": "Reserved Qty (kg)",
+      "reqd": 1,
+      "non_negative": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Data",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "sales_order_item",
+      "fieldtype": "Data",
+      "label": "Sales Order Item"
+    },
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "read_only": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "allocation_state",
+      "fieldtype": "Select",
+      "label": "Allocation State",
+      "default": "Reserved",
+      "reqd": 1,
+      "options": "Reserved\nReleased\nMaterialized"
+    },
+    {
+      "fieldname": "allocated_by",
+      "fieldtype": "Link",
+      "label": "Allocated By",
+      "read_only": 1,
+      "options": "User"
+    },
+    {
+      "fieldname": "allocated_at",
+      "fieldtype": "Datetime",
+      "label": "Allocated At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "stock_reservation",
+      "fieldtype": "Link",
+      "label": "Stock Reservation",
+      "options": "Stock Reservation Entry",
+      "read_only": 1
+    }
   ]
 }

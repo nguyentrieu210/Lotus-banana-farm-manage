@@ -1,0 +1,112 @@
+{
+  "doctype": "DocType",
+  "name": "Harvest Lot",
+  "module": "Lotus Farm",
+  "field_order": [
+    "farm",
+    "company",
+    "received_date",
+    "sources",
+    "released_raw_kg",
+    "raw_item",
+    "raw_warehouse",
+    "raw_batch"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "reqd": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "read_only": 1,
+      "options": "Company"
+    },
+    {
+      "fieldname": "received_date",
+      "fieldtype": "Date",
+      "label": "Received Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sources",
+      "fieldtype": "Table",
+      "label": "Sources",
+      "reqd": 1,
+      "options": "Harvest Lot Source"
+    },
+    {
+      "fieldname": "released_raw_kg",
+      "fieldtype": "Float",
+      "label": "Released Raw Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "raw_item",
+      "fieldtype": "Link",
+      "label": "Raw Item",
+      "options": "Item"
+    },
+    {
+      "fieldname": "raw_warehouse",
+      "fieldtype": "Link",
+      "label": "Raw Warehouse",
+      "options": "Warehouse"
+    },
+    {
+      "fieldname": "raw_batch",
+      "fieldtype": "Link",
+      "label": "Raw Batch",
+      "options": "Batch"
+    }
+  ],
+  "autoname": "format:HL-{#####}",
+  "track_changes": 1,
+  "is_submittable": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    }
+  ]
+}

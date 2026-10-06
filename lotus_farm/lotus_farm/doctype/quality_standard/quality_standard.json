@@ -1,0 +1,119 @@
+{
+  "doctype": "DocType",
+  "name": "Quality Standard",
+  "module": "Lotus Farm",
+  "field_order": [
+    "standard_code",
+    "version",
+    "approval_state",
+    "customer",
+    "item",
+    "valid_from",
+    "valid_to",
+    "max_defective_percent",
+    "parameters"
+  ],
+  "fields": [
+    {
+      "fieldname": "standard_code",
+      "fieldtype": "Data",
+      "label": "Standard Code",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "fieldtype": "Int",
+      "label": "Version",
+      "default": "1",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "fieldtype": "Select",
+      "label": "Approval State",
+      "default": "Draft",
+      "reqd": 1,
+      "options": "Draft\nApproved"
+    },
+    {
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "options": "Customer"
+    },
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "reqd": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "valid_from",
+      "fieldtype": "Date",
+      "label": "Valid From",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "fieldtype": "Date",
+      "label": "Valid To"
+    },
+    {
+      "fieldname": "max_defective_percent",
+      "fieldtype": "Percent",
+      "label": "Max Defective Percent",
+      "reqd": 1
+    },
+    {
+      "fieldname": "parameters",
+      "fieldtype": "Table",
+      "label": "Parameters",
+      "options": "Quality Standard Parameter"
+    }
+  ],
+  "autoname": "format:QS-{#####}",
+  "track_changes": 1,
+  "is_submittable": 0,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus QC Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    }
+  ]
+}

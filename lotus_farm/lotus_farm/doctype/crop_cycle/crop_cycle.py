@@ -11,9 +11,7 @@ class CropCycle(Document):
         self._validate_unique_cycle()
 
     def _validate_block(self):
-        block = frappe.db.get_value(
-            "Farm Block", self.farm_block, ["farm", "variety"], as_dict=True
-        )
+        block = frappe.db.get_value("Farm Block", self.farm_block, ["farm", "variety"], as_dict=True)
         if not block:
             frappe.throw("Farm Block does not exist.")
         if block.farm != self.farm:
@@ -58,6 +56,4 @@ class CropCycle(Document):
             "name",
         )
         if existing and existing != self.name:
-            frappe.throw(
-                f"Cycle {self.cycle_no} already exists for Farm Block {self.farm_block}."
-            )
+            frappe.throw(f"Cycle {self.cycle_no} already exists for Farm Block {self.farm_block}.")

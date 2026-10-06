@@ -19,7 +19,10 @@
     "expected_harvest_week",
     "team",
     "supervisor",
-    "notes"
+    "notes",
+    "client_event_id",
+    "server_received_at",
+    "client_payload_hash"
   ],
   "fields": [
     {
@@ -59,7 +62,7 @@
       "fieldname": "operation_type",
       "fieldtype": "Select",
       "label": "Operation Type",
-      "options": "Shooting\\nCut Bud\\nSpray\\nBag\\nCare\\nInspection",
+      "options": "Shooting\nCut Bud\nSpray\nBag\nCare\nInspection",
       "reqd": 1
     },
     {
@@ -114,6 +117,26 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "client_event_id",
+      "fieldtype": "Data",
+      "label": "Client Event Id",
+      "unique": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "server_received_at",
+      "fieldtype": "Datetime",
+      "label": "Server Received At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "client_payload_hash",
+      "fieldtype": "Data",
+      "label": "Client Payload Hash",
+      "read_only": 1,
+      "no_copy": 1
     }
   ],
   "permissions": [
@@ -125,7 +148,41 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 1,
+      "create": 1,
+      "submit": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1
     }
-  ]
+  ],
+  "is_submittable": 1
 }
