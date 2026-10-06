@@ -369,6 +369,13 @@ class TestBRDOnSite(unittest.TestCase):
         filtered = availability(self.start, add_days(self.start, 6), farm=self.farm, item=item_b)
         self.assertEqual([row["item"] for row in filtered if row["name"] == supply.name], [item_b])
 
+        from lotus_farm.lotus_farm.report.harvest_availability.harvest_availability import execute as availability_report
+
+        _, report_rows, _, _, _ = availability_report(
+            {"farm": self.farm, "item": item_b, "from_date": self.start, "to_date": add_days(self.start, 6)}
+        )
+        self.assertEqual([row.item for row in report_rows if row.name == supply.name], [item_b])
+
         finished = self.make("Warehouse", warehouse_name="Multi Finished " + self.tag, company=self.company).name
         order = self.make(
             "Sales Order",
