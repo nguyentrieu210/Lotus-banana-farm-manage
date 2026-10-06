@@ -505,12 +505,23 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertAlmostEqual(valued[self.item].valuation_rate, 1, places=6)
         self.assertAlmostEqual(valued[item_b].valuation_rate, 4310 / 3000, places=6)
 
+        run.outputs[0].valuation_rate = 99
+        with self.assertRaises(frappe.ValidationError):
+            run.save()
+        run.reload()
+
         draft = make_repack_entry(run.name)
         entry = frappe.get_doc("Stock Entry", draft["stock_entry"])
         finished_rows = {row.item_code: row for row in entry.items if row.t_warehouse}
         self.assertTrue(all(row.set_basic_rate_manually for row in finished_rows.values()))
         self.assertAlmostEqual(finished_rows[self.item].basic_rate, 1, places=6)
         self.assertAlmostEqual(finished_rows[item_b].basic_rate, 4310 / 3000, places=6)
+
+        finished_rows[item_b].basic_rate = 99
+        with self.assertRaises(frappe.ValidationError):
+            entry.save()
+        entry.reload()
+
         entry.submit()
 
         supply.reload()
