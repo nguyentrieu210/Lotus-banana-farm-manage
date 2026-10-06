@@ -295,7 +295,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(shooting.supply_state, "Superseded")
         self.assertEqual(cut.source_bunch_qty, 900)
         self.assertEqual(json.loads(cut.source_snapshot)["basis"], "Cut Bud Operations")
-        self.assertEqual(cut.formula_version, "lotus-forecast/3")
+        self.assertEqual(cut.formula_version, "lotus-forecast/4")
 
     def test_multi_item_forecast_reserves_and_materializes_each_finished_item(self):
         from lotus_farm.api import availability
