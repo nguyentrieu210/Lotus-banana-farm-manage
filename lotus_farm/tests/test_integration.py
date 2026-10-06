@@ -148,3 +148,25 @@ class LotusIntegrationTest(unittest.TestCase):
         self.assertEqual(availability(self.forecast)['available_to_promise_kg'], 10000)
         self.assertFalse(frappe.db.exists('Forecast Materialization', {'stock_entry': entry_name, 'docstatus': 1}))
         self.assertFalse(frappe.db.exists('GL Entry', {'voucher_no': entry_name, 'is_cancelled': 0}))
+
+    def test_decimal_packout_balance(self):
+        sources = []
+        for kg in (0.1, 0.2):
+            actual = frappe.get_doc({"doctype": "Harvest Actual", "farm": self.farm.name,
+                                     "farm_block": self.block.name, "crop_cycle": self.cycle.name,
+                                     "forecast": self.forecast.name, "harvest_date": today(),
+                                     "gross_weight_kg": kg, "rejected_weight_kg": 0}).insert()
+            actual.submit()
+            lot = frappe.get_doc('Harvest Lot', frappe.db.get_value('Harvest Lot', {'harvest_actual': actual.name}, 'name'))
+            lot.qc_status = 'Released'
+            lot.save()
+            lot.submit()
+            sources.append({"harvest_lot": lot.name, "source_kg": kg})
+        run = frappe.get_doc({"doctype": "Packout Run", "farm": self.farm.name, "company": self.company.name,
+                              "packing_date": today(), "target_warehouse": self.warehouse.name,
+                              "sources": sources, "outputs": [{"output_type": "Saleable", "item_code": self.item.name,
+                                                               "net_kg": 0.3, "valuation_rate": 100}]}).insert()
+        self.assertEqual(run.mass_variance_kg, 0)
+        run.outputs[0].net_kg = 0.299
+        with self.assertRaises(frappe.ValidationError):
+            run.save()

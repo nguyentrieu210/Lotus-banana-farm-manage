@@ -36,12 +36,14 @@ class PackoutRun(Document):
                     frappe.throw("Pilot stock outputs require an enabled stock Item with stock UOM Kg.")
             elif row.item_code:
                 frappe.throw("Waste is recorded as kg only, without a stock Item.")
-        self.input_kg = sum(flt(r.source_kg) for r in self.sources)
-        self.output_kg = sum(flt(r.net_kg) for r in self.outputs)
         # Site-owned tolerance, never supplied by the operator on a run.
         tolerance = frappe.db.get_single_value("Lotus Farm Settings", "mass_balance_tolerance_kg") or 0
         try:
-            self.mass_variance_kg = mass_balance(self.input_kg, [r.net_kg for r in self.outputs],
+            incoming = sum(quantity(r.source_kg, "Source kg", positive=True) for r in self.sources)
+            outgoing = sum(quantity(r.net_kg, "Output kg") for r in self.outputs)
+            self.input_kg = float(incoming)
+            self.output_kg = float(outgoing)
+            self.mass_variance_kg = mass_balance(incoming, [r.net_kg for r in self.outputs],
                                                 self.recorded_loss_kg, tolerance)
         except SupplyError as exc:
             frappe.throw(str(exc))
