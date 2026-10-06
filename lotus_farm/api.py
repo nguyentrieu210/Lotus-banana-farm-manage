@@ -107,6 +107,8 @@ def availability(period_start, period_end, farm=None, item=None):
             "farm_block",
             "crop_cycle",
             "sucker_selection_batch",
+            "forecast_basis",
+            "confidence",
             "item",
             "period_start_date",
             "period_end_date",
