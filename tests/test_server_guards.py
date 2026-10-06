@@ -53,6 +53,8 @@ class TestServerGuards(unittest.TestCase):
             self.assertTrue(self.controls.command_allowed(self.doc, "allocation"))
             self.assertFalse(self.controls.command_allowed(other, "allocation"))
             self.assertFalse(self.controls.command_allowed(self.doc, "supply"))
+            self.doc.name = "HF-generated"
+            self.assertTrue(self.controls.command_allowed(self.doc, "allocation"))
         self.assertFalse(self.controls.command_allowed(self.doc, "allocation"))
 
     def test_command_authorization_resets_after_exception(self):

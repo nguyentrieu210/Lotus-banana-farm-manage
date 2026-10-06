@@ -106,7 +106,7 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     with command(supply, "allocation"):
         supply.save()
     result = {"forecast": supply.name, "allocation": row.name, "atp_kg": supply.available_to_promise_kg}
-    frappe.get_doc(
+    event = frappe.get_doc(
         dict(
             doctype="Integration Event",
             farm=supply.farm,
@@ -114,7 +114,9 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
             payload_hash=payload_hash,
             result_json=json.dumps(result),
         )
-    ).insert()
+    )
+    with command(event, "integration_event"):
+        event.insert()
     return result
 
 

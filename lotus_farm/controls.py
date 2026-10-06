@@ -165,12 +165,12 @@ _authorized_commands = ContextVar("lotus_authorized_commands", default=frozenset
 
 
 def command_allowed(doc, action):
-    return (doc.doctype, doc.name, action) in _authorized_commands.get()
+    return (doc.doctype, id(doc), action) in _authorized_commands.get()
 
 
 @contextmanager
 def command(doc, action):
-    token = _authorized_commands.set(_authorized_commands.get() | {(doc.doctype, doc.name, action)})
+    token = _authorized_commands.set(_authorized_commands.get() | {(doc.doctype, id(doc), action)})
     try:
         yield
     finally:

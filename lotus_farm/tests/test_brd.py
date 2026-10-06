@@ -8,6 +8,14 @@ from lotus_farm.api import create_operation, ingest_scale
 
 
 class TestBRDOnSite(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        frappe.set_user("Administrator")
+        from erpnext.setup.setup_wizard.operations.install_fixtures import install
+
+        install("India")
+        frappe.db.commit()
+
     def setUp(self):
         frappe.set_user("Administrator")
         frappe.db.savepoint("lotus_brd_test")
