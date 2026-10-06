@@ -1,8 +1,45 @@
 """Create standard ERPNext drafts; never write Stock Ledger or GL directly."""
 
 import frappe
-from lotus_farm.controls import command, command_allowed, lock, require_role, validate_item, validate_warehouse
+from frappe.utils import flt, now_datetime
+from lotus_farm.controls import command, command_allowed, lock, positive, require_role, validate_item, validate_warehouse
 from lotus_farm.rules import canonical_hash
+
+
+@frappe.whitelist(methods=["POST"])
+def set_output_valuation(packout, rates):
+    require_role("Lotus Stock Reviewer")
+    lock("Packout Run", packout)
+    run = frappe.get_doc("Packout Run", packout)
+    run.check_permission("write")
+    if run.docstatus != 1 or run.qc_state != "Released":
+        frappe.throw("Only a submitted, QC released Packout Run can be valued.")
+    if len(run.outputs or []) < 2:
+        frappe.throw("Manual output valuation is only required for multi-Item packout.")
+    if run.stock_entry and frappe.db.get_value("Stock Entry", run.stock_entry, "docstatus") != 2:
+        frappe.throw("Cancel the active Stock Entry before changing packout valuation.")
+
+    rates = frappe.parse_json(rates) if isinstance(rates, str) else rates
+    if not isinstance(rates, dict):
+        frappe.throw("Valuation rates must be an Item-to-rate object.")
+
+    expected = {row.item for row in run.outputs}
+    if set(rates) != expected:
+        frappe.throw("Provide one valuation rate for every finished Item, with no extras.")
+
+    reviewed_at = now_datetime()
+    for row in run.outputs:
+        row.valuation_rate = positive(rates[row.item], f"Valuation rate for {row.item}")
+        row.valuation_set_by = frappe.session.user
+        row.valuation_set_at = reviewed_at
+    run.save()
+    return {
+        "packout": run.name,
+        "items": [
+            {"item": row.item, "valuation_rate": row.valuation_rate}
+            for row in run.outputs
+        ],
+    }
 
 
 @frappe.whitelist(methods=["POST"])
@@ -49,6 +86,19 @@ def make_repack_entry(packout):
                 use_serial_batch_fields=1,
             ),
         )
+    multiple_finished = len(run.outputs) > 1
+    if multiple_finished:
+        missing = [
+            output.item
+            for output in run.outputs
+            if flt(output.valuation_rate) <= 0 or not output.valuation_set_by
+        ]
+        if missing:
+            frappe.throw(
+                "Multi-Item Repack needs reviewed stock valuation rates first: "
+                + ", ".join(missing)
+            )
+
     for output in run.outputs:
         # Stable Batch ID means transaction retries never create duplicate batches.
         batch_id = "LOTUS-" + canonical_hash([run.name, output.item])[:24]
@@ -77,6 +127,8 @@ def make_repack_entry(packout):
                 batch_no=batch.name,
                 use_serial_batch_fields=1,
                 is_finished_item=1,
+                set_basic_rate_manually=1 if multiple_finished else 0,
+                basic_rate=flt(output.valuation_rate) if multiple_finished else 0,
             ),
         )
     entry.insert()  # Core checks permissions, quantities, valuation and serial/batch rules.
@@ -102,6 +154,7 @@ def validate_entry(doc, method=None):
         if prior_status != 2:
             frappe.throw("Packout already has a different active Stock Entry.")
     expected_inputs, expected_outputs = {}, {}
+    expected_output_rates = {}
 
     def add(bucket, key, qty):
         bucket[key] = bucket.get(key, 0) + round(float(qty), 3)
@@ -110,7 +163,10 @@ def validate_entry(doc, method=None):
         lot = frappe.get_doc("Harvest Lot", source.harvest_lot)
         add(expected_inputs, (lot.raw_item, lot.raw_warehouse, lot.raw_batch), source.input_kg)
     for output in run.outputs:
-        add(expected_outputs, (output.item, run.target_warehouse, output.batch), output.net_kg)
+        key = (output.item, run.target_warehouse, output.batch)
+        add(expected_outputs, key, output.net_kg)
+        if len(run.outputs) > 1:
+            expected_output_rates[key] = flt(output.valuation_rate, 6)
     inputs, outputs = {}, {}
     for row in doc.items:
         batch_no = row.batch_no
@@ -125,7 +181,16 @@ def validate_entry(doc, method=None):
         if row.s_warehouse:
             add(inputs, (row.item_code, row.s_warehouse, batch_no), row.transfer_qty)
         elif row.t_warehouse:
-            add(outputs, (row.item_code, row.t_warehouse, batch_no), row.transfer_qty)
+            key = (row.item_code, row.t_warehouse, batch_no)
+            add(outputs, key, row.transfer_qty)
+            if expected_output_rates:
+                expected_rate = expected_output_rates.get(key)
+                if (
+                    expected_rate is None
+                    or not row.set_basic_rate_manually
+                    or abs(flt(row.basic_rate, 6) - expected_rate) > 0.000001
+                ):
+                    frappe.throw("Multi-Item Stock Entry valuation must match the reviewed Packout rates.")
         else:
             frappe.throw("Stock Entry row has no Warehouse.")
     if inputs != expected_inputs or outputs != expected_outputs:
