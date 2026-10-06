@@ -40,10 +40,25 @@ def _stock_entry_effect(request):
     for forecast in sorted(forecast_totals):
         lock("Harvest Forecast", forecast)
         supply = frappe.get_doc("Harvest Forecast", forecast)
-        amount = flt(forecast_totals[forecast], 3)
-        if flt(supply.materialized_qty_kg, 3) + 0.0005 < amount:
+        item_amounts = forecast_totals[forecast]
+        amount = flt(sum(item_amounts.values()), 3)
+        if supply.output_plan:
+            materialized = {row.item: flt(row.materialized_qty_kg, 3) for row in supply.output_plan}
+            for item, item_amount in item_amounts.items():
+                if materialized.get(item, 0) + 0.0005 < flt(item_amount, 3):
+                    frappe.throw("Per-Item forecast materialized quantity is smaller than the proposed reversal.")
+        elif flt(supply.materialized_qty_kg, 3) + 0.0005 < amount:
             frappe.throw("Forecast materialized quantity is smaller than the proposed reversal.")
-        impacts.append({"forecast": forecast, "qty_kg": amount})
+        impacts.append(
+            {
+                "forecast": forecast,
+                "qty_kg": amount,
+                "items": [
+                    {"item": item, "qty_kg": flt(item_amount, 3)}
+                    for item, item_amount in sorted(item_amounts.items())
+                ],
+            }
+        )
         for row in frappe.get_all(
             "Forecast Allocation",
             filters={
