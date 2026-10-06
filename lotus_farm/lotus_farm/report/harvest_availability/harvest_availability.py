@@ -128,12 +128,6 @@ def execute(filters=None):
         },
         {"label": _("From"), "fieldname": "period_start_date", "fieldtype": "Date", "width": 100},
         {"label": _("To"), "fieldname": "period_end_date", "fieldtype": "Date", "width": 100},
-        {
-            "label": _("Field Saleable kg"),
-            "fieldname": "saleable_forecast_kg",
-            "fieldtype": "Float",
-            "width": 125,
-        },
         {"label": _("Packed kg"), "fieldname": "packed_forecast_kg", "fieldtype": "Float", "width": 110},
         {"label": _("Safe Commit kg"), "fieldname": "safe_saleable_kg", "fieldtype": "Float", "width": 120},
         {"label": _("Committed kg"), "fieldname": "committed_qty_kg", "fieldtype": "Float", "width": 120},
