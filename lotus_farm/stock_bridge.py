@@ -44,7 +44,7 @@ def set_output_valuation(packout, rates):
 
 @frappe.whitelist(methods=["POST"])
 def make_repack_entry(packout):
-    require_role("Lotus Packing Supervisor")
+    require_role("Lotus Packing Supervisor", "Lotus Stock Reviewer")
     lock("Packout Run", packout)
     run = frappe.get_doc("Packout Run", packout)
     run.check_permission("read")
