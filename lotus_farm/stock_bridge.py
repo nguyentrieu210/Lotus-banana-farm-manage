@@ -1,7 +1,7 @@
 """Create standard ERPNext drafts; never write Stock Ledger or GL directly."""
 
 import frappe
-from lotus_farm.controls import command, lock, require_role, validate_item, validate_warehouse
+from lotus_farm.controls import command, command_allowed, lock, require_role, validate_item, validate_warehouse
 from lotus_farm.rules import canonical_hash
 
 
@@ -16,7 +16,8 @@ def make_repack_entry(packout):
     if run.stock_entry:
         entry = frappe.get_doc("Stock Entry", run.stock_entry)
         entry.check_permission("read")
-        return {"stock_entry": entry.name, "docstatus": entry.docstatus}
+        if entry.docstatus != 2:
+            return {"stock_entry": entry.name, "docstatus": entry.docstatus}
     entry = frappe.get_doc(
         dict(
             doctype="Stock Entry",
@@ -97,7 +98,9 @@ def validate_entry(doc, method=None):
     ):
         frappe.throw("Stock Entry must match a submitted, released Lotus Packout Run.")
     if run.stock_entry and run.stock_entry != doc.name:
-        frappe.throw("Packout already has a different Stock Entry.")
+        prior_status = frappe.db.get_value("Stock Entry", run.stock_entry, "docstatus")
+        if prior_status != 2:
+            frappe.throw("Packout already has a different active Stock Entry.")
     expected_inputs, expected_outputs = {}, {}
 
     def add(bucket, key, qty):
@@ -164,11 +167,30 @@ def stock_posted(doc, method=None):
 
 
 def before_stock_cancel(doc, method=None):
-    if doc.get("lotus_packout_run"):
-        # Reversal requires a reviewed supply reconciliation, not automatic forecast resurrection.
+    if doc.get("lotus_packout_run") and not command_allowed(doc, "reconciliation_cancel"):
         frappe.throw(
-            "Lotus stock reversal requires reconciliation; cancel/amend is blocked pending that workflow."
+            "Create and apply an approved Supply Reconciliation before cancelling Lotus stock."
         )
+
+
+def stock_reversed(doc, method=None):
+    if not doc.get("lotus_packout_run"):
+        return
+    if not command_allowed(doc, "reconciliation_cancel"):
+        frappe.throw("Lotus stock reversal must run through Supply Reconciliation.")
+    run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
+    impacts = _forecast_outputs(run)
+    supplies = {}
+    for name, amount in sorted(impacts.items()):
+        lock("Harvest Forecast", name)
+        supply = frappe.get_doc("Harvest Forecast", name)
+        if float(supply.materialized_qty_kg or 0) + 0.0005 < float(amount):
+            frappe.throw("Forecast materialized quantity is smaller than the stock reversal.")
+        supplies[name] = (supply, float(amount))
+    for supply, amount in supplies.values():
+        supply.materialized_qty_kg = max(float(supply.materialized_qty_kg or 0) - amount, 0)
+        with command(supply, "supply"):
+            supply.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -213,5 +235,34 @@ def link_stock_reservation(forecast, allocation, stock_reservation):
 def reservation_cancel(doc, method=None):
     if frappe.db.exists(
         "Forecast Allocation", {"stock_reservation": doc.name, "allocation_state": "Materialized"}
-    ):
-        frappe.throw("Reconcile linked Lotus allocations before cancelling this physical reservation.")
+    ) and not command_allowed(doc, "reconciliation_cancel"):
+        frappe.throw(
+            "Create and apply an approved Supply Reconciliation before cancelling this physical reservation."
+        )
+
+
+def reservation_cancelled(doc, method=None):
+    if not command_allowed(doc, "reconciliation_cancel"):
+        return
+    linked = frappe.get_all(
+        "Forecast Allocation",
+        filters={
+            "stock_reservation": doc.name,
+            "allocation_state": "Materialized",
+            "parenttype": "Harvest Forecast",
+        },
+        fields=["name", "parent"],
+        order_by="parent, name",
+    )
+    for forecast in sorted({row.parent for row in linked}):
+        lock("Harvest Forecast", forecast)
+        supply = frappe.get_doc("Harvest Forecast", forecast)
+        changed = False
+        names = {row.name for row in linked if row.parent == forecast}
+        for row in supply.allocations or []:
+            if row.name in names and row.allocation_state == "Materialized":
+                row.allocation_state = "Released"
+                changed = True
+        if changed:
+            with command(supply, "allocation"):
+                supply.save(ignore_permissions=True)
