@@ -14,6 +14,11 @@ class SupplyReconciliation(Document):
         elif self.reconciliation_type == "Stock Reservation Cancellation":
             if not self.stock_reservation or self.stock_entry:
                 frappe.throw("Select exactly one Stock Reservation Entry for cancellation.")
+            if self.reservation_disposition not in (
+                "Restore Future Reservation",
+                "Release Commitment",
+            ):
+                frappe.throw("Choose whether the customer commitment is restored or released.")
         else:
             frappe.throw("Select a supported reconciliation type.")
         if self.docstatus == 0:
