@@ -8,6 +8,10 @@ from lotus_farm.supply import lock_document, materialized_total, reservation_tot
 
 class ForecastReservation(Document):
     def validate(self):
+        # Lock before inserting even a draft. Otherwise an uncommitted draft can
+        # block the current-read capacity query while its submit waits for this pool.
+        lock_document("Sales Order", self.sales_order)
+        lock_document("Harvest Forecast", self.forecast)
         forecast = frappe.get_doc("Harvest Forecast", self.forecast)
         forecast.check_permission("read")
         if forecast.docstatus != 1:

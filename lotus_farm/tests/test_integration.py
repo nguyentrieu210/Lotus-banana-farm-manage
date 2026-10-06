@@ -39,6 +39,8 @@ class LotusIntegrationTest(unittest.TestCase):
                                          "parent_territory": "All Territories"}).insert()
         self.company = frappe.get_doc({"doctype": "Company", "company_name": f"Lotus Test {self.tag}",
                                        "abbr": self.tag, "country": "Vietnam", "default_currency": "VND"}).insert()
+        self.warehouse = frappe.get_doc({"doctype": "Warehouse", "warehouse_name": f"Pack-{self.tag}",
+                                          "company": self.company.name}).insert()
         self.price_list = frappe.get_doc({"doctype": "Price List", "price_list_name": f"Selling {self.tag}",
                                           "currency": "VND", "selling": 1, "enabled": 1}).insert()
         year = getdate(today()).year
@@ -77,6 +79,7 @@ class LotusIntegrationTest(unittest.TestCase):
                                   "customer": self.customer.name, "transaction_date": today(),
                                   "delivery_date": today(), "currency": "VND", "selling_price_list": self.price_list.name,
                                   "items": [{"item_code": self.item.name, "qty": 10000, "rate": 100,
+                                             "warehouse": self.warehouse.name,
                                              "delivery_date": today()}]}).insert()
         self.so.submit()
 
@@ -119,10 +122,8 @@ class LotusIntegrationTest(unittest.TestCase):
         lot.qc_status = 'Released'
         lot.save()
         lot.submit()
-        warehouse = frappe.get_doc({"doctype": "Warehouse", "warehouse_name": f"Pack-{self.tag}",
-                                    "company": self.company.name}).insert()
         run = frappe.get_doc({"doctype": "Packout Run", "farm": self.farm.name, "company": self.company.name,
-                              "packing_date": today(), "target_warehouse": warehouse.name, "qc_status": "Released",
+                              "packing_date": today(), "target_warehouse": self.warehouse.name, "qc_status": "Released",
                               "sources": [{"harvest_lot": lot.name, "source_kg": 8000}],
                               "outputs": [{"output_type": "Saleable", "item_code": self.item.name,
                                            "net_kg": 7800, "valuation_rate": 100},
