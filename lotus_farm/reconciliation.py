@@ -193,10 +193,29 @@ def execute(reconciliation):
         None,
         update_modified=False,
     )
+    packout_name = None
+    if request.reconciliation_type == "Stock Entry Reversal":
+        packout_name = target.get("lotus_packout_run")
+        if packout_name and frappe.db.get_value("Packout Run", packout_name, "stock_entry") == target.name:
+            frappe.db.set_value(
+                "Packout Run",
+                packout_name,
+                "stock_entry",
+                None,
+                update_modified=False,
+            )
     try:
         with command(target, action):
             target.cancel()
     finally:
+        if packout_name:
+            frappe.db.set_value(
+                "Packout Run",
+                packout_name,
+                "stock_entry",
+                target.name,
+                update_modified=False,
+            )
         frappe.db.set_value(
             "Supply Reconciliation",
             request.name,
