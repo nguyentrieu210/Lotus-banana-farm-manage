@@ -23,7 +23,7 @@ class HarvestForecast(Document):
         self._pull_source_qty()
         self._hydrate_allocations()
         self._calculate()
-        self.formula_version = "lotus-forecast/3"
+        self.formula_version = "lotus-forecast/4"
         self.calculated_at = now_datetime()
         self.source_cutoff = self.calculated_at
         self.snapshot_hash = canonical_hash(self._snapshot())
