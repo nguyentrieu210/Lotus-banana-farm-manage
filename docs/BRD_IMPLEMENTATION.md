@@ -9,8 +9,8 @@ This change implements the planning and field-to-packhouse core. It does **not**
 | Farm belongs to Company | Required Company Link, linked warehouse/cost-center validation | Existing Farms must be mapped; no guessed Company migration |
 | Block/Cycle/Cohort identity | Unique DB indexes, used identity guards, operation date checks, ratoon cohort validation | Real site suite included; not locally executed |
 | Versioned agronomy assumptions | Approved profile/version immutable, explicit rates, cycle variety used | No automatic agronomy coefficients |
-| Immutable forecast history | Draft → Released, full source/profile/formula snapshot + hash, explicit superseding revision | Single output Item per forecast; multi-grade forecast vector not implemented |
-| Released future supply | Only submitted Cut Bud source records; manual basis needs explanation | Sucker/Shooting forecast bases remain follow-up work |
+| Immutable forecast history | Draft → Released, full source/profile/formula snapshot + hash, explicit superseding revision; formula v3 snapshots the evidence basis and timing assumptions | Single output Item per forecast; multi-grade forecast vector not implemented |
+| Released future supply | Evidence ladder supports Sucker Selection → submitted Shooting → submitted Cut Bud; manual basis needs explanation | Each stronger basis is released as a superseding revision so one biological cohort is not counted twice |
 | Exact SO Item allocation | Validated row, Item, Company, delivery date, stock-UOM Kg conversion | Requires standard ERPNext Sales roles and submitted order |
 | Atomic future reservation | Lock SO then forecast; check all future allocations + physical stock reservations | Real two-connection concurrency test included; not locally executed |
 | Allocation retry safety | Mandatory client event ID + immutable event result | Same ID/different payload rejected |
@@ -72,7 +72,7 @@ Side-effect commands only allow POST. Permission checks still apply; an API toke
 
 ## Deliberate pilot limits
 
-Do not use this branch for unattended stock/accounting operations. Lotus-linked Repack and physical-reservation cancellation now require a submitted reviewed Supply Reconciliation. For a physical reservation, the reviewer must explicitly choose **Restore Future Reservation** or **Release Commitment**. Execution still delegates the actual cancellation to standard ERPNext permissions and accounting/stock validation. Reservations with delivered, consumed or transferred quantity remain blocked until downstream delivery reconciliation exists. No automated Delivery Note creation/consumption, approved overcommit override, offline mobile queue, GIS boundary versioning, photo retention, outbox/webhook delivery, legacy importer, production backup/restore or performance proof exists yet.
+Do not use this branch for unattended stock/accounting operations. Lotus-linked Repack and physical-reservation cancellation now require a submitted reviewed Supply Reconciliation. For a physical reservation, the reviewer must explicitly choose **Restore Future Reservation** or **Release Commitment**. Execution still delegates the actual cancellation to standard ERPNext permissions and accounting/stock validation. Reservations with delivered, consumed or transferred quantity remain blocked until downstream delivery reconciliation exists. No multi-grade forecast vector, automated Delivery Note creation/consumption, approved overcommit override, offline mobile queue, GIS boundary versioning, photo retention, outbox/webhook delivery, legacy importer, production backup/restore or performance proof exists yet.
 
 The site test is for a disposable test database. Its concurrency test commits test fixtures so two independent connections can see them; never run it on a live business site.
 
