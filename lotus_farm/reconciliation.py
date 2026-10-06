@@ -137,12 +137,15 @@ def approve(request):
 
 @frappe.whitelist(methods=["POST"])
 def execute(reconciliation):
-    require_role("Lotus Auditor")
     lock("Supply Reconciliation", reconciliation)
     request = frappe.get_doc("Supply Reconciliation", reconciliation)
     request.check_permission("read")
     if request.docstatus != 1 or request.state != "Approved":
         frappe.throw("Only submitted, approved reconciliations can be applied.")
+    if request.reconciliation_type == "Stock Entry Reversal":
+        require_role("Lotus Packing Supervisor", "Lotus Auditor")
+    else:
+        require_role("Lotus Sales Planner", "Lotus Auditor")
 
     effect = build_effect(request)
     if canonical_hash(effect) != request.effect_hash:
