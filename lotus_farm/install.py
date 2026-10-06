@@ -6,7 +6,8 @@ ROLES = (
     "Lotus QC Manager",
     "Lotus Packing Supervisor",
     "Lotus Integration User",
-    "Lotus Auditor",\n    "Lotus Stock Reviewer",
+    "Lotus Auditor",
+    "Lotus Stock Reviewer",
 )
 
 
