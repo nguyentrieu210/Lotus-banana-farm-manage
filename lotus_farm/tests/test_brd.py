@@ -14,6 +14,27 @@ class TestBRDOnSite(unittest.TestCase):
         from erpnext.setup.setup_wizard.operations.install_fixtures import install
 
         install("India")
+        year = int(nowdate()[:4])
+        if not frappe.db.exists("Fiscal Year", str(year)):
+            frappe.get_doc(dict(
+                doctype="Fiscal Year", year=str(year),
+                year_start_date=f"{year}-01-01", year_end_date=f"{year}-12-31",
+            )).insert()
+        if not frappe.db.exists("Price List", "Standard Selling"):
+            frappe.get_doc(dict(
+                doctype="Price List", price_list_name="Standard Selling",
+                enabled=1, selling=1, currency="INR",
+            )).insert()
+        if not frappe.db.exists("Customer Group", "Lotus Test Buyers"):
+            frappe.get_doc(dict(
+                doctype="Customer Group", customer_group_name="Lotus Test Buyers",
+                parent_customer_group="All Customer Groups", is_group=0,
+            )).insert()
+        if not frappe.db.exists("Territory", "Lotus Test Market"):
+            frappe.get_doc(dict(
+                doctype="Territory", territory_name="Lotus Test Market",
+                parent_territory="All Territories", is_group=0,
+            )).insert()
         settings = frappe.get_single("Stock Settings")
         settings.enable_serial_and_batch_no_for_item = 1
         settings.save()
@@ -111,8 +132,8 @@ class TestBRDOnSite(unittest.TestCase):
         self.customer = self.make(
             "Customer",
             customer_name="Buyer " + self.tag,
-            customer_group="All Customer Groups",
-            territory="All Territories",
+            customer_group="Lotus Test Buyers",
+            territory="Lotus Test Market",
             customer_type="Company",
         ).name
 
