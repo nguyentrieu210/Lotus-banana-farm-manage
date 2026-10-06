@@ -233,16 +233,21 @@ def link_stock_reservation(forecast, allocation, stock_reservation):
 
 
 def reservation_cancel(doc, method=None):
+    allowed = command_allowed(doc, "reconciliation_cancel_restore") or command_allowed(
+        doc, "reconciliation_cancel_release"
+    )
     if frappe.db.exists(
         "Forecast Allocation", {"stock_reservation": doc.name, "allocation_state": "Materialized"}
-    ) and not command_allowed(doc, "reconciliation_cancel"):
+    ) and not allowed:
         frappe.throw(
             "Create and apply an approved Supply Reconciliation before cancelling this physical reservation."
         )
 
 
 def reservation_cancelled(doc, method=None):
-    if not command_allowed(doc, "reconciliation_cancel"):
+    restore = command_allowed(doc, "reconciliation_cancel_restore")
+    release = command_allowed(doc, "reconciliation_cancel_release")
+    if not (restore or release):
         return
     linked = frappe.get_all(
         "Forecast Allocation",
@@ -261,7 +266,7 @@ def reservation_cancelled(doc, method=None):
         names = {row.name for row in linked if row.parent == forecast}
         for row in supply.allocations or []:
             if row.name in names and row.allocation_state == "Materialized":
-                row.allocation_state = "Released"
+                row.allocation_state = "Reserved" if restore else "Released"
                 changed = True
         if changed:
             with command(supply, "allocation"):
