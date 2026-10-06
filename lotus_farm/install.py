@@ -14,3 +14,7 @@ def setup():
                          constraint_name="unique_harvest_profile_version")
     frappe.db.add_unique("Forecast Materialization", ["stock_entry", "forecast"],
                          constraint_name="unique_stock_forecast_materialization")
+    frappe.db.add_index("Forecast Reservation", ["forecast", "docstatus"],
+                        index_name="forecast_reservation_capacity")
+    frappe.db.add_index("Forecast Reservation", ["sales_order_item", "docstatus"],
+                        index_name="sales_order_item_reservation_capacity")

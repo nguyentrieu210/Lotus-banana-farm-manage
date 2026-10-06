@@ -7,6 +7,14 @@ from lotus_farm.supply import lock_document, materialized_total, reservation_tot
 
 
 class ForecastReservation(Document):
+    def load_doc_before_save(self, *, raise_exception=False):
+        # Frappe locks the reservation row here, before validate/before_submit.
+        # Acquire its demand/supply locks first so two existing drafts cannot
+        # deadlock against each other's rows during current-read capacity checks.
+        lock_document("Sales Order", self.sales_order)
+        lock_document("Harvest Forecast", self.forecast)
+        return super().load_doc_before_save(raise_exception=raise_exception)
+
     def validate(self):
         # Lock before inserting even a draft. Otherwise an uncommitted draft can
         # block the current-read capacity query while its submit waits for this pool.
