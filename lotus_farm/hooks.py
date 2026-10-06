@@ -22,6 +22,7 @@ _scoped_doctypes = [
     "Harvest Lot",
     "Packout Run",
     "Scale Reading",
+    "Supply Reconciliation",
 ]
 has_permission = {name: "lotus_farm.controls.farm_permission" for name in _scoped_doctypes}
 permission_query_conditions = {
@@ -34,8 +35,12 @@ doc_events["Stock Entry"] = {
     "validate": "lotus_farm.stock_bridge.validate_entry",
     "on_submit": "lotus_farm.stock_bridge.stock_posted",
     "before_cancel": "lotus_farm.stock_bridge.before_stock_cancel",
+    "on_cancel": "lotus_farm.stock_bridge.stock_reversed",
 }
-doc_events["Stock Reservation Entry"] = {"before_cancel": "lotus_farm.stock_bridge.reservation_cancel"}
+doc_events["Stock Reservation Entry"] = {
+    "before_cancel": "lotus_farm.stock_bridge.reservation_cancel",
+    "on_cancel": "lotus_farm.stock_bridge.reservation_cancelled",
+}
 
 before_install = "lotus_farm.install.create_roles"
 for _name in ("Farm", "Farm Block", "Crop Cycle", "Sucker Selection Batch"):
