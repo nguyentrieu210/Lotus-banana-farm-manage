@@ -180,6 +180,12 @@
       "write": 0,
       "create": 0,
       "submit": 0
+    },
+    {
+      "role": "Lotus Stock Reviewer",
+      "read": 1,
+      "write": 1,
+      "report": 1
     }
   ]
 }
