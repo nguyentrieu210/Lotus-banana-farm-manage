@@ -488,7 +488,8 @@ class TestBRDOnSite(unittest.TestCase):
         entry.submit()
         supply.reload()
         self.assertAlmostEqual(supply.materialized_qty_kg, 18740.4, places=2)
-        self.assertEqual(supply.available_to_promise_kg, 0)
+        # Until the physical SRE is linked, the old future commitment must remain visible as shortage.
+        self.assertEqual(supply.available_to_promise_kg, -1000)
         sle = frappe.get_all(
             "Stock Ledger Entry",
             filters={
@@ -528,6 +529,7 @@ class TestBRDOnSite(unittest.TestCase):
         supply.reload()
         linked = next(row for row in supply.allocations if row.name == allocation["allocation"])
         self.assertEqual(linked.allocation_state, "Materialized")
+        self.assertEqual(supply.available_to_promise_kg, 0)
 
         with self.assertRaises(frappe.ValidationError):
             reservation.cancel()
