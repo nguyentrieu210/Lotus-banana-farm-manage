@@ -33,8 +33,14 @@ class HarvestProfile(Document):
             quantity(self.avg_bunch_weight_kg, "Average bunch weight", positive=True)
         except RuleError as exc:
             frappe.throw(str(exc))
-        if cint(self.cut_bud_to_harvest_days) < 0:
-            frappe.throw("Harvest Profile quantities cannot be negative.")
+        for fieldname in (
+            "sucker_to_harvest_days",
+            "shooting_to_harvest_days",
+            "cut_bud_to_harvest_days",
+        ):
+            value = self.get(fieldname)
+            if value not in (None, "") and cint(value) < 0:
+                frappe.throw("Harvest Profile day offsets cannot be negative.")
 
         for fieldname, label in (
             ("bunch_survival_rate_percent", "Bunch Survival Rate"),
