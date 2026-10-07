@@ -98,3 +98,10 @@ Kiểm thử trình duyệt dùng API mô phỏng để xác nhận render, URL 
 Build: `npm ci --prefix frontend && npm run --prefix frontend build`; deploy `bench --site <site> migrate`, truy cập `/lotus/today`. Vue có outbox IndexedDB theo tài khoản cho field capture, GPS/ảnh và reconcile khi gửi lại; màn hiện trường cũ tại `/assets/lotus_farm/field/index.html` vẫn giữ làm fallback trong pilot cho đến khi UAT/cutover xác nhận parity. Giao dịch offline luôn được kiểm quyền/ngày/idempotency lại trên máy chủ. Không offline ledger ERP.
 
 Năng suất người/đội chỉ tính từ bảng actual có định danh; tổng công và sản lượng phải khớp chứng từ, không tự phân bổ tổng vào từng người. Cảnh báo lưu theo Farm/ngày/loại, có xác nhận kèm người/thời gian/lý do và tự giải quyết theo số liệu; bật scheduler sau khi cấu hình vận hành được duyệt. CI bổ sung luồng trình duyệt nối Frappe thật: đăng nhập → actual → audit → đối soát → chốt ngày → đọc lại dữ liệu.
+
+### Kiểm tra hoàn thiện 07/10/2026
+
+- Dropdown loại phiếu và trạng thái giữ mã gốc khi hiển thị tiếng Việt; kiểm thử trình duyệt chọn loại phiếu, chọn trạng thái và kiểm payload lưu.
+- Gửi hiện trường và nộp kết quả việc đều lưu bền vào IndexedDB trước khi gọi máy chủ. Khi mất phản hồi, hàng chờ giữ nguyên event ID/thời gian/payload/ảnh để gửi lại.
+- Chờ transaction hoàn tất trước khi báo lưu; ghi bị abort phải báo lỗi. Không ghi đè event đã lưu, không chạy hai lượt đồng bộ cùng tài khoản trong một tab, kiểm lại tài khoản trước từng lượt upload/gửi.
+- `tests/browser/offline_queue.cjs` kiểm IndexedDB thật: commit/abort, khóa event, ảnh, retry, đồng bộ đồng thời và tách tài khoản. UI field dự phòng tiếp tục được giữ đến UAT.
