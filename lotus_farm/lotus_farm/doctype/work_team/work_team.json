@@ -1,0 +1,63 @@
+{
+  "doctype": "DocType",
+  "name": "Work Team",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "farm",
+    "team_code",
+    "team_name",
+    "active"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "team_code",
+      "label": "Team Code",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "team_name",
+      "label": "Team Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": "1"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "title_field": "team_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "team_code,farm"
+}

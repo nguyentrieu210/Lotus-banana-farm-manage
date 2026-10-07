@@ -1,3 +1,6 @@
+import math
+
+
 class ForecastInputError(ValueError):
     pass
 
@@ -5,7 +8,13 @@ class ForecastInputError(ValueError):
 def _number(value, default=0):
     if value is None or value == "":
         return float(default)
-    return float(value)
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        raise ForecastInputError("Forecast quantities must be numeric.") from None
+    if not math.isfinite(result):
+        raise ForecastInputError("Forecast quantities must be finite.")
+    return result
 
 
 def _rate(value, label, default):
@@ -32,21 +41,15 @@ def calculate_availability(
     if source_bunch_qty < 0 or avg_bunch_weight_kg < 0 or committed_qty_kg < 0:
         raise ForecastInputError("Forecast quantities cannot be negative.")
 
-    survival_rate = _rate(
-        bunch_survival_rate_percent, "Bunch Survival Rate", 100
-    )
+    survival_rate = _rate(bunch_survival_rate_percent, "Bunch Survival Rate", 100)
     safety_buffer = _rate(safety_buffer_percent, "Safety Buffer", 0)
     packout_rate = _rate(packout_rate_percent, "Packout Rate", 100)
 
     if quality_pass_rate_percent is None or quality_pass_rate_percent == "":
-        defect_rate = _rate(
-            expected_defect_rate_percent, "Expected Defect Rate", 0
-        )
+        defect_rate = _rate(expected_defect_rate_percent, "Expected Defect Rate", 0)
         quality_pass_rate = 100 - defect_rate
     else:
-        quality_pass_rate = _rate(
-            quality_pass_rate_percent, "Quality Pass Rate", 100
-        )
+        quality_pass_rate = _rate(quality_pass_rate_percent, "Quality Pass Rate", 100)
 
     expected_harvest_bunch_qty = source_bunch_qty * survival_rate / 100
     gross = expected_harvest_bunch_qty * avg_bunch_weight_kg

@@ -1,0 +1,117 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Output",
+  "module": "Lotus Farm",
+  "field_order": [
+    "item",
+    "net_kg",
+    "cartons",
+    "batch",
+    "quality_standard",
+    "standard_version",
+    "valuation_rate",
+    "valuation_set_by",
+    "valuation_set_at",
+    "output_type",
+    "grade",
+    "market",
+    "pack_specification",
+    "secondary_type"
+  ],
+  "fields": [
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "reqd": 1,
+      "options": "Item"
+    },
+    {
+      "fieldname": "net_kg",
+      "fieldtype": "Float",
+      "label": "Net Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cartons",
+      "fieldtype": "Int",
+      "label": "Cartons"
+    },
+    {
+      "fieldname": "batch",
+      "fieldtype": "Link",
+      "label": "Batch",
+      "read_only": 1,
+      "options": "Batch"
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "options": "Quality Standard"
+    },
+    {
+      "fieldname": "standard_version",
+      "fieldtype": "Int",
+      "label": "Standard Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "valuation_rate",
+      "fieldtype": "Currency",
+      "label": "Stock Valuation Rate / Kg",
+      "precision": "6",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "valuation_set_by",
+      "fieldtype": "Link",
+      "label": "Valuation Set By",
+      "options": "User",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "valuation_set_at",
+      "fieldtype": "Datetime",
+      "label": "Valuation Set At",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "output_type",
+      "label": "Output Type",
+      "fieldtype": "Select",
+      "options": "Finished\nSecondary",
+      "reqd": 1,
+      "default": "Finished"
+    },
+    {
+      "fieldname": "grade",
+      "label": "Grade",
+      "fieldtype": "Link",
+      "options": "Product Grade"
+    },
+    {
+      "fieldname": "market",
+      "label": "Market",
+      "fieldtype": "Link",
+      "options": "Market"
+    },
+    {
+      "fieldname": "pack_specification",
+      "label": "Pack Specification",
+      "fieldtype": "Link",
+      "options": "Pack Specification"
+    },
+    {
+      "fieldname": "secondary_type",
+      "label": "Secondary Type",
+      "fieldtype": "Link",
+      "options": "Secondary Product Type"
+    }
+  ],
+  "istable": 1
+}

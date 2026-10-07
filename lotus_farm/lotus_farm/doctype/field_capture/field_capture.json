@@ -1,0 +1,143 @@
+{
+  "doctype": "DocType",
+  "name": "Field Capture",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "event_key",
+      "label": "Event Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "client_event_id",
+      "label": "Client Event Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "captured_by",
+      "label": "Captured By",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "captured_at",
+      "label": "Captured At",
+      "fieldtype": "Datetime",
+      "reqd": 1
+    },
+    {
+      "fieldname": "latitude",
+      "label": "Latitude",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "longitude",
+      "label": "Longitude",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "gps_accuracy_m",
+      "label": "Gps Accuracy M",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "photo",
+      "label": "Photo",
+      "fieldtype": "Attach Image"
+    },
+    {
+      "fieldname": "payload_json",
+      "label": "Payload Json",
+      "fieldtype": "Code",
+      "options": "JSON",
+      "reqd": 1
+    },
+    {
+      "fieldname": "payload_hash",
+      "label": "Payload Hash",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "target_doctype",
+      "label": "Target Doctype",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "target_name",
+      "label": "Target Name",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "server_received_at",
+      "label": "Server Received At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "event_key",
+    "client_event_id",
+    "captured_by",
+    "captured_at",
+    "latitude",
+    "longitude",
+    "gps_accuracy_m",
+    "photo",
+    "payload_json",
+    "payload_hash",
+    "target_doctype",
+    "target_name",
+    "server_received_at"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

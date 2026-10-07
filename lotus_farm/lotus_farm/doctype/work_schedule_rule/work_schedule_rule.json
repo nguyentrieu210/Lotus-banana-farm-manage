@@ -1,0 +1,123 @@
+{
+  "doctype": "DocType",
+  "name": "Work Schedule Rule",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "rule_name",
+      "label": "Rule Name",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_type",
+      "label": "Work Type",
+      "fieldtype": "Link",
+      "options": "Work Type",
+      "reqd": 1
+    },
+    {
+      "fieldname": "anchor",
+      "label": "Anchor",
+      "fieldtype": "Select",
+      "options": "Planting\nSelection\nShooting\nCut Bud",
+      "reqd": 1
+    },
+    {
+      "fieldname": "offset_days",
+      "label": "Offset Days",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "repeat_days",
+      "label": "Repeat Days",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "quantity_basis",
+      "label": "Quantity Basis",
+      "fieldtype": "Select",
+      "options": "Trees\nSelected Suckers\nBunches\nArea",
+      "reqd": 1
+    },
+    {
+      "fieldname": "norm_profile",
+      "label": "Norm Profile",
+      "fieldtype": "Link",
+      "options": "Material Norm Profile"
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Valid From",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Valid To",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Version",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Approval State",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "rule_name",
+    "work_type",
+    "anchor",
+    "offset_days",
+    "repeat_days",
+    "quantity_basis",
+    "norm_profile",
+    "valid_from",
+    "valid_to",
+    "version",
+    "approval_state"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ],
+  "title_field": "rule_name"
+}

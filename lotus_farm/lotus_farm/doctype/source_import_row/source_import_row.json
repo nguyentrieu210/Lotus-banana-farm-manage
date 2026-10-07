@@ -1,0 +1,101 @@
+{
+  "doctype": "DocType",
+  "name": "Source Import Row",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "row_key",
+    "source_sheet",
+    "source_row",
+    "source_hash",
+    "raw_json",
+    "legacy_org_key",
+    "row_status",
+    "target_doctype",
+    "target_name",
+    "reject_reason",
+    "reject_owner",
+    "normalized_json",
+    "validation_error"
+  ],
+  "fields": [
+    {
+      "fieldname": "row_key",
+      "label": "Row Key",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_sheet",
+      "label": "Source Sheet",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_row",
+      "label": "Source Row",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_hash",
+      "label": "Source Hash",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "raw_json",
+      "label": "Raw Json",
+      "fieldtype": "Code",
+      "reqd": 1,
+      "options": "JSON"
+    },
+    {
+      "fieldname": "legacy_org_key",
+      "label": "Legacy Org Key",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "row_status",
+      "label": "Row Status",
+      "fieldtype": "Select",
+      "options": "Pending\nImported\nRejected",
+      "reqd": 1,
+      "default": "Pending"
+    },
+    {
+      "fieldname": "target_doctype",
+      "label": "Target Doctype",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "target_name",
+      "label": "Target Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "reject_reason",
+      "label": "Reject Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "reject_owner",
+      "label": "Reject Owner",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "normalized_json",
+      "label": "Normalized Json",
+      "fieldtype": "Code",
+      "options": "JSON"
+    },
+    {
+      "fieldname": "validation_error",
+      "label": "Validation Error",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "istable": 1
+}

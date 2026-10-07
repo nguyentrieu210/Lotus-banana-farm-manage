@@ -7,6 +7,7 @@
   "field_order": [
     "farm",
     "farm_block",
+    "farm_plot",
     "crop_cycle",
     "sucker_selection_batch",
     "inspection_date",
@@ -15,7 +16,13 @@
     "defect_rate_percent",
     "defect_reason",
     "severity",
-    "notes"
+    "notes",
+    "quality_standard",
+    "standard_version",
+    "standard_snapshot",
+    "defects",
+    "quality_result",
+    "measurements"
   ],
   "fields": [
     {
@@ -81,12 +88,56 @@
       "fieldname": "severity",
       "fieldtype": "Select",
       "label": "Severity",
-      "options": "Minor\\nMajor\\nCritical"
+      "options": "Minor\nMajor\nCritical"
     },
     {
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "options": "Quality Standard"
+    },
+    {
+      "fieldname": "standard_version",
+      "fieldtype": "Int",
+      "label": "Standard Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "standard_snapshot",
+      "fieldtype": "Long Text",
+      "label": "Standard Snapshot",
+      "read_only": 1
+    },
+    {
+      "fieldname": "defects",
+      "fieldtype": "Table",
+      "label": "Defects",
+      "options": "Defect Inspection Line"
+    },
+    {
+      "fieldname": "quality_result",
+      "fieldtype": "Select",
+      "label": "Quality Result",
+      "read_only": 1,
+      "options": "Pass\nFail"
+    },
+    {
+      "fieldname": "measurements",
+      "fieldtype": "Table",
+      "label": "Measurements",
+      "options": "Quality Measurement"
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "read_only": 1
     }
   ],
   "permissions": [
@@ -98,7 +149,34 @@
       "delete": 1,
       "report": 1,
       "export": 1,
-      "print": 1
+      "print": 1,
+      "submit": 1,
+      "cancel": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
     }
-  ]
+  ],
+  "is_submittable": 1
 }

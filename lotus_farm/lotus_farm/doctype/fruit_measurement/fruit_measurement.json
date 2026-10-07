@@ -1,0 +1,168 @@
+{
+  "doctype": "DocType",
+  "name": "Fruit Measurement",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "farm_block",
+    "farm_plot",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "posting_date",
+    "row_code",
+    "sample_count",
+    "average_length",
+    "average_diameter",
+    "uom",
+    "notes",
+    "source_import_batch",
+    "legacy_source_key",
+    "amended_from",
+    "amendment_reason",
+    "field_capture"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Farm Block",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Crop Cycle",
+      "fieldtype": "Link",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "label": "Sucker Selection Batch",
+      "fieldtype": "Link",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "row_code",
+      "label": "Row Code",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sample_count",
+      "label": "Sample Count",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "average_length",
+      "label": "Average Length",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "average_diameter",
+      "label": "Average Diameter",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "uom",
+      "label": "Uom",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch"
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Fruit Measurement",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "field_capture",
+      "label": "Field Capture",
+      "fieldtype": "Link",
+      "options": "Field Capture",
+      "read_only": 1
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "is_submittable": 1
+}

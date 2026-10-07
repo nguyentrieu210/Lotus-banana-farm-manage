@@ -1,0 +1,79 @@
+{
+  "doctype": "DocType",
+  "name": "Work Type",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "work_code",
+    "work_name",
+    "category",
+    "uom",
+    "productivity_per_workday",
+    "active"
+  ],
+  "fields": [
+    {
+      "fieldname": "work_code",
+      "label": "Work Code",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "work_name",
+      "label": "Work Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "category",
+      "label": "Category",
+      "fieldtype": "Link",
+      "options": "Work Category",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "Uom",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1
+    },
+    {
+      "fieldname": "productivity_per_workday",
+      "label": "Productivity Per Workday",
+      "fieldtype": "Float",
+      "precision": "6"
+    },
+    {
+      "fieldname": "active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": "1"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "title_field": "work_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "work_code"
+}

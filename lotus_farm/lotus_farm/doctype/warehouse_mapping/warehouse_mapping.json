@@ -1,0 +1,64 @@
+{
+  "doctype": "DocType",
+  "name": "Warehouse Mapping",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "warehouse",
+      "label": "Warehouse",
+      "fieldtype": "Link",
+      "options": "Warehouse",
+      "reqd": 1
+    },
+    {
+      "fieldname": "warehouse_role",
+      "label": "Warehouse Role",
+      "fieldtype": "Select",
+      "options": "Field Store\nInput\nPackhouse\nFinished Goods\nSecondary",
+      "reqd": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": "1"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "warehouse",
+    "warehouse_role",
+    "enabled"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

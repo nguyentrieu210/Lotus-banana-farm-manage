@@ -1,0 +1,94 @@
+{
+  "doctype": "DocType",
+  "name": "Material Norm Profile",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "farm",
+    "profile_name",
+    "version",
+    "work_type",
+    "valid_from",
+    "valid_to",
+    "approval_state",
+    "lines"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "profile_name",
+      "label": "Profile Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Version",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_type",
+      "label": "Work Type",
+      "fieldtype": "Link",
+      "options": "Work Type",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Valid From",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Valid To",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Approval State",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "lines",
+      "label": "Lines",
+      "fieldtype": "Table",
+      "options": "Material Norm Line",
+      "reqd": 1
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "title_field": "profile_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "profile_name,work_type"
+}

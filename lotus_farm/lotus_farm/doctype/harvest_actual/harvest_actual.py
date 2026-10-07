@@ -38,13 +38,9 @@ class HarvestActual(Document):
                 frappe.throw("Harvest Forecast must belong to the same Sucker Selection Batch.")
 
             self.forecast_saleable_kg = flt(forecast.saleable_forecast_kg or 0, 3)
-            self.variance_kg = flt(
-                self.saleable_weight_kg - self.forecast_saleable_kg, 3
-            )
+            self.variance_kg = flt(self.saleable_weight_kg - self.forecast_saleable_kg, 3)
             if self.forecast_saleable_kg:
-                self.variance_percent = flt(
-                    self.variance_kg / self.forecast_saleable_kg * 100, 2
-                )
+                self.variance_percent = flt(self.variance_kg / self.forecast_saleable_kg * 100, 2)
 
     def _validate_scope(self):
         block_farm = frappe.db.get_value("Farm Block", self.farm_block, "farm")
@@ -70,3 +66,17 @@ class HarvestActual(Document):
             )
             if batch_cycle != self.crop_cycle:
                 frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+
+    def before_cancel(self):
+        source = frappe.qb.DocType("Harvest Lot Source")
+        lot = frappe.qb.DocType("Harvest Lot")
+        rows = (
+            frappe.qb.from_(source)
+            .join(lot)
+            .on(source.parent == lot.name)
+            .select(lot.name)
+            .where((source.harvest_actual == self.name) & (lot.docstatus == 1))
+            .run()
+        )
+        if rows:
+            frappe.throw("Cancel dependent Harvest Lots before cancelling this harvest.")

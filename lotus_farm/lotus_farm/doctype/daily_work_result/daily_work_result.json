@@ -1,0 +1,163 @@
+{
+  "doctype": "DocType",
+  "name": "Daily Work Result",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "farm_block",
+    "farm_plot",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "posting_date",
+    "work_plan",
+    "work_plan_line",
+    "completed_qty",
+    "actual_workdays",
+    "unfinished_reason",
+    "source_import_batch",
+    "legacy_source_key",
+    "amended_from",
+    "amendment_reason",
+    "field_capture"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Farm Block",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Crop Cycle",
+      "fieldtype": "Link",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "label": "Sucker Selection Batch",
+      "fieldtype": "Link",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_plan",
+      "label": "Work Plan",
+      "fieldtype": "Link",
+      "options": "Daily Work Plan",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_plan_line",
+      "label": "Work Plan Line",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "hidden": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_qty",
+      "label": "Completed Qty",
+      "fieldtype": "Float",
+      "precision": "6"
+    },
+    {
+      "fieldname": "actual_workdays",
+      "label": "Actual Workdays",
+      "fieldtype": "Float",
+      "precision": "6"
+    },
+    {
+      "fieldname": "unfinished_reason",
+      "label": "Unfinished Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch"
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Daily Work Result",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "field_capture",
+      "label": "Field Capture",
+      "fieldtype": "Link",
+      "options": "Field Capture",
+      "read_only": 1
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "is_submittable": 1
+}

@@ -1,0 +1,196 @@
+{
+  "doctype": "DocType",
+  "name": "Material Consumption",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "farm_block",
+    "farm_plot",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "posting_date",
+    "work_result",
+    "material_requirement",
+    "item",
+    "uom",
+    "warehouse",
+    "stock_entry",
+    "stock_entry_detail",
+    "issued_qty",
+    "consumed_qty",
+    "remaining_qty",
+    "source_import_batch",
+    "legacy_source_key",
+    "amended_from",
+    "amendment_reason"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Farm Block",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Crop Cycle",
+      "fieldtype": "Link",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "label": "Sucker Selection Batch",
+      "fieldtype": "Link",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_result",
+      "label": "Work Result",
+      "fieldtype": "Link",
+      "options": "Daily Work Result",
+      "reqd": 1
+    },
+    {
+      "fieldname": "material_requirement",
+      "label": "Material Requirement",
+      "fieldtype": "Link",
+      "options": "Material Requirement",
+      "reqd": 1
+    },
+    {
+      "fieldname": "item",
+      "label": "Item",
+      "fieldtype": "Link",
+      "options": "Item",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "Uom",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "warehouse",
+      "label": "Warehouse",
+      "fieldtype": "Link",
+      "options": "Warehouse",
+      "reqd": 1
+    },
+    {
+      "fieldname": "stock_entry",
+      "label": "Stock Entry",
+      "fieldtype": "Link",
+      "options": "Stock Entry",
+      "reqd": 1
+    },
+    {
+      "fieldname": "stock_entry_detail",
+      "label": "Stock Entry Detail",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "issued_qty",
+      "label": "Issued Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "consumed_qty",
+      "label": "Consumed Qty",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "remaining_qty",
+      "label": "Remaining Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch"
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Material Consumption",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "is_submittable": 1
+}

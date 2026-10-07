@@ -1,0 +1,86 @@
+{
+  "doctype": "DocType",
+  "name": "Pack Specification",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "spec_code",
+      "label": "Spec Code",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Version",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "item",
+      "label": "Item",
+      "fieldtype": "Link",
+      "options": "Item",
+      "reqd": 1
+    },
+    {
+      "fieldname": "kg_per_carton",
+      "label": "Kg Per Carton",
+      "fieldtype": "Float",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Valid From",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Valid To",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Approval State",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    }
+  ],
+  "field_order": [
+    "spec_code",
+    "version",
+    "item",
+    "kg_per_carton",
+    "valid_from",
+    "valid_to",
+    "approval_state"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ],
+  "title_field": "spec_code"
+}

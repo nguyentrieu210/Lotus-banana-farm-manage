@@ -1,0 +1,44 @@
+{
+  "doctype": "DocType",
+  "name": "Daily Close Check",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "check_code",
+    "reference_doctype",
+    "reference_name",
+    "status",
+    "message"
+  ],
+  "fields": [
+    {
+      "fieldname": "check_code",
+      "label": "Check Code",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reference_doctype",
+      "label": "Reference Doctype",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "reference_name",
+      "label": "Reference Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Pass\nBlock",
+      "reqd": 1
+    },
+    {
+      "fieldname": "message",
+      "label": "Message",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "istable": 1
+}

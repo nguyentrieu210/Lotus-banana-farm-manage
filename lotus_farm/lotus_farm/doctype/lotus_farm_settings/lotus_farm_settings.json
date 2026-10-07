@@ -3,13 +3,97 @@
   "name": "Lotus Farm Settings",
   "module": "Lotus Farm",
   "issingle": 1,
-  "field_order": ["default_harvest_age_days", "default_avg_bunch_weight_kg", "default_defect_rate_percent", "safety_buffer_percent", "configuration_note"],
-  "fields": [
-    {"fieldname": "default_harvest_age_days", "fieldtype": "Int", "label": "Default Harvest Age (days)", "non_negative": 1},
-    {"fieldname": "default_avg_bunch_weight_kg", "fieldtype": "Float", "label": "Default Average Bunch Weight (kg)", "non_negative": 1},
-    {"fieldname": "default_defect_rate_percent", "fieldtype": "Percent", "label": "Default Defect Rate (%)"},
-    {"fieldname": "safety_buffer_percent", "fieldtype": "Percent", "label": "Sales Safety Buffer (%)"},
-    {"default": "Set these values from Lotus actual field data. V0 intentionally ships without generic banana assumptions.", "fieldname": "configuration_note", "fieldtype": "Small Text", "label": "Configuration Note", "read_only": 1}
+  "field_order": [
+    "default_harvest_age_days",
+    "default_avg_bunch_weight_kg",
+    "default_defect_rate_percent",
+    "safety_buffer_percent",
+    "configuration_note",
+    "mass_balance_tolerance_kg",
+    "minimum_calibration_samples",
+    "require_registered_scale",
+    "dashboard_cancellation_threshold",
+    "dashboard_packout_min_percent",
+    "dashboard_disease_threshold",
+    "require_pack_classification"
   ],
-  "permissions": [{"role": "System Manager", "create": 1, "read": 1, "write": 1}]
+  "fields": [
+    {
+      "fieldname": "default_harvest_age_days",
+      "fieldtype": "Int",
+      "label": "Default Harvest Age (days)",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "default_avg_bunch_weight_kg",
+      "fieldtype": "Float",
+      "label": "Default Average Bunch Weight (kg)",
+      "non_negative": 1
+    },
+    {
+      "fieldname": "default_defect_rate_percent",
+      "fieldtype": "Percent",
+      "label": "Default Defect Rate (%)"
+    },
+    {
+      "fieldname": "safety_buffer_percent",
+      "fieldtype": "Percent",
+      "label": "Sales Safety Buffer (%)"
+    },
+    {
+      "default": "Set these values from Lotus actual field data. V0 intentionally ships without generic banana assumptions.",
+      "fieldname": "configuration_note",
+      "fieldtype": "Small Text",
+      "label": "Configuration Note",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mass_balance_tolerance_kg",
+      "fieldtype": "Float",
+      "label": "Mass Balance Tolerance Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "minimum_calibration_samples",
+      "fieldtype": "Int",
+      "label": "Minimum Calibration Samples",
+      "default": "10",
+      "reqd": 1
+    },
+    {
+      "fieldname": "require_registered_scale",
+      "label": "Require Registered Scale",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "dashboard_cancellation_threshold",
+      "label": "Dashboard Cancellation Threshold",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "dashboard_packout_min_percent",
+      "label": "Dashboard Packout Min Percent",
+      "fieldtype": "Percent"
+    },
+    {
+      "fieldname": "dashboard_disease_threshold",
+      "label": "Dashboard Disease Threshold",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "require_pack_classification",
+      "label": "Require Pack Classification",
+      "fieldtype": "Check"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1
+    }
+  ]
 }

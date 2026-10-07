@@ -5,16 +5,71 @@
   "autoname": "field:farm_code",
   "title_field": "farm_name",
   "track_changes": 1,
-  "field_order": ["farm_name", "farm_code", "location", "area_ha", "active", "notes"],
+  "field_order": [
+    "farm_name",
+    "farm_code",
+    "company",
+    "location",
+    "area_ha",
+    "active",
+    "notes"
+  ],
   "fields": [
-    {"fieldname": "farm_name", "fieldtype": "Data", "label": "Farm Name", "reqd": 1},
-    {"fieldname": "farm_code", "fieldtype": "Data", "label": "Farm Code", "reqd": 1, "unique": 1},
-    {"fieldname": "location", "fieldtype": "Data", "label": "Location"},
-    {"fieldname": "area_ha", "fieldtype": "Float", "label": "Area (ha)", "non_negative": 1},
-    {"default": "1", "fieldname": "active", "fieldtype": "Check", "label": "Active"},
-    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Notes"}
+    {
+      "fieldname": "farm_name",
+      "fieldtype": "Data",
+      "label": "Farm Name",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_code",
+      "fieldtype": "Data",
+      "label": "Farm Code",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "location",
+      "fieldtype": "Data",
+      "label": "Location"
+    },
+    {
+      "fieldname": "area_ha",
+      "fieldtype": "Float",
+      "label": "Area (ha)",
+      "non_negative": 1
+    },
+    {
+      "default": "1",
+      "fieldname": "active",
+      "fieldtype": "Check",
+      "label": "Active"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    }
   ],
   "permissions": [
-    {"role": "System Manager", "create": 1, "read": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1, "email": 1, "share": 1}
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "email": 1,
+      "share": 1
+    }
   ]
 }

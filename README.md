@@ -2,22 +2,15 @@
 
 Custom Frappe/ERPNext app for Lotus banana farm operations.
 
-## V1 operating model
+## ProMax operating model
 
-V1 separates permanent land master data from production cycles and daily cohorts:
+Company → Farm → Farm Block → Farm Plot → Crop Cycle → Sucker Selection Batch.
 
-```
-Farm
-  -> Farm Block
-      -> Crop Cycle
-          -> Sucker Selection Batch (Cycle 2+ cohort by selection date)
-              -> Bunch Operation
-              -> Defect Inspection
-              -> Harvest Forecast
-              -> Harvest Actual
-```
+Daily Work Plan links land and tasks to labor, versioned material norms, actual results, consumption/recovery and a blocking Daily Production Close. Incoming QC gates packout; cancellations reduce current ATP while preserving released snapshots. No Xí nghiệp DocType or parallel stock ledger is introduced.
 
-This is intentional: Cycle 1 is anchored by planting date, while ratoon cycles are tracked through actual sucker-selection batches. A block can therefore have several selection cohorts on different dates without forcing one artificial "Cycle 2 date".
+See [full BRD coverage](docs/BRD_COVERAGE.md), [operating setup](docs/PROMAX_IMPLEMENTATION.md) and [UAT/cutover](docs/UAT_CUTOVER.md).
+
+The management and field interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
 
 ## Forecast pipeline
 
@@ -70,9 +63,9 @@ For `Harvest Forecast`, `Forecast Basis = Cut Bud Operations` automatically sums
 
 ERPNext remains responsible for standard commercial and inventory objects such as Item, Customer, Sales Order, Warehouse, Stock, Delivery and Finance. Lotus Farm adds farm-specific production and forecast context and links forecast allocation to submitted ERPNext Sales Orders.
 
-## Not yet included
+## Acceptance status
 
-V1 does not yet include QR per bunch, GIS, AI prediction, mobile app, automated Sales Order item-to-farm matching, or a full packing transaction workflow.
+The branch implements the ProMax operational and field/reporting tooling. Code and disposable-site checks do not mean Lotus data has been migrated or the farm has accepted the system. Organization mapping, official coefficients, product codes, OneDrive credentials, device deployment, real-volume SLA, UAT, cutover and hypercare still require business/site access. Machine learning remains deferred until transactions are clean, as required by the BRD.
 
 ## Install
 
@@ -83,3 +76,21 @@ bench --site <site> migrate
 ```
 
 ERPNext is required. Runtime installation on a real Frappe site is still required before calling this production-ready.
+
+
+## Tests
+
+Pure checks without a Frappe installation:
+
+```bash
+python -m pip install "openpyxl>=3.1.5,<4"
+python -m unittest discover -s tests -v
+```
+
+On a **disposable** ERPNext v16 site:
+
+```bash
+bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+```
+
+The site suite includes a concurrency test with committed test fixtures. Never run it on production. The GitHub `Lotus BRD checks` workflow provisions that disposable site and migrates twice.

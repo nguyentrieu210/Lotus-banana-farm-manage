@@ -1,0 +1,75 @@
+{
+  "doctype": "DocType",
+  "name": "Material Requirement Line",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "item",
+    "uom",
+    "norm_basis",
+    "norm_qty",
+    "basis_qty",
+    "frequency",
+    "conversion_factor",
+    "required_qty"
+  ],
+  "fields": [
+    {
+      "fieldname": "item",
+      "label": "Item",
+      "fieldtype": "Link",
+      "options": "Item",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "Uom",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1
+    },
+    {
+      "fieldname": "norm_basis",
+      "label": "Norm Basis",
+      "fieldtype": "Link",
+      "options": "Norm Basis",
+      "reqd": 1
+    },
+    {
+      "fieldname": "norm_qty",
+      "label": "Norm Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "basis_qty",
+      "label": "Basis Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "frequency",
+      "label": "Frequency",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "conversion_factor",
+      "label": "Conversion Factor",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "required_qty",
+      "label": "Required Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    }
+  ],
+  "istable": 1
+}

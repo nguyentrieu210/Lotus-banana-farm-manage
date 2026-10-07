@@ -1,0 +1,87 @@
+{
+  "doctype": "DocType",
+  "name": "Scale Device",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device_id",
+      "label": "Device Id",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "integration_user",
+      "label": "Integration User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "calibrated_on",
+      "label": "Calibrated On",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "calibration_due",
+      "label": "Calibration Due",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "unit",
+      "label": "Unit",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1,
+      "default": "Kg"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "device_id",
+    "integration_user",
+    "enabled",
+    "calibrated_on",
+    "calibration_due",
+    "unit"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

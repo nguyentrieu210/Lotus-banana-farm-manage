@@ -1,0 +1,136 @@
+{
+  "doctype": "DocType",
+  "name": "Scale Reading",
+  "module": "Lotus Farm",
+  "field_order": [
+    "farm",
+    "device_id",
+    "reading_id",
+    "event_key",
+    "captured_at",
+    "server_received_at",
+    "gross_kg",
+    "tare_kg",
+    "net_kg",
+    "payload_hash",
+    "client_payload_hash"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "reqd": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "device_id",
+      "fieldtype": "Data",
+      "label": "Device Id",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reading_id",
+      "fieldtype": "Data",
+      "label": "Reading Id",
+      "reqd": 1
+    },
+    {
+      "fieldname": "event_key",
+      "fieldtype": "Data",
+      "label": "Event Key",
+      "unique": 1,
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "captured_at",
+      "fieldtype": "Datetime",
+      "label": "Captured At",
+      "reqd": 1
+    },
+    {
+      "fieldname": "server_received_at",
+      "fieldtype": "Datetime",
+      "label": "Server Received At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "gross_kg",
+      "fieldtype": "Float",
+      "label": "Gross Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "tare_kg",
+      "fieldtype": "Float",
+      "label": "Tare Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "net_kg",
+      "fieldtype": "Float",
+      "label": "Net Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "payload_hash",
+      "fieldtype": "Data",
+      "label": "Payload Hash",
+      "read_only": 1
+    },
+    {
+      "fieldname": "client_payload_hash",
+      "fieldtype": "Data",
+      "label": "Client Payload Hash",
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "autoname": "format:SR-{#####}",
+  "track_changes": 1,
+  "is_submittable": 0,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 0,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    }
+  ]
+}

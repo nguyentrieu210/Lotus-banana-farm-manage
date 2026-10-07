@@ -1,0 +1,123 @@
+{
+  "doctype": "DocType",
+  "name": "Source Inventory Item",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "feed",
+      "label": "Feed",
+      "fieldtype": "Link",
+      "options": "OneDrive Feed",
+      "reqd": 1
+    },
+    {
+      "fieldname": "external_item_id",
+      "label": "External Item Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "inventory_key",
+      "label": "Inventory Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "source_path",
+      "label": "Source Path",
+      "fieldtype": "Small Text",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_filename",
+      "label": "Source Filename",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "extension",
+      "label": "Extension",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "size_bytes",
+      "label": "Size Bytes",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "source_created_at",
+      "label": "Source Created At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "source_modified_at",
+      "label": "Source Modified At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "deleted",
+      "label": "Deleted",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "source_file",
+      "label": "Source File",
+      "fieldtype": "Link",
+      "options": "Source File Registry"
+    },
+    {
+      "fieldname": "inventory_status",
+      "label": "Inventory Status",
+      "fieldtype": "Select",
+      "options": "Unknown\nActive\nSuperseded\nArchive",
+      "default": "Unknown"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "feed",
+    "external_item_id",
+    "inventory_key",
+    "source_path",
+    "source_filename",
+    "extension",
+    "size_bytes",
+    "source_created_at",
+    "source_modified_at",
+    "deleted",
+    "source_file",
+    "inventory_status"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

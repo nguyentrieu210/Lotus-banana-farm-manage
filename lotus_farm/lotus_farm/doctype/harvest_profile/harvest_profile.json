@@ -19,7 +19,14 @@
     "packout_rate_percent",
     "safety_buffer_percent",
     "active",
-    "notes"
+    "notes",
+    "version",
+    "approval_state",
+    "cycle_type",
+    "sucker_to_harvest_days",
+    "shooting_to_harvest_days",
+    "calibration_json",
+    "calibration_hash"
   ],
   "fields": [
     {
@@ -76,25 +83,25 @@
       "fieldname": "bunch_survival_rate_percent",
       "fieldtype": "Percent",
       "label": "Bunch Survival Rate (%)",
-      "default": "100"
+      "reqd": 1
     },
     {
       "fieldname": "quality_pass_rate_percent",
       "fieldtype": "Percent",
       "label": "Quality Pass Rate (%)",
-      "default": "100"
+      "reqd": 1
     },
     {
       "fieldname": "packout_rate_percent",
       "fieldtype": "Percent",
       "label": "Packout Rate (%)",
-      "default": "100"
+      "reqd": 1
     },
     {
       "fieldname": "safety_buffer_percent",
       "fieldtype": "Percent",
       "label": "Safety Buffer (%)",
-      "default": "0"
+      "reqd": 1
     },
     {
       "fieldname": "active",
@@ -106,6 +113,50 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "version",
+      "fieldtype": "Int",
+      "label": "Version",
+      "default": "1",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "fieldtype": "Select",
+      "label": "Approval State",
+      "default": "Draft",
+      "reqd": 1,
+      "options": "Draft\nApproved"
+    },
+    {
+      "fieldname": "cycle_type",
+      "fieldtype": "Select",
+      "label": "Cycle Type",
+      "options": "\nPlant Crop\nRatoon"
+    },
+    {
+      "fieldname": "sucker_to_harvest_days",
+      "fieldtype": "Int",
+      "label": "Sucker To Harvest Days"
+    },
+    {
+      "fieldname": "shooting_to_harvest_days",
+      "fieldtype": "Int",
+      "label": "Shooting To Harvest Days"
+    },
+    {
+      "fieldname": "calibration_json",
+      "fieldtype": "Code",
+      "label": "Calibration Json",
+      "read_only": 1,
+      "options": "JSON"
+    },
+    {
+      "fieldname": "calibration_hash",
+      "fieldtype": "Data",
+      "label": "Calibration Hash",
+      "read_only": 1
     }
   ],
   "permissions": [
@@ -118,6 +169,30 @@
       "report": 1,
       "export": 1,
       "print": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 1,
+      "create": 1,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
     }
   ]
 }

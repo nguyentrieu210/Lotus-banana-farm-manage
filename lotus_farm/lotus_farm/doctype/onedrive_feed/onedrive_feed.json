@@ -1,0 +1,153 @@
+{
+  "doctype": "DocType",
+  "name": "OneDrive Feed",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "feed_name",
+      "label": "Feed Name",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "integration_user",
+      "label": "Integration User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "tenant_id",
+      "label": "Tenant Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "client_id",
+      "label": "Client Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "client_secret",
+      "label": "Client Secret",
+      "fieldtype": "Password",
+      "reqd": 1
+    },
+    {
+      "fieldname": "drive_id",
+      "label": "Drive Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "folder_id",
+      "label": "Folder Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "filename_pattern",
+      "label": "Filename Pattern",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "default": "*.xlsx"
+    },
+    {
+      "fieldname": "mapping",
+      "label": "Mapping",
+      "fieldtype": "Link",
+      "options": "Source Import Mapping",
+      "reqd": 1
+    },
+    {
+      "fieldname": "business_period",
+      "label": "Business Period",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_priority",
+      "label": "Source Priority",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "migration_tier",
+      "label": "Migration Tier",
+      "fieldtype": "Select",
+      "options": "A\nB\nC\nD",
+      "reqd": 1
+    },
+    {
+      "fieldname": "delta_link",
+      "label": "Delta Link",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_sync_at",
+      "label": "Last Sync At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_error",
+      "label": "Last Error",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "auto_stage",
+      "label": "Auto Stage",
+      "fieldtype": "Check"
+    }
+  ],
+  "field_order": [
+    "feed_name",
+    "enabled",
+    "farm",
+    "integration_user",
+    "tenant_id",
+    "client_id",
+    "client_secret",
+    "drive_id",
+    "folder_id",
+    "filename_pattern",
+    "mapping",
+    "business_period",
+    "source_priority",
+    "migration_tier",
+    "delta_link",
+    "last_sync_at",
+    "last_error",
+    "auto_stage"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ],
+  "title_field": "feed_name"
+}

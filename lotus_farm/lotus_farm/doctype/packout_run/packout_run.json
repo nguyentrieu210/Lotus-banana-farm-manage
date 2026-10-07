@@ -1,0 +1,219 @@
+{
+  "doctype": "DocType",
+  "name": "Packout Run",
+  "module": "Lotus Farm",
+  "field_order": [
+    "company",
+    "farm",
+    "packing_date",
+    "sources",
+    "outputs",
+    "reject_kg",
+    "other_loss_kg",
+    "input_kg",
+    "output_kg",
+    "mass_variance_kg",
+    "quality_standard",
+    "qc_state",
+    "qc_released_by",
+    "qc_released_at",
+    "target_warehouse",
+    "stock_entry",
+    "loss_details",
+    "amendment_reason",
+    "source_import_batch",
+    "legacy_source_key"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "reqd": 1,
+      "options": "Company"
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "reqd": 1,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "packing_date",
+      "fieldtype": "Date",
+      "label": "Packing Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sources",
+      "fieldtype": "Table",
+      "label": "Sources",
+      "reqd": 1,
+      "options": "Packout Run Source"
+    },
+    {
+      "fieldname": "outputs",
+      "fieldtype": "Table",
+      "label": "Outputs",
+      "reqd": 1,
+      "options": "Packout Output"
+    },
+    {
+      "fieldname": "reject_kg",
+      "fieldtype": "Float",
+      "label": "Reject Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "other_loss_kg",
+      "fieldtype": "Float",
+      "label": "Other Loss Kg",
+      "precision": "3",
+      "reqd": 1
+    },
+    {
+      "fieldname": "input_kg",
+      "fieldtype": "Float",
+      "label": "Input Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "output_kg",
+      "fieldtype": "Float",
+      "label": "Output Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mass_variance_kg",
+      "fieldtype": "Float",
+      "label": "Mass Variance Kg",
+      "read_only": 1
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "reqd": 1,
+      "options": "Quality Standard"
+    },
+    {
+      "fieldname": "qc_state",
+      "fieldtype": "Select",
+      "label": "Qc State",
+      "default": "Hold",
+      "reqd": 1,
+      "options": "Hold\nReleased"
+    },
+    {
+      "fieldname": "qc_released_by",
+      "fieldtype": "Link",
+      "label": "Qc Released By",
+      "read_only": 1,
+      "options": "User"
+    },
+    {
+      "fieldname": "qc_released_at",
+      "fieldtype": "Datetime",
+      "label": "Qc Released At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "target_warehouse",
+      "fieldtype": "Link",
+      "label": "Target Warehouse",
+      "reqd": 1,
+      "options": "Warehouse"
+    },
+    {
+      "fieldname": "stock_entry",
+      "fieldtype": "Link",
+      "label": "Stock Entry",
+      "read_only": 1,
+      "options": "Stock Entry"
+    },
+    {
+      "fieldname": "loss_details",
+      "label": "Loss Details",
+      "fieldtype": "Table",
+      "options": "Production Loss Detail"
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data",
+      "read_only": 1
+    }
+  ],
+  "autoname": "format:PR-{#####}",
+  "track_changes": 1,
+  "is_submittable": 1,
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus QC Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "write": 0,
+      "create": 0,
+      "submit": 0
+    },
+    {
+      "role": "Lotus Stock Reviewer",
+      "read": 1,
+      "write": 1,
+      "report": 1
+    }
+  ]
+}

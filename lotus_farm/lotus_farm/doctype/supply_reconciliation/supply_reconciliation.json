@@ -1,0 +1,148 @@
+{
+  "doctype": "DocType",
+  "name": "Supply Reconciliation",
+  "module": "Lotus Farm",
+  "autoname": "format:LR-{#####}",
+  "title_field": "reconciliation_type",
+  "track_changes": 1,
+  "is_submittable": 1,
+  "field_order": [
+    "farm",
+    "reconciliation_type",
+    "stock_entry",
+    "stock_reservation",
+    "reservation_disposition",
+    "reason",
+    "state",
+    "effect_json",
+    "effect_hash",
+    "reviewed_by",
+    "reviewed_at",
+    "applied_by",
+    "applied_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Farm",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reconciliation_type",
+      "fieldtype": "Select",
+      "label": "Reconciliation Type",
+      "options": "Stock Entry Reversal\nStock Reservation Cancellation",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "stock_entry",
+      "fieldtype": "Link",
+      "label": "Stock Entry",
+      "options": "Stock Entry"
+    },
+    {
+      "fieldname": "stock_reservation",
+      "fieldtype": "Link",
+      "label": "Stock Reservation",
+      "options": "Stock Reservation Entry"
+    },
+    {
+      "fieldname": "reservation_disposition",
+      "fieldtype": "Select",
+      "label": "Reservation Disposition",
+      "options": "Restore Future Reservation\nRelease Commitment",
+      "default": "Restore Future Reservation",
+      "depends_on": "eval:doc.reconciliation_type=='Stock Reservation Cancellation'"
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Small Text",
+      "label": "Reason",
+      "reqd": 1
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "State",
+      "options": "Draft\nApproved\nApplied",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "effect_json",
+      "fieldtype": "Long Text",
+      "label": "Approved Effect",
+      "read_only": 1
+    },
+    {
+      "fieldname": "effect_hash",
+      "fieldtype": "Data",
+      "label": "Effect Hash",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_by",
+      "fieldtype": "Link",
+      "label": "Reviewed By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_at",
+      "fieldtype": "Datetime",
+      "label": "Reviewed At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "applied_by",
+      "fieldtype": "Link",
+      "label": "Applied By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "applied_at",
+      "fieldtype": "Datetime",
+      "label": "Applied At",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

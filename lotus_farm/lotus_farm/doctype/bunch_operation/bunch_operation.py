@@ -1,15 +1,17 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import add_days, cint, getdate
+from frappe.utils import add_days, cint, getdate, now_datetime
 
 
 class BunchOperation(Document):
     def validate(self):
+        if self.is_new():
+            self.server_received_at = now_datetime()
         self._validate_scope()
         self._validate_quantities()
         self.net_bunch_qty = cint(self.bunch_qty) - cint(self.rejected_qty)
 
-        if self.operation_type == "Cut Bud":
+        if self.operation_type in ("Shooting", "Cut Bud"):
             self._set_expected_harvest()
 
         if self.expected_harvest_date:
@@ -61,18 +63,25 @@ class BunchOperation(Document):
         if self.expected_harvest_date:
             return
 
+        fieldname = {
+            "Shooting": "shooting_to_harvest_days",
+            "Cut Bud": "cut_bud_to_harvest_days",
+        }.get(self.operation_type)
+        if not fieldname:
+            return
+
         harvest_age_days = None
         if self.harvest_profile:
-            harvest_age_days = frappe.db.get_value(
-                "Harvest Profile", self.harvest_profile, "cut_bud_to_harvest_days"
-            )
+            harvest_age_days = frappe.db.get_value("Harvest Profile", self.harvest_profile, fieldname)
 
-        if harvest_age_days is None:
-            harvest_age_days = frappe.db.get_single_value(
-                "Lotus Farm Settings", "default_harvest_age_days"
-            )
+        if harvest_age_days is None and self.operation_type == "Cut Bud":
+            harvest_age_days = frappe.db.get_single_value("Lotus Farm Settings", "default_harvest_age_days")
 
         if harvest_age_days:
-            self.expected_harvest_date = add_days(
-                self.operation_date, cint(harvest_age_days)
+            self.expected_harvest_date = add_days(self.operation_date, cint(harvest_age_days))
+
+    def before_cancel(self):
+        if frappe.db.exists("Harvest Forecast", {"crop_cycle": self.crop_cycle, "supply_state": "Released"}):
+            frappe.throw(
+                "Supersede/close affected released forecasts before cancelling their source operations."
             )

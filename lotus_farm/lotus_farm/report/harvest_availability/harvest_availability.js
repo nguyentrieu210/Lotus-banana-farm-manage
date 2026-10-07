@@ -1,5 +1,6 @@
 frappe.query_reports["Harvest Availability"] = {
     filters: [
+        { fieldname: "item", label: __("Item"), fieldtype: "Link", options: "Item" },
         {
             fieldname: "farm",
             label: __("Farm"),
@@ -18,3 +19,4 @@ frappe.query_reports["Harvest Availability"] = {
         }
     ]
 };
+

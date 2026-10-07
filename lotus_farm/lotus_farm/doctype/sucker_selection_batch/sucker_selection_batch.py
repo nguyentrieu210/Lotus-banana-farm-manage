@@ -9,7 +9,7 @@ class SuckerSelectionBatch(Document):
         selected = cint(self.selected_sucker_qty)
         expected = cint(self.expected_productive_qty)
 
-        if selected < 0 or expected < 0:
+        if selected <= 0 or expected < 0:
             frappe.throw("Sucker quantities cannot be negative.")
         if expected and expected > selected:
             frappe.throw("Expected Productive Qty cannot exceed Selected Sucker Qty.")

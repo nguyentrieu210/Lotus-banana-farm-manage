@@ -1,0 +1,46 @@
+{
+  "doctype": "DocType",
+  "name": "Defect Inspection Line",
+  "module": "Lotus Farm",
+  "field_order": [
+    "defect_reason",
+    "occurrences",
+    "affected_units",
+    "severity",
+    "weight_kg"
+  ],
+  "fields": [
+    {
+      "fieldname": "defect_reason",
+      "fieldtype": "Link",
+      "label": "Defect Reason",
+      "reqd": 1,
+      "options": "Defect Reason"
+    },
+    {
+      "fieldname": "occurrences",
+      "fieldtype": "Int",
+      "label": "Occurrences",
+      "reqd": 1
+    },
+    {
+      "fieldname": "affected_units",
+      "fieldtype": "Int",
+      "label": "Affected Units",
+      "reqd": 1
+    },
+    {
+      "fieldname": "severity",
+      "fieldtype": "Select",
+      "label": "Severity",
+      "reqd": 1,
+      "options": "Minor\nMajor\nCritical"
+    },
+    {
+      "fieldname": "weight_kg",
+      "fieldtype": "Float",
+      "label": "Incoming Rejected Kg"
+    }
+  ],
+  "istable": 1
+}

@@ -1,0 +1,97 @@
+{
+  "doctype": "DocType",
+  "name": "Legacy Organization Map",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "legacy_key",
+    "legacy_company",
+    "legacy_source_unit",
+    "legacy_farm",
+    "company",
+    "farm",
+    "approval_state",
+    "approved_by",
+    "approved_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "legacy_key",
+      "label": "Legacy Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "legacy_company",
+      "label": "Legacy Company",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "legacy_source_unit",
+      "label": "Legacy Source Unit",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "legacy_farm",
+      "label": "Legacy Farm",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Approval State",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Approved By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_at",
+      "label": "Approved At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

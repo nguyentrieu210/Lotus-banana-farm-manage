@@ -1,0 +1,105 @@
+{
+  "doctype": "DocType",
+  "name": "Forecast Output Plan",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "field_order": [
+    "item",
+    "packout_profile",
+    "quality_standard",
+    "profile_version",
+    "yield_percent",
+    "expected_packed_kg",
+    "safe_commit_kg",
+    "materialized_qty_kg",
+    "committed_qty_kg",
+    "available_to_promise_kg",
+    "shortage_kg",
+    "availability_status"
+  ],
+  "fields": [
+    {
+      "fieldname": "item",
+      "fieldtype": "Link",
+      "label": "Item",
+      "options": "Item",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "packout_profile",
+      "fieldtype": "Link",
+      "label": "Packout Profile",
+      "options": "Packout Profile",
+      "reqd": 1
+    },
+    {
+      "fieldname": "quality_standard",
+      "fieldtype": "Link",
+      "label": "Quality Standard",
+      "options": "Quality Standard",
+      "read_only": 1
+    },
+    {
+      "fieldname": "profile_version",
+      "fieldtype": "Int",
+      "label": "Profile Version",
+      "read_only": 1
+    },
+    {
+      "fieldname": "yield_percent",
+      "fieldtype": "Percent",
+      "label": "Expected Packout Yield (%)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "expected_packed_kg",
+      "fieldtype": "Float",
+      "label": "Expected Packed Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "safe_commit_kg",
+      "fieldtype": "Float",
+      "label": "Safe Commit Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "materialized_qty_kg",
+      "fieldtype": "Float",
+      "label": "Materialized Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "committed_qty_kg",
+      "fieldtype": "Float",
+      "label": "Future Reserved Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "available_to_promise_kg",
+      "fieldtype": "Float",
+      "label": "Available to Promise Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "shortage_kg",
+      "fieldtype": "Float",
+      "label": "Shortage Kg",
+      "precision": "3",
+      "read_only": 1
+    },
+    {
+      "fieldname": "availability_status",
+      "fieldtype": "Select",
+      "label": "Availability Status",
+      "options": "Available\nTight\nOvercommitted",
+      "read_only": 1
+    }
+  ]
+}
