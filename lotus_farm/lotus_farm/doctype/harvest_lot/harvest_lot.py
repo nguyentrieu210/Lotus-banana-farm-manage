@@ -20,6 +20,8 @@ class HarvestLot(Document):
             actual.check_permission("read")
             if actual.docstatus != 1 or actual.farm != self.farm:
                 frappe.throw("Harvest source must be submitted and belong to this Farm.")
+            if self.is_new() and not (actual.farm_plot or frappe.db.get_value('Crop Cycle',actual.crop_cycle,'farm_plot')):
+                frappe.throw('Map the source Crop Cycle to a Plot before receiving this new lot.')
             if getdate(self.received_date) < getdate(actual.harvest_date):
                 frappe.throw("Lot receipt cannot precede harvest.")
             amount = positive(row.contributed_kg, "Contributed kg")

@@ -12,7 +12,9 @@
     "item",
     "yield_percent",
     "valid_from",
-    "valid_to"
+    "valid_to",
+    "calibration_json",
+    "calibration_hash"
   ],
   "fields": [
     {
@@ -78,6 +80,19 @@
       "fieldname": "valid_to",
       "fieldtype": "Date",
       "label": "Valid To"
+    },
+    {
+      "fieldname": "calibration_json",
+      "fieldtype": "Code",
+      "label": "Calibration Json",
+      "read_only": 1,
+      "options": "JSON"
+    },
+    {
+      "fieldname": "calibration_hash",
+      "fieldtype": "Data",
+      "label": "Calibration Hash",
+      "read_only": 1
     }
   ],
   "autoname": "format:PP-{#####}",

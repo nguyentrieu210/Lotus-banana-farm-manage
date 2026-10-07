@@ -19,7 +19,10 @@
     "qc_released_at",
     "target_warehouse",
     "stock_entry",
-    "loss_details"
+    "loss_details",
+    "amendment_reason",
+    "source_import_batch",
+    "legacy_source_key"
   ],
   "fields": [
     {
@@ -135,6 +138,24 @@
       "label": "Loss Details",
       "fieldtype": "Table",
       "options": "Production Loss Detail"
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data",
+      "read_only": 1
     }
   ],
   "autoname": "format:PR-{#####}",

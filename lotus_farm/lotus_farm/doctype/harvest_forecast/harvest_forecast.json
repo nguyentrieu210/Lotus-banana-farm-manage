@@ -51,7 +51,8 @@
     "released_at",
     "materialized_qty_kg",
     "cancellation_bunch_qty",
-    "net_source_bunch_qty"
+    "net_source_bunch_qty",
+    "planning_granularity"
   ],
   "fields": [
     {
@@ -344,6 +345,12 @@
       "label": "Net Source Bunch Qty",
       "fieldtype": "Float",
       "read_only": 1
+    },
+    {
+      "fieldname": "planning_granularity",
+      "label": "Planning Granularity",
+      "fieldtype": "Select",
+      "options": "Week\nMonth\nCustom"
     }
   ],
   "permissions": [

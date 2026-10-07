@@ -300,7 +300,7 @@ def stock_reversed(doc, method=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def link_stock_reservation(forecast, allocation, stock_reservation):
+def link_stock_reservation(forecast, allocation, stock_reservation, qty_kg=None):
     require_role("Lotus Sales Planner")
     reservation = frappe.get_doc("Stock Reservation Entry", stock_reservation)
     reservation.check_permission("read")
@@ -314,6 +314,7 @@ def link_stock_reservation(forecast, allocation, stock_reservation):
     if not row or reservation.docstatus != 1 or reservation.voucher_type != "Sales Order":
         frappe.throw("Select a submitted physical stock reservation and valid forecast allocation.")
     if row.stock_reservation == reservation.name and row.allocation_state == "Materialized":
+        if qty_kg is not None and abs(float(qty_kg)-float(row.reserved_qty_kg))>0.0005:frappe.throw('This conversion already has a different quantity.')
         return {"allocation": row.name, "state": row.allocation_state}
     if (
         row.allocation_state != "Reserved"
@@ -322,20 +323,35 @@ def link_stock_reservation(forecast, allocation, stock_reservation):
         or row.item != reservation.item_code
     ):
         frappe.throw("Physical reservation must match the exact forecast SO Item.")
+    split = next((r for r in supply.allocations if r.materialized_from==allocation and r.stock_reservation==reservation.name and r.allocation_state=='Materialized'),None)
+    if split:
+        if qty_kg is not None and abs(float(qty_kg)-float(split.reserved_qty_kg))>0.0005:
+            frappe.throw('This conversion already has a different quantity.')
+        return {'allocation':split.name,'state':split.allocation_state,'remaining_future_kg':row.reserved_qty_kg}
     linked = frappe.get_all(
-        "Forecast Allocation",
-        filters={"stock_reservation": reservation.name, "allocation_state": "Materialized"},
-        fields=["reserved_qty_kg"],
-    )
-    if (
-        sum(float(r.reserved_qty_kg) for r in linked) + float(row.reserved_qty_kg)
-        > float(reservation.reserved_qty) + 0.0005
-    ):
-        frappe.throw("Physical reservation is too small for these allocations.")
-    row.allocation_state, row.stock_reservation = "Materialized", reservation.name
-    with command(supply, "allocation"):
-        supply.save()
-    return {"allocation": row.name, "state": row.allocation_state}
+        'Forecast Allocation',filters={'stock_reservation':reservation.name,'allocation_state':'Materialized'},fields=['reserved_qty_kg'])
+    if float(reservation.delivered_qty or 0):
+        frappe.throw('Use a new undelivered physical reservation for further forecast conversion.')
+    from lotus_farm.promax_rules import split_amount
+    from lotus_farm.rules import RuleError
+    try:
+        amount,remainder=split_amount(row.reserved_qty_kg,float(reservation.reserved_qty)-sum(float(r.reserved_qty_kg) for r in linked),
+                                      row.reserved_qty_kg if qty_kg is None else qty_kg)
+    except RuleError as exc:frappe.throw(str(exc))
+    from lotus_farm.allocations import _active_for_line
+    order=frappe.get_doc('Sales Order',row.sales_order);order.check_permission('read')
+    line=next(i for i in order.items if i.name==row.sales_order_item)
+    remaining_demand=max(float(line.stock_qty)-float(line.delivered_qty or 0)*float(line.conversion_factor),0)
+    if _active_for_line(line.name)-amount>remaining_demand+0.0005:
+        frappe.throw('Physical plus remaining future commitments exceed the undelivered Sales Order demand. Convert enough or reduce the physical reservation.')
+    converted=row
+    if remainder:
+        converted=supply.append('allocations',{k:row.get(k) for k in ('sales_order','sales_order_item','item','forecast_output','allocated_by','allocated_at')})
+        converted.reserved_qty_kg=amount;converted.materialized_from=row.name;row.reserved_qty_kg=remainder
+    converted.allocation_state,converted.stock_reservation='Materialized',reservation.name
+    with command(supply,'allocation'):supply.save()
+    return {'allocation':converted.name,'state':converted.allocation_state,'remaining_future_kg':remainder}
+
 
 
 def reservation_cancel(doc, method=None):
@@ -372,7 +388,12 @@ def reservation_cancelled(doc, method=None):
         names = {row.name for row in linked if row.parent == forecast}
         for row in supply.allocations or []:
             if row.name in names and row.allocation_state == "Materialized":
-                row.allocation_state = "Reserved" if restore else "Released"
+                remaining=next((r for r in supply.allocations if r.name!=row.name and r.sales_order_item==row.sales_order_item and r.item==row.item and r.allocation_state=='Reserved'),None) if restore else None
+                if remaining:
+                    remaining.reserved_qty_kg+=row.reserved_qty_kg
+                    row.allocation_state='Released';row.restored_to=remaining.name
+                else:
+                    row.allocation_state = 'Reserved' if restore else 'Released'
                 changed = True
         if changed:
             with command(supply, "allocation"):

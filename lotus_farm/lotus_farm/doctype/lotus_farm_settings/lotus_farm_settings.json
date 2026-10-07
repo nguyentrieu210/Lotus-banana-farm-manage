@@ -10,7 +10,12 @@
     "safety_buffer_percent",
     "configuration_note",
     "mass_balance_tolerance_kg",
-    "minimum_calibration_samples"
+    "minimum_calibration_samples",
+    "require_registered_scale",
+    "dashboard_cancellation_threshold",
+    "dashboard_packout_min_percent",
+    "dashboard_disease_threshold",
+    "require_pack_classification"
   ],
   "fields": [
     {
@@ -55,6 +60,32 @@
       "label": "Minimum Calibration Samples",
       "default": "10",
       "reqd": 1
+    },
+    {
+      "fieldname": "require_registered_scale",
+      "label": "Require Registered Scale",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "dashboard_cancellation_threshold",
+      "label": "Dashboard Cancellation Threshold",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "dashboard_packout_min_percent",
+      "label": "Dashboard Packout Min Percent",
+      "fieldtype": "Percent"
+    },
+    {
+      "fieldname": "dashboard_disease_threshold",
+      "label": "Dashboard Disease Threshold",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "require_pack_classification",
+      "label": "Require Pack Classification",
+      "fieldtype": "Check"
     }
   ],
   "permissions": [

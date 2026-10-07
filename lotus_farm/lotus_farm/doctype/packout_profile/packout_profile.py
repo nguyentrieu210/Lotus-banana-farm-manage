@@ -7,6 +7,11 @@ class PackoutProfile(Document):
     def validate(self):
         validate_version(self, "profile_name", ("Lotus Packing Supervisor",))
         validate_item(self.item)
+        if self.calibration_json:
+            import json
+            from lotus_farm.rules import canonical_hash
+            if canonical_hash(json.loads(self.calibration_json))!=self.calibration_hash:
+                frappe.throw('Packout calibration evidence hash is invalid.')
         standard = frappe.get_doc("Quality Standard", self.quality_standard)
         standard.check_permission("read")
         if standard.approval_state != "Approved" or standard.item != self.item:

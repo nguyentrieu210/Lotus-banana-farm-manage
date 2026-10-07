@@ -14,7 +14,9 @@
     "target_doctype",
     "target_name",
     "reject_reason",
-    "reject_owner"
+    "reject_owner",
+    "normalized_json",
+    "validation_error"
   ],
   "fields": [
     {
@@ -82,6 +84,17 @@
       "label": "Reject Owner",
       "fieldtype": "Link",
       "options": "User"
+    },
+    {
+      "fieldname": "normalized_json",
+      "label": "Normalized Json",
+      "fieldtype": "Code",
+      "options": "JSON"
+    },
+    {
+      "fieldname": "validation_error",
+      "label": "Validation Error",
+      "fieldtype": "Small Text"
     }
   ],
   "istable": 1

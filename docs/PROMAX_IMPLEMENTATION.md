@@ -62,11 +62,15 @@ Source Import Batch/Row: sheet, số dòng, hash, JSON gốc, mã tổ chức c�
 
 Giữ tên cũ để không tạo hai bộ phiếu cùng làm một việc và không phá dữ liệu đã có.
 
+## Bổ sung toàn bộ nhóm yêu cầu còn lại
+
+Xem [BRD_COVERAGE.md](BRD_COVERAGE.md) để đối chiếu từng nhóm của bản BRD mới và [UAT_CUTOVER.md](UAT_CUTOVER.md) để chạy thử/cutover. Đã bổ sung dashboard/drill-down, lịch việc, Attendance reference, staging XLSX có mapping và control totals, integration retry/Graph feed, weighted calibration và forecast vintages, PWA outbox/GPS/ảnh, QR, device binding, GeoJSON/KML và dataset Power BI. Các bộ công cụ này cần cấu hình và kiểm tra trên hệ thống Lotus thật.
+
 ## Kiểm tra và giới hạn nghiệm thu
 
 - Pure suite kiểm tra công thức, schema, quyền lệnh và chuẩn hóa nguồn.
 - Disposable ERPNext v16 suite cài/migrate hai lần và kiểm tra luồng kho thật, khóa giá trị đã duyệt, hai kết nối giữ hàng đồng thời (thử lại giao dịch khi database báo tranh chấp, dùng cùng event ID), QC, Thửa/Vụ, 5.000 tấm xốp/thu hồi/chốt ngày và hủy làm giảm ATP.
 - Chỉ dùng kết quả workflow của **commit mới nhất** để kết luận chạy được. Không lấy lần pass cũ để chứng minh code mới.
 - Chưa có dữ liệu Lotus thật, bảng mapping đã duyệt, kiểm kê toàn bộ OneDrive, kiểm thử tải/SLA, đối chiếu số liệu hoặc UAT/cutover. Chưa nghiệm thu 360°.
-- Offline/PWA, GIS/GPS/QR, liên kết thiết bị cân với tài khoản, Power BI dataset, pipeline Excel tự động, hiệu chỉnh dự thu tự động theo thực tế/vintage accuracy và giao hàng một phần đầy đủ vẫn là phần tiếp theo. Không đánh dấu hoàn thành vì đã có form.
+- PWA/GIS/QR/device binding/Graph staging/dataset và calibration/vintage đã có code. Chưa xác nhận trên thiết bị, account và dữ liệu Lotus; chưa đo SLA trên dữ liệu thực. Calibration tạo đề xuất nháp có người duyệt. Giao hàng và phần giao còn lại vẫn do Delivery Note/Sales Order ERP quản lý. Không đánh dấu nghiệm thu chỉ vì đã có code.
 - Cấu hình kho/định giá/repack/thu hồi vật tư và tổ chức lao động thuê ngoài cần xác nhận tại Lotus. Các công thức và lựa chọn tích hợp ở đây là cách triển khai có kiểm soát, không phải xác nhận nghiệp vụ đã được chấp thuận.

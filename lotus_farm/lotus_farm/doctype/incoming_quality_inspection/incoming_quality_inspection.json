@@ -16,7 +16,9 @@
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "client_event_id",
+    "client_payload_hash"
   ],
   "fields": [
     {
@@ -101,6 +103,19 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "client_event_id",
+      "fieldtype": "Data",
+      "label": "Receiving Event ID",
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "client_payload_hash",
+      "fieldtype": "Data",
+      "label": "Receiving Payload Hash",
+      "read_only": 1
     }
   ],
   "autoname": "hash",

@@ -1,5 +1,5 @@
-from frappe.model.document import Document
+from lotus_farm.promax_controls import ReferenceMaster
 
 
-class Disease(Document):
+class Disease(ReferenceMaster):
     pass

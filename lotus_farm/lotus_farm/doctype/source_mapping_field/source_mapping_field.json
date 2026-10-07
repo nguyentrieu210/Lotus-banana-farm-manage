@@ -1,0 +1,46 @@
+{
+  "doctype": "DocType",
+  "name": "Source Mapping Field",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "source_column",
+      "label": "Source Column",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "target_field",
+      "label": "Target Field",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "value_type",
+      "label": "Value Type",
+      "fieldtype": "Select",
+      "options": "Text\nNumber\nDate\nPercent\nInteger\nJSON",
+      "reqd": 1
+    },
+    {
+      "fieldname": "required",
+      "label": "Required",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "value_map_json",
+      "label": "Value Map Json",
+      "fieldtype": "Code",
+      "options": "JSON"
+    }
+  ],
+  "field_order": [
+    "source_column",
+    "target_field",
+    "value_type",
+    "required",
+    "value_map_json"
+  ],
+  "istable": 1
+}

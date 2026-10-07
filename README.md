@@ -8,7 +8,9 @@ Company → Farm → Farm Block → Farm Plot → Crop Cycle → Sucker Selectio
 
 Daily Work Plan links land and tasks to labor, versioned material norms, actual results, consumption/recovery and a blocking Daily Production Close. Incoming QC gates packout; cancellations reduce current ATP while preserving released snapshots. No Xí nghiệp DocType or parallel stock ledger is introduced.
 
-See [ProMax implementation](docs/PROMAX_IMPLEMENTATION.md) for setup, migration, operating steps, BRD naming and remaining acceptance work.
+See [full BRD coverage](docs/BRD_COVERAGE.md), [operating setup](docs/PROMAX_IMPLEMENTATION.md) and [UAT/cutover](docs/UAT_CUTOVER.md).
+
+The management and field interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
 
 ## Forecast pipeline
 
@@ -61,11 +63,9 @@ For `Harvest Forecast`, `Forecast Basis = Cut Bud Operations` automatically sums
 
 ERPNext remains responsible for standard commercial and inventory objects such as Item, Customer, Sales Order, Warehouse, Stock, Delivery and Finance. Lotus Farm adds farm-specific production and forecast context and links forecast allocation to submitted ERPNext Sales Orders.
 
-## Not yet included
+## Acceptance status
 
-The BRD implementation branch adds immutable released forecasts, atomic SO Item allocations, versioned QC, traced harvest lots, reconciled Packout Runs, immutable scale readings, the ERPNext Repack bridge and ProMax daily operations. Source staging records do not mean Lotus historical data has been imported.
-
-See [BRD implementation and readiness](docs/BRD_IMPLEMENTATION.md) for migration steps, APIs, verification and the remaining enterprise requirements. Early supply can now be revised from Sucker Selection → Shooting → Cut Bud evidence without double-counting the same cohort. One biological forecast can also split finished supply across multiple approved Items without duplicating the source crop. QR, GIS, offline mobile and automatic delivery fulfilment are not completed.
+The branch implements the ProMax operational and field/reporting tooling. Code and disposable-site checks do not mean Lotus data has been migrated or the farm has accepted the system. Organization mapping, official coefficients, product codes, OneDrive credentials, device deployment, real-volume SLA, UAT, cutover and hypercare still require business/site access. Machine learning remains deferred until transactions are clean, as required by the BRD.
 
 ## Install
 
@@ -83,6 +83,7 @@ ERPNext is required. Runtime installation on a real Frappe site is still require
 Pure checks without a Frappe installation:
 
 ```bash
+python -m pip install "openpyxl>=3.1.5,<4"
 python -m unittest discover -s tests -v
 ```
 

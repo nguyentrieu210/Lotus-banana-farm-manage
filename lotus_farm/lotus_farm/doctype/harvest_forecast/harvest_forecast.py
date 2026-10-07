@@ -10,6 +10,7 @@ from lotus_farm.forecasting import ForecastInputError, calculate_availability
 class HarvestForecast(Document):
     def validate(self):
         before = self.get_doc_before_save()
+        if self.is_new() and not self.planning_granularity:self.planning_granularity="Week"
         if before and before.supply_state != "Draft":
             self._validate_frozen(before)
             self._hydrate_allocations()
@@ -98,6 +99,8 @@ class HarvestForecast(Document):
         return values
 
     def _validate_frozen(self, before):
+        if (self.planning_granularity or "Custom") != (before.planning_granularity or "Custom"):
+            frappe.throw("Released forecast planning grain is immutable.")
         if (
             self.snapshot_hash != before.snapshot_hash
             or self.released_by != before.released_by
@@ -132,6 +135,8 @@ class HarvestForecast(Document):
                         "reserved_qty_kg",
                         "allocation_state",
                         "stock_reservation",
+                        "materialized_from",
+                        "restored_to",
                         "allocated_by",
                         "allocated_at",
                     )

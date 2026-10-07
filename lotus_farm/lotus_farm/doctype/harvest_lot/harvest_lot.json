@@ -10,7 +10,10 @@
     "released_raw_kg",
     "raw_item",
     "raw_warehouse",
-    "raw_batch"
+    "raw_batch",
+    "amendment_reason",
+    "source_import_batch",
+    "legacy_source_key"
   ],
   "fields": [
     {
@@ -63,6 +66,24 @@
       "fieldtype": "Link",
       "label": "Raw Batch",
       "options": "Batch"
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data",
+      "read_only": 1
     }
   ],
   "autoname": "format:HL-{#####}",

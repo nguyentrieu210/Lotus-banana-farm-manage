@@ -19,7 +19,11 @@
     "forecast_saleable_kg",
     "variance_kg",
     "variance_percent",
-    "notes"
+    "notes",
+    "field_capture",
+    "amendment_reason",
+    "source_import_batch",
+    "legacy_source_key"
   ],
   "fields": [
     {
@@ -115,6 +119,31 @@
       "label": "Farm Plot",
       "fieldtype": "Link",
       "options": "Farm Plot",
+      "read_only": 1
+    },
+    {
+      "fieldname": "field_capture",
+      "label": "Field Capture",
+      "fieldtype": "Link",
+      "options": "Field Capture",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data",
       "read_only": 1
     }
   ],

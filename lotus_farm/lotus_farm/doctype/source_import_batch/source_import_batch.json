@@ -13,7 +13,12 @@
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "mapping",
+    "control_totals_json",
+    "reconciliation_reason",
+    "reconciled_by",
+    "source_attachment"
   ],
   "fields": [
     {
@@ -81,6 +86,37 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "mapping",
+      "label": "Mapping",
+      "fieldtype": "Link",
+      "options": "Source Import Mapping"
+    },
+    {
+      "fieldname": "control_totals_json",
+      "label": "Control Totals Json",
+      "fieldtype": "Code",
+      "options": "JSON",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reconciliation_reason",
+      "label": "Reconciliation Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "reconciled_by",
+      "label": "Reconciled By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_attachment",
+      "fieldtype": "Attach",
+      "label": "Original Source Attachment",
+      "read_only": 1
     }
   ],
   "autoname": "hash",

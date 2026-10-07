@@ -18,7 +18,8 @@
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "field_capture"
   ],
   "fields": [
     {
@@ -116,6 +117,13 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "field_capture",
+      "label": "Field Capture",
+      "fieldtype": "Link",
+      "options": "Field Capture",
+      "read_only": 1
     }
   ],
   "autoname": "hash",

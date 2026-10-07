@@ -24,7 +24,9 @@
     "approval_state",
     "cycle_type",
     "sucker_to_harvest_days",
-    "shooting_to_harvest_days"
+    "shooting_to_harvest_days",
+    "calibration_json",
+    "calibration_hash"
   ],
   "fields": [
     {
@@ -142,6 +144,19 @@
       "fieldname": "shooting_to_harvest_days",
       "fieldtype": "Int",
       "label": "Shooting To Harvest Days"
+    },
+    {
+      "fieldname": "calibration_json",
+      "fieldtype": "Code",
+      "label": "Calibration Json",
+      "read_only": 1,
+      "options": "JSON"
+    },
+    {
+      "fieldname": "calibration_hash",
+      "fieldtype": "Data",
+      "label": "Calibration Hash",
+      "read_only": 1
     }
   ],
   "permissions": [

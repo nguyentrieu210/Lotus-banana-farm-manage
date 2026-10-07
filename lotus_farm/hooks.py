@@ -106,3 +106,24 @@ doctype_js.update({
 })
 has_permission["Legacy Cycle Plot Mapping"] = "lotus_farm.controls.farm_permission"
 permission_query_conditions["Legacy Cycle Plot Mapping"] = "lotus_farm.permissions.legacy_cycle_plot_mapping"
+
+_promax_scoped = ['Plot Geometry','Scale Device','Work Schedule Rule','Field Capture','Integration Task','Warehouse Mapping']
+for _name in _promax_scoped:
+    has_permission[_name] = 'lotus_farm.controls.farm_permission'
+    permission_query_conditions[_name] = 'lotus_farm.permissions.' + _name.lower().replace(' ','_')
+    doc_events[_name] = {'validate':'lotus_farm.controls.check_farm'}
+for _name in (*_daily_doctypes,'Harvest Actual','Harvest Lot','Packout Run','Bunch Operation','Secondary Product Movement'):
+    _old = doc_events.setdefault(_name,{}).get('before_insert',[])
+    if isinstance(_old,str):_old=[_old]
+    doc_events[_name]['before_insert']=[*_old,'lotus_farm.promax_controls.amendment_guard']
+_pack_validate = doc_events['Packout Run']['validate']
+if isinstance(_pack_validate,str):_pack_validate=[_pack_validate]
+doc_events['Packout Run']['validate']=[*_pack_validate,'lotus_farm.promax_controls.pack_spec_guard']
+has_permission['OneDrive Feed'] = 'lotus_farm.controls.farm_permission'
+permission_query_conditions['OneDrive Feed'] = 'lotus_farm.permissions.onedrive_feed'
+scheduler_events = {'hourly':['lotus_farm.onedrive.scheduled_poll']}
+has_permission['Source Inventory Item'] = 'lotus_farm.controls.farm_permission'
+permission_query_conditions['Source Inventory Item'] = 'lotus_farm.permissions.source_inventory_item'
+doc_events['Bunch Operation']['validate'].append('lotus_farm.promax_controls.bunch_tag_guard')
+doc_events['Defect Reason'] = {'validate':'lotus_farm.promax_controls.defect_master_guard'}
+doctype_js['Harvest Lot'] = 'public/js/harvest_lot.js'

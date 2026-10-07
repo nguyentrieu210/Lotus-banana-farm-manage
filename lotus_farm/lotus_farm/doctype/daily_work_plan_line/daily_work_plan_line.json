@@ -16,7 +16,8 @@
     "productivity_per_workday",
     "required_workdays",
     "norm_profile",
-    "norm_version"
+    "norm_version",
+    "schedule_key"
   ],
   "fields": [
     {
@@ -107,6 +108,12 @@
       "fieldname": "norm_version",
       "label": "Norm Version",
       "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "schedule_key",
+      "label": "Schedule Key",
+      "fieldtype": "Data",
       "read_only": 1
     }
   ],

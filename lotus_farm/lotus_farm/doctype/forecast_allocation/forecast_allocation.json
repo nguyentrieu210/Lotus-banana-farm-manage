@@ -15,7 +15,9 @@
     "allocation_state",
     "allocated_by",
     "allocated_at",
-    "stock_reservation"
+    "stock_reservation",
+    "materialized_from",
+    "restored_to"
   ],
   "fields": [
     {
@@ -94,6 +96,18 @@
       "fieldtype": "Link",
       "label": "Stock Reservation",
       "options": "Stock Reservation Entry",
+      "read_only": 1
+    },
+    {
+      "fieldname": "materialized_from",
+      "label": "Materialized From",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "restored_to",
+      "label": "Restored To Allocation",
+      "fieldtype": "Data",
       "read_only": 1
     }
   ]

@@ -1,0 +1,146 @@
+{
+  "doctype": "DocType",
+  "name": "Integration Task",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "external_id",
+      "label": "External Id",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_system",
+      "label": "Source System",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_hash",
+      "label": "Source Hash",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "event_key",
+      "label": "Event Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_file",
+      "label": "Source File",
+      "fieldtype": "Link",
+      "options": "Source File Registry",
+      "reqd": 1
+    },
+    {
+      "fieldname": "mapping",
+      "label": "Mapping",
+      "fieldtype": "Link",
+      "options": "Source Import Mapping",
+      "reqd": 1
+    },
+    {
+      "fieldname": "file",
+      "label": "File",
+      "fieldtype": "Attach",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Pending\nRunning\nCompleted\nFailed",
+      "default": "Pending",
+      "read_only": 1
+    },
+    {
+      "fieldname": "retry_count",
+      "label": "Retry Count",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sync_error",
+      "label": "Sync Error",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_sync_at",
+      "label": "Last Sync At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "blocking",
+      "label": "Blocking",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "external_id",
+    "source_system",
+    "source_hash",
+    "event_key",
+    "source_file",
+    "mapping",
+    "file",
+    "status",
+    "retry_count",
+    "sync_error",
+    "last_sync_at",
+    "source_import_batch",
+    "blocking",
+    "posting_date"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

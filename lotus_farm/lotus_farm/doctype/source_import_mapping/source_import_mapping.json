@@ -1,0 +1,115 @@
+{
+  "doctype": "DocType",
+  "name": "Source Import Mapping",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "mapping_name",
+      "label": "Mapping Name",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "target_doctype",
+      "label": "Target Doctype",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sheet_name",
+      "label": "Sheet Name",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "header_row",
+      "label": "Header Row",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "first_data_row",
+      "label": "First Data Row",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "decimal_mark",
+      "label": "Decimal Mark",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "default": ","
+    },
+    {
+      "fieldname": "grouping_mark",
+      "label": "Grouping Mark",
+      "fieldtype": "Data",
+      "default": "."
+    },
+    {
+      "fieldname": "legacy_org_column",
+      "label": "Legacy Org Column",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "fields",
+      "label": "Fields",
+      "fieldtype": "Table",
+      "options": "Source Mapping Field",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Version",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Approval State",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    }
+  ],
+  "field_order": [
+    "mapping_name",
+    "target_doctype",
+    "sheet_name",
+    "header_row",
+    "first_data_row",
+    "decimal_mark",
+    "grouping_mark",
+    "legacy_org_column",
+    "fields",
+    "version",
+    "approval_state"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ],
+  "title_field": "mapping_name"
+}

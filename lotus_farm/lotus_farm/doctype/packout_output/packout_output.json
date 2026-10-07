@@ -12,7 +12,11 @@
     "valuation_rate",
     "valuation_set_by",
     "valuation_set_at",
-    "output_type"
+    "output_type",
+    "grade",
+    "market",
+    "pack_specification",
+    "secondary_type"
   ],
   "fields": [
     {
@@ -83,6 +87,30 @@
       "options": "Finished\nSecondary",
       "reqd": 1,
       "default": "Finished"
+    },
+    {
+      "fieldname": "grade",
+      "label": "Grade",
+      "fieldtype": "Link",
+      "options": "Product Grade"
+    },
+    {
+      "fieldname": "market",
+      "label": "Market",
+      "fieldtype": "Link",
+      "options": "Market"
+    },
+    {
+      "fieldname": "pack_specification",
+      "label": "Pack Specification",
+      "fieldtype": "Link",
+      "options": "Pack Specification"
+    },
+    {
+      "fieldname": "secondary_type",
+      "label": "Secondary Type",
+      "fieldtype": "Link",
+      "options": "Secondary Product Type"
     }
   ],
   "istable": 1

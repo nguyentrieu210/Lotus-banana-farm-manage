@@ -74,7 +74,7 @@ def plot_scope(doc, method=None):
         if not historical_forecast:
             doc.farm_plot = cycle.get('farm_plot')
         plot_name = doc.farm_plot
-        if doc.doctype in DAILY_TYPES and not plot_name:
+        if (doc.doctype in DAILY_TYPES or (doc.doctype in ('Harvest Actual','Bunch Operation','Defect Inspection') and doc.is_new())) and not plot_name:
             frappe.throw('Map the legacy cycle to a Plot before daily operations.')
         if doc.get('sucker_selection_batch'):
             cohort = frappe.get_doc('Sucker Selection Batch', doc.sucker_selection_batch)
@@ -286,8 +286,12 @@ class LaborAllocationRecord(DailyDocument):
             table=frappe.qb.DocType(self.doctype)
             used=[r[0] for r in (frappe.qb.from_(table).select(table.allocated_workdays)
                 .where((table.employee==self.employee)&(table.posting_date==self.posting_date)&(table.docstatus==1)&(table.name!=self.name)).for_update().run())]
-            if sum(flt(x) for x in used)+amount > 1.000001:
-                frappe.throw('Employee cannot be allocated more than one workday per date.')
+            capacity=1
+            if frappe.db.exists('DocType','Attendance'):
+                statuses=set(frappe.get_all('Attendance',filters={'employee':self.employee,'attendance_date':self.posting_date,'docstatus':1},pluck='status'))
+                capacity=0 if statuses.intersection({'Absent','On Leave'}) else (0.5 if 'Half Day' in statuses else 1)
+            if sum(flt(x) for x in used)+amount > capacity+0.000001:
+                frappe.throw('Employee allocation exceeds daily capacity or submitted attendance availability.')
         elif not self.work_team or not self.allocation_note:
             frappe.throw('Aggregate allocation requires a Work Team and an explanatory note.')
 
@@ -482,6 +486,8 @@ class IncomingQC(DailyDocument):
             whole_count(row.occurrences, 'Occurrences')
             if row.occurrences < row.affected_units:
                 frappe.throw('Defect occurrences must cover affected units.')
+        if self.rejected_kg and abs(sum(number(r.weight_kg or 0,'Defect kg') for r in self.defects)-self.rejected_kg)>0.0005:
+            frappe.throw('Incoming defect weights must explain the entire rejected weight.')
         if self.rejected_kg and not self.defects:
             frappe.throw('Rejected incoming weight requires defect reasons.')
         if frappe.db.exists(self.doctype, {'harvest_lot':self.harvest_lot,'docstatus':1,'name':['!=',self.name]}):
@@ -575,6 +581,8 @@ def close_checks(farm, date):
                 add('stock_posted',bool(run.stock_entry and frappe.db.get_value('Stock Entry',run.stock_entry,'docstatus')==1),'Finished goods require a submitted ERP stock entry.',doctype,row.name)
     for name in frappe.get_all('Integration Event',filters={'farm':farm,'status':['in',['Pending','Failed']]},pluck='name'):
         add('integration',False,'Resolve unfinished integration events before closing.','Integration Event',name)
+    for task in frappe.get_all('Integration Task',filters={'farm':farm,'posting_date':date,'blocking':1,'status':['!=','Completed']},fields=['name']):
+        add('integration_task',False,'Resolve blocking source integration tasks before closing.','Integration Task',task.name)
     return checks
 
 
@@ -693,6 +701,16 @@ class ImportBatch(Document):
         lock('Source File Registry',self.source_file)
         # Recheck under the source lock so retries cannot submit duplicate source rows.
         self.validate()
+        if self.mapping:
+            from lotus_farm.importing import verify_staging,reconcile_totals
+            verify_staging(self)
+            totals=reconcile_totals(self)
+            if any(abs(v)>0.000001 for v in totals['variance'].values()) and not self.reconciliation_reason:
+                frappe.throw('Explain source-versus-target quantity differences before accepting the batch.')
+            controls=json.loads(self.control_totals_json or '{}');controls.update(totals);self.control_totals_json=json.dumps(controls,default=str)
+            if any(r.row_status=='Rejected' for r in self.rows) and not self.reconciliation_reason:
+                frappe.throw('Explain rejected-source control totals before accepting the import batch.')
+            self.reconciled_by=frappe.session.user
         if self.resolved_percent < 99.5:
             frappe.throw('At least 99.5% of scoped rows must be imported or explicitly rejected.')
 

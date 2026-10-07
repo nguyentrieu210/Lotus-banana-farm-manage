@@ -6,7 +6,8 @@
     "defect_reason",
     "occurrences",
     "affected_units",
-    "severity"
+    "severity",
+    "weight_kg"
   ],
   "fields": [
     {
@@ -34,6 +35,11 @@
       "label": "Severity",
       "reqd": 1,
       "options": "Minor\nMajor\nCritical"
+    },
+    {
+      "fieldname": "weight_kg",
+      "fieldtype": "Float",
+      "label": "Incoming Rejected Kg"
     }
   ],
   "istable": 1

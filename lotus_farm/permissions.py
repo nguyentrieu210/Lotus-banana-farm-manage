@@ -135,3 +135,35 @@ def cycle_closing_report(user=None):
 
 def legacy_cycle_plot_mapping(user=None):
     return query_condition("Legacy Cycle Plot Mapping",user)
+
+
+def plot_geometry(user=None):
+    return query_condition("Plot Geometry", user)
+
+
+def scale_device(user=None):
+    return query_condition("Scale Device", user)
+
+
+def work_schedule_rule(user=None):
+    return query_condition("Work Schedule Rule", user)
+
+
+def field_capture(user=None):
+    return query_condition("Field Capture", user)
+
+
+def integration_task(user=None):
+    return query_condition("Integration Task", user)
+
+
+def warehouse_mapping(user=None):
+    return query_condition("Warehouse Mapping", user)
+
+
+def onedrive_feed(user=None):
+    return query_condition('OneDrive Feed',user)
+
+
+def source_inventory_item(user=None):
+    return query_condition('Source Inventory Item',user)

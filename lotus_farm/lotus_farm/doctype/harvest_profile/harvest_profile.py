@@ -11,6 +11,12 @@ class HarvestProfile(Document):
         self._validate_scope()
         self._validate_dates()
         self._validate_values()
+        if self.calibration_json:
+            import json
+            from lotus_farm.rules import canonical_hash
+            result=json.loads(self.calibration_json);expected=result.pop('source_hash',None)
+            if canonical_hash(result)!=expected or self.calibration_hash!=expected:
+                frappe.throw('Calibration evidence hash does not match the proposal.')
 
     def _validate_scope(self):
         if self.farm_block:

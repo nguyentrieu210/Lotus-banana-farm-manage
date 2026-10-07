@@ -10,7 +10,8 @@
     "defect_name",
     "category",
     "active",
-    "notes"
+    "notes",
+    "defect_group"
   ],
   "fields": [
     {
@@ -44,6 +45,12 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "defect_group",
+      "label": "Defect Group",
+      "fieldtype": "Link",
+      "options": "Quality Defect Group"
     }
   ],
   "permissions": [
