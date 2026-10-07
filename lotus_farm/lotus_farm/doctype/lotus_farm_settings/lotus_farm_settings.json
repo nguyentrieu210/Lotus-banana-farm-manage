@@ -15,7 +15,8 @@
     "dashboard_cancellation_threshold",
     "dashboard_packout_min_percent",
     "dashboard_disease_threshold",
-    "require_pack_classification"
+    "require_pack_classification",
+    "enable_proactive_alerts"
   ],
   "fields": [
     {
@@ -86,6 +87,13 @@
       "fieldname": "require_pack_classification",
       "label": "Require Pack Classification",
       "fieldtype": "Check"
+    },
+    {
+      "fieldname": "enable_proactive_alerts",
+      "label": "Enable Proactive Alerts",
+      "fieldtype": "Check",
+      "default": 0,
+      "description": "Enable hourly farm risk alerts after thresholds, Farm grants and warehouse mappings are approved."
     }
   ],
   "permissions": [

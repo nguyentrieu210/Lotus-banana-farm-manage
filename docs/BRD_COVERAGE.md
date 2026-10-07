@@ -90,3 +90,5 @@ SPA Vue 3 + Frappe UI + Vue Router + Pinia tại `/lotus/today`; dependency pin 
 Kiểm thử trình duyệt dùng API mô phỏng để xác nhận render, URL scope, KPI drilldown, submit actual, reload và responsive. Suite site riêng dùng tài liệu Frappe/ERPNext thật. Các kiểm thử này không thay cho UAT người dùng, kết nối OneDrive/cân thật, đối soát archive và kiểm tải 700 ha.
 
 Build: `npm ci --prefix frontend && npm run --prefix frontend build`; deploy `bench --site <site> migrate`, truy cập `/lotus/today`. Màn hiện trường offline tiếp tục tại `/assets/lotus_farm/field/index.html`; giao dịch offline được kiểm quyền/ngày/idempotency lại trên máy chủ. Không offline ledger ERP.
+
+Năng suất người/đội chỉ tính từ bảng actual có định danh; tổng công và sản lượng phải khớp chứng từ, không tự phân bổ tổng vào từng người. Cảnh báo lưu theo Farm/ngày/loại, có xác nhận kèm người/thời gian/lý do và tự giải quyết theo số liệu; bật scheduler sau khi cấu hình vận hành được duyệt. CI bổ sung luồng trình duyệt nối Frappe thật: đăng nhập → actual → audit → đối soát → chốt ngày → đọc lại dữ liệu.

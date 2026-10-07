@@ -7,6 +7,7 @@ from lotus_farm.controls import lock, require_role, command, command_allowed
 from lotus_farm.daily_operations import day_guard
 
 MODULES={
+ 'alerts':['Lotus Alert'],
  'farms':['Farm','Farm Block','Farm Plot','Crop Cycle','Sucker Selection Batch'],
  'plans':['Harvest Forecast','Daily Work Plan','Supply Reconciliation'],
  'work':['Daily Work Plan','Daily Work Result','Planting Event','Disease Observation','Bunch Operation'],
@@ -35,6 +36,7 @@ def bootstrap():
     session['farms']=frappe.get_list('Farm',fields=['name','farm_name','company'],limit_page_length=1000)
     session['modules']={k:[t for t in types if frappe.has_permission(t,'read')] for k,types in MODULES.items()}
     session['modules']={k:v for k,v in session['modules'].items() if v}
+    session['creatable']={t:frappe.has_permission(t,'create') for t in ALLOWED}
     session['today']=nowdate()
     return session
 

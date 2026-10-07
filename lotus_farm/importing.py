@@ -21,7 +21,7 @@ IMPORT_FIELDS={
  'Harvest Actual':('farm_block','crop_cycle','sucker_selection_batch','harvest_date','harvested_bunch_qty','gross_weight_kg','rejected_weight_kg','forecast','notes','ribbon_color','harvest_team','started_at','ended_at','receiving_packhouse','scale_reading'),
  'Daily Labor Summary':('posting_date','work_category','work_area','headcount','present','absent','staffing_target','area_ha','actual_workdays'),
  'Daily Work Plan':('posting_date','lines'),
- 'Daily Work Result':SCOPE+('work_plan','work_plan_line','completed_qty','actual_workdays','unfinished_reason'),
+ 'Daily Work Result':SCOPE+('work_plan','work_plan_line','completed_qty','actual_workdays','unfinished_reason','actual_labor'),
  'Incoming Quality Inspection':('posting_date','harvest_lot','accepted_kg','defects','notes'),
  'Harvest Lot':('received_date','sources','raw_item','raw_warehouse','raw_batch'),
  'Packout Run':('packing_date','sources','outputs','target_warehouse','quality_standard','reject_kg','other_loss_kg','loss_details','packhouse_shift'),

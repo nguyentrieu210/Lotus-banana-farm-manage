@@ -15,7 +15,9 @@ def daily_overview(farm, posting_date):
         plan=frappe.get_doc('Daily Work Plan',name)
         for line in plan.lines:
             results=frappe.get_list('Daily Work Result',filters={'work_plan_line':line.name,'docstatus':1},fields=['name','completed_qty','actual_workdays','unfinished_reason'])
-            allocated=sum(flt(v) for v in frappe.get_list('Labor Allocation',filters={'work_plan_line':line.name,'docstatus':1},pluck='allocated_workdays'))
+            from lotus_farm.reporting import records
+            allocations=records('Labor Allocation',{'work_plan_line':line.name,'docstatus':1},['name','employee','work_team','allocated_workdays'])
+            allocated=sum(flt(v.allocated_workdays) for v in allocations)
             result=results[0] if results else {}
             tasks.append(dict(plan=plan.name,line=line.name,farm_block=line.farm_block,farm_plot=line.farm_plot,
                               crop_cycle=line.crop_cycle,cohort=line.sucker_selection_batch,work_type=line.work_type,
@@ -25,7 +27,7 @@ def daily_overview(farm, posting_date):
                               result=result.get('name'),unfinished_reason=result.get('unfinished_reason'),
                               status='Completed' if results else (line.execution_state or 'Planned'),
                               responsible=line.responsible,work_team=line.work_team,start_at=line.start_at,due_at=line.due_at,
-                              blocked_reason=line.blocked_reason))
+                              blocked_reason=line.blocked_reason,allocations=allocations))
     return dict(farm=farm,posting_date=str(date),tasks=tasks,
                 labor=frappe.get_list('Daily Labor Summary',filters={'farm':farm,'posting_date':date,'docstatus':1},fields=['name','work_category','work_area','headcount','present','absent','staffing_gap','workdays_per_ha']),
                 cancellations=frappe.get_list('Bunch Cancellation',filters={'farm':farm,'posting_date':date,'docstatus':1},fields=['name','farm_block','farm_plot','crop_cycle','reason','bunch_qty']),

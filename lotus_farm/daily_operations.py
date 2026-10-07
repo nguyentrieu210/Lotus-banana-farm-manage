@@ -261,6 +261,9 @@ class WorkResult(DailyDocument):
         row = plan_line(self)
         number(self.completed_qty, 'Completed quantity')
         number(self.actual_workdays, 'Actual workdays')
+        if self.actual_labor:
+            from lotus_farm.productivity import validate_actual_labor
+            validate_actual_labor(self)
         if frappe.db.exists(self.doctype, {'work_plan_line': self.work_plan_line, 'docstatus': 1, 'name': ['!=', self.name]}):
             frappe.throw('Each work plan line has one submitted daily result. Cancel/amend to correct it.')
         if self.docstatus == 1:

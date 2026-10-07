@@ -144,3 +144,7 @@ doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validat
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
+
+has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
+permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
+scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')

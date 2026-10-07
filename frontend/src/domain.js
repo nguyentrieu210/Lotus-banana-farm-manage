@@ -1,4 +1,4 @@
-export const pages=[['today','Hôm nay'],['farms','Nông trường'],['plans','Kế hoạch & dự thu'],['work','Công việc'],['labor','Nhân sự'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['reports','Báo cáo'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu']]
+export const pages=[['today','Hôm nay'],['alerts','Cảnh báo'],['farms','Nông trường'],['plans','Kế hoạch & dự thu'],['work','Công việc'],['labor','Nhân sự'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['reports','Báo cáo'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu']]
 export const titles=Object.fromEntries(pages)
 export const moduleKey=p=>p.replace('admin/','')
 export const fmt=v=>v==null?'—':typeof v==='number'?v.toLocaleString('vi-VN',{maximumFractionDigits:3}):String(v)

@@ -171,3 +171,6 @@ def source_inventory_item(user=None):
 
 def packhouse_shift(user=None):
     return query_condition('Packhouse Shift', user)
+
+def lotus_alert(user=None):
+    return query_condition('Lotus Alert',user)

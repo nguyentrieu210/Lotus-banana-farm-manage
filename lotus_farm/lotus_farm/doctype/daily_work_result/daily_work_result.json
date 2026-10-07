@@ -20,7 +20,8 @@
     "legacy_source_key",
     "amended_from",
     "amendment_reason",
-    "field_capture"
+    "field_capture",
+    "actual_labor"
   ],
   "fields": [
     {
@@ -134,6 +135,12 @@
       "fieldtype": "Link",
       "options": "Field Capture",
       "read_only": 1
+    },
+    {
+      "fieldname": "actual_labor",
+      "label": "Actual Labor",
+      "fieldtype": "Table",
+      "options": "Work Actual Labor"
     }
   ],
   "autoname": "hash",

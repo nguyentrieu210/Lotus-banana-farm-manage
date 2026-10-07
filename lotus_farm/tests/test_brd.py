@@ -1323,6 +1323,7 @@ class TestBRDOnSite(unittest.TestCase):
             sources=[dict(harvest_actual=actual.name,contributed_kg=100)])
         lot.submit()
         self.make('Incoming Quality Inspection',farm=self.farm,posting_date=nowdate(),harvest_lot=lot.name,accepted_kg=100).submit()
+        if not frappe.db.exists('Gender','Male'):self.make('Gender',gender='Male')
         employee=self.make('Employee',first_name='Shift '+self.tag,gender='Male',date_of_birth=add_days(nowdate(),-10000),date_of_joining=add_days(nowdate(),-100),company=self.company,status='Active').name
         shift=self.make('Packhouse Shift',farm=self.farm,posting_date=nowdate(),shift_code='DAY',started_at=nowdate()+' 07:00:00',ended_at=nowdate()+' 15:00:00',supervisor='Administrator',
             labor=[dict(employee=employee,workdays=0.5)],preprocessing=[dict(harvest_lot=lot.name,processed_bunches=4,processed_kg=100)])
@@ -1339,3 +1340,25 @@ class TestBRDOnSite(unittest.TestCase):
         result=shift_summary(shift)
         self.assertEqual(result['finished_kg'],84);self.assertEqual(result['packout_percent'],84)
         with self.assertRaises(frappe.ValidationError):shift.cancel()
+
+    def test_new_brd_actual_productivity_and_alert_acknowledgement(self):
+        from lotus_farm.productivity import report
+        from lotus_farm.alerts import refresh_alerts
+        plan,_,_=self.daily_plan(material=False);line=plan.lines[0]
+        team=self.make('Work Team',farm=self.farm,team_code='ACTUAL-'+self.tag,team_name='Actual team')
+        allocation=self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,work_team=team.name,allocated_workdays=30,allocation_note='30 people')
+        allocation.submit()
+        result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,completed_qty=1200,actual_workdays=30,unfinished_reason='Rain',
+            actual_labor=[dict(work_team=team.name,actual_workdays=30,completed_qty=1200)])
+        result.submit()
+        metrics=report(nowdate(),nowdate(),self.farm)
+        self.assertEqual(metrics['rows'][0]['quantity_per_workday'],40)
+        bad=frappe.copy_doc(result);bad.docstatus=0;bad.actual_labor[0].actual_workdays=29
+        with self.assertRaises(frappe.ValidationError):bad.insert()
+        # A labor deficit produces one persistent event; replay must preserve the acknowledgement.
+        settings=frappe.get_single('Lotus Farm Settings');settings.enable_proactive_alerts=1;settings.save()
+        refresh_alerts()
+        alerts=frappe.get_all('Lotus Alert',filters={'farm':self.farm,'kind':'Labor'},pluck='name')
+        self.assertEqual(len(alerts),1)
+        alert=frappe.get_doc('Lotus Alert',alerts[0]);alert.status='Acknowledged';alert.acknowledgement_reason='Supervisor arranging staff';alert.save()
+        refresh_alerts();alert.reload();self.assertEqual(alert.status,'Acknowledged');self.assertEqual(alert.acknowledged_by,'Administrator')
