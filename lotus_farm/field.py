@@ -25,18 +25,24 @@ def bootstrap(farm,posting_date):
 
 
 @frappe.whitelist()
-def map_data(farm):
+def map_data(farm,block=None,plot=None,status=None):
     from lotus_farm.reporting import records,scope
     scope(farm)
     versions=records('Plot Geometry',{'farm':farm,'approval_state':'Approved'},['name','farm_plot','version','geojson'])
+    from lotus_farm.scoping import land_scope
+    selected=land_scope(farm=farm,block=block,plot=plot)
+    plots=records('Farm Plot',{'farm':farm,**({'farm_block':block} if block else {}),**({'name':plot} if plot else {}),**({'active':int(status)} if status in ('0','1') else {})},['name'])
+    names={p.name for p in plots}
     latest={}
     for r in versions:
+        if r.farm_plot not in names:continue
         if r.farm_plot not in latest or r.version>latest[r.farm_plot].version:latest[r.farm_plot]=r
     return dict(type='FeatureCollection',features=[dict(type='Feature',geometry=json.loads(r.geojson),properties=dict(plot=r.farm_plot,version=r.version,document=r.name)) for r in latest.values()])
 
 
 @frappe.whitelist(methods=['POST'])
-def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None):
+def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None):
+    if expected_user and expected_user!=frappe.session.user:frappe.throw('Account changed; keep the event for its original user.',frappe.PermissionError)
     require_role('Lotus Farm Manager','Lotus Integration User')
     frappe.get_doc('Farm',farm).check_permission('read');lock('Farm',farm)
     if not client_event_id or target_doctype not in CAPTURE_TYPES:frappe.throw('Select a supported field event and an event ID.')
@@ -63,6 +69,8 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
         payload_json=json.dumps(payload,sort_keys=True,default=str),target_doctype=doc.doctype,target_name=doc.name))
     with command(evidence,'field_capture'):evidence.insert()
     frappe.db.set_value(doc.doctype,doc.name,'field_capture',evidence.name,update_modified=False)
+    if photo:
+        frappe.db.set_value('File',names[0],{'attached_to_doctype':'Field Capture','attached_to_name':evidence.name})
     warning=None
     if latitude is not None and doc.get('farm_plot'):
         match=next((g for g in map_data(farm)['features'] if g['properties']['plot']==doc.farm_plot),None)
@@ -173,3 +181,13 @@ def capture_status(client_event_id):
     if not name:return dict(received=False)
     doc=frappe.get_doc('Field Capture',name);doc.check_permission('read')
     return dict(received=True,capture=doc.name,document=doc.target_name)
+
+
+@frappe.whitelist(methods=['POST'])
+def save_uploaded_photo():
+    # Frappe upload_file validates the session, CSRF and upload type before dispatching here.
+    if frappe.form_dict.get('expected_user')!=frappe.session.user or frappe.session.user=='Guest':
+        frappe.throw('Account changed before photo upload.',frappe.PermissionError)
+    require_role('Lotus Farm Manager','Lotus Integration User')
+    if not frappe.local.uploaded_file:frappe.throw('A photo file is required.')
+    return frappe.get_doc(dict(doctype='File',file_name=frappe.local.uploaded_filename,is_private=1,content=frappe.local.uploaded_file)).save()

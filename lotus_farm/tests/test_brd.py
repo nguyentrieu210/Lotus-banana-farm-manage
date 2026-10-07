@@ -1387,3 +1387,74 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(updated['dashboard_cancellation_threshold'],7)
         with self.assertRaises(frappe.ValidationError):
             save_settings({'dashboard_cancellation_threshold':8},current['_settings_token'])
+
+    def test_brd_audit_scope_status_dates_and_account_binding(self):
+        from lotus_farm.console import listing,scope_options,bootstrap
+        from lotus_farm.daily_api import daily_overview
+        from lotus_farm.scoping import land_scope
+        from lotus_farm.field import capture
+        plan,_,_=self.daily_plan(material=False)
+        other=self.make('Farm',farm_code='SCOPE-'+self.tag,farm_name='Other',company=self.company)
+        with self.assertRaises(frappe.ValidationError):land_scope(farm=other.name,cycle=self.cycle)
+        inferred=scope_options(cycle=self.cycle)['scope']
+        self.assertEqual(inferred['farm'],self.farm)
+        self.assertEqual(inferred['plot'],self.plot)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,cycle=self.cycle)['rows']),1)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,cycle=self.parent)['rows']),0)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,cycle=self.parent,search=plan.name)['rows']),0)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,from_date=add_days(nowdate(),1))['rows']),0)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,to_date=add_days(nowdate(),-1))['rows']),0)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,status='1')['rows']),1)
+        self.assertEqual(len(listing('Daily Work Plan',farm=self.farm,status='0')['rows']),0)
+        self.assertEqual(len(daily_overview(self.farm,nowdate(),cycle=self.parent)['tasks']),0)
+        self.assertEqual(len(daily_overview(self.farm,nowdate(),status='Completed')['tasks']),0)
+        self.assertEqual(len(daily_overview(self.farm,nowdate(),view='at-risk')['tasks']),1)
+        self.assertEqual(len(daily_overview(self.farm,nowdate(),view='my-work')['tasks']),0)
+        with self.assertRaises(frappe.PermissionError):
+            capture(client_event_id='wrong-'+self.tag,farm=self.farm,target_doctype='Daily Work Result',values={},captured_at=nowdate(),expected_user='another@example.invalid')
+        self.assertTrue(bootstrap()['commands']['work'])
+        user=self.make('User',email='audit-'+self.tag+'@example.invalid',first_name='Auditor',send_welcome_email=0,roles=[dict(role='Lotus Auditor')]).name
+        self.make('User Permission',user=user,allow='Farm',for_value=self.farm)
+        frappe.set_user(user)
+        caps=bootstrap()['commands']
+        self.assertTrue(caps['preview_close'])
+        self.assertFalse(caps['work'])
+        self.assertFalse(caps['capture'])
+        with self.assertRaises(frappe.PermissionError):scope_options(farm=other.name)
+
+    def test_brd_audit_private_photo_attaches_to_capture(self):
+        from lotus_farm.field import capture,save_uploaded_photo
+        plan,_,_=self.daily_plan(material=False)
+        frappe.form_dict.expected_user='wrong@example.invalid'
+        with self.assertRaises(frappe.PermissionError):save_uploaded_photo()
+        frappe.form_dict.pop('expected_user',None)
+        photo=self.make('File',file_name='evidence-'+self.tag+'.txt',content=b'field evidence',is_private=1)
+        values=dict(**self.daily_scope(),work_plan=plan.name,work_plan_line=plan.lines[0].name,completed_qty=1000,actual_workdays=25,unfinished_reason='Rain')
+        values.pop('farm')
+        args=dict(client_event_id='photo-'+self.tag,farm=self.farm,target_doctype='Daily Work Result',values=values,captured_at=nowdate()+' 00:00:00',photo=photo.file_url,expected_user='Administrator')
+        accepted=capture(**args)
+        photo.reload()
+        self.assertEqual(photo.attached_to_doctype,'Field Capture')
+        self.assertEqual(photo.attached_to_name,accepted['capture'])
+        self.assertEqual(capture(**args)['document'],accepted['document'])
+
+    def test_brd_audit_mixed_cycle_packout_scope_reconciles(self):
+        from lotus_farm.reporting import dashboard
+        actuals=[]
+        for cycle,cohort,kg in [(self.parent,None,100),(self.cycle,self.cohort,200)]:
+            doc=self.make('Harvest Actual',farm=self.farm,farm_block=self.block,crop_cycle=cycle,sucker_selection_batch=cohort,harvest_date=nowdate(),harvested_bunch_qty=10,gross_weight_kg=kg,rejected_weight_kg=0)
+            doc.submit();actuals.append(doc)
+        lot=self.make('Harvest Lot',farm=self.farm,received_date=nowdate(),sources=[dict(harvest_actual=a.name,contributed_kg=a.saleable_weight_kg) for a in actuals]);lot.submit()
+        self.make('Incoming Quality Inspection',farm=self.farm,posting_date=nowdate(),harvest_lot=lot.name,accepted_kg=300).submit()
+        warehouse=self.make('Warehouse',warehouse_name='Scoped Finished '+self.tag,company=self.company).name
+        reason=self.make('Defect Reason',defect_code='SCOPE-LOSS-'+self.tag,defect_name='Process reject',category='Other').name
+        run=self.make('Packout Run',farm=self.farm,company=self.company,packing_date=nowdate(),quality_standard=self.standard,target_warehouse=warehouse,sources=[dict(harvest_lot=lot.name,input_kg=300)],outputs=[dict(item=self.item,net_kg=252)],reject_kg=48,other_loss_kg=0,qc_state='Released',loss_details=[dict(loss_type='Reject',weight_kg=48,reason=reason)]);run.submit()
+        all_data=dashboard(nowdate(),nowdate(),farm=self.farm)['farms'][0]
+        first=dashboard(nowdate(),nowdate(),farm=self.farm,cycle=self.parent)['farms'][0]
+        second=dashboard(nowdate(),nowdate(),farm=self.farm,cycle=self.cycle)['farms'][0]
+        self.assertAlmostEqual(first['finished_kg'],84)
+        self.assertAlmostEqual(second['finished_kg'],168)
+        for field in ['finished_kg','packout_input_kg','loss_kg','harvest_kg']:
+            self.assertAlmostEqual(first[field]+second[field],all_data[field])
+        self.assertAlmostEqual(first['packout_percent'],84)
+        self.assertAlmostEqual(second['packout_percent'],84)

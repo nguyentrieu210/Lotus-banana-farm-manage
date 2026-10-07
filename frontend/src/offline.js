@@ -14,7 +14,7 @@ async function tx(mode,action){
 }
 export async function queueCapture(user,event,photo=null){
   if(!user||user==='Guest'||!event.client_event_id)throw new Error('Cần tài khoản và mã bản ghi hiện trường.')
-  const entry={key:user+'|'+event.client_event_id,user,event,status:'Pending',error:'',result:null,photo,created:new Date().toISOString()}
+  const entry={key:user+'|'+event.client_event_id,user,event:{...event,expected_user:user},status:'Pending',error:'',result:null,photo,created:new Date().toISOString()}
   // Insert once: retries must never overwrite a received or edited event.
   await tx('readwrite',s=>s.add(entry))
   return entry
@@ -33,9 +33,10 @@ async function sendCaptures(user,{call,upload}){
     entry.status='Syncing';await tx('readwrite',s=>s.put(entry))
     try{
       const session=await call('lotus_farm.field.session_info')
+      if(session.csrf_token&&typeof window!=='undefined')window.dispatchEvent(new CustomEvent('lotus-csrf',{detail:session.csrf_token}))
       if(session.user!==user)throw new Error('Tài khoản đã thay đổi; hàng chờ vẫn được giữ cho người nhập.')
       if(entry.photo&&!entry.event.photo){
-        const up=await upload(entry.photo)
+        const up=await upload(entry.photo,user)
         entry.event.photo=up.file_url
         await tx('readwrite',s=>s.put(entry))
       }

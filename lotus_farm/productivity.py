@@ -22,10 +22,11 @@ def validate_actual_labor(doc):
 
 
 @frappe.whitelist()
-def report(from_date,to_date,farm=None):
+def report(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
     from lotus_farm.reporting import records
     filters={'docstatus':1,'posting_date':['between',[from_date,to_date]]}
-    if farm:filters['farm']=farm
+    from lotus_farm.scoping import land_scope,land_filters
+    filters.update(land_filters(frappe.get_meta('Daily Work Result'),land_scope(company,farm,block,plot,cycle)))
     groups={};unattributed=[]
     for row in records('Daily Work Result',filters,['name']):
         doc=frappe.get_doc('Daily Work Result',row.name);doc.check_permission('read')

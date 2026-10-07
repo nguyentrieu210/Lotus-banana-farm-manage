@@ -1,14 +1,24 @@
 /* Native IndexedDB regression tests, without a Frappe server or API mocks. */
 const {chromium}=require('playwright'),http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict')
+const cacheSource=fs.readFileSync(path.resolve(__dirname,'../../frontend/src/offline-cache.js'))
 const source=fs.readFileSync(path.resolve(__dirname,'../../frontend/src/offline.js'))
-const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':req.url==='/offline.js'?'application/javascript':'text/html'});res.end(req.url==='/offline.js'?source:'<!doctype html><title>Queue regression</title>')})
+const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':req.url.endsWith('.js')?'application/javascript':'text/html'});res.end(req.url==='/offline-cache.js'?cacheSource:req.url==='/offline.js'?source:'<!doctype html><title>Queue regression</title>')})
 ;(async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true,args:['--no-sandbox']});try{
  const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port)
  const result=await page.evaluate(async()=>{
-  const queue=await import('/offline.js'),check=(ok,message)=>{if(!ok)throw Error(message)}
+  const cache=await import('/offline-cache.js');const queue=await import('/offline.js'),check=(ok,message)=>{if(!ok)throw Error(message)}
+  cache.setActiveUser('alice');
+  await cache.saveRead('alice','lotus_farm.console.bootstrap',{}, {user:'alice',csrf_token:'secret',farms:['A']});
+  const cached=await cache.cachedRead('alice','lotus_farm.console.bootstrap',{});
+  check(cached.user==='alice'&&!cached.csrf_token,'Cached credentials persisted');
+  check(await cache.cachedRead('bob','lotus_farm.console.bootstrap',{})===null,'Cross-account read cache');
+  check(await cache.cachedRead('alice','lotus_farm.console.save',{})===null,'Write API cached');
+  await cache.saveRead('alice','lotus_farm.console.scope_options',{farm:'A',company:'C'},{scope:{farm:'A'}});
+  check((await cache.cachedRead('alice','lotus_farm.console.scope_options',{company:'C',farm:'A'})).scope.farm==='A','Cache key depends on argument ordering');
+  check(await cache.cachedRead('alice','lotus_farm.console.scope_options',{farm:'B',company:'C'})===null,'Cross-scope read cache');
   const event={client_event_id:'event-1',farm:'Farm A',target_doctype:'Bunch Cancellation',captured_at:'2026-10-07T10:00:00Z',values:{bunch_qty:3}}
   await queue.queueCapture('alice',event,new Blob(['photo-bytes'],{type:'image/jpeg'}))
-  let rows=await queue.queueRows('alice');check(rows.length===1&&rows[0].photo.size===11,'Committed event/photo missing')
+  let rows=await queue.queueRows('alice');check(rows[0].event.expected_user==='alice','Missing server account binding');check(rows.length===1&&rows[0].photo.size===11,'Committed event/photo missing')
   check((await queue.queueRows('bob')).length===0,'Cross-account queue visibility')
   let duplicate=false;try{await queue.queueCapture('alice',{...event,values:{bunch_qty:999}})}catch{duplicate=true}
   check(duplicate&&(await queue.queueRows('alice'))[0].event.values.bunch_qty===3,'Duplicate event overwritten')
@@ -32,7 +42,7 @@ const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':req
   IDBObjectStore.prototype.add=original
   check(aborted&&!(await queue.queueRows('alice')).some(r=>r.event.client_event_id==='event-aborted'),'Aborted write reported saved')
   await queue.clearSent('alice');check((await queue.queueRows('alice')).length===1,'Unsent row cleared')
-  return {uploads,writes,checks:'commit/abort, immutable identity, retry/photo, concurrent sync, account isolation'}
+  return {uploads,writes,checks:'commit/abort, immutable identity, retry/photo, concurrent sync, account isolation, read-cache scope/account/CSRF isolation'}
  })
  assert.equal(result.uploads,1);assert.equal(result.writes,2);console.log('PASS: '+result.checks)
  }finally{await browser.close();server.close()}

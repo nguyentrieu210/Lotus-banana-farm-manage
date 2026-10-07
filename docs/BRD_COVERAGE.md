@@ -2,6 +2,8 @@
 
 Nguồn gồm BRD Frontend hoàn chỉnh (07/10/2026 04:16 UTC) và **Lotus Farm BRD 360° ProMax — Điều hành nông trường, dự thu, thu hoạch và đóng gói**, bản 06/10/2026 18:49 UTC. Không lấy BRD đầu tiên thay cho bản này.
 
+**Audit mới nhất: [BRD_CODE_AUDIT.md](BRD_CODE_AUDIT.md). Repo chưa khớp toàn bộ BRD/spec; các phần còn thiếu được liệt kê rõ trong audit.**
+
 **“Có trong code” khác với “Lotus đã nghiệm thu”.** Bảng dưới ghi các phần đã triển khai trong app; việc khóa tên Farm, hệ số, dữ liệu, quyền người dùng và thiết bị thật vẫn phải làm tại đơn vị. Kết quả kiểm tra được ghi trong PR của commit hiện tại.
 
 | Nhóm yêu cầu | Code / nơi sử dụng | Phạm vi và cách kiểm tra |

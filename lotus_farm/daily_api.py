@@ -6,14 +6,17 @@ from lotus_farm.daily_operations import close_checks
 
 
 @frappe.whitelist()
-def daily_overview(farm, posting_date):
+def daily_overview(farm, posting_date, block=None, plot=None, cycle=None, status=None, view=None):
     record=frappe.get_doc('Farm',farm)
     record.check_permission('read')
+    from lotus_farm.scoping import land_scope
+    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle)
     date=getdate(posting_date)
     tasks=[]
     for name in frappe.get_list('Daily Work Plan',filters={'farm':farm,'posting_date':date,'docstatus':1},pluck='name',limit_page_length=10000):
         plan=frappe.get_doc('Daily Work Plan',name)
         for line in plan.lines:
+            if any(selected[k] and line.get(f)!=selected[k] for k,f in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')]):continue
             results=frappe.get_list('Daily Work Result',filters={'work_plan_line':line.name,'docstatus':1},fields=['name','completed_qty','actual_workdays','unfinished_reason'])
             from lotus_farm.reporting import records
             allocations=records('Labor Allocation',{'work_plan_line':line.name,'docstatus':1},['name','employee','work_team','allocated_workdays'])
@@ -28,6 +31,10 @@ def daily_overview(farm, posting_date):
                               status='Completed' if results else (line.execution_state or 'Planned'),
                               responsible=line.responsible,work_team=line.work_team,start_at=line.start_at,due_at=line.due_at,
                               blocked_reason=line.blocked_reason,allocations=allocations))
+    for task in tasks:task['posting_date']=str(date)
+    if status:tasks=[t for t in tasks if t['status']==status]
+    if view=='my-work':tasks=[t for t in tasks if t['responsible']==frappe.session.user]
+    if view=='at-risk':tasks=[t for t in tasks if t['status']=='Blocked' or t['labor_gap']<0 or (t['due_at'] and frappe.utils.get_datetime(t['due_at'])<frappe.utils.now_datetime() and t['status']!='Completed')]
     return dict(farm=farm,posting_date=str(date),tasks=tasks,
                 labor=frappe.get_list('Daily Labor Summary',filters={'farm':farm,'posting_date':date,'docstatus':1},fields=['name','work_category','work_area','headcount','present','absent','staffing_gap','workdays_per_ha']),
                 cancellations=frappe.get_list('Bunch Cancellation',filters={'farm':farm,'posting_date':date,'docstatus':1},fields=['name','farm_block','farm_plot','crop_cycle','reason','bunch_qty']),
