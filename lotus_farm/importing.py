@@ -15,16 +15,16 @@ IMPORT_FIELDS={
  'Sucker Selection Batch':('farm_block','crop_cycle','selection_date','selected_sucker_qty','notes'),
  'Planting Event':SCOPE+('event_type','plant_qty','area_ha','notes'),
  'Disease Observation':SCOPE+('disease','affected_plants','severity','action_taken'),
- 'Fruit Measurement':SCOPE+('row_code','sample_count','average_length','average_diameter','uom','notes'),
+ 'Fruit Measurement':SCOPE+('row_code','sample_count','average_length','average_diameter','uom','notes','ribbon_color','measurer','samples'),
  'Bunch Cancellation':SCOPE+('expected_harvest_date','bunch_qty','reason','source_operation','notes'),
  'Bunch Operation':('farm_block','crop_cycle','sucker_selection_batch','operation_date','operation_type','bunch_qty','rejected_qty','harvest_profile','notes'),
- 'Harvest Actual':('farm_block','crop_cycle','sucker_selection_batch','harvest_date','harvested_bunch_qty','gross_weight_kg','rejected_weight_kg','forecast','notes'),
+ 'Harvest Actual':('farm_block','crop_cycle','sucker_selection_batch','harvest_date','harvested_bunch_qty','gross_weight_kg','rejected_weight_kg','forecast','notes','ribbon_color','harvest_team','started_at','ended_at','receiving_packhouse','scale_reading'),
  'Daily Labor Summary':('posting_date','work_category','work_area','headcount','present','absent','staffing_target','area_ha','actual_workdays'),
  'Daily Work Plan':('posting_date','lines'),
  'Daily Work Result':SCOPE+('work_plan','work_plan_line','completed_qty','actual_workdays','unfinished_reason'),
  'Incoming Quality Inspection':('posting_date','harvest_lot','accepted_kg','defects','notes'),
  'Harvest Lot':('received_date','sources','raw_item','raw_warehouse','raw_batch'),
- 'Packout Run':('packing_date','sources','outputs','target_warehouse','quality_standard','reject_kg','other_loss_kg','loss_details'),
+ 'Packout Run':('packing_date','sources','outputs','target_warehouse','quality_standard','reject_kg','other_loss_kg','loss_details','packhouse_shift'),
  'Material Norm Profile':('profile_name','version','work_type','valid_from','valid_to','lines'),
 }
 
@@ -47,7 +47,7 @@ def stage_workbook(source_file,mapping,farm,file_url):
     if source.migration_tier not in ('A','B'):frappe.throw('Only Tier A/B sources create detailed transactions; archive Tier C/D separately.')
     data=file_bytes(file_url)
     if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Uploaded bytes do not match the registered SHA-256.')
-    config=profile.as_dict();config['source_key']=source.source_key
+    config=profile.as_dict();config['source_key']=source.source_key;config['source_family']=source.source_family or source.source_path
     try:result=read_workbook(data,config)
     except (RuleError,ValueError,KeyError) as exc:frappe.throw(str(exc))
     if not result['rows']:frappe.throw('No source data rows were found.')
@@ -111,6 +111,7 @@ def import_rows(batch):
     totals={};imported=[]
     for row in doc.rows:
         if row.row_status!='Pending':continue
+        ensure_business_identity(doc,row)
         duplicate=frappe.db.sql("select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.source_file=%s and b.docstatus<2 and r.row_key=%s and r.row_status='Imported' and b.name!=%s FOR UPDATE",(doc.source_file,row.row_key,doc.name))
         if duplicate:frappe.throw('Source row already exists in another active batch.')
         target=_target(doc,row).insert()
@@ -149,12 +150,12 @@ def verify_staging(batch):
     data=file_bytes(batch.source_attachment)
     if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Original source bytes changed.')
     mapping=frappe.get_doc('Source Import Mapping',batch.mapping);mapping.check_permission('read')
-    config=mapping.as_dict();config['source_key']=source.source_key
+    config=mapping.as_dict();config['source_key']=source.source_key;config['source_family']=source.source_family or source.source_path
     expected=read_workbook(data,config)['rows']
     if {r['row_key'] for r in expected}!={r.row_key for r in batch.rows}:frappe.throw('Staging rows no longer match the approved source scope.')
     lookup={r['row_key']:r for r in expected}
     for row in batch.rows:
-        for key in ('source_hash','normalized_json','validation_error','legacy_org_key','source_sheet','source_row'):
+        for key in ('business_key','normalized_hash','source_hash','normalized_json','validation_error','legacy_org_key','source_sheet','source_row'):
             if row.get(key)!=lookup[row.row_key][key]:frappe.throw('Staged source or transformation changed; register a reviewed source/mapping version.')
 
 
@@ -177,3 +178,19 @@ def reconciliation(batch):
     require_role('Lotus Integration User')
     doc=frappe.get_doc('Source Import Batch',batch);doc.check_permission('read')
     return reconcile_totals(doc)
+
+
+def ensure_business_identity(batch, row):
+    if not row.business_key or not row.normalized_hash:
+        frappe.throw('Approve a mapping with stable business key columns and restage the source before importing.')
+    mapping=frappe.get_doc('Source Import Mapping',batch.mapping)
+    prior=frappe.db.sql("""select r.normalized_hash, r.target_name from `tabSource Import Row` r
+        join `tabSource Import Batch` b on b.name=r.parent
+        join `tabSource Import Mapping` m on m.name=b.mapping
+        where b.farm=%s and m.target_doctype=%s and b.docstatus<2
+        and r.business_key=%s and r.row_status='Imported' and b.name!=%s FOR UPDATE""",
+        (batch.farm,mapping.target_doctype,row.business_key,batch.name),as_dict=True)
+    if prior:
+        if any(p.normalized_hash!=row.normalized_hash for p in prior):
+            frappe.throw('This business transaction changed in a later source version. Review and cancel/amend the existing target; do not import a second actual.')
+        frappe.throw('This business transaction was already imported, including in another workbook version.')

@@ -74,6 +74,8 @@ class ImportMapping(Document):
         if self.target_doctype not in IMPORT_FIELDS:frappe.throw('Target is outside the controlled import list.')
         if int(self.header_row or 0)<1 or int(self.first_data_row or 0)<=int(self.header_row):frappe.throw('Specify header and first data row explicitly.')
         if self.decimal_mark not in ('.',',') or self.grouping_mark==self.decimal_mark:frappe.throw('Decimal and grouping marks must differ.')
+        if self.approval_state=='Approved' and not json.loads(self.business_key_columns or '[]'):
+            frappe.throw('Approve explicit stable business key columns before using this mapping.')
         seen=set()
         for row in self.fields:
             if row.target_field not in IMPORT_FIELDS[self.target_doctype] or row.target_field in seen:

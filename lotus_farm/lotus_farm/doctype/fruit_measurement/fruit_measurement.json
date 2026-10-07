@@ -21,7 +21,11 @@
     "legacy_source_key",
     "amended_from",
     "amendment_reason",
-    "field_capture"
+    "field_capture",
+    "ribbon_color",
+    "measurer",
+    "samples",
+    "legacy_aggregate_only"
   ],
   "fields": [
     {
@@ -82,21 +86,21 @@
       "fieldname": "sample_count",
       "label": "Sample Count",
       "fieldtype": "Int",
-      "reqd": 1
+      "read_only": 1
     },
     {
       "fieldname": "average_length",
       "label": "Average Length",
       "fieldtype": "Float",
-      "reqd": 1,
-      "precision": "6"
+      "precision": "6",
+      "read_only": 1
     },
     {
       "fieldname": "average_diameter",
       "label": "Average Diameter",
       "fieldtype": "Float",
-      "reqd": 1,
-      "precision": "6"
+      "precision": "6",
+      "read_only": 1
     },
     {
       "fieldname": "uom",
@@ -139,6 +143,30 @@
       "fieldtype": "Link",
       "options": "Field Capture",
       "read_only": 1
+    },
+    {
+      "fieldname": "ribbon_color",
+      "label": "Ribbon Color",
+      "fieldtype": "Link",
+      "options": "Bunch Tag"
+    },
+    {
+      "fieldname": "measurer",
+      "label": "Measurer",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "samples",
+      "label": "Samples",
+      "fieldtype": "Table",
+      "options": "Fruit Measurement Sample"
+    },
+    {
+      "fieldname": "legacy_aggregate_only",
+      "label": "Legacy Aggregate Only",
+      "fieldtype": "Check",
+      "description": "Historic aggregate without sample evidence; excluded from sample analysis."
     }
   ],
   "autoname": "hash",

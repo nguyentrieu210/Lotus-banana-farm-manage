@@ -61,7 +61,7 @@ def plot_history(farm_plot,from_date=None,to_date=None):
     result=[]
     definitions=[('Planting Event','posting_date'),('Sucker Selection Batch','selection_date'),('Bunch Operation','operation_date'),
         ('Daily Work Result','posting_date'),('Disease Observation','posting_date'),('Bunch Cancellation','posting_date'),
-        ('Fruit Measurement','posting_date'),('Harvest Actual','harvest_date'),('Material Consumption','posting_date'),('Labor Allocation','posting_date')]
+        ('Fruit Measurement','posting_date'),('Harvest Actual','harvest_date'),('Cycle Closing Report','posting_date'),('Material Consumption','posting_date'),('Labor Allocation','posting_date')]
     for t,date_field in definitions:
         filters={'farm_plot':plot.name}
         if frappe.get_meta(t).is_submittable:filters['docstatus']=1

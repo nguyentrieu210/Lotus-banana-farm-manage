@@ -13,7 +13,8 @@
     "raw_batch",
     "amendment_reason",
     "source_import_batch",
-    "legacy_source_key"
+    "legacy_source_key",
+    "scale_reading"
   ],
   "fields": [
     {
@@ -84,6 +85,12 @@
       "label": "Legacy Source Key",
       "fieldtype": "Data",
       "read_only": 1
+    },
+    {
+      "fieldname": "scale_reading",
+      "label": "Scale Reading",
+      "fieldtype": "Link",
+      "options": "Scale Reading"
     }
   ],
   "autoname": "format:HL-{#####}",

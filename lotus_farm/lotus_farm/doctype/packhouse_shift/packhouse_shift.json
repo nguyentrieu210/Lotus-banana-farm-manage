@@ -1,0 +1,169 @@
+{
+  "doctype": "DocType",
+  "name": "Packhouse Shift",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "shift_code",
+      "label": "Shift Code",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "started_at",
+      "label": "Started At",
+      "fieldtype": "Datetime",
+      "reqd": 1
+    },
+    {
+      "fieldname": "ended_at",
+      "label": "Ended At",
+      "fieldtype": "Datetime",
+      "reqd": 1
+    },
+    {
+      "fieldname": "supervisor",
+      "label": "Supervisor",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "labor",
+      "label": "Labor",
+      "fieldtype": "Table",
+      "options": "Packhouse Shift Labor",
+      "reqd": 1
+    },
+    {
+      "fieldname": "preprocessing",
+      "label": "Preprocessing",
+      "fieldtype": "Table",
+      "options": "Packhouse Preprocessing",
+      "reqd": 1
+    },
+    {
+      "fieldname": "input_kg",
+      "label": "Input Kg",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "finished_kg",
+      "label": "Finished Kg",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "secondary_kg",
+      "label": "Secondary Kg",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "loss_kg",
+      "label": "Loss Kg",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cartons",
+      "label": "Cartons",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "packout_percent",
+      "label": "Packout Percent",
+      "fieldtype": "Percent",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Packhouse Shift",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "company",
+    "farm",
+    "posting_date",
+    "shift_code",
+    "started_at",
+    "ended_at",
+    "supervisor",
+    "labor",
+    "preprocessing",
+    "input_kg",
+    "finished_kg",
+    "secondary_kg",
+    "loss_kg",
+    "cartons",
+    "packout_percent",
+    "notes",
+    "amended_from",
+    "amendment_reason"
+  ],
+  "autoname": "hash",
+  "is_submittable": 1,
+  "permissions": [
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

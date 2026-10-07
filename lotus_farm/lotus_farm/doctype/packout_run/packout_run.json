@@ -22,7 +22,8 @@
     "loss_details",
     "amendment_reason",
     "source_import_batch",
-    "legacy_source_key"
+    "legacy_source_key",
+    "packhouse_shift"
   ],
   "fields": [
     {
@@ -156,6 +157,12 @@
       "label": "Legacy Source Key",
       "fieldtype": "Data",
       "read_only": 1
+    },
+    {
+      "fieldname": "packhouse_shift",
+      "label": "Packhouse Shift",
+      "fieldtype": "Link",
+      "options": "Packhouse Shift"
     }
   ],
   "autoname": "format:PR-{#####}",

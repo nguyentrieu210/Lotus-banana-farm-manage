@@ -1,0 +1,4 @@
+let csrf=''
+export function setCSRF(value){csrf=value}
+export async function call(method,args={},write=false){const options={credentials:'same-origin',headers:{Accept:'application/json'}};let url='/api/method/'+method;if(write){options.method='POST';options.headers['Content-Type']='application/json';options.headers['X-Frappe-CSRF-Token']=csrf;options.body=JSON.stringify(args)}else{url+='?'+new URLSearchParams(Object.fromEntries(Object.entries(args).filter(([,v])=>v!=null&&v!=='')))}const response=await fetch(url,options);const data=await response.json();if(!response.ok||data.exc_type){let message=data.message||data.exc_type||'Không kết nối được máy chủ';try{message=JSON.parse(data._server_messages).map(s=>JSON.parse(s).message.replace(/<[^>]*>/g,'')).join('; ')}catch{}throw new Error(message)}return data.message}
+export const consoleAPI=(name,args={},write=false)=>call('lotus_farm.console.'+name,args,write)

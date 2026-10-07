@@ -62,7 +62,8 @@ def poll_feed(feed):
                         with command(inventory,'source_inventory'):inventory.save()
                     continue
                 if not item.get('file'):continue
-                metadata=dict(source_path=item.get('parentReference',{}).get('path','')+'/'+item['name'],source_filename=item['name'],
+                metadata=dict(source_family=canonical_hash([cfg.drive_id,item['id']]),
+                        source_path=item.get('parentReference',{}).get('path','')+'/'+item['name'],source_filename=item['name'],
                     extension=PurePosixPath(item['name']).suffix.lower(),size_bytes=item.get('size'),source_created_at=item.get('createdDateTime'),source_modified_at=item.get('lastModifiedDateTime'),deleted=0)
                 if not inventory:
                     inventory=frappe.get_doc(dict(doctype='Source Inventory Item',farm=cfg.farm,feed=cfg.name,external_item_id=item['id'],inventory_key=inventory_key,**metadata))
@@ -77,6 +78,7 @@ def poll_feed(feed):
                 source=frappe.db.get_value('Source File Registry',{'source_key':source_key},'name')
                 if not source:
                     source=frappe.get_doc(dict(doctype='Source File Registry',source_key=source_key,
+                        source_family=canonical_hash([cfg.drive_id,item['id']]),
                         source_path=item.get('parentReference',{}).get('path','')+'/'+item['name'],source_filename=item['name'],sha256=hashed,
                         business_period=cfg.business_period,source_modified_at=item.get('lastModifiedDateTime'),source_priority=cfg.source_priority,
                         migration_tier=cfg.migration_tier,source_status='Unknown')).insert().name

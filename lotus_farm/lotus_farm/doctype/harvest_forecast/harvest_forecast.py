@@ -164,6 +164,9 @@ class HarvestForecast(Document):
             frappe.throw("A forecast with no source supply cannot be released.")
         # Serialize publication for this biological cycle across all Items and bases.
         lock("Crop Cycle", self.crop_cycle)
+        for actual in frappe.get_all('Harvest Actual', filters={'crop_cycle': self.crop_cycle, 'sucker_selection_batch': self.sucker_selection_batch or '', 'docstatus': 1, 'harvest_date': ['between', [self.period_start_date, self.period_end_date]]}, fields=['name', 'forecast']):
+            if not actual.forecast:
+                frappe.throw('Unlinked actual harvest exists in this period. Reconcile harvested supply before releasing a new forecast.')
         others = frappe.get_all(
             "Harvest Forecast",
             filters={
@@ -224,6 +227,8 @@ class HarvestForecast(Document):
     def _calculate_remaining(self):
         from lotus_farm.daily_operations import live_loss_fraction
         loss_fraction = live_loss_fraction(self)
+        harvested = sum(flt(v) for v in frappe.get_all('Harvest Actual', filters={'forecast':self.name,'docstatus':1}, pluck='harvested_bunch_qty'))
+        harvest_fraction = min(harvested / flt(self.expected_harvest_bunch_qty), 1) if self.expected_harvest_bunch_qty else 0
         reserved = [
             row for row in self.allocations or [] if row.allocation_state == "Reserved"
         ]
@@ -241,7 +246,8 @@ class HarvestForecast(Document):
                 )
                 total_materialized += flt(output.materialized_qty_kg)
                 remaining = max(
-                    flt(output.safe_commit_kg) * (1-loss_fraction) - flt(output.materialized_qty_kg),
+                    min(flt(output.safe_commit_kg) * max(1-loss_fraction-harvest_fraction,0),
+                        flt(output.safe_commit_kg) * (1-loss_fraction) - flt(output.materialized_qty_kg)),
                     0,
                 )
                 if self.supply_state in ("Closed", "Superseded"):
@@ -270,7 +276,7 @@ class HarvestForecast(Document):
             )
             return
 
-        remaining = max(flt(self.safe_saleable_kg) * (1-loss_fraction) - flt(self.materialized_qty_kg), 0)
+        remaining = max(min(flt(self.safe_saleable_kg) * max(1-loss_fraction-harvest_fraction,0), flt(self.safe_saleable_kg) * (1-loss_fraction) - flt(self.materialized_qty_kg)), 0)
         if self.supply_state in ("Closed", "Superseded"):
             remaining = 0
         self.available_to_promise_kg = flt(remaining - self.committed_qty_kg, 3)

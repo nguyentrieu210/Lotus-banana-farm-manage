@@ -17,7 +17,13 @@
     "required_workdays",
     "norm_profile",
     "norm_version",
-    "schedule_key"
+    "schedule_key",
+    "responsible",
+    "work_team",
+    "start_at",
+    "due_at",
+    "execution_state",
+    "blocked_reason"
   ],
   "fields": [
     {
@@ -114,6 +120,44 @@
       "fieldname": "schedule_key",
       "label": "Schedule Key",
       "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "responsible",
+      "label": "Responsible",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "work_team",
+      "label": "Work Team",
+      "fieldtype": "Link",
+      "options": "Work Team"
+    },
+    {
+      "fieldname": "start_at",
+      "label": "Start At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "due_at",
+      "label": "Due At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "execution_state",
+      "label": "Execution State",
+      "fieldtype": "Select",
+      "options": "Planned\nReady\nIn Progress\nBlocked",
+      "default": "Planned",
+      "allow_on_submit": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "blocked_reason",
+      "label": "Blocked Reason",
+      "fieldtype": "Small Text",
+      "allow_on_submit": 1,
       "read_only": 1
     }
   ],

@@ -1,16 +1,22 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, flt
+from frappe.utils import flt
+from lotus_farm.controls import whole_count
+from lotus_farm.daily_operations import number
 
 
 class HarvestActual(Document):
     def validate(self):
         self._validate_scope()
 
-        gross_weight = flt(self.gross_weight_kg)
-        rejected_weight = flt(self.rejected_weight_kg)
-        if cint(self.harvested_bunch_qty) < 0 or gross_weight < 0 or rejected_weight < 0:
-            frappe.throw("Harvest quantities cannot be negative.")
+        gross_weight = number(self.gross_weight_kg, "Gross weight", positive=True)
+        rejected_weight = number(self.rejected_weight_kg, "Rejected weight")
+        self.harvested_bunch_qty = whole_count(self.harvested_bunch_qty, "Harvested bunches")
+        if self.harvested_bunch_qty < 1:
+            frappe.throw("Harvest requires a positive whole bunch count.")
+        from lotus_farm.harvest_matching import match_forecast
+        if not self.forecast:
+            self.forecast = match_forecast(self)
         if rejected_weight > gross_weight:
             frappe.throw("Rejected Weight cannot exceed Gross Weight.")
 

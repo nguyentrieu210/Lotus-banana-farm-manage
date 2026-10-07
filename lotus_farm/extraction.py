@@ -3,7 +3,7 @@ from io import BytesIO
 import json
 from zipfile import ZipFile
 from lotus_farm.source_data import source_text, source_number, source_date, staged_row
-from lotus_farm.rules import RuleError
+from lotus_farm.rules import RuleError, canonical_hash
 
 MAX_BYTES=40*1024*1024
 MAX_ROWS=10000
@@ -25,7 +25,11 @@ def read_workbook(data, mapping):
         columns={h:i for i,h in enumerate(headers) if h}
         required=[mapping['legacy_org_column']]+[f['source_column'] for f in mapping['fields']]
         if any(c not in columns for c in required):raise RuleError('Approved mapping columns are missing from the selected header.')
-        rows=[]
+        keys=json.loads(mapping.get('business_key_columns') or '[]')
+        samples=json.loads(mapping.get('sample_columns_json') or '[]')
+        if any(c not in columns for c in keys) or any(s['column'] not in columns for s in samples):
+            raise RuleError('Business key or measurement sample columns are missing.')
+        rows=[];seen_keys=set()
         for number,cells in enumerate(sheet.iter_rows(min_row=int(mapping['first_data_row'])),int(mapping['first_data_row'])):
             if all(c.value is None for c in cells):continue
             raw={h:cells[i].value for h,i in columns.items()}
@@ -54,6 +58,24 @@ def read_workbook(data, mapping):
                     if f.get('required') and value in (None,''):raise RuleError('Required source value is blank.')
                     normalized[f['target_field']]=value
                 except (RuleError,ValueError,TypeError) as exc:errors.append(f['source_column']+': '+str(exc))
+            if samples:
+                normalized['samples']=[]
+                for sample in samples:
+                    try:
+                        value=raw.get(sample['column'])
+                        if value in (None,'','-'):continue
+                        if isinstance(value,str) and value.startswith('='):raise RuleError('Sample formula needs reviewed values.')
+                        value=source_number(value,mapping['decimal_mark'],mapping.get('grouping_mark') or '')
+                        normalized['samples'].append(dict(sample_no=sample.get('sample_no') or sample['column'],lane=sample.get('lane') or sample['column'],dimension=sample.get('dimension') or 'Length',value=value,uom=sample['uom']))
+                    except (RuleError,ValueError,TypeError) as exc:errors.append(sample['column']+': '+str(exc))
+            if keys:
+                key_values=[source_text(raw.get(c)) for c in keys]
+                if any(v in (None,'') for v in key_values):errors.append('Business identity is blank.')
+                row['business_key']=canonical_hash([legacy,key_values])
+                if row['business_key'] in seen_keys:errors.append('Duplicate business identity within this source.')
+                seen_keys.add(row['business_key'])
+                row['row_key']=canonical_hash([mapping.get('source_family') or mapping['source_key'],sheet.title,row['business_key']])
+            row['normalized_hash']=canonical_hash(normalized)
             row['normalized_json']=json.dumps(normalized,ensure_ascii=False,default=str,sort_keys=True)
             row['validation_error']='; '.join(errors)
             rows.append(row)

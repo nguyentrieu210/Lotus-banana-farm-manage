@@ -1,0 +1,47 @@
+{
+  "doctype": "DocType",
+  "name": "Fruit Measurement Sample",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "fields": [
+    {
+      "fieldname": "sample_no",
+      "label": "Sample No",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "lane",
+      "label": "Lane",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "dimension",
+      "label": "Dimension",
+      "fieldtype": "Select",
+      "options": "Length\nDiameter",
+      "reqd": 1
+    },
+    {
+      "fieldname": "value",
+      "label": "Value",
+      "fieldtype": "Float",
+      "reqd": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "Uom",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "sample_no",
+    "lane",
+    "dimension",
+    "value",
+    "uom"
+  ]
+}

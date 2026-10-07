@@ -73,6 +73,19 @@
       "options": "Draft\nApproved",
       "reqd": 1,
       "default": "Draft"
+    },
+    {
+      "fieldname": "business_key_columns",
+      "label": "Business Key Columns",
+      "fieldtype": "Small Text",
+      "description": "JSON array of stable legacy transaction identity columns. Required for new approved mappings."
+    },
+    {
+      "fieldname": "sample_columns_json",
+      "label": "Sample Columns Json",
+      "fieldtype": "Code",
+      "options": "JSON",
+      "description": "Measurement unpivot: [{column, sample_no, lane, dimension, uom}]."
     }
   ],
   "field_order": [
@@ -86,7 +99,9 @@
     "legacy_org_column",
     "fields",
     "version",
-    "approval_state"
+    "approval_state",
+    "business_key_columns",
+    "sample_columns_json"
   ],
   "autoname": "hash",
   "permissions": [

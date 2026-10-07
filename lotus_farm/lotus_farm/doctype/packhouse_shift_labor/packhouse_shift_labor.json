@@ -1,0 +1,32 @@
+{
+  "doctype": "DocType",
+  "name": "Packhouse Shift Labor",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "employee",
+      "label": "Employee",
+      "fieldtype": "Link",
+      "options": "Employee",
+      "reqd": 1
+    },
+    {
+      "fieldname": "role_in_shift",
+      "label": "Role In Shift",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "workdays",
+      "label": "Workdays",
+      "fieldtype": "Float",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "employee",
+    "role_in_shift",
+    "workdays"
+  ],
+  "istable": 1
+}

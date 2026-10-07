@@ -167,3 +167,7 @@ def onedrive_feed(user=None):
 
 def source_inventory_item(user=None):
     return query_condition('Source Inventory Item',user)
+
+
+def packhouse_shift(user=None):
+    return query_condition('Packhouse Shift', user)
