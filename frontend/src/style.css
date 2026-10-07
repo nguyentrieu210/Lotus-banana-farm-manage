@@ -4,3 +4,5 @@
 .actions button{background:#eaf2e6;border-radius:6px;padding:7px 10px}.actions button:hover{background:#d5e7ce}
 
 .plot-map-wrap{overflow:auto}.plot-map{width:100%;min-width:520px;min-height:360px;background:#f3f6ef;border:1px solid #dfe7d9;border-radius:10px}.plot-map path{fill:#789d6d66;stroke:#375d35;stroke-width:1.2;cursor:pointer;transition:.15s}.plot-map path:hover,.plot-map path:focus{fill:#6b996f99;stroke-width:2.5;outline:none}
+
+.offline-status{border:0;background:transparent;text-align:left;padding:0}.offline-status:disabled{opacity:.45}
