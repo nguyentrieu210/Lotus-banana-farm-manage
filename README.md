@@ -10,7 +10,7 @@ Daily Work Plan links land and tasks to labor, versioned material norms, actual 
 
 See [full BRD coverage](docs/BRD_COVERAGE.md), [operating setup](docs/PROMAX_IMPLEMENTATION.md) and [UAT/cutover](docs/UAT_CUTOVER.md).
 
-The management and field interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
+The management interface is `/lotus/today` (Vue 3, Frappe UI, Vue Router, Pinia). Build it with `npm ci --prefix frontend && npm run --prefix frontend build`, then run site migration. The field/offline interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
 
 ## Forecast pipeline
 

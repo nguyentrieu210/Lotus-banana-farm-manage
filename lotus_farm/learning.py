@@ -89,6 +89,7 @@ def create_calibrated_profile(base_profile,crop_cycle,from_date,to_date,valid_fr
     require_role('Lotus Farm Manager')
     base=frappe.get_doc('Harvest Profile',base_profile);base.check_permission('read')
     if base.approval_state!='Approved':frappe.throw('Select an approved base profile.')
+    validate_calibration_scope(base, crop_cycle)
     result=propose_complete_profile(base.farm,crop_cycle,from_date,to_date)
     from lotus_farm.controls import lock
     lock('Farm',base.farm)
@@ -108,6 +109,7 @@ def create_calibrated_packout(base_profile,crop_cycle,from_date,to_date,valid_fr
     require_role('Lotus Packing Supervisor')
     base=frappe.get_doc('Packout Profile',base_profile);base.check_permission('read')
     if base.approval_state!='Approved':frappe.throw('Select an approved base Packout Profile.')
+    validate_calibration_scope(base, crop_cycle)
     result=propose_complete_profile(base.farm,crop_cycle,from_date,to_date)
     from lotus_farm.reporting import records,packout_lineage
     from frappe.utils import flt
@@ -129,3 +131,11 @@ def create_calibrated_packout(base_profile,crop_cycle,from_date,to_date,valid_fr
     with command(doc, 'calibrated_profile'):
         doc.insert()
     return dict(profile=doc.name,approval_state=doc.approval_state,yield_percent=doc.yield_percent)
+
+
+def validate_calibration_scope(base, crop_cycle):
+    cycle = frappe.get_doc('Crop Cycle', crop_cycle)
+    cycle.check_permission('read')
+    for field in ('farm', 'farm_block', 'variety', 'cycle_type'):
+        if base.get(field) and base.get(field) != cycle.get(field):
+            frappe.throw('Calibration sample does not match the base profile: ' + field)

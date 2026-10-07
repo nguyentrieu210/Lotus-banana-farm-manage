@@ -1,0 +1,109 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Alert",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "event_key",
+      "label": "Event Key",
+      "fieldtype": "Data",
+      "unique": 1,
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "kind",
+      "label": "Kind",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "severity",
+      "label": "Severity",
+      "fieldtype": "Select",
+      "options": "Warning\nCritical",
+      "read_only": 1
+    },
+    {
+      "fieldname": "metric_value",
+      "label": "Metric Value",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "message",
+      "label": "Message",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Open\nAcknowledged\nResolved",
+      "default": "Open"
+    },
+    {
+      "fieldname": "acknowledgement_reason",
+      "label": "Acknowledgement Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "acknowledged_by",
+      "label": "Acknowledged By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "acknowledged_at",
+      "label": "Acknowledged At",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "posting_date",
+    "event_key",
+    "kind",
+    "severity",
+    "metric_value",
+    "message",
+    "status",
+    "acknowledgement_reason",
+    "acknowledged_by",
+    "acknowledged_at"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

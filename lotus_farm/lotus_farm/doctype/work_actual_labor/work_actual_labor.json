@@ -1,0 +1,39 @@
+{
+  "doctype": "DocType",
+  "name": "Work Actual Labor",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "employee",
+      "label": "Employee",
+      "fieldtype": "Link",
+      "options": "Employee"
+    },
+    {
+      "fieldname": "work_team",
+      "label": "Work Team",
+      "fieldtype": "Link",
+      "options": "Work Team"
+    },
+    {
+      "fieldname": "actual_workdays",
+      "label": "Actual Workdays",
+      "fieldtype": "Float",
+      "reqd": 1
+    },
+    {
+      "fieldname": "completed_qty",
+      "label": "Completed Qty",
+      "fieldtype": "Float",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "employee",
+    "work_team",
+    "actual_workdays",
+    "completed_qty"
+  ],
+  "istable": 1
+}

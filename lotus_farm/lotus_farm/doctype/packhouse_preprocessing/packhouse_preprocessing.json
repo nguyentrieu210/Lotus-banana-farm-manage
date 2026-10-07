@@ -1,0 +1,45 @@
+{
+  "doctype": "DocType",
+  "name": "Packhouse Preprocessing",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "harvest_lot",
+      "label": "Harvest Lot",
+      "fieldtype": "Link",
+      "options": "Harvest Lot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "processed_bunches",
+      "label": "Processed Bunches",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "processed_kg",
+      "label": "Processed Kg",
+      "fieldtype": "Float",
+      "reqd": 1
+    },
+    {
+      "fieldname": "started_at",
+      "label": "Started At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "ended_at",
+      "label": "Ended At",
+      "fieldtype": "Datetime"
+    }
+  ],
+  "field_order": [
+    "harvest_lot",
+    "processed_bunches",
+    "processed_kg",
+    "started_at",
+    "ended_at"
+  ],
+  "istable": 1
+}

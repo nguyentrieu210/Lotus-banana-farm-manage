@@ -69,6 +69,36 @@ jobs:
       - name: Run real document and permission tests
         working-directory: /tmp/lotus-bench
         run: bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+      - name: Build and test browser against the running site
+        run: |
+          npm ci --prefix frontend --no-audit --no-fund
+          npm run --prefix frontend build
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+          cd /tmp/lotus-bench
+          bench --site lotus.test execute lotus_farm.tests.browser_seed.seed
+          bench --site lotus.test serve --port 8000 > /tmp/lotus-console-server.log 2>&1 &
+          cd "$GITHUB_WORKSPACE"
+          python - <<'PY_WAIT'
+          import time, urllib.request
+          for attempt in range(60):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:8000/api/method/ping',timeout=2)
+                  break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise RuntimeError('Frappe server did not start')
+          PY_WAIT
+          node tests/browser/console_real.cjs
+      - name: Collect real browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lotus-console-real
+          path: |
+            /tmp/lotus-console-real
+            /tmp/lotus-console-server.log
       - name: Collect failing site logs
         if: failure()
         uses: actions/upload-artifact@v4

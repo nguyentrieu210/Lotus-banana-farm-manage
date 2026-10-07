@@ -23,7 +23,13 @@
     "field_capture",
     "amendment_reason",
     "source_import_batch",
-    "legacy_source_key"
+    "legacy_source_key",
+    "ribbon_color",
+    "harvest_team",
+    "started_at",
+    "ended_at",
+    "receiving_packhouse",
+    "scale_reading"
   ],
   "fields": [
     {
@@ -145,6 +151,40 @@
       "label": "Legacy Source Key",
       "fieldtype": "Data",
       "read_only": 1
+    },
+    {
+      "fieldname": "ribbon_color",
+      "label": "Ribbon Color",
+      "fieldtype": "Link",
+      "options": "Bunch Tag"
+    },
+    {
+      "fieldname": "harvest_team",
+      "label": "Harvest Team",
+      "fieldtype": "Link",
+      "options": "Work Team"
+    },
+    {
+      "fieldname": "started_at",
+      "label": "Started At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "ended_at",
+      "label": "Ended At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "receiving_packhouse",
+      "label": "Receiving Packhouse",
+      "fieldtype": "Link",
+      "options": "Warehouse"
+    },
+    {
+      "fieldname": "scale_reading",
+      "label": "Scale Reading",
+      "fieldtype": "Link",
+      "options": "Scale Reading"
     }
   ],
   "permissions": [

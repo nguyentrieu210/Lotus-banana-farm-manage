@@ -211,6 +211,8 @@ def _forecast_outputs(run):
         for contribution in lot.sources:
             actual = frappe.get_doc("Harvest Actual", contribution.harvest_actual)
             if not actual.forecast:
+                from lotus_farm.harvest_matching import check_unlinked_stock
+                check_unlinked_stock(actual)
                 continue
             supply = frappe.get_doc("Harvest Forecast", actual.forecast)
             planned_items = (

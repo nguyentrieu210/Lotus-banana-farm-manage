@@ -47,3 +47,26 @@ jobs:
         with:
           name: lotus-field-browser
           path: /tmp/lotus-browser
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix frontend --no-audit --no-fund
+      - run: npm run --prefix frontend test
+      - run: npm run --prefix frontend build
+      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/browser/offline_queue.cjs
+      - run: node tests/browser/console_smoke.cjs
+        env:
+          LOTUS_BROWSER_ARTIFACTS: /tmp/lotus-console-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lotus-console-browser
+          path: /tmp/lotus-console-browser
+

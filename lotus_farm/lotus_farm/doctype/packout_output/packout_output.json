@@ -16,7 +16,8 @@
     "grade",
     "market",
     "pack_specification",
-    "secondary_type"
+    "secondary_type",
+    "scale_reading"
   ],
   "fields": [
     {
@@ -111,6 +112,12 @@
       "label": "Secondary Type",
       "fieldtype": "Link",
       "options": "Secondary Product Type"
+    },
+    {
+      "fieldname": "scale_reading",
+      "label": "Scale Reading",
+      "fieldtype": "Link",
+      "options": "Scale Reading"
     }
   ],
   "istable": 1

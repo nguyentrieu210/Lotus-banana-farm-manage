@@ -655,6 +655,10 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(frappe.get_doc("Harvest Forecast", supply.name).has_permission("read"))
         with self.assertRaises(frappe.PermissionError):
             other.check_permission("read")
+        from lotus_farm.console import detail,audit,listing
+        with self.assertRaises(frappe.PermissionError):detail('Farm',other.name)
+        with self.assertRaises(frappe.PermissionError):audit('Farm',other.name)
+        self.assertNotIn(other.name,[r.name for r in listing('Farm')['rows']])
 
     def test_two_connections_cannot_overreserve(self):
         from concurrent.futures import ThreadPoolExecutor
@@ -958,7 +962,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(request.state, "Applied")
         self.assertAlmostEqual(supply.materialized_qty_kg, 0, places=2)
         self.assertAlmostEqual(supply.committed_qty_kg, 1000, places=2)
-        self.assertAlmostEqual(supply.available_to_promise_kg, 16803.38, places=2)
+        self.assertAlmostEqual(supply.available_to_promise_kg, -1000, places=2)
 
         # A cancelled bridge entry remains audit history but must not prevent a corrected draft.
         replacement_entry = make_repack_entry(run.name)
@@ -1173,7 +1177,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.make('Legacy Organization Map',legacy_key=org,legacy_source_unit='Old company',legacy_farm='Farm old',farm=self.farm,company=self.company,approval_state='Approved')
         names=['farm_block','farm_plot','crop_cycle','sucker_selection_batch','posting_date','event_type','plant_qty','area_ha']
         types=['Text','Text','Text','Text','Date','Text','Integer','Number']
-        mapping=self.make('Source Import Mapping',mapping_name='PLANTING-'+self.tag,target_doctype='Planting Event',sheet_name='Planting',header_row=1,first_data_row=2,
+        mapping=self.make('Source Import Mapping',mapping_name='PLANTING-'+self.tag,business_key_columns=json.dumps(['Org','Date','Type','Cycle']),target_doctype='Planting Event',sheet_name='Planting',header_row=1,first_data_row=2,
                           decimal_mark=',',grouping_mark='.',legacy_org_column='Org',version=1,approval_state='Approved',
                           fields=[dict(source_column=c,target_field=n,value_type=t,required=1) for c,n,t in zip(header[1:],names,types)])
         staged=stage_workbook(source.name,mapping.name,self.farm,file.file_url)
@@ -1188,6 +1192,18 @@ class TestBRDOnSite(unittest.TestCase):
         target=frappe.get_doc('Planting Event',result['created_drafts'][0]);self.assertEqual(target.plant_qty,1250);self.assertEqual(target.docstatus,0)
         self.assertEqual(import_rows(batch.name)['created_drafts'],[])
         batch.reload();batch.submit();self.assertEqual(batch.resolved_percent,100)
+        source_v2=self.make('Source File Registry',source_key='XLSX360-V2-'+self.tag,source_path='/test/planting-v2.xlsx',source_filename='planting-v2.xlsx',
+            sha256=source.sha256,business_period=nowdate()[:7],migration_tier='A',source_status='Active')
+        repeat=stage_workbook(source_v2.name,mapping.name,self.farm,file.file_url)
+        with self.assertRaises(frappe.ValidationError):import_rows(repeat['batch'])
+        sheet['H2']='1.500'
+        changed=BytesIO();book.save(changed);changed_data=changed.getvalue()
+        changed_file=save_file('planting-v3-'+self.tag+'.xlsx',changed_data,None,None,is_private=1)
+        source_v3=self.make('Source File Registry',source_key='XLSX360-V3-'+self.tag,source_path='/test/planting-v3.xlsx',source_filename='planting-v3.xlsx',
+            sha256=hashlib.sha256(changed_data).hexdigest(),business_period=nowdate()[:7],migration_tier='A',source_status='Active')
+        altered=stage_workbook(source_v3.name,mapping.name,self.farm,changed_file.file_url)
+        with self.assertRaises(frappe.ValidationError):import_rows(altered['batch'])
+
 
     def test_360_scale_binding_and_schedule_due_tasks(self):
         from lotus_farm.field import suggest_work,make_suggested_plan
@@ -1214,7 +1230,7 @@ class TestBRDOnSite(unittest.TestCase):
         book=Workbook();sheet=book.active;sheet.title='Wrong';sheet.append(['Org','Plants']);sheet.append(['old',2]);buffer=BytesIO();book.save(buffer);data=buffer.getvalue()
         file=save_file('bad-'+self.tag+'.xlsx',data,None,None,is_private=1)
         source=self.make('Source File Registry',source_key='BAD360-'+self.tag,source_path='/test/bad.xlsx',source_filename='bad.xlsx',sha256=hashlib.sha256(data).hexdigest(),business_period=nowdate()[:7],migration_tier='A',source_status='Active')
-        mapping=self.make('Source Import Mapping',mapping_name='BAD-'+self.tag,target_doctype='Planting Event',sheet_name='Expected',header_row=1,first_data_row=2,decimal_mark=',',grouping_mark='.',legacy_org_column='Org',version=1,approval_state='Approved',fields=[dict(source_column='Plants',target_field='plant_qty',value_type='Integer')])
+        mapping=self.make('Source Import Mapping',mapping_name='BAD-'+self.tag,business_key_columns='["Org"]',target_doctype='Planting Event',sheet_name='Expected',header_row=1,first_data_row=2,decimal_mark=',',grouping_mark='.',legacy_org_column='Org',version=1,approval_state='Approved',fields=[dict(source_column='Plants',target_field='plant_qty',value_type='Integer')])
         task=self.make('Integration Task',farm=self.farm,external_id='external-'+self.tag,source_system='test',source_hash=source.sha256,source_file=source.name,mapping=mapping.name,file=file.file_url,posting_date=nowdate())
         self.assertEqual(run_task(task.name)['status'],'Failed');self.assertEqual(run_task(task.name)['status'],'Failed')
         task.reload();self.assertEqual(task.retry_count,2)
@@ -1240,3 +1256,134 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(lot_qr(lot.name)['image'].startswith('data:image/svg+xml;base64,'))
         self.assertEqual(trace_lot(lot.name)['sources'][0]['farm_plot'],self.plot)
         self.assertEqual(packhouse_day(self.farm,nowdate())['lots'][0].remaining_to_pack_kg,90)
+
+    def test_new_brd_harvest_count_matching_and_spent_supply(self):
+        from lotus_farm.controls import command
+        from lotus_farm.console import detail,listing
+        supply=self.forecast()
+        harvest_date=str(supply.period_start_date)
+        values=dict(farm=self.farm,farm_block=self.block,crop_cycle=self.cycle,sucker_selection_batch=self.cohort,
+                    harvest_date=harvest_date,harvested_bunch_qty=0,gross_weight_kg=100,rejected_weight_kg=0)
+        with self.assertRaises(frappe.ValidationError):self.make('Harvest Actual',**values)
+        values['harvested_bunch_qty']=supply.expected_harvest_bunch_qty
+        values['gross_weight_kg']=float(supply.expected_harvest_bunch_qty)*25
+        actual=self.make('Harvest Actual',**values)
+        self.assertEqual(actual.forecast,supply.name)
+        actual.submit();supply.reload()
+        self.assertEqual(supply.available_to_promise_kg,0)
+        self.assertEqual(detail('Harvest Actual',actual.name)['name'],actual.name)
+        self.assertEqual(listing('Harvest Actual',farm=self.farm,date=harvest_date)['rows'][0].name,actual.name)
+        actual.cancel();supply.reload()
+        self.assertGreater(supply.available_to_promise_kg,0)
+
+    def test_new_brd_measurement_samples_and_profile_scope(self):
+        from lotus_farm.learning import validate_calibration_scope
+        if not frappe.db.exists('UOM','Centimeter'):self.make('UOM',uom_name='Centimeter')
+        measurement=self.make('Fruit Measurement',**self.daily_scope(),row_code='Lane 1',uom='Centimeter',
+            samples=[dict(sample_no='1',lane='Lane 1',dimension='Length',value=18,uom='Centimeter'),
+                     dict(sample_no='2',lane='Lane 1',dimension='Length',value=22,uom='Centimeter')])
+        self.assertEqual(measurement.sample_count,2);self.assertEqual(measurement.average_length,20)
+        measurement.submit()
+        bad=frappe.copy_doc(measurement);bad.docstatus=0;bad.samples[1].sample_no='1'
+        with self.assertRaises(frappe.ValidationError):bad.insert()
+        base=frappe.get_doc('Harvest Profile',self.profile)
+        validate_calibration_scope(base,self.cycle)
+        wrong=frappe.copy_doc(base);wrong.variety='other'
+        with self.assertRaises(frappe.ValidationError):validate_calibration_scope(wrong,self.cycle)
+
+    def test_new_brd_work_state_audit_and_protected_api(self):
+        from lotus_farm.console import work_state,save,audit
+        plan,_,_=self.daily_plan(material=False);line=plan.lines[0]
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
+        team=self.make('Work Team',farm=self.farm,team_code='STATE-'+self.tag,team_name='Team').name
+        allocation=self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,work_team=team,
+                             allocated_workdays=32,allocation_note='32 workers')
+        allocation.submit()
+        self.assertEqual(work_state(plan.name,line.name,'Ready')['state'],'Ready')
+        self.assertEqual(work_state(plan.name,line.name,'In Progress')['state'],'In Progress')
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Blocked')
+        work_state(plan.name,line.name,'Blocked','Rain')
+        plan.reload();self.assertEqual(plan.lines[0].blocked_reason,'Rain')
+        self.assertTrue(audit('Daily Work Plan',plan.name)['versions'])
+        with self.assertRaises(frappe.ValidationError):save('Daily Work Plan',{'flags':{'ignore_permissions':True}})
+
+    def test_new_brd_packhouse_shift_preprocessing_and_stock_close(self):
+        from lotus_farm.shift import shift_summary
+        actual=self.make('Harvest Actual',farm=self.farm,farm_block=self.block,crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,harvest_date=nowdate(),harvested_bunch_qty=4,gross_weight_kg=100,rejected_weight_kg=0)
+        actual.submit()
+        raw=self.make('Item',item_code='SHIFT-RAW-'+self.tag,item_group='All Item Groups',stock_uom='Kg',is_stock_item=1,has_batch_no=1).name
+        warehouse=self.make('Warehouse',warehouse_name='Shift Raw '+self.tag,company=self.company).name
+        finished=self.make('Warehouse',warehouse_name='Shift Finished '+self.tag,company=self.company).name
+        batch=self.make('Batch',batch_id='SHIFT-RAW-'+self.tag,item=raw).name
+        receipt=self.make('Stock Entry',stock_entry_type='Material Receipt',purpose='Material Receipt',company=self.company,posting_date=nowdate(),
+            items=[dict(item_code=raw,t_warehouse=warehouse,qty=100,uom='Kg',stock_uom='Kg',conversion_factor=1,basic_rate=1,batch_no=batch,use_serial_batch_fields=1)])
+        receipt.submit()
+        lot=self.make('Harvest Lot',farm=self.farm,received_date=nowdate(),raw_item=raw,raw_warehouse=warehouse,raw_batch=batch,
+            sources=[dict(harvest_actual=actual.name,contributed_kg=100)])
+        lot.submit()
+        self.make('Incoming Quality Inspection',farm=self.farm,posting_date=nowdate(),harvest_lot=lot.name,accepted_kg=100).submit()
+        if not frappe.db.exists('Gender','Male'):self.make('Gender',gender='Male')
+        employee=self.make('Employee',first_name='Shift '+self.tag,gender='Male',date_of_birth=add_days(nowdate(),-10000),date_of_joining=add_days(nowdate(),-100),company=self.company,status='Active').name
+        shift=self.make('Packhouse Shift',farm=self.farm,posting_date=nowdate(),shift_code='DAY',started_at=nowdate()+' 07:00:00',ended_at=nowdate()+' 15:00:00',supervisor='Administrator',
+            labor=[dict(employee=employee,workdays=0.5)],preprocessing=[dict(harvest_lot=lot.name,processed_bunches=4,processed_kg=100)])
+        with self.assertRaises(frappe.ValidationError):shift.submit()
+        reason=self.make('Defect Reason',defect_code='SHIFT-LOSS-'+self.tag,defect_name='Process loss',category='Other').name
+        run=self.make('Packout Run',farm=self.farm,company=self.company,packing_date=nowdate(),packhouse_shift=shift.name,
+            quality_standard=self.standard,target_warehouse=finished,sources=[dict(harvest_lot=lot.name,input_kg=100)],outputs=[dict(item=self.item,net_kg=84)],reject_kg=0,other_loss_kg=16,
+            loss_details=[dict(loss_type='Process Loss',weight_kg=16,reason=reason)],qc_state='Released')
+        run.submit()
+        with self.assertRaises(frappe.ValidationError):shift.submit()
+        from lotus_farm.stock_bridge import make_repack_entry
+        entry=frappe.get_doc('Stock Entry',make_repack_entry(run.name)['stock_entry']);entry.submit()
+        shift.reload();shift.submit()
+        result=shift_summary(shift)
+        self.assertEqual(result['finished_kg'],84);self.assertEqual(result['packout_percent'],84)
+        with self.assertRaises(frappe.ValidationError):shift.cancel()
+
+    def test_new_brd_actual_productivity_and_alert_acknowledgement(self):
+        from lotus_farm.productivity import report
+        from lotus_farm.alerts import refresh_alerts
+        plan,_,_=self.daily_plan(material=False);line=plan.lines[0]
+        team=self.make('Work Team',farm=self.farm,team_code='ACTUAL-'+self.tag,team_name='Actual team')
+        allocation=self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,work_team=team.name,allocated_workdays=30,allocation_note='30 people')
+        allocation.submit()
+        result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,completed_qty=1200,actual_workdays=30,unfinished_reason='Rain',
+            actual_labor=[dict(work_team=team.name,actual_workdays=30,completed_qty=1200)])
+        result.submit()
+        metrics=report(nowdate(),nowdate(),self.farm)
+        self.assertEqual(metrics['rows'][0]['quantity_per_workday'],40)
+        bad=frappe.copy_doc(result);bad.docstatus=0;bad.actual_labor[0].actual_workdays=29
+        with self.assertRaises(frappe.ValidationError):bad.insert()
+        # A labor deficit produces one persistent event; replay must preserve the acknowledgement.
+        settings=frappe.get_single('Lotus Farm Settings');settings.enable_proactive_alerts=1;settings.save()
+        refresh_alerts()
+        alerts=frappe.get_all('Lotus Alert',filters={'farm':self.farm,'kind':'Labor'},pluck='name')
+        self.assertEqual(len(alerts),1)
+        alert=frappe.get_doc('Lotus Alert',alerts[0]);alert.status='Acknowledged';alert.acknowledgement_reason='Supervisor arranging staff';alert.save()
+        refresh_alerts();alert.reload();self.assertEqual(alert.status,'Acknowledged');self.assertEqual(alert.acknowledged_by,'Administrator')
+
+    def test_new_brd_ready_requires_known_physical_material(self):
+        from lotus_farm.console import work_state
+        plan,_,item=self.daily_plan();line=plan.lines[0]
+        team=self.make('Work Team',farm=self.farm,team_code='READY-'+self.tag,team_name='Ready team')
+        self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,work_team=team.name,allocated_workdays=32,allocation_note='32 people').submit()
+        self.make('Material Requirement',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name).submit()
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
+        warehouse=self.make('Warehouse',warehouse_name='Ready '+self.tag,company=self.company).name
+        self.make('Warehouse Mapping',farm=self.farm,warehouse=warehouse,warehouse_role='Field Store',enabled=1)
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
+        self.make('Stock Entry',company=self.company,stock_entry_type='Material Receipt',purpose='Material Receipt',posting_date=nowdate(),items=[dict(item_code=item,t_warehouse=warehouse,qty=5000,uom='Sheet',stock_uom='Sheet',conversion_factor=1,basic_rate=1)]).submit()
+        self.assertEqual(work_state(plan.name,line.name,'Ready')['state'],'Ready')
+
+
+    def test_new_brd_console_settings_and_capture_contract(self):
+        from lotus_farm.console import schema,settings,save_settings
+        capture=schema('Daily Work Result')
+        self.assertIn('posting_date',capture['capture_fields'])
+        self.assertIn('completed_qty',capture['capture_fields'])
+        current=settings()
+        updated=save_settings({'dashboard_cancellation_threshold':7},current['_settings_token'])
+        self.assertEqual(updated['dashboard_cancellation_threshold'],7)
+        with self.assertRaises(frappe.ValidationError):
+            save_settings({'dashboard_cancellation_threshold':8},current['_settings_token'])

@@ -127,3 +127,24 @@ permission_query_conditions['Source Inventory Item'] = 'lotus_farm.permissions.s
 doc_events['Bunch Operation']['validate'].append('lotus_farm.promax_controls.bunch_tag_guard')
 doc_events['Defect Reason'] = {'validate':'lotus_farm.promax_controls.defect_master_guard'}
 doctype_js['Harvest Lot'] = 'public/js/harvest_lot.js'
+
+has_permission['Packhouse Shift'] = 'lotus_farm.controls.farm_permission'
+permission_query_conditions['Packhouse Shift'] = 'lotus_farm.permissions.packhouse_shift'
+for _name in ('Packout Run','Material Recovery','Secondary Product Movement'):
+    _old = doc_events.setdefault(_name,{}).get('validate',[])
+    if isinstance(_old,str):_old=[_old]
+    doc_events[_name]['validate']=[*_old,'lotus_farm.shift.shift_link_guard']
+for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
+    _old = doc_events[_name].get('validate',[])
+    if isinstance(_old,str):_old=[_old]
+    doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
+website_route_rules = [{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
+
+doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
+doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
+doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
+
+has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
+permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
+scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')

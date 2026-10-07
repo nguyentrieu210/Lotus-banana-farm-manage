@@ -13,7 +13,8 @@
     "version_marker",
     "source_priority",
     "migration_tier",
-    "source_status"
+    "source_status",
+    "source_family"
   ],
   "fields": [
     {
@@ -76,6 +77,11 @@
       "fieldtype": "Select",
       "options": "Active\nSuperseded\nArchive\nUnknown",
       "reqd": 1
+    },
+    {
+      "fieldname": "source_family",
+      "label": "Source Family",
+      "fieldtype": "Data"
     }
   ],
   "autoname": "hash",

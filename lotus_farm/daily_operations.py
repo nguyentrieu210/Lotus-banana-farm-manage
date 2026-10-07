@@ -261,6 +261,9 @@ class WorkResult(DailyDocument):
         row = plan_line(self)
         number(self.completed_qty, 'Completed quantity')
         number(self.actual_workdays, 'Actual workdays')
+        if self.actual_labor:
+            from lotus_farm.productivity import validate_actual_labor
+            validate_actual_labor(self)
         if frappe.db.exists(self.doctype, {'work_plan_line': self.work_plan_line, 'docstatus': 1, 'name': ['!=', self.name]}):
             frappe.throw('Each work plan line has one submitted daily result. Cancel/amend to correct it.')
         if self.docstatus == 1:
@@ -290,7 +293,8 @@ class LaborAllocationRecord(DailyDocument):
             if frappe.db.exists('DocType','Attendance'):
                 statuses=set(frappe.get_all('Attendance',filters={'employee':self.employee,'attendance_date':self.posting_date,'docstatus':1},pluck='status'))
                 capacity=0 if statuses.intersection({'Absent','On Leave'}) else (0.5 if 'Half Day' in statuses else 1)
-            if sum(flt(x) for x in used)+amount > capacity+0.000001:
+            shift_days=sum(flt(r[0]) for r in frappe.db.sql('select l.workdays from `tabPackhouse Shift Labor` l join `tabPackhouse Shift` s on s.name=l.parent where s.posting_date=%s and s.docstatus=1 and l.employee=%s FOR UPDATE',(self.posting_date,self.employee)))
+            if sum(flt(x) for x in used)+shift_days+amount > capacity+0.000001:
                 frappe.throw('Employee allocation exceeds daily capacity or submitted attendance availability.')
         elif not self.work_team or not self.allocation_note:
             frappe.throw('Aggregate allocation requires a Work Team and an explanatory note.')
@@ -459,10 +463,24 @@ class DiseaseRecord(DailyDocument):
 
 class MeasurementRecord(DailyDocument):
     def validate_daily(self):
+        if self.samples:
+            seen=set();values={'Length':[], 'Diameter':[]}
+            for sample in self.samples:
+                key=(sample.lane,sample.sample_no,sample.dimension)
+                if key in seen:frappe.throw('Duplicate sample identity and dimension.')
+                seen.add(key)
+                if sample.dimension not in values or sample.uom!=self.uom:frappe.throw('Samples require a supported dimension and the measurement UOM.')
+                values[sample.dimension].append(number(sample.value,'Sample value',positive=True))
+            self.sample_count=len({(s.lane,s.sample_no) for s in self.samples})
+            self.average_length=sum(values['Length'])/len(values['Length']) if values['Length'] else None
+            self.average_diameter=sum(values['Diameter'])/len(values['Diameter']) if values['Diameter'] else None
+            self.measurer=self.measurer or frappe.session.user
+        elif not self.legacy_aggregate_only:
+            frappe.throw('Enter individual measurement samples; historic aggregate-only evidence must be explicitly marked.')
         if whole_count(self.sample_count, 'Sample count') < 1:
             frappe.throw('Measurement requires samples.')
-        number(self.average_length, 'Length', positive=True)
-        number(self.average_diameter, 'Diameter', positive=True)
+        if self.average_length is not None:number(self.average_length, 'Length', positive=True)
+        if self.average_diameter is not None:number(self.average_diameter, 'Diameter', positive=True)
 
 
 class IncomingQC(DailyDocument):
@@ -579,6 +597,8 @@ def close_checks(farm, date):
                 run = frappe.get_doc(doctype,row.name)
                 add('mass_balance',abs(flt(run.mass_variance_kg))<=flt(frappe.db.get_single_value('Lotus Farm Settings','mass_balance_tolerance_kg')),'Packout mass balance must reconcile.',doctype,row.name)
                 add('stock_posted',bool(run.stock_entry and frappe.db.get_value('Stock Entry',run.stock_entry,'docstatus')==1),'Finished goods require a submitted ERP stock entry.',doctype,row.name)
+    for shift in frappe.get_all('Packhouse Shift',filters={'farm':farm,'posting_date':date,'docstatus':['<',2]},fields=['name','docstatus']):
+        add('packhouse_shift',shift.docstatus==1,'Close packhouse shifts after labor, preprocessing and posted stock reconcile.','Packhouse Shift',shift.name)
     for name in frappe.get_all('Integration Event',filters={'farm':farm,'status':['in',['Pending','Failed']]},pluck='name'):
         add('integration',False,'Resolve unfinished integration events before closing.','Integration Event',name)
     for task in frappe.get_all('Integration Task',filters={'farm':farm,'posting_date':date,'blocking':1,'status':['!=','Completed']},fields=['name']):
@@ -637,7 +657,7 @@ class SourceRegistry(Document):
             frappe.throw('Source file hash must be lowercase SHA-256.')
         before=self.get_doc_before_save()
         if before and frappe.db.exists('Source Import Batch',{'source_file':self.name}):
-            for field in ('source_key','source_path','source_filename','sha256','business_period'):
+            for field in ('source_key','source_family','source_path','source_filename','sha256','business_period'):
                 if self.get(field)!=before.get(field):
                     frappe.throw('Used source identity/hash is immutable; register a new file version.')
 
@@ -686,6 +706,9 @@ class ImportBatch(Document):
                     frappe.throw('Imported target must belong to this Farm.')
                 if target.meta.has_field('source_import_batch') and target.source_import_batch!=self.name:
                     frappe.throw('Imported target must retain this import batch lineage.')
+                if self.mapping:
+                    from lotus_farm.importing import ensure_business_identity
+                    ensure_business_identity(self,row)
                 prior=frappe.db.sql('''select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.docstatus=1 and b.source_file=%s and r.row_key=%s and r.row_status='Imported' and b.name!=%s limit 1 FOR UPDATE''',(self.source_file,row.row_key,self.name))
                 if prior:
                     frappe.throw('Source row was already imported in a submitted batch.')

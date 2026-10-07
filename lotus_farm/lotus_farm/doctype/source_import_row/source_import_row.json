@@ -16,7 +16,9 @@
     "reject_reason",
     "reject_owner",
     "normalized_json",
-    "validation_error"
+    "validation_error",
+    "business_key",
+    "normalized_hash"
   ],
   "fields": [
     {
@@ -95,6 +97,16 @@
       "fieldname": "validation_error",
       "label": "Validation Error",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "business_key",
+      "label": "Business Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "normalized_hash",
+      "label": "Normalized Hash",
+      "fieldtype": "Data"
     }
   ],
   "istable": 1

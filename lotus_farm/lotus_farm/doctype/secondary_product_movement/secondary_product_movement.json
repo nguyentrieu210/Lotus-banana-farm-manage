@@ -15,7 +15,8 @@
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "packhouse_shift"
   ],
   "fields": [
     {
@@ -95,6 +96,12 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "packhouse_shift",
+      "label": "Packhouse Shift",
+      "fieldtype": "Link",
+      "options": "Packhouse Shift"
     }
   ],
   "autoname": "hash",

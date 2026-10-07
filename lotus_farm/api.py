@@ -128,9 +128,11 @@ def availability(period_start, period_end, farm=None, item=None):
             "snapshot_hash",
         ],
         order_by="period_start_date, farm",
-        limit_page_length=500,
+        limit_page_length=10000,
     )
 
+    if len(forecasts) == 10000 and frappe.get_list("Harvest Forecast", filters=filters, fields=["name"], limit_start=10000, limit_page_length=1):
+        frappe.throw("Availability exceeds 10,000 forecasts; narrow the Farm or period.")
     result = []
     for forecast in forecasts:
         outputs = frappe.get_all(
