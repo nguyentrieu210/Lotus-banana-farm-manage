@@ -111,24 +111,32 @@ def payload_fields(meta,values):
     return result
 
 
+def _settings_result(doc,meta):
+    from lotus_farm.rules import canonical_hash
+    result=doc.as_dict()
+    result['_settings_token']=canonical_hash([[f.fieldname,doc.get(f.fieldname)] for f in meta.fields])
+    return result
+
+
 @frappe.whitelist()
 def settings():
-    allowed('Lotus Farm Settings')
+    meta=allowed('Lotus Farm Settings')
     doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('read')
-    return doc.as_dict()
+    return _settings_result(doc,meta)
 
 
 @frappe.whitelist(methods=['POST'])
-def save_settings(values,base_modified=None):
+def save_settings(values,base_token=None):
     meta=allowed('Lotus Farm Settings','write')
     values=frappe.parse_json(values) if isinstance(values,str) else values
     clean=payload_fields(meta,values)
     doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('write')
-    lock('Singles','Lotus Farm Settings')
+    frappe.db.sql("select field from tabSingles where doctype=%s for update",('Lotus Farm Settings',))
     doc.reload()
-    if base_modified and str(doc.modified)!=str(base_modified):frappe.throw('Settings changed. Reload before saving; your input has not overwritten it.')
+    current=_settings_result(doc,meta)
+    if base_token and current['_settings_token']!=base_token:frappe.throw('Settings changed. Reload before saving; your input has not overwritten it.')
     doc.update(clean);doc.save()
-    return doc.as_dict()
+    return _settings_result(doc,meta)
 
 
 @frappe.whitelist(methods=['POST'])
