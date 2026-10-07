@@ -1,0 +1,234 @@
+{
+  "doctype": "DocType",
+  "name": "Cycle Closing Report",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "farm_block",
+    "farm_plot",
+    "crop_cycle",
+    "sucker_selection_batch",
+    "posting_date",
+    "area_ha",
+    "planted_qty",
+    "cancelled_bunch_qty",
+    "harvested_bunch_qty",
+    "gross_harvest_kg",
+    "released_harvest_kg",
+    "finished_kg",
+    "secondary_kg",
+    "reject_kg",
+    "process_loss_kg",
+    "tons_per_ha",
+    "actual_workdays",
+    "snapshot_json",
+    "snapshot_hash",
+    "reopen_reason",
+    "source_import_batch",
+    "legacy_source_key",
+    "amended_from",
+    "amendment_reason"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Farm Block",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Crop Cycle",
+      "fieldtype": "Link",
+      "options": "Crop Cycle",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sucker_selection_batch",
+      "label": "Sucker Selection Batch",
+      "fieldtype": "Link",
+      "options": "Sucker Selection Batch"
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "area_ha",
+      "label": "Area Ha",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "planted_qty",
+      "label": "Planted Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "cancelled_bunch_qty",
+      "label": "Cancelled Bunch Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "harvested_bunch_qty",
+      "label": "Harvested Bunch Qty",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "gross_harvest_kg",
+      "label": "Gross Harvest Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "released_harvest_kg",
+      "label": "Released Harvest Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "finished_kg",
+      "label": "Finished Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "secondary_kg",
+      "label": "Secondary Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "reject_kg",
+      "label": "Reject Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "process_loss_kg",
+      "label": "Process Loss Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "tons_per_ha",
+      "label": "Tons Per Ha",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "actual_workdays",
+      "label": "Actual Workdays",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "snapshot_json",
+      "label": "Snapshot Json",
+      "fieldtype": "Code",
+      "read_only": 1,
+      "options": "JSON"
+    },
+    {
+      "fieldname": "snapshot_hash",
+      "label": "Snapshot Hash",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reopen_reason",
+      "label": "Reopen Reason",
+      "fieldtype": "Small Text",
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch"
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Cycle Closing Report",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "is_submittable": 1
+}

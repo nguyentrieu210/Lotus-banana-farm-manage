@@ -82,7 +82,9 @@
       "fieldname": "work_plan_line",
       "label": "Work Plan Line",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "hidden": 1,
+      "read_only": 1
     },
     {
       "fieldname": "work_team",

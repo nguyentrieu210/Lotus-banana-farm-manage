@@ -299,7 +299,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(shooting.supply_state, "Superseded")
         self.assertEqual(cut.source_bunch_qty, 900)
         self.assertEqual(json.loads(cut.source_snapshot)["basis"], "Cut Bud Operations")
-        self.assertEqual(cut.formula_version, "lotus-forecast/4")
+        self.assertEqual(cut.formula_version, "lotus-forecast/5")
 
     def test_multi_item_forecast_reserves_and_materializes_each_finished_item(self):
         from lotus_farm.api import availability
@@ -494,6 +494,13 @@ class TestBRDOnSite(unittest.TestCase):
             other_loss_kg=0,
             qc_state="Released",
         )
+        loss_reason = self.make("Defect Reason", defect_code="LOSS-"+self.tag, defect_name="Process reject", category="Other").name
+        run.loss_details = []
+        if run.reject_kg:
+            run.append("loss_details",dict(loss_type="Reject",weight_kg=run.reject_kg,reason=loss_reason))
+        if run.other_loss_kg:
+            run.append("loss_details",dict(loss_type="Process Loss",weight_kg=run.other_loss_kg,reason=loss_reason))
+        run.save()
         run.submit()
         with self.assertRaises(frappe.ValidationError):
             make_repack_entry(run.name)
@@ -603,6 +610,13 @@ class TestBRDOnSite(unittest.TestCase):
             other_loss_kg=0,
             qc_state="Released",
         )
+        loss_reason = self.make("Defect Reason", defect_code="LOSS-"+self.tag, defect_name="Process reject", category="Other").name
+        run.loss_details = []
+        if run.reject_kg:
+            run.append("loss_details",dict(loss_type="Reject",weight_kg=run.reject_kg,reason=loss_reason))
+        if run.other_loss_kg:
+            run.append("loss_details",dict(loss_type="Process Loss",weight_kg=run.other_loss_kg,reason=loss_reason))
+        run.save()
         run.submit()
         self.assertAlmostEqual(run.mass_variance_kg, 0, places=3)
         bad = frappe.copy_doc(run)
@@ -659,9 +673,17 @@ class TestBRDOnSite(unittest.TestCase):
             frappe.set_user("Administrator")
             try:
                 barrier.wait(timeout=20)
-                result = reserve(forecast_name, order_name, line_name, 12000, "race-" + self.tag + str(index))
-                frappe.db.commit()
-                return ("accepted", result)
+                # A real request retries a deadlocked transaction with the same event ID.
+                # Roll back the entire isolated worker transaction before retrying.
+                for attempt in range(3):
+                    try:
+                        result = reserve(forecast_name, order_name, line_name, 12000, "race-" + self.tag + str(index))
+                        frappe.db.commit()
+                        return ("accepted", result)
+                    except frappe.QueryDeadlockError:
+                        frappe.db.rollback()
+                        if attempt == 2:
+                            raise
             except frappe.ValidationError:
                 frappe.db.rollback()
                 return ("rejected", None)
@@ -792,6 +814,13 @@ class TestBRDOnSite(unittest.TestCase):
             other_loss_kg=0,
             qc_state="Released",
         )
+        loss_reason = self.make("Defect Reason", defect_code="LOSS-"+self.tag, defect_name="Process reject", category="Other").name
+        run.loss_details = []
+        if run.reject_kg:
+            run.append("loss_details",dict(loss_type="Reject",weight_kg=run.reject_kg,reason=loss_reason))
+        if run.other_loss_kg:
+            run.append("loss_details",dict(loss_type="Process Loss",weight_kg=run.other_loss_kg,reason=loss_reason))
+        run.save()
         run.submit()
         draft = make_repack_entry(run.name)
         self.assertEqual(draft["docstatus"], 0)
@@ -1007,6 +1036,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(draft.net_source_bunch_qty,950)
 
     def test_promax_plot_cycles_and_labor_summary(self):
+        block=frappe.get_doc('Farm Block',self.block);block.area_ha=2;block.save()
         plot=self.make('Farm Plot',farm=self.farm,farm_block=self.block,plot_code='A12.2',plot_name='Second',area_ha=1).name
         other=self.make('Crop Cycle',farm=self.farm,farm_block=self.block,farm_plot=plot,cycle_no=1,
                         planting_date=nowdate(),variety=self.variety)

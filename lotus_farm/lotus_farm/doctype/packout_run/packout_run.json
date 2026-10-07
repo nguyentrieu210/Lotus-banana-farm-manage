@@ -18,7 +18,8 @@
     "qc_released_by",
     "qc_released_at",
     "target_warehouse",
-    "stock_entry"
+    "stock_entry",
+    "loss_details"
   ],
   "fields": [
     {
@@ -128,6 +129,12 @@
       "label": "Stock Entry",
       "read_only": 1,
       "options": "Stock Entry"
+    },
+    {
+      "fieldname": "loss_details",
+      "label": "Loss Details",
+      "fieldtype": "Table",
+      "options": "Production Loss Detail"
     }
   ],
   "autoname": "format:PR-{#####}",

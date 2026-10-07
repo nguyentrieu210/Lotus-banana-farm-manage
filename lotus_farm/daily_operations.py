@@ -16,7 +16,7 @@ DATE_FIELDS = {
 DAILY_TYPES = (
     'Daily Work Plan', 'Daily Work Result', 'Labor Allocation', 'Daily Labor Summary',
     'Material Requirement', 'Material Consumption', 'Material Recovery', 'Bunch Cancellation',
-    'Planting Event', 'Disease Observation', 'Fruit Measurement', 'Incoming Quality Inspection',
+    'Planting Event', 'Disease Observation', 'Fruit Measurement', 'Incoming Quality Inspection', 'Secondary Product Movement',
 )
 
 
@@ -60,6 +60,8 @@ def plot_scope(doc, method=None):
     else:
         cycle = frappe.get_doc('Crop Cycle', doc.crop_cycle)
         cycle.check_permission('read')
+        if cycle.status == 'Closed' and doc.doctype != 'Cycle Closing Report' and (doc.is_new() or doc.docstatus == 1):
+            frappe.throw('Cycle is closed. Reopen its closing report before adding production records.')
         if cycle.farm != doc.farm or cycle.farm_block != doc.farm_block:
             frappe.throw('Cycle must match the Farm and Block.')
         if doc.get('farm_plot') and doc.farm_plot != cycle.get('farm_plot'):
@@ -73,7 +75,7 @@ def plot_scope(doc, method=None):
             cohort.check_permission('read')
             if cohort.crop_cycle != cycle.name:
                 frappe.throw('Cohort belongs to another Cycle.')
-        elif cycle.cycle_type == 'Ratoon' and doc.doctype in DAILY_TYPES:
+        elif cycle.cycle_type == 'Ratoon' and doc.doctype in (*DAILY_TYPES, 'Daily Work Plan Line'):
             frappe.throw('Ratoon operations require a Sucker Selection Batch.')
         date = doc.get('posting_date')
         if date and cycle.planting_date and getdate(date) < getdate(cycle.planting_date):
@@ -116,7 +118,11 @@ def plan_line(doc):
 
 class DailyDocument(Document):
     def validate(self):
-        day_guard(self)
+        if self.doctype == 'Cycle Closing Report':
+            check_farm(self)
+            lock('Farm',self.farm)
+        else:
+            day_guard(self)
         company_scope(self)
         if self.get('crop_cycle'):
             plot_scope(self)
@@ -143,7 +149,10 @@ class PlotMaster(Document):
         block.check_permission('read')
         if block.farm != self.farm or not block.active:
             frappe.throw('Plot requires an active Block in the same Farm.')
-        number(self.area_ha, 'Plot area', positive=True)
+        area=number(self.area_ha, 'Plot area', positive=True)
+        siblings=sum(flt(v) for v in frappe.get_all('Farm Plot',filters={'farm_block':self.farm_block,'active':1,'name':['!=',self.name]},pluck='area_ha'))
+        if self.active and siblings+area>flt(block.area_ha)+0.000001:
+            frappe.throw('Active Plot areas exceed the Block area.')
         before = self.get_doc_before_save()
         if before and any(self.get(f) != before.get(f) for f in ('farm', 'farm_block', 'plot_code')):
             if frappe.db.exists('Crop Cycle', {'farm_plot': self.name}):
@@ -494,7 +503,7 @@ def incoming_packout_guard(doc, method=None):
 
 
 def stock_context_cancel(doc, method=None):
-    refs = [('Material Consumption','stock_entry'),('Material Recovery','stock_entry')]
+    refs = [('Material Consumption','stock_entry'),('Material Recovery','stock_entry'),('Secondary Product Movement','stock_entry')]
     for doctype, field in refs:
         if frappe.db.exists(doctype, {field:doc.name,'docstatus':1}):
             frappe.throw('Cancel submitted Lotus material contexts before reversing ERP stock.')
@@ -576,14 +585,19 @@ class DailyClose(Document):
         self.closed_by,self.closed_at=frappe.session.user,now_datetime()
 
     def before_update_after_submit(self):
+        from frappe.utils import get_datetime
         before=self.get_doc_before_save()
-        allowed={'reopen_reason','modified','modified_by'}
-        for field in self.meta.fields:
-            if field.fieldname not in allowed and self.get(field.fieldname)!=before.get(field.fieldname):
-                if field.fieldtype=='Table':
-                    if [r.as_dict() for r in self.get(field.fieldname)]==[r.as_dict() for r in before.get(field.fieldname)]:
-                        continue
-                frappe.throw('Submitted daily close snapshot is immutable.')
+        keys=('name','idx','check_code','reference_doctype','reference_name','status','message')
+        def checks(doc):
+            return [tuple(r.get(k) for k in keys) for r in doc.checks]
+        unchanged=(self.company==before.company and self.farm==before.farm
+                   and getdate(self.posting_date)==getdate(before.posting_date)
+                   and self.snapshot_hash==before.snapshot_hash
+                   and self.closed_by==before.closed_by
+                   and get_datetime(self.closed_at)==get_datetime(before.closed_at)
+                   and checks(self)==checks(before))
+        if not unchanged:
+            frappe.throw('Submitted daily close snapshot is immutable.')
 
     def before_cancel(self):
         require_role('Lotus Farm Manager')
@@ -674,6 +688,151 @@ def live_loss_fraction(doc):
     }, pluck="bunch_qty"))
     recorded = flt(doc.get("cancellation_bunch_qty"))
     net = doc.get("net_source_bunch_qty")
-    if net is None:
+    if doc.formula_version != 'lotus-forecast/5' or net is None:
         net = doc.source_bunch_qty
     return min(max(current-recorded, 0) / flt(net), 1) if flt(net) else 0
+
+
+def packout_losses(doc):
+    totals={'Reject':0,'Process Loss':0}
+    for row in doc.loss_details or []:
+        totals[row.loss_type]+=number(row.weight_kg,'Loss weight',positive=True)
+    if abs(totals['Reject']-flt(doc.reject_kg))>0.0005 or abs(totals['Process Loss']-flt(doc.other_loss_kg))>0.0005:
+        frappe.throw('Packout loss details must explain all rejected and process-loss weight.')
+
+
+class SecondaryMovement(DailyDocument):
+    def validate_daily(self):
+        run=frappe.get_doc('Packout Run',self.packout_run)
+        run.check_permission('read')
+        if run.docstatus!=1 or run.farm!=self.farm or getdate(self.posting_date)<getdate(run.packing_date):
+            frappe.throw('Secondary movement requires a submitted packout in the same Farm.')
+        output=next((r for r in run.outputs if r.item==self.item and r.output_type=='Secondary'),None)
+        if not output:
+            frappe.throw('Item must be a secondary output from this Packout Run.')
+        if not run.stock_entry or frappe.db.get_value('Stock Entry',run.stock_entry,'docstatus')!=1:
+            frappe.throw('Post the packout stock before recording secondary movement.')
+        entry,row=entry_detail(self.stock_entry,self.stock_entry_detail,self.company)
+        if entry.purpose not in ('Material Issue','Material Transfer') or row.item_code!=self.item or row.stock_uom!='Kg' or not row.s_warehouse or getdate(entry.posting_date)!=getdate(self.posting_date):
+            frappe.throw('Secondary movement must match its dated ERP stock issue/transfer row in Kg.')
+        batch=row.batch_no
+        if row.serial_and_batch_bundle:
+            bundle=frappe.get_doc('Serial and Batch Bundle',row.serial_and_batch_bundle)
+            if len(bundle.entries)!=1:
+                frappe.throw('Secondary movement requires one Batch.')
+            batch=bundle.entries[0].batch_no
+        if batch!=output.batch:
+            frappe.throw('Secondary movement Batch must match its source packout.')
+        if abs(number(self.quantity_kg,'Secondary kg',positive=True)-flt(row.transfer_qty))>0.0005:
+            frappe.throw('Secondary movement quantity must equal the ERP stock row.')
+        if frappe.db.exists(self.doctype,{'stock_entry_detail':row.name,'docstatus':1,'name':['!=',self.name]}):
+            frappe.throw('Stock row already has a submitted secondary movement.')
+
+
+class CycleClose(DailyDocument):
+    def validate_daily(self):
+        if self.sucker_selection_batch:
+            frappe.throw('Cycle close covers the entire Cycle; leave Cohort blank.')
+        cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
+        if cycle.cycle_type=='Ratoon':
+            # The day scope validator normally requires a cohort only for row-level actuals.
+            pass
+        self.area_ha=frappe.db.get_value('Farm Plot',self.farm_plot,'area_ha')
+        actuals=frappe.get_all('Harvest Actual',filters={'crop_cycle':self.crop_cycle,'docstatus':1},fields=['name','harvested_bunch_qty','gross_weight_kg','saleable_weight_kg'])
+        self.harvested_bunch_qty=sum(flt(r.harvested_bunch_qty) for r in actuals)
+        self.gross_harvest_kg=sum(flt(r.gross_weight_kg) for r in actuals)
+        self.released_harvest_kg=sum(flt(r.saleable_weight_kg) for r in actuals)
+        self.planted_qty=sum(flt(v) for v in frappe.get_all('Planting Event',filters={'crop_cycle':self.crop_cycle,'docstatus':1},pluck='plant_qty'))
+        self.cancelled_bunch_qty=sum(flt(v) for v in frappe.get_all('Bunch Cancellation',filters={'crop_cycle':self.crop_cycle,'docstatus':1},pluck='bunch_qty'))
+        self.actual_workdays=sum(flt(v) for v in frappe.get_all('Daily Work Result',filters={'crop_cycle':self.crop_cycle,'docstatus':1},pluck='actual_workdays'))
+        self.finished_kg=self.secondary_kg=self.reject_kg=self.process_loss_kg=0
+        actual_names={r.name for r in actuals}
+        run_evidence=[]
+        for name in frappe.get_all('Packout Run',filters={'farm':self.farm,'docstatus':1},pluck='name'):
+            run=frappe.get_doc('Packout Run',name);share=0
+            for source in run.sources:
+                lot=frappe.get_doc('Harvest Lot',source.harvest_lot)
+                contributing=sum(flt(r.contributed_kg) for r in lot.sources if r.harvest_actual in actual_names)
+                if lot.released_raw_kg and run.input_kg:
+                    share+=flt(source.input_kg)/flt(run.input_kg)*contributing/flt(lot.released_raw_kg)
+            if share:
+                run_evidence.append({'packout_run':run.name,'share':share})
+                self.finished_kg+=sum(flt(r.net_kg) for r in run.outputs if r.output_type!='Secondary')*share
+                self.secondary_kg+=sum(flt(r.net_kg) for r in run.outputs if r.output_type=='Secondary')*share
+                self.reject_kg+=flt(run.reject_kg)*share
+                self.process_loss_kg+=flt(run.other_loss_kg)*share
+        self.tons_per_ha=self.gross_harvest_kg/1000/number(self.area_ha,'Cycle area',positive=True)
+        evidence=dict(actuals=actuals,packouts=run_evidence,metrics={f:self.get(f) for f in ('area_ha','planted_qty','cancelled_bunch_qty','harvested_bunch_qty','gross_harvest_kg','released_harvest_kg','finished_kg','secondary_kg','reject_kg','process_loss_kg','tons_per_ha','actual_workdays')})
+        self.snapshot_json=json.dumps(evidence,default=str,sort_keys=True)
+        self.snapshot_hash=canonical_hash(evidence)
+
+    def before_submit(self):
+        require_role('Lotus Farm Manager')
+        lock('Crop Cycle',self.crop_cycle)
+        if frappe.db.exists(self.doctype,{'crop_cycle':self.crop_cycle,'docstatus':1,'name':['!=',self.name]}):
+            frappe.throw('Cycle already has a submitted closing report.')
+        if frappe.db.exists('Harvest Forecast',{'crop_cycle':self.crop_cycle,'supply_state':'Released'}):
+            frappe.throw('Close/reconcile released forecasts before ending this Cycle.')
+        for doctype in DAILY_TYPES:
+            meta=frappe.get_meta(doctype)
+            if not meta.has_field('crop_cycle'):
+                continue
+            for row in frappe.get_all(doctype,filters={'crop_cycle':self.crop_cycle,'docstatus':['<',2]},fields=['name','docstatus','posting_date']):
+                if row.docstatus==0 or not frappe.db.exists('Daily Production Close',{'farm':self.farm,'posting_date':row.posting_date,'docstatus':1}):
+                    frappe.throw('Submit all Cycle transactions and close their Farm days first.')
+        from lotus_farm.controls import command
+        cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
+        cycle.status='Closed'
+        with command(cycle,'cycle_close'):
+            cycle.save()
+
+    def before_update_after_submit(self):
+        before=self.get_doc_before_save()
+        if self.snapshot_json!=before.snapshot_json or self.snapshot_hash!=before.snapshot_hash:
+            frappe.throw('Submitted Cycle closing metrics are immutable.')
+
+    def before_cancel(self):
+        require_role('Lotus Farm Manager')
+        lock('Farm',self.farm)
+        if not (self.reopen_reason or '').strip():
+            frappe.throw('Cycle reopen reason is required.')
+        from lotus_farm.controls import command
+        cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
+        cycle.status='Harvesting'
+        with command(cycle,'cycle_close'):
+            cycle.save()
+
+
+class LegacyCycleMapping(Document):
+    def validate(self):
+        require_role('Lotus Farm Manager')
+        check_farm(self)
+        lock('Farm',self.farm)
+        cycle=frappe.get_doc('Crop Cycle',self.crop_cycle);cycle.check_permission('write')
+        plot=frappe.get_doc('Farm Plot',self.farm_plot);plot.check_permission('read')
+        if cycle.farm!=self.farm or plot.farm!=self.farm or cycle.farm_block!=plot.farm_block or not plot.active:
+            frappe.throw('Legacy Cycle and active Plot must belong to the same Farm/Block.')
+        if cycle.farm_plot:
+            frappe.throw('Only unmapped legacy cycles can use this mapping command.')
+        if not (self.reason or '').strip():
+            frappe.throw('Legacy cycle mapping requires a reason.')
+        if frappe.db.exists('Harvest Forecast',{'crop_cycle':cycle.name,'supply_state':'Released'}):
+            frappe.throw('Close/reconcile released forecasts before mapping legacy land.')
+        if cycle.parent_cycle:
+            parent=frappe.get_doc('Crop Cycle',cycle.parent_cycle)
+            if parent.farm_plot!=plot.name:
+                frappe.throw('Map the parent cycle to this Plot first.')
+
+    def before_submit(self):
+        self.validate()
+        lock('Crop Cycle',self.crop_cycle)
+        if frappe.db.get_value('Crop Cycle',self.crop_cycle,'farm_plot'):
+            frappe.throw('Legacy Cycle was already mapped.')
+        if frappe.db.exists('Crop Cycle',{'farm_plot':self.farm_plot,'cycle_no':frappe.db.get_value('Crop Cycle',self.crop_cycle,'cycle_no')}):
+            frappe.throw('Plot already has this Cycle number.')
+        # Deliberately do not overwrite submitted actuals or frozen forecast snapshots.
+        # This reviewed mapping augments the land reference on the legacy cycle only.
+        frappe.db.set_value('Crop Cycle',self.crop_cycle,'farm_plot',self.farm_plot)
+
+    def before_cancel(self):
+        frappe.throw('Submitted legacy cycle mappings are permanent audit records.')

@@ -94,3 +94,15 @@ doc_events["Stock Entry"]["before_cancel"] = [
     "lotus_farm.daily_operations.stock_context_cancel",
     "lotus_farm.stock_bridge.before_stock_cancel",
 ]
+
+for _name in ("Secondary Product Movement", "Cycle Closing Report"):
+    has_permission[_name] = "lotus_farm.controls.farm_permission"
+    permission_query_conditions[_name] = "lotus_farm.permissions." + _name.lower().replace(" ", "_")
+
+doctype_js.update({
+    "Daily Work Plan": "public/js/daily_work_plan.js",
+    "Material Requirement": "public/js/material_requirement.js",
+    "Daily Production Close": "public/js/daily_production_close.js",
+})
+has_permission["Legacy Cycle Plot Mapping"] = "lotus_farm.controls.farm_permission"
+permission_query_conditions["Legacy Cycle Plot Mapping"] = "lotus_farm.permissions.legacy_cycle_plot_mapping"

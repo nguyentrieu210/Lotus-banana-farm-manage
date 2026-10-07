@@ -26,7 +26,7 @@ class PackoutRun(Document):
                 if before.get(name) != self.get(name):
                     frappe.throw("QC released packout is immutable. Cancel/amend to correct weights.")
             source_fields = ("name", "idx", "harvest_lot", "input_kg")
-            output_fields = ("name", "idx", "item", "net_kg", "cartons", "batch", "quality_standard", "standard_version")
+            output_fields = ("name", "idx", "item", "net_kg", "cartons", "batch", "quality_standard", "standard_version", "output_type")
             def rows(doc, table, fields):
                 numeric = {"idx", "input_kg", "net_kg", "cartons", "standard_version"}
                 return [tuple(flt(row.get(f), 3) if f in numeric else (row.get(f) or "") for f in fields) for row in doc.get(table)]
@@ -131,6 +131,8 @@ class PackoutRun(Document):
             self.set(name, value)
 
     def before_submit(self):
+        from lotus_farm.daily_operations import packout_losses
+        packout_losses(self)
         if self.qc_state != "Released" or not self.qc_released_by:
             frappe.throw("QC Manager must release the packout before submission.")
 

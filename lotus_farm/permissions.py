@@ -123,3 +123,15 @@ def work_team(user=None):
 
 def material_norm_profile(user=None):
     return query_condition("Material Norm Profile", user)
+
+
+def secondary_product_movement(user=None):
+    return query_condition("Secondary Product Movement", user)
+
+
+def cycle_closing_report(user=None):
+    return query_condition("Cycle Closing Report", user)
+
+
+def legacy_cycle_plot_mapping(user=None):
+    return query_condition("Legacy Cycle Plot Mapping",user)

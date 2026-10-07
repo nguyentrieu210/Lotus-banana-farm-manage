@@ -2,22 +2,13 @@
 
 Custom Frappe/ERPNext app for Lotus banana farm operations.
 
-## V1 operating model
+## ProMax operating model
 
-V1 separates permanent land master data from production cycles and daily cohorts:
+Company → Farm → Farm Block → Farm Plot → Crop Cycle → Sucker Selection Batch.
 
-```
-Farm
-  -> Farm Block
-      -> Crop Cycle
-          -> Sucker Selection Batch (Cycle 2+ cohort by selection date)
-              -> Bunch Operation
-              -> Defect Inspection
-              -> Harvest Forecast
-              -> Harvest Actual
-```
+Daily Work Plan links land and tasks to labor, versioned material norms, actual results, consumption/recovery and a blocking Daily Production Close. Incoming QC gates packout; cancellations reduce current ATP while preserving released snapshots. No Xí nghiệp DocType or parallel stock ledger is introduced.
 
-This is intentional: Cycle 1 is anchored by planting date, while ratoon cycles are tracked through actual sucker-selection batches. A block can therefore have several selection cohorts on different dates without forcing one artificial "Cycle 2 date".
+See [ProMax implementation](docs/PROMAX_IMPLEMENTATION.md) for setup, migration, operating steps, BRD naming and remaining acceptance work.
 
 ## Forecast pipeline
 
@@ -72,7 +63,7 @@ ERPNext remains responsible for standard commercial and inventory objects such a
 
 ## Not yet included
 
-The BRD implementation branch adds immutable released forecasts, atomic SO Item allocations, versioned QC, traced harvest lots, reconciled Packout Runs, immutable scale readings and a draft ERPNext Repack bridge.
+The BRD implementation branch adds immutable released forecasts, atomic SO Item allocations, versioned QC, traced harvest lots, reconciled Packout Runs, immutable scale readings, the ERPNext Repack bridge and ProMax daily operations. Source staging records do not mean Lotus historical data has been imported.
 
 See [BRD implementation and readiness](docs/BRD_IMPLEMENTATION.md) for migration steps, APIs, verification and the remaining enterprise requirements. Early supply can now be revised from Sucker Selection → Shooting → Cut Bud evidence without double-counting the same cohort. One biological forecast can also split finished supply across multiple approved Items without duplicating the source crop. QR, GIS, offline mobile and automatic delivery fulfilment are not completed.
 

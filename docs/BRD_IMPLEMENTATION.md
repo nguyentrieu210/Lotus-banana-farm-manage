@@ -1,3 +1,5 @@
+> Updated scope: see [ProMax implementation](PROMAX_IMPLEMENTATION.md) for the 2026-10-07 BRD additions. The historical notes below describe the earlier supply/QC tranche; current validation must use the latest commit workflow.
+
 # Lotus BRD implementation — first executable tranche
 
 Source: “Lotus Farm — BRD 360° và thiết kế kỹ thuật cho custom app Frappe/ERPNext”, created 2026-10-06. Baseline main: `2c57b1246204273c5e339249df9ddd0e3f82e2ef`.
