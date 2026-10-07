@@ -47,8 +47,11 @@ def schema(doctype):
     meta=allowed(doctype)
     def fields(m):
         return [{k:f.get(k) for k in ('fieldname','label','fieldtype','options','reqd','read_only','default','description','depends_on')} for f in m.fields if f.fieldtype not in ('Section Break','Column Break','Tab Break','HTML','Button')]
+    from lotus_farm.field import CAPTURE_TYPES
+    from lotus_farm.importing import IMPORT_FIELDS
+    capture_fields=sorted(IMPORT_FIELDS.get(doctype,())) if doctype in CAPTURE_TYPES else []
     return dict(doctype=doctype,title_field=meta.title_field,is_submittable=meta.is_submittable,fields=fields(meta),
-        tables={f.options:fields(frappe.get_meta(f.options)) for f in meta.fields if f.fieldtype=='Table'},
+        tables={f.options:fields(frappe.get_meta(f.options)) for f in meta.fields if f.fieldtype=='Table'},capture_fields=capture_fields,
         permissions={p:frappe.has_permission(doctype,p) for p in ('create','write','submit','cancel','amend')})
 
 
