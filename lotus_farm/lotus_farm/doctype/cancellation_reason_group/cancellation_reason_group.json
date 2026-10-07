@@ -20,7 +20,8 @@
       "fieldname": "group_name",
       "label": "Group Name",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "active",
@@ -48,5 +49,8 @@
       "export": 1,
       "print": 1
     }
-  ]
+  ],
+  "title_field": "group_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "group_code"
 }

@@ -35,7 +35,8 @@
       "label": "Farm",
       "fieldtype": "Link",
       "options": "Farm",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "farm_block",
@@ -68,7 +69,8 @@
       "fieldname": "posting_date",
       "label": "Posting Date",
       "fieldtype": "Date",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "expected_harvest_date",

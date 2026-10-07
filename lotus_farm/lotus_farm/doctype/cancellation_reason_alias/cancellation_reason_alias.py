@@ -1,5 +1,5 @@
-from frappe.model.document import Document
+from lotus_farm.daily_operations import ReasonAliasMaster
 
 
-class CancellationReasonAlias(Document):
+class CancellationReasonAlias(ReasonAliasMaster):
     pass

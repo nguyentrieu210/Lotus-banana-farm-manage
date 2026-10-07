@@ -27,7 +27,8 @@
       "fieldname": "team_name",
       "label": "Team Name",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "active",
@@ -55,5 +56,8 @@
       "export": 1,
       "print": 1
     }
-  ]
+  ],
+  "title_field": "team_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "team_code,farm"
 }

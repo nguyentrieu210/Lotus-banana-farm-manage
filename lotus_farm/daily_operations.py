@@ -836,3 +836,19 @@ class LegacyCycleMapping(Document):
 
     def before_cancel(self):
         frappe.throw('Submitted legacy cycle mappings are permanent audit records.')
+
+
+class CancellationReasonMaster(Document):
+    def validate(self):
+        before=self.get_doc_before_save()
+        if before and frappe.db.exists('Bunch Cancellation',{'reason':self.name}):
+            if any(self.get(f)!=before.get(f) for f in ('reason_code','reason_name','reason_group')):
+                frappe.throw('Used cancellation classification cannot be reassigned. Create a new reason; deactivate the old one.')
+
+
+class ReasonAliasMaster(Document):
+    def validate(self):
+        from lotus_farm.source_data import source_text
+        self.legacy_alias=(source_text(self.legacy_alias) or '').casefold()
+        if not self.legacy_alias:
+            frappe.throw('Legacy alias is required.')

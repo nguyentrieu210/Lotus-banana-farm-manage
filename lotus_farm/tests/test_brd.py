@@ -1052,3 +1052,41 @@ class TestBRDOnSite(unittest.TestCase):
         with self.assertRaises(frappe.ValidationError):
             self.make('Daily Labor Summary',farm=self.farm,posting_date=nowdate(),work_category=category,
                       work_area='Field',headcount=10,present=11,staffing_target=10)
+
+    def test_promax_cycle_close_requires_daily_close_and_reopen_reason(self):
+        plan,_,_=self.daily_plan(material=False)
+        team=self.make('Work Team',farm=self.farm,team_code='C-'+self.tag,team_name='Closing team').name
+        self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=plan.lines[0].name,
+                  work_team=team,allocated_workdays=32,allocation_note='Full shift').submit()
+        self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,work_plan_line=plan.lines[0].name,
+                  completed_qty=1250,actual_workdays=32).submit()
+        scope={k:v for k,v in self.daily_scope().items() if k!='sucker_selection_batch'}
+        closing=self.make('Cycle Closing Report',**scope)
+        with self.assertRaises(frappe.ValidationError):closing.submit()
+        closing.reload()
+        self.make('Daily Production Close',farm=self.farm,posting_date=nowdate()).submit()
+        closing.submit()
+        self.assertEqual(frappe.db.get_value('Crop Cycle',self.cycle,'status'),'Closed')
+        self.assertEqual(closing.actual_workdays,32)
+        with self.assertRaises(frappe.ValidationError):closing.cancel()
+        closing.reload();closing.reopen_reason='Continue harvesting';closing.save();closing.cancel()
+        self.assertEqual(frappe.db.get_value('Crop Cycle',self.cycle,'status'),'Harvesting')
+
+    def test_promax_source_registry_mapping_and_duplicate_row_rejection(self):
+        from lotus_farm.source_data import staged_row
+        source=self.make('Source File Registry',source_key='SRC-'+self.tag,source_path='/AnhDung/test.xlsx',
+                         source_filename='test.xlsx',sha256='a'*64,business_period='2026-10',migration_tier='A',source_status='Active')
+        self.make('Legacy Organization Map',legacy_key='ORG-'+self.tag,legacy_source_unit='XNC-BP1',legacy_farm='BP1.1.1',
+                  farm=self.farm,company=self.company,approval_state='Approved')
+        row=staged_row(source.source_key,'DATALO',2,{'plot':'A12.1'},'ORG-'+self.tag)
+        row.update(row_status='Imported',target_doctype='Farm Plot',target_name=self.plot)
+        batch=self.make('Source Import Batch',source_file=source.name,farm=self.farm,batch_key='BATCH-'+self.tag,rows=[row])
+        batch.submit();self.assertEqual(batch.resolved_percent,100)
+        with self.assertRaises(frappe.ValidationError):
+            self.make('Source Import Batch',source_file=source.name,farm=self.farm,batch_key='RETRY-'+self.tag,rows=[row])
+        source.sha256='b'*64
+        with self.assertRaises(frappe.ValidationError):source.save()
+        rejected=staged_row(source.source_key,'DATALO',3,{'plot':'unknown'},'ORG-'+self.tag)
+        rejected.update(row_status='Rejected',reject_reason='Missing plot mapping',reject_owner='Administrator')
+        batch=self.make('Source Import Batch',source_file=source.name,farm=self.farm,batch_key='REJECT-'+self.tag,rows=[rejected])
+        batch.submit()

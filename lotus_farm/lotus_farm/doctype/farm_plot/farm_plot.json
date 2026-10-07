@@ -45,7 +45,8 @@
       "fieldname": "plot_name",
       "label": "Plot Name",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "area_ha",
@@ -80,5 +81,8 @@
       "export": 1,
       "print": 1
     }
-  ]
+  ],
+  "title_field": "plot_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "plot_code,farm_block"
 }

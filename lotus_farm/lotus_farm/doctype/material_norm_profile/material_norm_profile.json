@@ -25,7 +25,8 @@
       "fieldname": "profile_name",
       "label": "Profile Name",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "version",
@@ -86,5 +87,8 @@
       "export": 1,
       "print": 1
     }
-  ]
+  ],
+  "title_field": "profile_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "profile_name,work_type"
 }

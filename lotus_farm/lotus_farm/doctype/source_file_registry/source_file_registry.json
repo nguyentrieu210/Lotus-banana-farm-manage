@@ -33,7 +33,8 @@
       "fieldname": "source_filename",
       "label": "Source Filename",
       "fieldtype": "Data",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
     },
     {
       "fieldname": "sha256",
@@ -96,5 +97,8 @@
       "export": 1,
       "print": 1
     }
-  ]
+  ],
+  "title_field": "source_filename",
+  "show_title_field_in_link": 1,
+  "search_fields": "source_filename,source_key"
 }
