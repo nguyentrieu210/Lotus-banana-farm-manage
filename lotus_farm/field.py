@@ -141,7 +141,8 @@ def session_info():
         home=all(frappe.has_permission(t,'read') for t in ('Daily Work Plan','Daily Work Result','Labor Allocation','Daily Labor Summary','Bunch Cancellation','Disease Observation','Harvest Actual','Incoming Quality Inspection','Packout Run','Material Requirement','Material Consumption','Harvest Forecast')),
         packhouse=frappe.has_permission('Harvest Lot','read'),
         imports=frappe.has_permission('Source Import Mapping','read'),map=frappe.has_permission('Plot Geometry','read'),
-        qc=frappe.has_permission('Incoming Quality Inspection','create')),farms=frappe.get_list('Farm',fields=['name','farm_name'],limit_page_length=1000))
+        qc=frappe.has_permission('Incoming Quality Inspection','create'),
+        scale=(frappe.session.user=='Administrator' or 'Lotus Integration User' in frappe.get_roles())),farms=frappe.get_list('Farm',fields=['name','farm_name'],limit_page_length=1000))
 
 
 @frappe.whitelist(methods=['POST'])
