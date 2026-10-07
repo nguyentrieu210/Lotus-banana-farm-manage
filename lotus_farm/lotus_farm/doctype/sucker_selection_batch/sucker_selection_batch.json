@@ -8,6 +8,7 @@
   "field_order": [
     "farm",
     "farm_block",
+    "farm_plot",
     "crop_cycle",
     "selection_date",
     "selected_sucker_qty",
@@ -85,6 +86,13 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "read_only": 1
     }
   ],
   "permissions": [

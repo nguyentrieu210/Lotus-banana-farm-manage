@@ -1,0 +1,100 @@
+{
+  "doctype": "DocType",
+  "name": "Source File Registry",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "source_key",
+    "source_path",
+    "source_filename",
+    "sha256",
+    "business_period",
+    "source_modified_at",
+    "version_marker",
+    "source_priority",
+    "migration_tier",
+    "source_status"
+  ],
+  "fields": [
+    {
+      "fieldname": "source_key",
+      "label": "Source Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "source_path",
+      "label": "Source Path",
+      "fieldtype": "Small Text",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_filename",
+      "label": "Source Filename",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sha256",
+      "label": "Sha256",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "business_period",
+      "label": "Business Period",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_modified_at",
+      "label": "Source Modified At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "version_marker",
+      "label": "Version Marker",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "source_priority",
+      "label": "Source Priority",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "migration_tier",
+      "label": "Migration Tier",
+      "fieldtype": "Select",
+      "options": "A\nB\nC\nD",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_status",
+      "label": "Source Status",
+      "fieldtype": "Select",
+      "options": "Active\nSuperseded\nArchive\nUnknown",
+      "reqd": 1
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Integration User",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

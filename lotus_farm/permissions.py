@@ -51,3 +51,75 @@ def integration_event(user=None):
 
 def supply_reconciliation(user=None):
     return query_condition("Supply Reconciliation", user)
+
+
+def daily_work_plan(user=None):
+    return query_condition("Daily Work Plan", user)
+
+
+def daily_work_result(user=None):
+    return query_condition("Daily Work Result", user)
+
+
+def labor_allocation(user=None):
+    return query_condition("Labor Allocation", user)
+
+
+def daily_labor_summary(user=None):
+    return query_condition("Daily Labor Summary", user)
+
+
+def material_requirement(user=None):
+    return query_condition("Material Requirement", user)
+
+
+def material_consumption(user=None):
+    return query_condition("Material Consumption", user)
+
+
+def material_recovery(user=None):
+    return query_condition("Material Recovery", user)
+
+
+def bunch_cancellation(user=None):
+    return query_condition("Bunch Cancellation", user)
+
+
+def planting_event(user=None):
+    return query_condition("Planting Event", user)
+
+
+def disease_observation(user=None):
+    return query_condition("Disease Observation", user)
+
+
+def fruit_measurement(user=None):
+    return query_condition("Fruit Measurement", user)
+
+
+def incoming_quality_inspection(user=None):
+    return query_condition("Incoming Quality Inspection", user)
+
+
+def daily_production_close(user=None):
+    return query_condition("Daily Production Close", user)
+
+
+def source_import_batch(user=None):
+    return query_condition("Source Import Batch", user)
+
+
+def legacy_organization_map(user=None):
+    return query_condition("Legacy Organization Map", user)
+
+
+def farm_plot(user=None):
+    return query_condition("Farm Plot", user)
+
+
+def work_team(user=None):
+    return query_condition("Work Team", user)
+
+
+def material_norm_profile(user=None):
+    return query_condition("Material Norm Profile", user)

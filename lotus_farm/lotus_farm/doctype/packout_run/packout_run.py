@@ -137,3 +137,6 @@ class PackoutRun(Document):
     def before_cancel(self):
         if self.stock_entry and frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") != 2:
             frappe.throw("Cancel/delete the linked ERPNext Stock Entry before cancelling packout.")
+
+    def before_update_after_submit(self):
+        self.validate()

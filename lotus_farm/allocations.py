@@ -56,6 +56,9 @@ def _item_atp(supply, item):
 @frappe.whitelist(methods=["POST"])
 def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     require_role("Lotus Sales Planner")
+    farm = frappe.db.get_value("Harvest Forecast", forecast, "farm")
+    if farm:
+        lock("Farm", farm)
     lock("Sales Order", sales_order)
     lock("Harvest Forecast", forecast)
     if not client_event_id:
@@ -85,6 +88,8 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     if not line:
         frappe.throw("Select an exact Sales Order Item row.")
     output, safe_commit, materialized = _item_supply(supply, line.item_code)
+    from lotus_farm.daily_operations import live_loss_fraction
+    safe_commit *= 1-live_loss_fraction(supply)
     validate_item(line.item_code)
     # ERPNext stock_qty is already converted to Item stock UOM (Kg). Delivered qty is in sales UOM.
     remaining_demand = max(

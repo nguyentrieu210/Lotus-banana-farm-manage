@@ -37,9 +37,13 @@ def setup():
             ]
         }
     )
+    upgrade_cycle_unique_index()
     for doctype, fields in (
         ("Farm Block", ["farm", "block_code"]),
-        ("Crop Cycle", ["farm_block", "cycle_no"]),
+        ("Crop Cycle", ["farm_block", "farm_plot", "cycle_no"]),
+        ("Farm Plot", ["farm_block", "plot_code"]),
+        ("Work Team", ["farm", "team_code"]),
+        ("Material Norm Profile", ["profile_name", "version"]),
         ("Harvest Profile", ["profile_name", "version"]),
         ("Quality Standard", ["standard_code", "version"]),
         ("Packout Profile", ["profile_name", "version"]),
@@ -76,3 +80,18 @@ def validate_reference_company(doc, method=None):
         if field.options == "Cost Center" and value:
             if frappe.db.get_value("Cost Center", value, "company") != doc.company:
                 frappe.throw("Cost Center must belong to the Farm Company.")
+
+
+def upgrade_cycle_unique_index():
+    # The old block/cycle unique key prevented independent cycles on different plots.
+    # No data reassignment: blank legacy plot remains blank until explicitly mapped.
+    indexes = frappe.db.sql("SHOW INDEX FROM `tabCrop Cycle`", as_dict=True)
+    grouped = {}
+    for row in indexes:
+        if not row.Non_unique and row.Key_name != "PRIMARY":
+            grouped.setdefault(row.Key_name, []).append((row.Seq_in_index, row.Column_name))
+    for name, columns in grouped.items():
+        if [c for _, c in sorted(columns)] == ["farm_block", "cycle_no"]:
+            if not name.replace("_", "").isalnum():
+                frappe.throw("Unexpected Crop Cycle index name.")
+            frappe.db.sql("ALTER TABLE `tabCrop Cycle` DROP INDEX `" + name + "`")

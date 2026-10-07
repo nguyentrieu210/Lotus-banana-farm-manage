@@ -59,10 +59,13 @@ class TestBRDOnSite(unittest.TestCase):
         self.block = self.make(
             "Farm Block", farm=self.farm, block_code="A12", block_name="A12", area_ha=1, variety=self.variety
         ).name
+        self.plot = self.make("Farm Plot", farm=self.farm, farm_block=self.block,
+                               plot_code="A12.1", plot_name="A12.1", area_ha=1).name
         self.parent = self.make(
             "Crop Cycle",
             farm=self.farm,
             farm_block=self.block,
+            farm_plot=self.plot,
             cycle_no=1,
             planting_date=add_days(nowdate(), -500),
             variety=self.variety,
@@ -71,6 +74,7 @@ class TestBRDOnSite(unittest.TestCase):
             "Crop Cycle",
             farm=self.farm,
             farm_block=self.block,
+            farm_plot=self.plot,
             cycle_no=2,
             parent_cycle=self.parent,
             variety=self.variety,
@@ -472,6 +476,8 @@ class TestBRDOnSite(unittest.TestCase):
             sources=[dict(harvest_actual=actual.name, contributed_kg=22310)],
         )
         lot.submit()
+        self.make("Incoming Quality Inspection", farm=self.farm, posting_date=nowdate(),
+                  harvest_lot=lot.name, accepted_kg=lot.released_raw_kg).submit()
         run = self.make(
             "Packout Run",
             farm=self.farm,
@@ -571,6 +577,8 @@ class TestBRDOnSite(unittest.TestCase):
             sources=[dict(harvest_actual=actual.name, contributed_kg=22310)],
         )
         lot.submit()
+        self.make("Incoming Quality Inspection", farm=self.farm, posting_date=nowdate(),
+                  harvest_lot=lot.name, accepted_kg=lot.released_raw_kg).submit()
         over = frappe.get_doc(
             dict(
                 doctype="Harvest Lot",
@@ -769,6 +777,8 @@ class TestBRDOnSite(unittest.TestCase):
             sources=[dict(harvest_actual=actual.name, contributed_kg=22310)],
         )
         lot.submit()
+        self.make("Incoming Quality Inspection", farm=self.farm, posting_date=nowdate(),
+                  harvest_lot=lot.name, accepted_kg=lot.released_raw_kg).submit()
         run = self.make(
             "Packout Run",
             farm=self.farm,
@@ -897,3 +907,118 @@ class TestBRDOnSite(unittest.TestCase):
         replacement_entry = make_repack_entry(run.name)
         self.assertNotEqual(replacement_entry["stock_entry"], entry.name)
         self.assertEqual(replacement_entry["docstatus"], 0)
+
+    def daily_scope(self):
+        return dict(farm=self.farm,farm_block=self.block,farm_plot=self.plot,
+                    crop_cycle=self.cycle,sucker_selection_batch=self.cohort,posting_date=nowdate())
+
+    def daily_plan(self, material=True):
+        for uom in ('Bunch','Sheet'):
+            if not frappe.db.exists('UOM',uom):
+                self.make('UOM',uom_name=uom)
+        category=self.make('Work Category',category_code='CSB-'+self.tag,category_name='Bunch care').name
+        work=self.make('Work Type',work_code='BAG-'+self.tag,work_name='Bag bunches',category=category,
+                       uom='Bunch',productivity_per_workday=40).name
+        norm=None; material_item=None
+        if material:
+            basis=self.make('Norm Basis',basis_code='BUNCH-'+self.tag,basis_name='Per bunch',uom='Bunch').name
+            material_item=self.make('Item',item_code='SHEET-'+self.tag,item_group='All Item Groups',
+                                    stock_uom='Sheet',is_stock_item=1).name
+            norm=self.make('Material Norm Profile',farm=self.farm,profile_name='NORM-'+self.tag,
+                           version=1,work_type=work,valid_from=add_days(nowdate(),-1),valid_to=add_days(nowdate(),30),
+                           approval_state='Approved',lines=[dict(item=material_item,uom='Sheet',norm_qty=4,
+                           norm_basis=basis,basis_qty=1,frequency=1,conversion_factor=1)])
+        plan=self.make('Daily Work Plan',farm=self.farm,posting_date=nowdate(),
+                       lines=[dict(**{k:v for k,v in self.daily_scope().items() if k!='posting_date'},
+                                   work_type=work,planned_qty=1250,norm_profile=norm.name if norm else None)])
+        plan.submit()
+        return plan,norm,material_item
+
+    def test_promax_norm_plan_materials_and_daily_close(self):
+        plan,norm,item=self.daily_plan()
+        self.assertAlmostEqual(plan.lines[0].required_workdays,31.25)
+        with self.assertRaises(frappe.ValidationError):
+            norm.lines[0].norm_qty=9
+            norm.save()
+        req=self.make('Material Requirement',**self.daily_scope(),work_plan=plan.name,work_plan_line=plan.lines[0].name)
+        req.submit()
+        self.assertEqual(req.lines[0].required_qty,5000)
+        req.reload();req.save() if req.docstatus==0 else None
+        team=self.make('Work Team',farm=self.farm,team_code='T-'+self.tag,team_name='Team').name
+        allocation=self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,
+                             work_plan_line=plan.lines[0].name,work_team=team,allocated_workdays=32,allocation_note='32 people for one day')
+        allocation.submit()
+        result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,
+                         work_plan_line=plan.lines[0].name,completed_qty=1110,actual_workdays=30)
+        with self.assertRaises(frappe.ValidationError):result.submit()
+        result.reload();result.unfinished_reason='Shortage of people';result.save();result.submit()
+        close=self.make('Daily Production Close',farm=self.farm,posting_date=nowdate())
+        with self.assertRaises(frappe.ValidationError):close.submit()
+        close.reload()
+        self.assertTrue(any(r.check_code=='consumption' and r.status=='Block' for r in close.checks))
+        warehouse=self.make('Warehouse',warehouse_name='Materials '+self.tag,company=self.company).name
+        receipt=self.make('Stock Entry',company=self.company,purpose='Material Receipt',stock_entry_type='Material Receipt',
+                          posting_date=nowdate(),items=[dict(item_code=item,qty=5000,t_warehouse=warehouse,basic_rate=1)])
+        receipt.submit()
+        issue=self.make('Stock Entry',company=self.company,purpose='Material Issue',stock_entry_type='Material Issue',
+                        posting_date=nowdate(),items=[dict(item_code=item,qty=5000,s_warehouse=warehouse)])
+        issue.submit()
+        use=self.make('Material Consumption',**self.daily_scope(),work_result=result.name,
+                      material_requirement=req.name,item=item,warehouse=warehouse,
+                      stock_entry=issue.name,stock_entry_detail=issue.items[0].name,consumed_qty=4440)
+        use.submit()
+        self.assertEqual(use.remaining_qty,560)
+        recovery_receipt=self.make('Stock Entry',company=self.company,purpose='Material Receipt',stock_entry_type='Material Receipt',
+                                    posting_date=nowdate(),items=[dict(item_code=item,qty=560,t_warehouse=warehouse,basic_rate=1)])
+        recovery_receipt.submit()
+        recovered=self.make('Material Recovery',**self.daily_scope(),consumption=use.name,
+                            stock_entry=recovery_receipt.name,stock_entry_detail=recovery_receipt.items[0].name,recovered_qty=560)
+        recovered.submit()
+        close.reload();close.save();close.submit()
+        self.assertTrue(close.snapshot_hash)
+        with self.assertRaises(frappe.ValidationError):result.cancel()
+        with self.assertRaises(frappe.ValidationError):issue.cancel()
+        with self.assertRaises(frappe.ValidationError):close.cancel()
+        close.reload();close.reopen_reason='Correction requested';close.save();close.cancel()
+        recovered.cancel();use.cancel();issue.cancel()
+
+    def test_promax_cancellation_changes_atp_without_rewriting_snapshot(self):
+        supply=self.forecast();old_hash=supply.snapshot_hash;old_atp=supply.available_to_promise_kg
+        group=self.make('Cancellation Reason Group',group_code='WEATHER-'+self.tag,group_name='Weather').name
+        reason=self.make('Cancellation Reason',reason_code='WIND-'+self.tag,reason_name='Wind',reason_group=group).name
+        cancel=self.make('Bunch Cancellation',**self.daily_scope(),expected_harvest_date=self.start,bunch_qty=50,reason=reason)
+        cancel.submit();supply.reload()
+        self.assertEqual(supply.snapshot_hash,old_hash)
+        self.assertAlmostEqual(supply.available_to_promise_kg,old_atp*0.95,places=2)
+        order=self.order(20000)
+        with self.assertRaises(frappe.ValidationError):
+            reserve(supply.name,order.name,order.items[0].name,old_atp,'after-loss-'+self.tag)
+        cancel.cancel();supply.reload()
+        self.assertAlmostEqual(supply.available_to_promise_kg,old_atp,places=2)
+        # Manual draft saves must not subtract cancellations twice.
+        cancel=self.make('Bunch Cancellation',**self.daily_scope(),expected_harvest_date=self.start,bunch_qty=50,reason=reason)
+        cancel.submit()
+        draft=self.make('Harvest Forecast',farm=self.farm,farm_block=self.block,crop_cycle=self.cycle,
+                        sucker_selection_batch=self.cohort,forecast_basis='Manual',source_bunch_qty=1000,
+                        harvest_profile=self.profile,packout_profile=self.pack_profile,item=self.item,
+                        period_start_date=self.start,period_end_date=add_days(self.start,6))
+        self.assertEqual(draft.net_source_bunch_qty,950)
+        draft.save();draft.reload();self.assertEqual(draft.source_bunch_qty,1000)
+        self.assertEqual(draft.net_source_bunch_qty,950)
+
+    def test_promax_plot_cycles_and_labor_summary(self):
+        plot=self.make('Farm Plot',farm=self.farm,farm_block=self.block,plot_code='A12.2',plot_name='Second',area_ha=1).name
+        other=self.make('Crop Cycle',farm=self.farm,farm_block=self.block,farm_plot=plot,cycle_no=1,
+                        planting_date=nowdate(),variety=self.variety)
+        self.assertNotEqual(other.name,self.parent)
+        with self.assertRaises(frappe.ValidationError):
+            self.make('Crop Cycle',farm=self.farm,farm_block=self.block,cycle_no=3,
+                      parent_cycle=self.cycle,variety=self.variety)
+        category=self.make('Work Category',category_code='LAB-'+self.tag,category_name='Labor').name
+        summary=self.make('Daily Labor Summary',farm=self.farm,posting_date=nowdate(),work_category=category,
+                          work_area='Field',headcount=40,present=32,staffing_target=35,area_ha=5,actual_workdays=31.25)
+        summary.submit();self.assertEqual(summary.staffing_gap,-3)
+        self.assertAlmostEqual(summary.workdays_per_ha,6.25)
+        with self.assertRaises(frappe.ValidationError):
+            self.make('Daily Labor Summary',farm=self.farm,posting_date=nowdate(),work_category=category,
+                      work_area='Field',headcount=10,present=11,staffing_target=10)

@@ -1,0 +1,130 @@
+{
+  "doctype": "DocType",
+  "name": "Incoming Quality Inspection",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "posting_date",
+    "harvest_lot",
+    "received_kg",
+    "accepted_kg",
+    "rejected_kg",
+    "defects",
+    "notes",
+    "source_import_batch",
+    "legacy_source_key",
+    "amended_from",
+    "amendment_reason"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Farm",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Posting Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "harvest_lot",
+      "label": "Harvest Lot",
+      "fieldtype": "Link",
+      "options": "Harvest Lot",
+      "reqd": 1
+    },
+    {
+      "fieldname": "received_kg",
+      "label": "Received Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "accepted_kg",
+      "label": "Accepted Kg",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "rejected_kg",
+      "label": "Rejected Kg",
+      "fieldtype": "Float",
+      "read_only": 1,
+      "precision": "6"
+    },
+    {
+      "fieldname": "defects",
+      "label": "Defects",
+      "fieldtype": "Table",
+      "options": "Defect Inspection Line"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "source_import_batch",
+      "label": "Source Import Batch",
+      "fieldtype": "Link",
+      "options": "Source Import Batch"
+    },
+    {
+      "fieldname": "legacy_source_key",
+      "label": "Legacy Source Key",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "amended_from",
+      "label": "Amended From",
+      "fieldtype": "Link",
+      "options": "Incoming Quality Inspection",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amendment_reason",
+      "label": "Amendment Reason",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus QC Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "is_submittable": 1
+}

@@ -61,3 +61,36 @@ doctype_js = {
     "Packout Run": "public/js/packout_run.js",
     "Supply Reconciliation": "public/js/supply_reconciliation.js",
 }
+
+# ProMax farm/day and plot controls apply to every normal document write, not just APIs.
+_daily_doctypes = [
+    "Daily Work Plan", "Daily Work Result", "Labor Allocation", "Daily Labor Summary",
+    "Material Requirement", "Material Consumption", "Material Recovery", "Bunch Cancellation",
+    "Planting Event", "Disease Observation", "Fruit Measurement", "Incoming Quality Inspection",
+    "Daily Production Close", "Source Import Batch", "Legacy Organization Map",
+    "Farm Plot", "Work Team", "Material Norm Profile",
+]
+for _name in _daily_doctypes:
+    has_permission[_name] = "lotus_farm.controls.farm_permission"
+    permission_query_conditions[_name] = "lotus_farm.permissions." + _name.lower().replace(" ", "_")
+for _name in ("Crop Cycle", "Sucker Selection Batch", "Bunch Operation", "Harvest Actual", "Defect Inspection", "Harvest Forecast"):
+    _current = doc_events[_name].get("validate", [])
+    if isinstance(_current, str):
+        _current = [_current]
+    # Before the forecast controller snapshots its scope, hydrate plot in before_validate.
+    doc_events[_name]["before_validate"] = "lotus_farm.daily_operations.plot_scope"
+for _name in ("Bunch Operation", "Harvest Actual", "Defect Inspection", "Harvest Lot", "Packout Run"):
+    doc_events[_name]["before_validate"] = [
+        "lotus_farm.daily_operations.day_guard",
+        *(["lotus_farm.daily_operations.plot_scope"] if _name in ("Bunch Operation", "Harvest Actual", "Defect Inspection") else []),
+    ]
+    _current = doc_events[_name].get("before_cancel", [])
+    if isinstance(_current, str):
+        _current = [_current]
+    doc_events[_name]["before_cancel"] = ["lotus_farm.daily_operations.day_guard", *_current]
+    doc_events[_name]["on_trash"] = "lotus_farm.daily_operations.day_guard"
+doc_events["Packout Run"]["before_validate"].append("lotus_farm.daily_operations.incoming_packout_guard")
+doc_events["Stock Entry"]["before_cancel"] = [
+    "lotus_farm.daily_operations.stock_context_cancel",
+    "lotus_farm.stock_bridge.before_stock_cancel",
+]

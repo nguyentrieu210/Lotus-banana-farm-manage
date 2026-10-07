@@ -122,14 +122,14 @@ def preserve_lineage(doc, method=None):
                 "Harvest Actual",
                 "Defect Inspection",
             ],
-            ["farm", "farm_block", "cycle_no", "parent_cycle", "variety", "planting_date"],
+            ["farm", "farm_block", "farm_plot", "cycle_no", "parent_cycle", "variety", "planting_date"],
         ),
         "Sucker Selection Batch": (
             "sucker_selection_batch",
             ["Bunch Operation", "Harvest Forecast", "Harvest Actual", "Defect Inspection"],
             ["farm", "farm_block", "crop_cycle", "selection_date", "selected_sucker_qty"],
         ),
-        "Farm Block": ("farm_block", ["Crop Cycle"], ["farm", "block_code"]),
+        "Farm Block": ("farm_block", ["Crop Cycle", "Farm Plot"], ["farm", "block_code"]),
         "Farm": ("farm", ["Farm Block"], ["company"]),
     }
     field, targets, immutable = dependencies[doc.doctype]

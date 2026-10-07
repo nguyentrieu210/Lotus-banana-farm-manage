@@ -7,6 +7,7 @@
   "field_order": [
     "farm",
     "farm_block",
+    "farm_plot",
     "crop_cycle",
     "sucker_selection_batch",
     "inspection_date",
@@ -130,6 +131,13 @@
       "fieldtype": "Table",
       "label": "Measurements",
       "options": "Quality Measurement"
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot",
+      "read_only": 1
     }
   ],
   "permissions": [

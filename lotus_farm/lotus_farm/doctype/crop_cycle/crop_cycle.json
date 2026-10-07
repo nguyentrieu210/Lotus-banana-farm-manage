@@ -8,6 +8,7 @@
   "field_order": [
     "farm",
     "farm_block",
+    "farm_plot",
     "cycle_no",
     "cycle_type",
     "parent_cycle",
@@ -79,6 +80,12 @@
       "fieldname": "notes",
       "fieldtype": "Small Text",
       "label": "Notes"
+    },
+    {
+      "fieldname": "farm_plot",
+      "label": "Farm Plot",
+      "fieldtype": "Link",
+      "options": "Farm Plot"
     }
   ],
   "permissions": [

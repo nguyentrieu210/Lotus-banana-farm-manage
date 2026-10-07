@@ -1,0 +1,52 @@
+{
+  "doctype": "DocType",
+  "name": "Cancellation Reason Group",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "field_order": [
+    "group_code",
+    "group_name",
+    "active"
+  ],
+  "fields": [
+    {
+      "fieldname": "group_code",
+      "label": "Group Code",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "group_name",
+      "label": "Group Name",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": "1"
+    }
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

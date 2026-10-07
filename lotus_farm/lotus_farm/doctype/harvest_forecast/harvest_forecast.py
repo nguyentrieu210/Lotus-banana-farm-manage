@@ -21,9 +21,11 @@ class HarvestForecast(Document):
         self._apply_settings_fallback()
         self._prepare_output_plan()
         self._pull_source_qty()
+        from lotus_farm.daily_operations import cancellation_adjustment
+        cancellation_adjustment(self)
         self._hydrate_allocations()
         self._calculate()
-        self.formula_version = "lotus-forecast/4"
+        self.formula_version = "lotus-forecast/5"
         self.calculated_at = now_datetime()
         self.source_cutoff = self.calculated_at
         self.snapshot_hash = canonical_hash(self._snapshot())
@@ -38,6 +40,7 @@ class HarvestForecast(Document):
             for name in (
                 "farm",
                 "farm_block",
+                "farm_plot",
                 "crop_cycle",
                 "sucker_selection_batch",
                 "item",
@@ -45,6 +48,8 @@ class HarvestForecast(Document):
                 "period_end_date",
                 "forecast_basis",
                 "source_bunch_qty",
+                "cancellation_bunch_qty",
+                "net_source_bunch_qty",
                 "source_snapshot",
                 "harvest_profile",
                 "profile_version",
@@ -212,6 +217,8 @@ class HarvestForecast(Document):
         return "Available"
 
     def _calculate_remaining(self):
+        from lotus_farm.daily_operations import live_loss_fraction
+        loss_fraction = live_loss_fraction(self)
         reserved = [
             row for row in self.allocations or [] if row.allocation_state == "Reserved"
         ]
@@ -229,7 +236,7 @@ class HarvestForecast(Document):
                 )
                 total_materialized += flt(output.materialized_qty_kg)
                 remaining = max(
-                    flt(output.safe_commit_kg) - flt(output.materialized_qty_kg),
+                    flt(output.safe_commit_kg) * (1-loss_fraction) - flt(output.materialized_qty_kg),
                     0,
                 )
                 if self.supply_state in ("Closed", "Superseded"):
@@ -258,7 +265,7 @@ class HarvestForecast(Document):
             )
             return
 
-        remaining = max(flt(self.safe_saleable_kg) - flt(self.materialized_qty_kg), 0)
+        remaining = max(flt(self.safe_saleable_kg) * (1-loss_fraction) - flt(self.materialized_qty_kg), 0)
         if self.supply_state in ("Closed", "Superseded"):
             remaining = 0
         self.available_to_promise_kg = flt(remaining - self.committed_qty_kg, 3)
@@ -627,7 +634,7 @@ class HarvestForecast(Document):
         )
         try:
             values = calculate_availability(
-                source_bunch_qty=self.source_bunch_qty,
+                source_bunch_qty=self.net_source_bunch_qty,
                 avg_bunch_weight_kg=self.avg_bunch_weight_kg,
                 bunch_survival_rate_percent=self.bunch_survival_rate_percent,
                 quality_pass_rate_percent=self.quality_pass_rate_percent,
