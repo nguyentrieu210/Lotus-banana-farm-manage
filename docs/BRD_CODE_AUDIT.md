@@ -24,9 +24,9 @@ Repo có các luồng nghiệp vụ chính và kiểm thử Frappe/ERPNext thậ
 ## Kiểm chứng
 
 - Pure Python: các quy tắc domain, schema, identity, server guards.
-- Frontend unit: schema payload, labor matrix, navigation, attempt retry identity.
+- Frontend unit: schema payload, labor matrix, navigation, attempt retry identity và account partition.
 - Native browser: queue commit/abort, retry/photo, single-flight, account binding; read cache khác user/scope không truy cập được và không lưu CSRF.
-- Mock browser: route/query, KPI drill-down, work actual, canonical select/checkbox, ERP shortage, reload/mobile.
+- Mock browser: route/query, KPI drill-down, work actual, canonical select/checkbox, ERP shortage, reload/mobile và route/action của tài khoản chỉ đọc.
 - Site CI: cài/migrate hai lần trên Frappe/ERPNext v16; toàn bộ `test_brd`, thêm scope/status/date/search/permission/account/photo tests.
 - Browser site thật: login → task cache → reload mất mạng → actual → audit → preview/save/submit close → đọc dữ liệu đã lưu.
 
