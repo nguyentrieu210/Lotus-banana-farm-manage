@@ -86,9 +86,15 @@ SPA Vue 3 + Frappe UI + Vue Router + Pinia tại `/lotus/today`; dependency pin 
 | Thửa 360 | Farm → Block → Plot; cycle, timeline, forecast, work/material/labor/loss/QC tabs |
 | Ai sửa số nào | Drawer Version: trước/sau, người, thời gian, comment reason; cancel/amend; optimistic concurrency |
 | Migration | Staging, dry run, normalized business identity, source version, reconciliation và task retry |
+| Truy xuất riêng | Màn Truy xuất tìm theo Harvest Lot / Packout Run / Item+Batch / Thửa và mở nguồn liên quan |
+| Bản đồ thửa | Màn Bản đồ đọc đúng GeoJSON đã duyệt, không đoán CRS/mã đất; bấm thửa mở lịch sử |
+| Cấu hình | Lotus Farm Settings đọc/ghi có permission và optimistic conflict check; không hard-code hệ số/ngưỡng |
+| QR lô thu | Harvest Lot hiển thị QR do backend tạo; quyền vẫn kiểm khi mở nguồn |
+| Giao hàng | Báo cáo đọc Sales Order / Delivery / SRE thật theo Farm, không tạo sổ bán hàng Lotus |
+| Vue offline capture | IndexedDB outbox theo user cho các DocType field-capture được server công bố; giữ event ID, ảnh, GPS, sync/reconcile không xóa im lặng |
 
 Kiểm thử trình duyệt dùng API mô phỏng để xác nhận render, URL scope, KPI drilldown, submit actual, reload và responsive. Suite site riêng dùng tài liệu Frappe/ERPNext thật. Các kiểm thử này không thay cho UAT người dùng, kết nối OneDrive/cân thật, đối soát archive và kiểm tải 700 ha.
 
-Build: `npm ci --prefix frontend && npm run --prefix frontend build`; deploy `bench --site <site> migrate`, truy cập `/lotus/today`. Màn hiện trường offline tiếp tục tại `/assets/lotus_farm/field/index.html`; giao dịch offline được kiểm quyền/ngày/idempotency lại trên máy chủ. Không offline ledger ERP.
+Build: `npm ci --prefix frontend && npm run --prefix frontend build`; deploy `bench --site <site> migrate`, truy cập `/lotus/today`. Vue có outbox IndexedDB theo tài khoản cho field capture, GPS/ảnh và reconcile khi gửi lại; màn hiện trường cũ tại `/assets/lotus_farm/field/index.html` vẫn giữ làm fallback trong pilot cho đến khi UAT/cutover xác nhận parity. Giao dịch offline luôn được kiểm quyền/ngày/idempotency lại trên máy chủ. Không offline ledger ERP.
 
 Năng suất người/đội chỉ tính từ bảng actual có định danh; tổng công và sản lượng phải khớp chứng từ, không tự phân bổ tổng vào từng người. Cảnh báo lưu theo Farm/ngày/loại, có xác nhận kèm người/thời gian/lý do và tự giải quyết theo số liệu; bật scheduler sau khi cấu hình vận hành được duyệt. CI bổ sung luồng trình duyệt nối Frappe thật: đăng nhập → actual → audit → đối soát → chốt ngày → đọc lại dữ liệu.
