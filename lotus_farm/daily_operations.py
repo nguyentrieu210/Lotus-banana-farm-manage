@@ -323,7 +323,7 @@ class MaterialConsumptionRecord(DailyDocument):
     def validate_daily(self):
         result = frappe.get_doc('Daily Work Result', self.work_result)
         result.check_permission('read')
-        if result.docstatus != 1 or result.farm != self.farm or result.farm_plot != self.farm_plot or getdate(result.posting_date) != getdate(self.posting_date):
+        if result.docstatus != 1 or any((self.get(f) or '') != (result.get(f) or '') for f in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')) or getdate(result.posting_date) != getdate(self.posting_date):
             frappe.throw('Consumption must match a submitted Work Result for this Plot/day.')
         req = frappe.get_doc('Material Requirement', self.material_requirement)
         req.check_permission('read')
@@ -550,6 +550,13 @@ def close_checks(farm, date):
     for doctype, field in DATE_FIELDS.items():
         for row in frappe.get_all(doctype,filters={'farm':farm,field:date,'docstatus':['<',2]},fields=['name','docstatus']):
             add('production_submitted',row.docstatus==1,'Production records must be submitted. Cancel or delete unused drafts.',doctype,row.name)
+            if doctype=='Harvest Actual' and row.docstatus==1:
+                actual=frappe.get_doc(doctype,row.name)
+                source,lot=frappe.qb.DocType('Harvest Lot Source'),frappe.qb.DocType('Harvest Lot')
+                amounts=(frappe.qb.from_(source).join(lot).on(source.parent==lot.name).select(source.contributed_kg)
+                    .where((source.harvest_actual==row.name)&(lot.docstatus==1)).run())
+                add('harvest_receipt',abs(sum(flt(x[0]) for x in amounts)-flt(actual.saleable_weight_kg))<=0.0005,
+                    'All released harvest weight must be traced into submitted receiving lots.',doctype,row.name)
             if doctype=='Harvest Lot' and row.docstatus==1:
                 add('incoming_qc',bool(frappe.db.exists('Incoming Quality Inspection',{'harvest_lot':row.name,'docstatus':1})),'Received lot requires incoming QC.',doctype,row.name)
             if doctype=='Packout Run' and row.docstatus==1:
@@ -780,6 +787,24 @@ class CycleClose(DailyDocument):
             for row in frappe.get_all(doctype,filters={'crop_cycle':self.crop_cycle,'docstatus':['<',2]},fields=['name','docstatus','posting_date']):
                 if row.docstatus==0 or not frappe.db.exists('Daily Production Close',{'farm':self.farm,'posting_date':row.posting_date,'docstatus':1}):
                     frappe.throw('Submit all Cycle transactions and close their Farm days first.')
+        for actual_name in frappe.get_all('Harvest Actual',filters={'crop_cycle':self.crop_cycle,'docstatus':1},pluck='name'):
+            actual=frappe.get_doc('Harvest Actual',actual_name)
+            source,lot=frappe.qb.DocType('Harvest Lot Source'),frappe.qb.DocType('Harvest Lot')
+            received=(frappe.qb.from_(source).join(lot).on(source.parent==lot.name).select(lot.name,source.contributed_kg)
+                .where((source.harvest_actual==actual_name)&(lot.docstatus==1)).run())
+            if abs(sum(flt(r[1]) for r in received)-flt(actual.saleable_weight_kg))>0.0005:
+                frappe.throw('Cycle harvest must be fully traced into receiving lots before closing.')
+            for lot_name,_ in received:
+                qc=frappe.get_all('Incoming Quality Inspection',filters={'harvest_lot':lot_name,'docstatus':1},fields=['accepted_kg'])
+                if not qc:
+                    frappe.throw('Cycle lots require submitted incoming QC before closing.')
+                src,run=frappe.qb.DocType('Packout Run Source'),frappe.qb.DocType('Packout Run')
+                packed=(frappe.qb.from_(src).join(run).on(src.parent==run.name).select(run.name,src.input_kg,run.stock_entry)
+                    .where((src.harvest_lot==lot_name)&(run.docstatus==1)).run())
+                if abs(sum(flt(r[1]) for r in packed)-flt(qc[0].accepted_kg))>0.0005:
+                    frappe.throw('All QC accepted Cycle weight must be packed before closing.')
+                if any(not r[2] or frappe.db.get_value('Stock Entry',r[2],'docstatus')!=1 for r in packed):
+                    frappe.throw('Cycle finished goods must be posted to ERP stock before closing.')
         from lotus_farm.controls import command
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
         cycle.status='Closed'

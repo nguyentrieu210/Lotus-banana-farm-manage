@@ -6,6 +6,8 @@ from frappe.utils import cint
 class CropCycle(Document):
     def validate(self):
         from lotus_farm.controls import command_allowed
+        if self.is_new() and self.status == "Closed":
+            frappe.throw("New Cycles cannot start Closed.")
         before=self.get_doc_before_save()
         if before and self.status != before.status and (self.status == "Closed" or before.status == "Closed") and not command_allowed(self,"cycle_close"):
             frappe.throw("Use the reviewed Cycle Closing Report to close or reopen a Cycle.")

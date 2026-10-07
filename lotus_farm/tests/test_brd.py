@@ -972,6 +972,14 @@ class TestBRDOnSite(unittest.TestCase):
         req=self.make('Material Requirement',**self.daily_scope(),work_plan=plan.name,work_plan_line=plan.lines[0].name)
         req.submit()
         self.assertEqual(req.lines[0].required_qty,5000)
+        from lotus_farm.daily_api import material_availability, create_material_request
+        shortage_warehouse=self.make('Warehouse',warehouse_name='Requirement '+self.tag,company=self.company).name
+        check=material_availability(req.name,shortage_warehouse)
+        self.assertEqual(check['rows'][0]['shortage_qty'],5000)
+        purchase=create_material_request(req.name,shortage_warehouse,nowdate())
+        retry=create_material_request(req.name,shortage_warehouse,nowdate())
+        self.assertEqual(purchase['material_request'],retry['material_request'])
+        self.assertEqual(purchase['docstatus'],0)
         req.reload();req.save() if req.docstatus==0 else None
         team=self.make('Work Team',farm=self.farm,team_code='T-'+self.tag,team_name='Team').name
         allocation=self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,
