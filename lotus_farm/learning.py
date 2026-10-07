@@ -2,7 +2,7 @@
 
 import json
 import frappe
-from lotus_farm.controls import require_role
+from lotus_farm.controls import require_role, command
 from lotus_farm.rules import calibration, RuleError, canonical_hash
 
 
@@ -97,7 +97,9 @@ def create_calibrated_profile(base_profile,crop_cycle,from_date,to_date,valid_fr
     doc=frappe.get_doc(dict(doctype='Harvest Profile',**values,version=max(versions or [0])+1,
         valid_from=valid_from,valid_to=valid_to,approval_state='Draft',active=1,
         avg_bunch_weight_kg=result['avg_bunch_weight_kg'],quality_pass_rate_percent=result['quality_pass_rate_percent'],
-        packout_rate_percent=result['packout_rate_percent'],calibration_json=json.dumps(result,default=str),calibration_hash=result['source_hash'])).insert()
+        packout_rate_percent=result['packout_rate_percent'],calibration_json=json.dumps(result,default=str),calibration_hash=result['source_hash']))
+    with command(doc, 'calibrated_profile'):
+        doc.insert()
     return dict(profile=doc.name,approval_state=doc.approval_state,proposal=result)
 
 
@@ -123,5 +125,7 @@ def create_calibrated_packout(base_profile,crop_cycle,from_date,to_date,valid_fr
     values={f:base.get(f) for f in ('profile_name','farm','variety','item','quality_standard')}
     proof=dict(proposal=result,item=base.item,input_kg=raw,finished_kg=finished,algorithm_version='lotus-item-yield/1')
     doc=frappe.get_doc(dict(doctype='Packout Profile',**values,version=max(versions or [0])+1,valid_from=valid_from,valid_to=valid_to,
-        approval_state='Draft',yield_percent=finished/raw*100,calibration_json=json.dumps(proof,default=str),calibration_hash=canonical_hash(proof))).insert()
+        approval_state='Draft',yield_percent=finished/raw*100,calibration_json=json.dumps(proof,default=str),calibration_hash=canonical_hash(proof)))
+    with command(doc, 'calibrated_profile'):
+        doc.insert()
     return dict(profile=doc.name,approval_state=doc.approval_state,yield_percent=doc.yield_percent)

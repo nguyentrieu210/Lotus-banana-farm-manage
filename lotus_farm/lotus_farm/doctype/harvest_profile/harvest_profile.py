@@ -1,12 +1,13 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, flt, getdate
-from lotus_farm.controls import validate_version
+from lotus_farm.controls import validate_version, validate_calibration_evidence
 from lotus_farm.rules import quantity, RuleError
 
 
 class HarvestProfile(Document):
     def validate(self):
+        validate_calibration_evidence(self)
         validate_version(self, "profile_name", ("Lotus Farm Manager",))
         self._validate_scope()
         self._validate_dates()

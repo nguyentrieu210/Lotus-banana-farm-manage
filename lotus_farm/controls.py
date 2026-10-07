@@ -170,6 +170,14 @@ def command_allowed(doc, action):
     return (doc.doctype, id(doc), action) in _authorized_commands.get()
 
 
+def validate_calibration_evidence(doc):
+    previous = doc.get_doc_before_save()
+    fields = ('calibration_json', 'calibration_hash')
+    changed = any((doc.get(f) or None) != (previous.get(f) or None if previous else None) for f in fields)
+    if changed and not command_allowed(doc, 'calibrated_profile'):
+        frappe.throw('Calibration evidence can only be created by the measured proposal command.')
+
+
 @contextmanager
 def command(doc, action):
     token = _authorized_commands.set(_authorized_commands.get() | {(doc.doctype, id(doc), action)})

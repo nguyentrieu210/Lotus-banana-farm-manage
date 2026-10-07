@@ -863,6 +863,14 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(proposal['approval_state'],'Draft')
         packed_proposal=create_calibrated_packout(self.pack_profile,self.cycle,nowdate(),nowdate(),self.start,add_days(self.start,30))
         self.assertAlmostEqual(packed_proposal['yield_percent'],84)
+        calibrated=frappe.get_doc('Harvest Profile',proposal['profile'])
+        calibrated.calibration_json='{}'
+        with self.assertRaises(frappe.ValidationError):
+            calibrated.save()
+        forged=frappe.copy_doc(frappe.get_doc('Packout Profile',packed_proposal['profile']))
+        forged.version+=1
+        with self.assertRaises(frappe.ValidationError):
+            forged.insert()
         self.assertEqual(trace_item(self.item)[0]['sources'][0]['farm_plot'],self.plot)
         self.assertEqual(forecast_vintages(nowdate(),add_days(nowdate(),60),self.farm)['rows'],[])
 

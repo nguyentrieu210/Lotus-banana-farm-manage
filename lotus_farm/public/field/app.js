@@ -100,7 +100,7 @@ let syncing=false;
 async function sync(){
  if(syncing)return;syncing=true;
  try{
-  const current=await api('lotus_farm.field.session_info');if(current.user!==state.user)throw new Error('Tài khoản đã thay đổi. Mở lại màn hình để giữ riêng bản ghi của từng người.');state.session=current;
+  const current=await api('lotus_farm.field.session_info');if(current.user!==state.user)throw new Error('Tài khoản đã thay đổi. Mở lại màn hình để giữ riêng bản ghi của từng người.');state.session=current;$('connection').textContent='Đã kết nối';
   const queue=(await db('queue','getAll')).filter(q=>q.user===state.user&&!['Sent','Discarded'].includes(q.status)).sort((a,b)=>a.created.localeCompare(b.created));
   for(const entry of queue){
    try{

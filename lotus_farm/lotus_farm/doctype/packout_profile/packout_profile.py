@@ -1,10 +1,11 @@
 import frappe
 from frappe.model.document import Document
-from lotus_farm.controls import validate_item, validate_version
+from lotus_farm.controls import validate_item, validate_version, validate_calibration_evidence
 
 
 class PackoutProfile(Document):
     def validate(self):
+        validate_calibration_evidence(self)
         validate_version(self, "profile_name", ("Lotus Packing Supervisor",))
         validate_item(self.item)
         if self.calibration_json:

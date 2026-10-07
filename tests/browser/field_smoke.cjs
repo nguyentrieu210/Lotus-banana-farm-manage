@@ -30,7 +30,7 @@ const server=http.createServer(async(req,res)=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
-  const context=await browser.newContext({viewport:{width:1280,height:900},geolocation:{latitude:10.5,longitude:106.5,accuracy:5},permissions:['geolocation']});
+  const context=await browser.newContext({locale:'vi-VN',viewport:{width:1280,height:900},geolocation:{latitude:10.5,longitude:106.5,accuracy:5},permissions:['geolocation']});
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/assets/lotus_farm/field/index.html');await page.getByText('Số liệu đã cập nhật.',{exact:true}).waitFor();
   await page.evaluate(()=>navigator.serviceWorker.ready);await page.screenshot({path:path.join(output,'lotus-ui-desktop.png'),fullPage:true});
@@ -40,6 +40,10 @@ const server=http.createServer(async(req,res)=>{
   await context.setOffline(false);await page.locator('#sync').click();await page.getByText('0 đang chờ',{exact:true}).waitFor();
   assert.equal(events.size,1);assert.equal([...events.values()][0].values.completed_qty,80);
   await page.locator('#sync').click();assert.equal(events.size,1);
+  assert.equal(await page.locator('#connection').textContent(),'Đã kết nối');
+  assert.equal(await page.locator('#weightlabel').isVisible(),false);
+  assert.equal(await page.locator('#secondlabel').isVisible(),false);
+  assert.equal(await page.locator('#expectedlabel').isVisible(),true);
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(output,'lotus-ui-mobile.png'),fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   user='other@example.invalid';await page.reload();await page.getByText('Số liệu đã cập nhật.',{exact:true}).waitFor();
