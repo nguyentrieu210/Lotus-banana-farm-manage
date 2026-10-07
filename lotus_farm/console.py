@@ -173,6 +173,10 @@ def work_state(plan,line,state,reason=None):
         allocated=sum(flt(v) for v in frappe.get_all('Labor Allocation',filters={'work_plan_line':line,'docstatus':1},pluck='allocated_workdays'))
         if allocated+0.000001<flt(row.required_workdays):frappe.throw('Allocate required labor before marking Ready.')
         if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Submit material requirements before marking Ready.')
+        if row.norm_profile:
+            materials=material_status(doc.farm,doc.posting_date)
+            if not materials['warehouses'] or any(r['shortage_qty'] is None or r['shortage_qty']>0.000001 for r in materials['rows']):
+                frappe.throw('Resolve Farm material shortages and map Field Store stock before marking Ready.')
     before=deepcopy(doc)
     version_filters={'ref_doctype':doc.doctype,'docname':doc.name}
     version_count=frappe.db.count('Version',version_filters)

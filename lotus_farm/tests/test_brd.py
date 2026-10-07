@@ -1362,3 +1362,16 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(len(alerts),1)
         alert=frappe.get_doc('Lotus Alert',alerts[0]);alert.status='Acknowledged';alert.acknowledgement_reason='Supervisor arranging staff';alert.save()
         refresh_alerts();alert.reload();self.assertEqual(alert.status,'Acknowledged');self.assertEqual(alert.acknowledged_by,'Administrator')
+
+    def test_new_brd_ready_requires_known_physical_material(self):
+        from lotus_farm.console import work_state
+        plan,_,item=self.daily_plan();line=plan.lines[0]
+        team=self.make('Work Team',farm=self.farm,team_code='READY-'+self.tag,team_name='Ready team')
+        self.make('Labor Allocation',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name,work_team=team.name,allocated_workdays=32,allocation_note='32 people').submit()
+        self.make('Material Requirement',**self.daily_scope(),work_plan=plan.name,work_plan_line=line.name).submit()
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
+        warehouse=self.make('Warehouse',warehouse_name='Ready '+self.tag,company=self.company).name
+        self.make('Warehouse Mapping',farm=self.farm,warehouse=warehouse,warehouse_role='Field Store',enabled=1)
+        with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
+        self.make('Stock Entry',company=self.company,stock_entry_type='Material Receipt',purpose='Material Receipt',posting_date=nowdate(),items=[dict(item_code=item,t_warehouse=warehouse,qty=5000,uom='Sheet',stock_uom='Sheet',conversion_factor=1,basic_rate=1)]).submit()
+        self.assertEqual(work_state(plan.name,line.name,'Ready')['state'],'Ready')

@@ -13,7 +13,7 @@ def validate_actual_labor(doc):
         if key in seen:frappe.throw('Combine duplicate actual labor identities.')
         seen.add(key)
         allocations=frappe.get_all('Labor Allocation',filters={'work_plan_line':doc.work_plan_line,'docstatus':1},fields=['employee','work_team','allocated_workdays'])
-        capacity=sum(flt(r.allocated_workdays) for r in allocations if (r.employee or '',r.work_team or '')==key)
+        capacity=sum(flt(r.allocated_workdays) for r in allocations if (r.employee==row.employee if row.employee else (not r.employee and r.work_team==row.work_team)))
         actual=number(row.actual_workdays,'Actual workdays',positive=True)
         if actual>capacity+0.000001:frappe.throw('Actual labor exceeds its submitted allocation for this task.')
         days+=actual;quantity+=number(row.completed_qty,'Attributed completed quantity')
