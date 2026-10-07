@@ -1,21 +1,25 @@
+from copy import deepcopy
 import frappe
 from lotus_farm.controls import require_role, local_timestamp, whole_count
 from lotus_farm.rules import canonical_hash
 
 
 def _insert_idempotent(doctype, key_field, key, payload, submit=False):
+    payload_hash = canonical_hash(payload)
     existing = frappe.db.get_value(doctype, {key_field: key}, "name")
     if existing:
         doc = frappe.get_doc(doctype, existing)
         doc.check_permission("read")
-        if doc.client_payload_hash != canonical_hash(payload):
+        if doc.client_payload_hash != payload_hash:
             frappe.throw("This event ID already belongs to a different payload.")
+        if submit and doc.docstatus != 1:
+            frappe.throw("This event is not a submitted document; reconcile it before retrying.")
         return doc
     frappe.db.savepoint("lotus_event")
     try:
-        doc = frappe.get_doc(dict(doctype=doctype, **payload))
+        doc = frappe.get_doc(dict(doctype=doctype, **deepcopy(payload)))
         doc.set(key_field, key)
-        doc.client_payload_hash = canonical_hash(payload)
+        doc.client_payload_hash = payload_hash
         doc.insert()
         if submit:
             doc.submit()
@@ -27,8 +31,10 @@ def _insert_idempotent(doctype, key_field, key, payload, submit=False):
             raise
         doc = frappe.get_doc(doctype, existing)
         doc.check_permission("read")
-        if doc.client_payload_hash != canonical_hash(payload):
+        if doc.client_payload_hash != payload_hash:
             frappe.throw("Conflicting payload for an existing event ID.")
+        if submit and doc.docstatus != 1:
+            frappe.throw("This event is not a submitted document; reconcile it before retrying.")
         return doc
 
 

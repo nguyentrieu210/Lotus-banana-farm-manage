@@ -1235,6 +1235,8 @@ class TestBRDOnSite(unittest.TestCase):
         result=receive_quality('qc-'+self.tag,self.farm,nowdate(),lot.name,90,reason.name)
         again=receive_quality('qc-'+self.tag,self.farm,nowdate(),lot.name,90,reason.name)
         self.assertEqual(result['document'],again['document']);self.assertEqual(result['rejected_kg'],10)
+        with self.assertRaises(frappe.ValidationError):
+            receive_quality('qc-'+self.tag,self.farm,nowdate(),lot.name,89,reason.name)
         self.assertTrue(lot_qr(lot.name)['image'].startswith('data:image/svg+xml;base64,'))
         self.assertEqual(trace_lot(lot.name)['sources'][0]['farm_plot'],self.plot)
         self.assertEqual(packhouse_day(self.farm,nowdate())['lots'][0].remaining_to_pack_kg,90)
