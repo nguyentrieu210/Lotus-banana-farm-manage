@@ -9,7 +9,7 @@ from lotus_farm.daily_operations import day_guard
 MODULES={
  'alerts':['Lotus Alert'],
  'farms':['Farm','Farm Block','Farm Plot','Crop Cycle','Sucker Selection Batch'],
- 'plans':['Harvest Forecast','Daily Work Plan','Supply Reconciliation'],
+ 'plans':['Daily Work Plan','Supply Reconciliation'],'forecast':['Harvest Forecast'],
  'work':['Daily Work Plan','Daily Work Result','Planting Event','Disease Observation','Bunch Operation'],
  'labor':['Daily Labor Summary','Labor Allocation'],
  'materials':['Material Requirement','Material Consumption','Material Recovery'],
