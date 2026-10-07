@@ -8,9 +8,11 @@ Company → Farm → Farm Block → Farm Plot → Crop Cycle → Sucker Selectio
 
 Daily Work Plan links land and tasks to labor, versioned material norms, actual results, consumption/recovery and a blocking Daily Production Close. Incoming QC gates packout; cancellations reduce current ATP while preserving released snapshots. No Xí nghiệp DocType or parallel stock ledger is introduced.
 
-See [full BRD coverage](docs/BRD_COVERAGE.md), [operating setup](docs/PROMAX_IMPLEMENTATION.md) and [UAT/cutover](docs/UAT_CUTOVER.md).
+See [full BRD coverage](docs/BRD_COVERAGE.md), [operating setup](docs/PROMAX_IMPLEMENTATION.md), [frontend BRD](docs/FRONTEND_BRD.md), [frontend implementation spec](docs/FRONTEND_IMPLEMENTATION_SPEC.md), [frontend traceability](docs/FRONTEND_TRACEABILITY.md) and [UAT/cutover](docs/UAT_CUTOVER.md).
 
-The management and field interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
+The current management and field interface is `/assets/lotus_farm/field/index.html` on an installed site. It includes a permission-filtered dashboard, field outbox, incoming QC, source import console and Plot map. This interface remains the operational reference while the target Vue 3 + Frappe UI SPA is implemented at `/lotus`; it must not be removed before parity and UAT.
+
+Optional OneDrive feeds stage source files; weighted calibration proposes new draft profiles. ERPNext continues to own stock and delivery.
 
 ## Forecast pipeline
 
@@ -76,7 +78,6 @@ bench --site <site> migrate
 ```
 
 ERPNext is required. Runtime installation on a real Frappe site is still required before calling this production-ready.
-
 
 ## Tests
 
