@@ -1014,10 +1014,12 @@ class TestBRDOnSite(unittest.TestCase):
         close.reload();close.save();close.submit()
         self.assertTrue(close.snapshot_hash)
         with self.assertRaises(frappe.ValidationError):result.cancel()
-        with self.assertRaises(frappe.ValidationError):issue.cancel()
+        issue.reload()
+        with self.assertRaisesRegex(frappe.ValidationError,'Cancel submitted Lotus material contexts'):
+            issue.cancel()
         with self.assertRaises(frappe.ValidationError):close.cancel()
         close.reload();close.reopen_reason='Correction requested';close.save();close.cancel()
-        recovered.cancel();use.cancel();issue.cancel()
+        recovered.cancel();use.cancel();issue.reload();issue.cancel()
 
     def test_promax_cancellation_changes_atp_without_rewriting_snapshot(self):
         supply=self.forecast();old_hash=supply.snapshot_hash;old_atp=supply.available_to_promise_kg

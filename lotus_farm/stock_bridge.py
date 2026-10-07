@@ -254,6 +254,9 @@ def stock_posted(doc, method=None):
 
 
 def before_stock_cancel(doc, method=None):
+    if doc.get("lotus_packout_run"):
+        from lotus_farm.daily_operations import day_guard
+        day_guard(frappe.get_doc("Packout Run",doc.lotus_packout_run))
     if doc.get("lotus_packout_run") and not command_allowed(doc, "reconciliation_cancel"):
         frappe.throw(
             "Create and apply an approved Supply Reconciliation before cancelling Lotus stock."

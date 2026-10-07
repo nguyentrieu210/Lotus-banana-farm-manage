@@ -13,7 +13,7 @@ Mỗi vụ mới phải chọn Thửa. Hai thửa trong cùng lô có thể cùn
 ## Từ kế hoạch tới chốt ngày
 
 1. Tạo Work Category/Work Type, đơn vị tính và năng suất một công. Hệ thống không điền hệ số nông học giả định.
-2. Tạo Norm Basis và Material Norm Profile theo Farm/công việc, phiên bản và ngày hiệu lực. Duyệt xong không sửa/xóa; không cho hai bộ định mức đã duyệt trùng thời gian cùng Farm/công việc.
+2. Tạo Norm Basis và Material Norm Profile theo Farm/công việc, phiên bản và ngày hiệu lực (khi duyệt cần cả ngày bắt đầu và kết thúc để có thể áp dụng phiên bản kế tiếp). Duyệt xong không sửa/xóa; không cho hai bộ định mức đã duyệt trùng thời gian cùng Farm/công việc.
 3. Tạo Daily Work Plan: chọn Thửa/Vụ/Đợt chồi, việc và khối lượng. Số công cần = khối lượng / năng suất. Đơn vị công việc lấy từ Work Type.
 4. Bấm **Tính nhu cầu vật tư**. Nhu cầu = khối lượng × định mức / lượng cơ sở × tần suất × hệ số đổi. Tạo lại sẽ trả phiếu đã có.
 5. Nhu cầu vật tư có nút kiểm tra kho: số hiện có và số đã giữ lấy từ ERPNext Bin; khả dụng vật lý = max(actual_qty − reserved_stock, 0). Đây không phải số tồn dự kiến, không trừ các kế hoạch tương lai thêm lần nữa. Người dùng cần quyền đọc Stock Ledger và kho. Thiếu hàng thì tạo Material Request bản nháp; gọi lại trả đúng phiếu đã tạo.
@@ -45,7 +45,7 @@ Source File Registry: ID nguồn, path, file, SHA-256, kỳ nghiệp vụ, mốc
 
 Source Import Batch/Row: sheet, số dòng, hash, JSON gốc, mã tổ chức cũ, kết quả Imported/Rejected/Pending và đích thực tế. Imported yêu cầu mapping đã duyệt, đích cùng Farm; không nhận một dòng đã được nhập ở batch nộp trước. Rejected bắt buộc lý do + người phụ trách. Batch chỉ được nộp nếu ≥99.5% dòng đã giải quyết. Chưa có importer tự đọc toàn bộ OneDrive hoặc tự đoán cột/đơn vị; không coi registry là dữ liệu đã nhập.
 
-`source_data.py` chuẩn hóa Unicode, số với locale khai báo rõ, phần trăm và ngày Excel/dd-mm-yyyy. Blank giữ None, không đổi thành zero; ngày filename không thay ngày sheet. UOM vật tư và mẫu số định mức tách riêng.
+`source_data.py` chuẩn hóa Unicode, số với locale khai báo rõ, phần trăm và ngày Excel/dd/mm/yyyy. Blank giữ None, không đổi thành zero; ngày filename không thay ngày sheet. UOM vật tư và mẫu số định mức tách riêng.
 
 ## Tên BRD và tên được giữ trong repo
 
@@ -65,7 +65,7 @@ Giữ tên cũ để không tạo hai bộ phiếu cùng làm một việc và k
 ## Kiểm tra và giới hạn nghiệm thu
 
 - Pure suite kiểm tra công thức, schema, quyền lệnh và chuẩn hóa nguồn.
-- Disposable ERPNext v16 suite cài/migrate hai lần và kiểm tra luồng kho thật, khóa giá trị đã duyệt, hai kết nối giữ hàng đồng thời, QC, Thửa/Vụ, 5.000 tấm xốp/thu hồi/chốt ngày và hủy làm giảm ATP.
+- Disposable ERPNext v16 suite cài/migrate hai lần và kiểm tra luồng kho thật, khóa giá trị đã duyệt, hai kết nối giữ hàng đồng thời (thử lại giao dịch khi database báo tranh chấp, dùng cùng event ID), QC, Thửa/Vụ, 5.000 tấm xốp/thu hồi/chốt ngày và hủy làm giảm ATP.
 - Chỉ dùng kết quả workflow của **commit mới nhất** để kết luận chạy được. Không lấy lần pass cũ để chứng minh code mới.
 - Chưa có dữ liệu Lotus thật, bảng mapping đã duyệt, kiểm kê toàn bộ OneDrive, kiểm thử tải/SLA, đối chiếu số liệu hoặc UAT/cutover. Chưa nghiệm thu 360°.
 - Offline/PWA, GIS/GPS/QR, liên kết thiết bị cân với tài khoản, Power BI dataset, pipeline Excel tự động, hiệu chỉnh dự thu tự động theo thực tế/vintage accuracy và giao hàng một phần đầy đủ vẫn là phần tiếp theo. Không đánh dấu hoàn thành vì đã có form.

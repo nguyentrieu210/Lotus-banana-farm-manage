@@ -54,6 +54,9 @@ def day_guard(doc, method=None):
 def plot_scope(doc, method=None):
     check_farm(doc)
     if doc.doctype == 'Crop Cycle':
+        before=doc.get_doc_before_save()
+        if before and before.get('farm_plot') and not doc.get('farm_plot'):
+            frappe.throw('A mapped Cycle cannot lose its Plot.')
         if doc.is_new() and not doc.get('farm_plot'):
             frappe.throw('New Crop Cycles require a Farm Plot. Map legacy cycles explicitly.')
         plot_name = doc.get('farm_plot')
@@ -66,7 +69,10 @@ def plot_scope(doc, method=None):
             frappe.throw('Cycle must match the Farm and Block.')
         if doc.get('farm_plot') and doc.farm_plot != cycle.get('farm_plot'):
             frappe.throw('Plot must match the Crop Cycle.')
-        doc.farm_plot = cycle.get('farm_plot')
+        before=doc.get_doc_before_save()
+        historical_forecast=doc.doctype=='Harvest Forecast' and before and before.supply_state!='Draft'
+        if not historical_forecast:
+            doc.farm_plot = cycle.get('farm_plot')
         plot_name = doc.farm_plot
         if doc.doctype in DAILY_TYPES and not plot_name:
             frappe.throw('Map the legacy cycle to a Plot before daily operations.')
@@ -102,7 +108,7 @@ def company_scope(doc):
 
 
 def plan_line(doc):
-    plan = frappe.get_doc('Daily Work Plan', doc.work_plan)
+    plan = frappe.get_doc('Daily Work Plan', doc.work_plan, for_update=True)
     plan.check_permission('read')
     lock('Daily Work Plan', plan.name)
     if plan.docstatus != 1 or plan.farm != doc.farm or getdate(plan.posting_date) != getdate(doc.posting_date):
@@ -198,6 +204,8 @@ class NormProfile(Document):
             for field in ('norm_qty', 'basis_qty', 'frequency', 'conversion_factor'):
                 number(row.get(field), field, positive=field!='norm_qty')
         if self.approval_state == 'Approved':
+            if not self.valid_to:
+                frappe.throw('Approved material norms require Valid To so later versions can take effect without changing history.')
             filters = {'farm': self.farm, 'work_type': self.work_type, 'approval_state': 'Approved', 'name': ['!=', self.name]}
             for other in frappe.get_all(self.doctype, filters=filters, fields=['name','valid_from','valid_to']):
                 if getdate(other.valid_from) <= getdate(self.valid_to or '9999-12-31') and getdate(self.valid_from) <= getdate(other.valid_to or '9999-12-31'):
@@ -269,13 +277,15 @@ class LaborAllocationRecord(DailyDocument):
             if team.farm != self.farm or not team.active:
                 frappe.throw('Work Team must be active in the same Farm.')
         if self.employee:
-            employee = frappe.get_doc('Employee', self.employee)
+            employee = frappe.get_doc('Employee', self.employee, for_update=True)
             employee.check_permission('read')
             if employee.company != self.company or employee.status != 'Active':
                 frappe.throw('Employee must be active in the same Company.')
             # Farm lock precedes Employee lock, ensuring cross-Farm staffing serializes.
             lock('Employee', self.employee)
-            used = frappe.get_all(self.doctype, filters={'employee': self.employee, 'posting_date': self.posting_date, 'docstatus': 1, 'name': ['!=', self.name]}, pluck='allocated_workdays')
+            table=frappe.qb.DocType(self.doctype)
+            used=[r[0] for r in (frappe.qb.from_(table).select(table.allocated_workdays)
+                .where((table.employee==self.employee)&(table.posting_date==self.posting_date)&(table.docstatus==1)&(table.name!=self.name)).for_update().run())]
             if sum(flt(x) for x in used)+amount > 1.000001:
                 frappe.throw('Employee cannot be allocated more than one workday per date.')
         elif not self.work_team or not self.allocation_note:
@@ -308,7 +318,7 @@ class MaterialRequirementRecord(DailyDocument):
 
 
 def entry_detail(entry_name, detail_name, company):
-    entry = frappe.get_doc('Stock Entry', entry_name)
+    entry = frappe.get_doc('Stock Entry', entry_name, for_update=True)
     entry.check_permission('read')
     lock('Stock Entry', entry_name)
     if entry.docstatus != 1 or entry.company != company:
@@ -630,7 +640,7 @@ class LegacyMap(Document):
         company_scope(self)
         before=self.get_doc_before_save()
         if before and before.approval_state=='Approved':
-            for field in ('legacy_key','legacy_company','legacy_source_unit','legacy_farm','company','farm','approval_state'):
+            for field in ('legacy_key','legacy_company','legacy_source_unit','legacy_farm','company','farm','approval_state','approved_by','approved_at'):
                 if self.get(field)!=before.get(field):
                     frappe.throw('Approved organization mapping is immutable.')
         elif self.approval_state=='Approved':
@@ -668,7 +678,7 @@ class ImportBatch(Document):
                     frappe.throw('Imported target must belong to this Farm.')
                 if target.meta.has_field('source_import_batch') and target.source_import_batch!=self.name:
                     frappe.throw('Imported target must retain this import batch lineage.')
-                prior=frappe.db.sql('''select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.docstatus=1 and b.source_file=%s and r.row_key=%s and r.row_status='Imported' and b.name!=%s limit 1''',(self.source_file,row.row_key,self.name))
+                prior=frappe.db.sql('''select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.docstatus=1 and b.source_file=%s and r.row_key=%s and r.row_status='Imported' and b.name!=%s limit 1 FOR UPDATE''',(self.source_file,row.row_key,self.name))
                 if prior:
                     frappe.throw('Source row was already imported in a submitted batch.')
                 resolved+=1
