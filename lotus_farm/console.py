@@ -17,6 +17,7 @@ MODULES={
  'harvest':['Harvest Actual','Harvest Lot'], 'incoming-qc':['Incoming Quality Inspection'],
  'packhouse':['Packhouse Shift','Packout Run','Material Recovery','Secondary Product Movement','Supply Reconciliation'],
  'daily-close':['Daily Production Close'],'cycle-close':['Cycle Closing Report'],
+ 'trace':['Harvest Lot','Packout Run','Farm Plot'],'map':['Plot Geometry'],'settings':['Lotus Farm Settings'],
  'masters':['Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
 ALLOWED={d for names in MODULES.values() for d in names}
@@ -105,6 +106,26 @@ def payload_fields(meta,values):
             result[key]=[payload_fields(frappe.get_meta(field.options),v) for v in value]
         else:result[key]=value
     return result
+
+
+@frappe.whitelist()
+def settings():
+    allowed('Lotus Farm Settings')
+    doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('read')
+    return doc.as_dict()
+
+
+@frappe.whitelist(methods=['POST'])
+def save_settings(values,base_modified=None):
+    meta=allowed('Lotus Farm Settings','write')
+    values=frappe.parse_json(values) if isinstance(values,str) else values
+    clean=payload_fields(meta,values)
+    doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('write')
+    lock('Singles','Lotus Farm Settings')
+    doc.reload()
+    if base_modified and str(doc.modified)!=str(base_modified):frappe.throw('Settings changed. Reload before saving; your input has not overwritten it.')
+    doc.update(clean);doc.save()
+    return doc.as_dict()
 
 
 @frappe.whitelist(methods=['POST'])
