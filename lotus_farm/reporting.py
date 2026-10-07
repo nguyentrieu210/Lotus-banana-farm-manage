@@ -91,9 +91,11 @@ def dashboard(from_date,to_date,farm=None,company=None):
     settings=frappe.get_single('Lotus Farm Settings')
     for f in farms:
         from lotus_farm.daily_api import daily_overview
-        tasks=[];day=start
+        tasks=[];unclosed_dates=[];day=start
         while day<=end:
-            tasks.extend(daily_overview(f.name,day)['tasks']);day=getdate(add_days(day,1))
+            overview=daily_overview(f.name,day);tasks.extend(overview['tasks'])
+            if not overview['closed']:unclosed_dates.append(str(day))
+            day=getdate(add_days(day,1))
         filters={'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]]}
         cancels=records('Bunch Cancellation',filters,['name','farm_block','farm_plot','reason','bunch_qty'])
         disease=records('Disease Observation',filters,['name','affected_plants'])
@@ -129,7 +131,7 @@ def dashboard(from_date,to_date,farm=None,company=None):
         affected=sum(flt(r.affected_plants) for r in disease)
         if settings.dashboard_disease_threshold and affected>=settings.dashboard_disease_threshold:alerts.append(dict(kind='Disease observations',value=affected))
         summaries.append(dict(farm=f.name,company=f.company,work_completion_percent=work_completion(tasks),labor_gap_workdays=labor_gap,
-            actual_workdays=sum(flt(t['actual_workdays']) for t in tasks),cancelled_bunches=cancelled,harvest_kg=gross,
+            unclosed_dates=unclosed_dates,closed=not unclosed_dates,actual_workdays=sum(flt(t['actual_workdays']) for t in tasks),cancelled_bunches=cancelled,harvest_kg=gross,
             kg_per_bunch=gross/bunches if bunches else None,incoming_defect_percent=(incoming-accepted)/incoming*100 if incoming else None,
             finished_kg=finished,secondary_kg=secondary,loss_kg=loss,packout_percent=yield_percent,
             secondary_percent=secondary/raw*100 if raw else None,loss_percent=loss/raw*100 if raw else None,
@@ -141,11 +143,13 @@ def dashboard(from_date,to_date,farm=None,company=None):
 
 
 @frappe.whitelist()
-def forecast_vintages(from_date,to_date,farm=None):
+def forecast_vintages(from_date,to_date,farm=None,company=None):
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>366:frappe.throw('Select at most one year.')
     filters={'period_start_date':['>=',start],'period_end_date':['<=',end],'supply_state':['!=','Draft']}
     if farm:filters['farm']=farm
+    if company:
+        filters['farm']=['in',[f.name for f in records('Farm',{'company':company},['name'])]]
     snapshots=records('Harvest Forecast',filters,['name','farm','farm_plot','crop_cycle','sucker_selection_batch','period_start_date','period_end_date','released_at','revision_no','packed_forecast_kg','snapshot_hash'])
     groups=defaultdict(list)
     for s in snapshots:
@@ -173,7 +177,7 @@ def forecast_vintages(from_date,to_date,farm=None):
             index=next(i for i,s in enumerate(previous) if s.name==selected['name'])
             forecast=flt(selected['packed_forecast_kg'])
             rows.append(dict(farm=f,farm_plot=plot,crop_cycle=cycle,cohort=cohort,period_start=begin,period_end=finish,
-                horizon_weeks=horizon,forecast=selected['name'],snapshot_hash=selected['snapshot_hash'],forecast_kg=forecast,
+                variety=frappe.db.get_value('Crop Cycle',cycle,'variety'),horizon_weeks=horizon,forecast=selected['name'],snapshot_hash=selected['snapshot_hash'],forecast_kg=forecast,
                 actual_kg=actual_finished if complete else None,absolute_error_kg=abs(forecast-actual_finished) if complete else None,
                 signed_error_kg=forecast-actual_finished if complete else None,
                 change_kg=forecast-flt(previous[index-1].packed_forecast_kg) if index else None,

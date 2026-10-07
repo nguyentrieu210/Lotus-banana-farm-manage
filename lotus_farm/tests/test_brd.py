@@ -655,6 +655,10 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(frappe.get_doc("Harvest Forecast", supply.name).has_permission("read"))
         with self.assertRaises(frappe.PermissionError):
             other.check_permission("read")
+        from lotus_farm.console import detail,audit,listing
+        with self.assertRaises(frappe.PermissionError):detail('Farm',other.name)
+        with self.assertRaises(frappe.PermissionError):audit('Farm',other.name)
+        self.assertNotIn(other.name,[r.name for r in listing('Farm')['rows']])
 
     def test_two_connections_cannot_overreserve(self):
         from concurrent.futures import ThreadPoolExecutor
@@ -1188,6 +1192,18 @@ class TestBRDOnSite(unittest.TestCase):
         target=frappe.get_doc('Planting Event',result['created_drafts'][0]);self.assertEqual(target.plant_qty,1250);self.assertEqual(target.docstatus,0)
         self.assertEqual(import_rows(batch.name)['created_drafts'],[])
         batch.reload();batch.submit();self.assertEqual(batch.resolved_percent,100)
+        source_v2=self.make('Source File Registry',source_key='XLSX360-V2-'+self.tag,source_path='/test/planting-v2.xlsx',source_filename='planting-v2.xlsx',
+            sha256=source.sha256,business_period=nowdate()[:7],migration_tier='A',source_status='Active')
+        repeat=stage_workbook(source_v2.name,mapping.name,self.farm,file.file_url)
+        with self.assertRaises(frappe.ValidationError):import_rows(repeat['batch'])
+        sheet['H2']='1.500'
+        changed=BytesIO();book.save(changed);changed_data=changed.getvalue()
+        changed_file=save_file('planting-v3-'+self.tag+'.xlsx',changed_data,None,None,is_private=1)
+        source_v3=self.make('Source File Registry',source_key='XLSX360-V3-'+self.tag,source_path='/test/planting-v3.xlsx',source_filename='planting-v3.xlsx',
+            sha256=hashlib.sha256(changed_data).hexdigest(),business_period=nowdate()[:7],migration_tier='A',source_status='Active')
+        altered=stage_workbook(source_v3.name,mapping.name,self.farm,changed_file.file_url)
+        with self.assertRaises(frappe.ValidationError):import_rows(altered['batch'])
+
 
     def test_360_scale_binding_and_schedule_due_tasks(self):
         from lotus_farm.field import suggest_work,make_suggested_plan
@@ -1290,3 +1306,36 @@ class TestBRDOnSite(unittest.TestCase):
         plan.reload();self.assertEqual(plan.lines[0].blocked_reason,'Rain')
         self.assertTrue(audit('Daily Work Plan',plan.name)['versions'])
         with self.assertRaises(frappe.ValidationError):save('Daily Work Plan',{'flags':{'ignore_permissions':True}})
+
+    def test_new_brd_packhouse_shift_preprocessing_and_stock_close(self):
+        from lotus_farm.shift import shift_summary
+        actual=self.make('Harvest Actual',farm=self.farm,farm_block=self.block,crop_cycle=self.cycle,
+            sucker_selection_batch=self.cohort,harvest_date=nowdate(),harvested_bunch_qty=4,gross_weight_kg=100,rejected_weight_kg=0)
+        actual.submit()
+        raw=self.make('Item',item_code='SHIFT-RAW-'+self.tag,item_group='All Item Groups',stock_uom='Kg',is_stock_item=1,has_batch_no=1).name
+        warehouse=self.make('Warehouse',warehouse_name='Shift Raw '+self.tag,company=self.company).name
+        finished=self.make('Warehouse',warehouse_name='Shift Finished '+self.tag,company=self.company).name
+        batch=self.make('Batch',batch_id='SHIFT-RAW-'+self.tag,item=raw).name
+        receipt=self.make('Stock Entry',stock_entry_type='Material Receipt',purpose='Material Receipt',company=self.company,posting_date=nowdate(),
+            items=[dict(item_code=raw,t_warehouse=warehouse,qty=100,uom='Kg',stock_uom='Kg',conversion_factor=1,basic_rate=1,batch_no=batch,use_serial_batch_fields=1)])
+        receipt.submit()
+        lot=self.make('Harvest Lot',farm=self.farm,received_date=nowdate(),raw_item=raw,raw_warehouse=warehouse,raw_batch=batch,
+            sources=[dict(harvest_actual=actual.name,contributed_kg=100)])
+        lot.submit()
+        self.make('Incoming Quality Inspection',farm=self.farm,posting_date=nowdate(),harvest_lot=lot.name,accepted_kg=100).submit()
+        employee=self.make('Employee',first_name='Shift '+self.tag,gender='Male',date_of_birth=add_days(nowdate(),-10000),date_of_joining=add_days(nowdate(),-100),company=self.company,status='Active').name
+        shift=self.make('Packhouse Shift',farm=self.farm,posting_date=nowdate(),shift_code='DAY',started_at=nowdate()+' 07:00:00',ended_at=nowdate()+' 15:00:00',supervisor='Administrator',
+            labor=[dict(employee=employee,workdays=0.5)],preprocessing=[dict(harvest_lot=lot.name,processed_bunches=4,processed_kg=100)])
+        with self.assertRaises(frappe.ValidationError):shift.submit()
+        reason=self.make('Defect Reason',defect_code='SHIFT-LOSS-'+self.tag,defect_name='Process loss',category='Other').name
+        run=self.make('Packout Run',farm=self.farm,company=self.company,packing_date=nowdate(),packhouse_shift=shift.name,
+            quality_standard=self.standard,target_warehouse=finished,sources=[dict(harvest_lot=lot.name,input_kg=100)],outputs=[dict(item=self.item,net_kg=84)],reject_kg=0,other_loss_kg=16,
+            loss_details=[dict(loss_type='Process Loss',weight_kg=16,reason=reason)],qc_state='Released')
+        run.submit()
+        with self.assertRaises(frappe.ValidationError):shift.submit()
+        from lotus_farm.stock_bridge import make_repack_entry
+        entry=frappe.get_doc('Stock Entry',make_repack_entry(run.name)['stock_entry']);entry.submit()
+        shift.reload();shift.submit()
+        result=shift_summary(shift)
+        self.assertEqual(result['finished_kg'],84);self.assertEqual(result['packout_percent'],84)
+        with self.assertRaises(frappe.ValidationError):shift.cancel()

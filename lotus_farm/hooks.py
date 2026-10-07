@@ -143,3 +143,4 @@ doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validat
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
+doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'

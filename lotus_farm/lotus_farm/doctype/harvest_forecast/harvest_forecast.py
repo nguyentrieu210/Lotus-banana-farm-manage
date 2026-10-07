@@ -227,7 +227,7 @@ class HarvestForecast(Document):
     def _calculate_remaining(self):
         from lotus_farm.daily_operations import live_loss_fraction
         loss_fraction = live_loss_fraction(self)
-        harvested = sum(flt(v) for v in frappe.get_all('Harvest Actual', filters={'forecast':self.name,'docstatus':1}, pluck='harvested_bunch_qty'))
+        harvested = sum(flt(v) for v in frappe.get_all('Harvest Actual', filters={'forecast':self.name,'docstatus':1}, pluck='harvested_bunch_qty')) if not self.is_new() else 0
         harvest_fraction = min(harvested / flt(self.expected_harvest_bunch_qty), 1) if self.expected_harvest_bunch_qty else 0
         reserved = [
             row for row in self.allocations or [] if row.allocation_state == "Reserved"

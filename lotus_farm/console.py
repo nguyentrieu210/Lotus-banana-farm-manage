@@ -1,19 +1,20 @@
 """Permission-checked SPA data, paging, metadata and document actions."""
 import json
+from copy import deepcopy
 import frappe
-from frappe.utils import cint, getdate, nowdate, flt
+from frappe.utils import cint, getdate, nowdate, flt, add_days
 from lotus_farm.controls import lock, require_role, command, command_allowed
 from lotus_farm.daily_operations import day_guard
 
 MODULES={
  'farms':['Farm','Farm Block','Farm Plot','Crop Cycle','Sucker Selection Batch'],
- 'plans':['Harvest Forecast','Daily Work Plan'],
+ 'plans':['Harvest Forecast','Daily Work Plan','Supply Reconciliation'],
  'work':['Daily Work Plan','Daily Work Result','Planting Event','Disease Observation','Bunch Operation'],
  'labor':['Daily Labor Summary','Labor Allocation'],
  'materials':['Material Requirement','Material Consumption','Material Recovery'],
  'losses':['Bunch Cancellation'], 'measurements':['Fruit Measurement'],
  'harvest':['Harvest Actual','Harvest Lot'], 'incoming-qc':['Incoming Quality Inspection'],
- 'packhouse':['Packhouse Shift','Packout Run','Material Recovery','Secondary Product Movement'],
+ 'packhouse':['Packhouse Shift','Packout Run','Material Recovery','Secondary Product Movement','Supply Reconciliation'],
  'daily-close':['Daily Production Close'],'cycle-close':['Cycle Closing Report'],
  'masters':['Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
@@ -57,7 +58,10 @@ def listing(doctype,farm=None,company=None,block=None,plot=None,date=None,from_d
     if meta.has_field('farm_block') and block:filters['farm_block']=block
     if meta.has_field('farm_plot') and plot:filters['farm_plot']=plot
     date_field=DATES.get(doctype,'posting_date')
-    if meta.has_field(date_field):
+    if doctype=='Harvest Forecast':
+        filters['period_start_date']=['<=',getdate(to_date or add_days(date or nowdate(),56))]
+        filters['period_end_date']=['>=',getdate(from_date or date or nowdate())]
+    elif meta.has_field(date_field):
         if from_date and to_date:filters[date_field]=['between',[getdate(from_date),getdate(to_date)]]
         elif date:filters[date_field]=getdate(date)
     if search:filters['name']=['like','%'+search[:100]+'%']
@@ -167,8 +171,15 @@ def work_state(plan,line,state,reason=None):
         allocated=sum(flt(v) for v in frappe.get_all('Labor Allocation',filters={'work_plan_line':line,'docstatus':1},pluck='allocated_workdays'))
         if allocated+0.000001<flt(row.required_workdays):frappe.throw('Allocate required labor before marking Ready.')
         if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Submit material requirements before marking Ready.')
+    before=deepcopy(doc)
+    version_filters={'ref_doctype':doc.doctype,'docname':doc.name}
+    version_count=frappe.db.count('Version',version_filters)
     row.execution_state=state;row.blocked_reason=reason if state=='Blocked' else ''
+    doc.flags.ignore_version=False
     with command(doc,'work_state'):doc.save()
+    if frappe.db.count('Version',version_filters)==version_count:
+        version=frappe.new_doc('Version')
+        if version.set_diff(before,doc):version.insert(ignore_permissions=True)
     return dict(line=line,state=state)
 
 
@@ -181,6 +192,7 @@ def work_state_guard(doc,method=None):
             if prior and any(row.get(f)!=prior.get(f) for f in ('execution_state','blocked_reason')) and not command_allowed(doc,'work_state'):
                 frappe.throw('Use the work transition command.')
     for row in doc.lines:
+        if doc.docstatus==0 and (row.execution_state or 'Planned')!='Planned':frappe.throw('Draft task state starts Planned; use transitions after submitting the plan.')
         if row.work_team:
             team=frappe.get_doc('Work Team',row.work_team);team.check_permission('read')
             if team.farm!=doc.farm:frappe.throw('Responsible team must belong to this Farm.')
@@ -266,3 +278,9 @@ def loss_analysis(farm=None,from_date=None,to_date=None):
         if key not in groups:groups[key]=dict(farm=row.farm,farm_block=row.farm_block,reason=row.reason,bunch_qty=0)
         groups[key]['bunch_qty']+=cint(row.bunch_qty)
     return dict(rows=rows,by_reason=sorted(groups.values(),key=lambda r:-r['bunch_qty']))
+
+
+@frappe.whitelist()
+def order_lines(sales_order):
+    order=frappe.get_doc('Sales Order',sales_order);order.check_permission('read')
+    return [dict(name=r.name,item=r.item_code,qty=r.qty,delivered_qty=r.delivered_qty,delivery_date=r.delivery_date) for r in order.items]
