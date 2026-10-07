@@ -1375,3 +1375,15 @@ class TestBRDOnSite(unittest.TestCase):
         with self.assertRaises(frappe.ValidationError):work_state(plan.name,line.name,'Ready')
         self.make('Stock Entry',company=self.company,stock_entry_type='Material Receipt',purpose='Material Receipt',posting_date=nowdate(),items=[dict(item_code=item,t_warehouse=warehouse,qty=5000,uom='Sheet',stock_uom='Sheet',conversion_factor=1,basic_rate=1)]).submit()
         self.assertEqual(work_state(plan.name,line.name,'Ready')['state'],'Ready')
+
+
+    def test_new_brd_console_settings_and_capture_contract(self):
+        from lotus_farm.console import schema,settings,save_settings
+        capture=schema('Daily Work Result')
+        self.assertIn('posting_date',capture['capture_fields'])
+        self.assertIn('completed_qty',capture['capture_fields'])
+        current=settings()
+        updated=save_settings({'dashboard_cancellation_threshold':7},current['_settings_token'])
+        self.assertEqual(updated['dashboard_cancellation_threshold'],7)
+        with self.assertRaises(frappe.ValidationError):
+            save_settings({'dashboard_cancellation_threshold':8},current['_settings_token'])
