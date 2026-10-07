@@ -1437,3 +1437,24 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(photo.attached_to_doctype,'Field Capture')
         self.assertEqual(photo.attached_to_name,accepted['capture'])
         self.assertEqual(capture(**args)['document'],accepted['document'])
+
+    def test_brd_audit_mixed_cycle_packout_scope_reconciles(self):
+        from lotus_farm.reporting import dashboard
+        actuals=[]
+        for cycle,cohort,kg in [(self.parent,None,100),(self.cycle,self.cohort,200)]:
+            doc=self.make('Harvest Actual',farm=self.farm,farm_block=self.block,crop_cycle=cycle,sucker_selection_batch=cohort,harvest_date=nowdate(),harvested_bunch_qty=10,gross_weight_kg=kg,rejected_weight_kg=0)
+            doc.submit();actuals.append(doc)
+        lot=self.make('Harvest Lot',farm=self.farm,received_date=nowdate(),sources=[dict(harvest_actual=a.name,contributed_kg=a.saleable_weight_kg) for a in actuals]);lot.submit()
+        self.make('Incoming Quality Inspection',farm=self.farm,posting_date=nowdate(),harvest_lot=lot.name,accepted_kg=300).submit()
+        warehouse=self.make('Warehouse',warehouse_name='Scoped Finished '+self.tag,company=self.company).name
+        reason=self.make('Defect Reason',defect_code='SCOPE-LOSS-'+self.tag,defect_name='Process reject',category='Other').name
+        run=self.make('Packout Run',farm=self.farm,company=self.company,packing_date=nowdate(),quality_standard=self.standard,target_warehouse=warehouse,sources=[dict(harvest_lot=lot.name,input_kg=300)],outputs=[dict(item=self.item,net_kg=252)],reject_kg=48,other_loss_kg=0,qc_state='Released',loss_details=[dict(loss_type='Reject',weight_kg=48,reason=reason)]);run.submit()
+        all_data=dashboard(nowdate(),nowdate(),farm=self.farm)['farms'][0]
+        first=dashboard(nowdate(),nowdate(),farm=self.farm,cycle=self.parent)['farms'][0]
+        second=dashboard(nowdate(),nowdate(),farm=self.farm,cycle=self.cycle)['farms'][0]
+        self.assertAlmostEqual(first['finished_kg'],84)
+        self.assertAlmostEqual(second['finished_kg'],168)
+        for field in ['finished_kg','packout_input_kg','loss_kg','harvest_kg']:
+            self.assertAlmostEqual(first[field]+second[field],all_data[field])
+        self.assertAlmostEqual(first['packout_percent'],84)
+        self.assertAlmostEqual(second['packout_percent'],84)

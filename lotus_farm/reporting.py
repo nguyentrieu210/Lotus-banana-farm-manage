@@ -86,6 +86,21 @@ def plot_history(farm_plot,from_date=None,to_date=None,crop_cycle=None):
     return dict(plot=plot.name,farm=plot.farm,block=plot.farm_block,cycles=cycles,events=sorted(result,key=lambda r:(r['date'],r['doctype'],r['name'])),forecasts=forecasts)
 
 
+def _matches_land(source,selected):
+    return all(not selected[key] or source.get(field)==selected[key] for key,field in [('farm','farm'),('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])
+
+
+def _lot_fraction(name,selected):
+    lot=frappe.get_doc('Harvest Lot',name);lot.check_permission('read')
+    weight=0
+    for source in lot.sources:
+        actual=frappe.get_doc('Harvest Actual',source.harvest_actual);actual.check_permission('read')
+        values=actual.as_dict()
+        values['farm_plot']=actual.farm_plot or frappe.db.get_value('Crop Cycle',actual.crop_cycle,'farm_plot')
+        if _matches_land(values,selected):weight+=flt(source.contributed_kg)
+    return weight/flt(lot.released_raw_kg) if lot.released_raw_kg else 0
+
+
 @frappe.whitelist()
 def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
     start,end=getdate(from_date),getdate(to_date)
@@ -110,16 +125,19 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
         if block or plot or cycle:
             from lotus_farm.console import _source_scope_names
             linked={'name':['in',_source_scope_names('Incoming Quality Inspection',{**selected,'farm':f.name}) or ['__none__']]}
-        qc=records('Incoming Quality Inspection',{'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]],**linked},['name','received_kg','accepted_kg'])
+        qc=records('Incoming Quality Inspection',{'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]],**linked},['name','harvest_lot','received_kg','accepted_kg'])
         runs=records('Packout Run',{'farm':f.name,'docstatus':1,'packing_date':['between',[start,end]],**({'name':['in',_source_scope_names('Packout Run',{**selected,'farm':f.name}) or ['__none__']]} if block or plot or cycle else {})},['name','input_kg','reject_kg','other_loss_kg'])
-        finished=secondary=0
+        finished=secondary=0;fractions={}
         for r in runs:
             run=frappe.get_doc('Packout Run',r.name)
-            finished+=sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Finished')
-            secondary+=sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Secondary')
+            fraction=sum(s['fraction'] for s in packout_lineage(run) if _matches_land(s,selected)) if block or plot or cycle else 1
+            fractions[r.name]=fraction
+            finished+=fraction*sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Finished')
+            secondary+=fraction*sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Secondary')
         gross=sum(flt(r.gross_weight_kg) for r in actuals);bunches=sum(flt(r.harvested_bunch_qty) for r in actuals)
-        incoming=sum(flt(r.received_kg) for r in qc);accepted=sum(flt(r.accepted_kg) for r in qc)
-        raw=sum(flt(r.input_kg) for r in runs)
+        qc_fractions={r.name:_lot_fraction(r.harvest_lot,selected) if block or plot or cycle else 1 for r in qc}
+        incoming=sum(qc_fractions[r.name]*flt(r.received_kg) for r in qc);accepted=sum(qc_fractions[r.name]*flt(r.accepted_kg) for r in qc)
+        raw=sum(fractions[r.name]*flt(r.input_kg) for r in runs)
         shortages=[]
         for r in records('Material Requirement',filters,['name']):
             requirement=frappe.get_doc('Material Requirement',r.name)
@@ -131,7 +149,7 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
                 remaining=max(flt(line.required_qty)-used[line.item],0)
                 if remaining:shortages.append(dict(requirement=r.name,item=line.item,uom=line.uom,outstanding_qty=remaining))
         labor_gap=sum(flt(t['allocated_workdays'])-flt(t['required_workdays']) for t in tasks)
-        loss=sum(flt(r.reject_kg)+flt(r.other_loss_kg) for r in runs)
+        loss=sum(fractions[r.name]*(flt(r.reject_kg)+flt(r.other_loss_kg)) for r in runs)
         cancelled=sum(flt(r.bunch_qty) for r in cancels)
         alerts=[]
         if labor_gap<0:alerts.append(dict(kind='Labor',value=labor_gap))
@@ -151,7 +169,7 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
     from lotus_farm.api import availability
     supply=availability(str(start),str(getdate(add_days(end,56))),farm)
     supply=[s for s in supply if any(f.name==s['farm'] for f in farms) and all(not selected[k] or s.get(field)==selected[k] for k,field in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])]
-    return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Work completion is averaged per task. Outstanding material is unconsumed requirement, not stock shortage.')
+    return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Work completion is averaged per task. Outstanding material is unconsumed requirement, not stock shortage. Scoped QC/packout weights are attributed by explicit source contributions.')
 
 
 @frappe.whitelist()

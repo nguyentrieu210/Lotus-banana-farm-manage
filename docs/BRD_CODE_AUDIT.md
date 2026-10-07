@@ -10,7 +10,7 @@ Repo có các luồng nghiệp vụ chính và kiểm thử Frappe/ERPNext thậ
 
 | Yêu cầu | Trước audit | Thay đổi / bằng chứng |
 |---|---|---|
-| FR-001/002/030, route scope | Cycle/status có trên URL nhưng chưa lọc đầy đủ; ID cha/con mâu thuẫn; company có thể bị bỏ qua | `scoping.py` suy ra Company/Farm/Block/Plot từ Cycle, kiểm quyền và quan hệ; scope picker phụ thuộc; `console.listing`, task/report/map/material/QC/loss/productivity áp dụng scope |
+| FR-001/002/030, route scope | Cycle/status có trên URL nhưng chưa lọc đầy đủ; ID cha/con mâu thuẫn; company có thể bị bỏ qua | `scoping.py` suy ra Company/Farm/Block/Plot từ Cycle, kiểm quyền và quan hệ; scope picker phụ thuộc; `console.listing`, task/report/map/material/QC/loss/productivity áp dụng scope; KPI QC/packout phân bổ theo tỷ trọng nguồn thật khi một lô gom nhiều vụ |
 | FR-004, Work views | My Work/At Risk chưa thực sự lọc theo người/rủi ro | `daily_overview`: responsible=current user; blocked/thiếu công/quá hạn; Board vẫn nhóm theo trạng thái |
 | FR-003, dashboard | Trung bình phần trăm giữa Farm làm sai trọng số nhiệm vụ | Trung bình theo từng task; bổ sung tỷ lệ packout và lỗi tích hợp; không biến dữ liệu không được phép đọc thành số 0 |
 | Date/status/search | Một đầu khoảng ngày bị bỏ qua; search có thể ghi đè bộ lọc nguồn | Khoảng ngày một phía; canonical status validated; search là AND với scope, không thay thế danh sách nguồn |
@@ -27,7 +27,7 @@ Repo có các luồng nghiệp vụ chính và kiểm thử Frappe/ERPNext thậ
 - Frontend unit: schema payload, labor matrix, navigation, attempt retry identity và account partition.
 - Native browser: queue commit/abort, retry/photo, single-flight, account binding; read cache khác user/scope không truy cập được và không lưu CSRF.
 - Mock browser: route/query, KPI drill-down, work actual, canonical select/checkbox, ERP shortage, reload/mobile và route/action của tài khoản chỉ đọc.
-- Site CI: cài/migrate hai lần trên Frappe/ERPNext v16; toàn bộ `test_brd`, thêm scope/status/date/search/permission/account/photo tests.
+- Site CI: cài/migrate hai lần trên Frappe/ERPNext v16; toàn bộ `test_brd`, thêm scope/status/date/search/permission/account/photo và mixed-cycle mass attribution tests.
 - Browser site thật: login → task cache → reload mất mạng → actual → audit → preview/save/submit close → đọc dữ liệu đã lưu.
 
 Kết quả CI của đúng commit được ghi trong PR. Các bước trên không thay cho kiểm tải hoặc UAT Lotus.
