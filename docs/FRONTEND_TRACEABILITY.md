@@ -1,5 +1,7 @@
 # Lotus Frontend — BRD Traceability Matrix
 
+Đây là mapping yêu cầu → implementation đích, không phải checklist đã nghiệm thu. Xem [audit code thực tế](BRD_CODE_AUDIT.md) để biết các lỗi được sửa và phần còn thiếu.
+
 | ID | Nhu cầu | Backend hiện có | Frontend đích | Acceptance |
 |---|---|---|---|---|
 | FR-001 | Công ty → Nông trường → Lô → Thửa | Company, Farm, Farm Block, Farm Plot | ScopePicker, Farm/Plot 360 | Không xuất hiện Xí nghiệp |

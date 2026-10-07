@@ -2,6 +2,7 @@
 from collections import defaultdict
 import frappe
 from frappe.utils import flt, getdate, add_days, nowdate
+from lotus_farm.scoping import land_scope, land_filters
 from lotus_farm.rules import forecast_accuracy
 from lotus_farm.promax_rules import work_completion, vintage_choice
 
@@ -55,17 +56,20 @@ def trace_item(item,batch=None):
 
 
 @frappe.whitelist()
-def plot_history(farm_plot,from_date=None,to_date=None):
+def plot_history(farm_plot,from_date=None,to_date=None,crop_cycle=None):
     plot=frappe.get_doc('Farm Plot',farm_plot);plot.check_permission('read')
-    cycles=records('Crop Cycle',{'farm_plot':plot.name},['name','cycle_no','status','planting_date','variety'])
+    selected=land_scope(plot=farm_plot,cycle=crop_cycle)
+    cycles=records('Crop Cycle',{'farm_plot':plot.name,**({'name':crop_cycle} if crop_cycle else {})},['name','cycle_no','status','planting_date','variety'])
     result=[]
     definitions=[('Planting Event','posting_date'),('Sucker Selection Batch','selection_date'),('Bunch Operation','operation_date'),
         ('Daily Work Result','posting_date'),('Disease Observation','posting_date'),('Bunch Cancellation','posting_date'),
         ('Fruit Measurement','posting_date'),('Harvest Actual','harvest_date'),('Cycle Closing Report','posting_date'),('Material Consumption','posting_date'),('Labor Allocation','posting_date')]
     for t,date_field in definitions:
-        filters={'farm_plot':plot.name}
+        filters={'farm_plot':plot.name,**({'crop_cycle':crop_cycle} if crop_cycle else {})}
         if frappe.get_meta(t).is_submittable:filters['docstatus']=1
         if from_date and to_date:filters[date_field]=['between',[from_date,to_date]]
+        elif from_date:filters[date_field]=['>=',from_date]
+        elif to_date:filters[date_field]=['<=',to_date]
         for r in records(t,filters,['name',date_field,'crop_cycle']):result.append(dict(doctype=t,name=r.name,date=str(r[date_field]),crop_cycle=r.crop_cycle))
     actual_names={e['name'] for e in result if e['doctype']=='Harvest Actual'}
     lot_names=set()
@@ -78,30 +82,36 @@ def plot_history(farm_plot,from_date=None,to_date=None):
     for row in records('Packout Run',{'farm':plot.farm,'docstatus':1},['name','packing_date']):
         run=frappe.get_doc('Packout Run',row.name)
         if any(s.harvest_lot in lot_names for s in run.sources):result.append(dict(doctype='Packout Run',name=run.name,date=str(run.packing_date),crop_cycle=None))
-    forecasts=records('Harvest Forecast',{'farm_plot':plot.name},['name','supply_state','period_start_date','period_end_date','packed_forecast_kg','snapshot_hash','released_at'])
+    forecasts=records('Harvest Forecast',{'farm_plot':plot.name,**({'crop_cycle':crop_cycle} if crop_cycle else {})},['name','supply_state','period_start_date','period_end_date','packed_forecast_kg','snapshot_hash','released_at'])
     return dict(plot=plot.name,farm=plot.farm,block=plot.farm_block,cycles=cycles,events=sorted(result,key=lambda r:(r['date'],r['doctype'],r['name'])),forecasts=forecasts)
 
 
 @frappe.whitelist()
-def dashboard(from_date,to_date,farm=None,company=None):
+def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>93:frappe.throw('Select a reporting period of at most 94 days.')
-    farms=records('Farm',{'name':farm} if farm else ({'company':company} if company else {}),['name','company','farm_name'])
+    selected=land_scope(company,farm,block,plot,cycle)
+    farm=selected['farm'];company=selected['company']
+    farms=records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name','company','farm_name'])
     summaries=[]
     settings=frappe.get_single('Lotus Farm Settings')
     for f in farms:
         from lotus_farm.daily_api import daily_overview
         tasks=[];unclosed_dates=[];day=start
         while day<=end:
-            overview=daily_overview(f.name,day);tasks.extend(overview['tasks'])
+            overview=daily_overview(f.name,day,block=block,plot=plot,cycle=cycle);tasks.extend(overview['tasks'])
             if not overview['closed']:unclosed_dates.append(str(day))
             day=getdate(add_days(day,1))
-        filters={'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]]}
+        filters={**land_filters(frappe.get_meta('Bunch Cancellation'),{**selected,'farm':f.name}),'docstatus':1,'posting_date':['between',[start,end]]}
         cancels=records('Bunch Cancellation',filters,['name','farm_block','farm_plot','reason','bunch_qty'])
         disease=records('Disease Observation',filters,['name','affected_plants'])
-        actuals=records('Harvest Actual',{'farm':f.name,'docstatus':1,'harvest_date':['between',[start,end]]},['name','gross_weight_kg','saleable_weight_kg','harvested_bunch_qty'])
-        qc=records('Incoming Quality Inspection',filters,['name','received_kg','accepted_kg'])
-        runs=records('Packout Run',{'farm':f.name,'docstatus':1,'packing_date':['between',[start,end]]},['name','input_kg','reject_kg','other_loss_kg'])
+        actuals=records('Harvest Actual',{**land_filters(frappe.get_meta('Harvest Actual'),{**selected,'farm':f.name}),'docstatus':1,'harvest_date':['between',[start,end]]},['name','gross_weight_kg','saleable_weight_kg','harvested_bunch_qty'])
+        linked={}
+        if block or plot or cycle:
+            from lotus_farm.console import _source_scope_names
+            linked={'name':['in',_source_scope_names('Incoming Quality Inspection',{**selected,'farm':f.name}) or ['__none__']]}
+        qc=records('Incoming Quality Inspection',{'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]],**linked},['name','received_kg','accepted_kg'])
+        runs=records('Packout Run',{'farm':f.name,'docstatus':1,'packing_date':['between',[start,end]],**({'name':['in',_source_scope_names('Packout Run',{**selected,'farm':f.name}) or ['__none__']]} if block or plot or cycle else {})},['name','input_kg','reject_kg','other_loss_kg'])
         finished=secondary=0
         for r in runs:
             run=frappe.get_doc('Packout Run',r.name)
@@ -130,26 +140,27 @@ def dashboard(from_date,to_date,farm=None,company=None):
         if yield_percent is not None and settings.dashboard_packout_min_percent and yield_percent<settings.dashboard_packout_min_percent:alerts.append(dict(kind='Packout',value=yield_percent))
         affected=sum(flt(r.affected_plants) for r in disease)
         if settings.dashboard_disease_threshold and affected>=settings.dashboard_disease_threshold:alerts.append(dict(kind='Disease observations',value=affected))
-        summaries.append(dict(farm=f.name,company=f.company,work_completion_percent=work_completion(tasks),labor_gap_workdays=labor_gap,
+        integration=records('Integration Task',{'farm':f.name,'status':'Failed'},['name','sync_error']) if frappe.has_permission('Integration Task','read') else None
+        if integration:alerts.append(dict(kind='Integration',value=len(integration)))
+        summaries.append(dict(farm=f.name,company=f.company,integration_errors=integration,work_completion_percent=work_completion(tasks),labor_gap_workdays=labor_gap,
             unclosed_dates=unclosed_dates,closed=not unclosed_dates,actual_workdays=sum(flt(t['actual_workdays']) for t in tasks),cancelled_bunches=cancelled,harvest_kg=gross,
             kg_per_bunch=gross/bunches if bunches else None,incoming_defect_percent=(incoming-accepted)/incoming*100 if incoming else None,
-            finished_kg=finished,secondary_kg=secondary,loss_kg=loss,packout_percent=yield_percent,
+            finished_kg=finished,secondary_kg=secondary,loss_kg=loss,packout_input_kg=raw,packout_percent=yield_percent,
             secondary_percent=secondary/raw*100 if raw else None,loss_percent=loss/raw*100 if raw else None,
             outstanding_material=shortages,cancellations=cancels,tasks=tasks,alerts=alerts))
     from lotus_farm.api import availability
     supply=availability(str(start),str(getdate(add_days(end,56))),farm)
-    if company:supply=[s for s in supply if any(f.name==s['farm'] for f in farms)]
+    supply=[s for s in supply if any(f.name==s['farm'] for f in farms) and all(not selected[k] or s.get(field)==selected[k] for k,field in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])]
     return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Work completion is averaged per task. Outstanding material is unconsumed requirement, not stock shortage.')
 
 
 @frappe.whitelist()
-def forecast_vintages(from_date,to_date,farm=None,company=None):
+def forecast_vintages(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>366:frappe.throw('Select at most one year.')
     filters={'period_start_date':['>=',start],'period_end_date':['<=',end],'supply_state':['!=','Draft']}
-    if farm:filters['farm']=farm
-    if company:
-        filters['farm']=['in',[f.name for f in records('Farm',{'company':company},['name'])]]
+    selected=land_scope(company,farm,block,plot,cycle)
+    filters.update(land_filters(frappe.get_meta('Harvest Forecast'),selected))
     snapshots=records('Harvest Forecast',filters,['name','farm','farm_plot','crop_cycle','sucker_selection_batch','period_start_date','period_end_date','released_at','revision_no','packed_forecast_kg','snapshot_hash'])
     groups=defaultdict(list)
     for s in snapshots:
@@ -206,9 +217,9 @@ def _actual_fully_processed(name):
 
 
 @frappe.whitelist()
-def dataset(from_date,to_date,farm=None):
+def dataset(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
     """Authenticated JSON dataset for Power BI; permission checks are the same as Desk."""
-    return dashboard(from_date,to_date,farm=farm)
+    return dashboard(from_date,to_date,farm=farm,company=company,block=block,plot=plot,cycle=cycle)
 
 
 @frappe.whitelist()
@@ -245,7 +256,7 @@ def trace_lot(harvest_lot):
     runs=[]
     for r in records('Packout Run',{'farm':lot.farm,'docstatus':1},['name']):
         if any(s.harvest_lot==lot.name for s in frappe.get_doc('Packout Run',r.name).sources):runs.append(r.name)
-    return dict(lot=lot.name,sources=sources,qc=qc,packout=runs)
+    return dict(lot=lot.name,sources=sources,qc=qc,packout=runs,packout_documents=[dict(name=n,**frappe.db.get_value('Packout Run',n,['packing_date','stock_entry'],as_dict=True)) for n in runs])
 
 
 @frappe.whitelist()
