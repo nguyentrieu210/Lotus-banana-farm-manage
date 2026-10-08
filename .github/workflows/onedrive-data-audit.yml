@@ -1,0 +1,24 @@
+name: OneDrive source data audit
+on:
+  push:
+    branches: [test/onedrive-data-audit-20261008]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  data-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Check all extracted source rows and import readiness
+        run: python scripts/audit_onedrive_values.py
+      - name: Preserve audit report including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onedrive-data-audit
+          path: audit-output/
+          retention-days: 7
