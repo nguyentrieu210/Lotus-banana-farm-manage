@@ -24,14 +24,14 @@ Các đơn giá của những công việc khác trong ảnh viết tay chưa đ
 1. Quản lý mở **Danh mục → Work Type** và đặt *Cách trả công = Piece* cho công việc bao buồng; giữ *Daywork* cho việc công nhật.
 2. Tạo **Work Piece Rate**, chọn nông trường, công việc, đơn vị (ví dụ Bunch), 4.000 VND và khoảng ngày hiệu lực. **Submit** để phê duyệt. Không cho hai đơn giá đã nộp cùng loại việc/nông trường có thời gian hiệu lực chồng nhau.
 3. Đội trưởng giao một hoặc nhiều việc/lô qua **Daily Work Plan**. Từng dòng kế hoạch phải chỉ rõ **Work Team** để xác định tổ nhận việc.
-4. Tổ trưởng báo sản lượng theo thửa vào **Daily Work Result**, đính kèm ảnh/GPS nếu có. Kết quả đã nộp là bằng chứng đầu vào. Trường **actual_workdays** phục vụ KPI, không phải căn cứ tính khoán sản lượng.
-5. Quản lý mở **Công việc → Work Piece Settlement**, chọn kết quả đã nộp, nhập tên tổ trưởng nhận khoán, đơn giá đã duyệt và **accepted_qty**. Số báo cáo, thửa, loại việc, tổ, đơn vị, giá chốt, tiền và ngày làm lấy từ chứng từ gốc, không tin giá tiền gửi từ giao diện.
+4. Tổ trưởng báo sản lượng theo thửa vào **Daily Work Result**, đính kèm ảnh/GPS nếu có. Kết quả đã nộp là bằng chứng đầu vào. Với Piece, **không cần nhập actual_workdays trên từng việc**; nếu có thì chỉ là thông tin KPI, không phải căn cứ tính khoán. Chấm công đầu ngày được quản lý riêng.
+5. Có thể đặt **foreman_name** trong **Work Team** để cố định người nhận khoán mà không quản lý danh sách nhân công. Quản lý mở **Công việc → Work Piece Settlement**, chọn kết quả đã nộp, người nhận khoán (tự lấy từ Work Team nếu có), đơn giá đã duyệt và **accepted_qty**. Số báo cáo, thửa, loại việc, tổ, đơn vị, giá chốt, tiền và ngày làm lấy từ chứng từ gốc, không tin giá tiền gửi từ giao diện.
 6. **Submit** để nghiệm thu: số tiền được chốt, người duyệt và thời điểm duyệt lưu lại. Một Work Result chỉ có tối đa một phiếu khoán đang có hiệu lực.
 7. Muốn thay đổi số đã nghiệm thu: hủy phiếu nghiệm thu cũ có lý do, tạo bản sửa mới; trước khi hủy Work Result phải hủy phiếu nghiệm thu liên quan. Giá dùng trên phiếu cũ được lưu lại để kiểm toán.
 
 ## Kiểm soát đã triển khai
 
-- Không được dùng giá nháp, giá ngoài ngày hiệu lực, giá sai đơn vị, giá ở nông trường/công việc khác.
+- Việc Piece không bị buộc phân bổ công vào từng dòng nhiệm vụ để chuyển sang Ready hoặc chốt ngày.\n- Không được dùng giá nháp, giá ngoài ngày hiệu lực, giá sai đơn vị, giá ở nông trường/công việc khác.
 - Không được nghiệm thu hơn số lượng của Daily Work Result. Nghiệm thu ít hơn bắt buộc nêu lý do.
 - Một kết quả không được tạo 2 phiếu nghiệm thu đang có hiệu lực, kể cả hai yêu cầu gần như đồng thời (khóa bản ghi nguồn).
 - Tính tiền với Decimal, chỉ làm tròn VND sau phép nhân.
