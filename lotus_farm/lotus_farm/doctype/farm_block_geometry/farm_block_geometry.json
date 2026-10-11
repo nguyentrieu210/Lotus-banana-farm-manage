@@ -1,0 +1,80 @@
+{
+  "doctype": "DocType",
+  "name": "Farm Block Geometry",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Nông trường",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Lô chăm sóc",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Phiên bản",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "geojson",
+      "label": "Ranh giới GeoJSON",
+      "fieldtype": "Code",
+      "options": "JSON",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Trạng thái duyệt",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "reason",
+      "label": "Nguồn / lý do cập nhật",
+      "fieldtype": "Small Text",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "farm_block",
+    "version",
+    "geojson",
+    "approval_state",
+    "reason"
+  ],
+  "autoname": "hash",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "submit": 0,
+      "cancel": 0
+    }
+  ]
+}

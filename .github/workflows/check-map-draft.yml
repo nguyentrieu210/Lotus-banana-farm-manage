@@ -1,0 +1,33 @@
+name: Check Lotus Map ERP draft bridge
+on:
+  push:
+    paths:
+      - 'lotus_farm/map_bundle.py'
+      - 'lotus_farm/map_import.py'
+      - 'lotus_farm/lotus_farm/doctype/farm_block_geometry/**'
+      - 'tests/test_map_bundle.py'
+      - 'data/lotus-erp-map-draft.json'
+      - '.github/workflows/check-map-draft.yml'
+  pull_request:
+    paths:
+      - 'lotus_farm/map_bundle.py'
+      - 'lotus_farm/map_import.py'
+      - 'lotus_farm/lotus_farm/doctype/farm_block_geometry/**'
+      - 'tests/test_map_bundle.py'
+      - 'data/lotus-erp-map-draft.json'
+      - '.github/workflows/check-map-draft.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check syntax and no-frappe bundle tests
+        run: |
+          python -m py_compile lotus_farm/map_bundle.py lotus_farm/map_import.py lotus_farm/lotus_farm/doctype/farm_block_geometry/farm_block_geometry.py
+          python -m unittest discover -s tests -p test_map_bundle.py -v
