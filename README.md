@@ -2,6 +2,10 @@
 
 Custom Frappe/ERPNext app for Lotus banana farm operations.
 
+## Một app mobile dùng chung cho nhiều vai trò
+
+Trên điện thoại mở **`/lotus/mobile`**: đăng nhập tài khoản Lotus hiện có, chọn nông trường, xem các công việc theo quyền thực tế (việc, báo kết quả, sâu bệnh, QC, xưởng, vật tư, dự thu…). Người kiêm nhiều nhiệm vụ không phải đổi app. Thanh điều hướng dưới màn hình cũng chỉ hiện phần được phép. **[Cách dùng, quyền và kiểm thử](docs/MOBILE_ONE_APP.md)**.
+
 ## Giao việc nhanh trên điện thoại
 
 Sau khi build/migrate, mở **`/lotus/giao-viec`**: chọn tổ và lô **hoặc** thửa, thêm
