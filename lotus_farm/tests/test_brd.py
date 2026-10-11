@@ -1005,7 +1005,7 @@ class TestBRDOnSite(unittest.TestCase):
         work=self.make('Work Type',work_code='PIECE-'+self.tag,work_name='Bag bunches',
                        category=category,uom='Bunch',productivity_per_workday=100,
                        payment_basis='Piece').name
-        team=self.make('Work Team',farm=self.farm,team_code='PK-'+self.tag,team_name='Contractor A').name
+        team=self.make('Work Team',farm=self.farm,team_code='PK-'+self.tag,team_name='Contractor A',foreman_name='Foreman A').name
         rate=self.make('Work Piece Rate',farm=self.farm,work_type=work,uom='Bunch',
                        unit_price=4000,currency='VND',valid_from=add_days(nowdate(),-1),
                        valid_to=add_days(nowdate(),7))
