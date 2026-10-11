@@ -1021,7 +1021,7 @@ class TestBRDOnSite(unittest.TestCase):
         plan.submit()
         result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,
                          work_plan_line=plan.lines[0].name,completed_qty=800,
-                         actual_workdays=10,unfinished_reason='Rain later in the day')
+                         unfinished_reason='Rain later in the day')
         result.submit()
         settlement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
                              payee_name='Foreman A',piece_rate=rate.name,accepted_qty=800,
@@ -1030,7 +1030,8 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(settlement.amount,3200000)
         self.assertEqual(settlement.unit_price,4000)
         self.assertEqual(settlement.reported_qty,800)
-        self.assertEqual(settlement.actual_workdays,10)
+        # Piecework has no per-job attendance entry: payment does not need it.
+        self.assertEqual(settlement.actual_workdays,0)
         self.assertEqual(settlement.work_team,team)
         self.assertEqual(settlement.accepted_by,'Administrator')
         with self.assertRaises(frappe.ValidationError):
