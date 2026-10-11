@@ -177,6 +177,15 @@ class TeamMaster(Document):
 class WorkTypeMaster(Document):
     def validate(self):
         number(self.productivity_per_workday or 0, 'Productivity')
+        before = self.get_doc_before_save()
+        old_basis = (before.get('payment_basis') or 'Daywork') if before else None
+        new_basis = self.get('payment_basis') or 'Daywork'
+        if before and old_basis != new_basis:
+            # Do not silently reclassify historical piece payments as daywork.
+            if frappe.db.exists('Work Piece Settlement', {'work_type': self.name, 'docstatus': 1}):
+                frappe.throw('Cancel or reconcile submitted piece settlements before changing the payment basis.')
+            if frappe.db.exists('Work Piece Rate', {'work_type': self.name, 'docstatus': 1}):
+                frappe.throw('Cancel approved piece prices before changing the payment basis.')
 
 
 class NormProfile(Document):
