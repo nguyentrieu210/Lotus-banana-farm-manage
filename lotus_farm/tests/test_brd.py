@@ -995,6 +995,59 @@ class TestBRDOnSite(unittest.TestCase):
         plan.submit()
         return plan,norm,material_item
 
+    def test_piecework_settlement_uses_accepted_output_not_headcount(self):
+        # This is a payable settlement preview, not an ERPNext Payroll/GL posting.
+        if not frappe.db.exists('Currency', 'VND'):
+            self.make('Currency', currency_name='VND')
+        category=self.make('Work Category',category_code='PIECE-'+self.tag,category_name='Piece work').name
+        if not frappe.db.exists('UOM','Bunch'):
+            self.make('UOM',uom_name='Bunch')
+        work=self.make('Work Type',work_code='PIECE-'+self.tag,work_name='Bag bunches',
+                       category=category,uom='Bunch',productivity_per_workday=100,
+                       payment_basis='Piece').name
+        team=self.make('Work Team',farm=self.farm,team_code='PK-'+self.tag,team_name='Contractor A').name
+        rate=self.make('Work Piece Rate',farm=self.farm,work_type=work,uom='Bunch',
+                       unit_price=4000,currency='VND',valid_from=add_days(nowdate(),-1),
+                       valid_to=add_days(nowdate(),7))
+        rate.submit()
+        overlap=self.make('Work Piece Rate',farm=self.farm,work_type=work,uom='Bunch',
+                          unit_price=5000,currency='VND',valid_from=nowdate(),
+                          valid_to=add_days(nowdate(),8))
+        with self.assertRaises(frappe.ValidationError):
+            overlap.submit()
+        plan=self.make('Daily Work Plan',farm=self.farm,posting_date=nowdate(),
+                       lines=[dict(**{k:v for k,v in self.daily_scope().items() if k!='posting_date'},
+                                   work_type=work,planned_qty=1000,work_team=team)])
+        plan.submit()
+        result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,
+                         work_plan_line=plan.lines[0].name,completed_qty=800,
+                         actual_workdays=10,unfinished_reason='Rain later in the day')
+        result.submit()
+        settlement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                             payee_name='Foreman A',piece_rate=rate.name,accepted_qty=800,
+                             amount=99999999,unit_price=1)
+        settlement.submit()
+        self.assertEqual(settlement.amount,3200000)
+        self.assertEqual(settlement.unit_price,4000)
+        self.assertEqual(settlement.reported_qty,800)
+        self.assertEqual(settlement.actual_workdays,10)
+        self.assertEqual(settlement.work_team,team)
+        self.assertEqual(settlement.accepted_by,'Administrator')
+        with self.assertRaises(frappe.ValidationError):
+            self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                      payee_name='Foreman A',piece_rate=rate.name,accepted_qty=800).submit()
+        with self.assertRaises(frappe.ValidationError):
+            rate.cancel()
+        with self.assertRaises(frappe.ValidationError):
+            result.cancel()
+        settlement.cancel()
+        # Once the previous settlement is cancelled, a corrected document can be submitted.
+        replacement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                              payee_name='Foreman A',piece_rate=rate.name,accepted_qty=790,
+                              acceptance_note='Ten bunches failed inspection')
+        replacement.submit()
+        self.assertEqual(replacement.amount,3160000)
+
     def test_promax_norm_plan_materials_and_daily_close(self):
         plan,norm,item=self.daily_plan()
         self.assertAlmostEqual(plan.lines[0].required_workdays,31.25)
