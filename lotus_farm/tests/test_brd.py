@@ -995,6 +995,48 @@ class TestBRDOnSite(unittest.TestCase):
         plan.submit()
         return plan,norm,material_item
 
+    def test_mobile_assignment_one_location_picker_and_demo_seed(self):
+        from lotus_farm.mobile_demo_seed import seed
+        from lotus_farm.mobile_assignment import options, preview, create
+
+        sample = seed(company=self.company)
+        self.assertEqual(sample["plots"], 12)
+        self.assertEqual(sample["cycles"], 12)
+        self.assertEqual(sample["teams"], 4)
+        self.assertEqual(sample["work_types"], 8)
+        self.assertTrue(seed(company=self.company)["already_seeded"])
+        catalog = options(sample["farm"])
+        self.assertEqual(len(catalog["blocks"]), 3)
+        self.assertEqual(len(catalog["plots"]), 12)
+        self.assertEqual(len(catalog["teams"]), 4)
+        self.assertGreaterEqual(len(catalog["works"]), 8)
+        from frappe.utils import add_days
+        tomorrow = add_days(nowdate(), 1)
+        block = next(b for b in catalog["blocks"] if b["block_code"] == "A01")
+        bag = next(w for w in catalog["works"] if w["work_code"] == "DEMO-BAG")
+        team = catalog["teams"][0]["name"]
+        payload = [dict(location="block:" + block["name"], work_type=bag["name"], qty=800)]
+        shown = preview(sample["farm"], team, payload)
+        self.assertEqual(len(shown["lines"]), 4)
+        self.assertEqual(sum(row["planned_qty"] for row in shown["lines"]), 800)
+        self.assertEqual({row["planned_qty"] for row in shown["lines"]}, {200.0})
+        # A Plot is independently selectable without asking the user for Block.
+        plot = next(p for p in catalog["plots"] if p["plot_code"] == "A03-03")
+        single = preview(sample["farm"], team, [dict(
+            location="plot:" + plot["name"], work_type=bag["name"], qty=250)])
+        self.assertEqual(len(single["lines"]), 1)
+        self.assertEqual(single["lines"][0]["farm_block"], plot["farm_block"])
+        outcome = create(sample["farm"], tomorrow, team, payload)
+        self.assertEqual(outcome["count"], 4)
+        plan = frappe.get_doc("Daily Work Plan", outcome["plan"])
+        self.assertEqual(plan.docstatus, 1)
+        self.assertEqual(len(plan.lines), 4)
+        with self.assertRaises(frappe.ValidationError):
+            create(sample["farm"], tomorrow, team, payload)
+        with self.assertRaises(frappe.ValidationError):
+            preview(sample["farm"], team, [dict(location="plot:" + self.plot,
+                                                work_type=bag["name"], qty=100)])
+
     def test_promax_norm_plan_materials_and_daily_close(self):
         plan,norm,item=self.daily_plan()
         self.assertAlmostEqual(plan.lines[0].required_workdays,31.25)
