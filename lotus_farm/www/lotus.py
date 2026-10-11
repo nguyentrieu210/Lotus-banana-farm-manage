@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from urllib.parse import quote
 import frappe
 
 no_cache = 1
@@ -7,7 +8,10 @@ no_cache = 1
 
 def get_context(context):
     if frappe.session.user == 'Guest':
-        frappe.local.flags.redirect_location = '/login?redirect-to=/lotus/today'
+        target = frappe.request.path or '/lotus/mobile'
+        if not (target == '/lotus' or target.startswith('/lotus/')):
+            target = '/lotus/mobile'
+        frappe.local.flags.redirect_location = '/login?redirect-to=' + quote(target, safe='/')
         raise frappe.Redirect
     manifest=Path(frappe.get_app_path('lotus_farm','public','frontend','.vite','manifest.json'))
     if not manifest.exists():frappe.throw('Build the Lotus frontend before opening this application.')
