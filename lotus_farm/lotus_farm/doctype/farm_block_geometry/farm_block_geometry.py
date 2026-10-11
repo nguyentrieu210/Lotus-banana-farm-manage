@@ -5,6 +5,7 @@ from frappe.model.document import Document
 
 from lotus_farm.controls import check_farm, validate_version
 from lotus_farm.promax_rules import geometry
+from lotus_farm.rules import RuleError
 
 
 class FarmBlockGeometry(Document):
@@ -17,7 +18,7 @@ class FarmBlockGeometry(Document):
         validate_version(self, "farm_block", ("Lotus Farm Manager",))
         try:
             self.geojson = json.dumps(geometry(self.geojson), separators=(",", ":"))
-        except (ValueError, KeyError, TypeError) as exc:
+        except (ValueError, KeyError, TypeError, RuleError) as exc:
             frappe.throw(str(exc))
 
     def on_trash(self):
