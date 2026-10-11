@@ -8,7 +8,6 @@ import json
 
 import frappe
 from lotus_farm.controls import require_role, lock
-from lotus_farm.importing import file_bytes
 from lotus_farm.map_bundle import MapBundleError, load_bundle
 from lotus_farm.promax_rules import geometry
 
@@ -22,8 +21,11 @@ def _load(farm, file_url):
     file_names = frappe.get_all("File", filters={"file_url": file_url, "is_private": 1}, pluck="name")
     if not file_names:
         frappe.throw("The map JSON must be uploaded as a private File.")
+    source_file = frappe.get_doc("File", file_names[0])
+    source_file.check_permission("read")
     try:
-        bundle = load_bundle(file_bytes(file_url))
+        raw = source_file.get_content()
+        bundle = load_bundle(raw.encode() if isinstance(raw, str) else raw)
     except (ValueError, UnicodeDecodeError, TypeError, KeyError, json.JSONDecodeError) as exc:
         frappe.throw("Invalid Lotus Map bundle: " + str(exc))
     return bundle
