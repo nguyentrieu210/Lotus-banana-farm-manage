@@ -85,7 +85,7 @@ def setup():
             update_permission_property(doctype, role, 0, "read", 1)
     for doctype in ("Disease", "Disease Observation"):
         add_permission(doctype, "Lotus Field Technician")
-        for action in ("read", "create", "write", "submit"):
+        for action in ("read", "create", "submit"):
             update_permission_property(doctype, "Lotus Field Technician", 0, action, 1)
 
 
