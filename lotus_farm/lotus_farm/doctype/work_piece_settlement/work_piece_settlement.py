@@ -42,6 +42,10 @@ class WorkPieceSettlement(Document):
             "work_result": result.name, "docstatus": 1, "name": ["!=", self.name],
         }):
             frappe.throw("This work result already has an active piece settlement.")
+        if team.get("foreman_name"):
+            if (self.payee_name or "").strip() and self.payee_name.strip() != team.foreman_name.strip():
+                frappe.throw("Payee must match the foreman configured on Work Team.")
+            self.payee_name = team.foreman_name.strip()
         if not (self.payee_name or "").strip():
             frappe.throw("Record the foreman/contractor receiving this settlement.")
         if self.get("amended_from") and not (self.amendment_reason or "").strip():
