@@ -68,7 +68,7 @@ def validate_bundle(bundle):
         expected = owner_map.get(code)
         if not expected or expected != p.get("candidate_blocks", []) and code != "E6":
             raise MapBundleError(code + ": owners disagree with PDF table")
-        if code == "E6" and p.get("candidate_blocks") != ["E4", "E5"]:
+        if code == "E6" and (expected != ["E4"] or p.get("candidate_blocks") != ["E4", "E5"]):
             raise MapBundleError("E6 note conflict must remain explicit")
         if code in MANUAL:
             manual.add(code)
