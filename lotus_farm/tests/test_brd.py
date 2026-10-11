@@ -1500,3 +1500,64 @@ class TestBRDOnSite(unittest.TestCase):
             self.assertAlmostEqual(first[field]+second[field],all_data[field])
         self.assertAlmostEqual(first['packout_percent'],84)
         self.assertAlmostEqual(second['packout_percent'],84)
+
+    def test_mobile_portal_team_scope_and_technician_entry(self):
+        """Only assigned child task lines escape the mobile endpoint."""
+        from lotus_farm.mobile_portal import profile, overview, observation_options, report_observation
+
+        default_plan, _, _ = self.daily_plan(material=False)
+        work_type = default_plan.lines[0].work_type
+        leader = self.make("User", email="lead-" + self.tag + "@example.invalid",
+                           first_name="Leader", send_welcome_email=0,
+                           roles=[dict(role="Lotus Team Leader")]).name
+        tech = self.make("User", email="tech-" + self.tag + "@example.invalid",
+                         first_name="Technician", send_welcome_email=0,
+                         roles=[dict(role="Lotus Field Technician")]).name
+        for user in (leader, tech):
+            self.make("User Permission", user=user, allow="Farm", for_value=self.farm)
+        own_team = self.make("Work Team", farm=self.farm, team_code="OWN-" + self.tag,
+                             team_name="Team 1", lotus_team_leader=leader).name
+        other_team = self.make("Work Team", farm=self.farm, team_code="OTHER-" + self.tag,
+                               team_name="Team 2").name
+
+        def make_plan(team, responsible=None):
+            scope = {key: value for key, value in self.daily_scope().items() if key != "posting_date"}
+            plan = self.make("Daily Work Plan", farm=self.farm, posting_date=nowdate(),
+                             lines=[dict(**scope, work_type=work_type, planned_qty=25,
+                                         work_team=team, responsible=responsible)])
+            plan.submit()
+            return plan
+
+        own = make_plan(own_team)
+        foreign = make_plan(other_team)
+        personal = make_plan(other_team, responsible=tech)
+        frappe.set_user(leader)
+        self.assertFalse(frappe.has_permission("Daily Work Plan", "read"))
+        self.assertIn("tasks", profile()["features"])
+        visible = overview(self.farm, nowdate())["tasks"]
+        self.assertEqual({row["plan"] for row in visible}, {own.name})
+        self.assertNotIn("responsible", visible[0])
+        with self.assertRaises(frappe.PermissionError):
+            observation_options(self.farm)
+
+        frappe.set_user(tech)
+        visible = overview(self.farm, nowdate())["tasks"]
+        self.assertEqual({row["plan"] for row in visible}, {personal.name})
+        self.assertNotIn("responsible", visible[0])
+        options = observation_options(self.farm)
+        self.assertIn(self.plot, [p["name"] for p in options["plots"]])
+
+        frappe.set_user("Administrator")
+        disease = self.make("Disease", disease_code="MOBILE-" + self.tag,
+                            disease_name="CI leaf disease").name
+        frappe.set_user(tech)
+        saved = report_observation(farm=self.farm, posting_date=nowdate(),
+                                   farm_plot=self.plot, crop_cycle=self.cycle,
+                                   sucker_selection_batch=self.cohort, disease=disease,
+                                   affected_plants=5, severity="Medium", action_taken="Đã đánh dấu kiểm tra")
+        self.assertEqual(saved["docstatus"], 1)
+        with self.assertRaises(frappe.PermissionError):
+            report_observation(farm="FARM-NO-GRANT", posting_date=nowdate(),
+                               farm_plot=self.plot, crop_cycle=self.cycle,
+                               disease=disease, affected_plants=5, severity="Medium",
+                               action_taken="Test")
