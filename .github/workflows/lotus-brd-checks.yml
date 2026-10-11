@@ -90,6 +90,7 @@ jobs:
           else:
               raise RuntimeError('Frappe server did not start')
           PY_WAIT
+          node tests/browser/mobile_real.cjs
           node tests/browser/console_real.cjs
       - name: Collect real browser evidence
         if: always()
