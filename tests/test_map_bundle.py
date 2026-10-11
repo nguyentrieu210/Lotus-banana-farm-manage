@@ -38,6 +38,8 @@ def fixture():
         by_plot[code]["parent_block"] = None
         by_plot[code]["needs_manual_review"] = True
     # E6 is mentioned in a second block's note, but the table's list only has one owner.
+    by_code["E6"]["irrigation_codes"].remove("E6")
+    by_code["E4"]["irrigation_codes"].append("E6")
     by_plot["E6"]["candidate_blocks"] = ["E4", "E5"]
     by_plot["E6"]["parent_block"] = None
     by_plot["E6"]["needs_manual_review"] = True
