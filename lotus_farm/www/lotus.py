@@ -14,7 +14,7 @@ def get_context(context):
     entries=json.loads(manifest.read_text())
     # Standalone mobile shell, using the existing authenticated Frappe site.
     request_path=frappe.request.path.rstrip('/')
-    entry_key='assign.html' if request_path.endswith('/giao-viec') else 'index.html'
+    entry_key='mobile.html' if request_path.endswith('/mobile') else ('assign.html' if request_path.endswith('/giao-viec') else 'index.html')
     entry=entries[entry_key]
     context.script='/assets/lotus_farm/frontend/'+entry['file']
     context.styles=['/assets/lotus_farm/frontend/'+p for p in entry.get('css',[])]
