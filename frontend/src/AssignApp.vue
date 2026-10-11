@@ -61,7 +61,7 @@ onMounted(boot)
 </script>
 <template>
  <main class="shell">
-  <div class="top"><div><p class="eyebrow">LOTUS FARM · NGOÀI VƯỜN</p><h1>Giao việc nhanh</h1><p class="hint">Chọn lô <strong>hoặc</strong> thửa · không nhập lại thông tin cấp trên</p></div><a href="/lotus/today">Quản lý ↗</a></div>
+  <div class="top"><div><p class="eyebrow">LOTUS FARM · NGOÀI VƯỜN</p><h1>Giao việc nhanh</h1><p class="hint">Chọn lô <strong>hoặc</strong> thửa · không nhập lại thông tin cấp trên</p></div><a href="/lotus/mobile">Ứng dụng ↗</a></div>
   <div v-if="busy&&!session" class="spinner">Đang mở dữ liệu nông trường…</div>
   <template v-else>
    <div v-if="error" class="error" role="alert">{{error}}</div>
