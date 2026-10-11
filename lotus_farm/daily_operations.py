@@ -269,6 +269,10 @@ class WorkResult(DailyDocument):
     def validate_daily(self):
         row = plan_line(self)
         number(self.completed_qty, 'Completed quantity')
+        basis = frappe.db.get_value('Work Type', row.work_type, 'payment_basis') or 'Daywork'
+        if basis == 'Piece':
+            # A piece result reports output, not a second worker attendance entry.
+            self.actual_workdays = self.actual_workdays or 0
         number(self.actual_workdays, 'Actual workdays')
         if self.actual_labor:
             from lotus_farm.productivity import validate_actual_labor
@@ -574,9 +578,11 @@ def close_checks(farm, date):
             result = results[0]
             add('unfinished_reason',flt(result.completed_qty)>=flt(line.planned_qty) or bool((result.unfinished_reason or '').strip()),'Unfinished tasks require a reason.','Daily Work Result',result.name)
             allocated = sum(flt(x) for x in frappe.get_all('Labor Allocation', filters={'work_plan_line':line.name,'docstatus':1}, pluck='allocated_workdays'))
-            add('labor',flt(result.actual_workdays)<=allocated+0.000001,'Actual labor cannot exceed submitted allocation.','Daily Work Result',result.name)
-            if flt(result.completed_qty)>0:
-                add('labor_evidence',flt(result.actual_workdays)>0,'Completed work requires actual labor.','Daily Work Result',result.name)
+            basis = frappe.db.get_value('Work Type', line.work_type, 'payment_basis') or 'Daywork'
+            if basis != 'Piece':
+                add('labor',flt(result.actual_workdays)<=allocated+0.000001,'Actual labor cannot exceed submitted allocation.','Daily Work Result',result.name)
+                if flt(result.completed_qty)>0:
+                    add('labor_evidence',flt(result.actual_workdays)>0,'Completed work requires actual labor.','Daily Work Result',result.name)
             if line.norm_profile:
                 requirements = frappe.get_all('Material Requirement', filters={'work_plan_line':line.name,'docstatus':1},pluck='name')
                 add('material_requirement',len(requirements)==1,'Task requires its submitted material requirement.','Daily Work Plan',name)
