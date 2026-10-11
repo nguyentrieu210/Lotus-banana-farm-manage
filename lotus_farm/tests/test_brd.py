@@ -1024,7 +1024,7 @@ class TestBRDOnSite(unittest.TestCase):
                          unfinished_reason='Rain later in the day')
         result.submit()
         settlement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
-                             payee_name='Foreman A',piece_rate=rate.name,accepted_qty=800,
+                             piece_rate=rate.name,accepted_qty=800,
                              amount=99999999,unit_price=1)
         settlement.submit()
         self.assertEqual(settlement.amount,3200000)
@@ -1033,6 +1033,7 @@ class TestBRDOnSite(unittest.TestCase):
         # Piecework has no per-job attendance entry: payment does not need it.
         self.assertEqual(settlement.actual_workdays,0)
         self.assertEqual(settlement.work_team,team)
+        self.assertEqual(settlement.payee_name,'Foreman A')
         self.assertEqual(settlement.accepted_by,'Administrator')
         with self.assertRaises(frappe.ValidationError):
             self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
