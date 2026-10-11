@@ -40,6 +40,29 @@ def map_data(farm,block=None,plot=None,status=None):
     return dict(type='FeatureCollection',features=[dict(type='Feature',geometry=json.loads(r.geojson),properties=dict(plot=r.farm_plot,version=r.version,document=r.name)) for r in latest.values()])
 
 
+@frappe.whitelist()
+def map_block_data(farm, block=None):
+    """Return only APPROVED Lotus care-block boundaries for the map UI."""
+    from lotus_farm.reporting import records, scope
+    scope(farm)
+    selected = records('Farm Block',
+                       {'farm': farm, **({'name': block} if block else {})}, ['name'])
+    allowed = {b.name for b in selected}
+    versions = records('Farm Block Geometry',
+                       {'farm': farm, 'approval_state': 'Approved'},
+                       ['name', 'farm_block', 'version', 'geojson'])
+    latest = {}
+    for row in versions:
+        if row.farm_block not in allowed:
+            continue
+        if row.farm_block not in latest or row.version > latest[row.farm_block].version:
+            latest[row.farm_block] = row
+    return dict(type='FeatureCollection',
+                features=[dict(type='Feature', geometry=json.loads(row.geojson),
+                               properties=dict(block=row.farm_block, version=row.version,
+                                               document=row.name)) for row in latest.values()])
+
+
 @frappe.whitelist(methods=['POST'])
 def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None):
     if expected_user and expected_user!=frappe.session.user:frappe.throw('Account changed; keep the event for its original user.',frappe.PermissionError)
