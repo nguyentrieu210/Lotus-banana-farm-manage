@@ -8,6 +8,9 @@ ROLES = (
     "Lotus Integration User",
     "Lotus Auditor",
     "Lotus Stock Reviewer",
+    "Lotus Farm Director",
+    "Lotus Team Leader",
+    "Lotus Field Technician",
 )
 
 
@@ -25,6 +28,7 @@ def setup():
 
     create_custom_fields(
         {
+            "Work Team": [dict(fieldname="lotus_team_leader", label="Tổ trưởng phụ trách", fieldtype="Link", options="User", insert_after="team_name")],
             "Stock Entry": [
                 dict(
                     fieldname="lotus_packout_run",
@@ -71,6 +75,18 @@ def setup():
             if role == "Lotus Farm Manager":
                 for action in ("create", "write"):
                     update_permission_property(doctype, role, 0, action, 1)
+
+
+    # Field roles receive just the master data they need. Task lines are delivered
+    # by mobile_portal.overview with additional server-side team/user filtering.
+    for role in ("Lotus Farm Director", "Lotus Team Leader", "Lotus Field Technician"):
+        for doctype in ("Farm", "Farm Block", "Farm Plot", "Crop Cycle", "Sucker Selection Batch"):
+            add_permission(doctype, role)
+            update_permission_property(doctype, role, 0, "read", 1)
+    for doctype in ("Disease", "Disease Observation"):
+        add_permission(doctype, "Lotus Field Technician")
+        for action in ("read", "create", "write", "submit"):
+            update_permission_property(doctype, "Lotus Field Technician", 0, action, 1)
 
 
 def validate_reference_company(doc, method=None):
