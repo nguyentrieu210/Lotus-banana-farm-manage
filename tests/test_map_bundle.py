@@ -1,5 +1,7 @@
 import copy
 import unittest
+from pathlib import Path
+import json
 
 from lotus_farm.map_bundle import MapBundleError, validate_bundle
 
@@ -51,6 +53,16 @@ def fixture():
 
 
 class MapBundleTest(unittest.TestCase):
+    def test_checked_in_pdf_bundle(self):
+        source = Path(__file__).resolve().parents[1] / "data" / "lotus-erp-map-draft.json"
+        real = json.loads(source.read_text(encoding="utf-8"))
+        summary = validate_bundle(real)
+        self.assertEqual((summary["care_blocks"], summary["irrigation_plots"]), (64, 205))
+        self.assertEqual(summary["direct_parent_plots"], 200)
+        self.assertEqual(real["unlabelled_color_parts"], [41])
+        self.assertFalse(real["approved"])
+        self.assertEqual({x["code"] for x in real["manual_review"]}, {"A35", "C17", "C24", "E6", "E7"})
+
     def test_draft_only(self):
         source = fixture()
         self.assertEqual(validate_bundle(source)["direct_parent_plots"], 200)
