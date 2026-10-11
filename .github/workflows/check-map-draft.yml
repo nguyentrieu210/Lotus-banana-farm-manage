@@ -6,6 +6,7 @@ on:
       - 'lotus_farm/map_import.py'
       - 'lotus_farm/lotus_farm/doctype/farm_block_geometry/**'
       - 'tests/test_map_bundle.py'
+      - 'data/lotus-erp-map-draft.json'
       - '.github/workflows/check-map-draft.yml'
   pull_request:
     paths:
@@ -13,6 +14,7 @@ on:
       - 'lotus_farm/map_import.py'
       - 'lotus_farm/lotus_farm/doctype/farm_block_geometry/**'
       - 'tests/test_map_bundle.py'
+      - 'data/lotus-erp-map-draft.json'
       - '.github/workflows/check-map-draft.yml'
   workflow_dispatch:
 permissions:
