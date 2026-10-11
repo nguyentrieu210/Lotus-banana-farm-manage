@@ -66,7 +66,7 @@ def validate_bundle(bundle):
         counts[code] += 1
         _polygon(p.get("geometry"), code)
         expected = owner_map.get(code)
-        if not expected or expected != p.get("candidate_blocks", []) and code != "E6":
+        if not expected or (code != "E6" and (len(expected) != len(p.get("candidate_blocks", [])) or set(expected) != set(p.get("candidate_blocks", [])))):
             raise MapBundleError(code + ": owners disagree with PDF table")
         if code == "E6" and (expected != ["E4"] or p.get("candidate_blocks") != ["E4", "E5"]):
             raise MapBundleError("E6 note conflict must remain explicit")
