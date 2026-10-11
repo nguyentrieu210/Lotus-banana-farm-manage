@@ -263,7 +263,8 @@ def work_state(plan,line,state,reason=None):
     if state=='Blocked' and not (reason or '').strip():frappe.throw('Blocked work requires a reason.')
     if state=='Ready':
         allocated=sum(flt(v) for v in frappe.get_all('Labor Allocation',filters={'work_plan_line':line,'docstatus':1},pluck='allocated_workdays'))
-        if allocated+0.000001<flt(row.required_workdays):frappe.throw('Allocate required labor before marking Ready.')
+        if (frappe.db.get_value('Work Type',row.work_type,'payment_basis') or 'Daywork') != 'Piece' and allocated+0.000001<flt(row.required_workdays):
+            frappe.throw('Allocate required labor before marking Ready.')
         if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Submit material requirements before marking Ready.')
         if row.norm_profile:
             materials=material_status(doc.farm,doc.posting_date)
