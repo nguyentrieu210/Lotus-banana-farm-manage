@@ -61,6 +61,9 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: node tests/browser/offline_queue.cjs
+      - run: node tests/browser/quick_assign.cjs
+        env:
+          LOTUS_BROWSER_ARTIFACTS: /tmp/lotus-console-browser
       - run: node tests/browser/console_smoke.cjs
         env:
           LOTUS_BROWSER_ARTIFACTS: /tmp/lotus-console-browser

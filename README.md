@@ -2,6 +2,13 @@
 
 Custom Frappe/ERPNext app for Lotus banana farm operations.
 
+## Giao việc nhanh trên điện thoại
+
+Sau khi build/migrate, mở **`/lotus/giao-viec`**: chọn tổ và lô **hoặc** thửa, thêm
+nhiều công việc, xem trước phân bổ xuống thửa, rồi xác nhận. Giao diện độc lập,
+không có form nhiều tầng Frappe. Có lệnh seed **test-only** tạo nông trường mẫu
+222 ha, 3 lô, 12 thửa, 4 tổ và 8 công việc. [Xem hướng dẫn](docs/MOBILE_QUICK_ASSIGN.md).
+
 ## ProMax operating model
 
 Company → Farm → Farm Block → Farm Plot → Crop Cycle → Sucker Selection Batch.

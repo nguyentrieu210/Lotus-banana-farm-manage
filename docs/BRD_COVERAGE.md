@@ -13,7 +13,7 @@ Nguồn gồm BRD Frontend hoàn chỉnh (07/10/2026 04:16 UTC) và **Lotus Farm
 | Dữ liệu đất cũ | Legacy Organization Map, Legacy Cycle Plot Mapping | Mapping phải duyệt; giữ dữ liệu nguồn và lịch sử cũ |
 | Công việc và định mức năng suất | Work Category, Work Type | Đơn vị và số lượng một công do Lotus cấu hình |
 | Đề xuất việc đến hạn | Work Schedule Rule, `field.suggest_work` | Mốc trồng/chọn chồi/trổ/cắt bắp; offset, chu kỳ lặp, phiên bản; tạo kế hoạch nháp |
-| Kế hoạch / kết quả ngày | Daily Work Plan/Result, màn hình Ngoài vườn | Kết quả đúng dòng kế hoạch; thiếu khối lượng phải giải thích |
+| Giao việc nhanh trên điện thoại | `/lotus/giao-viec`, `mobile_assignment.py`, `mobile_demo_seed.py` | Chọn lô **hoặc** thửa, kế hoạch nhiều việc, chia lô theo diện tích thửa và xem trước; seed riêng trên site test. [Hướng dẫn](MOBILE_QUICK_ASSIGN.md). |\n| Kế hoạch / kết quả ngày | Daily Work Plan/Result, màn hình Ngoài vườn | Kết quả đúng dòng kế hoạch; thiếu khối lượng phải giải thích |
 | Nhân công cần / bố trí / thực tế | Labor Allocation, Daily Labor Summary | Employee và đội; giới hạn một công, nửa ngày/vắng khi có Attendance |
 | ERP Employee / Attendance | `field.available_labor` | Đọc trực tiếp ERP/HR; không có Attendance thì báo chưa xác nhận, không tự coi là có mặt |
 | Định mức vật tư có phiên bản | Norm Basis, Material Norm Profile/Line | Tách UOM vật tư và mẫu số; thời gian hiệu lực không chồng lấn |
