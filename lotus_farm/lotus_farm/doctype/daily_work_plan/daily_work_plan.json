@@ -11,7 +11,8 @@
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "price_approval_state"
   ],
   "fields": [
     {
@@ -66,6 +67,14 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "price_approval_state",
+      "label": "Duyệt giá",
+      "fieldtype": "Select",
+      "options": "Not Required\nPending\nApproved",
+      "read_only": 1,
+      "in_list_view": 1
     }
   ],
   "autoname": "hash",

@@ -107,3 +107,6 @@ Năng suất người/đội chỉ tính từ bảng actual có định danh; t�
 - Gửi hiện trường và nộp kết quả việc đều lưu bền vào IndexedDB trước khi gọi máy chủ. Khi mất phản hồi, hàng chờ giữ nguyên event ID/thời gian/payload/ảnh để gửi lại.
 - Chờ transaction hoàn tất trước khi báo lưu; ghi bị abort phải báo lỗi. Không ghi đè event đã lưu, không chạy hai lượt đồng bộ cùng tài khoản trong một tab, kiểm lại tài khoản trước từng lượt upload/gửi.
 - `tests/browser/offline_queue.cjs` kiểm IndexedDB thật: commit/abort, khóa event, ảnh, retry, đồng bộ đồng thời và tách tài khoản. UI field dự phòng tiếp tục được giữ đến UAT.
+
+
+| Khoán sản lượng / nghiệm thu | Work Type.payment_basis, Work Piece Rate/Settlement, `piece_pay.py` | Chốt giá khi giao; giá vượt niêm yết cần quản lý khác duyệt; nghiệm thu ≤ số báo; khóa trùng một kết quả; chưa ghi sổ thanh toán hoặc ký nhận nghiệm thu hai bên. Xem [luồng nghiệp vụ](PIECEWORK_PAYMENT.md). |

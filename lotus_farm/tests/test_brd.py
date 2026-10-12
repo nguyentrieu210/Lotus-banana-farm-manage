@@ -1037,6 +1037,65 @@ class TestBRDOnSite(unittest.TestCase):
             preview(sample["farm"], team, [dict(location="plot:" + self.plot,
                                                 work_type=bag["name"], qty=100)])
 
+    def test_piecework_settlement_uses_accepted_output_not_headcount(self):
+        # This is a payable settlement preview, not an ERPNext Payroll/GL posting.
+        if not frappe.db.exists('Currency', 'VND'):
+            self.make('Currency', currency_name='VND')
+        category=self.make('Work Category',category_code='PIECE-'+self.tag,category_name='Piece work').name
+        if not frappe.db.exists('UOM','Bunch'):
+            self.make('UOM',uom_name='Bunch')
+        work=self.make('Work Type',work_code='PIECE-'+self.tag,work_name='Bag bunches',
+                       category=category,uom='Bunch',productivity_per_workday=100,
+                       payment_basis='Piece').name
+        team=self.make('Work Team',farm=self.farm,team_code='PK-'+self.tag,team_name='Contractor A',foreman_name='Foreman A').name
+        rate=self.make('Work Piece Rate',farm=self.farm,work_type=work,uom='Bunch',
+                       unit_price=4000,currency='VND',valid_from=add_days(nowdate(),-1),
+                       valid_to=add_days(nowdate(),7))
+        rate.submit()
+        overlap=self.make('Work Piece Rate',farm=self.farm,work_type=work,uom='Bunch',
+                          unit_price=5000,currency='VND',valid_from=nowdate(),
+                          valid_to=add_days(nowdate(),8))
+        with self.assertRaises(frappe.ValidationError):
+            overlap.submit()
+        plan=self.make('Daily Work Plan',farm=self.farm,posting_date=nowdate(),
+                       lines=[dict(**{k:v for k,v in self.daily_scope().items() if k!='posting_date'},
+                                   work_type=work,planned_qty=1000,work_team=team,acceptance_criteria='Bags intact')])
+        self.assertEqual(plan.lines[0].agreed_unit_price,4000)
+        self.assertEqual(plan.lines[0].estimated_amount,4000000)
+        plan.lines[0].agreed_unit_price=2000
+        plan.save()
+        plan.submit()
+        result=self.make('Daily Work Result',**self.daily_scope(),work_plan=plan.name,
+                         work_plan_line=plan.lines[0].name,completed_qty=800,
+                         unfinished_reason='Rain later in the day')
+        result.submit()
+        settlement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                             piece_rate=rate.name,accepted_qty=800,
+                             amount=99999999,unit_price=1)
+        settlement.submit()
+        self.assertEqual(settlement.amount,1600000)
+        self.assertEqual(settlement.unit_price,2000)
+        self.assertEqual(settlement.reported_qty,800)
+        # Piecework has no per-job attendance entry: payment does not need it.
+        self.assertEqual(settlement.actual_workdays,0)
+        self.assertEqual(settlement.work_team,team)
+        self.assertEqual(settlement.payee_name,'Foreman A')
+        self.assertEqual(settlement.accepted_by,'Administrator')
+        with self.assertRaises(frappe.ValidationError):
+            self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                      payee_name='Foreman A',piece_rate=rate.name,accepted_qty=800).submit()
+        with self.assertRaises(frappe.ValidationError):
+            rate.cancel()
+        with self.assertRaises(frappe.ValidationError):
+            result.cancel()
+        settlement.cancel()
+        # Once the previous settlement is cancelled, a corrected document can be submitted.
+        replacement=self.make('Work Piece Settlement',farm=self.farm,work_result=result.name,
+                              payee_name='Foreman A',piece_rate=rate.name,accepted_qty=790,
+                              acceptance_note='Ten bunches failed inspection')
+        replacement.submit()
+        self.assertEqual(replacement.amount,1580000)
+
     def test_promax_norm_plan_materials_and_daily_close(self):
         plan,norm,item=self.daily_plan()
         self.assertAlmostEqual(plan.lines[0].required_workdays,31.25)
@@ -1500,3 +1559,4 @@ class TestBRDOnSite(unittest.TestCase):
             self.assertAlmostEqual(first[field]+second[field],all_data[field])
         self.assertAlmostEqual(first['packout_percent'],84)
         self.assertAlmostEqual(second['packout_percent'],84)
+

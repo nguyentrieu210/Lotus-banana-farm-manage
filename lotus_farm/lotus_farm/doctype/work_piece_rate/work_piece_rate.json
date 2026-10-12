@@ -1,0 +1,99 @@
+{
+  "doctype": "DocType",
+  "name": "Work Piece Rate",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "autoname": "hash",
+  "is_submittable": 1,
+  "field_order": [
+    "farm",
+    "work_type",
+    "uom",
+    "unit_price",
+    "currency",
+    "valid_from",
+    "valid_to",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Nông trường",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_type",
+      "label": "Công việc",
+      "fieldtype": "Link",
+      "options": "Work Type",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "Đơn vị khoán",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "reqd": 1
+    },
+    {
+      "fieldname": "unit_price",
+      "label": "Đơn giá mỗi đơn vị",
+      "fieldtype": "Currency",
+      "reqd": 1,
+      "options": "currency",
+      "precision": "0"
+    },
+    {
+      "fieldname": "currency",
+      "label": "Tiền tệ",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "default": "VND",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Áp dụng từ",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Áp dụng đến",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú quyết định đơn giá",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}
+

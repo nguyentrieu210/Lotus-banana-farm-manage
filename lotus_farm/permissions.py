@@ -174,3 +174,13 @@ def packhouse_shift(user=None):
 
 def lotus_alert(user=None):
     return query_condition('Lotus Alert',user)
+
+
+
+
+def work_piece_rate(user=None):
+    return query_condition('Work Piece Rate', user)
+
+
+def work_piece_settlement(user=None):
+    return query_condition('Work Piece Settlement', user)

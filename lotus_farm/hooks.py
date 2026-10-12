@@ -64,7 +64,7 @@ doctype_js = {
 
 # ProMax farm/day and plot controls apply to every normal document write, not just APIs.
 _daily_doctypes = [
-    "Daily Work Plan", "Daily Work Result", "Labor Allocation", "Daily Labor Summary",
+    "Daily Work Plan", "Daily Work Result", "Labor Allocation", "Daily Labor Summary", "Work Piece Settlement",
     "Material Requirement", "Material Consumption", "Material Recovery", "Bunch Cancellation",
     "Planting Event", "Disease Observation", "Fruit Measurement", "Incoming Quality Inspection",
     "Daily Production Close", "Source Import Batch", "Legacy Organization Map",
@@ -107,7 +107,7 @@ doctype_js.update({
 has_permission["Legacy Cycle Plot Mapping"] = "lotus_farm.controls.farm_permission"
 permission_query_conditions["Legacy Cycle Plot Mapping"] = "lotus_farm.permissions.legacy_cycle_plot_mapping"
 
-_promax_scoped = ['Plot Geometry','Scale Device','Work Schedule Rule','Field Capture','Integration Task','Warehouse Mapping']
+_promax_scoped = ['Plot Geometry','Scale Device','Work Schedule Rule','Field Capture','Integration Task','Warehouse Mapping','Work Piece Rate']
 for _name in _promax_scoped:
     has_permission[_name] = 'lotus_farm.controls.farm_permission'
     permission_query_conditions[_name] = 'lotus_farm.permissions.' + _name.lower().replace(' ','_')
@@ -148,3 +148,6 @@ doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.
 has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
 scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')
+
+
+doc_events['Daily Work Plan']['before_update_after_submit'] = ['lotus_farm.console.work_state_guard', 'lotus_farm.assignment_pay.protect_submitted_prices']

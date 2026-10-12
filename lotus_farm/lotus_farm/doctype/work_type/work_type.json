@@ -7,6 +7,7 @@
     "work_code",
     "work_name",
     "category",
+    "payment_basis",
     "uom",
     "productivity_per_workday",
     "active"
@@ -32,6 +33,15 @@
       "fieldtype": "Link",
       "options": "Work Category",
       "reqd": 1
+    },
+    {
+      "fieldname": "payment_basis",
+      "label": "Cách trả công",
+      "fieldtype": "Select",
+      "options": "Daywork\nPiece",
+      "default": "Daywork",
+      "reqd": 1,
+      "description": "Daywork = công nhật; Piece = khoán theo sản lượng đã nghiệm thu. Không dùng cả hai để tính tiền một việc."
     },
     {
       "fieldname": "uom",
@@ -77,3 +87,4 @@
   "show_title_field_in_link": 1,
   "search_fields": "work_code"
 }
+

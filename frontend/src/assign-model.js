@@ -18,6 +18,22 @@ export function cleanItems(items){
   if(!item.work_type)throw Error('Việc '+(i+1)+': chưa chọn công việc.')
   const qty=Number(item.qty)
   if(!Number.isFinite(qty)||qty<=0||qty>1000000)throw Error('Việc '+(i+1)+': số lượng không hợp lệ.')
-  return {location:item.location,work_type:item.work_type,qty}
+  const result={location:item.location,work_type:item.work_type,qty}
+  if(item.payment_basis){
+   if(!['Piece','Daywork'].includes(item.payment_basis))throw Error('Cách trả công không hợp lệ.')
+   result.payment_basis=item.payment_basis
+  }
+  if(item.payment_basis==='Piece'){
+   if(!item.acceptance_criteria?.trim())throw Error('Việc '+(i+1)+': ghi tiêu chuẩn đạt.')
+   result.acceptance_criteria=item.acceptance_criteria.trim()
+   result.price_reason=item.price_reason?.trim()||''
+   if(item.agreed_unit_price!==''&&item.agreed_unit_price!=null){
+    const price=Number(item.agreed_unit_price)
+    if(!Number.isFinite(price)||price<=0)throw Error('Đơn giá phải lớn hơn 0.')
+    result.agreed_unit_price=price
+   }
+  }
+  return result
  })
 }
+

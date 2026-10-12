@@ -177,6 +177,15 @@ class TeamMaster(Document):
 class WorkTypeMaster(Document):
     def validate(self):
         number(self.productivity_per_workday or 0, 'Productivity')
+        before = self.get_doc_before_save()
+        old_basis = (before.get('payment_basis') or 'Daywork') if before else None
+        new_basis = self.get('payment_basis') or 'Daywork'
+        if before and old_basis != new_basis:
+            # Do not silently reclassify historical piece payments as daywork.
+            if frappe.db.exists('Work Piece Settlement', {'work_type': self.name, 'docstatus': 1}):
+                frappe.throw('Cancel or reconcile submitted piece settlements before changing the payment basis.')
+            if frappe.db.exists('Work Piece Rate', {'work_type': self.name, 'docstatus': 1}):
+                frappe.throw('Cancel approved piece prices before changing the payment basis.')
 
 
 class NormProfile(Document):
@@ -254,12 +263,18 @@ class WorkPlan(DailyDocument):
                 row.norm_version = applicable_norm(row.norm_profile, self.farm, row.work_type, self.posting_date).version
             else:
                 row.norm_version = 0
+        from lotus_farm.assignment_pay import validate_plan_prices
+        validate_plan_prices(self)
 
 
 class WorkResult(DailyDocument):
     def validate_daily(self):
         row = plan_line(self)
         number(self.completed_qty, 'Completed quantity')
+        basis = row.get('payment_basis') or 'Daywork'
+        if basis == 'Piece':
+            # A piece result reports output, not a second worker attendance entry.
+            self.actual_workdays = self.actual_workdays or 0
         number(self.actual_workdays, 'Actual workdays')
         if self.actual_labor:
             from lotus_farm.productivity import validate_actual_labor
@@ -565,9 +580,11 @@ def close_checks(farm, date):
             result = results[0]
             add('unfinished_reason',flt(result.completed_qty)>=flt(line.planned_qty) or bool((result.unfinished_reason or '').strip()),'Unfinished tasks require a reason.','Daily Work Result',result.name)
             allocated = sum(flt(x) for x in frappe.get_all('Labor Allocation', filters={'work_plan_line':line.name,'docstatus':1}, pluck='allocated_workdays'))
-            add('labor',flt(result.actual_workdays)<=allocated+0.000001,'Actual labor cannot exceed submitted allocation.','Daily Work Result',result.name)
-            if flt(result.completed_qty)>0:
-                add('labor_evidence',flt(result.actual_workdays)>0,'Completed work requires actual labor.','Daily Work Result',result.name)
+            basis = line.get('payment_basis') or 'Daywork'
+            if basis != 'Piece':
+                add('labor',flt(result.actual_workdays)<=allocated+0.000001,'Actual labor cannot exceed submitted allocation.','Daily Work Result',result.name)
+                if flt(result.completed_qty)>0:
+                    add('labor_evidence',flt(result.actual_workdays)>0,'Completed work requires actual labor.','Daily Work Result',result.name)
             if line.norm_profile:
                 requirements = frappe.get_all('Material Requirement', filters={'work_plan_line':line.name,'docstatus':1},pluck='name')
                 add('material_requirement',len(requirements)==1,'Task requires its submitted material requirement.','Daily Work Plan',name)
@@ -928,3 +945,4 @@ class ReasonAliasMaster(Document):
         self.legacy_alias=(source_text(self.legacy_alias) or '').casefold()
         if not self.legacy_alias:
             frappe.throw('Legacy alias is required.')
+

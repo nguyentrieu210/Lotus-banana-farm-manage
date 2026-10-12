@@ -74,6 +74,18 @@ For `Harvest Forecast`, `Forecast Basis = Cut Bud Operations` automatically sums
 
 ERPNext remains responsible for standard commercial and inventory objects such as Item, Customer, Sales Order, Warehouse, Stock, Delivery and Finance. Lotus Farm adds farm-specific production and forecast context and links forecast allocation to submitted ERPNext Sales Orders.
 
+## Giao việc có giá và nghiệm thu khoán
+
+For piece-paid tasks, Lotus now has an effective-dated **Work Piece Rate** and a
+**Work Piece Settlement** tied to one submitted **Daily Work Result**. Example:
+800 accepted bunches × 4,000 VND/bunch = **3,200,000 VND**. Workdays/headcount
+are KPI context only, never multiplied into this piecework amount. Daywork remains
+a separate payment basis. Existing tasks default to Daywork until explicitly
+configured otherwise. See [piecework operating guide](docs/PIECEWORK_PAYMENT.md).
+
+These records are **approval/payment calculation evidence, not GL/payroll
+postings**. Over-list assignment prices require another manager’s approval before submission. Two-party output acceptance signatures are not yet implemented.
+
 ## Acceptance status
 
 The branch implements the ProMax operational and field/reporting tooling. Code and disposable-site checks do not mean Lotus data has been migrated or the farm has accepted the system. Organization mapping, official coefficients, product codes, OneDrive credentials, device deployment, real-volume SLA, UAT, cutover and hypercare still require business/site access. Machine learning remains deferred until transactions are clean, as required by the BRD.
@@ -105,3 +117,4 @@ bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
 ```
 
 The site suite includes a concurrency test with committed test fixtures. Never run it on production. The GitHub `Lotus BRD checks` workflow provisions that disposable site and migrates twice.
+

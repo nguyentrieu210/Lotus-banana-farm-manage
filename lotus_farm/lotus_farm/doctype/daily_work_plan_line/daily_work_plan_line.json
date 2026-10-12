@@ -23,7 +23,17 @@
     "start_at",
     "due_at",
     "execution_state",
-    "blocked_reason"
+    "blocked_reason",
+    "payment_basis",
+    "piece_rate",
+    "listed_unit_price",
+    "agreed_unit_price",
+    "estimated_amount",
+    "acceptance_criteria",
+    "price_reason",
+    "price_approval_state",
+    "price_approved_by",
+    "price_approved_at"
   ],
   "fields": [
     {
@@ -158,6 +168,69 @@
       "label": "Blocked Reason",
       "fieldtype": "Small Text",
       "allow_on_submit": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "payment_basis",
+      "label": "Cách trả công",
+      "fieldtype": "Select",
+      "options": "\nDaywork\nPiece"
+    },
+    {
+      "fieldname": "piece_rate",
+      "label": "Bảng giá lúc giao",
+      "fieldtype": "Link",
+      "options": "Work Piece Rate",
+      "read_only": 1
+    },
+    {
+      "fieldname": "listed_unit_price",
+      "label": "Giá niêm yết lúc giao",
+      "fieldtype": "Currency",
+      "read_only": 1,
+      "precision": "2"
+    },
+    {
+      "fieldname": "agreed_unit_price",
+      "label": "Đơn giá giao (VND)",
+      "fieldtype": "Currency",
+      "precision": "2"
+    },
+    {
+      "fieldname": "estimated_amount",
+      "label": "Tiền khoán dự tính (VND)",
+      "fieldtype": "Currency",
+      "precision": "0",
+      "read_only": 1
+    },
+    {
+      "fieldname": "acceptance_criteria",
+      "label": "Tiêu chuẩn đạt",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "price_reason",
+      "label": "Lý do vượt giá",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "price_approval_state",
+      "label": "Duyệt giá",
+      "fieldtype": "Select",
+      "options": "Not Required\nPending\nApproved",
+      "read_only": 1
+    },
+    {
+      "fieldname": "price_approved_by",
+      "label": "Người duyệt giá",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "price_approved_at",
+      "label": "Thời điểm duyệt giá",
+      "fieldtype": "Datetime",
       "read_only": 1
     }
   ],

@@ -11,7 +11,7 @@ MODULES={
  'alerts':['Lotus Alert'],
  'farms':['Farm','Farm Block','Farm Plot','Crop Cycle','Sucker Selection Batch'],
  'plans':['Daily Work Plan','Supply Reconciliation'],'forecast':['Harvest Forecast'],
- 'work':['Daily Work Plan','Daily Work Result','Planting Event','Disease Observation','Bunch Operation'],
+ 'work':['Daily Work Plan','Daily Work Result','Work Piece Settlement','Planting Event','Disease Observation','Bunch Operation'],
  'labor':['Daily Labor Summary','Labor Allocation'],
  'materials':['Material Requirement','Material Consumption','Material Recovery'],
  'losses':['Bunch Cancellation'], 'measurements':['Fruit Measurement'],
@@ -19,7 +19,7 @@ MODULES={
  'packhouse':['Packhouse Shift','Packout Run','Material Recovery','Secondary Product Movement','Supply Reconciliation'],
  'daily-close':['Daily Production Close'],'cycle-close':['Cycle Closing Report'],
  'trace':['Harvest Lot','Packout Run','Farm Plot'],'map':['Plot Geometry'],'settings':['Lotus Farm Settings'],
- 'masters':['Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
+ 'masters':['Work Category','Work Type','Work Piece Rate','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
 ALLOWED={d for names in MODULES.values() for d in names}
 DATES={'Harvest Forecast':'period_start_date','Harvest Actual':'harvest_date','Harvest Lot':'received_date','Packout Run':'packing_date','Bunch Operation':'operation_date','Sucker Selection Batch':'selection_date'}
@@ -96,7 +96,7 @@ def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,statu
         if str(status) not in choices:frappe.throw('Unsupported status for this document.')
         filters[status_field]=cint(status) if status_field=='docstatus' else status
     if search:filters=[[k,*(v if isinstance(v,list) else ['=',v])] for k,v in filters.items()]+[['name','like','%'+search[:100]+'%']]
-    candidates=['name','docstatus','modified',meta.title_field,'company','farm','farm_block','farm_plot','crop_cycle',date_field,'supply_state','approval_state','status','shift_code','bunch_qty','harvested_bunch_qty','gross_weight_kg','completed_qty','present','absent','required_workdays','accepted_kg','rejected_kg','finished_kg','packout_percent','input_kg','output_kg','stock_entry','source_status','row_count','resolved_percent','retry_count','sync_error','area_ha','variety','planting_date','plot_code','block_code']
+    candidates=['name','docstatus','modified',meta.title_field,'company','farm','farm_block','farm_plot','crop_cycle',date_field,'supply_state','approval_state','status','shift_code','bunch_qty','harvested_bunch_qty','gross_weight_kg','completed_qty','accepted_qty','amount','unit_price','payee_name','present','absent','required_workdays','accepted_kg','rejected_kg','finished_kg','packout_percent','input_kg','output_kg','stock_entry','source_status','row_count','resolved_percent','retry_count','sync_error','area_ha','variety','planting_date','plot_code','block_code']
     columns=list(dict.fromkeys(f for f in candidates if f and (f in ('name','docstatus','modified') or meta.has_field(f))))
     if sort not in ('modified desc','modified asc','name asc','name desc'):frappe.throw('Unsupported sort.')
     length=max(1,min(cint(length),100));start=max(cint(start),0)
@@ -263,7 +263,8 @@ def work_state(plan,line,state,reason=None):
     if state=='Blocked' and not (reason or '').strip():frappe.throw('Blocked work requires a reason.')
     if state=='Ready':
         allocated=sum(flt(v) for v in frappe.get_all('Labor Allocation',filters={'work_plan_line':line,'docstatus':1},pluck='allocated_workdays'))
-        if allocated+0.000001<flt(row.required_workdays):frappe.throw('Allocate required labor before marking Ready.')
+        if (row.get('payment_basis') or 'Daywork') != 'Piece' and allocated+0.000001<flt(row.required_workdays):
+            frappe.throw('Allocate required labor before marking Ready.')
         if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Submit material requirements before marking Ready.')
         if row.norm_profile:
             materials=material_status(doc.farm,doc.posting_date)
@@ -383,3 +384,4 @@ def loss_analysis(farm=None,from_date=None,to_date=None,company=None,block=None,
 def order_lines(sales_order):
     order=frappe.get_doc('Sales Order',sales_order);order.check_permission('read')
     return [dict(name=r.name,item=r.item_code,qty=r.qty,delivered_qty=r.delivered_qty,delivery_date=r.delivery_date) for r in order.items]
+

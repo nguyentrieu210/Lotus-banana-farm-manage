@@ -1,5 +1,14 @@
 frappe.ui.form.on("Daily Work Plan", {
   refresh(frm) {
+    if (frm.doc.docstatus === 0 && frm.doc.price_approval_state === 'Pending') {
+      frm.add_custom_button(__('Duyệt giá và giao việc'), () => {
+        if (frm.is_dirty()) {frappe.msgprint(__('Lưu các thay đổi trước khi duyệt.')); return;}
+        frappe.confirm(__('Duyệt đơn giá vượt niêm yết và giao toàn bộ kế hoạch này?'), async () => {
+          await frappe.call({method:'lotus_farm.mobile_assignment.approve_price',args:{plan:frm.doc.name},freeze:true});
+          frm.reload_doc();
+        });
+      });
+    }
     if (frm.doc.docstatus !== 1) return;
     frm.add_custom_button(__("Tính nhu cầu vật tư"), async () => {
       const response = await frappe.call({method: "lotus_farm.daily_api.create_requirements", args: {work_plan: frm.doc.name}, freeze: true});
@@ -28,3 +37,4 @@ frappe.ui.form.on("Daily Work Plan", {
     frm.set_query("norm_profile", "lines", (doc, cdt, cdn) => ({filters: {farm: doc.farm, work_type: locals[cdt][cdn].work_type, approval_state: "Approved"}}));
   }
 });
+

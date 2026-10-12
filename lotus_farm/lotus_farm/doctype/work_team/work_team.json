@@ -7,6 +7,7 @@
     "farm",
     "team_code",
     "team_name",
+    "foreman_name",
     "active"
   ],
   "fields": [
@@ -29,6 +30,12 @@
       "fieldtype": "Data",
       "reqd": 1,
       "in_list_view": 1
+    },
+    {
+      "fieldname": "foreman_name",
+      "label": "Tổ trưởng nhận khoán",
+      "fieldtype": "Data",
+      "description": "Một đầu mối nhận khoán; không nhập danh sách công nhân."
     },
     {
       "fieldname": "active",
@@ -61,3 +68,4 @@
   "show_title_field_in_link": 1,
   "search_fields": "team_code,farm"
 }
+

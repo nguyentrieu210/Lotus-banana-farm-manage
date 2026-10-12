@@ -19,3 +19,11 @@ test('missing or invalid jobs are rejected before network access',()=>{
  assert.throws(()=>cleanItems([{location:'plot:P1',work_type:'W',qty:-1}]),/số lượng/)
  assert.throws(()=>cleanItems([{location:'plot:P1',work_type:'W',qty:'NaN'}]),/số lượng/)
 })
+
+test('piece terms preserve agreed price and acceptance criteria',()=>{
+ const [job]=cleanItems([{location:'plot:A',work_type:'Bag',qty:800,payment_basis:'Piece',agreed_unit_price:2000,acceptance_criteria:' Intact bags ',price_reason:''}])
+ assert.equal(job.agreed_unit_price,2000)
+ assert.equal(job.acceptance_criteria,'Intact bags')
+ assert.throws(()=>cleanItems([{location:'plot:A',work_type:'Bag',qty:800,payment_basis:'Piece'}]))
+ assert.throws(()=>cleanItems([{location:'plot:A',work_type:'Bag',qty:800,payment_basis:'Piece',acceptance_criteria:'OK',agreed_unit_price:-1}]))
+})
