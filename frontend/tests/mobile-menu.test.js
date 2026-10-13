@@ -42,3 +42,10 @@ test('unassigned user has no module actions',()=>{
  assert.equal(hasMobileAccess(user),false)
  assert.deepEqual(mobileTabs(user),[{id:'mobile',label:'Trang chủ',path:'mobile',symbol:'⌂'}])
 })
+
+test('stock-only account can open warehouse from mobile home without farm permissions',()=>{
+ const user=session({}, {}, {}, {stock:true})
+ assert.equal(hasMobileAccess(user),true)
+ assert.deepEqual(mobileActions(user).map(a=>a.id),['stock'])
+ assert.equal(mobileActions(user)[0].href,'/lotus/kho')
+})

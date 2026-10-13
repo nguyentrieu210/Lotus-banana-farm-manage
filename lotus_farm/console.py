@@ -35,7 +35,7 @@ def allowed(doctype,permission='read'):
 def bootstrap():
     from lotus_farm.field import session_info
     session=session_info()
-    session['farms']=frappe.get_list('Farm',fields=['name','farm_name','company'],limit_page_length=1000)
+    session['farms']=frappe.get_list('Farm',fields=['name','farm_name','company'],limit_page_length=1000) if frappe.has_permission('Farm','read') else []
     session['modules']={k:[t for t in types if frappe.has_permission(t,'read')] for k,types in MODULES.items()}
     session['modules']={k:v for k,v in session['modules'].items() if v}
     session['creatable']={t:frappe.has_permission(t,'create') for t in ALLOWED}

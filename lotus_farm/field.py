@@ -168,12 +168,13 @@ def session_info():
     if frappe.session.user=='Guest':frappe.throw('Sign in before opening Lotus field capture.',frappe.AuthenticationError)
     from frappe.sessions import get_csrf_token
     return dict(user=frappe.session.user,csrf_token=get_csrf_token(),capabilities=dict(
+        stock=all(frappe.has_permission(t,'read') for t in ('Stock Entry','Warehouse','Item','Bin','Company')),
         field=frappe.has_permission('Daily Work Result','create'),
         home=all(frappe.has_permission(t,'read') for t in ('Daily Work Plan','Daily Work Result','Labor Allocation','Daily Labor Summary','Bunch Cancellation','Disease Observation','Harvest Actual','Incoming Quality Inspection','Packout Run','Material Requirement','Material Consumption','Harvest Forecast')),
         packhouse=frappe.has_permission('Harvest Lot','read'),
         imports=frappe.has_permission('Source Import Mapping','read'),map=frappe.has_permission('Plot Geometry','read'),
         qc=frappe.has_permission('Incoming Quality Inspection','create'),
-        scale=(frappe.session.user=='Administrator' or 'Lotus Integration User' in frappe.get_roles())),farms=frappe.get_list('Farm',fields=['name','farm_name'],limit_page_length=1000))
+        scale=(frappe.session.user=='Administrator' or 'Lotus Integration User' in frappe.get_roles())),farms=frappe.get_list('Farm',fields=['name','farm_name'],limit_page_length=1000) if frappe.has_permission('Farm','read') else [])
 
 
 @frappe.whitelist(methods=['POST'])

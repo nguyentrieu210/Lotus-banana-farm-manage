@@ -32,7 +32,8 @@ doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
 doc_events["Sales Order"] = {"before_cancel": "lotus_farm.allocations.sales_order_cancel"}
 doc_events["Stock Entry"] = {
-    "validate": "lotus_farm.stock_bridge.validate_entry",
+    "validate": ["lotus_farm.stock_bridge.validate_entry", "lotus_farm.warehouse_issue.validate_issue"],
+    "before_submit": "lotus_farm.warehouse_issue.validate_issue",
     "on_submit": "lotus_farm.stock_bridge.stock_posted",
     "before_cancel": "lotus_farm.stock_bridge.before_stock_cancel",
     "on_cancel": "lotus_farm.stock_bridge.stock_reversed",
