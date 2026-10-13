@@ -1,0 +1,24 @@
+name: Lotus UI build
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/ui-build.yml'
+  push:
+    branches: ['ui/attio-shadcn-aggrid']
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/ui-build.yml'
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --prefix frontend
+      - run: npm run --prefix frontend build
+      - run: npm run --prefix frontend test
