@@ -60,6 +60,8 @@ test('shared form inputs preserve number and text model types',()=>{
   assert.match(read('src/components/SchemaForm.vue'),/import \{Input as UiInput\}/)
   assert.match(read('src/components/SchemaForm.vue'),/import \{Textarea as UiTextarea\}/)
   assert.match(read('src/AssignApp.vue'),/import \{Input as UiInput\}/)
+  assert.match(read('src/AssignApp.vue'),/import \{Badge as UiBadge\}/)
+  assert.match(read('src/components/MobileHome.vue'),/import \{Card as UiCard\}/)
 })
 
 test('shared grid keeps open-row event and mobile record view',()=>{
