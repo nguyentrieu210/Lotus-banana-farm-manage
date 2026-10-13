@@ -1,6 +1,8 @@
 # Lotus Manage UI: shadcn-vue + Attio-inspired CSS + AG Grid
 
 ## Thành phần
+- Kho `/lotus/kho` cũng dùng theme chung và Button, Input, Textarea, Card, Badge; các bộ chọn dùng một component Select chung giữ hành vi bàn phím của trình duyệt. Bảng tồn, lịch sử và chi tiết phiếu dùng AG Grid trên máy tính, danh sách trên điện thoại. Ma trận QC và lịch sử thay đổi cũng dùng bảng chung.
+- Trang Frappe phải đọc CSS của cả các `imports` trong Vite manifest, không chỉ CSS của entry. CSS bố cục cũ đặt trong layer `lotus-legacy` để không ghi đè theme và component mới khi Vite tách chunk dùng chung.
 - Vue 3 + Frappe/ERPNext: giữ nguyên API, quyền, CSRF, và nghiệp vụ.
 - **shadcn-vue (cấu hình Tailwind v3)**: đã thêm `frontend/components.json`, `jsconfig.json`, alias `@/`, `src/shadcn.css`, `src/lib/utils.js`, các dependency và phiên bản khóa trong npm.
 - Các component dưới `frontend/src/components/ui/`: `button`, `input`, `textarea`, `card`, `badge`, `skeleton`, `separator`. Các file component thuộc repo để Lotus chỉnh trực tiếp theo cách hoạt động của shadcn-vue.

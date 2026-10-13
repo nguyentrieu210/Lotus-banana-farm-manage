@@ -1,4 +1,5 @@
 <script setup>
+import {Button as UiButton} from './ui/button'
 import {computed} from 'vue'
 import {Card as UiCard} from './ui/card'
 import {mobileGroups} from '../mobile-menu'
@@ -14,16 +15,16 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
    <p class="eyebrow">LOTUS FARM · HÔM NAY</p>
    <h2>Bạn cần làm gì?</h2>
    <p>{{farmName}}</p>
-   <button class="mobile-sync" type="button" @click="emit('outbox')">{{online?'Đã kết nối':'Đang mất mạng'}} · {{queued}} bản chờ gửi →</button>
+   <UiButton variant="outline" class="mobile-sync" type="button" @click="emit('outbox')">{{online?'Đã kết nối':'Đang mất mạng'}} · {{queued}} bản chờ gửi →</UiButton>
   </UiCard>
   <section v-for="group in groups" :key="group.title" class="mobile-action-section">
    <h3>{{group.title}}</h3>
    <div class="mobile-action-grid">
-    <button v-for="action in group.actions" :key="action.id" class="mobile-action" type="button" @click="emit('select',action)">
+    <UiButton variant="outline" v-for="action in group.actions" :key="action.id" class="mobile-action" type="button" @click="emit('select',action)">
      <span class="mobile-action-icon" aria-hidden="true">{{action.symbol}}</span>
      <span class="mobile-action-text"><strong>{{action.label}}</strong><small>{{action.detail}}</small></span>
      <span aria-hidden="true" class="mobile-action-chevron">›</span>
-    </button>
+    </UiButton>
    </div>
   </section>
   <p v-if="!groups.length" class="notice">Tài khoản chưa có quyền sử dụng nghiệp vụ Lotus. Nhờ quản trị viên kiểm tra quyền và nông trường.</p>

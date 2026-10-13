@@ -21,5 +21,20 @@ def get_context(context):
     entry_key={'/lotus/giao-viec':'assign.html','/lotus/kho':'stock.html'}.get(request_path,'index.html')
     entry=entries[entry_key]
     context.script='/assets/lotus_farm/frontend/'+entry['file']
-    context.styles=['/assets/lotus_farm/frontend/'+p for p in entry.get('css',[])]
+    # Vite extracts shared CSS into imported chunks. Load dependencies first so
+    # each entry's own layout overrides the shared theme in the intended order.
+    styles=[]
+    visited=set()
+    def collect_styles(key):
+        if key in visited:
+            return
+        visited.add(key)
+        chunk=entries[key]
+        for dependency in chunk.get('imports',[]):
+            collect_styles(dependency)
+        for css in chunk.get('css',[]):
+            if css not in styles:
+                styles.append(css)
+    collect_styles(entry_key)
+    context.styles=['/assets/lotus_farm/frontend/'+p for p in styles]
     context.no_cache=1

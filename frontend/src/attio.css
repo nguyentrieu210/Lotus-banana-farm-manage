@@ -20,7 +20,7 @@ a{color:#4659b4}
 .sidebar .brand{color:#222b3a;font-size:21px;letter-spacing:-.7px;padding:4px 10px}
 .sidebar .brand small{color:#9098a6;font-size:8px;letter-spacing:1.2px}
 .sidebar nav{gap:3px}
-.sidebar nav button{font-size:13px;color:#667080;border-radius:7px;padding:10px 12px;font-weight:500;transition:background .15s}
+.sidebar nav button{justify-content:flex-start;background:transparent;white-space:normal;text-align:left;font-size:13px;color:#667080;border-radius:7px;padding:10px 12px;font-weight:500;transition:background .15s}
 .sidebar nav button.active,.sidebar nav button:hover{background:#eceffa;color:#36448f}
 .sidebar .field-link{color:#647188;font-size:12px}
 main{padding:24px 32px;max-width:1760px}
@@ -55,8 +55,8 @@ input::placeholder{color:#98a1ae}
 .document-dialog,.small-dialog{border-radius:13px;box-shadow:0 18px 70px #16213b25}
 .mobile-welcome{background:#f5f7fc;border-color:#e4e9f6;border-radius:12px}
 .mobile-welcome>p:not(.eyebrow){color:#667388}
-.mobile-sync{border-color:var(--lotus-border);color:#4d5c93}
-.mobile-action{border-color:var(--lotus-border);border-radius:10px;min-height:72px}
+.mobile-sync{height:auto;background:#fff;border-color:var(--lotus-border);color:#4d5c93}
+.mobile-action{height:auto;white-space:normal;text-align:left;background:#fff;color:var(--lotus-text);border-color:var(--lotus-border);border-radius:10px;min-height:72px}
 .mobile-action:hover{border-color:#a8b5ec;background:#f7f9fe}
 .mobile-action-icon{background:#eef1fa;color:#5363ac;border-radius:8px}
 .mobile-action-text small,.mobile-help{color:#7c8695}

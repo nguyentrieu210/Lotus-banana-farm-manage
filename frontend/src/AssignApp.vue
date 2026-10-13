@@ -1,4 +1,5 @@
 <script setup>
+import UiSelect from './components/ui/select/Select.vue'
 import {computed,onMounted,ref} from 'vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -71,38 +72,38 @@ onMounted(boot)
    <div v-if="message" class="success" role="status">{{message}}</div>
    <section class="panel fields">
     <label>Nông trường
-     <select v-model="farm" @change="loadCatalog"><option value="">Chọn nông trường</option><option v-for="f in session?.farms||[]" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></select>
+     <UiSelect v-model="farm" @change="loadCatalog"><option value="">Chọn nông trường</option><option v-for="f in session?.farms||[]" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect>
     </label>
     <div class="fields" style="grid-template-columns:1fr 1.25fr">
      <label>Ngày <UiInput type="date" v-model="date" @change="invalidate"/></label>
      <label>Giao cho tổ
-      <select v-model="team" @change="invalidate"><option value="">Chọn tổ</option><option v-for="t in catalog?.teams||[]" :key="t.name" :value="t.name">{{t.team_name}}</option></select>
+      <UiSelect v-model="team" @change="invalidate"><option value="">Chọn tổ</option><option v-for="t in catalog?.teams||[]" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect>
      </label>
     </div>
     <div v-if="!catalog&&farm" class="hint">Đang lấy các lô, thửa và tổ của nông trường…</div>
     <div v-if="catalog&&(!catalog.plots.length||!catalog.teams.length||!catalog.works.length)" class="error">Nông trường chưa có đủ lô/thửa, tổ hoặc loại công việc. Cần nạp dữ liệu mẫu hoặc danh mục thật.</div>
    </section>
    <section v-for="(item,i) in items" :key="i" class="panel fields">
-    <div class="job-head"><strong>Việc {{i+1}}</strong><button v-if="items.length>1" type="button" class="remove" @click="remove(i)" :aria-label="'Xóa việc '+(i+1)">Xóa</button></div>
+    <div class="job-head"><strong>Việc {{i+1}}</strong><UiButton v-if="items.length>1" type="button" class="remove" @click="remove(i)" :aria-label="'Xóa việc '+(i+1)">Xóa</UiButton></div>
     <label>Vị trí thực hiện
-     <select v-model="item.location" @change="invalidate"><option value="">Chọn một lô hoặc thửa</option>
+     <UiSelect v-model="item.location" @change="invalidate"><option value="">Chọn một lô hoặc thửa</option>
       <optgroup label="Theo lô — tự chia xuống các thửa">
        <option v-for="p in places.filter(p=>p.value.startsWith('block:'))" :key="p.value" :value="p.value">{{p.label}}</option>
       </optgroup>
       <optgroup label="Theo thửa — chỉ giao đúng thửa đó">
        <option v-for="p in places.filter(p=>p.value.startsWith('plot:'))" :key="p.value" :value="p.value">{{p.label}} · {{p.subtitle}}</option>
       </optgroup>
-     </select>
+     </UiSelect>
     </label>
     <p v-if="item.location?.startsWith('block:')" class="hint">Lô này gồm nhiều thửa. Số lượng sẽ được chia theo diện tích, có bảng xem trước.</p>
     <label>Công việc
-     <select v-model="item.work_type" @change="invalidate"><option value="">Chọn công việc</option><option v-for="w in works" :key="w.name" :value="w.name">{{w.work_name}}</option></select>
+     <UiSelect v-model="item.work_type" @change="invalidate"><option value="">Chọn công việc</option><option v-for="w in works" :key="w.name" :value="w.name">{{w.work_name}}</option></UiSelect>
     </label>
     <label>Số lượng giao <span class="muted">{{unit(item.work_type)}}</span>
      <UiInput v-model="item.qty" @input="invalidate" inputmode="decimal" type="number" min="0" step="any" placeholder="Ví dụ: 800"/>
     </label>
    </section>
-   <button class="add" @click="add">＋ Thêm công việc / lô khác</button>
+   <UiButton class="add" @click="add">＋ Thêm công việc / lô khác</UiButton>
    <section v-if="preview" class="panel">
     <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><UiBadge variant="secondary" class="pill">Chưa giao</UiBadge></div>
     <p class="note">{{preview.note}}</p>
@@ -111,7 +112,7 @@ onMounted(boot)
      <span>{{number(line.planned_qty)}} {{line.uom}}</span>
     </div>
    </section>
-   <div v-if="created" class="panel"><div class="panel-title">Giao việc thành công ✓</div><p class="hint">Đã lưu {{created.count}} dòng vào kế hoạch ngày. Muốn giao thêm thì bấm “Giao việc mới”.</p><button class="add" @click="reset">Giao việc mới</button></div>
+   <div v-if="created" class="panel"><div class="panel-title">Giao việc thành công ✓</div><p class="hint">Đã lưu {{created.count}} dòng vào kế hoạch ngày. Muốn giao thêm thì bấm “Giao việc mới”.</p><UiButton class="add" @click="reset">Giao việc mới</UiButton></div>
   </template>
  </main>
  <footer v-if="session&&!created" class="bar"><div class="bar-inner">
