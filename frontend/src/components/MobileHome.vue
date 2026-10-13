@@ -15,7 +15,6 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
    <p class="eyebrow">LOTUS FARM · HÔM NAY</p>
    <h2>Bạn cần làm gì?</h2>
    <p>{{farmName}}</p>
-   <UiButton variant="outline" class="mobile-sync" type="button" @click="emit('outbox')">{{online?'Đã kết nối':'Đang mất mạng'}} · {{queued}} bản chờ gửi →</UiButton>
   </UiCard>
   <section v-for="group in groups" :key="group.title" class="mobile-action-section">
    <h3>{{group.title}}</h3>

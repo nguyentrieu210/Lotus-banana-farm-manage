@@ -26,7 +26,10 @@
 .stock-shell :focus-visible{outline:2px solid #aeb9f1;outline-offset:2px}
 .stock-live{color:#456357;margin-left:auto;font-size:10px}
 .stock-actions{gap:12px}
-.stock-actions button{display:grid;grid-template-columns:38px 1fr;height:auto;justify-content:start;border-color:var(--lotus-border);padding:16px;text-align:left;color:var(--lotus-text);border-radius:8px;box-shadow:0 1px 3px #10182804}
+.stock-actions button{display:grid;grid-template-columns:38px minmax(0,1fr);height:auto;min-height:108px;white-space:normal;overflow-wrap:anywhere;justify-content:start;border-color:var(--lotus-border);padding:20px;text-align:left;color:var(--lotus-text);border-radius:8px;box-shadow:0 1px 3px #10182804}
+.stock-actions strong,.stock-actions small{white-space:normal;line-height:1.5;min-width:0}
+.stock-metrics>div{min-height:104px;gap:12px;min-width:0;overflow-wrap:anywhere}
+.stock-setup>div{min-width:0;overflow-wrap:anywhere}
 .stock-actions button>span{background:#f0f2fb;color:var(--lotus-accent);padding:7px;font-size:19px}
 .stock-actions small{color:var(--lotus-muted)}
 .stock-metrics>div{padding:18px 22px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--lotus-border);border-radius:8px;box-shadow:0 1px 3px #10182804}
