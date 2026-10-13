@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync,existsSync} from 'node:fs'
+import {normalizeInputValue} from '../src/components/ui/input/model.js'
 
 const file=path=>new URL('../'+path,import.meta.url)
 const read=path=>readFileSync(file(path),'utf8')
@@ -51,6 +52,16 @@ test('main pages use shadcn-vue Button and still keep Frappe API provider',()=>{
   assert.match(read('src/main.js'),/import '\.\/shadcn\.css'/)
   assert.match(read('src/assign-main.js'),/import '\.\/shadcn\.css'/)
 })
+test('shared form inputs preserve number and text model types',()=>{
+  assert.equal(normalizeInputValue('125.5',true),125.5)
+  assert.equal(normalizeInputValue('',true),'')
+  assert.equal(normalizeInputValue('not-a-number',true),'not-a-number')
+  assert.equal(normalizeInputValue('125.5',false),'125.5')
+  assert.match(read('src/components/SchemaForm.vue'),/import \{Input as UiInput\}/)
+  assert.match(read('src/components/SchemaForm.vue'),/import \{Textarea as UiTextarea\}/)
+  assert.match(read('src/AssignApp.vue'),/import \{Input as UiInput\}/)
+})
+
 test('shared grid keeps open-row event and mobile record view',()=>{
   const source=read('src/components/OpsList.vue')
   assert.match(source,/from 'ag-grid-vue3'/)
