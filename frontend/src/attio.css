@@ -29,7 +29,7 @@ h1{font-size:24px;font-weight:650;color:#1c2534;letter-spacing:-.8px}
 h2{font-size:17px;font-weight:650;color:#273248}
 h3{font-size:14px;font-weight:650}
 .eyebrow{color:#838d9c;letter-spacing:1.1px;font-size:10px}
-.scope-picker{padding:15px 0 18px;margin:0 0 8px;gap:10px;border-bottom:1px solid var(--lotus-border)}
+.scope-picker{padding:0 0 18px;margin:0 0 8px;gap:10px;border-bottom:1px solid var(--lotus-border);align-items:flex-end}
 .scope-picker label{font-size:11px;font-weight:550;color:#737e90;gap:5px;min-width:140px}
 label{color:#566172}
 input,select,textarea{background:#fff;border:1px solid #dfe3ec;border-radius:7px;color:#293448;padding:9px 10px;min-height:36px;font-size:13px}

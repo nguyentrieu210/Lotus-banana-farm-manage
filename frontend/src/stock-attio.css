@@ -37,6 +37,7 @@
 .stock-panel{border-color:var(--lotus-border);border-radius:8px;box-shadow:0 2px 4px #10182803}
 .stock-panel-head{padding:20px;flex-wrap:wrap;gap:12px}
 .stock-panel>.lotus-data-table{padding:0 16px 8px}
+.stock-panel>.lotus-data-table:first-child{padding-top:16px}
 .stock-pagination{border-top:1px solid var(--lotus-border);color:var(--lotus-muted);padding:14px 20px}
 .stock-dialog{color:var(--lotus-text);border-color:var(--lotus-border);border-radius:12px;box-shadow:0 24px 80px #17233d33}
 .stock-dialog::backdrop{background:#17233d55;backdrop-filter:blur(2px)}

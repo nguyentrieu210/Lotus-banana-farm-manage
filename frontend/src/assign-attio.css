@@ -1,4 +1,5 @@
 /* Attio-inspired look for the one-handed, standalone assignment screen. */
+.assignment-back{display:inline-flex;margin-bottom:18px;font-size:13px;color:#4c5eac}
 body{background:#f9fafc;color:#293448}
 .shell{max-width:620px;padding-top:22px}
 .top{padding-bottom:16px;border-bottom:1px solid #e5e9f0;margin-bottom:18px}
