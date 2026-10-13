@@ -5,19 +5,27 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "ui:add": "npx --yes shadcn-vue@1.0.3 add"
   },
   "dependencies": {
     "vue": "3.5.43",
     "vue-router": "4.6.4",
     "pinia": "3.0.4",
-    "frappe-ui": "1.0.0"
+    "frappe-ui": "1.0.0",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-vue3": "36.2.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.6.0",
+    "reka-ui": "2.11.0"
   },
   "devDependencies": {
     "vite": "8.3.3",
     "@vitejs/plugin-vue": "6.0.9",
     "tailwindcss": "3.4.19",
     "postcss": "8.5.6",
-    "autoprefixer": "10.4.22"
+    "autoprefixer": "10.4.22",
+    "tailwindcss-animate": "1.0.7"
   }
 }

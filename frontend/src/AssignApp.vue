@@ -1,5 +1,8 @@
 <script setup>
 import {computed,onMounted,ref} from 'vue'
+import {Button as UiButton} from './components/ui/button'
+import {Input as UiInput} from './components/ui/input'
+import {Badge as UiBadge} from './components/ui/badge'
 import {consoleAPI,call,setCSRF} from './api'
 import {cleanItems,placeOptions} from './assign-model'
 
@@ -71,7 +74,7 @@ onMounted(boot)
      <select v-model="farm" @change="loadCatalog"><option value="">Chọn nông trường</option><option v-for="f in session?.farms||[]" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></select>
     </label>
     <div class="fields" style="grid-template-columns:1fr 1.25fr">
-     <label>Ngày <input type="date" v-model="date" @change="invalidate"/></label>
+     <label>Ngày <UiInput type="date" v-model="date" @change="invalidate"/></label>
      <label>Giao cho tổ
       <select v-model="team" @change="invalidate"><option value="">Chọn tổ</option><option v-for="t in catalog?.teams||[]" :key="t.name" :value="t.name">{{t.team_name}}</option></select>
      </label>
@@ -96,12 +99,12 @@ onMounted(boot)
      <select v-model="item.work_type" @change="invalidate"><option value="">Chọn công việc</option><option v-for="w in works" :key="w.name" :value="w.name">{{w.work_name}}</option></select>
     </label>
     <label>Số lượng giao <span class="muted">{{unit(item.work_type)}}</span>
-     <input v-model="item.qty" @input="invalidate" inputmode="decimal" type="number" min="0" step="any" placeholder="Ví dụ: 800"/>
+     <UiInput v-model="item.qty" @input="invalidate" inputmode="decimal" type="number" min="0" step="any" placeholder="Ví dụ: 800"/>
     </label>
    </section>
    <button class="add" @click="add">＋ Thêm công việc / lô khác</button>
    <section v-if="preview" class="panel">
-    <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><span class="pill">Chưa giao</span></div>
+    <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><UiBadge variant="secondary" class="pill">Chưa giao</UiBadge></div>
     <p class="note">{{preview.note}}</p>
     <div v-for="(line,i) in preview.lines" :key="i" class="preview-row">
      <span><strong>{{line.work_name}}</strong><br/><span class="muted">Thửa {{line.plot_code}}</span></span>
@@ -112,8 +115,8 @@ onMounted(boot)
   </template>
  </main>
  <footer v-if="session&&!created" class="bar"><div class="bar-inner">
-  <button class="secondary" type="button" @click="reset">Làm lại</button>
-  <button v-if="!preview" class="primary" type="button" :disabled="busy||!catalog" @click="showPreview">{{busy?'Đang kiểm tra…':'Xem trước giao việc'}}</button>
-  <button v-else class="primary" type="button" :disabled="submitting" @click="submit">{{submitting?'Đang giao…':'Xác nhận giao việc'}}</button>
+  <UiButton variant="secondary" class="secondary" type="button" @click="reset">Làm lại</UiButton>
+  <UiButton v-if="!preview" class="primary" type="button" :disabled="busy||!catalog" @click="showPreview">{{busy?'Đang kiểm tra…':'Xem trước giao việc'}}</UiButton>
+  <UiButton v-else class="primary" type="button" :disabled="submitting" @click="submit">{{submitting?'Đang giao…':'Xác nhận giao việc'}}</UiButton>
  </div></footer>
 </template>

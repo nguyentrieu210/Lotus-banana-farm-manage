@@ -1,0 +1,27 @@
+/* Attio-inspired look for the one-handed, standalone assignment screen. */
+body{background:#f9fafc;color:#293448}
+.shell{max-width:620px;padding-top:22px}
+.top{padding-bottom:16px;border-bottom:1px solid #e5e9f0;margin-bottom:18px}
+.top h1{font-size:27px;letter-spacing:-.8px;color:#243045}
+.top .eyebrow{color:#7b8495}
+.top a{background:#fff;color:#4c5eac;border:1px solid #e2e5ed;border-radius:7px;font-weight:600}
+.hint,.muted{color:#748092}
+.panel{border:1px solid #e5e8ef;border-radius:11px;background:#fff;box-shadow:0 1px 2px #1e293b07;padding:18px}
+.panel-title{font-size:13px;color:#2b3648}
+.fields{gap:13px}
+label{color:#566173;font-size:12px;font-weight:600}
+input,select{background:#fff;color:#2b3546;border:1px solid #dce1e9;min-height:43px;border-radius:8px}
+input:focus,select:focus,button:focus-visible{outline:2px solid #c4cdfa;outline-offset:1px}
+.add{border:1px dashed #a9b6d5;background:#f8faff;border-radius:9px;color:#495f9a;font-weight:650}
+.remove{background:#fdf0ee;color:#a94c45;border:1px solid #f3dcda;border-radius:7px}
+.pill{background:#f0f3fb;color:#5264ab;border-radius:6px}
+.note{background:#f3f5fc;color:#596983;border:1px solid #e5eafb;border-radius:8px}
+.bar{background:#ffffffec;border-top:1px solid #e3e7ef}
+.bar-inner{max-width:592px}
+.bar button{border-radius:8px;min-height:48px;font-size:13px}
+.bar .primary{background:#26334b;color:#fff}
+.bar .primary:hover{background:#35455f}
+.bar .secondary{background:#f1f3f7;color:#485569;border-color:#e2e6ed}
+.success{background:#eff8f2;color:#287249;border-color:#d4eedd;border-radius:8px}
+.error{border-radius:8px}
+@media(min-width:600px){.shell{padding-top:28px}}

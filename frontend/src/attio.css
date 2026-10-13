@@ -1,0 +1,109 @@
+/* Lotus visual language — inspired by Attio's quiet, information-first layout.
+   These rules are ours; no Attio assets, source code or proprietary CSS. */
+:root {
+  --lotus-page:#ffffff;
+  --lotus-surface:#ffffff;
+  --lotus-sidebar:#fafbfc;
+  --lotus-text:#263042;
+  --lotus-muted:#697487;
+  --lotus-border:#e6e8ef;
+  --lotus-accent:#5262ce;
+  --lotus-soft:#f5f7fb;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--lotus-page);
+  color:var(--lotus-text);
+}
+body{background:var(--lotus-page);color:var(--lotus-text)}
+a{color:#4659b4}
+.app-shell{background:var(--lotus-page);color:var(--lotus-text)}
+.sidebar{width:244px;padding:22px 12px;background:var(--lotus-sidebar);color:#5b6576;border-right:1px solid var(--lotus-border);gap:19px}
+.sidebar .brand{color:#222b3a;font-size:21px;letter-spacing:-.7px;padding:4px 10px}
+.sidebar .brand small{color:#9098a6;font-size:8px;letter-spacing:1.2px}
+.sidebar nav{gap:3px}
+.sidebar nav button{font-size:13px;color:#667080;border-radius:7px;padding:10px 12px;font-weight:500;transition:background .15s}
+.sidebar nav button.active,.sidebar nav button:hover{background:#eceffa;color:#36448f}
+.sidebar .field-link{color:#647188;font-size:12px}
+main{padding:24px 32px;max-width:1760px}
+.app-shell main>header{padding:6px 0 18px;border-bottom:1px solid var(--lotus-border)}
+h1{font-size:24px;font-weight:650;color:#1c2534;letter-spacing:-.8px}
+h2{font-size:17px;font-weight:650;color:#273248}
+h3{font-size:14px;font-weight:650}
+.eyebrow{color:#838d9c;letter-spacing:1.1px;font-size:10px}
+.scope-picker{padding:15px 0 18px;margin:0 0 8px;gap:10px;border-bottom:1px solid var(--lotus-border)}
+.scope-picker label{font-size:11px;font-weight:550;color:#737e90;gap:5px;min-width:140px}
+label{color:#566172}
+input,select,textarea{background:#fff;border:1px solid #dfe3ec;border-radius:7px;color:#293448;padding:9px 10px;min-height:36px;font-size:13px}
+input:focus,select:focus,textarea:focus{outline:2px solid #bfcbff;outline-offset:0;border-color:#697be1}
+input::placeholder{color:#98a1ae}
+.panel{border:1px solid var(--lotus-border);background:var(--lotus-surface);border-radius:10px;box-shadow:0 1px 2px #1e293b06;padding:18px;margin:16px 0}
+.kpi{border:1px solid var(--lotus-border);border-radius:9px;box-shadow:none;background:#fff;padding:16px;gap:8px}
+.kpi:hover{border-color:#bdc9ef}
+.kpi span,.kpi small,.muted{color:#798499}
+.kpi strong{color:#263142;font-size:27px;font-weight:650}
+.work-card,.child-row{border:1px solid var(--lotus-border);box-shadow:none;border-radius:8px;background:#fff}
+.pill{background:#f0f2fa;color:#5461a1;border-radius:6px;font-size:11px;padding:4px 8px}
+.status-1{background:#e8f5ee;color:#25724d}.status-2{background:#fff1ea;color:#a45a34}
+.notice{background:#f0f4ff;border:1px solid #dfe7ff;color:#42598b;border-radius:8px}
+.alert-chip{background:#fff5e4;color:#8e682c}
+.view-controls{padding:14px 0;gap:9px}
+.view-controls input{max-width:260px}
+.tabs{border-color:var(--lotus-border)}
+.tabs button{background:#f5f6fa;color:#596477}
+.tabs .active{background:#e9eeff;color:#485bb0}
+.actions button{background:#f5f7fd;color:#394c88;border:1px solid var(--lotus-border)}
+.actions button:hover{background:#e9eefc}
+.document-dialog,.small-dialog{border-radius:13px;box-shadow:0 18px 70px #16213b25}
+.mobile-welcome{background:#f5f7fc;border-color:#e4e9f6;border-radius:12px}
+.mobile-welcome>p:not(.eyebrow){color:#667388}
+.mobile-sync{border-color:var(--lotus-border);color:#4d5c93}
+.mobile-action{border-color:var(--lotus-border);border-radius:10px;min-height:72px}
+.mobile-action:hover{border-color:#a8b5ec;background:#f7f9fe}
+.mobile-action-icon{background:#eef1fa;color:#5363ac;border-radius:8px}
+.mobile-action-text small,.mobile-help{color:#7c8695}
+.mobile-bottom-nav button.active{background:#ecf0fb;color:#4c5fae}
+.mobile-bottom-nav button{color:#737d8d}
+
+/* The official shadcn-vue button classes are emitted by Tailwind. */
+.lotus-button-spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:lotus-spin .7s linear infinite}
+@keyframes lotus-spin{to{transform:rotate(360deg)}}
+
+/* AG Grid Community: compact data-first desktop tables and tap-friendly mobile list. */
+.lotus-record-list{width:100%;min-width:0}
+.lotus-ag-grid-shell{min-width:0;width:100%;border:1px solid var(--lotus-border);border-radius:8px;overflow:hidden;background:#fff}
+.lotus-ag-grid-shell--scroll{height:520px}
+.lotus-ag-grid{width:100%;height:auto;font-size:12px}
+.lotus-ag-grid-shell--scroll .lotus-ag-grid{height:100%}
+.lotus-grid-cell{cursor:pointer}
+.lotus-grid-number{text-align:right;font-variant-numeric:tabular-nums}
+.lotus-grid-status{font-weight:600;color:#5763a1}
+.lotus-ag-grid .ag-header{font-weight:600}
+.lotus-ag-grid .ag-header-cell-text{font-size:11px;letter-spacing:.05px}
+.lotus-ag-grid .ag-row:focus-within{box-shadow:inset 0 0 0 1px #a9b6ed}
+.lotus-grid-footer{padding:9px 4px 0;color:#7c8797;font-size:11px}
+.lotus-mobile-records{display:none}
+@media(max-width:1000px){
+  .sidebar{width:200px;padding:18px 10px}
+  main{padding:20px 16px}
+}
+@media(max-width:650px){
+  .sidebar{width:100%;padding:12px 14px;border-right:0;border-bottom:1px solid var(--lotus-border);background:#fff}
+  .sidebar .brand{font-size:19px;padding:0;color:#202a3d}
+  .app-shell main{padding:14px 12px calc(95px + env(safe-area-inset-bottom))}
+  .app-shell main>header{padding:5px 0 12px}
+  .app-shell main>header h1{font-size:21px}
+  .scope-picker{padding:12px 0;gap:7px}
+  .scope-picker label{min-width:125px}
+  .panel{padding:13px;margin:12px 0}
+  .kpi{padding:13px}
+  .kpi strong{font-size:24px}
+  .lotus-ag-grid-shell{display:none}
+  .lotus-mobile-records{display:grid;gap:0;border:1px solid var(--lotus-border);border-radius:9px;overflow:hidden}
+  .lotus-mobile-record{position:relative;width:100%;border:0;border-bottom:1px solid var(--lotus-border);border-radius:0;background:#fff;color:var(--lotus-text);display:grid;gap:6px;text-align:left;padding:14px 30px 14px 12px}
+  .lotus-mobile-record:last-child{border-bottom:0}
+  .lotus-mobile-record:focus-visible{outline:2px solid #b1bff1;outline-offset:-2px}
+  .lotus-mobile-record>strong{font-size:13px;overflow-wrap:anywhere}
+  .lotus-mobile-record-detail{display:flex;justify-content:space-between;gap:10px;color:#697585;font-size:11px}
+  .lotus-mobile-record-detail span:last-child{color:#344054;font-weight:550;text-align:right}
+  .lotus-mobile-record-arrow{position:absolute;right:12px;top:15px;color:#8994a6;font-size:19px}
+  .lotus-grid-footer{font-size:10px}
+}
