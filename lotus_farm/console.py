@@ -71,7 +71,7 @@ def schema(doctype):
 
 
 @frappe.whitelist()
-def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,status=None,date=None,from_date=None,to_date=None,search=None,start=0,length=50,sort='modified desc'):
+def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,status=None,date=None,from_date=None,to_date=None,search=None,start=0,length=50,sort='modified desc',column_filters=None,include_filter_values=False):
     meta=allowed(doctype)
     selected=land_scope(company,farm,block,plot,cycle)
     filters=land_filters(meta,selected)
@@ -99,10 +99,15 @@ def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,statu
     candidates=['name','docstatus','modified',meta.title_field,'company','farm','farm_block','farm_plot','crop_cycle',date_field,'supply_state','approval_state','status','shift_code','bunch_qty','harvested_bunch_qty','gross_weight_kg','completed_qty','present','absent','required_workdays','accepted_kg','rejected_kg','finished_kg','packout_percent','input_kg','output_kg','stock_entry','source_status','row_count','resolved_percent','retry_count','sync_error','area_ha','variety','planting_date','plot_code','block_code']
     columns=list(dict.fromkeys(f for f in candidates if f and (f in ('name','docstatus','modified') or meta.has_field(f))))
     if sort not in ('modified desc','modified asc','name asc','name desc'):frappe.throw('Unsupported sort.')
+    from lotus_farm.table_filters import selections, distinct, matches
+    selected_columns=selections(column_filters,columns)
+    all_rows=frappe.get_list(doctype,filters=filters,fields=columns,order_by=sort+', name',limit_page_length=0) if cint(include_filter_values) or selected_columns else None
+    filter_values=distinct(all_rows,columns) if cint(include_filter_values) else None
     length=max(1,min(cint(length),100));start=max(cint(start),0)
-    rows=frappe.get_list(doctype,filters=filters,fields=columns,order_by=sort+', name',limit_start=start,limit_page_length=length+1)
+    rows=([row for row in all_rows if matches(row,selected_columns)][start:start+length+1] if all_rows is not None else
+          frappe.get_list(doctype,filters=filters,fields=columns,order_by=sort+', name',limit_start=start,limit_page_length=length+1))
     choices=(meta.get_field(status_field).options or '').split('\n') if status_field!='docstatus' else ['0','1','2']
-    return dict(rows=rows[:length],columns=columns,has_more=len(rows)>length,start=start,length=length,status_options=[c for c in choices if c])
+    return dict(rows=rows[:length],columns=columns,filter_values=filter_values,has_more=len(rows)>length,start=start,length=length,status_options=[c for c in choices if c])
 
 
 def _source_scope_names(doctype,selected):

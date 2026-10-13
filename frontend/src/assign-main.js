@@ -4,4 +4,5 @@ import './assign.css'
 import './shadcn.css'
 import './attio.css'
 import './assign-attio.css'
+import './compact.css'
 createApp(AssignApp).mount('#app')

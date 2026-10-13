@@ -1,0 +1,2 @@
+import {themeQuartz} from 'ag-grid-community'
+export const compactGridTheme=themeQuartz.withParams({accentColor:'var(--lotus-accent)',backgroundColor:'var(--lotus-surface)',foregroundColor:'var(--lotus-text)',headerBackgroundColor:'var(--lotus-sidebar)',headerTextColor:'var(--lotus-muted)',borderColor:'var(--lotus-border)',rowHoverColor:'var(--lotus-soft)',fontFamily:'Inter, system-ui, sans-serif',fontSize:12,rowHeight:36,headerHeight:34,spacing:4})

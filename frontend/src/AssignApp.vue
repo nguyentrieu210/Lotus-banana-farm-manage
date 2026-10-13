@@ -1,4 +1,6 @@
 <script setup>
+import WorkspaceBar from './components/WorkspaceBar.vue'
+import {sidebarCollapsed} from './workspace'
 import UiSelect from './components/ui/select/Select.vue'
 import {computed,onMounted,ref} from 'vue'
 import {Button as UiButton} from './components/ui/button'
@@ -62,10 +64,11 @@ async function submit(){
 }
 function reset(){items.value=[{location:'',work_type:'',qty:''}];invalidate()}
 onMounted(boot)
+const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...(session.value?.capabilities?.stock?[{id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'}]:[]),{id:'new-job',label:'Thêm công việc',run:add}])
 </script>
 <template>
- <main class="shell">
-  <a class="assignment-back" href="/lotus/today">← Quản lý</a>
+ <div class="assignment-workspace"><WorkspaceBar :user="session?.user" title="Giao việc nhanh" :actions="workspaceActions" :sidebar="false" /><main class="shell">
+
   <div v-if="busy&&!session" class="spinner">Đang mở dữ liệu nông trường…</div>
   <template v-else>
    <div v-if="error" class="error" role="alert">{{error}}</div>
@@ -114,7 +117,7 @@ onMounted(boot)
    </section>
    <div v-if="created" class="panel"><div class="panel-title">Giao việc thành công ✓</div><p class="hint">Đã lưu {{created.count}} dòng vào kế hoạch ngày. Muốn giao thêm thì bấm “Giao việc mới”.</p><UiButton class="add" @click="reset">Giao việc mới</UiButton></div>
   </template>
- </main>
+ </main></div>
  <footer v-if="session&&!created" class="bar"><div class="bar-inner">
   <UiButton variant="secondary" class="secondary" type="button" @click="reset">Làm lại</UiButton>
   <UiButton v-if="!preview" class="primary" type="button" :disabled="busy||!catalog" @click="showPreview">{{busy?'Đang kiểm tra…':'Xem trước giao việc'}}</UiButton>

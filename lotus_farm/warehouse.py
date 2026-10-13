@@ -110,7 +110,10 @@ def create_master(company, kind, values):
         doc = frappe.get_doc(dict(doctype='Item', item_code=_text(values.get('code'), 'Mã vật tư'),
                                   item_name=_text(values.get('name'), 'Tên vật tư'), item_group=group,
                                   stock_uom=uom.name, is_stock_item=1, include_item_in_manufacturing=0,
-                                  description=str(values.get('description') or '')[:2000])).insert()
+                                  description=str(values.get('description') or '')[:2000]))
+        from lotus_farm.warehouse_masters import set_minimum
+        set_minimum(doc,company,values)
+        doc.insert()
     return dict(name=doc.name, kind=kind)
 
 
@@ -148,15 +151,24 @@ def _simple_doc(doc):
 @frappe.whitelist()
 def document(doctype, name):
     doc = _stock_doc(doctype, name)
-    return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus,
+    return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
                 issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'), work_plan=doc.get('lotus_work_plan'),
+                basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
+                additional_total=flt(doc.get('total_additional_costs')),
+                incoming_total=flt(doc.get('total_incoming_value')),
+                additional_costs=[dict(description=row.description, amount=row.amount, expense_account=row.expense_account)
+                                  for row in (doc.get('additional_costs') or [])],
                 can_submit=doc.docstatus == 0 and doc.has_permission('submit') and _simple_doc(doc),
+                can_write=doc.docstatus == 0 and doc.has_permission('write') and _simple_doc(doc),
+                can_delete=doc.docstatus == 0 and doc.has_permission('delete') and _simple_doc(doc),
                 items=[dict(item=row.item_code, item_name=row.item_name, uom=row.get('stock_uom') or row.get('uom'),
                             qty=row.qty, source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
-                            area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), material_request=row.get('material_request'),
-                            rate=row.get('basic_rate') if doc.doctype == 'Stock Entry' else row.get('valuation_rate'))
+                            area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
+                            rate=row.get('basic_rate') if doc.doctype == 'Stock Entry' else row.get('valuation_rate'),
+                            basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
+                            valuation_rate=row.get('valuation_rate'), amount=row.get('amount'))
                        for row in doc.items])
 
 
@@ -172,8 +184,18 @@ def submit_document(doctype, name):
     return dict(name=doc.name, docstatus=doc.docstatus)
 
 
+@frappe.whitelist(methods=['POST'])
+def delete_draft(doctype,name,modified):
+    doc=_stock_doc(doctype,name);doc.check_permission('delete')
+    if doc.docstatus!=0 or not _simple_doc(doc):frappe.throw('Chỉ xóa phiếu nháp đơn giản chưa ghi sổ.')
+    if str(doc.modified)!=str(modified):frappe.throw('Phiếu đã thay đổi. Mở lại trước khi xóa.')
+    frappe.delete_doc(doctype,name)
+    return dict(name=name,deleted=True)
+
+
 @frappe.whitelist()
-def overview(company, warehouse=None, search=None, start=0):
+def overview(company, warehouse=None, search=None, start=0, column_filters=None):
+    from lotus_farm.table_filters import selections, matches, distinct
     _access()
     company_doc = _company(company)
     warehouses = frappe.get_list('Warehouse', filters={'company': company, 'is_group': 0, 'disabled': 0},
@@ -188,25 +210,36 @@ def overview(company, warehouse=None, search=None, start=0):
                       [ 'item_name', 'like', '%' + str(search)[:100] + '%']]
     start = max(0, cint(start))
     items = frappe.get_list('Item', filters=filters, or_filters=or_filters,
-                            fields=['name', 'item_name', 'item_group', 'stock_uom', 'has_batch_no', 'has_serial_no'],
-                            order_by='item_name, name', limit_start=start, limit_page_length=51)
-    visible_items = items[:50]
+                            fields=['name', 'item_name', 'item_group', 'stock_uom', 'has_batch_no', 'has_serial_no','lotus_minimum_stock'],
+                            order_by='item_name, name', limit_page_length=0)
     bins = frappe.get_list('Bin', filters={'warehouse': ['in', names or ['__none__']],
-                          'item_code': ['in', [i.name for i in visible_items] or ['__none__']]},
+                          'item_code': ['in', [i.name for i in items] or ['__none__']]},
                           fields=['item_code', 'warehouse', 'actual_qty', 'stock_value', 'valuation_rate'],
                           limit_page_length=0)
-    for item in visible_items:
+    for item in items:
         rows = [b for b in bins if b.item_code == item.name]
         item.actual_qty = sum(flt(b.actual_qty) for b in rows)
         item.stock_value = sum(flt(b.stock_value) for b in rows)
         item.valuation_rate = item.stock_value / item.actual_qty if item.actual_qty else 0
+        from lotus_farm.warehouse_masters import levels
+        minimums=levels(item)
+        item.minimum_stock=sum(flt(minimums.get(name)) for name in names)
+        per_warehouse={row.warehouse:flt(row.actual_qty) for row in rows}
+        item.shortage_qty=sum(max(0,flt(minimums.get(name))-per_warehouse.get(name,0)) for name in names if flt(minimums.get(name))>0)
+        item.pop('lotus_minimum_stock',None)
+        item.stock_status = 'Dưới tối thiểu' if item.shortage_qty>0 else 'Có tồn' if item.actual_qty > 0 else 'Tồn âm' if item.actual_qty < 0 else 'Chưa có tồn'
+    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status']
+    choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
+    selected = selections(column_filters, fields)
+    items = [item for item in items if matches(item, selected)]
+    visible_items = items[start:start+50]
     entries = frappe.get_list('Stock Entry', filters={'company': company},
                               fields=['name', 'stock_entry_type', 'posting_date', 'docstatus'],
                               order_by='modified desc', limit_page_length=20)
     reconciliations = (frappe.get_list('Stock Reconciliation', filters={'company': company},
                        fields=['name', 'posting_date', 'docstatus'], order_by='modified desc', limit_page_length=10)
                        if frappe.has_permission('Stock Reconciliation', 'read') else [])
-    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > 50,
+    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),
                 entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency)
 
 
@@ -220,15 +253,60 @@ def _number(value, label, allow_zero=False):
     return result
 
 
+@frappe.whitelist()
+def receipt_accounts(company):
+    _access()
+    company_doc = _company(company)
+    if not frappe.has_permission('Account', 'read'):
+        return dict(accounts=[], default_account=None)
+    accounts = frappe.get_list('Account', filters={'company': company, 'is_group': 0, 'disabled': 0, 'root_type': 'Expense'},
+                               fields=['name', 'account_name', 'account_currency'], order_by='account_name', limit_page_length=1000)
+    accounts = [a for a in accounts if (a.account_currency or company_doc.default_currency) == company_doc.default_currency]
+    default_account = company_doc.get('stock_adjustment_account')
+    return dict(accounts=accounts, default_account=default_account if any(a.name == default_account for a in accounts) else None)
+
+
+def _receipt_costs(company, costs, basic_total):
+    _number(basic_total, 'Tổng tiền vật tư', allow_zero=True)
+    rows = frappe.parse_json(costs) if costs else []
+    if not isinstance(rows, list) or len(rows) > 30:
+        frappe.throw('Chi phí nhập kho tối đa 30 dòng.')
+    if rows and basic_total <= 0:
+        frappe.throw('Nhập đơn giá vật tư trước khi phân bổ chi phí theo giá trị hàng.')
+    if not rows:
+        return []
+    company_doc = _company(company)
+    result = []
+    for row in rows:
+        if not isinstance(row, dict):
+            frappe.throw('Dòng chi phí không hợp lệ.')
+        amount = _number(row.get('amount'), 'Chi phí')
+        description = _text(row.get('description'), 'Khoản chi phí')
+        account = frappe.get_doc('Account', row.get('expense_account'))
+        account.check_permission('read')
+        if account.company != company or account.is_group or account.disabled or account.root_type != 'Expense':
+            frappe.throw('Tài khoản chi phí phải đang hoạt động, không phải nhóm và thuộc công ty của phiếu.')
+        currency = account.get('account_currency') or company_doc.default_currency
+        if currency != company_doc.default_currency:
+            frappe.throw('Chi phí nhập tại đây phải dùng tiền tệ của công ty.')
+        result.append(dict(expense_account=account.name, description=description, amount=amount,
+                           account_currency=currency, exchange_rate=1, base_amount=amount,
+                           cost_center=company_doc.get('cost_center')))
+    _number(sum(row['amount'] for row in result), 'Tổng chi phí', allow_zero=True)
+    return result
+
+
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, additional_costs=None,existing_name=None,base_modified=None):
     _access()
     _company(company)
     types = {'receipt': 'Material Receipt', 'issue': 'Material Issue', 'transfer': 'Material Transfer'}
     if kind not in (*types, 'count'):
         frappe.throw('Loại phiếu không hợp lệ.')
+    if additional_costs and kind != 'receipt':
+        frappe.throw('Chi phí bổ sung ở form này chỉ dành cho nhập kho.')
     dt = 'Stock Reconciliation' if kind == 'count' else 'Stock Entry'
-    if not frappe.has_permission(dt, 'create'):
+    if not frappe.has_permission(dt, 'write' if existing_name else 'create'):
         frappe.throw('Bạn chưa có quyền tạo ' + dt, frappe.PermissionError)
     if kind in ('issue', 'transfer'):
         _warehouse(source, company)
@@ -239,7 +317,14 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
     rows = frappe.parse_json(lines)
     if not isinstance(rows, list) or not 1 <= len(rows) <= 100:
         frappe.throw('Phiếu cần từ 1 đến 100 dòng vật tư.')
-    doc = frappe.new_doc(dt)
+    if existing_name:
+        doc=_stock_doc(dt,existing_name);doc.check_permission('write')
+        if doc.company!=company or doc.docstatus!=0 or not _simple_doc(doc):frappe.throw('Chỉ sửa phiếu nháp đơn giản của công ty đã chọn.')
+        if str(doc.modified)!=str(base_modified):frappe.throw('Phiếu đã thay đổi. Mở lại để lấy dữ liệu mới.')
+        doc.set('items',[])
+        if dt=='Stock Entry':doc.set('additional_costs',[])
+    else:
+        doc = frappe.new_doc(dt)
     doc.company = company
     doc.posting_date = getdate(posting_date)
     doc.set_posting_time = 1
@@ -259,6 +344,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             doc.lotus_work_plan = work_plan if issue_mode == 'Plan' else None
             doc.lotus_receiver = _text(receiver, 'Người nhận')
     seen = set()
+    basic_total = 0
     for row in rows:
         if not isinstance(row, dict):
             frappe.throw('Dòng vật tư không hợp lệ.')
@@ -274,8 +360,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             frappe.throw('Gộp các dòng cùng vật tư và cùng khu vực sử dụng.')
         seen.add(key)
         qty = _number(row.get('qty'), 'Số lượng', allow_zero=kind == 'count')
-        # No price input is required in the warehouse UI. Preserve an existing
-        # valuation where available; explicit zero is supported by native ERPNext.
+        # Existing clients can omit rates; new receipt forms send explicit prices.
         existing_rate = frappe.db.get_value('Bin', {'item_code': item.name, 'warehouse': target or source}, 'valuation_rate') or item.get('valuation_rate') or 0
         rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)
         values = dict(item_code=item.name, qty=qty, allow_zero_valuation_rate=1)
@@ -290,6 +375,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             if kind == 'receipt':
                 values['basic_rate'] = rate
                 values['set_basic_rate_manually'] = 1
+                basic_total += qty * rate
             if kind == 'issue':
                 values['lotus_usage_area'] = _text(row.get('area'), 'Khu vực / lô sử dụng')
                 if issue_mode == 'Plan':
@@ -299,5 +385,9 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                     values['material_request'] = row.get('material_request')
                     values['material_request_item'] = row.get('material_request_item')
         doc.append('items', values)
-    doc.insert()
+    if kind == 'receipt':
+        for cost in _receipt_costs(company, additional_costs, basic_total):
+            doc.append('additional_costs', cost)
+    if existing_name:doc.save()
+    else:doc.insert()
     return dict(name=doc.name, doctype=doc.doctype)

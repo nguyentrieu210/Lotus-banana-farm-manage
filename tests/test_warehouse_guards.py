@@ -84,6 +84,46 @@ class TestWarehouseGuards(unittest.TestCase):
             self.module.create_draft('Farm', 'transfer', '2026-10-13', [], source='Main', target='Main')
         self.frappe.new_doc.assert_not_called()
 
+    def test_receipt_costs_use_company_currency_and_checked_expense_account(self):
+        company = Mock(default_currency='VND')
+        company.get.return_value = 'Main - Farm'
+        self.module._company = Mock(return_value=company)
+        account = Mock(company='Farm', is_group=0, disabled=0, root_type='Expense')
+        account.name = 'Expense - Farm'
+        account.get.return_value = 'VND'
+        self.frappe.get_doc.return_value = account
+        result = self.module._receipt_costs('Farm', [dict(description='Transport', amount=200, expense_account=account.name)], 1000)
+        self.assertEqual(result[0]['base_amount'], 200)
+        self.assertEqual(result[0]['exchange_rate'], 1)
+        self.assertEqual(result[0]['cost_center'], 'Main - Farm')
+        account.check_permission.assert_called_once_with('read')
+
+    def test_receipt_costs_reject_invalid_money_and_zero_allocation_basis(self):
+        for amount in (-1, 0, 'nan', 'inf', 'invalid'):
+            with self.subTest(amount=amount), self.assertRaises(ValueError):
+                self.module._receipt_costs('Farm', [dict(description='Transport', amount=amount)], 1000)
+        with self.assertRaises(ValueError):
+            self.module._receipt_costs('Farm', [dict(description='Transport', amount=100)], 0)
+        with self.assertRaises(ValueError):
+            self.module._receipt_costs('Farm', [], float('inf'))
+
+    def test_receipt_costs_reject_cross_company_group_and_foreign_currency_accounts(self):
+        self.module._company = Mock(return_value=Mock(default_currency='VND'))
+        for company, group, disabled, root, currency in [('Other', 0, 0, 'Expense', 'VND'),
+                ('Farm', 1, 0, 'Expense', 'VND'), ('Farm', 0, 1, 'Expense', 'VND'),
+                ('Farm', 0, 0, 'Asset', 'VND'), ('Farm', 0, 0, 'Expense', 'USD')]:
+            account = Mock(company=company, is_group=group, disabled=disabled, root_type=root)
+            account.get.return_value = currency
+            self.frappe.get_doc.return_value = account
+            with self.subTest(company=company, currency=currency), self.assertRaises(ValueError):
+                self.module._receipt_costs('Farm', [dict(description='Transport', amount=100, expense_account='Expense')], 1000)
+
+    def test_issue_does_not_accept_receipt_costs(self):
+        self.module._company = Mock()
+        with self.assertRaises(ValueError):
+            self.module.create_draft('Farm', 'issue', '2026-10-13', [], additional_costs=[dict(amount=100)])
+        self.frappe.new_doc.assert_not_called()
+
     def test_master_creation_requires_create_permission(self):
         self.module._company = Mock()
         self.module._access = Mock()

@@ -23,6 +23,8 @@ def setup():
     create_roles()
     from lotus_farm.warehouse_issue import install_fields
     install_fields()
+    from lotus_farm.warehouse_masters import install_fields as install_minimum_fields
+    install_minimum_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(
