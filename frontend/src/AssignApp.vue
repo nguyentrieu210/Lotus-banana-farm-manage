@@ -2,6 +2,7 @@
 import {computed,onMounted,ref} from 'vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
+import {Badge as UiBadge} from './components/ui/badge'
 import {consoleAPI,call,setCSRF} from './api'
 import {cleanItems,placeOptions} from './assign-model'
 
@@ -103,7 +104,7 @@ onMounted(boot)
    </section>
    <button class="add" @click="add">＋ Thêm công việc / lô khác</button>
    <section v-if="preview" class="panel">
-    <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><span class="pill">Chưa giao</span></div>
+    <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><UiBadge variant="secondary" class="pill">Chưa giao</UiBadge></div>
     <p class="note">{{preview.note}}</p>
     <div v-for="(line,i) in preview.lines" :key="i" class="preview-row">
      <span><strong>{{line.work_name}}</strong><br/><span class="muted">Thửa {{line.plot_code}}</span></span>
