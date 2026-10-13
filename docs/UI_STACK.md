@@ -1,24 +1,38 @@
-# Giao diện Lotus Manage: shadcn-style + Attio + AG Grid
+# Lotus Manage UI: shadcn-vue + Attio-inspired CSS + AG Grid
 
-## Phân công rõ ràng
-- **Vue 3** dựng các màn hình; ERPNext/Frappe vẫn là nơi xử lý nghiệp vụ và quyền.
-- **Frappe UI** vẫn được giữ trong dự án; không thay API, session, CSRF hay đồng bộ offline trong lần đổi giao diện này.
-- **shadcn-vue-style local Button** tại `frontend/src/components/ui/Button.vue`: nút Vue có biến thể mặc định, phụ, viền và trạng thái đang chạy. Đây là component tự giữ trong repo, làm theo cách tổ chức của shadcn-vue; **chưa cài trọn bộ shadcn-vue CLI** hay chuyển dự án sang React/Tailwind v4.
-- **Attio-inspired CSS** tại `frontend/src/attio.css` và `assign-attio.css`: lấy cảm hứng từ bố cục sáng, gọn, viền mảnh, không sao chép mã nguồn hay hình ảnh Attio.
-- **AG Grid Community 36.2.0** tại `OpsList.vue`: thay bảng HTML trên màn hình quản lý. Lọc, sắp xếp và co giãn cột trong dữ liệu **của trang hiện tại**, không thay phân trang và bộ lọc phía máy chủ.
+## Thành phần
+- Vue 3 + Frappe/ERPNext: giữ nguyên API, quyền, CSRF, và nghiệp vụ.
+- **shadcn-vue (cấu hình Tailwind v3)**: đã thêm `frontend/components.json`, `jsconfig.json`, alias `@/`, `src/shadcn.css`, `src/lib/utils.js`, các dependency và phiên bản khóa trong npm.
+- Các component dưới `frontend/src/components/ui/`: `button`, `input`, `textarea`, `card`, `badge`, `skeleton`, `separator`. Các file component thuộc repo để Lotus chỉnh trực tiếp theo cách hoạt động của shadcn-vue.
+- **Button** thực sự được dùng tại `App.vue`, `SchemaForm.vue` và `AssignApp.vue`, thay thế nút tự viết phiên bản trước.
+- **Frappe UI** vẫn được giữ cho các phần tích hợp Frappe.
+- **AG Grid Community** giữ nhiệm vụ bảng trên máy tính; điện thoại dùng danh sách nút theo dòng.
+- Attio chỉ là phong cách thiết kế, không dùng SDK hoặc sao chép tài sản từ Attio.
 
-## Quy tắc khi làm tiếp
-- Màn hình văn phòng có nhiều cột: dùng `OpsList` / AG Grid. Khi muốn sửa ô, phải xây dựng riêng API lưu có kiểm tra quyền và đối soát; **chưa bật sửa hàng loạt**.
-- Điện thoại: danh sách chuyển thành các nút từng phiếu; thao tác giao việc nhanh vẫn là form riêng.
-- Form đặc thù (giao khoán, chấm công, vật tư) phải ưu tiên thao tác ít bước, không tự động mang bảng Excel vào điện thoại.
-- Các thành phần mới nên theo bộ màu và kích thước trong `attio.css`, không thêm một framework giao diện nữa.
+## Vì sao không nâng thẳng Tailwind 4?
+Repo đang dùng Tailwind 3.4 với preset từ Frappe UI. Tài liệu shadcn-vue chính thức hướng dẫn dùng CLI **1.0.3** cho Tailwind v3. Giữ v3 nhằm tránh thay đổi quá nhiều hệ thống một lúc.
 
-## Kiểm tra trước khi nhập vào main
+## Cách thêm component về sau
+Trong thư mục `frontend/`:
+```bash
+npm ci
+npm run ui:add -- dialog
+npm run ui:add -- select
+```
+Các lệnh dùng CLI `shadcn-vue@1.0.3` để giữ tương thích v3. Với các tên đã có, hãy so sánh thay đổi trước khi ghi đè code Lotus. **shadcn-vue không phải một npm package chứa sẵn toàn bộ component**: mỗi component được lưu dưới dạng source ở `src/components/ui/` khi thêm vào dự án. Các file nêu trên được đưa vào branch với cấu trúc tương thích; do môi trường hiện tại không truy cập được npm registry, chưa chạy CLI trực tiếp.
+
+## Quy tắc
+- Màn hình văn phòng nhiều cột: AG Grid, không dùng bảng HTML tràn lan.
+- Điện thoại: form và các dòng bấm lớn, không ép bảng nhiều cột.
+- Không bật sửa ô AG Grid trước khi có API kiểm tra quyền, chống lưu nhầm và đối soát.
+- Không đụng vào ERPNext Desk hay giao diện hiện trường HTML dự phòng trong đợt này.
+
+## Kiểm tra
 ```bash
 npm ci --prefix frontend
 npm run --prefix frontend build
 npm run --prefix frontend test
 ```
-Sau khi triển khai lên **một Frappe site thử nghiệm**, phải mở và thử: `/lotus/today`, danh sách công việc/vật tư/chấm công, mở một phiếu từ AG Grid, `/lotus/mobile`, `/lotus/giao-viec`; xem cả điện thoại và máy tính. Xác nhận quyền đọc/ghi và tính năng khi mất mạng không thay đổi.
+Workflow `.github/workflows/ui-build.yml` chạy ba bước này trên GitHub Actions. Sau đó kiểm tra trên một Frappe site thử nghiệm: `/lotus/today`, `/lotus/mobile`, `/lotus/giao-viec`, mở phiếu, lọc/sắp xếp, quyền, offline.
 
-**Trạng thái:** Sửa code giao diện, chưa được chứng nhận là đã chạy thành công trên site sản xuất. Không áp dụng tự động tới bản ERPNext Desk `/app` hoặc giao diện hiện trường dự phòng HTML.
+**Trạng thái:** đã cập nhật mã nguồn, dependencies, lockfile và cấu hình; chưa xác nhận build hoặc chạy trên site thật. PR giữ ở dạng nháp cho đến khi kiểm tra thành công.
