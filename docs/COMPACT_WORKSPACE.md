@@ -7,7 +7,7 @@ record lists. The sidebar and light/dark preference persist in local storage and
 update across tabs. The header exposes permitted navigation, command search
 (Ctrl/Cmd K, arrows, Enter, Escape), account information and logout.
 
-The red header spans the full main area, meets the dark sidebar without a gutter,
+The charcoal header spans the full main area, meets the matching sidebar without a gutter,
 and is 50 px tall. A divider separates the sidebar brand from navigation.
 Red accents distinguish primary actions and key values.
 Excel-style checkbox filters collect values before pagination from all records
@@ -22,6 +22,13 @@ Minimum stock is stored per warehouse in the hidden Item JSON field
 Shortage is calculated per warehouse before aggregation. The integration check
 creates temporary masters, verifies minimum stock and draft edits/deletion, and
 rolls back all changes.
+
+The document list remains separate from the item movement history. Movement
+history reads permission-scoped, non-cancelled Stock Ledger Entries, with
+company, warehouse, item/voucher search and date filters. Exact column filters
+apply before pagination. Transfers appear as one outgoing warehouse row and one
+incoming warehouse row. Quantities and balances use stock units. Drafts do not
+appear until posted. Supported stock vouchers open in the Lotus detail dialog.
 
 Stock receipt rates are per stock unit and in the selected company's currency.
 Additional expenses require positive amounts, descriptions and readable,

@@ -194,6 +194,55 @@ def delete_draft(doctype,name,modified):
 
 
 @frappe.whitelist()
+def movements(company, warehouse=None, search=None, from_date=None, to_date=None, start=0, column_filters=None):
+    from lotus_farm.table_filters import selections, matches, distinct
+    _access()
+    _company(company)
+    if not frappe.has_permission('Stock Ledger Entry', 'read'):
+        frappe.throw('Bạn chưa có quyền xem lịch sử nhập xuất.', frappe.PermissionError)
+    if from_date and to_date and getdate(from_date) > getdate(to_date):
+        frappe.throw('Từ ngày phải trước hoặc bằng đến ngày.')
+    warehouses = frappe.get_list('Warehouse', filters={'company': company, 'is_group': 0}, fields=['name'], limit_page_length=0)
+    names = [row.name for row in warehouses]
+    if warehouse:
+        doc = frappe.get_doc('Warehouse', warehouse)
+        doc.check_permission('read')
+        if doc.company != company or doc.is_group:
+            frappe.throw('Kho không thuộc công ty đã chọn.')
+        names = [warehouse] if warehouse in names else []
+    items = frappe.get_list('Item', fields=['name', 'item_name'], limit_page_length=0)
+    labels = {row.name: row.item_name for row in items}
+    filters = {'company': company, 'is_cancelled': 0, 'warehouse': ['in', names or ['__none__']],
+               'item_code': ['in', list(labels) or ['__none__']]}
+    if from_date and to_date:
+        filters['posting_date'] = ['between', [getdate(from_date), getdate(to_date)]]
+    elif from_date:
+        filters['posting_date'] = ['>=', getdate(from_date)]
+    elif to_date:
+        filters['posting_date'] = ['<=', getdate(to_date)]
+    rows = frappe.get_list('Stock Ledger Entry', filters=filters,
+        fields=['name', 'posting_date', 'posting_time', 'item_code', 'warehouse', 'voucher_type', 'voucher_no',
+                'actual_qty', 'qty_after_transaction', 'stock_uom', 'stock_value_difference'],
+        order_by='posting_datetime desc, creation desc, name desc', limit_page_length=0)
+    query = str(search or '').strip().casefold()[:100]
+    for row in rows:
+        row.item_name = labels[row.item_code]
+        row.in_qty = max(0, flt(row.actual_qty))
+        row.out_qty = max(0, -flt(row.actual_qty))
+        row.kind = 'Nhập' if row.actual_qty > 0 else 'Xuất' if row.actual_qty < 0 else 'Điều chỉnh giá trị'
+    if query:
+        rows = [row for row in rows if any(query in str(row.get(field) or '').casefold()
+                for field in ('item_code', 'item_name', 'voucher_no'))]
+    fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'in_qty', 'out_qty',
+              'qty_after_transaction', 'stock_uom', 'stock_value_difference']
+    choices = distinct(rows, fields, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
+    selected = selections(column_filters, fields)
+    rows = [row for row in rows if matches(row, selected)]
+    start = max(0, cint(start))
+    return dict(rows=rows[start:start+50], total_count=len(rows), has_more=len(rows)>start+50, filter_values=choices)
+
+
+@frappe.whitelist()
 def overview(company, warehouse=None, search=None, start=0, column_filters=None):
     from lotus_farm.table_filters import selections, matches, distinct
     _access()

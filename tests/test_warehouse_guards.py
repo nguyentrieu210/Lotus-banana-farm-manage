@@ -133,6 +133,34 @@ class TestWarehouseGuards(unittest.TestCase):
                 self.module.create_master('Farm', kind, {'name': 'Test'})
         self.frappe.get_doc.assert_not_called()
 
+    def test_movement_scope_filtering_and_pagination(self):
+        class Row(dict):
+            __getattr__ = dict.__getitem__
+            __setattr__ = dict.__setitem__
+        spec = importlib.util.spec_from_file_location('lotus_farm.table_filters', Path(__file__).parents[1] / 'lotus_farm/table_filters.py')
+        helper = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {'frappe': self.frappe}):
+            spec.loader.exec_module(helper)
+        self.module._access = Mock()
+        self.module._company = Mock()
+        rows = [Row(name=str(i),item_code='I',actual_qty=-2 if i==60 else 5,
+                    voucher_no='V-'+str(i),warehouse='W') for i in range(65)]
+        self.frappe.get_list = Mock(side_effect=[[Row(name='W')],[Row(name='I',item_name='Fertilizer')],rows])
+        with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}):
+            result=self.module.movements('Farm',from_date='2026-10-01',to_date='2026-10-13',column_filters={'out_qty':[2]})
+        self.assertEqual(result['total_count'],1)
+        self.assertEqual(result['rows'][0].voucher_no,'V-60')
+        self.assertEqual(result['rows'][0].in_qty,0)
+        query=self.frappe.get_list.call_args.kwargs
+        self.assertEqual(query['filters']['is_cancelled'],0)
+        self.assertEqual(query['filters']['warehouse'],['in',['W']])
+        self.assertEqual(query['filters']['item_code'],['in',['I']])
+        self.assertEqual(query['filters']['posting_date'],['between',['2026-10-01','2026-10-13']])
+        self.assertEqual(len(result['filter_values']['voucher_no']),65)
+        self.frappe.has_permission.return_value=False
+        with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}), self.assertRaises(ValueError):
+            self.module.movements('Farm')
+
     def test_document_read_rejects_unrelated_doctypes(self):
         self.module._access = Mock()
         with self.assertRaises(ValueError):
