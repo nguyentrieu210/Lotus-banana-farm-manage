@@ -63,13 +63,12 @@ function displayFirst(row){return displayValue(props.columns[0],row[props.column
           :default-col-def="defaultColDef"
           :dom-layout="rows.length>10?'normal':'autoHeight'"
           :animate-rows="true"
-          :suppress-row-click-selection="true"
           @row-clicked="onRowClicked"
           @cell-key-down="onCellKeyDown"
         />
       </div>
-      <div class="lotus-mobile-records" role="list">
-        <button v-for="(row,i) in rows" :key="row.name||row.line||i" type="button" role="listitem" class="lotus-mobile-record" @click="emit('open',row)">
+      <div class="lotus-mobile-records">
+        <button v-for="(row,i) in rows" :key="row.name||row.line||i" type="button" class="lotus-mobile-record" @click="emit('open',row)">
           <strong>{{displayFirst(row)}}</strong>
           <span v-for="column in columns.slice(1,4)" :key="column" class="lotus-mobile-record-detail"><span>{{label(column,labels[column])}}</span><span>{{displayValue(column,row[column])}}</span></span>
           <span aria-hidden="true" class="lotus-mobile-record-arrow">›</span>
