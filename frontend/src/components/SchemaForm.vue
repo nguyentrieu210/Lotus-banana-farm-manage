@@ -1,6 +1,6 @@
 <script setup>
 import {computed,reactive} from 'vue'
-import UiButton from './ui/Button.vue'
+import {Button as UiButton} from './ui/button'
 import {consoleAPI} from '../api'
 import {label,stateLabel} from '../labels'
 const props=defineProps({schema:Object,model:Object,readonly:Boolean,scope:Object,child:Boolean})
