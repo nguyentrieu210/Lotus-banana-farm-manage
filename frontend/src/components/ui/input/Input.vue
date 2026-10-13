@@ -1,5 +1,6 @@
 <script setup>
 import {cn} from '@/lib/utils'
+import {normalizeInputValue} from './model.js'
 
 defineOptions({inheritAttrs:false})
 const props=defineProps({
@@ -13,8 +14,7 @@ const emit=defineEmits(['update:modelValue'])
 function onInput(event){
   const raw=event.target.value
   // Preserve Vue's v-model.number behavior for quantities and unit prices.
-  const result=props.modelModifiers.number&&raw!=='' ? Number(raw) : raw
-  emit('update:modelValue',Number.isNaN(result)?raw:result)
+  emit('update:modelValue',normalizeInputValue(raw,props.modelModifiers.number))
 }
 </script>
 <template>
