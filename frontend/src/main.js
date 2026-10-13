@@ -4,6 +4,7 @@ import {createLotusRouter} from './router'
 import {setCSRF} from './api'
 import App from './App.vue'
 import './style.css'
+import './shadcn.css'
 import './attio.css'
 window.addEventListener('lotus-csrf',event=>setCSRF(event.detail))
 createApp(App).use(createPinia()).use(createLotusRouter()).mount('#app')
