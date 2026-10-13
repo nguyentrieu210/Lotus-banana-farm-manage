@@ -1,5 +1,6 @@
 <script setup>
 import {computed,onMounted,ref} from 'vue'
+import UiButton from './components/ui/Button.vue'
 import {consoleAPI,call,setCSRF} from './api'
 import {cleanItems,placeOptions} from './assign-model'
 
@@ -112,8 +113,8 @@ onMounted(boot)
   </template>
  </main>
  <footer v-if="session&&!created" class="bar"><div class="bar-inner">
-  <button class="secondary" type="button" @click="reset">Làm lại</button>
-  <button v-if="!preview" class="primary" type="button" :disabled="busy||!catalog" @click="showPreview">{{busy?'Đang kiểm tra…':'Xem trước giao việc'}}</button>
-  <button v-else class="primary" type="button" :disabled="submitting" @click="submit">{{submitting?'Đang giao…':'Xác nhận giao việc'}}</button>
+  <UiButton variant="secondary" class="secondary" type="button" @click="reset">Làm lại</UiButton>
+  <UiButton v-if="!preview" class="primary" type="button" :disabled="busy||!catalog" @click="showPreview">{{busy?'Đang kiểm tra…':'Xem trước giao việc'}}</UiButton>
+  <UiButton v-else class="primary" type="button" :disabled="submitting" @click="submit">{{submitting?'Đang giao…':'Xác nhận giao việc'}}</UiButton>
  </div></footer>
 </template>
