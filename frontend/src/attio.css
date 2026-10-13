@@ -85,7 +85,8 @@ input::placeholder{color:#98a1ae}
 .lotus-record-list{width:100%;min-width:0}
 .lotus-ag-grid-shell{min-width:0;width:100%;border:1px solid var(--lotus-border);border-radius:8px;overflow:hidden;background:#fff}
 .lotus-ag-grid-shell--scroll{height:520px}
-.lotus-ag-grid{width:100%;height:100%;font-size:12px}
+.lotus-ag-grid{width:100%;height:auto;font-size:12px}
+.lotus-ag-grid-shell--scroll .lotus-ag-grid{height:100%}
 .lotus-grid-cell{cursor:pointer}
 .lotus-grid-number{text-align:right;font-variant-numeric:tabular-nums}
 .lotus-grid-status{font-weight:600;color:#5763a1}
