@@ -1,5 +1,6 @@
 <script setup>
 import {computed} from 'vue'
+import {Card as UiCard} from './ui/card'
 import {mobileGroups} from '../mobile-menu'
 const props=defineProps({session:{type:Object,required:true},farm:{type:String,default:''},online:{type:Boolean,default:true},queued:{type:Number,default:0}})
 const emit=defineEmits(['select','outbox'])
@@ -9,12 +10,12 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
 
 <template>
  <section class="mobile-home" aria-label="Công việc của bạn">
-  <div class="mobile-welcome">
+  <UiCard class="mobile-welcome">
    <p class="eyebrow">LOTUS FARM · HÔM NAY</p>
    <h2>Bạn cần làm gì?</h2>
    <p>{{farmName}}</p>
    <button class="mobile-sync" type="button" @click="emit('outbox')">{{online?'Đã kết nối':'Đang mất mạng'}} · {{queued}} bản chờ gửi →</button>
-  </div>
+  </UiCard>
   <section v-for="group in groups" :key="group.title" class="mobile-action-section">
    <h3>{{group.title}}</h3>
    <div class="mobile-action-grid">
