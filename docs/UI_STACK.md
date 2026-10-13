@@ -35,4 +35,4 @@ npm run --prefix frontend test
 ```
 Workflow `.github/workflows/ui-build.yml` chạy ba bước này trên GitHub Actions. Sau đó kiểm tra trên một Frappe site thử nghiệm: `/lotus/today`, `/lotus/mobile`, `/lotus/giao-viec`, mở phiếu, lọc/sắp xếp, quyền, offline.
 
-**Trạng thái:** đã cập nhật mã nguồn, dependencies, lockfile và cấu hình; chưa xác nhận build hoặc chạy trên site thật. PR giữ ở dạng nháp cho đến khi kiểm tra thành công.
+**Trạng thái (13/10/2026):** Đã cập nhật mã nguồn, dependencies, lockfile, cấu hình; rà soát tĩnh 44 điều kiện đạt. GitHub Actions hiện trả failure ngay trước khi runner nhận job (`steps: []/null`, chưa chạy `npm ci`), vì vậy đây **không phải** bằng chứng code lỗi hay build đạt. Mở tab Actions trong PR để xem cảnh báo phía GitHub/tài khoản (có thể liên quan hạn mức hoặc runner). Khi Actions hoạt động, chạy ba lệnh bên trên và kiểm tra trên Frappe site thử nghiệm. PR phải giữ Draft cho tới khi build và UAT đạt.
