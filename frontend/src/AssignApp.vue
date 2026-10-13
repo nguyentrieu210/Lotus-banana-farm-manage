@@ -1,6 +1,6 @@
 <script setup>
 import {computed,onMounted,ref} from 'vue'
-import UiButton from './components/ui/Button.vue'
+import {Button as UiButton} from './components/ui/button'
 import {consoleAPI,call,setCSRF} from './api'
 import {cleanItems,placeOptions} from './assign-model'
 
