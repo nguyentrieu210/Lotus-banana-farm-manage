@@ -24,7 +24,7 @@ onUnmounted(()=>{window.removeEventListener('keydown',shortcut);document.removeE
 <template>
  <div class="workspace-bar" aria-label="Thanh điều hướng">
   <div class="workspace-left"><UiButton v-if="sidebar" variant="ghost" size="icon" :aria-label="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'" :aria-expanded="!sidebarCollapsed" @click="toggleSidebar">☰</UiButton>
-  <a class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus" title="Trang chủ Lotus Agritech"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a>
+  <a class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus" title="Trang chủ Lotus Agritech">⌂</a>
   <details ref="menu" class="workspace-nav"><summary>{{title}} <span aria-hidden="true">⌄</span></summary><div class="workspace-menu"><UiButton v-for="action in actions.filter(a=>a.navigation)" :key="action.id" variant="ghost" @click="choose(action)">{{action.label}}</UiButton></div></details></div>
   <UiButton class="workspace-search" variant="outline" @click="open"><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" :title="dark?'Giao diện sáng':'Giao diện tối'" @click="toggleTheme">{{dark?'☀':'☾'}}</UiButton>

@@ -180,6 +180,7 @@ def submit_document(doctype, name):
         frappe.throw('Phiếu có nghiệp vụ nâng cao hoặc lô/serial chưa được hỗ trợ ghi sổ tại màn hình này.')
     if doc.docstatus != 0:
         frappe.throw('Chỉ ghi sổ được phiếu nháp.')
+    if doctype=='Stock Entry':check_outbound_stock(doc)
     doc.submit()
     return dict(name=doc.name, docstatus=doc.docstatus)
 
@@ -276,7 +277,7 @@ def movements(company, warehouse=None, search=None, from_date=None, to_date=None
 
 
 @frappe.whitelist()
-def overview(company, warehouse=None, search=None, start=0, column_filters=None):
+def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None):
     from lotus_farm.table_filters import selections, matches, distinct
     _access()
     company_doc = _company(company)
@@ -310,7 +311,19 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None)
         item.shortage_qty=sum(max(0,flt(minimums.get(name))-per_warehouse.get(name,0)) for name in names if flt(minimums.get(name))>0)
         item.pop('lotus_minimum_stock',None)
         item.stock_status = 'Dưới tối thiểu' if item.shortage_qty>0 else 'Có tồn' if item.actual_qty > 0 else 'Tồn âm' if item.actual_qty < 0 else 'Chưa có tồn'
-    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status']
+    from lotus_farm.warehouse_planning import snapshot
+    coverage=snapshot(company,warehouse,from_date,to_date,include_stock=True)
+    unknown={r['item'] for r in coverage['unmapped']}
+    for item in items:
+        rows=[r for r in coverage['rows'] if r['item']==item.name]
+        for field,source in [('demand_qty','remaining_qty'),('available_qty','available_qty'),('demand_shortage_qty','shortage_qty'),('incoming_qty','incoming_qty'),('to_buy_qty','to_buy_qty')]:
+            item[field]=sum(flt(r.get(source)) for r in rows)
+        if coverage['warnings'] or item.name in unknown:
+            item.demand_qty=item.demand_shortage_qty=item.to_buy_qty=None
+            item.coverage_status='Chưa xác định kho' if item.name in unknown else 'Chưa đủ dữ liệu'
+        else:
+            item.coverage_status='Đủ hàng' if item.demand_shortage_qty<=0 else 'Chờ nhập' if item.to_buy_qty<=0 else 'Cần mua'
+    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
     choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     selected = selections(column_filters, fields)
     items = [item for item in items if matches(item, selected)]
@@ -322,7 +335,7 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None)
                        fields=['name', 'posting_date', 'docstatus'], order_by='modified desc', limit_page_length=10)
                        if frappe.has_permission('Stock Reconciliation', 'read') else [])
     return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),stocked_count=sum(1 for item in items if item.actual_qty>0),
-                entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency)
+                entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency,coverage_warnings=coverage['warnings'],demand_from=coverage['from_date'],demand_to=coverage['to_date'])
 
 
 def _number(value, label, allow_zero=False):
@@ -491,6 +504,25 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
     if kind == 'receipt':
         for cost in _receipt_costs(company, additional_costs, basic_total):
             doc.append('additional_costs', cost)
+    if kind in ('issue','transfer'):
+        check_outbound_stock(doc)
     if existing_name:doc.save()
     else:doc.insert()
     return dict(name=doc.name, doctype=doc.doctype)
+
+
+def check_outbound_stock(doc):
+    """Reject unsupported quantities before saving a simple warehouse draft."""
+    from collections import defaultdict
+    from erpnext.stock.utils import get_stock_balance
+    requested=defaultdict(float)
+    for row in doc.items:
+        if row.get('s_warehouse'):
+            requested[(row.item_code,row.s_warehouse)]+=flt(row.qty)*flt(row.conversion_factor or 1)
+    for (item,store),qty in sorted(requested.items()):
+        current=flt(frappe.db.get_value('Bin',{'item_code':item,'warehouse':store},'actual_qty'))
+        dated=flt(get_stock_balance(item,store,doc.posting_date,doc.posting_time))
+        available=min(current,dated)
+        if qty>available+0.000001:
+            label=frappe.db.get_value('Item',item,'item_name') or item
+            frappe.throw(f'{label} ({item}) tại {store}: tồn có thể xuất {available:g}, yêu cầu {qty:g}, thiếu {qty-available:g}. Không thể lưu phiếu xuất/chuyển kho khi thiếu hàng.')

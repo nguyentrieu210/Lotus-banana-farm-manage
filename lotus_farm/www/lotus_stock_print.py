@@ -17,6 +17,7 @@ def get_context(context,doctype=None,name=None):
     else:frappe.throw('Loại phiếu không hỗ trợ in.',frappe.PermissionError)
     doc=frappe.get_doc(dt,name);doc.check_permission('read');doc.check_permission('print')
     context.farm_label=frappe.get_cached_value('Company',info['company'],'lotus_print_farm') or ''
+    context.project_label=frappe.get_cached_value('Company',info['company'],'lotus_print_project') or ''
     from base64 import b64encode
     from pathlib import Path
     context.logo_data='data:image/jpeg;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech.jpg')).read_bytes()).decode('ascii')

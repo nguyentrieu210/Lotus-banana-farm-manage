@@ -10,7 +10,8 @@ from lotus_farm.warehouse_rules import coverage
 def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
     create_custom_fields({
-        'Company':[dict(fieldname='lotus_print_farm',label='Nông trường trên phiếu in',fieldtype='Data')],
+        'Company':[dict(fieldname='lotus_print_farm',label='Nông trường trên phiếu in',fieldtype='Data'),
+                   dict(fieldname='lotus_print_project',label='Dự án trên phiếu in',fieldtype='Data')],
         'Material Requirement':[dict(fieldname='lotus_warehouse',label='Kho cấp vật tư',fieldtype='Link',options='Warehouse',allow_on_submit=1)],
         'Material Request Item':[
             dict(fieldname='lotus_requirement',label='Nhu cầu kế hoạch gốc',fieldtype='Link',options='Material Requirement'),
@@ -163,7 +164,7 @@ def _supply(company,warehouses,to_date):
     return incoming,requested,late,warnings,orders,requests
 
 
-def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None):
+def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None,include_stock=False):
     from lotus_farm.warehouse import _access,_company,_warehouse
     _access();_company(company)
     begin=getdate(from_date or nowdate());end=getdate(to_date or begin)
@@ -189,6 +190,12 @@ def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None):
         bucket=grouped.setdefault(key,dict(item=r['item'],item_name=r['item_name'],uom=r['uom'],warehouse=r['warehouse'],sources=[],required=0,issued=0,own_drafts=0))
         bucket['required']+=r['required_qty'];bucket['issued']+=min(r['issued_qty'],r['required_qty']);bucket['own_drafts']+=r['draft_qty'];bucket['sources'].append(r)
     rows=[]
+    if include_stock:
+        labels={r.name:r for r in frappe.get_list('Item',fields=['name','item_name','stock_uom'],limit_page_length=0)}
+        for key in set(balances)|set(holds)|set(incoming)|set(requested):
+            if key[0] in labels:
+                item=labels[key[0]]
+                grouped.setdefault(key,dict(item=item.name,item_name=item.item_name,uom=item.stock_uom,warehouse=key[1],sources=[],required=0,issued=0,own_drafts=0))
     for key,b in grouped.items():
         balance=balances.get(key,{})
         result=coverage(b.pop('required'),b.pop('issued'),flt(balance.get('actual_qty')),flt(balance.get('reserved_stock')),holds.get(key,0),b.pop('own_drafts'),incoming[key],requested[key])

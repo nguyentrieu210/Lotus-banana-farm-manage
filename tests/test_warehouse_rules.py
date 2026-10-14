@@ -19,7 +19,7 @@ class TestCoverage(unittest.TestCase):
     def test_purchase_request_is_not_firm_supply(self):
         row=coverage(100,0,60,requested=40)
         self.assertEqual((row['shortage_qty'],row['to_buy_qty'],row['to_request_qty']),(40,40,0))
-        self.assertEqual(row['status'],'Đã đề nghị mua')
+        self.assertEqual(row['status'],'Cần mua')
 
     def test_pending_order_can_cover_shortage_but_not_current_stock(self):
         row=coverage(100,0,60,incoming=40)
@@ -31,7 +31,7 @@ class TestCoverage(unittest.TestCase):
         self.assertEqual((row['available_qty'],row['shortage_qty']),(-20,120))
 
     def test_fulfilled_requirement_does_not_require_another_issue(self):
-        self.assertEqual(coverage(100,100,0)['status'],'Đã cấp đủ')
+        self.assertEqual(coverage(100,100,0)['status'],'Đủ hàng')
         self.assertEqual(coverage(100,100,0,drafts=50)['to_buy_qty'],0)
 
     def test_returned_unused_stock_reopens_only_net_issued_quantity(self):

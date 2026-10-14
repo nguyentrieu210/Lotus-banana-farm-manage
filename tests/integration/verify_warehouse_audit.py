@@ -62,6 +62,9 @@ try:
  material=frappe.get_doc('Item',item);material.append('uoms',dict(uom='Box',conversion_factor=10));material.save()
  order=make('Purchase Order',company=company,supplier=supplier,transaction_date=today,schedule_date=today,currency='VND',items=[dict(item_code=item,qty=2,uom='Box',conversion_factor=10,rate=1000,warehouse=store,schedule_date=today)]);order.submit()
  row=coverage();assert row['incoming_qty']==20 and row['to_buy_qty']==10,row
+ main=w.overview(company,warehouse=store,search=item,from_date=today,to_date=today)['items'][0]
+ assert (main.demand_qty,main.available_qty,main.demand_shortage_qty,main.incoming_qty,main.to_buy_qty,main.coverage_status)==(80,50,30,20,10,'Cần mua'),main
+
  purchase=p.create_purchase_request(company,store,today,today,[item]);assert purchase['name'],purchase
  retry=p.create_purchase_request(company,store,today,today,[item]);assert not retry.get('name'),retry
  row=coverage();assert row['requested_qty']==10 and row['to_request_qty']==0 and row['to_buy_qty']==10,row
@@ -89,6 +92,11 @@ try:
  ledger=w.movements(company,warehouse=store,search=first['name'])
  assert ledger['total_count']==1 and ledger['rows'][0].opening_qty==80 and ledger['rows'][0].qty_after_transaction==90,ledger
  # The print template includes every item, keeps drafts marked, and escapes text.
+
+ for kind,lines in [('issue',[dict(item=item,qty=60,area='A'),dict(item=item,qty=40,area='B')]),('transfer',[dict(item=item,qty=100)])]:
+  try:w.create_draft(company,kind,today,lines,source=store,target=other,receiver='QA',notes='Over-stock check')
+  except frappe.ValidationError as exc:assert 'thiếu' in str(exc),str(exc)
+  else:raise AssertionError('Over-stock outbound draft accepted: '+kind)
  from lotus_farm.www.lotus_stock_print import get_context
  frappe.form_dict=frappe._dict(doctype='Stock Entry',name=received['name'])
  context=frappe._dict();get_context(context)

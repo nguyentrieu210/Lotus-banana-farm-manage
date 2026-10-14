@@ -32,3 +32,11 @@ Kiểm chứng: 80 unit test Python, 21 test frontend; build Vite. Script `tests
 Công ty đã đổi tên bằng frappe.rename_doc thành Lotus Agritech; giữ mã LT, toàn bộ liên kết và số tồn/giá trị tồn. Đầu bản in và PDF dùng tên công ty, dưới là Farm 222 Thuận Phú (Company.lotus_print_farm). Chạy lại toàn bộ integration sau đổi tên: đạt, PDF hợp lệ, rollback dữ liệu thử.
 
 Logo gốc do người dùng cung cấp được lưu ở public/images/lotus-agritech.jpg, dùng chung sidebar/header, màn giao việc, hiện trường dự phòng, favicon/PWA và phiếu in/PDF. PDF nhúng ảnh trực tiếp để không phụ thuộc tải ảnh có xác thực. Company.company_logo cũng được cập nhật. Bảng nhu cầu giữ tiêu đề cột ngay cả khi chưa có nhu cầu đã duyệt.
+
+Cập nhật đầu phiếu theo mẫu người dùng: logo bên trái, ba dòng chữ đen Times New Roman bên phải: CÔNG TY LOTUS AGRITECH / DỰ ÁN CHUỐI THUẬN PHÚ - ĐỒNG NAI / FARM 222. Dự án và farm được cấu hình trên Company. Thanh điều hướng dùng nút trang chủ, logo sidebar thu về 110 × 64 px.
+
+Bảng Tồn kho chính đã bổ sung khoảng ngày và 6 cột Nhu cầu / Tồn khả dụng / Thiếu / Đang chờ nhập / Cần mua thêm / Trạng thái. Trạng thái đáp ứng chỉ có Đủ hàng / Chờ nhập / Cần mua khi nguồn đã xác định, không dùng trạng thái phiếu; thiếu kho/quyền vẫn hiện chưa đủ dữ liệu. Khi chọn nhiều kho, phần thiếu/cần mua cộng từng kho, không lấy dư của kho khác để che thiếu kho cấp. Đề nghị mua chưa đặt không coi là hàng chờ nhập.
+
+Phiếu xuất/chuyển ở console bị chặn trước khi lưu nếu tổng lượng cùng vật tư/kho nguồn vượt tồn hiện tại hoặc tồn tại thời điểm phiếu. Phiếu nháp có sẵn được kiểm tra lại trước khi ghi sổ; ERPNext vẫn kiểm soát sổ kho và âm kho. Kiểm chứng native: vật tư tồn 0 không lưu được phiếu xuất, nháp cũ tồn 0 không ghi sổ được, chia nhiều dòng cùng vật tư cũng không vượt tồn; toàn bộ dữ liệu kiểm tra rollback.
+
+Logo sidebar dùng khung 140 × 48 px và object-fit để bỏ khoảng trắng trên/dưới khi hiển thị; giữ nguyên ảnh gốc. Logo đã bỏ khỏi thanh điều hướng.
