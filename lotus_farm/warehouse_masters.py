@@ -45,6 +45,9 @@ def read_master(company,kind,name):
     return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name'),code=doc.name,
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),minimum_levels={key:value for key,value in levels(doc).items() if key in permitted_warehouses} if kind=='item' else {},
+                default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
+                stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
+                ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
                 can_write=doc.has_permission('write'),can_delete=doc.has_permission('delete'))
 
 
@@ -81,8 +84,29 @@ def save_master(company,kind,name,modified,values):
 
 
 @frappe.whitelist(methods=['POST'])
-def delete_master(company,kind,name,modified):
+def delete_master(company,kind,name,modified,clear_defaults=False):
     doc=_doc(company,kind,name);doc.check_permission('delete')
     if str(doc.modified)!=str(modified):frappe.throw('Danh mục đã thay đổi. Mở lại trước khi xóa.')
-    frappe.delete_doc(doc.doctype,doc.name)
+    if kind=='warehouse':
+        if frappe.db.count('Stock Ledger Entry',{'warehouse':name}):
+            frappe.throw('Kho đã có lịch sử nhập xuất nên không thể xóa. Có thể ngừng sử dụng kho để giữ lịch sử.')
+        defaults=frappe.get_all('Item Default',filters={'default_warehouse':name},pluck='parent',limit_page_length=0)
+        stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==name
+        if (defaults or stock_default) and not frappe.utils.cint(clear_defaults):
+            frappe.throw('Kho đang là kho mặc định của '+str(len(set(defaults)))+' vật tư. Chọn gỡ kho mặc định trước khi xóa.')
+        if stock_default:
+            settings=frappe.get_single('Stock Settings');settings.check_permission('write')
+            settings.default_warehouse=None;settings.save()
+        if defaults:
+            # All changes remain in the same transaction as native deletion. Any
+            # remaining link blocker rolls back the default changes as well.
+            for code in sorted(set(defaults)):
+                item=frappe.get_doc('Item',code);item.check_permission('write')
+                for row in item.item_defaults:
+                    if row.default_warehouse==name:row.default_warehouse=None
+                item.save()
+    try:frappe.delete_doc(doc.doctype,doc.name)
+    except frappe.LinkExistsError as exc:
+        from frappe.utils import strip_html
+        frappe.throw('Danh mục còn được sử dụng: '+strip_html(str(exc.__context__ or exc)),frappe.LinkExistsError)
     return dict(name=name,deleted=True)

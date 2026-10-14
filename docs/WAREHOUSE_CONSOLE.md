@@ -12,13 +12,13 @@ Máy chủ chỉ nhận các trường được hỗ trợ, kiểm quyền creat
 
 ## Phiếu và tồn
 
-Danh sách vật tư hiển thị 50 dòng mỗi trang, gồm vật tư có tồn bằng 0. Các chỉ số vật tư chỉ tính trang đang xem. Tồn được tổng hợp trong các kho được phân quyền, theo đơn vị tồn kho của từng vật tư.
+Danh sách vật tư hiển thị 50 dòng mỗi trang, gồm vật tư có tồn bằng 0. Các chỉ số tổng hợp tính toàn bộ kết quả sau lọc; mỗi trang hiển thị tối đa 50 dòng. Tồn được tổng hợp trong các kho được phân quyền, theo đơn vị tồn kho của từng vật tư.
 
-Nhập, xuất dùng, chuyển kho tạo Stock Entry nháp. Kiểm kê tạo Stock Reconciliation nháp, chọn kiểm kê định kỳ hoặc tồn đầu kỳ. Số kiểm kê là số thực đếm, không phải chênh lệch. Giao diện không yêu cầu nhập đơn giá; định giá do hệ thống xử lý theo số đang có.
+Nhập, xuất dùng, chuyển kho tạo Stock Entry nháp. Kiểm kê tạo Stock Reconciliation nháp, chọn kiểm kê định kỳ hoặc tồn đầu kỳ. Số kiểm kê là số thực đếm, không phải chênh lệch. Nhập kho có đơn giá theo đơn vị tồn và các chi phí phân bổ. Kiểm kê thường giữ giá vốn tại thời điểm kiểm kê; tồn đầu kỳ có số lượng dương cần đơn giá lớn hơn 0.
 
 Bấm mã phiếu để xem chi tiết ngay trong Lotus. Người có quyền submit xác nhận đã kiểm tra rồi bấm Ghi sổ phiếu; máy chủ chạy submit chuẩn cùng các validation, sổ kho và kế toán của ERPNext. Chỉ các phiếu nhập, xuất, chuyển, kiểm kê thông thường được ghi sổ qua màn hình này. Phiếu đóng gói, có lô/serial và nghiệp vụ nâng cao chỉ xem, không được ghi sổ qua form đơn giản. Không ghi trực tiếp Bin, Stock Ledger Entry hoặc GL Entry.
 
-Phiếu gần đây gồm 20 Stock Entry và 10 Stock Reconciliation của công ty, độc lập với bộ lọc kho. Chưa hỗ trợ sửa hoặc hủy phiếu tại đây.
+Danh sách phiếu lấy đầy đủ Stock Entry, Stock Reconciliation và Purchase Receipt được phân quyền, theo công ty/kho/ngày/mã rồi mới phân trang. Có sửa/xóa phiếu kho nháp, kiểm tra phiên bản và liên kết. Phiếu đã ghi sổ được giữ lịch sử; không xóa cưỡng bức. Chi tiết phiếu có In phiếu, bản in A4 và tải PDF riêng trong Lotus.
 
 Cần quyền đọc Company, Warehouse, Item, Bin và Stock Entry; danh mục chọn cần quyền đọc Item Group/UOM. Tạo danh mục và phiếu cần quyền create; ghi sổ cần quyền submit của loại tài liệu. Công ty dùng nhiều farm cần cấp User Permission trên Warehouse; không tự suy ra kho từ Farm.
 
@@ -36,6 +36,6 @@ Form Xuất dùng có Thủ công, Theo kế hoạch đã duyệt, Theo yêu c�
 
 Số lượng nguồn được đổi sang đơn vị tồn kho; phần còn cấp trừ các dòng Stock Entry nháp và đã nộp, bỏ phiếu đã hủy. Lưu nháp giữ phần cấp, ghi sổ mới trừ tồn. Máy chủ khóa nguồn và kiểm lại item, công ty, trạng thái, dòng nguồn, khu vực và giới hạn khi lưu/ghi sổ. Chỉ phần có qty>0 trong form được đưa vào phiếu.
 
-Không yêu cầu người kho nhập đơn giá. Hệ thống giữ giá trị định giá đang có theo kho/mặt hàng; nếu chưa có giá trị thì dùng khả năng định giá bằng 0 của ERPNext, không tự tạo giá giả. Các trường giá trị không hiển thị trong màn hình kho đơn giản.
+Xuất/chuyển kho dùng giá vốn ERPNext. Nhập kho có đơn giá và chi phí; giá trị hiện trong chi tiết và bản in. Nhu cầu & mua vật tư tách tổng nhu cầu còn cấp, tồn khả dụng, thiếu, đơn mua chờ nhận và cần mua. Tồn tối thiểu là cảnh báo dự phòng riêng. Xem WAREHOUSE_AUDIT.md để biết cách tính giữ chỗ, cấp ròng sau thu hồi và tránh cộng trùng nguồn.
 
 Triển khai cần chạy `bench --site <site> execute lotus_farm.warehouse_issue.install_fields` hoặc migrate để tạo các Custom Field liên kết nguồn, người nhận và khu vực sử dụng. Hook validate/before_submit giữ giới hạn nguồn. Nguồn đã nộp là mốc đã duyệt trong luồng hiện tại; nếu cấu hình Workflow riêng thì vẫn phải hoàn tất submit trước khi cấp kho.

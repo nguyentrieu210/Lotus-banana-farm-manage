@@ -73,15 +73,18 @@ def material_availability(requirement, warehouse):
     if not frappe.has_permission('Stock Ledger Entry','read'):
         frappe.throw('Stock Ledger read permission is required.',frappe.PermissionError)
     rows=[]
+    from lotus_farm.warehouse_planning import source_allocations,_draft_holds,stock_quantity
+    from lotus_farm.warehouse_rules import coverage
+    holds=_draft_holds(doc.company,{warehouse})
     for row in doc.lines:
         item=frappe.get_doc('Item',row.item);item.check_permission('read')
         data=frappe.db.get_value('Bin',{'item_code':row.item,'warehouse':warehouse},['actual_qty','reserved_stock','stock_uom'],as_dict=True) or {}
         # Firm physical reservations only. Show planning reservations separately in ERPNext.
         actual=flt(data.get('actual_qty'));reserved=flt(data.get('reserved_stock'))
-        available=max(actual-reserved,0)
-        rows.append(dict(item=row.item,uom=row.uom,required_qty=row.required_qty,
-                         actual_qty=actual,reserved_stock=reserved,available_qty=available,
-                         shortage_qty=max(flt(row.required_qty)-available,0)))
+        allocations=source_allocations('Material Requirement',doc.name,row.name)
+        amounts=coverage(stock_quantity(item,row.uom,row.required_qty),allocations['posted'],actual,reserved,
+            holds.get((row.item,warehouse),0),allocations['draft'])
+        rows.append(dict(item=row.item,uom=item.stock_uom,reserved_stock=reserved,**amounts))
     return dict(requirement=doc.name,warehouse=warehouse,rows=rows)
 
 
@@ -100,18 +103,14 @@ def create_material_request(requirement, warehouse, schedule_date):
         existing.check_permission('read')
         if existing.docstatus!=2:
             return dict(material_request=existing.name,docstatus=existing.docstatus)
-    values=material_availability(doc.name,warehouse)
-    shortages=[r for r in values['rows'] if r['shortage_qty']>0]
-    if not shortages:
-        frappe.throw('No physical shortage for this Warehouse.')
     if getdate(schedule_date)<getdate(doc.posting_date):
         frappe.throw('Material request date cannot precede the work date.')
-    request=frappe.get_doc(dict(doctype='Material Request',company=doc.company,material_request_type='Purchase',
-        transaction_date=doc.posting_date,schedule_date=schedule_date,
-        items=[dict(item_code=r['item'],qty=r['shortage_qty'],uom=r['uom'],stock_uom=r['uom'],
-                    conversion_factor=1,warehouse=warehouse,schedule_date=schedule_date) for r in shortages])).insert()
-    frappe.db.set_value('Material Requirement',doc.name,'material_request',request.name)
-    return dict(material_request=request.name,docstatus=request.docstatus)
+    from lotus_farm.warehouse_planning import create_purchase_request,assign_warehouse
+    if not doc.get('lotus_warehouse'):
+        assign_warehouse(doc.company,doc.name,warehouse)
+    result=create_purchase_request(doc.company,warehouse,doc.posting_date,schedule_date,[r.item for r in doc.lines])
+    if result.get('name'):frappe.db.set_value('Material Requirement',doc.name,'material_request',result['name'])
+    return dict(material_request=result.get('name'),docstatus=result.get('docstatus'),note=result.get('note'))
 
 
 @frappe.whitelist()

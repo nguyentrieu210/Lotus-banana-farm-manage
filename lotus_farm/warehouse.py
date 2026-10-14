@@ -194,6 +194,38 @@ def delete_draft(doctype,name,modified):
 
 
 @frappe.whitelist()
+def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None):
+    from lotus_farm.table_filters import distinct,selections,matches
+    _access();_company(company)
+    stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
+    allowed=set(stores)
+    if warehouse:
+        record=frappe.get_doc('Warehouse',warehouse);record.check_permission('read')
+        if record.company!=company or record.is_group:frappe.throw('Kho không thuộc công ty.')
+    if from_date and to_date and getdate(from_date)>getdate(to_date):frappe.throw('Khoảng ngày không hợp lệ.')
+    filters={'company':company}
+    if from_date and to_date:filters['posting_date']=['between',[getdate(from_date),getdate(to_date)]]
+    elif from_date:filters['posting_date']=['>=',getdate(from_date)]
+    elif to_date:filters['posting_date']=['<=',getdate(to_date)]
+    kinds={'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói'}
+    rows=[]
+    for dt in ('Stock Entry','Stock Reconciliation','Purchase Receipt'):
+        if not frappe.has_permission(dt,'read'):continue
+        for entry in frappe.get_list(dt,filters=filters,fields=['name','posting_date','posting_time','docstatus','modified'],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0):
+            if search and str(search).casefold() not in entry.name.casefold():continue
+            doc=frappe.get_doc(dt,entry.name)
+            names={r.get(f) for r in doc.items for f in ('s_warehouse','t_warehouse','warehouse') if r.get(f)}
+            if not names.issubset(allowed) or (warehouse and warehouse not in names):continue
+            entry.doctype=dt;entry.kind=kinds.get(doc.get('stock_entry_type'),doc.get('stock_entry_type')) if dt=='Stock Entry' else ('Nhập mua' if dt=='Purchase Receipt' else 'Kiểm kê')
+            entry.warehouses=' · '.join(sorted(names));rows.append(entry)
+    rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
+    fields=['name','kind','posting_date','docstatus','warehouses']
+    choices=distinct(rows,fields);selected=selections(column_filters,fields)
+    rows=[r for r in rows if matches(r,selected)];start=max(0,cint(start))
+    return dict(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50,filter_values=choices)
+
+
+@frappe.whitelist()
 def movements(company, warehouse=None, search=None, from_date=None, to_date=None, start=0, column_filters=None):
     from lotus_farm.table_filters import selections, matches, distinct
     _access()
@@ -229,12 +261,13 @@ def movements(company, warehouse=None, search=None, from_date=None, to_date=None
         row.item_name = labels[row.item_code]
         row.in_qty = max(0, flt(row.actual_qty))
         row.out_qty = max(0, -flt(row.actual_qty))
+        row.opening_qty = flt(row.qty_after_transaction)-flt(row.actual_qty)
         row.kind = 'Nhập' if row.actual_qty > 0 else 'Xuất' if row.actual_qty < 0 else 'Điều chỉnh giá trị'
     if query:
         rows = [row for row in rows if any(query in str(row.get(field) or '').casefold()
                 for field in ('item_code', 'item_name', 'voucher_no'))]
     fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'in_qty', 'out_qty',
-              'qty_after_transaction', 'stock_uom', 'stock_value_difference']
+              'opening_qty', 'qty_after_transaction', 'stock_uom', 'stock_value_difference']
     choices = distinct(rows, fields, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     selected = selections(column_filters, fields)
     rows = [row for row in rows if matches(row, selected)]
@@ -288,7 +321,7 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None)
     reconciliations = (frappe.get_list('Stock Reconciliation', filters={'company': company},
                        fields=['name', 'posting_date', 'docstatus'], order_by='modified desc', limit_page_length=10)
                        if frappe.has_permission('Stock Reconciliation', 'read') else [])
-    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),
+    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),stocked_count=sum(1 for item in items if item.actual_qty>0),
                 entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency)
 
 
@@ -346,7 +379,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, additional_costs=None,existing_name=None,base_modified=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None):
     _access()
     _company(company)
     types = {'receipt': 'Material Receipt', 'issue': 'Material Issue', 'transfer': 'Material Transfer'}
@@ -355,6 +388,19 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
     if additional_costs and kind != 'receipt':
         frappe.throw('Chi phí bổ sung ở form này chỉ dành cho nhập kho.')
     dt = 'Stock Reconciliation' if kind == 'count' else 'Stock Entry'
+    client_key=payload_hash=None
+    if client_event_id and not existing_name:
+        import hashlib,json
+        from lotus_farm.controls import lock
+        event=_text(client_event_id,'Mã yêu cầu')
+        client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver=receiver,additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        lock('Company',company)
+        existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
+        if existing:
+            doc=_stock_doc(dt,existing.name)
+            if existing.lotus_payload_hash!=payload_hash:frappe.throw('Yêu cầu này đã tạo phiếu '+doc.name+'. Mở lại phiếu để sửa, không gửi phiếu mới.')
+            return dict(name=doc.name,doctype=dt,docstatus=doc.docstatus)
     if not frappe.has_permission(dt, 'write' if existing_name else 'create'):
         frappe.throw('Bạn chưa có quyền tạo ' + dt, frappe.PermissionError)
     if kind in ('issue', 'transfer'):
@@ -369,12 +415,14 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
     if existing_name:
         doc=_stock_doc(dt,existing_name);doc.check_permission('write')
         if doc.company!=company or doc.docstatus!=0 or not _simple_doc(doc):frappe.throw('Chỉ sửa phiếu nháp đơn giản của công ty đã chọn.')
+        if dt=='Stock Entry' and doc.stock_entry_type!=types[kind]:frappe.throw('Không đổi nghiệp vụ của phiếu đã tạo. Tạo phiếu mới nếu cần.')
         if str(doc.modified)!=str(base_modified):frappe.throw('Phiếu đã thay đổi. Mở lại để lấy dữ liệu mới.')
         doc.set('items',[])
         if dt=='Stock Entry':doc.set('additional_costs',[])
     else:
         doc = frappe.new_doc(dt)
     doc.company = company
+    if client_key:doc.lotus_client_key=client_key;doc.lotus_payload_hash=payload_hash
     doc.posting_date = getdate(posting_date)
     doc.set_posting_time = 1
     if kind == 'count':
@@ -414,7 +462,13 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)
         values = dict(item_code=item.name, qty=qty, allow_zero_valuation_rate=1)
         if kind == 'count':
-            values.update(warehouse=target, valuation_rate=rate)
+            if count_purpose=='Stock Reconciliation':
+                from erpnext.stock.utils import get_stock_balance
+                _,rate=get_stock_balance(item.name,target,getdate(posting_date),with_valuation_rate=True)
+                values.update(warehouse=target,valuation_rate=flt(rate))
+            else:
+                if qty>0 and rate<=0:frappe.throw('Tồn đầu kỳ cần đơn giá lớn hơn 0 cho '+item.name)
+                values.update(warehouse=target,valuation_rate=rate)
         else:
             values.update(uom=item.stock_uom, stock_uom=item.stock_uom, conversion_factor=1)
             if kind in ('issue', 'transfer'):

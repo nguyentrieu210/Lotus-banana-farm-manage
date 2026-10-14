@@ -1,6 +1,10 @@
 :root{--lotus-control:32px;--lotus-row:36px;--lotus-space:12px;--lotus-accent:#c43224;--lotus-accent-soft:#fff0ed;--primary:6 70% 45%;--primary-foreground:0 0% 100%}
 .dark{--lotus-page:#151922;--lotus-surface:#1c222e;--lotus-sidebar:#191f2a;--lotus-text:#e2e7f0;--lotus-muted:#a1adbf;--lotus-border:#343d4d;--lotus-accent:#a3b2ff;--lotus-soft:#252e40;--background:222 23% 11%;--foreground:220 32% 92%;--card:222 24% 15%;--card-foreground:220 32% 92%;--popover:222 24% 15%;--popover-foreground:220 32% 92%;--primary:230 80% 80%;--primary-foreground:222 23% 11%;--secondary:222 24% 20%;--secondary-foreground:220 32% 92%;--muted:222 24% 20%;--muted-foreground:218 20% 72%;--accent:224 30% 22%;--accent-foreground:230 80% 85%;--border:220 20% 26%;--input:220 20% 30%;--ring:230 80% 80%}
 body{background:var(--lotus-page);color:var(--lotus-text)}
+:root{--lotus-table-header:#fde4df;--lotus-table-heading:#8f2c20}
+.dark{--lotus-table-header:#432a2c;--lotus-table-heading:#ffd4cd}
+.excel-header .excel-sort,.excel-header .excel-trigger{color:var(--lotus-table-heading)}
+.app-shell th,.stock-shell th,.assignment-workspace th{background:var(--lotus-table-header);color:var(--lotus-table-heading)}
 .app-shell main,.stock-shell .stock-main{padding:0 10px 8px;max-width:none}
 .app-shell .sidebar,.stock-shell .stock-sidebar{width:208px;padding:16px 10px;gap:12px}
 .stock-shell .stock-main{margin-left:208px;width:calc(100% - 208px)}
@@ -103,6 +107,14 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .movement-filters label{display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap}
 .movement-filters input{height:32px;min-height:32px;padding:5px 8px}
 .movement-filters>span{margin-left:auto}
+.warehouse-planning .stock-issue-tabs{margin:0 0 8px}
+.planning-search{display:flex;gap:6px;align-items:center;margin-left:auto}
+.planning-search input{min-width:140px;width:190px}
+.planning-unmapped{border:1px solid var(--lotus-accent);background:var(--lotus-accent-soft);padding:10px;border-radius:6px;margin-bottom:8px;font-size:12px}
+.planning-unmapped>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.planning-unmapped>div>span{flex:1 1 240px}
+.planning-unmapped select{min-width:140px;max-width:220px;padding:6px}
+.planning-quantity-summary{margin-top:12px!important;gap:14px}
 .lotus-shortage-row{background:var(--lotus-accent-soft)!important;color:var(--lotus-accent)!important}
 .lotus-item-cell .name{font-weight:600}
 .excel-trigger.active{background:var(--lotus-accent-soft);color:var(--lotus-accent)}

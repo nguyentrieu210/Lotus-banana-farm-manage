@@ -144,13 +144,14 @@ class TestWarehouseGuards(unittest.TestCase):
         self.module._access = Mock()
         self.module._company = Mock()
         rows = [Row(name=str(i),item_code='I',actual_qty=-2 if i==60 else 5,
-                    voucher_no='V-'+str(i),warehouse='W') for i in range(65)]
+                    voucher_no='V-'+str(i),warehouse='W',qty_after_transaction=100) for i in range(65)]
         self.frappe.get_list = Mock(side_effect=[[Row(name='W')],[Row(name='I',item_name='Fertilizer')],rows])
         with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}):
             result=self.module.movements('Farm',from_date='2026-10-01',to_date='2026-10-13',column_filters={'out_qty':[2]})
         self.assertEqual(result['total_count'],1)
         self.assertEqual(result['rows'][0].voucher_no,'V-60')
         self.assertEqual(result['rows'][0].in_qty,0)
+        self.assertEqual(result['rows'][0].opening_qty,102)
         query=self.frappe.get_list.call_args.kwargs
         self.assertEqual(query['filters']['is_cancelled'],0)
         self.assertEqual(query['filters']['warehouse'],['in',['W']])

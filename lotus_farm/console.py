@@ -304,11 +304,11 @@ def work_state_guard(doc,method=None):
 
 @frappe.whitelist()
 def material_status(farm,posting_date,block=None,plot=None,cycle=None):
-    from lotus_farm.reporting import scope,records
-    from lotus_farm.daily_api import material_availability
+    from lotus_farm.reporting import records
+    from lotus_farm.warehouse_planning import snapshot
     selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle)
-    warehouses=records('Warehouse Mapping',{'farm':farm,'enabled':1,'warehouse_role':'Field Store'},['warehouse'])
-    rows=[];demand={};usage=[]
+    result=snapshot(frappe.db.get_value('Farm',farm,'company'),from_date=posting_date,to_date=posting_date,farm=farm)
+    usage=[]
     for req in records('Material Requirement',{**land_filters(frappe.get_meta('Material Requirement'),selected),'posting_date':posting_date,'docstatus':1},['name','work_plan_line']):
         doc=frappe.get_doc('Material Requirement',req.name)
         actuals=records('Material Consumption',{'material_requirement':req.name,'docstatus':1},['item','consumed_qty'])
@@ -318,22 +318,23 @@ def material_status(farm,posting_date,block=None,plot=None,cycle=None):
         line=frappe.db.get_value('Daily Work Plan Line',req.work_plan_line,['planned_qty'],as_dict=True)
         ratio=flt(result[0].completed_qty)/flt(line.planned_qty) if result and line and line.planned_qty else None
         for r in doc.lines:
-            outstanding=max(flt(r.required_qty)-used.get(r.item,0),0)
-            key=(r.item,r.uom);demand[key]=demand.get(key,0)+outstanding
             expected=flt(r.required_qty)*ratio if ratio is not None else None
             usage.append(dict(requirement=doc.name,item=r.item,uom=r.uom,planned_qty=r.required_qty,used_qty=used.get(r.item,0),expected_for_actual=expected,variance_qty=used.get(r.item,0)-expected if expected is not None else None))
-    for (item,uom),qty in demand.items():
-        actual=reserved=0
-        if warehouses and not frappe.has_permission('Stock Ledger Entry','read'):frappe.throw('Stock Ledger read permission is required.',frappe.PermissionError)
-        for warehouse in {w.warehouse for w in warehouses}:
-            from lotus_farm.controls import validate_warehouse
-            validate_warehouse(warehouse,frappe.db.get_value('Farm',farm,'company'))
-            frappe.get_doc('Item',item).check_permission('read')
-            b=frappe.db.get_value('Bin',{'item_code':item,'warehouse':warehouse},['actual_qty','reserved_stock'],as_dict=True) or {}
-            actual+=flt(b.get('actual_qty'));reserved+=flt(b.get('reserved_stock'))
-        available=max(actual-reserved,0) if warehouses else None
-        rows.append(dict(item=item,uom=uom,required_qty=qty,actual_qty=actual if warehouses else None,available_qty=available,shortage_qty=max(qty-available,0) if available is not None else None))
-    return dict(rows=rows,usage=usage,warehouses=[w.warehouse for w in warehouses],note='Map Field Store warehouses to calculate physical shortage.' if not warehouses else '')
+    # Scope the sources before recomputing coverage; filtering an aggregated row
+    # afterwards would leave demand from other plots in the selected plot.
+    filtered=[]
+    for row in result['rows']:
+        matching=[s for s in row['sources'] if any(u['requirement']==s['name'] for u in usage)]
+        if not matching:continue
+        from lotus_farm.warehouse_rules import coverage
+        amounts=coverage(sum(s['required_qty'] for s in matching),sum(min(s['issued_qty'],s['required_qty']) for s in matching),
+            row['actual_qty'],row['native_reserved_qty'],row['draft_qty'],sum(s['draft_qty'] for s in matching),row['incoming_qty'],row['requested_qty'])
+        amounts.update(item=row['item'],uom=row['uom'],warehouse=row['warehouse'])
+        if result['warnings']:amounts['shortage_qty']=None
+        filtered.append(amounts)
+    missing=[dict(item=s['item'],uom=s['uom'],required_qty=s['remaining_qty'],actual_qty=None,available_qty=None,shortage_qty=None) for s in result['unmapped'] if any(u['requirement']==s['name'] for u in usage)]
+    return dict(rows=filtered+missing,usage=usage,warehouses=sorted({r['warehouse'] for r in filtered}),
+        note='; '.join(result['warnings']+(['Chọn kho cấp cho nhu cầu chưa xác định kho.'] if missing else [])))
 
 
 @frappe.whitelist()

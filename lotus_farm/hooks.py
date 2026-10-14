@@ -139,12 +139,14 @@ for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
     _old = doc_events[_name].get('validate',[])
     if isinstance(_old,str):_old=[_old]
     doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
-website_route_rules = [{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+website_route_rules = [{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
+doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.validate_requirement_warehouse','before_update_after_submit':'lotus_farm.warehouse_planning.validate_requirement_warehouse'}
+doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
 
 has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'

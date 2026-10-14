@@ -61,26 +61,52 @@ def source_line(doctype, name, line_name, company, plan=None):
         return dict(item=item.name, item_name=item.item_name, uom=item.stock_uom,
                     required_qty=flt(row.required_qty) * factor,
                     area=' / '.join(filter(None, [doc.farm_block, doc.farm_plot])),
-                    requirement=doc.name, requirement_line=row.name, plan=parent.name)
+                    requirement=doc.name, requirement_line=row.name, plan=parent.name,warehouse=doc.get('lotus_warehouse'))
     row = next((r for r in doc.items if r.name == line_name), None)
     if not row:
         frappe.throw('Dòng yêu cầu không hợp lệ.')
     item = frappe.get_doc('Item', row.item_code)
     item.check_permission('read')
+    if row.get('lotus_requirement'):
+        info=source_line('Material Requirement',row.lotus_requirement,row.lotus_requirement_line,company)
+        if info['item']!=item.name:frappe.throw('Vật tư không khớp nhu cầu kế hoạch gốc.')
+        info.update(material_request=doc.name,material_request_item=row.name)
+        return info
     return dict(item=item.name, item_name=item.item_name, uom=item.stock_uom,
                 required_qty=flt(row.stock_qty), area=row.get('lotus_usage_area') or '',
-                material_request=doc.name, material_request_item=row.name)
+                material_request=doc.name, material_request_item=row.name,warehouse=row.warehouse)
 
 
-def allocated(doctype, name, line_name, exclude=None):
+def allocation_totals(doctype, name, line_name, exclude=None):
     # The source has already been permission-checked. Count all allocations,
     # including those made by another stock user, without exposing their documents.
+    if doctype not in ('Material Requirement','Material Request'):frappe.throw('Nguồn cấp không hợp lệ.')
+    if doctype=='Material Request':
+        source=frappe.get_doc(doctype,name)
+        row=next((r for r in source.items if r.name==line_name),None)
+        if row and row.get('lotus_requirement'):
+            return allocation_totals('Material Requirement',row.lotus_requirement,row.lotus_requirement_line,exclude)
     fields = ('lotus_requirement', 'lotus_requirement_line') if doctype == 'Material Requirement' else ('material_request', 'material_request_item')
-    result = frappe.db.sql(f'''select coalesce(sum(d.qty * d.conversion_factor), 0)
+    canonical=''' or d.material_request_item in (select name from `tabMaterial Request Item`
+        where lotus_requirement=%(name)s and lotus_requirement_line=%(line)s)
+        or d.name in (select c.stock_entry_detail from `tabMaterial Consumption` c
+            join `tabMaterial Requirement Line` l on l.parent=c.material_requirement and l.item=c.item
+            where c.docstatus=1 and c.material_requirement=%(name)s and l.name=%(line)s)''' if doctype=='Material Requirement' else ''
+    condition=f"((d.`{fields[0]}`=%(name)s and d.`{fields[1]}`=%(line)s){canonical})"
+    result = frappe.db.sql(f'''select p.docstatus, coalesce(sum(d.qty * d.conversion_factor), 0)
         from `tabStock Entry Detail` d join `tabStock Entry` p on p.name=d.parent
-        where p.docstatus < 2 and p.name != %(exclude)s and d.`{fields[0]}`=%(name)s
-        and d.`{fields[1]}`=%(line)s''', dict(exclude=exclude or '', name=name, line=line_name))
-    return flt(result[0][0])
+        where p.docstatus < 2 and p.stock_entry_type='Material Issue' and p.name != %(exclude)s and {condition} group by p.docstatus''',
+        dict(exclude=exclude or '', name=name, line=line_name))
+    recovered=frappe.db.sql(f'''select coalesce(sum(r.recovered_qty),0) from `tabMaterial Recovery` r
+        join `tabMaterial Consumption` c on c.name=r.consumption and c.docstatus=1
+        join `tabStock Entry Detail` d on d.name=c.stock_entry_detail
+        join `tabStock Entry` p on p.name=d.parent and p.docstatus=1 and p.stock_entry_type='Material Issue'
+        where r.docstatus=1 and p.name!=%(exclude)s and {condition}''',dict(exclude=exclude or '',name=name,line=line_name))[0][0]
+    return dict(draft=sum(flt(r[1]) for r in result if r[0]==0),posted=max(0,sum(flt(r[1]) for r in result if r[0]==1)-flt(recovered)))
+
+
+def allocated(doctype,name,line_name,exclude=None):
+    return sum(allocation_totals(doctype,name,line_name,exclude).values())
 
 
 def choices(company, mode):
@@ -168,10 +194,13 @@ def validate_issue(doc, method=None):
         info = source_line(dt, name, line_name, doc.company, doc.get('lotus_work_plan') if mode == 'Plan' else None)
         if info['item'] != row.item_code or (info['area'] and row.lotus_usage_area != info['area']):
             frappe.throw('Vật tư hoặc khu vực không khớp nguồn đã duyệt.')
+        if info.get('warehouse') and info['warehouse']!=row.s_warehouse:
+            frappe.throw('Kho xuất không khớp kho đã chỉ định của nhu cầu.')
         qty = flt(row.qty) * flt(row.conversion_factor)
         if qty <= 0:
             frappe.throw('Số lượng cấp phải lớn hơn 0.')
-        key = (dt, name, line_name)
+        key = ('Material Requirement',info['requirement'],info['requirement_line']) if info.get('requirement') else (dt, name, line_name)
+        if key[0]=='Material Requirement':lock(key[0],key[1])
         totals[key] += qty
         limits[key] = info['required_qty']
     for key, qty in totals.items():
