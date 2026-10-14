@@ -12,7 +12,7 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
 <template>
  <section class="mobile-home" aria-label="Công việc của bạn">
   <UiCard class="mobile-welcome">
-   <p class="eyebrow">LOTUS FARM · HÔM NAY</p>
+   <p class="eyebrow">LOTUS AGRITECH · HÔM NAY</p>
    <h2>Bạn cần làm gì?</h2>
    <p>{{farmName}}</p>
   </UiCard>

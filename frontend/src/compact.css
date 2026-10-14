@@ -261,3 +261,11 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .stock-shell .stock-dialog input,.stock-shell .stock-dialog select{height:42px;min-height:42px}
  .master-list-grid{grid-template-columns:1fr}
 }
+/* Original Lotus Agritech artwork stays readable in both themes. */
+.app-shell .sidebar .brand,.stock-shell .stock-brand{justify-content:center;letter-spacing:0}
+.lotus-brand-image{display:block;object-fit:contain;background:#fff;border-radius:5px;max-width:100%;flex-shrink:0}
+.sidebar .brand>.lotus-brand-image,.stock-brand>.lotus-brand-image{width:156px;height:91px}
+.workspace-home .lotus-brand-image{width:54px;height:32px}
+.workspace-home{width:54px;flex:0 0 54px}
+@media(min-width:901px){.sidebar-collapsed .sidebar .brand>.lotus-brand-image,.sidebar-collapsed .stock-brand>.lotus-brand-image{display:block;width:40px;height:28px}}
+@media(max-width:600px){.workspace-home,.workspace-home .lotus-brand-image{width:44px}.workspace-home{flex-basis:44px}}

@@ -1,5 +1,6 @@
 app_name = "lotus_farm"
-app_title = "Lotus Farm"
+app_title = "Lotus Agritech"
+app_logo_url = "/assets/lotus_farm/images/lotus-agritech.jpg"
 app_publisher = "Nguyen Trieu"
 app_description = "Banana farm operations, harvest forecast and availability-to-promise for Lotus"
 app_license = "MIT"

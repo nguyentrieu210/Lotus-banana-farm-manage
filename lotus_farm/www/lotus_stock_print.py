@@ -17,6 +17,9 @@ def get_context(context,doctype=None,name=None):
     else:frappe.throw('Loại phiếu không hỗ trợ in.',frappe.PermissionError)
     doc=frappe.get_doc(dt,name);doc.check_permission('read');doc.check_permission('print')
     context.farm_label=frappe.get_cached_value('Company',info['company'],'lotus_print_farm') or ''
+    from base64 import b64encode
+    from pathlib import Path
+    context.logo_data='data:image/jpeg;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech.jpg')).read_bytes()).decode('ascii')
     context.info=info;context.heading=title;context.date=getdate(doc.get('posting_date') or doc.get('transaction_date')).strftime('%d/%m/%Y')
     context.status=['NHÁP — CHƯA GHI SỔ','ĐÃ GHI SỔ','ĐÃ HỦY'][doc.docstatus]
     if dt=='Material Request':context.status=['NHÁP — CHƯA DUYỆT','ĐÃ DUYỆT','ĐÃ HỦY'][doc.docstatus]

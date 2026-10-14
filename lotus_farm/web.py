@@ -9,7 +9,7 @@ from werkzeug.wrappers import Response
 def service_worker():
     root=Path(frappe.get_app_path('lotus_farm','public'))
     manifest=json.loads((root/'frontend/.vite/manifest.json').read_text())
-    assets={'/assets/lotus_farm/frontend/index.html'}
+    assets={'/assets/lotus_farm/frontend/index.html','/assets/lotus_farm/images/lotus-agritech.jpg'}
     for entry in manifest.values():
         for file in [entry.get('file'),*entry.get('css',[]),*entry.get('assets',[])]:
             if file:assets.add('/assets/lotus_farm/frontend/'+file)

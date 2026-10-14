@@ -7,7 +7,7 @@ import {AgGridVue} from 'ag-grid-vue3'
 import {AllCommunityModule,ModuleRegistry,themeQuartz} from 'ag-grid-community'
 import {Button as UiButton} from './ui/button'
 ModuleRegistry.registerModules([AllCommunityModule])
-const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},interactive:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})}})
+const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},interactive:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})}})
 const emit=defineEmits(['open','cell-open','filter'])
 const localFilters=ref({})
 const key=c=>c.field||c.colId||c.headerName
@@ -21,9 +21,9 @@ function open(event){if(props.interactive&&event.data)emit('open',event.data)}
 </script>
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
-  <div v-if="!visibleRows.length" class="empty stock-empty" role="status">{{loading?'Đang tải…':empty}}</div>
+  <div v-if="!visibleRows.length&&!showEmptyHeaders" class="empty stock-empty" role="status">{{loading?'Đang tải…':empty}}</div>
   <template v-else>
-   <div class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':visibleRows.length>10}"><AgGridVue class="lotus-ag-grid" :theme="theme" :locale-text="AG_GRID_LOCALE_VN" :row-data="visibleRows" :column-defs="defs" :dom-layout="visibleRows.length>10?'normal':'autoHeight'" :animate-rows="true" :get-row-class="params=>params.data?.shortage_qty>0?'lotus-shortage-row':''" :enable-cell-text-selection="true" @row-clicked="open" @cell-clicked="emit('cell-open',$event)" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
+   <div class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':visibleRows.length>10}"><AgGridVue class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :column-defs="defs" :dom-layout="visibleRows.length>10?'normal':'autoHeight'" :animate-rows="true" :get-row-class="params=>params.data?.shortage_qty>0?'lotus-shortage-row':''" :enable-cell-text-selection="true" @row-clicked="open" @cell-clicked="emit('cell-open',$event)" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
    <div class="lotus-mobile-records"><component :is="interactive?UiButton:'article'" v-for="(row,index) in visibleRows" :key="row.name||index" class="lotus-mobile-record" variant="ghost" @click="interactive&&emit('open',row)"><strong>{{value(row,columns[0])}}</strong><span v-for="col in columns.slice(1)" :key="col.field||col.headerName" class="lotus-mobile-record-detail"><span>{{col.headerName}}</span><UiButton v-if="col.colId" variant="link" size="sm" @click.stop="emit('cell-open',{data:row,colDef:col})">{{value(row,col)}}</UiButton><span v-else>{{value(row,col)}}</span></span></component></div>
   </template>
  </div>
