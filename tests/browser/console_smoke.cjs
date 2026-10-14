@@ -2,7 +2,7 @@
 const {chromium}=require('playwright'),http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict')
 const output=process.env.LOTUS_BROWSER_ARTIFACTS||'/tmp/lotus-console-browser';fs.mkdirSync(output,{recursive:true})
 const root=path.resolve(__dirname,'../../lotus_farm/public/frontend'),manifest=JSON.parse(fs.readFileSync(path.join(root,'.vite/manifest.json'))),entry=manifest['index.html']
-const swAssets=[...new Set(['/assets/lotus_farm/frontend/index.html',...Object.values(manifest).flatMap(v=>[v.file,...(v.css||[]),...(v.assets||[])].filter(Boolean).map(f=>'/assets/lotus_farm/frontend/'+f))])]
+const swAssets=[...new Set([...Object.keys(manifest).filter(k=>k.endsWith('.html')).map(k=>'/assets/lotus_farm/frontend/'+k),...Object.values(manifest).flatMap(v=>[v.file,...(v.css||[]),...(v.assets||[])].filter(Boolean).map(f=>'/assets/lotus_farm/frontend/'+f))])]
 const farm={name:'Farm A',farm_name:'Farm A',company:'Lotus'},task={plan:'P1',line:'L1',farm_plot:'Plot 1',farm_block:'Block 1',crop_cycle:'Cycle 1',work_type:'Care',work_name:'Bao buồng',uom:'Bunch',planned_qty:100,completed_qty:0,required_workdays:2,allocated_workdays:1,status:'Planned'}
 const modules={farms:['Farm'],plans:['Harvest Forecast'],work:['Daily Work Plan','Daily Work Result'],labor:['Daily Labor Summary'],materials:['Material Requirement'],losses:['Bunch Cancellation'],measurements:['Fruit Measurement'],harvest:['Harvest Actual'], 'incoming-qc':['Incoming Quality Inspection'],packhouse:['Packhouse Shift'], 'daily-close':['Daily Production Close'],'cycle-close':['Cycle Closing Report'],masters:['Work Type'],imports:['Source File Registry']}
 const requests=[];let actual=null,saved=null

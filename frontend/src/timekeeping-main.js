@@ -1,0 +1,10 @@
+import {createApp} from 'vue'
+import TimekeepingApp from './TimekeepingApp.vue'
+import './stock.css'
+import './shadcn.css'
+import './attio.css'
+import './stock-attio.css'
+import './compact.css'
+import './timekeeping.css'
+createApp(TimekeepingApp).mount('#app')
+import './register-worker'

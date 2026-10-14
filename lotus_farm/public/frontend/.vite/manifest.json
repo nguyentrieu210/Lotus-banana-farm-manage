@@ -1,11 +1,57 @@
 {
+  "_Card-C_wy2bOz.js": {
+    "file": "assets/Card-C_wy2bOz.js",
+    "name": "Card",
+    "imports": [
+      "_register-worker-76GCmRBz.js"
+    ]
+  },
+  "_DataTable-ugNITekI.js": {
+    "file": "assets/DataTable-ugNITekI.js",
+    "name": "DataTable",
+    "imports": [
+      "_register-worker-76GCmRBz.js"
+    ]
+  },
+  "_register-worker-76GCmRBz.js": {
+    "file": "assets/register-worker-76GCmRBz.js",
+    "name": "register-worker",
+    "css": [
+      "assets/register-worker-DZ8sSmYg.css"
+    ]
+  },
+  "_register-worker-DZ8sSmYg.css": {
+    "file": "assets/register-worker-DZ8sSmYg.css",
+    "src": "_register-worker-DZ8sSmYg.css"
+  },
+  "_stock-attio-DveR0dcA.css": {
+    "file": "assets/stock-attio-DveR0dcA.css",
+    "src": "_stock-attio-DveR0dcA.css"
+  },
+  "assign.html": {
+    "file": "assets/assign-b7oPWC2e.js",
+    "name": "assign",
+    "src": "assign.html",
+    "isEntry": true,
+    "imports": [
+      "_register-worker-76GCmRBz.js"
+    ],
+    "css": [
+      "assets/assign-Dkvnok-o.css"
+    ]
+  },
   "index.html": {
-    "file": "assets/index-DE8iiQZX.js",
+    "file": "assets/index-DiLoqKXh.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
+    "imports": [
+      "_register-worker-76GCmRBz.js",
+      "_DataTable-ugNITekI.js",
+      "_Card-C_wy2bOz.js"
+    ],
     "css": [
-      "assets/index-WZG7kQXy.css"
+      "assets/index-BRd5E5BN.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
@@ -19,5 +65,33 @@
   "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
     "file": "assets/Inter.var-C9xDBOS3.woff2",
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
+  },
+  "stock.html": {
+    "file": "assets/stock-DzYIEwqi.js",
+    "name": "stock",
+    "src": "stock.html",
+    "isEntry": true,
+    "imports": [
+      "_register-worker-76GCmRBz.js",
+      "_DataTable-ugNITekI.js",
+      "_Card-C_wy2bOz.js"
+    ],
+    "css": [
+      "assets/stock-attio-DveR0dcA.css"
+    ]
+  },
+  "timekeeping.html": {
+    "file": "assets/timekeeping-DFA2G6Vl.js",
+    "name": "timekeeping",
+    "src": "timekeeping.html",
+    "isEntry": true,
+    "imports": [
+      "_register-worker-76GCmRBz.js",
+      "_DataTable-ugNITekI.js"
+    ],
+    "css": [
+      "assets/timekeeping-B-_JJByK.css",
+      "assets/stock-attio-DveR0dcA.css"
+    ]
   }
 }

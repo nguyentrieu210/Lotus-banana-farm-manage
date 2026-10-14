@@ -175,7 +175,7 @@ class TestWarehouseGuards(unittest.TestCase):
         self.assertFalse(self.module._simple_doc(doc))
         doc.stock_entry_type = 'Material Receipt'
         doc.get.return_value = None
-        doc.items = [Mock(item_code='SERIAL')]
+        doc.items = [Mock(item_code='SERIAL',conversion_factor=1,uom='Kg',stock_uom='Kg')]
         self.frappe.get_doc.return_value = Mock(has_batch_no=0, has_serial_no=1)
         self.assertFalse(self.module._simple_doc(doc))
 

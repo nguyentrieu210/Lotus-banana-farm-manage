@@ -38,3 +38,20 @@ def distinct(rows, fields, labels=None):
                 values[key] = entry
         result[field] = list(values.values())
     return result
+
+
+def sorted_rows(rows,raw,fields,aliases=None):
+    model=frappe.parse_json(raw) if raw not in (None,'') else []
+    if not isinstance(model,list) or len(model)>5:frappe.throw('Sắp xếp không hợp lệ.')
+    aliases=aliases or {}
+    for entry in model:
+        if not isinstance(entry,dict) or entry.get('colId') not in fields or entry.get('sort') not in ('asc','desc'):
+            frappe.throw('Cột sắp xếp không hợp lệ.')
+    result=list(rows)
+    for entry in reversed(model):
+        field=aliases.get(entry['colId'],entry['colId'])
+        def key(row):
+            value=row.get(field)
+            return (value is None, float(value) if isinstance(value,(int,float,Decimal)) else str(value or '').casefold())
+        result.sort(key=key,reverse=entry['sort']=='desc')
+    return result

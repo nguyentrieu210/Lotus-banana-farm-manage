@@ -28,3 +28,13 @@ class TestTableFilters(unittest.TestCase):
     def test_unknown_columns_and_nested_values_are_rejected(self):
         for raw in [{'secret':['x']},{'name':'not a list'},{'name':[{}]},[]]:
             with self.subTest(raw=raw),self.assertRaises(ValueError):self.module.selections(raw,['name'])
+
+    def test_global_sort_happens_before_page_slice(self):
+        rows=[dict(name=str(i),qty=i) for i in range(75)]
+        ordered=self.module.sorted_rows(rows,[{'colId':'qty','sort':'desc'}],['name','qty'])
+        self.assertEqual((ordered[0]['qty'],ordered[:50][-1]['qty']),(74,25))
+
+    def test_sort_rejects_unknown_fields_and_uses_display_alias(self):
+        with self.assertRaises(ValueError):self.module.sorted_rows([], [{'colId':'secret','sort':'asc'}],['name'])
+        rows=[dict(name='B',item_name='Apple'),dict(name='A',item_name='Zebra')]
+        self.assertEqual(self.module.sorted_rows(rows,[{'colId':'name','sort':'asc'}],['name'],{'name':'item_name'})[0]['name'],'B')

@@ -140,7 +140,7 @@ for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
     _old = doc_events[_name].get('validate',[])
     if isinstance(_old,str):_old=[_old]
     doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
-website_route_rules = [{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+website_route_rules = [{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
@@ -152,3 +152,6 @@ doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.valida
 has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
 scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')
+
+has_permission['Lotus Crew Attendance']='lotus_farm.controls.farm_permission'
+permission_query_conditions['Lotus Crew Attendance']='lotus_farm.timekeeping.crew_query'

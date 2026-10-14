@@ -1,5 +1,7 @@
 import frappe,uuid
 frappe.init(site='frontend',sites_path='/home/frappe/frappe-bench/sites');frappe.connect();frappe.set_user('Administrator')
+def post(dt,name):
+ return w.submit_document(dt,name,modified=w.document(dt,name)['modified'])
 try:
  from lotus_farm import warehouse as w
  code='CHECK-ZERO-'+uuid.uuid4().hex[:8]
@@ -11,7 +13,7 @@ try:
   print('PASS: zero-stock issue rejected before draft insert')
  else:raise AssertionError('Zero-stock issue draft was saved')
  doc=frappe.get_doc(dict(doctype='Stock Entry',stock_entry_type='Material Issue',company='Lotus Agritech',posting_date='2026-10-14',lotus_issue_mode='Manual',lotus_receiver='QA',remarks='QA',items=[dict(item_code=code,s_warehouse=store,qty=1,uom='Kg',stock_uom='Kg',conversion_factor=1,allow_zero_valuation_rate=1,lotus_usage_area='QA')]));doc.insert()
- try:w.submit_document('Stock Entry',doc.name)
+ try:post('Stock Entry',doc.name)
  except frappe.ValidationError as e:assert code in str(e),str(e);print('PASS: preexisting zero-stock draft rejected before submit')
  else:raise AssertionError('Zero-stock issue was submitted')
  print('Test transaction rolled back')

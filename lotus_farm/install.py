@@ -27,6 +27,8 @@ def setup():
     install_minimum_fields()
     from lotus_farm.warehouse_planning import install_fields as install_planning_fields
     install_planning_fields()
+    from lotus_farm.timekeeping import install_fields as install_timekeeping_fields
+    install_timekeeping_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

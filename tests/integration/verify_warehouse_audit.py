@@ -5,6 +5,8 @@ from lotus_farm import warehouse as w,warehouse_planning as p
 if '__install__' in __import__('sys').argv:
  p.install_fields();frappe.db.commit();print('Planning schema installed');frappe.destroy();raise SystemExit
 make=lambda dt,**v:frappe.get_doc(dict(doctype=dt,**v)).insert()
+def post(dt,name):
+ return w.submit_document(dt,name,modified=w.document(dt,name)['modified'])
 try:
  tag=uuid.uuid4().hex[:8];today=nowdate();company='Lotus Agritech'
  farm=make('Farm',farm_code='AUDIT-'+tag,farm_name='Audit temporary',company=company).name
@@ -34,7 +36,7 @@ try:
  try:w.create_draft(company,'receipt',today,[dict(item=item,qty=101,rate=100)],target=store,client_event_id='receipt-'+tag)
  except frappe.ValidationError:pass
  else:raise AssertionError('Changed retry was accepted')
- w.submit_document(received['doctype'],received['name'])
+ post(received['doctype'],received['name'])
  def coverage():
   result=p.snapshot(company,warehouse=store,from_date=today,to_date=today,farm=farm)
   assert not result['warnings'],result['warnings']
@@ -45,13 +47,13 @@ try:
  line=req.lines[0].name
  own=w.create_draft(company,'issue',today,[dict(item=item,qty=40,area=block+' / '+plot,requirement=req.name,requirement_line=line)],source=store,receiver='Audit',issue_mode='Plan',work_plan=plan.name)
  assert coverage()['shortage_qty']==30 and coverage()['own_draft_qty']==40,coverage()
- w.submit_document(own['doctype'],own['name'])
+ post(own['doctype'],own['name'])
  row=coverage();assert row['remaining_qty']==60 and row['actual_qty']==60 and row['shortage_qty']==30,row
  result=make('Daily Work Result',**scope,work_plan=plan.name,work_plan_line=plan.lines[0].name,completed_qty=40,actual_workdays=1,unfinished_reason='Audit partial work');result.submit()
  entry=frappe.get_doc('Stock Entry',own['name'])
  use=make('Material Consumption',**scope,work_result=result.name,material_requirement=req.name,item=item,warehouse=store,stock_entry=entry.name,stock_entry_detail=entry.items[0].name,consumed_qty=20);use.submit()
  assert coverage()['remaining_qty']==60,'Consumption deducted from warehouse demand twice'
- returned=w.create_draft(company,'receipt',today,[dict(item=item,qty=20,rate=100)],target=store);w.submit_document(returned['doctype'],returned['name'])
+ returned=w.create_draft(company,'receipt',today,[dict(item=item,qty=20,rate=100)],target=store);post(returned['doctype'],returned['name'])
  return_doc=frappe.get_doc('Stock Entry',returned['name'])
  recovery=make('Material Recovery',**scope,consumption=use.name,recovered_qty=20,stock_entry=return_doc.name,stock_entry_detail=return_doc.items[0].name);recovery.submit()
  row=coverage();assert row['issued_qty']==20 and row['remaining_qty']==80 and row['shortage_qty']==30,row

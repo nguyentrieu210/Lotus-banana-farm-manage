@@ -129,7 +129,7 @@ def _supply(company,warehouses,to_date):
                 if row.warehouse not in warehouses:continue
                 item=frappe.get_doc('Item',row.item_code);item.check_permission('read')
                 factor=flt(row.conversion_factor) or 1
-                remaining=max(0,flt(row.stock_qty)-flt(row.received_qty if dt=='Purchase Order' else row.ordered_qty)*factor)
+                remaining=max(0,flt(row.stock_qty)-(flt(row.received_qty)*factor if dt=='Purchase Order' else flt(row.ordered_qty)))
                 if not remaining:continue
                 date=getdate(row.schedule_date or doc.schedule_date or doc.transaction_date)
                 key=(row.item_code,row.warehouse)
@@ -149,9 +149,9 @@ def _supply(company,warehouses,to_date):
         condition="p.docstatus=1" if dt=='Purchase Order' else "p.docstatus<2 and p.material_request_type='Purchase'"
         totals=frappe.db.sql(f'''select d.item_code,d.warehouse,
             sum(case when coalesce(d.schedule_date,p.schedule_date,p.transaction_date)<=%(end)s
-                then greatest(d.stock_qty-coalesce(d.`{field}`,0)*d.conversion_factor,0) else 0 end) qty,
+                then greatest(d.stock_qty-coalesce(d.`{field}`,0)*{'d.conversion_factor' if dt=='Purchase Order' else '1'},0) else 0 end) qty,
             sum(case when coalesce(d.schedule_date,p.schedule_date,p.transaction_date)>%(end)s
-                then greatest(d.stock_qty-coalesce(d.`{field}`,0)*d.conversion_factor,0) else 0 end) later_qty
+                then greatest(d.stock_qty-coalesce(d.`{field}`,0)*{'d.conversion_factor' if dt=='Purchase Order' else '1'},0) else 0 end) later_qty
             from `tab{dt} Item` d join `tab{dt}` p on p.name=d.parent
             where p.company=%(company)s and {condition}
             and p.status not in ('Closed','Stopped','Cancelled','Completed')
@@ -206,7 +206,7 @@ def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None,includ
 
 
 @frappe.whitelist()
-def overview(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None):
+def overview(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None):
     from lotus_farm.table_filters import selections,matches,distinct
     result=snapshot(company,warehouse,from_date,to_date)
     rows=result['rows'];query=str(search or '').casefold()[:100]
@@ -214,6 +214,8 @@ def overview(company,warehouse=None,from_date=None,to_date=None,search=None,star
     fields=['item','warehouse','uom','required_qty','issued_qty','remaining_qty','available_qty','shortage_qty','incoming_qty','requested_qty','to_buy_qty','to_request_qty','status']
     result['filter_values']=distinct(rows,fields,labels={'item':lambda r:r['item_name']+' · '+r['item']})
     rows=[r for r in rows if matches(r,selections(column_filters,fields))]
+    from lotus_farm.table_filters import sorted_rows
+    rows=sorted_rows(rows,sort_model,fields,{'item':'item_name'})
     start=max(0,cint(start));result.update(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50)
     result['can_request']=frappe.has_permission('Material Request','create') and not result['warnings']
     return result
@@ -239,6 +241,7 @@ def create_purchase_request(company,warehouse,from_date,to_date,items):
     from lotus_farm.warehouse import _access,_company,_warehouse
     from lotus_farm.controls import lock
     _access();_company(company);_warehouse(warehouse,company)
+    if getdate(to_date)<getdate(nowdate()):frappe.throw('Kỳ nhu cầu đã kết thúc. Chọn kỳ hiện tại để lập đề nghị mua cho nhu cầu còn thiếu.')
     if not frappe.has_permission('Material Request','create'):frappe.throw('Chưa có quyền tạo đề nghị mua.',frappe.PermissionError)
     selected=frappe.parse_json(items)
     if not isinstance(selected,list) or not selected or len(selected)>100:frappe.throw('Chọn từ 1 đến 100 vật tư.')

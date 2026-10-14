@@ -9,4 +9,4 @@ import './attio.css'
 window.addEventListener('lotus-csrf',event=>setCSRF(event.detail))
 import './compact.css'
 createApp(App).use(createPinia()).use(createLotusRouter()).mount('#app')
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/api/method/lotus_farm.web.service_worker',{scope:'/lotus/'}).catch(()=>{})
+import './register-worker'

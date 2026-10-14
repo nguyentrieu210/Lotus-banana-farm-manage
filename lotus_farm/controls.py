@@ -71,6 +71,7 @@ def validate_warehouse(name, company):
 
 
 def check_farm(doc, method=None):
+    if doc.doctype=='Farm' and doc.is_new() and command_allowed(doc,'create_attendance_farm'):return
     farm = doc.name if doc.doctype == "Farm" else doc.get("farm")
     if farm and not farm_allowed(farm):
         frappe.throw("You do not have access to this Farm.", frappe.PermissionError)

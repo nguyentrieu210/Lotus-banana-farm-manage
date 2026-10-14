@@ -2,7 +2,7 @@
 
 Mã được audit: `f52b207`, nhánh `codex/lotus-work`. Phạm vi: `/lotus/kho`, API kho/danh mục/nhu cầu/mua hàng, bản in và PDF; site local `frontend`, công ty Lotus Agritech.
 
-**Kết luận: còn 10 phát hiện — 6 mức cao (P1), 3 mức vừa (P2), 1 mức thấp (P3).** Đây là báo cáo kiểm tra, chưa phải bản sửa các phát hiện dưới đây. Các khẳng định “đã xử lý” trong báo cáo audit trước không bao phủ những trường hợp biên mới này.
+**Kết luận tại thời điểm audit: có 10 phát hiện — 6 mức cao (P1), 3 mức vừa (P2), 1 mức thấp (P3).** Phần dưới lưu bằng chứng trước sửa; trạng thái khắc phục hiện tại ở cuối báo cáo. Các khẳng định “đã xử lý” trong báo cáo audit trước không bao phủ những trường hợp biên mới này.
 
 ## Phát hiện cần ưu tiên
 
@@ -135,3 +135,26 @@ Script native đã chạy, được lưu cùng repo:
 A08 được xác nhận bằng luồng phân trang/sort trong mã; A09 bằng PDF đã render; A10 bằng DOM/CSS ở viewport điện thoại. Chưa benchmark tải lớn, chưa thử tranh chấp đồng thời nhiều tiến trình với dữ liệu thật, chưa chứng nhận toàn bộ cấu hình vai trò/farm của doanh nghiệp. Lô/serial, hàng trả, kế toán công nợ và nghiệp vụ kho nâng cao ngoài form đơn giản cần audit riêng trước khi hỗ trợ đầy đủ.
 
 Thứ tự sửa đề xuất: **A01–A06 → A07/A08 → A09/A10 → khép kín các luồng nghiệp vụ còn thiếu**. Sau mỗi nhóm phải thêm regression test cho đúng tình huống tái hiện và chạy lại kiểm tra native.
+
+## Khắc phục ngày 14/10/2026
+
+Đã sửa A01–A10 trong bản cập nhật kèm app chấm công. Nội dung phát hiện phía trên giữ làm bằng chứng trước sửa.
+
+| Mục | Hành vi sau sửa | Xác nhận |
+| --- | --- | --- |
+| A01 | Hiện số lượng theo đơn vị tồn kho; phiếu quy đổi chỉ đọc, không cho form đơn giản làm mất quy đổi | Native: 2 Box = 20 kg, chặn sửa |
+| A02 | Phiếu nhiều kho chỉ đọc tại form đơn giản | Native: chặn gom hai kho thành một |
+| A03 | ordered_qty của Material Request dùng trực tiếp theo đơn vị tồn | Native: 100 kg yêu cầu, 30 kg đã đặt, còn 70 kg |
+| A04 | Giữ mục đích tồn đầu kỳ; chặn đổi mục đích khi sửa | Native: giữ giá 100, mục đích Opening Stock |
+| A05 | Ghi sổ phải gửi modified đã xem; thiếu/cũ bị từ chối | Native: chặn phiếu đã bị sửa 5 thành 9 |
+| A06 | Chặn lập đề nghị mua từ khoảng lịch sử đã kết thúc; kỳ hiện tại có chống lập trùng | Native + integration chuẩn |
+| A07 | Lưu xuất nháp trừ các nháp khác và phần giữ chỗ native | Native: tồn 9, nháp 6, chặn nháp 6 tiếp theo |
+| A08 | API sắp xếp toàn bộ kết quả đã lọc trước phân trang; grid truyền sort model | Native 60 vật tư / trang 50; unit sort đa cột |
+| A09 | Metadata và tổng tiền dùng table-cell; font có sẵn | PDF phiếu thực tế đã render, số phiếu/ngày và các tổng tiền tách đúng |
+| A10 | Loading/trống mobile render độc lập bảng desktop | Kiểm tra giao diện điện thoại và build |
+
+Kiểm tra: 86 Python unit, 23 frontend, native warehouse chuẩn, native regression A01–A08, tồn 0, native HRMS/chấm công/quyền/in PDF/CSV đạt. Dữ liệu thử rollback. Lần kiểm tra cuối có 47 Item, 2 Warehouse, 1 Stock Entry, 1 Stock Ledger Entry, 0 Material Request/PO/PR, 0 Bin âm; allow_negative_stock=0. Số phiếu thực tế có thể đổi khi người dùng thao tác.
+
+Các khoảng trống nghiệp vụ ở mục riêng phía trên là tính năng mở rộng chưa triển khai trong đợt sửa lỗi này: lập PO/nhà cung cấp, tạo yêu cầu cấp ngoài kế hoạch, hủy/đảo phiếu đã ghi sổ, bản in chênh lệch kiểm kê, đính kèm chi phí. Không xem chúng là đã hoàn thành.
+
+Bổ sung: service worker mở đúng shell kho/chấm công/giao việc khi mất mạng, không dùng trang chủ thay thế hoặc trả shell cho bản in. Mọi entry đăng ký cập nhật worker, phiên bản theo toàn manifest; API và file riêng tư luôn lấy từ mạng. Hai regression frontend xác nhận phân tuyến offline và không cache nhầm bản in/API.

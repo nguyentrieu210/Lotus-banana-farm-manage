@@ -1,0 +1,205 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Crew Attendance",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "is_submittable": 1,
+  "title_field": "work_team",
+  "field_order": [
+    "company",
+    "farm",
+    "work_team",
+    "foreman",
+    "posting_date",
+    "headcount",
+    "present",
+    "absent",
+    "workdays",
+    "completed_qty",
+    "uom",
+    "unit_rate",
+    "amount",
+    "currency",
+    "notes",
+    "cancel_reason",
+    "attendance_key",
+    "client_key",
+    "payload_hash"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Nông trường",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_team",
+      "label": "Đội khoán",
+      "fieldtype": "Link",
+      "options": "Work Team",
+      "reqd": 1
+    },
+    {
+      "fieldname": "foreman",
+      "label": "Đầu câu / người phụ trách",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Ngày công",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "headcount",
+      "label": "Tổng người",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "present",
+      "label": "Có mặt",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "absent",
+      "label": "Vắng",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "workdays",
+      "label": "Tổng công",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "precision": "3"
+    },
+    {
+      "fieldname": "completed_qty",
+      "label": "Khối lượng khoán",
+      "fieldtype": "Float",
+      "precision": "3"
+    },
+    {
+      "fieldname": "uom",
+      "label": "Đơn vị khoán",
+      "fieldtype": "Link",
+      "options": "UOM"
+    },
+    {
+      "fieldname": "unit_rate",
+      "label": "Đơn giá khoán",
+      "fieldtype": "Currency",
+      "options": "currency"
+    },
+    {
+      "fieldname": "amount",
+      "label": "Giá trị khoán",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "currency",
+      "label": "Tiền tệ",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "cancel_reason",
+      "label": "Lý do hủy",
+      "fieldtype": "Small Text",
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "attendance_key",
+      "label": "Attendance identity",
+      "fieldtype": "Data",
+      "unique": 1,
+      "hidden": 1,
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "client_key",
+      "label": "Request identity",
+      "fieldtype": "Data",
+      "unique": 1,
+      "hidden": 1,
+      "read_only": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "payload_hash",
+      "label": "Request content",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

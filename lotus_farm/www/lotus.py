@@ -18,7 +18,7 @@ def get_context(context):
     entries=json.loads(manifest.read_text())
     # Standalone mobile shell, using the existing authenticated Frappe site.
     request_path=frappe.request.path.rstrip('/')
-    entry_key={'/lotus/giao-viec':'assign.html','/lotus/kho':'stock.html'}.get(request_path,'index.html')
+    entry_key={'/lotus/giao-viec':'assign.html','/lotus/kho':'stock.html','/lotus/cham-cong':'timekeeping.html'}.get(request_path,'index.html')
     entry=entries[entry_key]
     context.script='/assets/lotus_farm/frontend/'+entry['file']
     # Vite extracts shared CSS into imported chunks. Load dependencies first so

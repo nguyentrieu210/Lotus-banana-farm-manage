@@ -16,6 +16,7 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
    <h2>Bạn cần làm gì?</h2>
    <p>{{farmName}}</p>
   </UiCard>
+  <a v-if="session.capabilities?.attendance" class="stock-button" href="/lotus/cham-cong">◷ Chấm công & nhân sự</a>
   <section v-for="group in groups" :key="group.title" class="mobile-action-section">
    <h3>{{group.title}}</h3>
    <div class="mobile-action-grid">

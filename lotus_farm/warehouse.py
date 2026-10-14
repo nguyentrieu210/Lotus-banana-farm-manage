@@ -140,6 +140,11 @@ def _simple_doc(doc):
             return False
     elif doc.purpose not in ('Opening Stock', 'Stock Reconciliation'):
         return False
+    if doc.doctype=='Stock Entry':
+        if len({r.get('s_warehouse') for r in doc.items if r.get('s_warehouse')})>1 or len({r.get('t_warehouse') for r in doc.items if r.get('t_warehouse')})>1:
+            return False
+        if any(flt(r.conversion_factor)!=1 or r.uom!=r.stock_uom for r in doc.items):return False
+    elif len({r.warehouse for r in doc.items})>1:return False
     for row in doc.items:
         item = frappe.get_doc('Item', row.item_code)
         item.check_permission('read')
@@ -164,7 +169,7 @@ def document(doctype, name):
                 can_write=doc.docstatus == 0 and doc.has_permission('write') and _simple_doc(doc),
                 can_delete=doc.docstatus == 0 and doc.has_permission('delete') and _simple_doc(doc),
                 items=[dict(item=row.item_code, item_name=row.item_name, uom=row.get('stock_uom') or row.get('uom'),
-                            qty=row.qty, source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
+                            qty=flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty, source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
                             area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
                             rate=row.get('basic_rate') if doc.doctype == 'Stock Entry' else row.get('valuation_rate'),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
@@ -173,11 +178,16 @@ def document(doctype, name):
 
 
 @frappe.whitelist(methods=['POST'])
-def submit_document(doctype, name):
+def submit_document(doctype, name,modified=None):
+    from lotus_farm.controls import lock
+    if doctype not in ('Stock Entry','Stock Reconciliation'):frappe.throw('Loại phiếu không hợp lệ.')
+    lock(doctype,name)
     doc = _stock_doc(doctype, name)
     doc.check_permission('submit')
     if not _simple_doc(doc):
         frappe.throw('Phiếu có nghiệp vụ nâng cao hoặc lô/serial chưa được hỗ trợ ghi sổ tại màn hình này.')
+    if doc.docstatus==1 and modified:return dict(name=doc.name,docstatus=1)
+    if not modified or str(doc.modified)!=str(modified):frappe.throw('Phiếu đã thay đổi. Mở lại để kiểm tra trước khi ghi sổ.')
     if doc.docstatus != 0:
         frappe.throw('Chỉ ghi sổ được phiếu nháp.')
     if doctype=='Stock Entry':check_outbound_stock(doc)
@@ -195,7 +205,7 @@ def delete_draft(doctype,name,modified):
 
 
 @frappe.whitelist()
-def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None):
+def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None):
     from lotus_farm.table_filters import distinct,selections,matches
     _access();_company(company)
     stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
@@ -222,12 +232,15 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
     fields=['name','kind','posting_date','docstatus','warehouses']
     choices=distinct(rows,fields);selected=selections(column_filters,fields)
-    rows=[r for r in rows if matches(r,selected)];start=max(0,cint(start))
+    rows=[r for r in rows if matches(r,selected)]
+    from lotus_farm.table_filters import sorted_rows
+    rows=sorted_rows(rows,sort_model,fields)
+    start=max(0,cint(start))
     return dict(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50,filter_values=choices)
 
 
 @frappe.whitelist()
-def movements(company, warehouse=None, search=None, from_date=None, to_date=None, start=0, column_filters=None):
+def movements(company, warehouse=None, search=None, from_date=None,to_date=None,start=0,column_filters=None,sort_model=None):
     from lotus_farm.table_filters import selections, matches, distinct
     _access()
     _company(company)
@@ -272,12 +285,14 @@ def movements(company, warehouse=None, search=None, from_date=None, to_date=None
     choices = distinct(rows, fields, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     selected = selections(column_filters, fields)
     rows = [row for row in rows if matches(row, selected)]
+    from lotus_farm.table_filters import sorted_rows
+    rows=sorted_rows(rows,sort_model,fields,{'item_code':'item_name'})
     start = max(0, cint(start))
     return dict(rows=rows[start:start+50], total_count=len(rows), has_more=len(rows)>start+50, filter_values=choices)
 
 
 @frappe.whitelist()
-def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None):
+def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None,sort_model=None):
     from lotus_farm.table_filters import selections, matches, distinct
     _access()
     company_doc = _company(company)
@@ -327,6 +342,8 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
     choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     selected = selections(column_filters, fields)
     items = [item for item in items if matches(item, selected)]
+    from lotus_farm.table_filters import sorted_rows
+    items=sorted_rows(items,sort_model,fields,{'name':'item_name'})
     visible_items = items[start:start+50]
     entries = frappe.get_list('Stock Entry', filters={'company': company},
                               fields=['name', 'stock_entry_type', 'posting_date', 'docstatus'],
@@ -429,6 +446,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         doc=_stock_doc(dt,existing_name);doc.check_permission('write')
         if doc.company!=company or doc.docstatus!=0 or not _simple_doc(doc):frappe.throw('Chỉ sửa phiếu nháp đơn giản của công ty đã chọn.')
         if dt=='Stock Entry' and doc.stock_entry_type!=types[kind]:frappe.throw('Không đổi nghiệp vụ của phiếu đã tạo. Tạo phiếu mới nếu cần.')
+        if dt=='Stock Reconciliation' and doc.purpose!=count_purpose:frappe.throw('Không đổi loại kiểm kê của phiếu đã tạo.')
         if str(doc.modified)!=str(base_modified):frappe.throw('Phiếu đã thay đổi. Mở lại để lấy dữ liệu mới.')
         doc.set('items',[])
         if dt=='Stock Entry':doc.set('additional_costs',[])
@@ -505,13 +523,15 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         for cost in _receipt_costs(company, additional_costs, basic_total):
             doc.append('additional_costs', cost)
     if kind in ('issue','transfer'):
-        check_outbound_stock(doc)
+        from lotus_farm.controls import lock
+        lock('Company',company)
+        check_outbound_stock(doc,include_holds=True)
     if existing_name:doc.save()
     else:doc.insert()
     return dict(name=doc.name, doctype=doc.doctype)
 
 
-def check_outbound_stock(doc):
+def check_outbound_stock(doc,include_holds=False):
     """Reject unsupported quantities before saving a simple warehouse draft."""
     from collections import defaultdict
     from erpnext.stock.utils import get_stock_balance
@@ -523,6 +543,12 @@ def check_outbound_stock(doc):
         current=flt(frappe.db.get_value('Bin',{'item_code':item,'warehouse':store},'actual_qty'))
         dated=flt(get_stock_balance(item,store,doc.posting_date,doc.posting_time))
         available=min(current,dated)
+        if include_holds:
+            held=frappe.db.sql('''select coalesce(sum(d.qty*d.conversion_factor),0) from `tabStock Entry Detail` d
+                join `tabStock Entry` p on p.name=d.parent where p.company=%s and p.docstatus=0
+                and d.item_code=%s and d.s_warehouse=%s and p.name!=%s''',(doc.company,item,store,doc.name or ''))[0][0]
+            reserved=flt(frappe.db.get_value('Bin',{'item_code':item,'warehouse':store},'reserved_stock'))
+            available-=flt(held)+reserved
         if qty>available+0.000001:
             label=frappe.db.get_value('Item',item,'item_name') or item
             frappe.throw(f'{label} ({item}) tại {store}: tồn có thể xuất {available:g}, yêu cầu {qty:g}, thiếu {qty-available:g}. Không thể lưu phiếu xuất/chuyển kho khi thiếu hàng.')
