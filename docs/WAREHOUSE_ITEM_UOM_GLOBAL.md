@@ -22,3 +22,11 @@
 
 - Ngưỡng tồn tối thiểu dùng trường trên Item, nên **chung danh mục Item** khi có nhiều Company. Hiện Lotus vận hành một Company; nếu triển khai nhiều pháp nhân với mức ngưỡng khác nhau cần bổ sung chính sách riêng theo Company.
 - Không tạo số lượng nhập tồn khi khai báo vật tư: số 100.000 Kg phải được ghi nhận bằng phiếu nhập kho đã duyệt, không gõ vào master Item.
+
+## Hiển thị ĐVT tiếng Việt và danh sách chọn rút gọn
+
+- Tại form **Thêm/Sửa vật tư** của app Kho, chỉ hiển thị danh mục đơn vị kho thông dụng được khai báo ở `frontend/src/units.js` (`warehouseUnitCodes`). Không hiển thị toàn bộ 300+ đơn vị kỹ thuật của ERPNext.
+- Đơn vị kho đang gắn với vật tư cũ được giữ trong lựa chọn khi chỉnh sửa, kể cả khi không nằm trong danh sách thông dụng. Không vô hiệu hóa hay xóa đơn vị trong ERPNext.
+- Text hiển thị lấy từ `unitLabel()` tiếng Việt; giá trị lưu ở `Item.stock_uom` và `Item.uoms` vẫn là mã chuẩn Frappe.
+- Cột **Tồn quy đổi** nằm ngay sau **Tồn thực tế**, chỉ hiển thị số lượng đơn vị phụ khi vật tư đã khai báo hệ số. Di chuột sẽ thấy quy cách `1 Bao = 25 kg`.
+- Kiểm thử `frontend/tests/stock-uom-vietnamese.test.js` bảo đảm ẩn UOM kỹ thuật không dùng, giữ đơn vị cũ và hiển thị tiếng Việt.
