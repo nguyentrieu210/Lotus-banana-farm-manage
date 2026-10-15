@@ -123,9 +123,8 @@ def candidate_guard(doc, method=None):
 
 
 def _id_digest(value):
-    secret = frappe.conf.get("encryption_key")
-    if not secret:
-        frappe.throw("Thiếu khóa mã hóa của Frappe: không thể ghi CCCD.")
+    from frappe.utils.password import get_encryption_key
+    secret = get_encryption_key()
     return hmac.new(str(secret).encode(), value.encode(), hashlib.sha256).hexdigest()
 
 
