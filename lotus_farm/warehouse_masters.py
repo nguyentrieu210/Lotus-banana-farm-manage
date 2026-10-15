@@ -4,50 +4,7 @@ import frappe
 
 def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-    create_custom_fields({'Item':[dict(fieldname='lotus_minimum_stock',label='Lotus minimum stock by warehouse',fieldtype='Code',options='JSON',hidden=1,read_only=1)],
-        'Warehouse': [
-            dict(fieldname='lotus_address',label='Địa chỉ nhận hàng',fieldtype='Small Text'),
-            dict(fieldname='lotus_contact_name',label='Người phụ trách kho',fieldtype='Data'),
-            dict(fieldname='lotus_contact_phone',label='Số điện thoại kho',fieldtype='Data'),
-            dict(fieldname='lotus_receiving_hours',label='Giờ nhận hàng',fieldtype='Data'),
-            dict(fieldname='lotus_default_lead_days',label='Số ngày chờ hàng mặc định',fieldtype='Int'),
-            dict(fieldname='lotus_delivery_note',label='Ghi chú giao hàng',fieldtype='Small Text'),
-        ]},update=True)
-
-
-WAREHOUSE_DETAIL_FIELDS = {
-    'lotus_address': 500,
-    'lotus_contact_name': 140,
-    'lotus_contact_phone': 40,
-    'lotus_receiving_hours': 140,
-    'lotus_delivery_note': 500,
-}
-
-
-def update_warehouse_details(doc, values):
-    """Operational warehouse address and receiving defaults; not supplier accounting."""
-    if not isinstance(values, dict):
-        frappe.throw('Thông tin kho không hợp lệ.')
-    for field, limit in WAREHOUSE_DETAIL_FIELDS.items():
-        value = str(values.get(field) or '').strip()
-        if len(value) > limit:
-            frappe.throw('Thông tin kho quá dài: ' + field)
-        doc.set(field, value)
-    try:
-        days = int(str(values.get('lotus_default_lead_days') or 0))
-    except (TypeError, ValueError, OverflowError):
-        frappe.throw('Số ngày chờ hàng phải là số nguyên không âm.')
-    if days < 0 or days > 365:
-        frappe.throw('Số ngày chờ hàng mặc định từ 0 đến 365.')
-    doc.lotus_default_lead_days = days
-
-
-def warehouse_details(doc):
-    return {**{field:doc.get(field) or '' for field in WAREHOUSE_DETAIL_FIELDS},
-            'lotus_default_lead_days':doc.get('lotus_default_lead_days') or 0}
-
-
-MINIMUM_TOTAL_KEY = '__company_totals__'
+    create_custom_fields({'Item':[dict(fieldname='lotus_minimum_stock',label='Lotus minimum stock by warehouse',fieldtype='Code',options='JSON',hidden=1,read_only=1)]},update=True)
 
 
 def levels(item):
@@ -58,33 +15,16 @@ def levels(item):
         return {}
 
 
-def minimum_total(item, company, warehouse_names=None):
-    """One floor for the entire company; retain legacy per-warehouse values as fallback."""
-    from frappe.utils import flt
-    stored = levels(item)
-    totals = stored.get(MINIMUM_TOTAL_KEY) or {}
-    if isinstance(totals, dict) and company in totals:
-        return max(0, flt(totals[company]))
-    if warehouse_names is None:
-        warehouse_names = frappe.get_list(
-            'Warehouse', filters={'company': company, 'is_group': 0, 'disabled': 0},
-            pluck='name', limit_page_length=0)
-    # Old saved thresholds become one combined threshold until this Item is edited.
-    return sum(max(0, flt(stored.get(name))) for name in warehouse_names)
-
-
 def set_minimum(item,company,values):
-    from lotus_farm.warehouse import _number
-    if 'minimum_stock' not in values:
+    from lotus_farm.warehouse import _warehouse,_number
+    if 'minimum_stock' not in values or not values.get('minimum_warehouse'):
         return
-    minimum=_number(values['minimum_stock'],'Tồn tối thiểu chung',allow_zero=True)
+    warehouse=_warehouse(values['minimum_warehouse'],company)
+    minimum=_number(values.get('minimum_stock',0),'Tồn tối thiểu',allow_zero=True)
     current=levels(item)
-    totals=current.get(MINIMUM_TOTAL_KEY)
-    if not isinstance(totals,dict):
-        totals={}
-    totals[company]=minimum
-    current[MINIMUM_TOTAL_KEY]=totals
-    item.lotus_minimum_stock=json.dumps(current,ensure_ascii=False)
+    if minimum:current[warehouse.name]=minimum
+    else:current.pop(warehouse.name,None)
+    item.lotus_minimum_stock=json.dumps(current)
 
 
 def _doc(company,kind,name):
@@ -101,10 +41,10 @@ def _doc(company,kind,name):
 @frappe.whitelist()
 def read_master(company,kind,name):
     doc=_doc(company,kind,name)
+    permitted_warehouses={row.name for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0},fields=['name'],limit_page_length=0)} if kind=='item' else set()
     return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name'),code=doc.name,
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
-                parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
-                **(warehouse_details(doc) if kind=='warehouse' else {}),minimum_stock=minimum_total(doc,company) if kind=='item' else None,
+                parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),minimum_levels={key:value for key,value in levels(doc).items() if key in permitted_warehouses} if kind=='item' else {},
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
@@ -116,8 +56,7 @@ def master_lists(company):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
     return dict(groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
-                warehouses=frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
-                    fields=['name','warehouse_name','lotus_address','lotus_contact_name','lotus_contact_phone','lotus_default_lead_days'],limit_page_length=0))
+                warehouses=frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},fields=['name','warehouse_name'],limit_page_length=0))
 
 
 @frappe.whitelist(methods=['POST'])
@@ -135,9 +74,7 @@ def save_master(company,kind,name,modified,values):
         doc.description=str(values.get('description') or '')[:2000]
         set_minimum(doc,company,values);doc.save()
     elif kind=='warehouse':
-        doc.warehouse_name=_text(values.get('name'),'Tên kho')
-        update_warehouse_details(doc,values)
-        doc.save()
+        doc.warehouse_name=_text(values.get('name'),'Tên kho');doc.save()
     else:
         new_name=_text(values.get('name'),'Tên nhóm')
         if new_name!=doc.name:
