@@ -282,7 +282,7 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         filters['posting_date'] = ['<=', getdate(to_date)]
     rows = frappe.get_list('Stock Ledger Entry', filters=filters,
         fields=['name', 'posting_date', 'posting_time', 'item_code', 'warehouse', 'voucher_type', 'voucher_no',
-                'actual_qty', 'qty_after_transaction', 'stock_uom', 'stock_value_difference'],
+                'actual_qty', 'qty_after_transaction', 'stock_uom'],
         order_by='posting_datetime desc, creation desc, name desc', limit_page_length=0)
     query = str(search or '').strip().casefold()[:100]
     for row in rows:
@@ -295,7 +295,7 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         rows = [row for row in rows if any(query in str(row.get(field) or '').casefold()
                 for field in ('item_code', 'item_name', 'voucher_no'))]
     fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'in_qty', 'out_qty',
-              'opening_qty', 'qty_after_transaction', 'stock_uom', 'stock_value_difference']
+              'opening_qty', 'qty_after_transaction', 'stock_uom']
     choices = distinct(rows, fields, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     selected = selections(column_filters, fields)
     rows = [row for row in rows if matches(row, selected)]
@@ -322,14 +322,21 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
         or_filters = [[ 'item_code', 'like', '%' + str(search)[:100] + '%'],
                       [ 'item_name', 'like', '%' + str(search)[:100] + '%']]
     start = max(0, cint(start))
+    # Preserve permission scope while keeping counts independent of search/filters.
+    catalogue_names = [r.name for r in frappe.get_list('Item', filters=filters, fields=['name'], limit_page_length=0)]
+    catalogue_count = len(catalogue_names)
     items = frappe.get_list('Item', filters=filters, or_filters=or_filters,
                             fields=['name', 'item_name', 'item_group', 'stock_uom', 'has_batch_no', 'has_serial_no','lotus_minimum_stock_global'],
                             order_by='item_name, name', limit_page_length=0)
     all_bins = frappe.get_list('Bin', filters={'warehouse': ['in', all_names or ['__none__']],
-                          'item_code': ['in', [i.name for i in items] or ['__none__']]},
-                          fields=['item_code', 'warehouse', 'actual_qty', 'stock_value', 'valuation_rate'],
+                          'item_code': ['in', catalogue_names or ['__none__']]},
+                          fields=['item_code', 'warehouse', 'actual_qty'],
                           limit_page_length=0)
     bins = [b for b in all_bins if b.warehouse in names]
+    actual_by_item = {}
+    for balance in bins:
+        actual_by_item[balance.item_code] = actual_by_item.get(balance.item_code, 0) + flt(balance.actual_qty)
+    stocked_count = sum(qty > 0 for qty in actual_by_item.values())
     from lotus_farm.warehouse_masters import item_pack
     conversions = frappe.get_all('UOM Conversion Detail',
         filters={'parenttype':'Item', 'parent':['in',[i.name for i in items] or ['__none__']]},
@@ -337,8 +344,6 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
     for item in items:
         rows = [b for b in bins if b.item_code == item.name]
         item.actual_qty = sum(flt(b.actual_qty) for b in rows)
-        item.stock_value = sum(flt(b.stock_value) for b in rows)
-        item.valuation_rate = item.stock_value / item.actual_qty if item.actual_qty else 0
         global_qty=sum(flt(b.actual_qty) for b in all_bins if b.item_code==item.name)
         item.minimum_stock=flt(item.get('lotus_minimum_stock_global'))
         item.shortage_qty=max(0,item.minimum_stock-global_qty)
@@ -361,7 +366,7 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
             item.coverage_status='Chưa xác định kho' if item.name in unknown else 'Chưa đủ dữ liệu'
         else:
             item.coverage_status='Đủ hàng' if item.demand_shortage_qty<=0 else 'Chờ nhập' if item.to_buy_qty<=0 else 'Cần mua'
-    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','pack_actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
+    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','pack_actual_qty','minimum_stock','shortage_qty', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
     choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     selected = selections(column_filters, fields)
     items = [item for item in items if matches(item, selected)]
@@ -374,7 +379,7 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
     reconciliations = (frappe.get_list('Stock Reconciliation', filters={'company': company},
                        fields=['name', 'posting_date', 'docstatus'], order_by='modified desc', limit_page_length=10)
                        if frappe.has_permission('Stock Reconciliation', 'read') else [])
-    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),stocked_count=sum(1 for item in items if item.actual_qty>0),
+    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),catalogue_count=catalogue_count,stocked_count=stocked_count,
                 entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency,coverage_warnings=coverage['warnings'],demand_from=coverage['from_date'],demand_to=coverage['to_date'])
 
 

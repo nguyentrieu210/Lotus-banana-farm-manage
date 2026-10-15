@@ -6,5 +6,6 @@ import './attio.css'
 import './stock-attio.css'
 import './compact.css'
 import './warehouse-table-center.css'
+import './stock-overview.css'
 createApp(StockApp).mount('#app')
 import './register-worker'
