@@ -28,7 +28,7 @@ async function save(){busy.value=true;error.value='';try{const d=model.value;awa
 </script>
 <template>
  <section class="work-material-settings"><div class="section-title"><h3>Định mức vật tư · {{data.farm_name}}</h3><UiButton v-if="data.permissions?.['Material Norm Profile']?.create" type="button" variant="outline" :disabled="disabled||!work.name" @click="open()">＋ Thêm định mức vật tư</UiButton></div>
- <p v-if="!work.name" class="farm-muted">Lưu công việc trước để cấu hình vật tư.</p><p v-else-if="!profiles.length" class="farm-muted">Công việc này chưa có định mức vật tư tại nông trường đang chọn.</p>
+ <p v-if="!work.name" class="farm-muted">Lưu công việc trước để cấu hình vật tư.</p><p v-else-if="!profiles.length" class="farm-muted">Công việc này chưa có định mức vật tư tại vườn đang chọn.</p>
  <div v-for="n in profiles" :key="n.name" class="farm-check"><span>{{n.profile_name}} · Phiên bản {{n.version}} · {{stateLabel(n.approval_state)}}<small> · {{n.valid_from}} → {{n.valid_to||'Chưa đặt ngày kết thúc'}}</small></span><UiButton type="button" variant="outline" :disabled="disabled" @click="open(n.name)">{{n.approval_state==='Approved'?'Xem / tạo phiên bản':'Cấu hình vật tư'}}</UiButton></div>
  <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
  </section>

@@ -220,7 +220,7 @@ def delete_draft(doctype,name,modified):
 
 @frappe.whitelist()
 def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None):
-    from lotus_farm.table_filters import distinct,selections,matches
+    from lotus_farm.table_filters import faceted_distinct,selections,matches
     _access();_company(company)
     stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
     allowed=set(stores)
@@ -245,7 +245,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
             entry.warehouses=' · '.join(sorted(names));rows.append(entry)
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
     fields=['name','kind','posting_date','docstatus','warehouses']
-    choices=distinct(rows,fields);selected=selections(column_filters,fields)
+    selected=selections(column_filters,fields);choices=faceted_distinct(rows,fields,selected)
     rows=[r for r in rows if matches(r,selected)]
     from lotus_farm.table_filters import sorted_rows
     rows=sorted_rows(rows,sort_model,fields)
@@ -255,7 +255,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
 
 @frappe.whitelist()
 def movements(company, warehouse=None, search=None, from_date=None,to_date=None,start=0,column_filters=None,sort_model=None):
-    from lotus_farm.table_filters import selections, matches, distinct
+    from lotus_farm.table_filters import selections, matches, faceted_distinct
     _access()
     _company(company)
     if not frappe.has_permission('Stock Ledger Entry', 'read'):
@@ -296,8 +296,8 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
                 for field in ('item_code', 'item_name', 'voucher_no'))]
     fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'in_qty', 'out_qty',
               'opening_qty', 'qty_after_transaction', 'stock_uom']
-    choices = distinct(rows, fields, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     selected = selections(column_filters, fields)
+    choices = faceted_distinct(rows, fields, selected, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     rows = [row for row in rows if matches(row, selected)]
     from lotus_farm.table_filters import sorted_rows
     rows=sorted_rows(rows,sort_model,fields,{'item_code':'item_name'})
@@ -307,7 +307,7 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
 
 @frappe.whitelist()
 def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None,sort_model=None):
-    from lotus_farm.table_filters import selections, matches, distinct
+    from lotus_farm.table_filters import selections, matches, faceted_distinct
     _access()
     company_doc = _company(company)
     warehouses = frappe.get_list('Warehouse', filters={'company': company, 'is_group': 0, 'disabled': 0},
@@ -367,8 +367,8 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
         else:
             item.coverage_status='Đủ hàng' if item.demand_shortage_qty<=0 else 'Chờ nhập' if item.to_buy_qty<=0 else 'Cần mua'
     fields = ['name', 'item_group', 'stock_uom', 'actual_qty','pack_actual_qty','minimum_stock','shortage_qty', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
-    choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     selected = selections(column_filters, fields)
+    choices = faceted_distinct(items, fields, selected, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     items = [item for item in items if matches(item, selected)]
     from lotus_farm.table_filters import sorted_rows
     items=sorted_rows(items,sort_model,fields,{'name':'item_name'})

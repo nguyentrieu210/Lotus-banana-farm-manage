@@ -40,6 +40,24 @@ def distinct(rows, fields, labels=None):
     return result
 
 
+
+def faceted_distinct(rows, fields, selected, labels=None):
+    """Excel-like choices after applying other column filters, not the field's own.
+
+    Keep selected choices visible if other filters currently yield zero matches.
+    """
+    result = {}
+    for field in fields:
+        other = {name: values for name, values in selected.items() if name != field}
+        choices = distinct([row for row in rows if matches(row, other)], [field], labels)[field]
+        included = {str(entry['value']) for entry in choices}
+        for value in selected.get(field, []):
+            if str(value) not in included:
+                choices.append(dict(value=value, label=str(value) if value is not None else '(Trống)'))
+        result[field] = choices
+    return result
+
+
 def sorted_rows(rows,raw,fields,aliases=None):
     model=frappe.parse_json(raw) if raw not in (None,'') else []
     if not isinstance(model,list) or len(model)>5:frappe.throw('Sắp xếp không hợp lệ.')

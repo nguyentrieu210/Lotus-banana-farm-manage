@@ -6,7 +6,7 @@ import {mobileGroups} from '../mobile-menu'
 const props=defineProps({session:{type:Object,required:true},farm:{type:String,default:''},online:{type:Boolean,default:true},queued:{type:Number,default:0}})
 const emit=defineEmits(['select','outbox'])
 const groups=computed(()=>mobileGroups(props.session))
-const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.farm_name||props.farm||'Tất cả nông trường được phân quyền')
+const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.farm_name||props.farm||'Tất cả vườn được phân quyền')
 </script>
 
 <template>
@@ -27,7 +27,7 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
     </UiButton>
    </div>
   </section>
-  <p v-if="!groups.length" class="notice">Tài khoản chưa có quyền sử dụng nghiệp vụ Lotus. Nhờ quản trị viên kiểm tra quyền và nông trường.</p>
+  <p v-if="!groups.length" class="notice">Tài khoản chưa có quyền sử dụng nghiệp vụ Lotus. Nhờ quản trị viên kiểm tra quyền và vườn.</p>
   <p class="mobile-help">Các mục hiện theo quyền tài khoản. Nếu kiêm nhiều công việc, bạn sẽ thấy tất cả mục được cấp. Việc ghi dữ liệu vẫn phải được máy chủ cho phép.</p>
  </section>
 </template>

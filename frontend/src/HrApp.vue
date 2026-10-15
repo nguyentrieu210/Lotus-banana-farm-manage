@@ -107,7 +107,7 @@ onMounted(init)
   <main class="stock-main">
     <WorkspaceBar :user="session?.user" :title="tabs.find(x=>x.id===tab)?.label||'Nhân sự'" :actions="actions"/>
     <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
-    <div class="stock-scope"><label>Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label>
+    <div class="stock-scope"><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label>
       <label v-if="['employees','onboarding','candidates'].includes(tab)">Tìm nhanh <UiInput v-model="search" placeholder="Tên, mã, chức danh hoặc số liên lạc"/></label>
       <UiButton variant="outline" :disabled="busy||saving" @click="tab==='payroll'?loadPayroll():refresh()">{{busy?'Đang tải…':'Làm mới'}}</UiButton>
     </div>
@@ -122,7 +122,7 @@ onMounted(init)
         <UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">+ Thêm nhân viên</UiButton><a class="stock-button" href="/app/employee-transfer">Điều chuyển nhân viên (HRMS) ↗</a>
       </div>
       <p class="attendance-legend">Công nhân thử việc, thời vụ hoặc dài hạn có hồ sơ Employee. Đội khoán/nhà thầu chấm theo đội ở module Chấm công, không tự tạo nhân viên giả. Nhân viên chờ tiếp nhận chưa được kích hoạt.</p>
-      <section class="stock-panel hr-table"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Nông trường</th><th>Loại lao động</th><th>Hình thức công/lương</th><th>Tiếp nhận</th><th></th></tr></thead>
+      <section class="stock-panel hr-table"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Vườn</th><th>Loại lao động</th><th>Hình thức công/lương</th><th>Tiếp nhận</th><th></th></tr></thead>
       <tbody><tr v-for="person in filteredEmployees" :key="person.name">
         <td>{{person.name}}</td><td><strong>{{person.employee_name}}</strong><small>{{person.department}}</small></td>
         <td>{{person.designation||'—'}}</td><td>{{person.lotus_farm||'—'}}</td>
@@ -136,13 +136,13 @@ onMounted(init)
     <template v-if="tab==='candidates'">
       <div class="attendance-toolbar"><h2>Ứng viên và tuyển dụng</h2><UiButton :disabled="saving" @click="emptyCandidate">+ Ứng viên mới</UiButton><a class="stock-button" href="/app/job-opening">Tin tuyển dụng HRMS ↗</a><a class="stock-button" href="/app/job-applicant">Ứng viên HRMS có email ↗</a></div>
       <p class="attendance-legend">Ứng viên Lotus có thể đăng ký bằng số điện thoại, không ép cung cấp email giả. Ứng viên có email hoặc tuyển văn phòng vẫn có thể sử dụng Job Applicant/Job Offer chuẩn HRMS.</p>
-      <section class="stock-panel hr-table"><table><thead><tr><th>Ứng viên</th><th>Liên hệ</th><th>Chức danh</th><th>Nông trường</th><th>Nguồn</th><th>Trạng thái</th><th></th></tr></thead>
+      <section class="stock-panel hr-table"><table><thead><tr><th>Ứng viên</th><th>Liên hệ</th><th>Chức danh</th><th>Vườn</th><th>Nguồn</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody><tr v-for="c in filteredCandidates" :key="c.name"><td><strong>{{c.applicant_name}}</strong><small>{{c.applied_on}}</small></td><td>{{c.phone}}</td><td>{{c.designation}}</td><td>{{c.farm||'—'}}</td><td>{{c.source||'—'}}</td><td>{{stages[c.status]}}</td><td><UiButton variant="outline" size="sm" @click="openCandidate(c)">Xử lý</UiButton><UiButton v-if="isManager&&c.status==='Offered'&&!c.employee" size="sm" @click="startHire(c)">Tiếp nhận</UiButton></td></tr></tbody></table>
       <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
     </template>
 
     <template v-if="tab==='designations'">
-      <div class="attendance-toolbar"><h2>Danh mục chức danh nông trường</h2><UiButton v-if="isManager" :disabled="saving" @click="seed">Tạo các chức danh Lotus còn thiếu</UiButton></div>
+      <div class="attendance-toolbar"><h2>Danh mục chức danh vườn</h2><UiButton v-if="isManager" :disabled="saving" @click="seed">Tạo các chức danh Lotus còn thiếu</UiButton></div>
       <p class="attendance-legend">Chức danh là Designation chuẩn HRMS, không tự gắn mức lương. Nhóm và tổ/đội thể hiện ở Department, Farm và Work Team. Mức lương do HRMS Salary Structure Assignment quyết định.</p>
       <div class="hr-role-grid"><section v-for="(names,group) in catalog.designation_groups" :key="group" class="stock-panel"><h3>{{group}}</h3><div v-for="name in names" :key="name" class="hr-role-row"><span>{{name}}</span><small>{{catalog.designations.some(d=>d.name===name)?'Đã cấu hình':'Chưa tạo'}}</small></div></section></div>
       <a href="/app/designation">Mở danh mục Designation chuẩn HRMS ↗</a>
@@ -162,7 +162,7 @@ onMounted(init)
         <label>Số điện thoại *<UiInput v-model="candidateForm.phone" required maxlength="25"/></label>
         <label>Email (không bắt buộc)<UiInput v-model="candidateForm.email" type="email"/></label>
         <label>Chức danh ứng tuyển *<UiSelect v-model="candidateForm.designation" required :disabled="candidateForm.status==='Hired'"><option value="">Chọn chức danh</option><option v-for="d in catalog.designations" :key="d.name" :value="d.name">{{d.designation_name}}</option></UiSelect></label>
-        <label>Nông trường dự kiến<UiSelect v-model="candidateForm.farm"><option value="">Chưa xác định</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
+        <label>Vườn dự kiến<UiSelect v-model="candidateForm.farm"><option value="">Chưa xác định</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
         <label>Tin tuyển dụng<UiSelect v-model="candidateForm.job_opening" @change="chooseOpening"><option value="">Không gắn tin</option><option v-for="j in catalog.openings" :key="j.name" :value="j.name">{{j.job_title}}</option></UiSelect></label>
         <label>Ngày đăng ký<UiInput v-model="candidateForm.applied_on" type="date" required/></label>
         <label>Nguồn ứng tuyển<UiSelect v-model="candidateForm.source"><option v-for="s in ['Trực tiếp','Zalo','Facebook','Giới thiệu','Khác']" :key="s">{{s}}</option></UiSelect></label>
@@ -184,7 +184,7 @@ onMounted(init)
         <label>Phòng ban<UiSelect v-model="employeeForm.department"><option value="">Chưa gắn</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{d.department_name}}</option></UiSelect></label>
         <label>Loại lao động *<UiSelect v-model="employeeForm.lotus_worker_category" required><option value="">Chọn</option><option v-for="c in catalog.worker_categories" :key="c" :value="c">{{cats[c]}}</option></UiSelect></label>
         <label>Cơ chế công/lương *<UiSelect v-model="employeeForm.lotus_payment_basis" required><option value="">Chọn</option><option v-for="v in catalog.payment_bases" :key="v" :value="v">{{bases[v]}}</option></UiSelect></label>
-        <label>Nông trường<UiSelect v-model="employeeForm.lotus_farm" :disabled="!!candidateHire" @change="employeeForm.lotus_work_team=''"><option value="">Chưa phân công</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
+        <label>Vườn<UiSelect v-model="employeeForm.lotus_farm" :disabled="!!candidateHire" @change="employeeForm.lotus_work_team=''"><option value="">Chưa phân công</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
         <label>Tổ/đội nội bộ<UiSelect v-model="employeeForm.lotus_work_team"><option value="">Chưa phân tổ</option><option v-for="t in teamChoices" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect></label>
         <label>Loại HĐ lao động chuẩn HRMS<UiSelect v-model="employeeForm.employment_type"><option value="">Chưa chọn</option><option v-for="t in catalog.employment_types" :key="t.name" :value="t.name">{{t.name}}</option></UiSelect></label>
         <label>Ngày hết hạn hợp đồng<UiInput v-model="employeeForm.contract_end_date" type="date"/></label>

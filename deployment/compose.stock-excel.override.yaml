@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-stock-excel:20261015c
+  frontend:
+    image: lotus-stock-excel:20261015c
