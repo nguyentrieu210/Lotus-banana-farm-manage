@@ -4,7 +4,10 @@ import frappe
 
 def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-    create_custom_fields({'Item':[dict(fieldname='lotus_minimum_stock',label='Lotus minimum stock by warehouse',fieldtype='Code',options='JSON',hidden=1,read_only=1)],
+    create_custom_fields({'Item':[
+      dict(fieldname='lotus_minimum_stock',label='Legacy minimum by warehouse',fieldtype='Code',options='JSON',hidden=1,read_only=1),
+      dict(fieldname='lotus_minimum_stock_global',label='Global minimum stock',fieldtype='Float',insert_after='stock_uom')
+    ],
         'Warehouse': [
             dict(fieldname='lotus_address',label='Địa chỉ nhận hàng',fieldtype='Small Text'),
             dict(fieldname='lotus_contact_employee',label='Người phụ trách (HRMS)',fieldtype='Link',options='Employee',insert_after='lotus_address'),
@@ -14,6 +17,9 @@ def install_fields():
             dict(fieldname='lotus_default_lead_days',label='Số ngày chờ hàng mặc định',fieldtype='Int'),
             dict(fieldname='lotus_delivery_note',label='Ghi chú giao hàng',fieldtype='Small Text'),
         ]},update=True)
+    # Packaging unit is defined once globally; each Item owns its conversion factor.
+    if not frappe.db.exists('UOM', 'Bao'):
+        frappe.get_doc(dict(doctype='UOM', uom_name='Bao', must_be_whole_number=1)).insert(ignore_permissions=True)
 
 
 WAREHOUSE_DETAIL_FIELDS = {
@@ -109,16 +115,58 @@ def levels(item):
         return {}
 
 
-def set_minimum(item,company,values):
-    from lotus_farm.warehouse import _warehouse,_number
-    if 'minimum_stock' not in values or not values.get('minimum_warehouse'):
+def set_minimum(item, company, values):
+    """Global stock minimum is measured in the stock UOM, across all company warehouses."""
+    from lotus_farm.warehouse import _number
+    if 'minimum_stock' in values:
+        item.lotus_minimum_stock_global = _number(
+            values.get('minimum_stock', 0), 'Tồn tối thiểu toàn bộ kho', allow_zero=True)
+
+
+def item_pack(item):
+    """Secondary UOM is stored in ERPNext's native Item UOM conversion table."""
+    for row in item.get('uoms') or []:
+        if row.uom != item.stock_uom:
+            return dict(pack_uom=row.uom, pack_factor=float(row.conversion_factor or 0))
+    return dict(pack_uom='', pack_factor=0)
+
+
+def configure_pack(item, values):
+    if 'pack_uom' not in values and 'pack_factor' not in values:
         return
-    warehouse=_warehouse(values['minimum_warehouse'],company)
-    minimum=_number(values.get('minimum_stock',0),'Tồn tối thiểu',allow_zero=True)
-    current=levels(item)
-    if minimum:current[warehouse.name]=minimum
-    else:current.pop(warehouse.name,None)
-    item.lotus_minimum_stock=json.dumps(current)
+    from lotus_farm.warehouse import _number
+    pack = str(values.get('pack_uom') or '').strip()
+    if not pack:
+        if values.get('pack_factor'):
+            frappe.throw('Chọn đơn vị đóng gói trước khi nhập hệ số quy đổi.')
+        if item.get('uoms') and any(r.uom != item.stock_uom for r in item.uoms):
+            frappe.throw('Đã có đơn vị phụ; muốn xóa phải dùng thiết lập ERPNext.')
+        return
+    if pack == item.stock_uom:
+        frappe.throw('Đơn vị đóng gói phải khác đơn vị tồn kho gốc.')
+    uom = frappe.get_doc('UOM', pack)
+    uom.check_permission('read')
+    if not uom.enabled:
+        frappe.throw('Đơn vị đóng gói đã ngừng sử dụng.')
+    factor = _number(values.get('pack_factor'), 'Hệ số quy đổi')
+    existing = next((r for r in item.get('uoms') or [] if r.uom == pack), None)
+    if existing and abs(float(existing.conversion_factor or 0) - factor) < 1e-9:
+        return
+    if not item.is_new():
+        old = item_pack(item)
+        if old['pack_uom'] and (old['pack_uom'] != pack or abs(old['pack_factor'] - factor) > 1e-9):
+            if frappe.db.exists('Stock Ledger Entry', {'item_code': item.name}):
+                frappe.throw('Vật tư đã có nhập xuất: không được thay đổi quy đổi cũ.')
+    if not item.is_new():
+        old = item_pack(item)
+        if old['pack_uom'] and old['pack_uom'] != pack:
+            previous = next((r for r in item.uoms if r.uom == old['pack_uom']), None)
+            if previous:
+                item.remove(previous)
+    if existing:
+        existing.conversion_factor = factor
+    else:
+        item.append('uoms', dict(uom=pack, conversion_factor=factor))
 
 
 def _doc(company,kind,name):
@@ -135,11 +183,11 @@ def _doc(company,kind,name):
 @frappe.whitelist()
 def read_master(company,kind,name):
     doc=_doc(company,kind,name)
-    permitted_warehouses={row.name for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0},fields=['name'],limit_page_length=0)} if kind=='item' else set()
     return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name'),code=doc.name,
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
-                **(warehouse_details(doc) if kind=='warehouse' else {}),minimum_levels={key:value for key,value in levels(doc).items() if key in permitted_warehouses} if kind=='item' else {},
+                **(warehouse_details(doc) if kind=='warehouse' else {}),
+                **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc)) if kind=='item' else {}),
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
@@ -168,7 +216,9 @@ def save_master(company,kind,name,modified,values):
         if not uom.enabled:frappe.throw('Đơn vị tính đã bị tắt.')
         doc.item_name=_text(values.get('name'),'Tên vật tư');doc.item_group=group.name;doc.stock_uom=uom.name
         doc.description=str(values.get('description') or '')[:2000]
-        set_minimum(doc,company,values);doc.save()
+        set_minimum(doc,company,values)
+        configure_pack(doc,values)
+        doc.save()
     elif kind=='warehouse':
         label=_text(values.get('name'),'Tên kho')
         expected=warehouse_code(label,company)

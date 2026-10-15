@@ -118,8 +118,9 @@ def create_master(company, kind, values):
                                   item_name=_text(values.get('name'), 'Tên vật tư'), item_group=group,
                                   stock_uom=uom.name, is_stock_item=1, include_item_in_manufacturing=0,
                                   description=str(values.get('description') or '')[:2000]))
-        from lotus_farm.warehouse_masters import set_minimum
+        from lotus_farm.warehouse_masters import set_minimum, configure_pack
         set_minimum(doc,company,values)
+        configure_pack(doc,values)
         doc.insert()
     return dict(name=doc.name, kind=kind)
 
@@ -150,7 +151,7 @@ def _simple_doc(doc):
     if doc.doctype=='Stock Entry':
         if len({r.get('s_warehouse') for r in doc.items if r.get('s_warehouse')})>1 or len({r.get('t_warehouse') for r in doc.items if r.get('t_warehouse')})>1:
             return False
-        if any(flt(r.conversion_factor)!=1 or r.uom!=r.stock_uom for r in doc.items):return False
+        if any((flt(r.conversion_factor)!=1 or r.uom!=r.stock_uom) and doc.stock_entry_type!='Material Receipt' for r in doc.items):return False
     elif len({r.warehouse for r in doc.items})>1:return False
     for row in doc.items:
         item = frappe.get_doc('Item', row.item_code)
@@ -163,6 +164,7 @@ def _simple_doc(doc):
 @frappe.whitelist()
 def document(doctype, name):
     doc = _stock_doc(doctype, name)
+    from lotus_farm.warehouse_masters import item_pack
     return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
@@ -176,10 +178,14 @@ def document(doctype, name):
                 can_submit=doc.docstatus == 0 and doc.has_permission('submit') and _simple_doc(doc),
                 can_write=doc.docstatus == 0 and doc.has_permission('write') and _simple_doc(doc),
                 can_delete=doc.docstatus == 0 and doc.has_permission('delete') and _simple_doc(doc),
-                items=[dict(item=row.item_code, item_name=row.item_name, uom=row.get('stock_uom') or row.get('uom'),
-                            qty=flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty, source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
+                items=[dict(item=row.item_code, item_name=row.item_name,
+                            uom=(row.get('uom') if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else row.get('stock_uom') or row.get('uom')),
+                            qty=(flt(row.qty) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty),
+                            stock_uom=row.get('stock_uom'),conversion_factor=flt(row.get('conversion_factor') or 1),
+                            **(item_pack(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else {}),
+                            source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
                             area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
-                            rate=row.get('basic_rate') if doc.doctype == 'Stock Entry' else row.get('valuation_rate'),
+                            rate=(flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
                             valuation_rate=row.get('valuation_rate'), amount=row.get('amount'))
                        for row in doc.items])
@@ -308,7 +314,8 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
                                 fields=['name', 'warehouse_name'], limit_page_length=1000, order_by='name')
     if warehouse:
         _warehouse(warehouse, company)
-    names = [warehouse] if warehouse else [w.name for w in warehouses]
+    all_names = [w.name for w in warehouses]
+    names = [warehouse] if warehouse else all_names
     filters = {'disabled': 0, 'is_stock_item': 1}
     or_filters = None
     if search:
@@ -316,23 +323,31 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
                       [ 'item_name', 'like', '%' + str(search)[:100] + '%']]
     start = max(0, cint(start))
     items = frappe.get_list('Item', filters=filters, or_filters=or_filters,
-                            fields=['name', 'item_name', 'item_group', 'stock_uom', 'has_batch_no', 'has_serial_no','lotus_minimum_stock'],
+                            fields=['name', 'item_name', 'item_group', 'stock_uom', 'has_batch_no', 'has_serial_no','lotus_minimum_stock_global'],
                             order_by='item_name, name', limit_page_length=0)
-    bins = frappe.get_list('Bin', filters={'warehouse': ['in', names or ['__none__']],
+    all_bins = frappe.get_list('Bin', filters={'warehouse': ['in', all_names or ['__none__']],
                           'item_code': ['in', [i.name for i in items] or ['__none__']]},
                           fields=['item_code', 'warehouse', 'actual_qty', 'stock_value', 'valuation_rate'],
                           limit_page_length=0)
+    bins = [b for b in all_bins if b.warehouse in names]
+    from lotus_farm.warehouse_masters import item_pack
+    conversions = frappe.get_all('UOM Conversion Detail',
+        filters={'parenttype':'Item', 'parent':['in',[i.name for i in items] or ['__none__']]},
+        fields=['parent','uom','conversion_factor'],limit_page_length=0)
     for item in items:
         rows = [b for b in bins if b.item_code == item.name]
         item.actual_qty = sum(flt(b.actual_qty) for b in rows)
         item.stock_value = sum(flt(b.stock_value) for b in rows)
         item.valuation_rate = item.stock_value / item.actual_qty if item.actual_qty else 0
-        from lotus_farm.warehouse_masters import levels
-        minimums=levels(item)
-        item.minimum_stock=sum(flt(minimums.get(name)) for name in names)
-        per_warehouse={row.warehouse:flt(row.actual_qty) for row in rows}
-        item.shortage_qty=sum(max(0,flt(minimums.get(name))-per_warehouse.get(name,0)) for name in names if flt(minimums.get(name))>0)
-        item.pop('lotus_minimum_stock',None)
+        global_qty=sum(flt(b.actual_qty) for b in all_bins if b.item_code==item.name)
+        item.minimum_stock=flt(item.get('lotus_minimum_stock_global'))
+        item.shortage_qty=max(0,item.minimum_stock-global_qty)
+        item.company_actual_qty=global_qty
+        pack=next((r for r in conversions if r.parent==item.name and r.uom!=item.stock_uom),None)
+        item.pack_uom=pack.uom if pack else ''
+        item.pack_factor=flt(pack.conversion_factor) if pack else 0
+        item.pack_actual_qty=item.actual_qty/item.pack_factor if item.pack_factor else None
+        item.pop('lotus_minimum_stock_global',None)
         item.stock_status = 'Dưới tối thiểu' if item.shortage_qty>0 else 'Có tồn' if item.actual_qty > 0 else 'Tồn âm' if item.actual_qty < 0 else 'Chưa có tồn'
     from lotus_farm.warehouse_planning import snapshot
     coverage=snapshot(company,warehouse,from_date,to_date,include_stock=True)
@@ -346,7 +361,7 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
             item.coverage_status='Chưa xác định kho' if item.name in unknown else 'Chưa đủ dữ liệu'
         else:
             item.coverage_status='Đủ hàng' if item.demand_shortage_qty<=0 else 'Chờ nhập' if item.to_buy_qty<=0 else 'Cần mua'
-    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
+    fields = ['name', 'item_group', 'stock_uom', 'actual_qty','pack_actual_qty','minimum_stock','shortage_qty', 'valuation_rate', 'stock_value', 'stock_status','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']
     choices = distinct(items, fields, labels={'name': lambda row: row.item_name + ' · ' + row.name})
     selected = selections(column_filters, fields)
     items = [item for item in items if matches(item, selected)]
@@ -502,6 +517,15 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             frappe.throw('Gộp các dòng cùng vật tư và cùng khu vực sử dụng.')
         seen.add(key)
         qty = _number(row.get('qty'), 'Số lượng', allow_zero=kind == 'count')
+        entry_uom=item.stock_uom
+        factor=1.0
+        if kind=='receipt':
+            entry_uom=str(row.get('uom') or item.stock_uom)
+            if entry_uom!=item.stock_uom:
+                conversion=next((r for r in item.uoms if r.uom==entry_uom),None)
+                if not conversion or flt(conversion.conversion_factor)<=0:
+                    frappe.throw('Đơn vị nhập chưa được khai báo quy đổi cho vật tư '+item.name)
+                factor=flt(conversion.conversion_factor)
         # Existing clients can omit rates; new receipt forms send explicit prices.
         existing_rate = frappe.db.get_value('Bin', {'item_code': item.name, 'warehouse': target or source}, 'valuation_rate') or item.get('valuation_rate') or 0
         rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)
@@ -515,13 +539,13 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                 if qty>0 and rate<=0:frappe.throw('Tồn đầu kỳ cần đơn giá lớn hơn 0 cho '+item.name)
                 values.update(warehouse=target,valuation_rate=rate)
         else:
-            values.update(uom=item.stock_uom, stock_uom=item.stock_uom, conversion_factor=1)
+            values.update(uom=entry_uom, stock_uom=item.stock_uom, conversion_factor=factor)
             if kind in ('issue', 'transfer'):
                 values['s_warehouse'] = source
             if kind in ('receipt', 'transfer'):
                 values['t_warehouse'] = target
             if kind == 'receipt':
-                values['basic_rate'] = rate
+                values['basic_rate'] = rate/factor
                 values['set_basic_rate_manually'] = 1
                 basic_total += qty * rate
             if kind == 'issue':
