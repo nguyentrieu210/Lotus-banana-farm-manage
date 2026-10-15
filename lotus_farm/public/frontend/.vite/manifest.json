@@ -28,21 +28,21 @@
       "_compact-BYn4J5m6.js"
     ]
   },
-  "_LinkPicker-CFNEopAu.js": {
-    "file": "assets/LinkPicker-CFNEopAu.js",
+  "_LinkPicker--cMmY9Zf.js": {
+    "file": "assets/LinkPicker--cMmY9Zf.js",
     "name": "LinkPicker",
     "imports": [
       "_compact-BYn4J5m6.js"
     ]
   },
-  "_SchemaForm-CSkYicHo.js": {
-    "file": "assets/SchemaForm-CSkYicHo.js",
+  "_SchemaForm-UMCIHHah.js": {
+    "file": "assets/SchemaForm-UMCIHHah.js",
     "name": "SchemaForm",
     "imports": [
       "_compact-BYn4J5m6.js",
       "_register-worker-XvXIRWXf.js",
       "_Select-BM7gSsPX.js",
-      "_LinkPicker-CFNEopAu.js"
+      "_LinkPicker--cMmY9Zf.js"
     ]
   },
   "_Select-BM7gSsPX.js": {
@@ -86,13 +86,13 @@
     ]
   },
   "farm-work.html": {
-    "file": "assets/farm-work-_WlHH9mz.js",
+    "file": "assets/farm-work-Fnvi8bBA.js",
     "name": "farm-work",
     "src": "farm-work.html",
     "isEntry": true,
     "imports": [
       "_compact-BYn4J5m6.js",
-      "_SchemaForm-CSkYicHo.js",
+      "_SchemaForm-UMCIHHah.js",
       "_register-worker-XvXIRWXf.js",
       "_AssignApp-BMeYI9-1.js"
     ],
@@ -116,13 +116,13 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-DqP1JxuC.js",
+    "file": "assets/index-DAXMzRQu.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_compact-BYn4J5m6.js",
-      "_SchemaForm-CSkYicHo.js",
+      "_SchemaForm-UMCIHHah.js",
       "_register-worker-XvXIRWXf.js",
       "_Select-BM7gSsPX.js",
       "_DataTable-D_izItoW.js",
@@ -145,7 +145,7 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-D0fdaWZD.js",
+    "file": "assets/stock-JhyJYan7.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
@@ -154,10 +154,11 @@
       "_register-worker-XvXIRWXf.js",
       "_Select-BM7gSsPX.js",
       "_DataTable-D_izItoW.js",
-      "_LinkPicker-CFNEopAu.js",
+      "_LinkPicker--cMmY9Zf.js",
       "_Card-BUA8AYAA.js"
     ],
     "css": [
+      "assets/stock-CrVj6Z7h.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },

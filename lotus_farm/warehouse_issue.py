@@ -14,7 +14,8 @@ def install_fields():
                  options='\nManual\nPlan\nRequest', read_only=1, no_copy=1, insert_after='stock_entry_type'),
             dict(fieldname='lotus_work_plan', label='Lotus Work Plan', fieldtype='Link',
                  options='Daily Work Plan', read_only=1, no_copy=1, insert_after='lotus_issue_mode'),
-            dict(fieldname='lotus_receiver', label='Người nhận vật tư', fieldtype='Data', insert_after='lotus_work_plan'),
+            dict(fieldname='lotus_receiver', label='Tên người nhận (HRMS)', fieldtype='Data', read_only=1, insert_after='lotus_work_plan'),
+            dict(fieldname='lotus_receiver_employee', label='Người nhận vật tư (HRMS)', fieldtype='Link', options='Employee', insert_after='lotus_receiver'),
         ],
         'Stock Entry Detail': [
             dict(fieldname='lotus_usage_area', label='Khu vực / lô sử dụng', fieldtype='Data', insert_after='item_code'),
@@ -164,6 +165,11 @@ def validate_issue(doc, method=None):
         return
     if mode not in ('Manual', 'Plan', 'Request') or doc.stock_entry_type != 'Material Issue':
         frappe.throw('Hình thức xuất kho không hợp lệ.')
+    if doc.get('lotus_receiver_employee'):
+        from lotus_farm.warehouse_masters import employee_contact
+        staff=employee_contact(doc.company,doc.lotus_receiver_employee)
+        # Name is a display snapshot; HRMS remains the source of truth.
+        doc.lotus_receiver=staff.employee_name
     if not str(doc.get('lotus_receiver') or '').strip():
         frappe.throw('Cần nhập người nhận vật tư.')
     if mode == 'Manual' and not str(doc.remarks or '').strip():

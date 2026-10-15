@@ -44,7 +44,7 @@ def bootstrap():
     _access()
     from frappe.sessions import get_csrf_token
     return dict(user=frappe.session.user, csrf_token=get_csrf_token(), today=nowdate(),
-                companies=frappe.get_list('Company', fields=['name', 'default_currency'], limit_page_length=1000),
+                companies=frappe.get_list('Company', fields=['name', 'abbr', 'default_currency'], limit_page_length=1000),
                 permissions={dt: frappe.has_permission(dt, 'create') for dt in
                              ('Item', 'Item Group', 'Warehouse', 'Stock Entry', 'Stock Reconciliation', 'Company')})
 
@@ -95,7 +95,11 @@ def create_master(company, kind, values):
         parent.check_permission('read')
         if parent.company != company or not parent.is_group or parent.disabled:
             frappe.throw('Kho cha phải là nhóm kho đang hoạt động của công ty đã chọn.')
-        doc = frappe.get_doc(dict(doctype='Warehouse', warehouse_name=_text(values.get('name'), 'Tên kho'),
+        from lotus_farm.warehouse_masters import warehouse_code
+        label=_text(values.get('name'),'Tên kho')
+        if frappe.db.exists('Warehouse',warehouse_code(label,company)):
+            frappe.throw('Tên kho đã tồn tại trong công ty.')
+        doc = frappe.get_doc(dict(doctype='Warehouse', warehouse_name=label,
                                   parent_warehouse=parent.name, company=company, is_group=0))
         from lotus_farm.warehouse_masters import update_warehouse_details
         update_warehouse_details(doc, values)
@@ -162,7 +166,8 @@ def document(doctype, name):
     return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
-                issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'), work_plan=doc.get('lotus_work_plan'),
+                issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'),
+                receiver_employee=doc.get('lotus_receiver_employee'), work_plan=doc.get('lotus_work_plan'),
                 basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
                 additional_total=flt(doc.get('total_additional_costs')),
                 incoming_total=flt(doc.get('total_incoming_value')),
@@ -412,7 +417,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None):
     _access()
     _company(company)
     types = {'receipt': 'Material Receipt', 'issue': 'Material Issue', 'transfer': 'Material Transfer'}
@@ -427,7 +432,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         from lotus_farm.controls import lock
         event=_text(client_event_id,'Mã yêu cầu')
         client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver=receiver,additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
         lock('Company',company)
         existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
         if existing:
@@ -473,7 +478,13 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                 frappe.throw('Hình thức xuất kho không hợp lệ.')
             doc.lotus_issue_mode = issue_mode
             doc.lotus_work_plan = work_plan if issue_mode == 'Plan' else None
-            doc.lotus_receiver = _text(receiver, 'Người nhận')
+            from lotus_farm.warehouse_masters import employee_contact
+            staff=employee_contact(company,receiver_employee)
+            if staff:
+                doc.lotus_receiver_employee=staff.name
+                doc.lotus_receiver=staff.employee_name
+            elif not (existing_name and doc.get('lotus_receiver')):
+                frappe.throw('Chọn người nhận vật tư trong danh sách nhân sự HRMS.')
     seen = set()
     basic_total = 0
     for row in rows:
