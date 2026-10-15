@@ -1,6 +1,6 @@
 <script setup>
 import {unitLabel,stockItemUomOptions} from './units'
-import {STOCK_QUICK_FILTERS,updateColumnFilter,toggleStockQuickFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
+import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceBar from './components/WorkspaceBar.vue'
 import {sidebarCollapsed} from './workspace'
 import {computed,nextTick,onMounted,reactive,ref,watch} from 'vue'
@@ -57,23 +57,13 @@ function addCost(){form.additional_costs.push({description:'',amount:0,expense_a
 
 let version=0
 const demandWindowDays=7
-const hasStockFilters=computed(()=>hasStockSearchFilters(search.value,columnFilters.value)||!!warehouse.value||!!session.value&&(demandFrom.value!==session.value.today||demandTo.value!==shiftISODate(session.value.today,demandWindowDays-1)))
-const activeStockColumns=computed(()=>Object.entries(columnFilters.value).map(([field,values])=>({
- field,
- title:stockColumns.find(c=>c.field===field)?.headerName||field,
- summary:(values||[]).map(value=>(data.value?.filter_values?.[field]||[]).find(row=>String(row.value)===String(value))?.label||String(value??'Trống')).join(', ')||'Không chọn'
-})))
+const hasStockFilters=computed(()=>hasStockSearchFilters(search.value,columnFilters.value)||!!warehouse.value)
 const stockState=computed(()=>stockEmptyKind({
  company:company.value,warehouseCount:data.value?.warehouses?.length||0,
  catalogueCount:data.value?.catalogue_count||0,filteredCount:data.value?.total_count||0,
  loading:busy.value||!session.value||(!data.value&&!!company.value)
 }))
 function applySearch(){search.value=searchDraft.value.trim();refresh(true)}
-function presetDemand(days){
- demandFrom.value=session.value.today
- demandTo.value=shiftISODate(session.value.today,days-1)
- refresh(true)
-}
 function resetStockFilters(){
  columnFilters.value={}
  search.value=''
@@ -83,19 +73,6 @@ function resetStockFilters(){
  demandFrom.value=session.value?.today||''
  demandTo.value=shiftISODate(demandFrom.value,demandWindowDays-1)
  refresh(true)
-}
-function clearStockColumnFilter(field){
- columnFilters.value=updateColumnFilter(columnFilters.value,field,null)
- refresh(true)
-}
-function applyQuickFilter(kind){
- columnFilters.value=toggleStockQuickFilter(columnFilters.value,kind)
- refresh(true)
-}
-function activeQuickFilter(kind){
- const preset=STOCK_QUICK_FILTERS[kind]
- const actual=columnFilters.value[preset.field]
- return Array.isArray(actual)&&actual.length===preset.values.length&&preset.values.every(x=>actual.includes(x))
 }
 function warehouseChanged(){
  columnFilters.value={}
@@ -243,79 +220,20 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
-   <div class="stock-scope"><label>Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><form v-if="['stock','movements','history'].includes(tab)" class="stock-search" @submit.prevent="applySearch"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm mã hoặc tên vật tư…':tab==='history'?'Tìm mã phiếu…':'Tìm vật tư hoặc mã phiếu…'" /><UiButton variant="outline" type="submit" class="stock-button" :disabled="busy||!company">Tìm</UiButton></form><UiButton variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải…':'↻ Làm mới'}}</UiButton></div>
-   <section v-if="tab==='stock'&&stockState==='no-company'" class="stock-start-panel" role="status">
-    <h2>Chưa chọn công ty vận hành</h2><p>Chọn công ty ở phía trên để xem kho, vật tư và số liệu tồn.</p>
-   </section>
-   <section v-if="tab==='stock'&&stockState==='no-warehouse'" class="stock-start-panel" role="status">
-    <h2>Chưa có kho hoạt động</h2><p>Thiết lập kho nhận hàng trước khi nhập, xuất hoặc kiểm kê vật tư.</p>
-    <UiButton variant="outline" @click="tab='setup'">Mở Thiết lập kho</UiButton>
-   </section>
-   <section v-if="tab==='stock'&&stockState==='no-items'" class="stock-start-panel" role="status">
-    <h2>Danh mục vật tư đang trống</h2><p>Kho đã được thiết lập. Hãy khai báo vật tư đầu tiên; tồn kho sẽ chỉ tăng khi có chứng từ nhập hợp lệ.</p>
-    <UiButton v-if="session?.permissions.Item" @click="openMaster('item')">+ Tạo vật tư đầu tiên</UiButton>
-   </section>
-
-   <div v-if="tab==='stock'" class="stock-actions" aria-label="Thao tác kho">
-    <UiButton variant="outline" v-for="(title,kind) in kinds" :key="kind" :disabled="!canCreate||!session?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']||busy" @click="open(kind)">
-     <span>{{{receipt:'↓',issue:'↑',transfer:'⇄',count:'✓'}[kind]}}</span><span>{{title}}</span>
-    </UiButton>
-    <UiButton v-if="session?.permissions.Item" variant="outline" :disabled="!company" @click="openMaster('item')">+ Thêm vật tư</UiButton>
-   </div>
-   <div v-if="tab==='stock'&&data" class="stock-overview-metrics" role="status">
-    <div><strong>{{data.warehouses?.length??0}}</strong><span>Kho đang hoạt động</span></div>
-    <div><strong>{{data.catalogue_count??0}}</strong><span>Vật tư trong danh mục</span></div>
-    <div><strong>{{data.stocked_count??0}}</strong><span>Vật tư có tồn tại {{warehouse?warehouseLabel(warehouse):'các kho'}}</span></div>
-    <div><strong>{{data.total_count??0}}</strong><span>Kết quả theo bộ lọc</span></div>
-   </div>
-
-   <template v-if="tab==='stock'">
-    <section class="stock-filter-panel" aria-label="Lọc danh sách tồn kho">
-     <div class="stock-filter-top">
-      <div><h2>Danh sách vật tư</h2><p>Tồn được tính theo kho đang chọn; tồn tối thiểu chung tính trên toàn bộ kho. Kỳ nhu cầu chỉ tác động các cột kế hoạch và mua hàng.</p></div>
-      <div class="stock-filter-buttons">
-       <UiButton variant="outline" :class="{active:activeQuickFilter('minimum')}" :aria-pressed="activeQuickFilter('minimum')" @click="applyQuickFilter('minimum')">Dưới tồn tối thiểu</UiButton>
-       <UiButton variant="outline" :class="{active:activeQuickFilter('demand')}" :aria-pressed="activeQuickFilter('demand')" @click="applyQuickFilter('demand')">Thiếu theo nhu cầu</UiButton>
-       <UiButton v-if="hasStockFilters" variant="outline" @click="resetStockFilters">Xóa toàn bộ bộ lọc</UiButton>
-      </div>
-     </div>
-     <div class="stock-filter-period">
-      <span>Kỳ nhu cầu dự kiến</span>
-      <label>Từ ngày <UiInput v-model="demandFrom" type="date" @change="refresh(true)"/></label>
-      <label>Đến ngày <UiInput v-model="demandTo" type="date" @change="refresh(true)"/></label>
-      <div class="stock-filter-period-shortcuts">
-       <UiButton variant="outline" @click="presetDemand(1)">Hôm nay</UiButton>
-       <UiButton variant="outline" @click="presetDemand(7)">7 ngày</UiButton>
-       <UiButton variant="outline" @click="presetDemand(30)">30 ngày</UiButton>
-      </div>
-     </div>
-     <div v-if="activeStockColumns.length||search.trim()||warehouse" class="stock-active-filters" aria-label="Bộ lọc đang áp dụng">
-      <span>Đang lọc:</span>
-      <UiButton v-if="warehouse" variant="outline" size="sm" @click="warehouse='';warehouseChanged()">Kho: {{warehouseLabel(warehouse)}} ×</UiButton>
-      <UiButton v-if="search.trim()" variant="outline" size="sm" @click="search='';searchDraft='';refresh(true)">Tìm kiếm: {{search}} ×</UiButton>
-      <UiButton v-for="chip in activeStockColumns" :key="chip.field" variant="outline" size="sm" :title="chip.summary" @click="clearStockColumnFilter(chip.field)">{{chip.title}}: {{chip.summary}} ×</UiButton>
-     </div>
-    </section>
-    <p v-for="warning in data?.coverage_warnings" :key="warning" class="stock-error" role="alert">{{warning}}</p>
-    <section v-if="stockState==='no-matches'" class="stock-filter-empty" role="status">
-     <strong>Không tìm thấy vật tư với các điều kiện đang chọn.</strong>
-     <p>Danh mục còn {{data?.catalogue_count??0}} vật tư; kết quả bằng 0 chỉ do bộ lọc hoặc tìm kiếm, không phải kho đã mất dữ liệu.</p>
-     <UiButton variant="outline" @click="resetStockFilters">Hiện lại toàn bộ vật tư</UiButton>
-    </section>
-    <section v-if="!['no-company','no-warehouse','no-items'].includes(stockState)" class="stock-panel stock-inventory-table">
-     <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0" server-sort
-      @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)"
+   <div class="stock-scope"><label>Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><form v-if="['stock','movements','history'].includes(tab)" class="stock-search" @submit.prevent="applySearch"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm mã hoặc tên vật tư…':tab==='history'?'Tìm mã phiếu…':'Tìm vật tư hoặc mã phiếu…'" /><UiButton variant="outline" type="submit" class="stock-button" :disabled="busy||!company">Tìm</UiButton></form><UiButton v-if="tab==='stock'&&hasStockFilters" variant="outline" class="stock-button" @click="resetStockFilters">Bỏ lọc</UiButton><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton></div>
+   <section v-if="tab==='stock'" class="stock-panel stock-inventory-table">
+    <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0"
+      server-sort @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)"
       :filter-values="data?.filter_values" :server-filters="columnFilters" @filter="filterStock" :loading="busy"
-      empty="Không có dòng phù hợp. Hãy gỡ bộ lọc đang áp dụng." />
-     <footer class="stock-pagination">
-      <span>{{data?.total_count?start+1:0}}–{{start+(stocks.length||0)}} / {{data?.total_count??0}} kết quả · Tối đa 50 vật tư/trang</span>
+      :empty="stockState==='no-company'?'Chọn công ty để xem tồn kho.':stockState==='no-warehouse'?'Chưa có kho hoạt động.':stockState==='no-items'?'Chưa có vật tư trong danh mục.':'Không có vật tư khớp bộ lọc. Bỏ lọc để xem lại danh sách.'" />
+    <footer class="stock-pagination">
+      <span>{{data?.total_count?start+1:0}}–{{start+(stocks.length||0)}} / {{data?.total_count??0}} vật tư</span>
       <div>
-       <UiButton variant="outline" class="stock-button" :disabled="!start||busy" @click="start-=50;refresh()">← Trước</UiButton>
-       <UiButton variant="outline" class="stock-button" :disabled="!data?.has_more||busy" @click="start+=50;refresh()">Sau →</UiButton>
+        <UiButton variant="outline" class="stock-button" :disabled="!start||busy" @click="start-=50;refresh()">← Trước</UiButton>
+        <UiButton variant="outline" class="stock-button" :disabled="!data?.has_more||busy" @click="start+=50;refresh()">Sau →</UiButton>
       </div>
-     </footer>
-    </section>
-   </template>
+    </footer>
+   </section>
    <WarehousePlanning v-if="tab==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session?.today"/>
    <div v-if="tab==='history'" class="movement-filters"><label>Từ ngày<UiInput v-model="movementFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="movementTo" type="date" @change="refresh(true)"/></label><UiButton v-if="Object.keys(documentFilters).length" variant="outline" @click="documentFilters={};refresh(true)">Bỏ bộ lọc</UiButton></div>
    <section v-if="tab==='history'" class="stock-panel"><DataTable :rows="historyRows" :columns="historyColumns" server-sort @sort="model=>{sortDocument=model;refresh(true)}" :loading="busy" :filter-values="documentData?.filter_values" :server-filters="documentFilters" @filter="filterDocument" interactive @open="row=>openStockDocument(row.doctype,row.name)"/><footer class="stock-pagination"><span>{{documentData?.total_count?documentStart+1:0}}–{{documentStart+(documentData?.rows?.length||0)}} / {{documentData?.total_count||0}} phiếu</span><div><UiButton variant="outline" :disabled="!documentStart||busy" @click="documentStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" :disabled="!documentData?.has_more||busy" @click="documentStart+=50;refresh()">Sau →</UiButton></div></footer></section>

@@ -1,0 +1,4 @@
+FROM lotus-stock-audit:20261015
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+USER frappe

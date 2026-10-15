@@ -145,7 +145,7 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-agVkqIUa.js",
+    "file": "assets/stock-CCKkt0Tq.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
@@ -158,7 +158,7 @@
       "_Card-BUA8AYAA.js"
     ],
     "css": [
-      "assets/stock-DERYKDLb.css",
+      "assets/stock-B0YzyWov.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },

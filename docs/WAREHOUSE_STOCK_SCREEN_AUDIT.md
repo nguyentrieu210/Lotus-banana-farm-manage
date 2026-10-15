@@ -37,6 +37,9 @@ Audit dữ liệu thực site `frontend`, API Tồn kho, filter/Excel Header, t�
 - Site `frontend` đã được sao lưu trước khi thay image Docker.
 - Docker `localhost:8080` phục vụ tài nguyên mới HTTP 200.
 
+## Điều chỉnh giao diện theo nghiệm thu (15/10/2026)
+Theo yêu cầu mới của người sử dụng, màn **Tồn kho** chỉ hiển thị thanh Công ty / Kho / Tìm vật tư / Bỏ lọc và bảng AG Grid có lọc cột, sắp xếp, phân trang. Các thẻ KPI, lời dẫn, bộ lọc nhanh, nút lựa chọn kỳ nhu cầu và hàng nút nhập–xuất bên trên bảng đều bị loại khỏi màn hình này. Các nghiệp vụ nhập–xuất–chuyển kho, kiểm kê và thêm vật tư vẫn truy cập được qua menu thao tác WorkspaceBar. Ngày nhu cầu mặc định nội bộ vẫn 7 ngày; muốn quản lý nhu cầu theo ngày thì sử dụng workspace Nhu cầu & mua vật tư. Backend và dữ liệu ERPNext không thay đổi trong lần tinh gọn này. Frontend rebuild và đã triển khai riêng container frontend (không restart backend) trên localhost:8080.
+
 ## Giới hạn / theo dõi
 - Bộ lọc chỉ áp dụng trong phiên màn hình; chưa có lưu bộ lọc cá nhân theo tài khoản.
 - Các cột số trong Excel Header vẫn lọc theo giá trị chính xác; có thể bổ sung lọc khoảng số nếu nghiệp vụ yêu cầu.
