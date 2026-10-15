@@ -1,0 +1,9 @@
+import {createApp} from 'vue'
+import HrApp from './HrApp.vue'
+import './stock.css'
+import './shadcn.css'
+import './attio.css'
+import './stock-attio.css'
+import './compact.css'
+import './hr.css'
+createApp(HrApp).mount('#app')

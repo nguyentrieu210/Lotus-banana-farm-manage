@@ -1,0 +1,134 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Candidate",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "applicant_name",
+  "search_fields": "applicant_name,phone",
+  "field_order": [
+    "applicant_name",
+    "phone",
+    "email",
+    "company",
+    "farm",
+    "designation",
+    "job_opening",
+    "applied_on",
+    "source",
+    "status",
+    "interview_on",
+    "notes",
+    "employee"
+  ],
+  "fields": [
+    {
+      "fieldname": "applicant_name",
+      "label": "Họ tên ứng viên",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "phone",
+      "label": "Điện thoại",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "email",
+      "label": "Email (nếu có)",
+      "fieldtype": "Data",
+      "reqd": 0
+    },
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "reqd": 1,
+      "options": "Company"
+    },
+    {
+      "fieldname": "farm",
+      "label": "Nông trường dự kiến",
+      "fieldtype": "Link",
+      "reqd": 0,
+      "options": "Farm"
+    },
+    {
+      "fieldname": "designation",
+      "label": "Chức danh ứng tuyển",
+      "fieldtype": "Link",
+      "reqd": 1,
+      "options": "Designation"
+    },
+    {
+      "fieldname": "job_opening",
+      "label": "Tin tuyển dụng HRMS",
+      "fieldtype": "Link",
+      "reqd": 0,
+      "options": "Job Opening"
+    },
+    {
+      "fieldname": "applied_on",
+      "label": "Ngày đăng ký",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source",
+      "label": "Nguồn ứng tuyển",
+      "fieldtype": "Select",
+      "reqd": 0,
+      "options": "\nZalo\nFacebook\nGiới thiệu\nTrực tiếp\nKhác"
+    },
+    {
+      "fieldname": "status",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "New\nScreening\nInterview\nOffered\nHold\nRejected\nHired",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "interview_on",
+      "label": "Ngày phỏng vấn",
+      "fieldtype": "Date",
+      "reqd": 0
+    },
+    {
+      "fieldname": "notes",
+      "label": "Nhận xét nội bộ",
+      "fieldtype": "Small Text",
+      "reqd": 0
+    },
+    {
+      "fieldname": "employee",
+      "label": "Nhân viên đã tiếp nhận",
+      "fieldtype": "Link",
+      "reqd": 0,
+      "options": "Employee"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "report": 1
+    }
+  ]
+}

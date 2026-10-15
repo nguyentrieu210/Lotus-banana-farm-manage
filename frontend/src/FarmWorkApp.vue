@@ -69,7 +69,7 @@ const actions=computed(()=>[
  ...tabs.map(t=>({id:t.id,label:t.label,navigation:true,run:()=>choose(t.id)})),
  ...(session.value?.commands?.work?[{id:'assign',label:'Lập kế hoạch / giao việc',run:openAssignment}]:[]),
  {id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'},
- {id:'hr',label:'Nhân sự & chấm công',navigation:true,href:'/lotus/cham-cong'}])
+ {id:'hr',label:'Nhân sự & chấm công',navigation:true,href:'/lotus/nhan-su'}])
 function choose(id){tab.value=id;search.value='';const url=new URL(location.href);url.searchParams.set('tab',id);history.replaceState(null,'',url)}
 function configure(id){kind.value=id;choose('setup')}
 async function load(){

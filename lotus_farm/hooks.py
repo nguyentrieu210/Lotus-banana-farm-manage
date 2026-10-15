@@ -154,5 +154,7 @@ has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
 scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')
 
+doc_events['Employee'] = {**doc_events.get('Employee', {}), 'validate': 'lotus_farm.hr_workspace.employee_identity_guard'}
+doc_events['Lotus Candidate'] = {'validate': 'lotus_farm.hr_workspace.candidate_guard'}
 has_permission['Lotus Crew Attendance']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Crew Attendance']='lotus_farm.timekeeping.crew_query'

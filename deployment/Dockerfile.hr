@@ -1,0 +1,10 @@
+FROM lotus-warehouse:20261015
+USER root
+COPY --chown=frappe:frappe lotus_farm/hr_rules.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/hr_rules.py
+COPY --chown=frappe:frappe lotus_farm/hr_workspace.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/hr_workspace.py
+COPY --chown=frappe:frappe lotus_farm/install.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/install.py
+COPY --chown=frappe:frappe lotus_farm/hooks.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/hooks.py
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/lotus_candidate /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/lotus_candidate
+COPY --chown=frappe:frappe lotus_farm/www/lotus.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+USER frappe
