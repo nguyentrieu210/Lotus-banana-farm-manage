@@ -11,7 +11,7 @@ test('Stock screen contains only compact scope filters and its inventory table',
  assert.match(app,/<div class="stock-scope">/)
  assert.match(app,/<section v-if="tab==='stock'" class="stock-panel stock-inventory-table">/)
  assert.match(app,/@filter="filterStock"/)
- assert.match(app,/v-if="tab==='stock'&&hasStockFilters"/)
+ assert.match(app,/v-if="\['stock','history','movements'\]\.includes\(tab\)&&activeTabFilters"/)
  assert.match(app,/<WorkspaceBar .*:actions="workspaceActions"/)
  for(const obsolete of ['stock-overview-metrics','stock-filter-panel','stock-filter-period','stock-welcome','Kỳ nhu cầu dự kiến','Dưới tồn tối thiểu']){
   assert.equal(app.includes(obsolete),false,'Redundant screen element '+obsolete)

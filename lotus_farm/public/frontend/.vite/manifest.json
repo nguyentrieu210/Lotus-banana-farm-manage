@@ -14,13 +14,6 @@
       "assets/AssignApp-BFkbCXcW.css"
     ]
   },
-  "_Card-RpOjTcrV.js": {
-    "file": "assets/Card-RpOjTcrV.js",
-    "name": "Card",
-    "imports": [
-      "_compact-Ci-df0lI.js"
-    ]
-  },
   "_DataTable-DzpyOT0R.js": {
     "file": "assets/DataTable-DzpyOT0R.js",
     "name": "DataTable",
@@ -123,7 +116,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-G3n_i80h.js",
+    "file": "assets/index-Bzdbx3Nj.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -133,8 +126,7 @@
       "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
       "_labels-BkSEv7tt.js",
-      "_DataTable-DzpyOT0R.js",
-      "_Card-RpOjTcrV.js"
+      "_DataTable-DzpyOT0R.js"
     ],
     "css": [
       "assets/index-DqMPzniJ.css"
@@ -153,7 +145,7 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-Bdaj5qZv.js",
+    "file": "assets/stock-CV-aXjTx.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
@@ -162,11 +154,10 @@
       "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
       "_DataTable-DzpyOT0R.js",
-      "_LinkPicker-BDXBZCpn.js",
-      "_Card-RpOjTcrV.js"
+      "_LinkPicker-BDXBZCpn.js"
     ],
     "css": [
-      "assets/stock-BAJoPTqK.css",
+      "assets/stock-BIUIxh8E.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },
