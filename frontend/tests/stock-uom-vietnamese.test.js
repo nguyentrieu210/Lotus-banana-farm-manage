@@ -34,6 +34,6 @@ test('both stock and packaging UOM selectors are curated and conversion is a vis
  assert.match(stock,/v-for="u in selectablePackUoms"/)
  assert.doesNotMatch(stock,/catalog\.uoms\.filter\(u=>u\.name!==master\.uom\)/)
  assert.match(stock,/field:'pack_actual_qty',headerName:'Tồn quy đổi'/)
- assert.match(stock,/minWidth:145,tooltipValueGetter:/)
+ assert.match(stock,/minWidth:132,tooltipValueGetter:/)
  assert.ok(stock.indexOf("field:'pack_actual_qty'")>stock.indexOf("stockNumber('actual_qty'"))
 })

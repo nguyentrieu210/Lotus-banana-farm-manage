@@ -3,12 +3,12 @@
     "file": "assets/AssignApp-BFkbCXcW.css",
     "src": "_AssignApp-BFkbCXcW.css"
   },
-  "_AssignApp-BpCguon-.js": {
-    "file": "assets/AssignApp-BpCguon-.js",
+  "_AssignApp-BkkbqQNY.js": {
+    "file": "assets/AssignApp-BkkbqQNY.js",
     "name": "AssignApp",
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_register-worker-D396Vk1I.js"
+      "_register-worker-DbI7hhbn.js"
     ],
     "css": [
       "assets/AssignApp-BFkbCXcW.css"
@@ -21,8 +21,8 @@
       "_compact-Ci-df0lI.js"
     ]
   },
-  "_DataTable-B8oGaIxy.js": {
-    "file": "assets/DataTable-B8oGaIxy.js",
+  "_DataTable-DzpyOT0R.js": {
+    "file": "assets/DataTable-DzpyOT0R.js",
     "name": "DataTable",
     "imports": [
       "_compact-Ci-df0lI.js",
@@ -36,12 +36,12 @@
       "_compact-Ci-df0lI.js"
     ]
   },
-  "_SchemaForm-Br5sijMg.js": {
-    "file": "assets/SchemaForm-Br5sijMg.js",
+  "_SchemaForm-Cb3YGyV7.js": {
+    "file": "assets/SchemaForm-Cb3YGyV7.js",
     "name": "SchemaForm",
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_register-worker-D396Vk1I.js",
+      "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
       "_labels-BkSEv7tt.js",
       "_LinkPicker-BDXBZCpn.js"
@@ -69,8 +69,8 @@
     "file": "assets/labels-BkSEv7tt.js",
     "name": "labels"
   },
-  "_register-worker-D396Vk1I.js": {
-    "file": "assets/register-worker-D396Vk1I.js",
+  "_register-worker-DbI7hhbn.js": {
+    "file": "assets/register-worker-DbI7hhbn.js",
     "name": "register-worker"
   },
   "_stock-attio-DveR0dcA.css": {
@@ -78,29 +78,29 @@
     "src": "_stock-attio-DveR0dcA.css"
   },
   "assign.html": {
-    "file": "assets/assign-Clmtffl9.js",
+    "file": "assets/assign-BWR6FIaR.js",
     "name": "assign",
     "src": "assign.html",
     "isEntry": true,
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_register-worker-D396Vk1I.js",
-      "_AssignApp-BpCguon-.js"
+      "_register-worker-DbI7hhbn.js",
+      "_AssignApp-BkkbqQNY.js"
     ],
     "css": [
       "assets/assign-C0PKXeDN.css"
     ]
   },
   "farm-work.html": {
-    "file": "assets/farm-work-B5em2b-G.js",
+    "file": "assets/farm-work-rukPWHH2.js",
     "name": "farm-work",
     "src": "farm-work.html",
     "isEntry": true,
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_SchemaForm-Br5sijMg.js",
-      "_register-worker-D396Vk1I.js",
-      "_AssignApp-BpCguon-.js",
+      "_SchemaForm-Cb3YGyV7.js",
+      "_register-worker-DbI7hhbn.js",
+      "_AssignApp-BkkbqQNY.js",
       "_labels-BkSEv7tt.js"
     ],
     "css": [
@@ -123,17 +123,17 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CyxDiHZ_.js",
+    "file": "assets/index-G3n_i80h.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_SchemaForm-Br5sijMg.js",
-      "_register-worker-D396Vk1I.js",
+      "_SchemaForm-Cb3YGyV7.js",
+      "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
       "_labels-BkSEv7tt.js",
-      "_DataTable-B8oGaIxy.js",
+      "_DataTable-DzpyOT0R.js",
       "_Card-RpOjTcrV.js"
     ],
     "css": [
@@ -153,33 +153,33 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-Bmy_D6WZ.js",
+    "file": "assets/stock-Bdaj5qZv.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_register-worker-D396Vk1I.js",
+      "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
-      "_DataTable-B8oGaIxy.js",
+      "_DataTable-DzpyOT0R.js",
       "_LinkPicker-BDXBZCpn.js",
       "_Card-RpOjTcrV.js"
     ],
     "css": [
-      "assets/stock-CFfDNb9r.css",
+      "assets/stock-BAJoPTqK.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },
   "timekeeping.html": {
-    "file": "assets/timekeeping-jCA4BEr9.js",
+    "file": "assets/timekeeping-IjmfIeh9.js",
     "name": "timekeeping",
     "src": "timekeeping.html",
     "isEntry": true,
     "imports": [
       "_compact-Ci-df0lI.js",
-      "_register-worker-D396Vk1I.js",
+      "_register-worker-DbI7hhbn.js",
       "_Select-gTPa7sik.js",
-      "_DataTable-B8oGaIxy.js"
+      "_DataTable-DzpyOT0R.js"
     ],
     "css": [
       "assets/timekeeping-B-_JJByK.css",

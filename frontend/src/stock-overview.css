@@ -80,3 +80,27 @@
     margin-left:auto;
   }
 }
+
+/* Compact direct actions: visible on the Stock table, without dashboard cards. */
+.stock-shell .stock-quick-actions{
+ display:flex;gap:7px;flex-wrap:wrap;align-items:center;
+ padding:0 0 11px;margin:0;
+}
+.stock-shell .stock-quick-actions .stock-quick-action{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:34px;padding:6px 12px;font-size:12px;font-weight:600;
+ border:1px solid var(--lotus-border);border-radius:6px;
+ background:var(--lotus-surface,#fff);color:var(--lotus-text);
+ white-space:nowrap;box-shadow:none;
+}
+.stock-shell .stock-quick-actions .stock-quick-action:hover:not(:disabled){
+ background:var(--lotus-soft,#f3f6fc);border-color:var(--lotus-accent,#4c63b6);
+}
+.stock-shell .stock-quick-actions .stock-quick-action:disabled{opacity:.45;cursor:not-allowed}
+.stock-shell .stock-quick-actions .stock-quick-action-icon{
+ font-size:16px;line-height:1;color:var(--lotus-accent,#4c63b6);
+}
+@media(max-width:550px){
+ .stock-shell .stock-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .stock-shell .stock-quick-actions .stock-quick-action{width:100%;padding:6px 8px}
+}

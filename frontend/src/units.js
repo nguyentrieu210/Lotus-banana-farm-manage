@@ -9,7 +9,7 @@ export const commonUnitCodes=['Bunch','Tree','Ha','Hectare','Kg','Gram','Litre',
 export function unitOptions(rows,search=''){const q=normalizeUnit(search);return rows.map(r=>({...r,label:unitLabel(r.value)})).filter(r=>normalizeUnit(r.label+' '+r.value).includes(q)).sort((a,b)=>{const rank=r=>{const i=commonUnitCodes.indexOf(r.value);return i<0?999:i};return rank(a)-rank(b)||a.label.localeCompare(b.label,'vi',{numeric:true})}).slice(0,50)}
 export function unitSearch(value){const q=normalizeUnit(value);return commonUnitCodes.find(code=>q&&normalizeUnit(unitLabel(code)).startsWith(q))||value}
 // Short stock-master shortlist. Existing ERPNext custom UOMs remain selectable on edit.
-export const warehouseUnitCodes=['Kg','Gram','Tonne','Litre','Millilitre','Nos','Unit','Bao','Chai','Gói','Bó','Box','Pair','Set','Meter','Square Meter','Cubic Meter','Ha','Bunch','Tree','1 kg/gói','1 lít/chai','100 ml/chai','4,5 lít/can','50 ml/chai','60 g/gói']
+export const warehouseUnitCodes=['Kg','Gram','Tonne','Litre','Millilitre','Nos','Unit','Bao','Can','Chai','Gói','Bó','Box','Pair','Set','Meter','Square Meter','Cubic Meter','Ha','Bunch','Tree','1 kg/gói','1 lít/chai','100 ml/chai','4,5 lít/can','50 ml/chai','60 g/gói']
 export function stockItemUomOptions(rows,selected=[]){
  const allowed=new Set([...warehouseUnitCodes,...selected.filter(Boolean)])
  return rows.filter(r=>allowed.has(r.name)).sort((a,b)=>{

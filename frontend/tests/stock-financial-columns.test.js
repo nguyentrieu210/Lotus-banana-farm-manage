@@ -6,7 +6,7 @@ const source=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
 function columnsOf(name){
  const start=source.indexOf('const '+name+'=')
  assert.ok(start>=0,'Missing table '+name)
- const end=source.indexOf('\n',start)
+ const end=source.indexOf('\n\n',start)
  return source.slice(start,end)
 }
 

@@ -19,7 +19,8 @@ test('new item uses ERPNext Item UOM Conversion Detail',()=>{
  assert.match(ui,/v-model\.number="master\.pack_factor"/)
  assert.match(config,/item\.append\('uoms'/)
  assert.match(config,/conversion_factor=factor/)
- assert.match(config,/uom_name='Bao'/)
+ assert.match(config,/for name in \('Bao', 'Can'\):/)
+ assert.match(config,/uom_name=name/)
 })
 
 test('receipt permits package quantities and correctly scales entered unit prices',()=>{

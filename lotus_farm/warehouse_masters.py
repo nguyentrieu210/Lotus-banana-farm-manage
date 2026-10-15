@@ -18,8 +18,10 @@ def install_fields():
             dict(fieldname='lotus_delivery_note',label='Ghi chú giao hàng',fieldtype='Small Text'),
         ]},update=True)
     # Packaging unit is defined once globally; each Item owns its conversion factor.
-    if not frappe.db.exists('UOM', 'Bao'):
-        frappe.get_doc(dict(doctype='UOM', uom_name='Bao', must_be_whole_number=1)).insert(ignore_permissions=True)
+    for name in ('Bao', 'Can'):
+        if frappe.db.exists('UOM', name):
+            continue
+        frappe.get_doc(dict(doctype='UOM', uom_name=name, must_be_whole_number=1)).insert(ignore_permissions=True)
 
 
 WAREHOUSE_DETAIL_FIELDS = {
