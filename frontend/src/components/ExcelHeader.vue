@@ -8,7 +8,7 @@ const active=computed(()=>Array.isArray(props.params.selection))
 const all=computed(()=>selected.value.length===choices.value.length)
 async function open(event){event.stopPropagation();if(opened.value){opened.value=false;return}search.value='';selected.value=(active.value?props.params.selection:choices.value.map(row=>row.value)).map(String);const rect=trigger.value.getBoundingClientRect();position.value={left:Math.max(8,Math.min(rect.left,window.innerWidth-280))+'px',top:(rect.bottom+4)+'px',maxHeight:Math.max(160,window.innerHeight-rect.bottom-16)+'px'};opened.value=true;await nextTick();popup.value?.showPopover?.()}
 function toggle(value){const key=String(value);selected.value=selected.value.includes(key)?selected.value.filter(v=>v!==key):[...selected.value,key]}
-function apply(){props.params.apply(choices.value.filter(row=>selected.value.includes(String(row.value))).map(row=>row.value));opened.value=false}
+function apply(){const values=choices.value.filter(row=>selected.value.includes(String(row.value))).map(row=>row.value);props.params.apply(values.length===choices.value.length?null:values);opened.value=false}
 function clear(){props.params.apply(null);opened.value=false}
 function outside(event){if(opened.value&&!popup.value?.contains(event.target)&&!trigger.value?.contains(event.target))opened.value=false}
 onMounted(()=>document.addEventListener('pointerdown',outside))

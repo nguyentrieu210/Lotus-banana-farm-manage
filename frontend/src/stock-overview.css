@@ -1,0 +1,36 @@
+/* Rebuilt Lotus stock overview: distinct inventory KPIs, filter controls and empty states. */
+.stock-shell .stock-overview-metrics{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 14px;
+}
+.stock-shell .stock-overview-metrics>div{
+ display:flex;flex-direction:column;gap:4px;padding:13px 16px;
+ background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:9px;
+ min-width:0;
+}
+.stock-shell .stock-overview-metrics strong{font-size:23px;line-height:1.15;color:var(--lotus-text);font-weight:750;font-variant-numeric:tabular-nums}
+.stock-shell .stock-overview-metrics span{font-size:11px;color:var(--lotus-muted);line-height:1.4}
+.stock-shell .stock-filter-panel{border:1px solid var(--lotus-border);background:var(--lotus-surface);border-radius:9px;padding:12px 14px;margin:10px 0}
+.stock-shell .stock-filter-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.stock-shell .stock-filter-top h2{margin:0;font-size:14px;font-weight:700}
+.stock-shell .stock-filter-top p{margin:5px 0;font-size:11px;color:var(--lotus-muted);line-height:1.55;max-width:800px}
+.stock-shell .stock-filter-buttons,.stock-shell .stock-filter-period-shortcuts,.stock-shell .stock-active-filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.stock-shell .stock-filter-buttons button,.stock-shell .stock-filter-period-shortcuts button,.stock-shell .stock-active-filters button{min-height:30px;padding:4px 9px;border:1px solid var(--lotus-border);font-size:11px}
+.stock-shell .stock-filter-buttons button.active{border-color:var(--lotus-accent);background:var(--lotus-accent-soft);color:var(--lotus-accent);font-weight:700}
+.stock-shell .stock-filter-period{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;margin-top:10px;border-top:1px solid var(--lotus-border)}
+.stock-shell .stock-filter-period>span{color:var(--lotus-muted);font-size:11px;font-weight:600}
+.stock-shell .stock-filter-period label{display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap}
+.stock-shell .stock-filter-period input{height:31px;max-width:165px;padding:5px 8px}
+.stock-shell .stock-active-filters{padding-top:10px;margin-top:10px;border-top:1px dashed var(--lotus-border)}
+.stock-shell .stock-active-filters>span{font-size:11px;color:var(--lotus-muted);font-weight:650}
+.stock-shell .stock-active-filters button{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.stock-shell .stock-filter-empty,.stock-shell .stock-start-panel{background:var(--lotus-soft);border:1px dashed var(--lotus-border);padding:17px 20px;margin:12px 0;border-radius:9px;line-height:1.6}
+.stock-shell .stock-filter-empty strong,.stock-shell .stock-start-panel h2{font-size:14px;font-weight:700;color:var(--lotus-text)}
+.stock-shell .stock-filter-empty p,.stock-shell .stock-start-panel p{font-size:12px;color:var(--lotus-muted);margin:5px 0 10px}
+.stock-shell .stock-inventory-table{margin-top:10px}
+.stock-shell .stock-scope{gap:10px;align-items:end;padding:8px 0 12px;margin-bottom:12px}
+.stock-shell .stock-scope label{display:flex;flex-direction:column;align-items:stretch;gap:5px;white-space:normal;min-width:160px}
+.stock-shell .stock-scope .stock-search{align-items:end}
+.stock-shell .stock-actions{margin-bottom:10px}
+.stock-shell .stock-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:1050px){.stock-shell .stock-overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.stock-shell .stock-overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.stock-shell .stock-overview-metrics>div{padding:10px}.stock-shell .stock-overview-metrics strong{font-size:19px}.stock-shell .stock-filter-period{align-items:stretch}.stock-shell .stock-filter-period label{width:100%;justify-content:space-between}.stock-shell .stock-filter-period input{max-width:none;flex:1}.stock-shell .stock-scope label{width:100%}.stock-shell .stock-filter-panel{padding:12px}.stock-shell .stock-pagination{flex-direction:column;align-items:stretch}}

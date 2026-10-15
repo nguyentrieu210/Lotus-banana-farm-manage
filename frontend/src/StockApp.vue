@@ -1,5 +1,6 @@
 <script setup>
 import {unitLabel,stockItemUomOptions} from './units'
+import {STOCK_QUICK_FILTERS,updateColumnFilter,toggleStockQuickFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceBar from './components/WorkspaceBar.vue'
 import {sidebarCollapsed} from './workspace'
 import {computed,nextTick,onMounted,reactive,ref,watch} from 'vue'
@@ -16,10 +17,10 @@ import UiSelect from './components/ui/select/Select.vue'
 
 const masterAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_masters.'+name,args,write)
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
-const session=ref(null),data=ref(null),company=ref(''),warehouse=ref(''),search=ref(''),start=ref(0),tab=ref('stock')
+const session=ref(null),data=ref(null),company=ref(''),warehouse=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),tab=ref('stock')
 const sortStock=ref([]),sortMovement=ref([]),sortDocument=ref([])
 const columnFilters=ref({}),demandFrom=ref(''),demandTo=ref('')
-const movementData=ref(null),movementFilters=ref({}),movementStart=ref(0),movementFrom=ref(''),movementTo=ref('')
+const movementData=ref(null),movementFilters=ref({}),movementStart=ref(0),documentStart=ref(0),movementFrom=ref(''),movementTo=ref('')
 const documentData=ref(null),documentFilters=ref({}),planningView=ref(null)
 const busy=ref(false),saving=ref(false),error=ref(''),saved=ref(null),dialog=ref(null)
 const masterEditing=ref(null),masterDeleting=ref(false),masterLists=ref({groups:[],warehouses:[]}),draftDeleting=ref(false)
@@ -43,7 +44,7 @@ let issueVersion=0
 const fmt=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const needsSource=computed(()=>['issue','transfer'].includes(form.kind))
 const needsTarget=computed(()=>['receipt','transfer','count'].includes(form.kind))
-const canCreate=computed(()=>!!company.value&&!!data.value?.warehouses.length)
+const canCreate=computed(()=>!!company.value&&!!data.value?.warehouses.length&&!!data.value?.catalogue_count)
 const stocks=computed(()=>data.value?.items||[])
 const money=computed(()=>data.value?.currency||'VND')
 const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:money.value})
@@ -55,16 +56,128 @@ async function loadReceiptAccounts(){costLoading.value=true;try{const result=awa
 function addCost(){form.additional_costs.push({description:'',amount:0,expense_account:costAccount.value})}
 
 let version=0
-async function refresh(reset=false){
- if(reset){start.value=0;movementStart.value=0}
- if(!company.value){data.value=null;return}
- const request=++version;busy.value=true;error.value=''
- try{const result=await api('overview',{company:company.value,warehouse:warehouse.value,search:tab.value==='stock'?search.value:'',start:start.value,sort_model:JSON.stringify(sortStock.value),column_filters:JSON.stringify(columnFilters.value),from_date:demandFrom.value,to_date:demandTo.value});if(request!==version)return;data.value=result;if(tab.value==='movements'){const ledger=await api('movements',{company:company.value,warehouse:warehouse.value,search:search.value,from_date:movementFrom.value,to_date:movementTo.value,start:movementStart.value,sort_model:JSON.stringify(sortMovement.value),column_filters:JSON.stringify(movementFilters.value)});if(request===version)movementData.value=ledger}if(tab.value==='history'){const records=await api('documents',{company:company.value,warehouse:warehouse.value,search:search.value,from_date:movementFrom.value,to_date:movementTo.value,start:movementStart.value,sort_model:JSON.stringify(sortDocument.value),column_filters:JSON.stringify(documentFilters.value)});if(request===version)documentData.value=records}}
- catch(e){if(request===version){if(tab.value==='movements')movementData.value=null;else if(tab.value==='history')documentData.value=null;else data.value=null;error.value=e.message}}
- finally{if(request===version)busy.value=false}
+const demandWindowDays=7
+const hasStockFilters=computed(()=>hasStockSearchFilters(search.value,columnFilters.value)||!!warehouse.value||!!session.value&&(demandFrom.value!==session.value.today||demandTo.value!==shiftISODate(session.value.today,demandWindowDays-1)))
+const activeStockColumns=computed(()=>Object.entries(columnFilters.value).map(([field,values])=>({
+ field,
+ title:stockColumns.find(c=>c.field===field)?.headerName||field,
+ summary:(values||[]).map(value=>(data.value?.filter_values?.[field]||[]).find(row=>String(row.value)===String(value))?.label||String(value??'Trống')).join(', ')||'Không chọn'
+})))
+const stockState=computed(()=>stockEmptyKind({
+ company:company.value,warehouseCount:data.value?.warehouses?.length||0,
+ catalogueCount:data.value?.catalogue_count||0,filteredCount:data.value?.total_count||0,
+ loading:busy.value||!session.value||(!data.value&&!!company.value)
+}))
+function applySearch(){search.value=searchDraft.value.trim();refresh(true)}
+function presetDemand(days){
+ demandFrom.value=session.value.today
+ demandTo.value=shiftISODate(session.value.today,days-1)
+ refresh(true)
 }
-async function initialize(){busy.value=true;try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=session.value.companies[0]?.name||'';form.posting_date=session.value.today;demandFrom.value=session.value.today;demandTo.value=session.value.today;await refresh()}catch(e){error.value=e.message}finally{busy.value=false}}
-function companyChanged(){columnFilters.value={};movementFilters.value={};documentFilters.value={};documentData.value=null;movementData.value=null;warehouse.value='';saved.value=null;data.value=null;refresh(true)}
+function resetStockFilters(){
+ columnFilters.value={}
+ search.value=''
+ searchDraft.value=''
+ warehouse.value=''
+ sortStock.value=[]
+ demandFrom.value=session.value?.today||''
+ demandTo.value=shiftISODate(demandFrom.value,demandWindowDays-1)
+ refresh(true)
+}
+function clearStockColumnFilter(field){
+ columnFilters.value=updateColumnFilter(columnFilters.value,field,null)
+ refresh(true)
+}
+function applyQuickFilter(kind){
+ columnFilters.value=toggleStockQuickFilter(columnFilters.value,kind)
+ refresh(true)
+}
+function activeQuickFilter(kind){
+ const preset=STOCK_QUICK_FILTERS[kind]
+ const actual=columnFilters.value[preset.field]
+ return Array.isArray(actual)&&actual.length===preset.values.length&&preset.values.every(x=>actual.includes(x))
+}
+function warehouseChanged(){
+ columnFilters.value={}
+ refresh(true)
+}
+async function refresh(reset=false){
+ if(reset){start.value=0;movementStart.value=0;documentStart.value=0}
+ if(!company.value){version++;busy.value=false;data.value=null;movementData.value=null;documentData.value=null;return}
+ if(demandFrom.value&&demandTo.value&&demandFrom.value>demandTo.value){
+  version++;busy.value=false
+  error.value='Ngày bắt đầu phải trước hoặc bằng ngày kết thúc kỳ nhu cầu. Dữ liệu hiện tại chưa được cập nhật.'
+  return
+ }
+ const request=++version
+ busy.value=true
+ error.value=''
+ try{
+  const result=await api('overview',{
+   company:company.value,warehouse:warehouse.value,
+   search:tab.value==='stock'?search.value:'',
+   start:start.value,
+   sort_model:JSON.stringify(sortStock.value),
+   column_filters:JSON.stringify(columnFilters.value),
+   from_date:demandFrom.value,to_date:demandTo.value
+  })
+  if(request!==version)return
+  data.value=result
+  if(tab.value==='stock'&&start.value>0&&!result.items?.length&&result.total_count>0){
+   start.value=Math.floor((result.total_count-1)/50)*50
+   return await refresh()
+  }
+  if(tab.value==='movements'){
+   const ledger=await api('movements',{
+    company:company.value,warehouse:warehouse.value,search:search.value,
+    from_date:movementFrom.value,to_date:movementTo.value,
+    start:movementStart.value,sort_model:JSON.stringify(sortMovement.value),
+    column_filters:JSON.stringify(movementFilters.value)
+   })
+   if(request===version)movementData.value=ledger
+  }
+  if(tab.value==='history'){
+   const records=await api('documents',{
+    company:company.value,warehouse:warehouse.value,search:search.value,
+    from_date:movementFrom.value,to_date:movementTo.value,
+    start:documentStart.value,sort_model:JSON.stringify(sortDocument.value),
+    column_filters:JSON.stringify(documentFilters.value)
+   })
+   if(request===version)documentData.value=records
+  }
+ }catch(e){
+  // Retain the last verified response on network/validation failure, with an error.
+  if(request===version)error.value='Không tải được dữ liệu mới: '+e.message
+ }finally{
+  if(request===version)busy.value=false
+ }
+}
+async function initialize(){
+ busy.value=true
+ try{
+  session.value=await api('bootstrap')
+  setCSRF(session.value.csrf_token)
+  company.value=session.value.companies[0]?.name||''
+  form.posting_date=session.value.today
+  demandFrom.value=session.value.today
+  demandTo.value=shiftISODate(session.value.today,demandWindowDays-1)
+  await refresh()
+ }catch(e){error.value=e.message}finally{busy.value=false}
+}
+function companyChanged(){
+ columnFilters.value={}
+ movementFilters.value={}
+ documentFilters.value={}
+ documentData.value=null
+ movementData.value=null
+ warehouse.value=''
+ search.value=''
+ searchDraft.value=''
+ sortStock.value=[]
+ saved.value=null
+ data.value=null
+ refresh(true)
+}
 async function open(kind){if(kind==='issue'){try{await loadHREmployees()}catch(e){error.value=e.message;return}}issueVersion++;error.value='';saved.value=null;form.kind=kind;form.client_event_id=crypto.randomUUID();form.issue_mode='Manual';form.work_plan='';form.receiver='';form.receiver_employee='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false;form.count_purpose='Stock Reconciliation';form.posting_date=session.value.today;form.source=warehouse.value||data.value.warehouses[0]?.name||'';form.target=kind==='transfer'?'':form.source;form.notes='';form.existing_name='';form.base_modified='';form.additional_costs=[];form.lines=[{item:'',qty:kind==='count'?0:1,area:'',rate:0}];await nextTick();dialog.value.showModal();if(kind==='receipt')await loadReceiptAccounts()}
 async function searchItems(search){const result=await api('overview',{company:company.value,warehouse:warehouse.value,search});return result.items.map(item=>({value:item.name,label:item.item_name,uom:item.stock_uom,pack_uom:item.pack_uom,pack_factor:item.pack_factor,actual_qty:item.actual_qty}))}
 function selectStockItem(row,option){row.item_name=option.label;row.uom=option.uom;row.stock_uom=option.uom;row.pack_uom=option.pack_uom||'';row.pack_factor=Number(option.pack_factor)||0;row.actual_qty=option.actual_qty;chooseItem(row)}
@@ -88,11 +201,11 @@ async function openMaster(kind){
  catch(e){error.value=e.message}
 }
 async function saveMaster(){if(masterBusy.value)return;masterBusy.value=true;masterError.value=''
- try{const result=masterEditing.value?await masterAPI('save_master',{company:company.value,kind:masterKind.value,name:masterEditing.value.id,modified:masterEditing.value.modified,values:{...master}},true):await api('create_master',{company:company.value,kind:masterKind.value,values:{...master}},true);masterDialog.value.close();saved.value={name:result.name,master:true};if(masterKind.value==='item'){search.value='';start.value=0}await refresh();catalog.value=await api('catalogue',{company:company.value});await loadMasterLists()}
+ try{const result=masterEditing.value?await masterAPI('save_master',{company:company.value,kind:masterKind.value,name:masterEditing.value.id,modified:masterEditing.value.modified,values:{...master}},true):await api('create_master',{company:company.value,kind:masterKind.value,values:{...master}},true);masterDialog.value.close();saved.value={name:result.name,master:true};if(masterKind.value==='item'){search.value='';searchDraft.value='';start.value=0}await refresh();catalog.value=await api('catalogue',{company:company.value});await loadMasterLists()}
  catch(e){masterError.value=e.message}finally{masterBusy.value=false}
 }
 async function loadMasterLists(){if(!company.value)return;try{masterLists.value=await masterAPI('master_lists',{company:company.value})}catch(e){error.value=e.message}}
-watch(tab,(value,previous)=>{if(value==='setup')loadMasterLists();if(['movements','history'].includes(value)||['movements','history'].includes(previous)){search.value='';refresh(true)}})
+watch(tab,(value,previous)=>{if(value==='setup')loadMasterLists();if(['movements','history'].includes(value)||['movements','history'].includes(previous)){search.value='';searchDraft.value='';refresh(true)}})
 async function editMaster(kind,name){await openMaster(kind);try{const result=await masterAPI('read_master',{company:company.value,kind,name});masterEditing.value=result;Object.assign(master,{name:result.name,code:result.code,group:result.group||'',uom:result.uom||'',parent:result.parent||'',description:result.description||'',minimum_stock:result.minimum_stock||0,pack_uom:result.pack_uom||'',pack_factor:result.pack_factor||0,...Object.fromEntries(['lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_receiving_hours','lotus_default_lead_days','lotus_delivery_note'].map(k=>[k,result[k]]))})}catch(e){masterError.value=e.message}}
 async function deleteMaster(){if(!masterEditing.value||masterBusy.value)return;masterBusy.value=true;try{await masterAPI('delete_master',{company:company.value,kind:masterKind.value,name:masterEditing.value.id,modified:masterEditing.value.modified,clear_defaults:masterClearDefaults.value},true);masterDialog.value.close();saved.value=null;await refresh();await loadMasterLists()}catch(e){masterError.value=e.message}finally{masterBusy.value=false}}
 async function editDocument(){const current=detail.value;detailDialog.value.close();const kind={'Material Receipt':'receipt','Material Issue':'issue','Material Transfer':'transfer'}[current.kind]||'count';await open(kind);Object.assign(form,{existing_name:current.name,base_modified:current.modified,posting_date:current.posting_date,count_purpose:current.kind,source:current.items[0]?.source||'',target:current.items[0]?.target||'',notes:current.notes||'',receiver:current.receiver||'',receiver_employee:current.receiver_employee||'',issue_mode:current.issue_mode||'Manual',additional_costs:(current.additional_costs||[]).map(row=>({...row})),lines:current.items.map(row=>({...row,rate:row.rate||0}))})}
@@ -117,7 +230,7 @@ const detailColumns=[{headerName:'Vật tư',minWidth:220,flex:2,valueGetter:p=>
 
 const receiptDetailColumns=[{field:'rate',headerName:'Đơn giá',type:'numericColumn',valueFormatter:p=>cash(p.value)},{field:'additional_cost',headerName:'Chi phí phân bổ',type:'numericColumn',valueFormatter:p=>cash(p.value)},{field:'amount',headerName:'Thành tiền',type:'numericColumn',valueFormatter:p=>cash(p.value)}]
 onMounted(initialize)
-function filterStock({field,values}){const next={...columnFilters.value};if(values===null)delete next[field];else next[field]=values;columnFilters.value=next;refresh(true)}
+function filterStock({field,values}){columnFilters.value=updateColumnFilter(columnFilters.value,field,values);refresh(true)}
 const stockTabs={stock:'Tồn kho',planning:'Nhu cầu & mua vật tư',history:'Phiếu nhập · xuất',movements:'Lịch sử nhập xuất',setup:'Thiết lập kho'}
 const workspaceActions=computed(()=>[{id:'farm-work',label:'Công việc nông trường',navigation:true,href:'/lotus/cong-viec'},{id:'attendance',label:'Chấm công',navigation:true,href:'/lotus/cham-cong'},{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...Object.entries(stockTabs).map(([id,label])=>({id,label,navigation:true,run:()=>tab.value=id})),...Object.entries(kinds).filter(([kind])=>canCreate.value&&session.value?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']).map(([kind,label])=>({id:kind,label,run:()=>open(kind)})),...(session.value?.permissions.Item?[{id:'new-item',label:'Thêm vật tư',run:()=>openMaster('item')}]:[])])
 function itemCell(params){const cell=document.createElement('span');cell.className='lotus-item-cell';for(const [cls,text] of [['name',params.data.item_name],['code',params.data.name]]){const span=document.createElement('span');span.className=cls;span.textContent=text;cell.append(span)}return cell}
@@ -130,18 +243,82 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
-   <div class="stock-scope"><label>Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="refresh(true)"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><form v-if="['stock','movements','history'].includes(tab)" class="stock-search" @submit.prevent="refresh(true)"><UiInput v-model="search" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm mã hoặc tên vật tư…':tab==='history'?'Tìm mã phiếu…':'Tìm vật tư hoặc mã phiếu…'" /><UiButton variant="outline" type="submit" class="stock-button" :disabled="busy||!company">Tìm</UiButton></form><UiButton variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải…':'↻ Làm mới'}}</UiButton></div>
-   <section v-if="!busy&&session&&(!company||!data?.warehouses.length||!stocks.length)&&tab==='stock'" class="stock-welcome"><div class="stock-welcome-icon">▦</div><div><p class="stock-kicker">BẮT ĐẦU CHO FARM MỚI</p><h2>Kho mới, sẵn sàng từ bước đầu tiên.</h2><p>Tạo công ty, khai báo kho và vật tư. Khi hàng về, lập phiếu nhập để bắt đầu theo dõi tồn.</p><UiButton variant="default" class="stock-button primary" @click="tab='setup'">Thiết lập kho của bạn →</UiButton></div></section>
-   <div v-if="tab==='stock'" class="stock-actions" aria-label="Thao tác kho"><UiButton variant="outline" v-for="(title,kind) in kinds" :key="kind" :disabled="!canCreate||!session?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']||busy" @click="open(kind)"><span>{{{receipt:'↓',issue:'↑',transfer:'⇄',count:'✓'}[kind]}}</span><span>{{title}}</span></UiButton><UiButton variant="outline" v-if="session?.permissions.Item" class="stock-button" :disabled="!company" @click="openMaster('item')">+ Thêm vật tư</UiButton><UiButton v-if="Object.keys(columnFilters).length" variant="outline" @click="columnFilters={};refresh(true)">Bỏ bộ lọc ({{Object.keys(columnFilters).length}})</UiButton><UiButton variant="outline" @click="filterStock({field:'stock_status',values:['Dưới tối thiểu']})">Dưới tối thiểu</UiButton><div class="stock-summary" role="status"><span><strong>{{data?.warehouses.length??'—'}}</strong> kho</span><span><strong>{{data?.total_count??'—'}}</strong> vật tư</span><span><strong>{{data?.stocked_count??'—'}}</strong> có tồn</span></div></div>
-   <template v-if="tab==='stock'">
-    <div class="movement-filters"><label>Nhu cầu từ ngày<UiInput v-model="demandFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="demandTo" type="date" @change="refresh(true)"/></label><UiButton variant="outline" @click="filterStock({field:'coverage_status',values:['Cần mua','Chờ nhập']})">Thiếu theo nhu cầu</UiButton></div>
-    <p v-for="warning in data?.coverage_warnings" :key="warning" class="stock-error" role="alert">{{warning}}</p>
+   <div class="stock-scope"><label>Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><form v-if="['stock','movements','history'].includes(tab)" class="stock-search" @submit.prevent="applySearch"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm mã hoặc tên vật tư…':tab==='history'?'Tìm mã phiếu…':'Tìm vật tư hoặc mã phiếu…'" /><UiButton variant="outline" type="submit" class="stock-button" :disabled="busy||!company">Tìm</UiButton></form><UiButton variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải…':'↻ Làm mới'}}</UiButton></div>
+   <section v-if="tab==='stock'&&stockState==='no-company'" class="stock-start-panel" role="status">
+    <h2>Chưa chọn công ty vận hành</h2><p>Chọn công ty ở phía trên để xem kho, vật tư và số liệu tồn.</p>
+   </section>
+   <section v-if="tab==='stock'&&stockState==='no-warehouse'" class="stock-start-panel" role="status">
+    <h2>Chưa có kho hoạt động</h2><p>Thiết lập kho nhận hàng trước khi nhập, xuất hoặc kiểm kê vật tư.</p>
+    <UiButton variant="outline" @click="tab='setup'">Mở Thiết lập kho</UiButton>
+   </section>
+   <section v-if="tab==='stock'&&stockState==='no-items'" class="stock-start-panel" role="status">
+    <h2>Danh mục vật tư đang trống</h2><p>Kho đã được thiết lập. Hãy khai báo vật tư đầu tiên; tồn kho sẽ chỉ tăng khi có chứng từ nhập hợp lệ.</p>
+    <UiButton v-if="session?.permissions.Item" @click="openMaster('item')">+ Tạo vật tư đầu tiên</UiButton>
+   </section>
 
-    <section class="stock-panel"><DataTable :rows="stocks" :columns="stockColumns" server-sort @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)" :filter-values="data?.filter_values" :server-filters="columnFilters" @filter="filterStock" :loading="busy" :empty="search?'Không tìm thấy vật tư phù hợp.':'Chưa có vật tư. Thêm danh mục trong Thiết lập kho.'" /><footer class="stock-pagination"><span>Tối đa 50 vật tư / trang</span><div><UiButton variant="outline" class="stock-button" :disabled="!start||busy" @click="start-=50;refresh()">← Trước</UiButton><UiButton variant="outline" class="stock-button" :disabled="!data?.has_more||busy" @click="start+=50;refresh()">Sau →</UiButton></div></footer></section>
+   <div v-if="tab==='stock'" class="stock-actions" aria-label="Thao tác kho">
+    <UiButton variant="outline" v-for="(title,kind) in kinds" :key="kind" :disabled="!canCreate||!session?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']||busy" @click="open(kind)">
+     <span>{{{receipt:'↓',issue:'↑',transfer:'⇄',count:'✓'}[kind]}}</span><span>{{title}}</span>
+    </UiButton>
+    <UiButton v-if="session?.permissions.Item" variant="outline" :disabled="!company" @click="openMaster('item')">+ Thêm vật tư</UiButton>
+   </div>
+   <div v-if="tab==='stock'&&data" class="stock-overview-metrics" role="status">
+    <div><strong>{{data.warehouses?.length??0}}</strong><span>Kho đang hoạt động</span></div>
+    <div><strong>{{data.catalogue_count??0}}</strong><span>Vật tư trong danh mục</span></div>
+    <div><strong>{{data.stocked_count??0}}</strong><span>Vật tư có tồn tại {{warehouse?warehouseLabel(warehouse):'các kho'}}</span></div>
+    <div><strong>{{data.total_count??0}}</strong><span>Kết quả theo bộ lọc</span></div>
+   </div>
+
+   <template v-if="tab==='stock'">
+    <section class="stock-filter-panel" aria-label="Lọc danh sách tồn kho">
+     <div class="stock-filter-top">
+      <div><h2>Danh sách vật tư</h2><p>Tồn được tính theo kho đang chọn; tồn tối thiểu chung tính trên toàn bộ kho. Kỳ nhu cầu chỉ tác động các cột kế hoạch và mua hàng.</p></div>
+      <div class="stock-filter-buttons">
+       <UiButton variant="outline" :class="{active:activeQuickFilter('minimum')}" :aria-pressed="activeQuickFilter('minimum')" @click="applyQuickFilter('minimum')">Dưới tồn tối thiểu</UiButton>
+       <UiButton variant="outline" :class="{active:activeQuickFilter('demand')}" :aria-pressed="activeQuickFilter('demand')" @click="applyQuickFilter('demand')">Thiếu theo nhu cầu</UiButton>
+       <UiButton v-if="hasStockFilters" variant="outline" @click="resetStockFilters">Xóa toàn bộ bộ lọc</UiButton>
+      </div>
+     </div>
+     <div class="stock-filter-period">
+      <span>Kỳ nhu cầu dự kiến</span>
+      <label>Từ ngày <UiInput v-model="demandFrom" type="date" @change="refresh(true)"/></label>
+      <label>Đến ngày <UiInput v-model="demandTo" type="date" @change="refresh(true)"/></label>
+      <div class="stock-filter-period-shortcuts">
+       <UiButton variant="outline" @click="presetDemand(1)">Hôm nay</UiButton>
+       <UiButton variant="outline" @click="presetDemand(7)">7 ngày</UiButton>
+       <UiButton variant="outline" @click="presetDemand(30)">30 ngày</UiButton>
+      </div>
+     </div>
+     <div v-if="activeStockColumns.length||search.trim()||warehouse" class="stock-active-filters" aria-label="Bộ lọc đang áp dụng">
+      <span>Đang lọc:</span>
+      <UiButton v-if="warehouse" variant="outline" size="sm" @click="warehouse='';warehouseChanged()">Kho: {{warehouseLabel(warehouse)}} ×</UiButton>
+      <UiButton v-if="search.trim()" variant="outline" size="sm" @click="search='';searchDraft='';refresh(true)">Tìm kiếm: {{search}} ×</UiButton>
+      <UiButton v-for="chip in activeStockColumns" :key="chip.field" variant="outline" size="sm" :title="chip.summary" @click="clearStockColumnFilter(chip.field)">{{chip.title}}: {{chip.summary}} ×</UiButton>
+     </div>
+    </section>
+    <p v-for="warning in data?.coverage_warnings" :key="warning" class="stock-error" role="alert">{{warning}}</p>
+    <section v-if="stockState==='no-matches'" class="stock-filter-empty" role="status">
+     <strong>Không tìm thấy vật tư với các điều kiện đang chọn.</strong>
+     <p>Danh mục còn {{data?.catalogue_count??0}} vật tư; kết quả bằng 0 chỉ do bộ lọc hoặc tìm kiếm, không phải kho đã mất dữ liệu.</p>
+     <UiButton variant="outline" @click="resetStockFilters">Hiện lại toàn bộ vật tư</UiButton>
+    </section>
+    <section v-if="!['no-company','no-warehouse','no-items'].includes(stockState)" class="stock-panel stock-inventory-table">
+     <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0" server-sort
+      @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)"
+      :filter-values="data?.filter_values" :server-filters="columnFilters" @filter="filterStock" :loading="busy"
+      empty="Không có dòng phù hợp. Hãy gỡ bộ lọc đang áp dụng." />
+     <footer class="stock-pagination">
+      <span>{{data?.total_count?start+1:0}}–{{start+(stocks.length||0)}} / {{data?.total_count??0}} kết quả · Tối đa 50 vật tư/trang</span>
+      <div>
+       <UiButton variant="outline" class="stock-button" :disabled="!start||busy" @click="start-=50;refresh()">← Trước</UiButton>
+       <UiButton variant="outline" class="stock-button" :disabled="!data?.has_more||busy" @click="start+=50;refresh()">Sau →</UiButton>
+      </div>
+     </footer>
+    </section>
    </template>
    <WarehousePlanning v-if="tab==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session?.today"/>
    <div v-if="tab==='history'" class="movement-filters"><label>Từ ngày<UiInput v-model="movementFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="movementTo" type="date" @change="refresh(true)"/></label><UiButton v-if="Object.keys(documentFilters).length" variant="outline" @click="documentFilters={};refresh(true)">Bỏ bộ lọc</UiButton></div>
-   <section v-if="tab==='history'" class="stock-panel"><DataTable :rows="historyRows" :columns="historyColumns" server-sort @sort="model=>{sortDocument=model;refresh(true)}" :loading="busy" :filter-values="documentData?.filter_values" :server-filters="documentFilters" @filter="filterDocument" interactive @open="row=>openStockDocument(row.doctype,row.name)"/><footer class="stock-pagination"><span>{{documentData?.total_count||0}} phiếu</span><div><UiButton variant="outline" :disabled="!movementStart||busy" @click="movementStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" :disabled="!documentData?.has_more||busy" @click="movementStart+=50;refresh()">Sau →</UiButton></div></footer></section>
+   <section v-if="tab==='history'" class="stock-panel"><DataTable :rows="historyRows" :columns="historyColumns" server-sort @sort="model=>{sortDocument=model;refresh(true)}" :loading="busy" :filter-values="documentData?.filter_values" :server-filters="documentFilters" @filter="filterDocument" interactive @open="row=>openStockDocument(row.doctype,row.name)"/><footer class="stock-pagination"><span>{{documentData?.total_count?documentStart+1:0}}–{{documentStart+(documentData?.rows?.length||0)}} / {{documentData?.total_count||0}} phiếu</span><div><UiButton variant="outline" :disabled="!documentStart||busy" @click="documentStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" :disabled="!documentData?.has_more||busy" @click="documentStart+=50;refresh()">Sau →</UiButton></div></footer></section>
    <template v-if="tab==='movements'">
     <div class="movement-filters"><label>Từ ngày<UiInput v-model="movementFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="movementTo" type="date" @change="refresh(true)"/></label><UiButton v-if="Object.keys(movementFilters).length" variant="outline" @click="movementFilters={};refresh(true)">Bỏ bộ lọc</UiButton><span>{{movementData?.total_count??0}} biến động đã ghi sổ</span></div>
     <section class="stock-panel"><DataTable :rows="movementData?.rows||[]" :columns="movementColumns" server-sort @sort="model=>{sortMovement=model;refresh(true)}" :loading="busy" :filter-values="movementData?.filter_values" :server-filters="movementFilters" @filter="filterMovement" interactive @open="openMovement" empty="Chưa có biến động đã ghi sổ trong phạm vi này."/><footer class="stock-pagination"><span>{{movementData?.total_count?movementStart+1:0}}–{{movementStart+(movementData?.rows.length||0)}} / {{movementData?.total_count||0}}</span><div><UiButton variant="outline" class="stock-button" :disabled="!movementStart||busy" @click="movementStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" class="stock-button" :disabled="!movementData?.has_more||busy" @click="movementStart+=50;refresh()">Sau →</UiButton></div></footer></section>
