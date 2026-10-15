@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-warehouse-ui-audit:20261015
+  frontend:
+    image: lotus-warehouse-ui-audit:20261015

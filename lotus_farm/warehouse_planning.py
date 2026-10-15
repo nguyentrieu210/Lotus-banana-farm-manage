@@ -207,13 +207,14 @@ def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None,includ
 
 @frappe.whitelist()
 def overview(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None):
-    from lotus_farm.table_filters import selections,matches,distinct
+    from lotus_farm.table_filters import selections,matches,faceted_distinct
     result=snapshot(company,warehouse,from_date,to_date)
     rows=result['rows'];query=str(search or '').casefold()[:100]
     if query:rows=[r for r in rows if query in (r['item']+' '+r['item_name']).casefold()]
     fields=['item','warehouse','uom','required_qty','issued_qty','remaining_qty','available_qty','shortage_qty','incoming_qty','requested_qty','to_buy_qty','to_request_qty','status']
-    result['filter_values']=distinct(rows,fields,labels={'item':lambda r:r['item_name']+' · '+r['item']})
-    rows=[r for r in rows if matches(r,selections(column_filters,fields))]
+    selected=selections(column_filters,fields)
+    result['filter_values']=faceted_distinct(rows,fields,selected,labels={'item':lambda r:r['item_name']+' · '+r['item']})
+    rows=[r for r in rows if matches(r,selected)]
     from lotus_farm.table_filters import sorted_rows
     rows=sorted_rows(rows,sort_model,fields,{'item':'item_name'})
     start=max(0,cint(start));result.update(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50)
