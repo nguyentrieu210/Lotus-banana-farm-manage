@@ -3,6 +3,9 @@ import importlib.util
 import unittest
 from unittest.mock import patch
 
+if importlib.util.find_spec('frappe') is None:
+    raise unittest.SkipTest('Rate approval tests require the Frappe runtime.')
+
 import frappe
 
 from lotus_farm.rate_approval import resolve_rate, validate_plan, _signature
