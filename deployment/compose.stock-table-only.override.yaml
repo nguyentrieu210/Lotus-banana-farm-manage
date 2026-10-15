@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-stock-table-only:20261015
+  frontend:
+    image: lotus-stock-table-only:20261015
