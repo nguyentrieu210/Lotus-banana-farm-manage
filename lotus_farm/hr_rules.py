@@ -16,13 +16,13 @@ PAYMENT_BASES = ("Monthly", "Daywork", "Piecework", "Mixed")
 def normalize_cccd(value):
     """Normalize spaces and dashes, but do not accept partial or fabricated identifiers."""
     raw = re.sub(r"[\s-]", "", str(value or ""))
-    if not re.fullmatch(r"\d{12}", raw):
+    if not re.fullmatch(r"[0-9]{12}", raw):
         raise ValueError("CCCD phải gồm đúng 12 chữ số.")
     return raw
 
 def normalized_phone(value):
     raw = re.sub(r"[\s().-]", "", str(value or ""))
-    if not re.fullmatch(r"\+?\d{9,15}", raw):
+    if not re.fullmatch(r"\+?[0-9]{9,15}", raw):
         raise ValueError("Số điện thoại cần từ 9 đến 15 chữ số.")
     return raw
 

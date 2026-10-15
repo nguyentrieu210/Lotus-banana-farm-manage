@@ -7,7 +7,7 @@ from lotus_farm.hr_rules import (
 class HRRulesTest(unittest.TestCase):
     def test_cccd(self):
         self.assertEqual(normalize_cccd(" 0123-4567 8901 "), "012345678901")
-        for value in ("", "123", "1234567890123", "abcdefgh1234"):
+        for value in ("", "123", "1234567890123", "abcdefgh1234", "٠١٢٣٤٥٦٧٨٩٠١"):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 normalize_cccd(value)
 
