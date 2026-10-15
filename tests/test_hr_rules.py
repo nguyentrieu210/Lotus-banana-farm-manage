@@ -11,6 +11,9 @@ class HRRulesTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 normalize_cccd(value)
 
+            with self.subTest(value="non-ascii digits"), self.assertRaises(ValueError):
+                normalize_cccd("٠١٢٣٤٥٦٧٨٩٠١")
+
     def test_phone(self):
         self.assertEqual(normalized_phone("0382 397 073"), "0382397073")
         self.assertEqual(normalized_phone("+84 382 397 073"), "+84382397073")
