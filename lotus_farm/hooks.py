@@ -8,6 +8,7 @@ app_license = "MIT"
 required_apps = ["erpnext"]
 
 
+before_migrate = "lotus_farm.install.create_roles"
 after_install = "lotus_farm.install.setup"
 after_migrate = "lotus_farm.install.setup"
 
