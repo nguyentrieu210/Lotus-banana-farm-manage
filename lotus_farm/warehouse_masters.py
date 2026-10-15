@@ -47,6 +47,9 @@ def warehouse_details(doc):
             'lotus_default_lead_days':doc.get('lotus_default_lead_days') or 0}
 
 
+MINIMUM_TOTAL_KEY = '__company_totals__'
+
+
 def levels(item):
     try:
         value=frappe.parse_json(item.get('lotus_minimum_stock') or '{}')
@@ -55,16 +58,33 @@ def levels(item):
         return {}
 
 
+def minimum_total(item, company, warehouse_names=None):
+    """One floor for the entire company; retain legacy per-warehouse values as fallback."""
+    from frappe.utils import flt
+    stored = levels(item)
+    totals = stored.get(MINIMUM_TOTAL_KEY) or {}
+    if isinstance(totals, dict) and company in totals:
+        return max(0, flt(totals[company]))
+    if warehouse_names is None:
+        warehouse_names = frappe.get_list(
+            'Warehouse', filters={'company': company, 'is_group': 0, 'disabled': 0},
+            pluck='name', limit_page_length=0)
+    # Old saved thresholds become one combined threshold until this Item is edited.
+    return sum(max(0, flt(stored.get(name))) for name in warehouse_names)
+
+
 def set_minimum(item,company,values):
-    from lotus_farm.warehouse import _warehouse,_number
-    if 'minimum_stock' not in values or not values.get('minimum_warehouse'):
+    from lotus_farm.warehouse import _number
+    if 'minimum_stock' not in values:
         return
-    warehouse=_warehouse(values['minimum_warehouse'],company)
-    minimum=_number(values.get('minimum_stock',0),'Tồn tối thiểu',allow_zero=True)
+    minimum=_number(values['minimum_stock'],'Tồn tối thiểu chung',allow_zero=True)
     current=levels(item)
-    if minimum:current[warehouse.name]=minimum
-    else:current.pop(warehouse.name,None)
-    item.lotus_minimum_stock=json.dumps(current)
+    totals=current.get(MINIMUM_TOTAL_KEY)
+    if not isinstance(totals,dict):
+        totals={}
+    totals[company]=minimum
+    current[MINIMUM_TOTAL_KEY]=totals
+    item.lotus_minimum_stock=json.dumps(current,ensure_ascii=False)
 
 
 def _doc(company,kind,name):
@@ -81,11 +101,10 @@ def _doc(company,kind,name):
 @frappe.whitelist()
 def read_master(company,kind,name):
     doc=_doc(company,kind,name)
-    permitted_warehouses={row.name for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0},fields=['name'],limit_page_length=0)} if kind=='item' else set()
     return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name'),code=doc.name,
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
-                **(warehouse_details(doc) if kind=='warehouse' else {}),minimum_levels={key:value for key,value in levels(doc).items() if key in permitted_warehouses} if kind=='item' else {},
+                **(warehouse_details(doc) if kind=='warehouse' else {}),minimum_stock=minimum_total(doc,company) if kind=='item' else None,
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
