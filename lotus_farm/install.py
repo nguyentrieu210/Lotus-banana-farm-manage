@@ -8,6 +8,7 @@ ROLES = (
     "Lotus Integration User",
     "Lotus Auditor",
     "Lotus Stock Reviewer",
+    "Lotus Price Approver",
 )
 
 

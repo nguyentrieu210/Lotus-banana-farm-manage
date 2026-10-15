@@ -21,8 +21,9 @@ def install_fields():
         add_permission('Work Team',role)
         for action in ('read','create','write'):update_permission_property('Work Team',role,0,action,1)
         add_permission('Farm',role);update_permission_property('Farm',role,0,'read',1)
+        add_permission('Work Type',role);update_permission_property('Work Type',role,0,'read',1)
     if not frappe.db.exists('Role','Lotus Crew Leader'):frappe.get_doc(dict(doctype='Role',role_name='Lotus Crew Leader',desk_access=1)).insert(ignore_permissions=True)
-    for dt,actions in [('Lotus Crew Attendance',('read','create','write','print')),('Work Team',('read',)),('Farm',('read',)),('Company',('read',)),('UOM',('read',))]:
+    for dt,actions in [('Lotus Crew Attendance',('read','create','write','print')),('Work Team',('read',)),('Work Type',('read',)),('Farm',('read',)),('Company',('read',)),('UOM',('read',))]:
         if not frappe.db.exists('DocType',dt):continue
         add_permission(dt,'Lotus Crew Leader')
         for action in actions:update_permission_property(dt,'Lotus Crew Leader',0,action,1)
@@ -69,6 +70,7 @@ def catalogue(company):
         return frappe.get_list(dt,filters=filters,fields=fields,limit_page_length=0) if frappe.db.exists('DocType',dt) and frappe.has_permission(dt,'read') else []
     farms=rows('Farm',{'company':company,'active':1},['name','farm_name'])
     return dict(farms=farms,teams=rows('Work Team',{'active':1,'lotus_team_type':'Contractor','farm':['in',[f.name for f in farms]]},['name','team_name','farm','lotus_foreman','lotus_foreman_phone']),
+        works=rows('Work Type',{'active':1,'allow_piecework':1},['name','work_name','uom','piecework_rate']),
         shifts=rows('Shift Type',{},['name','start_time','end_time']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
 
 
@@ -166,7 +168,36 @@ class CrewAttendanceDocument(Document):
         if self.company and self.company!=farm.company:frappe.throw('Công ty không khớp nông trường.')
         _date(self.posting_date);lock('Company',farm.company)
         before=self.get_doc_before_save()
-        if before and any(str(before.get(f) or '')!=str(self.get(f) or '') for f in ('company','farm','work_team','posting_date')):frappe.throw('Không đổi danh tính phiếu công. Hủy và lập phiếu mới nếu chọn sai ngày/đội.')
+        if before and any(str(before.get(f) or '')!=str(self.get(f) or '') for f in ('company','farm','work_team','posting_date','work_type')):frappe.throw('Không đổi danh tính phiếu công. Hủy và lập phiếu mới nếu chọn sai ngày/đội.')
+        if self.work_type:
+            work = frappe.get_doc('Work Type', self.work_type)
+            work.check_permission('read')
+            if not work.active or not work.allow_piecework:
+                frappe.throw('Công việc này chưa cho phép công khoán.')
+            self.uom = work.uom
+            listed = flt(before.listed_piecework_rate) if before and before.work_type else flt(work.piecework_rate)
+            if listed <= 0:
+                frappe.throw('Công việc chưa có đơn giá khoán.')
+            self.listed_piecework_rate = listed
+            if not before and flt(self.unit_rate) == 0 and not self.rate_override_reason:
+                self.unit_rate = listed
+            if abs(flt(self.unit_rate) - listed) > 0.00001:
+                if not str(self.rate_override_reason or '').strip():
+                    frappe.throw('Sửa đơn giá khoán phải ghi lý do.')
+                require_role('Lotus Farm Manager')
+        elif not before and flt(self.completed_qty) > 0:
+            frappe.throw('Chọn công việc khoán để lấy đơn vị và đơn giá.')
+        if self.work_type and flt(self.completed_qty) > 0 and flt(self.unit_rate) <= 0:
+            frappe.throw('Khối lượng khoán đã thực hiện phải có đơn giá dương.')
+        others = frappe.get_all('Lotus Crew Attendance',
+            filters={'company': farm.company, 'work_team': self.work_team,
+                     'posting_date': self.posting_date, 'docstatus': ['<', 2],
+                     'name': ['!=', self.name or '']},
+            fields=['present','workdays'])
+        if others:
+            max_people = max([flt(self.present)] + [flt(row.present) for row in others])
+            if flt(self.workdays) + sum(flt(row.workdays) for row in others) > max_people + 0.000001:
+                frappe.throw('Tổng công của tổ trong ngày vượt số người có mặt. Chia công giữa các việc, không chấm đủ công hai lần.')
         try:values=crew_values(self.headcount,self.present,self.workdays,self.completed_qty,self.unit_rate)
         except (ValueError,TypeError) as exc:frappe.throw(str(exc))
         for field,value in values.items():self.set(field,value)
@@ -176,7 +207,7 @@ class CrewAttendanceDocument(Document):
             if not unit.enabled:frappe.throw('Đơn vị khoán đã bị tắt.')
         self.company=farm.company;self.currency=frappe.get_cached_value('Company',self.company,'default_currency');self.foreman=self.foreman or team.lotus_foreman
         if not self.foreman:frappe.throw('Đội khoán cần thông tin đầu câu.')
-        self.attendance_key=hashlib.sha256((self.company+'|'+self.work_team+'|'+str(getdate(self.posting_date))).encode()).hexdigest()
+        self.attendance_key=hashlib.sha256((self.company+'|'+self.work_team+'|'+str(getdate(self.posting_date))+('|' + self.work_type if self.work_type else '')).encode()).hexdigest()
         duplicate=frappe.db.get_value(self.doctype,{'attendance_key':self.attendance_key},'name')
         if duplicate and duplicate!=self.name:frappe.throw('Đội đã có phiếu công ngày này. Tải lại phiếu để sửa.')
 
@@ -190,7 +221,7 @@ def crew_day(company,date,farm=None):
     _company(company);date=_date(date)
     filters={'company':company,'posting_date':date,'docstatus':['<',2]}
     if farm:filters['farm']=farm
-    rows=frappe.get_list('Lotus Crew Attendance',filters=filters,fields=['name','farm','work_team','foreman','posting_date','headcount','present','absent','workdays','completed_qty','uom','unit_rate','amount','currency','notes','docstatus','modified'],limit_page_length=0)
+    rows=frappe.get_list('Lotus Crew Attendance',filters=filters,fields=['name','farm','work_team','foreman','posting_date','work_type','headcount','present','absent','workdays','completed_qty','uom','unit_rate','listed_piecework_rate','rate_override_reason','amount','currency','notes','docstatus','modified'],limit_page_length=0)
     teams=frappe.get_list('Work Team',filters={'active':1,'lotus_team_type':'Contractor',**({'farm':farm} if farm else {})},fields=['name','team_name','farm','lotus_foreman'],limit_page_length=0)
     permitted={r.name for r in frappe.get_list('Farm',filters={'company':company},fields=['name'],limit_page_length=0)}
     return dict(rows=rows,teams=[r for r in teams if r.farm in permitted])
@@ -210,7 +241,7 @@ def save_crew(company,values,client_event_id):
         doc=frappe.get_doc('Lotus Crew Attendance',values['name']);doc.check_permission('write')
         if doc.company!=company or doc.docstatus!=0 or str(doc.modified)!=str(values.get('modified')):frappe.throw('Phiếu công đã thay đổi. Tải lại trước khi sửa.')
     else:doc=frappe.new_doc('Lotus Crew Attendance')
-    for field in ('farm','work_team','posting_date','headcount','present','workdays','completed_qty','uom','unit_rate','notes'):doc.set(field,values.get(field))
+    for field in ('farm','work_team','work_type','posting_date','headcount','present','workdays','completed_qty','uom','unit_rate','rate_override_reason','notes'):doc.set(field,values.get(field))
     doc.company=company;doc.client_key=key;doc.payload_hash=digest;doc.save()
     return dict(name=doc.name)
 

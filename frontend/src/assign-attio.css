@@ -10,6 +10,7 @@ body{background:#f9fafc;color:#293448}
 .panel{border:1px solid #e5e8ef;border-radius:11px;background:#fff;box-shadow:0 1px 2px #1e293b07;padding:18px}
 .panel-title{font-size:13px;color:#2b3648}
 .fields{gap:13px}
+.fields>*{min-width:0}
 label{color:#566173;font-size:12px;font-weight:600}
 input,select{background:#fff;color:#2b3546;border:1px solid #dce1e9;min-height:43px;border-radius:8px}
 input:focus,select:focus,button:focus-visible{outline:2px solid #c4cdfa;outline-offset:1px}

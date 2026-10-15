@@ -1,1 +1,1 @@
-# V0 has no data patches yet.
+lotus_farm.patches.dual_work_payment

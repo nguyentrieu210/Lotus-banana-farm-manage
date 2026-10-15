@@ -1,5 +1,5 @@
 const FILES=__LOTUS_ASSETS__,CACHE='lotus-vue-shell-'+__LOTUS_VERSION__
-const SHELLS={'/lotus/kho':'stock.html','/lotus/cham-cong':'timekeeping.html','/lotus/giao-viec':'assign.html'}
+const SHELLS={'/lotus/kho':'stock.html','/lotus/cham-cong':'timekeeping.html','/lotus/giao-viec':'assign.html','/lotus/cong-viec':'farm-work.html'}
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))))
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('lotus-vue-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())))
 self.addEventListener('fetch',event=>{

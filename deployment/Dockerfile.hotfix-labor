@@ -1,0 +1,6 @@
+# Update Lotus application code and already-built frontend assets on top of the running ERPNext/HRMS image.
+# Base image is retained; do not overwrite it during the build.
+FROM lotus-erpnext:local
+USER root
+COPY --chown=frappe:frappe lotus_farm /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm
+USER frappe

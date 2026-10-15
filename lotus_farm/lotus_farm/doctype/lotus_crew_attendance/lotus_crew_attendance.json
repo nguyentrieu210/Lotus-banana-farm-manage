@@ -10,6 +10,7 @@
     "company",
     "farm",
     "work_team",
+    "work_type",
     "foreman",
     "posting_date",
     "headcount",
@@ -19,6 +20,8 @@
     "completed_qty",
     "uom",
     "unit_rate",
+    "listed_piecework_rate",
+    "rate_override_reason",
     "amount",
     "currency",
     "notes",
@@ -49,6 +52,13 @@
       "fieldtype": "Link",
       "options": "Work Team",
       "reqd": 1
+    },
+    {
+      "fieldname": "work_type",
+      "label": "Công việc khoán",
+      "fieldtype": "Link",
+      "options": "Work Type",
+      "description": "Chọn công việc để lấy đơn giá chuẩn và ĐVT."
     },
     {
       "fieldname": "foreman",
@@ -104,6 +114,18 @@
       "label": "Đơn giá khoán",
       "fieldtype": "Currency",
       "options": "currency"
+    },
+    {
+      "fieldname": "listed_piecework_rate",
+      "label": "Đơn giá niêm yết lúc lập phiếu",
+      "fieldtype": "Currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_override_reason",
+      "label": "Lý do sửa đơn giá",
+      "fieldtype": "Small Text",
+      "description": "Bắt buộc khi đơn giá khoán khác giá niêm yết."
     },
     {
       "fieldname": "amount",

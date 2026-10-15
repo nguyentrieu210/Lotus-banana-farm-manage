@@ -8,6 +8,10 @@
     "work_name",
     "category",
     "uom",
+    "payment_basis",
+    "allow_piecework",
+    "allow_daywork",
+    "piecework_rate",
     "productivity_per_workday",
     "active"
   ],
@@ -41,10 +45,39 @@
       "reqd": 1
     },
     {
+      "fieldname": "payment_basis",
+      "fieldtype": "Select",
+      "label": "Payment Basis",
+      "options": "\nPiece\nDaywork\nBoth",
+      "read_only": 1,
+      "hidden": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "allow_piecework",
+      "label": "Allow Piecework",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "allow_daywork",
+      "label": "Allow Daywork",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "piecework_rate",
+      "label": "Đơn giá công khoán / 1 ĐVT",
+      "fieldtype": "Currency",
+      "default": "0",
+      "description": "Giá niêm yết cho một đơn vị sản lượng đạt nghiệm thu. Không phải tiền công nhật."
+    },
+    {
       "fieldname": "productivity_per_workday",
-      "label": "Productivity Per Workday",
+      "label": "Năng suất trung bình (ĐVT / công)",
       "fieldtype": "Float",
-      "precision": "6"
+      "precision": "6",
+      "description": "Một công lao động dự kiến làm được bao nhiêu đơn vị công việc. Không phải đơn giá."
     },
     {
       "fieldname": "active",

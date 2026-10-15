@@ -238,22 +238,40 @@ class WorkPlan(DailyDocument):
             plot_scope(row)
             if not frappe.db.get_value('Farm Plot', row.farm_plot, 'active'):
                 frappe.throw('Work requires an active Plot.')
-            key = (row.crop_cycle, row.sucker_selection_batch, row.work_type)
-            if key in seen:
-                frappe.throw('Combine duplicate Cycle/Cohort/Work Type tasks into one line.')
-            seen.add(key)
+
             work = frappe.get_doc('Work Type', row.work_type)
             work.check_permission('read')
             if not work.active:
                 frappe.throw('Work Type is inactive.')
             row.uom = work.uom
             number(row.planned_qty, 'Planned quantity', positive=True)
-            row.productivity_per_workday = number(work.productivity_per_workday, 'Productivity', positive=True)
-            row.required_workdays = rule(labor_needed, row.planned_qty, row.productivity_per_workday)['required_workdays']
+            from lotus_farm.labor_pricing import labor_settings, planned_labor
+            from lotus_farm.rate_approval import resolve_rate
+            try:
+                labor = labor_settings(work.allow_daywork, work.allow_piecework,
+                    work.productivity_per_workday, work.piecework_rate, row.payment_mode or None)
+                price = resolve_rate(work.piecework_rate, row.get("requested_piecework_rate") or None, labor["mode"])
+                labor["piecework_rate"] = price["rate"]
+                estimated = planned_labor(row.planned_qty, labor)
+            except ValueError as exc:
+                frappe.throw(str(exc))
+            row.payment_mode = labor['mode']
+            key = (row.crop_cycle, row.sucker_selection_batch, row.work_type, row.payment_mode)
+            if key in seen:
+                frappe.throw('Combine duplicate Cycle/Cohort/Work Type/Payment Mode tasks into one line.')
+            seen.add(key)
+            row.productivity_per_workday = labor['productivity']
+            row.required_workdays = estimated['required_workdays']
+            row.list_piecework_rate = price["list_rate"]
+            row.requested_piecework_rate = price["rate"]
+            row.piecework_rate = labor['piecework_rate']
+            row.estimated_piecework_amount = estimated['estimated_piecework_amount']
             if row.norm_profile:
                 row.norm_version = applicable_norm(row.norm_profile, self.farm, row.work_type, self.posting_date).version
             else:
                 row.norm_version = 0
+        from lotus_farm.rate_approval import validate_plan
+        validate_plan(self)
 
 
 class WorkResult(DailyDocument):

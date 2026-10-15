@@ -1,0 +1,1 @@
+import{h as e}from"./register-worker-CVs0MAoP.js";import{t}from"./AssignApp-CSXdcKL8.js";e(t).mount(`#app`);

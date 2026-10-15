@@ -1,20 +1,57 @@
 {
-  "_Card-C_wy2bOz.js": {
-    "file": "assets/Card-C_wy2bOz.js",
+  "_AssignApp-BFkbCXcW.css": {
+    "file": "assets/AssignApp-BFkbCXcW.css",
+    "src": "_AssignApp-BFkbCXcW.css"
+  },
+  "_AssignApp-CSXdcKL8.js": {
+    "file": "assets/AssignApp-CSXdcKL8.js",
+    "name": "AssignApp",
+    "imports": [
+      "_register-worker-CVs0MAoP.js"
+    ],
+    "css": [
+      "assets/AssignApp-BFkbCXcW.css"
+    ]
+  },
+  "_Card-ConB98pA.js": {
+    "file": "assets/Card-ConB98pA.js",
     "name": "Card",
     "imports": [
-      "_register-worker-76GCmRBz.js"
+      "_register-worker-CVs0MAoP.js"
     ]
   },
-  "_DataTable-ugNITekI.js": {
-    "file": "assets/DataTable-ugNITekI.js",
+  "_DataTable-CossDhP6.js": {
+    "file": "assets/DataTable-CossDhP6.js",
     "name": "DataTable",
     "imports": [
-      "_register-worker-76GCmRBz.js"
+      "_register-worker-CVs0MAoP.js"
     ]
   },
-  "_register-worker-76GCmRBz.js": {
-    "file": "assets/register-worker-76GCmRBz.js",
+  "_LinkPicker-CT-T4ajj.js": {
+    "file": "assets/LinkPicker-CT-T4ajj.js",
+    "name": "LinkPicker",
+    "imports": [
+      "_register-worker-CVs0MAoP.js"
+    ]
+  },
+  "_SchemaForm-D21qYiXu.js": {
+    "file": "assets/SchemaForm-D21qYiXu.js",
+    "name": "SchemaForm",
+    "imports": [
+      "_register-worker-CVs0MAoP.js",
+      "_Select-Bp0B1PoX.js",
+      "_LinkPicker-CT-T4ajj.js"
+    ]
+  },
+  "_Select-Bp0B1PoX.js": {
+    "file": "assets/Select-Bp0B1PoX.js",
+    "name": "Select",
+    "imports": [
+      "_register-worker-CVs0MAoP.js"
+    ]
+  },
+  "_register-worker-CVs0MAoP.js": {
+    "file": "assets/register-worker-CVs0MAoP.js",
     "name": "register-worker",
     "css": [
       "assets/register-worker-DZ8sSmYg.css"
@@ -29,26 +66,44 @@
     "src": "_stock-attio-DveR0dcA.css"
   },
   "assign.html": {
-    "file": "assets/assign-b7oPWC2e.js",
+    "file": "assets/assign-XmHugfS-.js",
     "name": "assign",
     "src": "assign.html",
     "isEntry": true,
     "imports": [
-      "_register-worker-76GCmRBz.js"
+      "_register-worker-CVs0MAoP.js",
+      "_AssignApp-CSXdcKL8.js"
     ],
     "css": [
-      "assets/assign-Dkvnok-o.css"
+      "assets/assign-C0PKXeDN.css"
+    ]
+  },
+  "farm-work.html": {
+    "file": "assets/farm-work-Cu2mfgEz.js",
+    "name": "farm-work",
+    "src": "farm-work.html",
+    "isEntry": true,
+    "imports": [
+      "_register-worker-CVs0MAoP.js",
+      "_SchemaForm-D21qYiXu.js",
+      "_AssignApp-CSXdcKL8.js"
+    ],
+    "css": [
+      "assets/farm-work-CbFLQQ4H.css",
+      "assets/stock-attio-DveR0dcA.css"
     ]
   },
   "index.html": {
-    "file": "assets/index-DiLoqKXh.js",
+    "file": "assets/index-BRRWPOia.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_register-worker-76GCmRBz.js",
-      "_DataTable-ugNITekI.js",
-      "_Card-C_wy2bOz.js"
+      "_register-worker-CVs0MAoP.js",
+      "_SchemaForm-D21qYiXu.js",
+      "_Select-Bp0B1PoX.js",
+      "_DataTable-CossDhP6.js",
+      "_Card-ConB98pA.js"
     ],
     "css": [
       "assets/index-BRd5E5BN.css"
@@ -67,27 +122,30 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-DzYIEwqi.js",
+    "file": "assets/stock-WxTYv4u2.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
     "imports": [
-      "_register-worker-76GCmRBz.js",
-      "_DataTable-ugNITekI.js",
-      "_Card-C_wy2bOz.js"
+      "_register-worker-CVs0MAoP.js",
+      "_Select-Bp0B1PoX.js",
+      "_DataTable-CossDhP6.js",
+      "_LinkPicker-CT-T4ajj.js",
+      "_Card-ConB98pA.js"
     ],
     "css": [
       "assets/stock-attio-DveR0dcA.css"
     ]
   },
   "timekeeping.html": {
-    "file": "assets/timekeeping-DFA2G6Vl.js",
+    "file": "assets/timekeeping-hBz6yhvv.js",
     "name": "timekeeping",
     "src": "timekeeping.html",
     "isEntry": true,
     "imports": [
-      "_register-worker-76GCmRBz.js",
-      "_DataTable-ugNITekI.js"
+      "_register-worker-CVs0MAoP.js",
+      "_Select-Bp0B1PoX.js",
+      "_DataTable-CossDhP6.js"
     ],
     "css": [
       "assets/timekeeping-B-_JJByK.css",

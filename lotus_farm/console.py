@@ -22,6 +22,8 @@ MODULES={
  'masters':['Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
 ALLOWED={d for names in MODULES.values() for d in names}
+MODULES['masters'].append('Banana Variety')
+ALLOWED.add('Banana Variety')
 DATES={'Harvest Forecast':'period_start_date','Harvest Actual':'harvest_date','Harvest Lot':'received_date','Packout Run':'packing_date','Bunch Operation':'operation_date','Sucker Selection Batch':'selection_date'}
 
 
@@ -43,6 +45,7 @@ def bootstrap():
     has_role=lambda *names:admin or bool(roles.intersection(names))
     session['commands']={
         'work':has_role('Lotus Farm Manager'),
+        'rate_approve':has_role('Lotus Price Approver'),
         'capture':has_role('Lotus Farm Manager','Lotus Integration User'),
         'preview_close':has_role('Lotus Farm Manager','Lotus Auditor'),
         'sales':has_role('Lotus Sales Planner'),
@@ -158,7 +161,7 @@ def link_options(doctype,search='',farm=None,company=None):
     if farm and meta.has_field('farm'):filters['farm']=farm
     if company and meta.has_field('company'):filters['company']=company
     title=meta.title_field or 'name'
-    rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%'],title:['like','%'+search[:80]+'%']} if search else None,fields=list(dict.fromkeys(['name',title])),limit_page_length=30,order_by='name')
+    rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%'],title:['like','%'+search[:80]+'%']} if search else None,fields=list(dict.fromkeys(['name',title])),limit_page_length=500 if doctype=='UOM' else 30,order_by='name')
     return [dict(value=r.name,label=r.get(title) or r.name) for r in rows]
 
 

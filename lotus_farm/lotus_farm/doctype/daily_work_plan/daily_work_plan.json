@@ -8,6 +8,13 @@
     "farm",
     "posting_date",
     "lines",
+    "rate_approval_state",
+    "rate_requested_by",
+    "rate_request_reason",
+    "rate_approved_by",
+    "rate_approved_at",
+    "rate_approval_note",
+    "rate_approval_signature",
     "source_import_batch",
     "legacy_source_key",
     "amended_from",
@@ -66,6 +73,53 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "rate_approval_state",
+      "label": "Trạng thái duyệt giá",
+      "fieldtype": "Select",
+      "options": "\nNot Required\nPending\nApproved\nRejected",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_requested_by",
+      "label": "Người đề xuất",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_approved_by",
+      "label": "Người xét duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_approved_at",
+      "label": "Ngày giờ xét duyệt",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_approval_note",
+      "label": "Ghi chú duyệt giá",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "rate_approval_signature",
+      "label": "Approval signature",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "hidden": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "rate_request_reason",
+      "label": "Lý do xin duyệt đơn giá khoán",
+      "fieldtype": "Small Text",
+      "read_only": 1
     }
   ],
   "autoname": "hash",
@@ -88,6 +142,12 @@
       "read": 1,
       "report": 1,
       "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Price Approver",
+      "read": 1,
+      "report": 1,
       "print": 1
     }
   ],

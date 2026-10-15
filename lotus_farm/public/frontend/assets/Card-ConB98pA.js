@@ -1,0 +1,1 @@
+import{K as e,O as t,Y as n,o as r,yt as i,z as a}from"./register-worker-CVs0MAoP.js";var o=Object.assign({inheritAttrs:!1},{__name:`Card`,setup(o){return(o,s)=>(e(),t(`div`,a(o.$attrs,{class:i(r)(`rounded-lg border border-border bg-card text-card-foreground shadow-sm`,o.$attrs.class)}),[n(o.$slots,`default`)],16))}});export{o as t};

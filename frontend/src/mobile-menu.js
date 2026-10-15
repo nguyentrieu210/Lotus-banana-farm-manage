@@ -1,8 +1,9 @@
 // Mobile navigation is derived from real Frappe permissions, not the displayed job title.
 // A user with multiple roles receives the union of the work they can actually access.
 const items = [
+  {group:'Công việc ngoài vườn',id:'farm-work',label:'Công việc nông trường',detail:'Kế hoạch, tiến độ và cấu hình',symbol:'☑',href:'/lotus/cong-viec',module:'work'},
   {group:'Xưởng và vật tư',id:'stock',label:'Quản lý kho',detail:'Tồn, nhập xuất và kiểm kê',symbol:'▦',href:'/lotus/kho',capability:'stock'},
-  {group:'Công việc ngoài vườn',id:'assign',label:'Giao việc cho tổ',detail:'Chọn lô, thửa và công việc',symbol:'↗',href:'/lotus/giao-viec',module:'work',command:'work'},
+  {group:'Công việc ngoài vườn',id:'assign',label:'Giao việc cho tổ',detail:'Chọn lô, thửa và công việc',symbol:'↗',href:'/lotus/cong-viec?action=assign',module:'work',command:'work'},
   {group:'Công việc ngoài vườn',id:'work',label:'Xem công việc',detail:'Kế hoạch và tiến độ hôm nay',symbol:'☑',path:'work',module:'work'},
   {group:'Công việc ngoài vườn',id:'actual',label:'Báo kết quả',detail:'Ghi số lượng đã làm',symbol:'✓',path:'work',module:'work',doctype:'Daily Work Result',create:'Daily Work Result'},
   {group:'Công việc ngoài vườn',id:'labor',label:'Nhân công',detail:'Bố trí và chấm công',symbol:'♙',path:'labor',module:'labor'},

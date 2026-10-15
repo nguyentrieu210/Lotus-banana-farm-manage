@@ -15,6 +15,11 @@
     "uom",
     "productivity_per_workday",
     "required_workdays",
+    "payment_mode",
+    "list_piecework_rate",
+    "requested_piecework_rate",
+    "piecework_rate",
+    "estimated_piecework_amount",
     "norm_profile",
     "norm_version",
     "schedule_key",
@@ -105,6 +110,25 @@
       "precision": "6"
     },
     {
+      "fieldname": "payment_mode",
+      "label": "Hình thức trả công",
+      "fieldtype": "Select",
+      "options": "\nDaywork\nPiece\nBoth",
+      "description": "Có thể chọn cả hai, nhưng không tự cộng hai khoản thành tiền lương."
+    },
+    {
+      "fieldname": "piecework_rate",
+      "label": "Đơn giá khoán tại lúc giao (đ/ĐVT)",
+      "fieldtype": "Currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "estimated_piecework_amount",
+      "label": "Giá trị khoán dự kiến",
+      "fieldtype": "Currency",
+      "read_only": 1
+    },
+    {
       "fieldname": "norm_profile",
       "label": "Norm Profile",
       "fieldtype": "Link",
@@ -159,6 +183,17 @@
       "fieldtype": "Small Text",
       "allow_on_submit": 1,
       "read_only": 1
+    },
+    {
+      "fieldname": "list_piecework_rate",
+      "label": "Giá khoán niêm yết khi lập (đ/ĐVT)",
+      "fieldtype": "Currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "requested_piecework_rate",
+      "label": "Giá khoán đề xuất (đ/ĐVT)",
+      "fieldtype": "Currency"
     }
   ],
   "istable": 1

@@ -1,0 +1,10 @@
+import {createApp} from 'vue'
+import FarmWorkApp from './FarmWorkApp.vue'
+import './stock.css'
+import './shadcn.css'
+import './attio.css'
+import './stock-attio.css'
+import './compact.css'
+import './farm-work.css'
+createApp(FarmWorkApp).mount('#app')
+import './register-worker'
