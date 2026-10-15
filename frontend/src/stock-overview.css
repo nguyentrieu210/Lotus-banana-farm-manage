@@ -16,3 +16,67 @@
  .stock-shell .stock-scope .stock-search{flex:1 1 100%}
  .stock-shell .stock-pagination{flex-direction:column;align-items:stretch}
 }
+
+
+/* Clearly separate columns while preserving AG Grid horizontal scrolling. */
+.stock-shell .lotus-ag-grid .ag-header-cell{
+  border-right:1px solid #bfcbd9 !important;
+  border-bottom:1px solid #bfcbd9 !important;
+  background:var(--lotus-table-header,#f6f8fb);
+}
+.stock-shell .lotus-ag-grid .ag-cell{
+  border-right:1px solid #d3dbe7 !important;
+}
+.stock-shell .lotus-ag-grid .ag-row{
+  border-bottom:1px solid #e3e8f1 !important;
+}
+.stock-shell .lotus-ag-grid .ag-header-cell:hover{background:#eaf0f8}
+.stock-shell .lotus-ag-grid .excel-trigger{
+  display:inline-flex;justify-content:center;align-items:center;
+  color:#4c5a71;border:1px solid #ccd5e1;border-radius:4px;
+  background:#fff;min-width:22px;min-height:25px;font-size:13px;
+}
+.stock-shell .lotus-ag-grid .excel-trigger.active{
+  background:var(--lotus-accent-soft,#e9edff);border-color:var(--lotus-accent,#4c63b6);
+}
+.stock-shell .stock-scope > label:first-child{
+  flex:0 0 208px;
+  width:208px;
+  min-width:180px;
+}
+.stock-shell .stock-scope .stock-search--instant{
+  order:10;
+  margin-left:auto;
+  flex:0 0 180px;
+  width:180px;
+  min-width:155px;
+  max-width:180px;
+  align-self:end;
+}
+.stock-shell .stock-scope .stock-search--instant input{
+  width:100%;
+  height:36px;
+  min-width:0;
+  padding:7px 10px;
+  font-size:12px;
+}
+@media(max-width:550px){
+  .stock-shell .stock-scope{
+    display:flex;
+    flex-direction:row;
+    align-items:end;
+    flex-wrap:wrap;
+  }
+  .stock-shell .stock-scope > label:first-child{
+    flex:1 1 160px;
+    width:auto;
+    min-width:140px;
+  }
+  .stock-shell .stock-scope .stock-search--instant{
+    flex:0 1 155px;
+    width:155px;
+    max-width:175px;
+    min-width:128px;
+    margin-left:auto;
+  }
+}

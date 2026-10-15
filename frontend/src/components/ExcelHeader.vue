@@ -1,17 +1,109 @@
 <script setup>
-import {computed,nextTick,onMounted,onUnmounted,ref} from 'vue'
-const props=defineProps({params:Object})
-const opened=ref(false),trigger=ref(null),popup=ref(null),search=ref(''),selected=ref([]),position=ref({})
-const choices=computed(()=>props.params.choices||[])
-const visible=computed(()=>choices.value.filter(row=>String(row.label??row.value).toLocaleLowerCase('vi').includes(search.value.toLocaleLowerCase('vi'))))
-const active=computed(()=>Array.isArray(props.params.selection))
-const all=computed(()=>selected.value.length===choices.value.length)
-async function open(event){event.stopPropagation();if(opened.value){opened.value=false;return}search.value='';selected.value=(active.value?props.params.selection:choices.value.map(row=>row.value)).map(String);const rect=trigger.value.getBoundingClientRect();position.value={left:Math.max(8,Math.min(rect.left,window.innerWidth-280))+'px',top:(rect.bottom+4)+'px',maxHeight:Math.max(160,window.innerHeight-rect.bottom-16)+'px'};opened.value=true;await nextTick();popup.value?.showPopover?.()}
-function toggle(value){const key=String(value);selected.value=selected.value.includes(key)?selected.value.filter(v=>v!==key):[...selected.value,key]}
-function apply(){const values=choices.value.filter(row=>selected.value.includes(String(row.value))).map(row=>row.value);props.params.apply(values.length===choices.value.length?null:values);opened.value=false}
-function clear(){props.params.apply(null);opened.value=false}
-function outside(event){if(opened.value&&!popup.value?.contains(event.target)&&!trigger.value?.contains(event.target))opened.value=false}
-onMounted(()=>document.addEventListener('pointerdown',outside))
-onUnmounted(()=>document.removeEventListener('pointerdown',outside))
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { excelKey, filterExcelChoices, toggleExcelVisible, excelAppliedValues } from '../excel-filter-state'
+
+const props = defineProps({ params: { type: Object, required: true } })
+const opened = ref(false)
+const trigger = ref(null)
+const popup = ref(null)
+const searchInput = ref(null)
+const search = ref('')
+const selected = ref([])
+const position = ref({ top: '0px', left: '0px' })
+
+const choices = computed(() => props.params.choices || [])
+const active = computed(() => Array.isArray(props.params.selection))
+const key = excelKey
+const visible = computed(() => filterExcelChoices(choices.value, search.value))
+const visibleKeys = computed(() => visible.value.map(row => key(row.value)))
+const selectedVisibleCount = computed(() => visibleKeys.value.filter(k => selected.value.includes(k)).length)
+const allVisible = computed(() => visibleKeys.value.length > 0 && selectedVisibleCount.value === visibleKeys.value.length)
+const someVisible = computed(() => selectedVisibleCount.value > 0 && !allVisible.value)
+
+function positionPopup() {
+  if (!trigger.value || !popup.value) return
+  const rect = trigger.value.getBoundingClientRect()
+  const width = Math.min(312, window.innerWidth - 16)
+  const height = Math.min(popup.value.offsetHeight || 370, window.innerHeight - 16)
+  const top = rect.bottom + 6 + height <= window.innerHeight
+    ? rect.bottom + 6 : Math.max(8, rect.top - height - 6)
+  position.value = {
+    top: Math.max(8, top) + 'px',
+    left: Math.min(Math.max(8, rect.left - width + rect.width), window.innerWidth - width - 8) + 'px',
+    width: width + 'px'
+  }
+}
+async function open(event) {
+  event.stopPropagation()
+  if (opened.value) { close(); return }
+  search.value = ''
+  selected.value = (active.value ? props.params.selection : choices.value.map(row => row.value)).map(key)
+  opened.value = true
+  await nextTick()
+  positionPopup()
+  searchInput.value?.focus()
+}
+function close() { opened.value = false; search.value = '' }
+function toggle(value) {
+  const k = key(value)
+  selected.value = selected.value.includes(k) ? selected.value.filter(v => v !== k) : [...selected.value, k]
+}
+function selectVisible() { selected.value = toggleExcelVisible(selected.value, visible.value, allVisible.value) }
+function apply() {
+  props.params.apply(excelAppliedValues(choices.value, selected.value))
+  close()
+}
+function clear() { props.params.apply(null); close() }
+function outside(event) {
+  if (opened.value && !popup.value?.contains(event.target) && !trigger.value?.contains(event.target)) close()
+}
+function onKeydown(event) {
+  if (event.key === 'Escape' && opened.value) { event.stopPropagation(); close(); trigger.value?.focus() }
+}
+function onScroll() { if (opened.value) positionPopup() }
+watch(() => props.params.selection, () => { if (!opened.value) return; close() })
+onMounted(() => {
+  document.addEventListener('pointerdown', outside)
+  document.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', onScroll)
+  window.addEventListener('scroll', onScroll, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', outside)
+  document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', onScroll)
+  window.removeEventListener('scroll', onScroll, true)
+})
 </script>
-<template><div class="excel-header"><button type="button" class="excel-sort" @click="params.progressSort($event.shiftKey)" :title="'Sắp xếp '+params.displayName">{{params.displayName}}</button><button ref="trigger" type="button" class="excel-trigger" :class="{active}" :aria-label="'Lọc '+params.displayName" :aria-expanded="opened" @click="open">▾</button><div v-if="opened" ref="popup" popover="manual" class="excel-popup" :style="position" :aria-label="'Lọc '+params.displayName" role="dialog" @keydown.esc="opened=false"><strong>{{params.displayName}}</strong><input v-model="search" aria-label="Tìm trong danh sách" placeholder="Tìm trong danh sách…"><label><input type="checkbox" :checked="all" @change="selected=all?[]:choices.map(row=>String(row.value))">Chọn tất cả ({{choices.length}})</label><div class="excel-values"><label v-for="row in visible" :key="String(row.value)"><input type="checkbox" :checked="selected.includes(String(row.value))" @change="toggle(row.value)"><span>{{row.label??row.value??'(Trống)'}}</span></label><p v-if="!visible.length">Không có giá trị.</p></div><footer><button type="button" @click="clear">Bỏ lọc</button><button type="button" @click="apply">Áp dụng</button></footer></div></div></template>
+
+<template>
+  <div class="excel-header">
+    <button type="button" class="excel-sort" @click.stop="params.progressSort?.($event.shiftKey)" :title="'Sắp xếp '+params.displayName">{{ params.displayName }}</button>
+    <button ref="trigger" type="button" class="excel-trigger" :class="{ active }"
+      :aria-label="'Lọc cột '+params.displayName" :aria-expanded="opened" :aria-pressed="active"
+      @click.stop="open">▾</button>
+    <Teleport to="body">
+      <div v-if="opened" ref="popup" class="excel-popup lotus-excel-popup" :style="position"
+        :aria-label="'Lọc cột '+params.displayName" role="dialog" @click.stop @keydown.stop>
+        <strong>Lọc: {{ params.displayName }}</strong>
+        <input ref="searchInput" v-model="search" type="search" aria-label="Tìm giá trị trong cột" placeholder="Tìm giá trị…" autocomplete="off">
+        <label class="excel-select-all">
+          <input type="checkbox" :checked="allVisible" :indeterminate="someVisible" :disabled="!visible.length" @change="selectVisible">
+          <span>Chọn tất cả kết quả ({{ visible.length }})</span>
+        </label>
+        <div class="excel-values" role="group" :aria-label="'Các giá trị cột '+params.displayName">
+          <label v-for="row in visible" :key="key(row.value)">
+            <input type="checkbox" :checked="selected.includes(key(row.value))" @change="toggle(row.value)">
+            <span>{{ row.label ?? row.value ?? '(Trống)' }}</span>
+          </label>
+          <p v-if="!visible.length">Không tìm thấy giá trị phù hợp.</p>
+        </div>
+        <div class="excel-filter-count">Đã chọn {{ selected.length }} / {{ choices.length }} giá trị</div>
+        <footer>
+          <button type="button" @click="clear">Xóa lọc</button>
+          <button type="button" class="excel-apply" @click="apply">Áp dụng</button>
+        </footer>
+      </div>
+    </Teleport>
+  </div>
+</template>

@@ -1,0 +1,1 @@
+import{E as e,G as t,J as n,R as r,o as i,vt as a}from"./compact-Ci-df0lI.js";var o=Object.assign({inheritAttrs:!1},{__name:`Card`,setup(o){return(o,s)=>(t(),e(`div`,r(o.$attrs,{class:a(i)(`rounded-lg border border-border bg-card text-card-foreground shadow-sm`,o.$attrs.class)}),[n(o.$slots,`default`)],16))}});export{o as t};

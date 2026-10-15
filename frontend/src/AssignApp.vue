@@ -47,7 +47,7 @@ async function boot(){
  try{
   session.value=props.initialSession||await consoleAPI('bootstrap')
   setCSRF(session.value.csrf_token)
-  if(!session.value.commands?.work)throw new Error('Tài khoản cần quyền quản lý nông trường để giao việc.')
+  if(!session.value.commands?.work)throw new Error('Tài khoản cần quyền quản lý vườn để giao việc.')
   date.value=props.initialDate||session.value.today
   const saved=props.initialFarm||new URLSearchParams(location.search).get('farm')
   farm.value=session.value.farms.some(f=>f.name===saved)?saved:(session.value.farms[0]?.name||'')
@@ -57,7 +57,7 @@ async function boot(){
 }
 async function showPreview(){
  error.value='';message.value='';created.value=null
- if(!farm.value||!team.value||!date.value){error.value='Chọn nông trường, tổ và ngày trước.';return}
+ if(!farm.value||!team.value||!date.value){error.value='Chọn vườn, tổ và ngày trước.';return}
  let clean
  try{clean=cleanItems(items.value)}catch(e){error.value=e.message;return}
  busy.value=true
@@ -79,18 +79,18 @@ async function submit(){
 }
 function reset(){items.value=[{location:'',work_type:'',qty:'',payment_mode:''}];invalidate()}
 onMounted(boot)
-const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},{id:'farm-work',label:'Công việc nông trường',navigation:true,href:'/lotus/cong-viec'+(farm.value?'?farm='+encodeURIComponent(farm.value):'')},...(session.value?.capabilities?.stock?[{id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'}]:[]),{id:'new-job',label:'Thêm công việc',run:add}])
+const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},{id:'farm-work',label:'Công việc vườn',navigation:true,href:'/lotus/cong-viec'+(farm.value?'?farm='+encodeURIComponent(farm.value):'')},...(session.value?.capabilities?.stock?[{id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'}]:[]),{id:'new-job',label:'Thêm công việc',run:add}])
 </script>
 <template>
  <div class="assignment-workspace"><WorkspaceBar v-if="!embedded" :user="session?.user" title="Giao việc nhanh" :actions="workspaceActions" :sidebar="false" /><main class="shell">
 
-  <div v-if="busy&&!session" class="spinner">Đang mở dữ liệu nông trường…</div>
+  <div v-if="busy&&!session" class="spinner">Đang mở dữ liệu vườn…</div>
   <template v-else>
    <div v-if="error" class="error" role="alert">{{error}}</div>
    <div v-if="message" class="success" role="status">{{message}}</div>
    <section class="panel fields">
-    <label>Nông trường
-     <SearchSelect v-model="farm" :options="farmOptions" label="Nông trường" placeholder="Chọn nông trường" :disabled="busy||submitting||embedded" @change="loadCatalog"/>
+    <label>Vườn
+     <SearchSelect v-model="farm" :options="farmOptions" label="Vườn" placeholder="Chọn vườn" :disabled="busy||submitting||embedded" @change="loadCatalog"/>
     </label>
     <div class="fields" style="grid-template-columns:1fr 1.25fr">
      <label>Ngày <UiInput type="date" :disabled="busy||submitting" v-model="date" @change="invalidate"/></label>
@@ -98,8 +98,8 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
       <SearchSelect v-model="team" :options="teamOptions" label="Giao cho tổ" placeholder="Chọn tổ" :disabled="busy||submitting" @change="invalidate"/>
      </label>
     </div>
-    <div v-if="!catalog&&farm" class="hint">Đang lấy các lô, thửa và tổ của nông trường…</div>
-    <div v-if="catalog&&(!catalog.plots.length||!catalog.teams.length||!catalog.works.length)" class="error">Nông trường chưa có đủ lô/thửa, tổ hoặc loại công việc. Cần nạp dữ liệu mẫu hoặc danh mục thật.</div>
+    <div v-if="!catalog&&farm" class="hint">Đang lấy các lô, thửa và tổ của vườn…</div>
+    <div v-if="catalog&&(!catalog.plots.length||!catalog.teams.length||!catalog.works.length)" class="error">Vườn chưa có đủ lô/thửa, tổ hoặc loại công việc. Cần nạp dữ liệu mẫu hoặc danh mục thật.</div>
    </section>
    <section v-for="(item,i) in items" :key="i" class="panel fields">
     <div class="job-head"><strong>Việc {{i+1}}</strong><UiButton v-if="items.length>1" type="button" :disabled="busy||submitting" class="remove" @click="remove(i)" :aria-label="'Xóa việc '+(i+1)">Xóa</UiButton></div>

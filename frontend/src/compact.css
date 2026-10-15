@@ -271,3 +271,29 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 
 .app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:9px}
 .lotus-coverage-state{font-weight:750}.lotus-coverage-state.is-covered{color:#167348}.lotus-coverage-state.is-incoming{color:#a56208}.lotus-coverage-state.is-short{color:#bf3124}.dark .lotus-coverage-state.is-covered{color:#7addac}.dark .lotus-coverage-state.is-incoming{color:#f1c56b}.dark .lotus-coverage-state.is-short{color:#ff9b8f}
+
+
+/* Excel filter menus live in a body Teleport so the table cannot clip them. */
+.lotus-excel-popup{
+  position:fixed;z-index:2147483000;max-height:min(440px,calc(100dvh - 16px));
+  display:flex;flex-direction:column;padding:12px;gap:9px;
+  background:var(--lotus-surface,#fff);color:var(--lotus-text,#243148);
+  border:1px solid #c6d1df;border-radius:9px;box-shadow:0 18px 48px #15223b36;
+}
+.lotus-excel-popup>strong{font-size:12px;font-weight:700;flex-shrink:0}
+.lotus-excel-popup input[type=search]{
+  width:100%;flex-shrink:0;height:33px;min-height:33px;
+  padding:6px 10px;border:1px solid #cdd6e3;border-radius:5px;
+  font-size:12px;outline-offset:2px;
+}
+.lotus-excel-popup .excel-select-all{
+  border-bottom:1px solid #e2e7ef;font-weight:650;padding-bottom:7px;
+}
+.lotus-excel-popup .excel-values{overflow:auto;min-height:45px;max-height:230px;flex:1}
+.lotus-excel-popup .excel-values label{display:flex;align-items:center;gap:8px;padding:6px 3px;border-radius:4px;cursor:pointer}
+.lotus-excel-popup .excel-values label:hover{background:#f1f4fa}
+.lotus-excel-popup input[type=checkbox]{height:16px;width:16px;accent-color:var(--lotus-accent,#4c63b6)}
+.lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,#667085)}
+.lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid #e2e7ef}
+.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid #cbd4e0;border-radius:5px;background:#fff;color:#364258;font-size:12px}
+.lotus-excel-popup footer .excel-apply{background:var(--lotus-accent,#4c63b6);color:#fff;border-color:var(--lotus-accent,#4c63b6)}

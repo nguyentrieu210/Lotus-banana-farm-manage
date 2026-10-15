@@ -26,7 +26,7 @@ test('column filter changes only the requested column',()=>{
 })
 
 test('selecting all column values removes the header filter',()=>{
- assert.match(header,/values\.length===choices\.value\.length\?null:values/)
+ assert.match(header,/excelAppliedValues\(choices\.value, selected\.value\)/)
 })
 
 test('catalogue empty state and zero results remain distinct',()=>{
@@ -45,11 +45,11 @@ test('server uses independent catalogue and stock quantities',()=>{
  assert.doesNotMatch(app,/!stocks\.length\)\&\&tab===/)
 })
 
-test('table search applies on submit, not on each keypress',()=>{
- assert.match(app,/searchDraft=ref\(''\)/)
- assert.match(app,/function applySearch\(\)\{search\.value=searchDraft\.value\.trim\(\);refresh\(true\)\}/)
- assert.match(app,/@submit\.prevent="applySearch"/)
+test('table search works while typing without requiring Enter',()=>{
+ assert.match(app,/watch\(searchDraft,value=>/)
+ assert.match(app,/\},220\)/)
  assert.match(app,/v-model="searchDraft"/)
+ assert.doesNotMatch(app,/@submit\.prevent="applySearch"/)
 })
 
 test('document history and stock ledger keep independent pagination',()=>{

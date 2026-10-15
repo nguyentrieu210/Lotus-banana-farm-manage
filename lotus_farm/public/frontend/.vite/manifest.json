@@ -3,65 +3,71 @@
     "file": "assets/AssignApp-BFkbCXcW.css",
     "src": "_AssignApp-BFkbCXcW.css"
   },
-  "_AssignApp-DPUFi4lz.js": {
-    "file": "assets/AssignApp-DPUFi4lz.js",
+  "_AssignApp-BpCguon-.js": {
+    "file": "assets/AssignApp-BpCguon-.js",
     "name": "AssignApp",
     "imports": [
-      "_compact-BYn4J5m6.js",
+      "_compact-Ci-df0lI.js",
       "_register-worker-D396Vk1I.js"
     ],
     "css": [
       "assets/AssignApp-BFkbCXcW.css"
     ]
   },
-  "_Card-BUA8AYAA.js": {
-    "file": "assets/Card-BUA8AYAA.js",
+  "_Card-RpOjTcrV.js": {
+    "file": "assets/Card-RpOjTcrV.js",
     "name": "Card",
     "imports": [
-      "_compact-BYn4J5m6.js"
+      "_compact-Ci-df0lI.js"
     ]
   },
-  "_DataTable-Cb9SP2FK.js": {
-    "file": "assets/DataTable-Cb9SP2FK.js",
+  "_DataTable-B8oGaIxy.js": {
+    "file": "assets/DataTable-B8oGaIxy.js",
     "name": "DataTable",
     "imports": [
-      "_compact-BYn4J5m6.js"
+      "_compact-Ci-df0lI.js",
+      "_labels-BkSEv7tt.js"
     ]
   },
-  "_LinkPicker--cMmY9Zf.js": {
-    "file": "assets/LinkPicker--cMmY9Zf.js",
+  "_LinkPicker-BDXBZCpn.js": {
+    "file": "assets/LinkPicker-BDXBZCpn.js",
     "name": "LinkPicker",
     "imports": [
-      "_compact-BYn4J5m6.js"
+      "_compact-Ci-df0lI.js"
     ]
   },
-  "_SchemaForm-BDzLlksQ.js": {
-    "file": "assets/SchemaForm-BDzLlksQ.js",
+  "_SchemaForm-Br5sijMg.js": {
+    "file": "assets/SchemaForm-Br5sijMg.js",
     "name": "SchemaForm",
     "imports": [
-      "_compact-BYn4J5m6.js",
+      "_compact-Ci-df0lI.js",
       "_register-worker-D396Vk1I.js",
-      "_Select-BM7gSsPX.js",
-      "_LinkPicker--cMmY9Zf.js"
+      "_Select-gTPa7sik.js",
+      "_labels-BkSEv7tt.js",
+      "_LinkPicker-BDXBZCpn.js"
     ]
   },
-  "_Select-BM7gSsPX.js": {
-    "file": "assets/Select-BM7gSsPX.js",
+  "_Select-gTPa7sik.js": {
+    "file": "assets/Select-gTPa7sik.js",
     "name": "Select",
     "imports": [
-      "_compact-BYn4J5m6.js"
+      "_compact-Ci-df0lI.js"
     ]
   },
-  "_compact-BYn4J5m6.js": {
-    "file": "assets/compact-BYn4J5m6.js",
+  "_compact-Ci-df0lI.js": {
+    "file": "assets/compact-Ci-df0lI.js",
     "name": "compact",
     "css": [
-      "assets/compact-DZ8sSmYg.css"
+      "assets/compact-Dy4K0ghk.css"
     ]
   },
-  "_compact-DZ8sSmYg.css": {
-    "file": "assets/compact-DZ8sSmYg.css",
-    "src": "_compact-DZ8sSmYg.css"
+  "_compact-Dy4K0ghk.css": {
+    "file": "assets/compact-Dy4K0ghk.css",
+    "src": "_compact-Dy4K0ghk.css"
+  },
+  "_labels-BkSEv7tt.js": {
+    "file": "assets/labels-BkSEv7tt.js",
+    "name": "labels"
   },
   "_register-worker-D396Vk1I.js": {
     "file": "assets/register-worker-D396Vk1I.js",
@@ -72,29 +78,30 @@
     "src": "_stock-attio-DveR0dcA.css"
   },
   "assign.html": {
-    "file": "assets/assign-bGXRjF0I.js",
+    "file": "assets/assign-Clmtffl9.js",
     "name": "assign",
     "src": "assign.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
+      "_compact-Ci-df0lI.js",
       "_register-worker-D396Vk1I.js",
-      "_AssignApp-DPUFi4lz.js"
+      "_AssignApp-BpCguon-.js"
     ],
     "css": [
       "assets/assign-C0PKXeDN.css"
     ]
   },
   "farm-work.html": {
-    "file": "assets/farm-work-CCACr6qN.js",
+    "file": "assets/farm-work-B5em2b-G.js",
     "name": "farm-work",
     "src": "farm-work.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
-      "_SchemaForm-BDzLlksQ.js",
+      "_compact-Ci-df0lI.js",
+      "_SchemaForm-Br5sijMg.js",
       "_register-worker-D396Vk1I.js",
-      "_AssignApp-DPUFi4lz.js"
+      "_AssignApp-BpCguon-.js",
+      "_labels-BkSEv7tt.js"
     ],
     "css": [
       "assets/farm-work-CbFLQQ4H.css",
@@ -102,13 +109,13 @@
     ]
   },
   "hr.html": {
-    "file": "assets/hr-Bt4tq-km.js",
+    "file": "assets/hr-DiKu0bC7.js",
     "name": "hr",
     "src": "hr.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
-      "_Select-BM7gSsPX.js"
+      "_compact-Ci-df0lI.js",
+      "_Select-gTPa7sik.js"
     ],
     "css": [
       "assets/hr-CKhOdnb1.css",
@@ -116,20 +123,21 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-H__Zxt6e.js",
+    "file": "assets/index-CyxDiHZ_.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
-      "_SchemaForm-BDzLlksQ.js",
+      "_compact-Ci-df0lI.js",
+      "_SchemaForm-Br5sijMg.js",
       "_register-worker-D396Vk1I.js",
-      "_Select-BM7gSsPX.js",
-      "_DataTable-Cb9SP2FK.js",
-      "_Card-BUA8AYAA.js"
+      "_Select-gTPa7sik.js",
+      "_labels-BkSEv7tt.js",
+      "_DataTable-B8oGaIxy.js",
+      "_Card-RpOjTcrV.js"
     ],
     "css": [
-      "assets/index-BRd5E5BN.css"
+      "assets/index-DqMPzniJ.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
@@ -145,33 +153,33 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-CCKkt0Tq.js",
+    "file": "assets/stock-Bmy_D6WZ.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
+      "_compact-Ci-df0lI.js",
       "_register-worker-D396Vk1I.js",
-      "_Select-BM7gSsPX.js",
-      "_DataTable-Cb9SP2FK.js",
-      "_LinkPicker--cMmY9Zf.js",
-      "_Card-BUA8AYAA.js"
+      "_Select-gTPa7sik.js",
+      "_DataTable-B8oGaIxy.js",
+      "_LinkPicker-BDXBZCpn.js",
+      "_Card-RpOjTcrV.js"
     ],
     "css": [
-      "assets/stock-B0YzyWov.css",
+      "assets/stock-CFfDNb9r.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },
   "timekeeping.html": {
-    "file": "assets/timekeeping-C2JsXR4a.js",
+    "file": "assets/timekeeping-jCA4BEr9.js",
     "name": "timekeeping",
     "src": "timekeeping.html",
     "isEntry": true,
     "imports": [
-      "_compact-BYn4J5m6.js",
+      "_compact-Ci-df0lI.js",
       "_register-worker-D396Vk1I.js",
-      "_Select-BM7gSsPX.js",
-      "_DataTable-Cb9SP2FK.js"
+      "_Select-gTPa7sik.js",
+      "_DataTable-B8oGaIxy.js"
     ],
     "css": [
       "assets/timekeeping-B-_JJByK.css",

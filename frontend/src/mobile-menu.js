@@ -1,7 +1,7 @@
 // Mobile navigation is derived from real Frappe permissions, not the displayed job title.
 // A user with multiple roles receives the union of the work they can actually access.
 const items = [
-  {group:'Công việc ngoài vườn',id:'farm-work',label:'Công việc nông trường',detail:'Kế hoạch, tiến độ và cấu hình',symbol:'☑',href:'/lotus/cong-viec',module:'work'},
+  {group:'Công việc ngoài vườn',id:'farm-work',label:'Công việc vườn',detail:'Kế hoạch, tiến độ và cấu hình',symbol:'☑',href:'/lotus/cong-viec',module:'work'},
   {group:'Xưởng và vật tư',id:'stock',label:'Quản lý kho',detail:'Tồn, nhập xuất và kiểm kê',symbol:'▦',href:'/lotus/kho',capability:'stock'},
   {group:'Công việc ngoài vườn',id:'assign',label:'Giao việc cho tổ',detail:'Chọn lô, thửa và công việc',symbol:'↗',href:'/lotus/cong-viec?action=assign',module:'work',command:'work'},
   {group:'Công việc ngoài vườn',id:'work',label:'Xem công việc',detail:'Kế hoạch và tiến độ hôm nay',symbol:'☑',path:'work',module:'work'},
@@ -15,7 +15,7 @@ const items = [
   {group:'Xưởng và vật tư',id:'qc',label:'Kiểm tra chất lượng',detail:'Tiếp nhận và kiểm tra chuối',symbol:'⊙',path:'incoming-qc',module:'incoming-qc'},
   {group:'Xưởng và vật tư',id:'packhouse',label:'Xưởng đóng gói',detail:'Ca làm và thành phẩm',symbol:'▣',path:'packhouse',module:'packhouse'},
   {group:'Xưởng và vật tư',id:'materials',label:'Vật tư',detail:'Nhu cầu và sử dụng vật tư',symbol:'▤',path:'materials',module:'materials'},
-  {group:'Điều hành và báo cáo',id:'farms',label:'Nông trường',detail:'Lô, thửa và vụ chuối',symbol:'⌂',path:'farms',module:'farms'},
+  {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Lô, thửa và vụ chuối',symbol:'⌂',path:'farms',module:'farms'},
   {group:'Điều hành và báo cáo',id:'plans',label:'Kế hoạch',detail:'Lập và theo dõi kế hoạch',symbol:'☷',path:'plans',module:'plans'},
   {group:'Điều hành và báo cáo',id:'forecast',label:'Dự thu',detail:'Sản lượng dự kiến',symbol:'▥',path:'forecast',module:'forecast'},
   {group:'Điều hành và báo cáo',id:'close',label:'Chốt ngày',detail:'Kiểm tra kết quả cuối ngày',symbol:'✓',path:'daily-close',module:'daily-close'},

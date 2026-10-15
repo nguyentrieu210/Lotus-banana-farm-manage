@@ -3,7 +3,7 @@ import {unitLabel,stockItemUomOptions} from './units'
 import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceBar from './components/WorkspaceBar.vue'
 import {sidebarCollapsed} from './workspace'
-import {computed,nextTick,onMounted,reactive,ref,watch} from 'vue'
+import {computed,nextTick,onMounted,onUnmounted,reactive,ref,watch} from 'vue'
 import {call,setCSRF} from './api'
 import DataTable from './components/DataTable.vue'
 import LinkPicker from './components/LinkPicker.vue'
@@ -63,7 +63,16 @@ const stockState=computed(()=>stockEmptyKind({
  catalogueCount:data.value?.catalogue_count||0,filteredCount:data.value?.total_count||0,
  loading:busy.value||!session.value||(!data.value&&!!company.value)
 }))
-function applySearch(){search.value=searchDraft.value.trim();refresh(true)}
+let searchTimer=null
+watch(searchDraft,value=>{
+  clearTimeout(searchTimer)
+  searchTimer=setTimeout(()=>{
+    const term=String(value||'').trim()
+    if(term!==search.value){search.value=term;refresh(true)}
+  },220)
+})
+onUnmounted(()=>clearTimeout(searchTimer))
+function applySearch(){clearTimeout(searchTimer);const term=searchDraft.value.trim();if(term!==search.value){search.value=term;refresh(true)}}
 function resetStockFilters(){
  columnFilters.value={}
  search.value=''
@@ -209,7 +218,7 @@ const receiptDetailColumns=[{field:'rate',headerName:'Đơn giá',type:'numericC
 onMounted(initialize)
 function filterStock({field,values}){columnFilters.value=updateColumnFilter(columnFilters.value,field,values);refresh(true)}
 const stockTabs={stock:'Tồn kho',planning:'Nhu cầu & mua vật tư',history:'Phiếu nhập · xuất',movements:'Lịch sử nhập xuất',setup:'Thiết lập kho'}
-const workspaceActions=computed(()=>[{id:'farm-work',label:'Công việc nông trường',navigation:true,href:'/lotus/cong-viec'},{id:'attendance',label:'Chấm công',navigation:true,href:'/lotus/cham-cong'},{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...Object.entries(stockTabs).map(([id,label])=>({id,label,navigation:true,run:()=>tab.value=id})),...Object.entries(kinds).filter(([kind])=>canCreate.value&&session.value?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']).map(([kind,label])=>({id:kind,label,run:()=>open(kind)})),...(session.value?.permissions.Item?[{id:'new-item',label:'Thêm vật tư',run:()=>openMaster('item')}]:[])])
+const workspaceActions=computed(()=>[{id:'farm-work',label:'Công việc vườn',navigation:true,href:'/lotus/cong-viec'},{id:'attendance',label:'Chấm công',navigation:true,href:'/lotus/cham-cong'},{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...Object.entries(stockTabs).map(([id,label])=>({id,label,navigation:true,run:()=>tab.value=id})),...Object.entries(kinds).filter(([kind])=>canCreate.value&&session.value?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']).map(([kind,label])=>({id:kind,label,run:()=>open(kind)})),...(session.value?.permissions.Item?[{id:'new-item',label:'Thêm vật tư',run:()=>openMaster('item')}]:[])])
 function itemCell(params){const cell=document.createElement('span');cell.className='lotus-item-cell';for(const [cls,text] of [['name',params.data.item_name],['code',params.data.name]]){const span=document.createElement('span');span.className=cls;span.textContent=text;cell.append(span)}return cell}
 </script>
 
@@ -220,7 +229,7 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
-   <div class="stock-scope"><label>Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><form v-if="['stock','movements','history'].includes(tab)" class="stock-search" @submit.prevent="applySearch"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm mã hoặc tên vật tư…':tab==='history'?'Tìm mã phiếu…':'Tìm vật tư hoặc mã phiếu…'" /><UiButton variant="outline" type="submit" class="stock-button" :disabled="busy||!company">Tìm</UiButton></form><UiButton v-if="tab==='stock'&&hasStockFilters" variant="outline" class="stock-button" @click="resetStockFilters">Bỏ lọc</UiButton><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton></div>
+   <div class="stock-scope"><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><UiButton v-if="tab==='stock'&&hasStockFilters" variant="outline" class="stock-button" @click="resetStockFilters">Bỏ lọc</UiButton><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton><div v-if="['stock','movements','history'].includes(tab)" class="stock-search stock-search--instant"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm vật tư…':tab==='history'?'Tìm phiếu…':'Tìm vật tư/phiếu…'" /></div></div>
    <section v-if="tab==='stock'" class="stock-panel stock-inventory-table">
     <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0"
       server-sort @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)"

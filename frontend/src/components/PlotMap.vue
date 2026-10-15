@@ -24,7 +24,7 @@ function path(feature){
 }
 </script>
 <template>
-  <div v-if="!features.length" class="empty">Chưa có ranh giới thửa được duyệt trong nông trường này.</div>
+  <div v-if="!features.length" class="empty">Chưa có ranh giới thửa được duyệt trong vườn này.</div>
   <div v-else class="plot-map-wrap">
     <svg class="plot-map" viewBox="0 0 1000 540" role="img" aria-label="Bản đồ ranh giới thửa đã duyệt">
       <g v-for="feature in features" :key="feature.properties?.document||feature.properties?.plot">
