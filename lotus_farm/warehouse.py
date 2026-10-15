@@ -96,7 +96,10 @@ def create_master(company, kind, values):
         if parent.company != company or not parent.is_group or parent.disabled:
             frappe.throw('Kho cha phải là nhóm kho đang hoạt động của công ty đã chọn.')
         doc = frappe.get_doc(dict(doctype='Warehouse', warehouse_name=_text(values.get('name'), 'Tên kho'),
-                                  parent_warehouse=parent.name, company=company, is_group=0)).insert()
+                                  parent_warehouse=parent.name, company=company, is_group=0))
+        from lotus_farm.warehouse_masters import update_warehouse_details
+        update_warehouse_details(doc, values)
+        doc.insert()
     else:
         group = values.get('group')
         if values.get('new_group'):
