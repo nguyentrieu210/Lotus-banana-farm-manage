@@ -36,7 +36,8 @@ const visibleUoms=computed(()=>stockItemUomOptions(catalog.value.uoms,[master.uo
 const selectablePackUoms=computed(()=>visibleUoms.value.filter(u=>u.name!==master.uom))
 
 const detailDialog=ref(null),detail=ref(null),detailError=ref(''),posting=ref(false),confirmPost=ref(false)
-const kinds={receipt:'Nhập kho',issue:'Xuất dùng',transfer:'Chuyển kho',count:'Kiểm kê'}
+const kinds={receipt:'Nhập kho',issue:'Xuất kho',transfer:'Chuyển kho',count:'Kiểm kê kho'}
+const quickStockActions=[{kind:'receipt',label:'Nhập kho',icon:'↓'},{kind:'issue',label:'Xuất kho',icon:'↑'},{kind:'transfer',label:'Chuyển kho',icon:'⇄'},{kind:'count',label:'Kiểm kê kho',icon:'✓'}]
 const form=reactive({kind:'receipt',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:''})
 const issueTabs={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
 const issueSources=ref([]),issueSource=ref(''),issueNote=ref(''),issueLoading=ref(false)
@@ -203,7 +204,23 @@ async function openDocument(doctype,name){error.value='';detailError.value='';co
 async function postDocument(){if(posting.value||!confirmPost.value)return;posting.value=true;detailError.value='';try{await api('submit_document',{doctype:detail.value.doctype,name:detail.value.name,modified:detail.value.modified},true);detail.value=await api('document',{doctype:detail.value.doctype,name:detail.value.name});confirmPost.value=false;await refresh()}catch(e){detailError.value=e.message}finally{posting.value=false}}
 
 const stockNumber=(field,headerName,minWidth=100)=>({field,headerName,minWidth,type:'numericColumn',valueFormatter:p=>p.value==null?'—':fmt(p.value)})
-const stockColumns=[{field:'name',valueGetter:p=>p.data.item_name,headerName:'Vật tư',minWidth:200,flex:1.6,cellRenderer:itemCell,tooltipValueGetter:p=>p.data.item_name+' · '+p.data.name,mobileValue:r=>r.item_name+' · '+r.name},{field:'stock_uom',headerName:'Đơn vị gốc',minWidth:80,valueFormatter:p=>unitLabel(p.value)},stockNumber('actual_qty','Tồn thực tế',100),{field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:145,tooltipValueGetter:p=>p.data?.pack_uom&&p.data?.pack_factor?`1 ${unitLabel(p.data.pack_uom)} = ${fmt(p.data.pack_factor)} ${unitLabel(p.data.stock_uom)}`:'Chưa khai báo đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},stockNumber('demand_qty','Nhu cầu',90),stockNumber('available_qty','Tồn khả dụng',115),stockNumber('demand_shortage_qty','Thiếu',80),stockNumber('incoming_qty','Đang chờ nhập',120),stockNumber('to_buy_qty','Cần mua thêm',120),{field:'coverage_status',headerName:'Trạng thái',minWidth:130,cellClass:p=>'lotus-coverage-state '+({'Đủ hàng':'is-covered','Chờ nhập':'is-incoming','Cần mua':'is-short'}[p.value]||'')},{field:'item_group',headerName:'Nhóm',minWidth:105},stockNumber('minimum_stock','Tối thiểu (tất cả kho)',150),stockNumber('shortage_qty','Thiếu toàn hệ thống',150),{field:'stock_status',headerName:'Cảnh báo tồn',minWidth:120}]
+// Natural reading order: item identity → actual stock → global minimum → demand/arrival.
+const stockColumns=[
+ {field:'name',valueGetter:p=>p.data.item_name,headerName:'Tên hàng',minWidth:200,flex:1.6,cellRenderer:itemCell,tooltipValueGetter:p=>p.data.item_name+' · '+p.data.name,mobileValue:r=>r.item_name+' · '+r.name},
+ {field:'item_group',headerName:'Nhóm hàng',minWidth:130},
+ {field:'stock_uom',headerName:'ĐVT',minWidth:78,valueFormatter:p=>unitLabel(p.value)},
+ stockNumber('actual_qty','Tồn kho',105),
+ {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,tooltipValueGetter:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
+ stockNumber('minimum_stock','Tối thiểu chung',135),
+ stockNumber('shortage_qty','Thiếu tối thiểu',125),
+ {field:'stock_status',headerName:'Cảnh báo tồn',minWidth:125},
+ stockNumber('demand_qty','Cần dùng',100),
+ stockNumber('available_qty','Có thể dùng',115),
+ stockNumber('demand_shortage_qty','Thiếu theo nhu cầu',145),
+ stockNumber('incoming_qty','Sắp về',95),
+ stockNumber('to_buy_qty','Cần mua',100),
+ {field:'coverage_status',headerName:'Tình trạng nhu cầu',minWidth:150,cellClass:p=>'lotus-coverage-state '+({'Đủ hàng':'is-covered','Chờ nhập':'is-incoming','Cần mua':'is-short'}[p.value]||'')}
+]
 
 const historyRows=computed(()=>documentData.value?.rows||[])
 const historyColumns=[{field:'name',headerName:'Mã phiếu',minWidth:230,flex:2},{field:'kind',headerName:'Nghiệp vụ'},{field:'posting_date',headerName:'Ngày'},{field:'warehouses',headerName:'Kho',minWidth:200},{field:'docstatus',headerName:'Trạng thái phiếu',valueFormatter:p=>status(p.value)}]
@@ -230,6 +247,11 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
    <div class="stock-scope"><label>Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><UiButton v-if="tab==='stock'&&hasStockFilters" variant="outline" class="stock-button" @click="resetStockFilters">Bỏ lọc</UiButton><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton><div v-if="['stock','movements','history'].includes(tab)" class="stock-search stock-search--instant"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm vật tư…':tab==='history'?'Tìm phiếu…':'Tìm vật tư/phiếu…'" /></div></div>
+   <div v-if="tab==='stock'" class="stock-quick-actions" role="group" aria-label="Thao tác kho nhanh">
+    <UiButton v-for="action in quickStockActions" :key="action.kind" variant="outline" class="stock-quick-action"
+      :disabled="!canCreate||busy||!session?.permissions[action.kind==='count'?'Stock Reconciliation':'Stock Entry']"
+      @click="open(action.kind)"><span class="stock-quick-action-icon" aria-hidden="true">{{action.icon}}</span>{{action.label}}</UiButton>
+   </div>
    <section v-if="tab==='stock'" class="stock-panel stock-inventory-table">
     <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0"
       server-sort @sort="model=>{sortStock=model;refresh(true)}" interactive @open="row=>editMaster('item',row.name)"

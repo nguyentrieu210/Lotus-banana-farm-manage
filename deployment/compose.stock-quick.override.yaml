@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-stock-quick:20261015
+  frontend:
+    image: lotus-stock-quick:20261015

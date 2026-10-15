@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { excelKey, filterExcelChoices, toggleExcelVisible, excelAppliedValues } from '../excel-filter-state'
+import { excelKey, filterExcelChoices, toggleExcelVisible, excelAppliedValues, excelPopupLeft } from '../excel-filter-state'
 
 const props = defineProps({ params: { type: Object, required: true } })
 const opened = ref(false)
@@ -29,7 +29,8 @@ function positionPopup() {
     ? rect.bottom + 6 : Math.max(8, rect.top - height - 6)
   position.value = {
     top: Math.max(8, top) + 'px',
-    left: Math.min(Math.max(8, rect.left - width + rect.width), window.innerWidth - width - 8) + 'px',
+    // Open to the right of the filter button; clamp at the viewport edge.
+    left: excelPopupLeft(rect.right, width, window.innerWidth) + 'px',
     width: width + 'px'
   }
 }

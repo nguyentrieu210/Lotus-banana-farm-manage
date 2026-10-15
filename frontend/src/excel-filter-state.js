@@ -20,3 +20,8 @@ export function excelAppliedValues(choices,selected){
  const values=choices.filter(row=>checked.has(excelKey(row.value))).map(row=>row.value)
  return values.length===choices.length?null:values
 }
+
+// Anchor the popup to the RIGHT of the clicked filter; remain inside the viewport.
+export function excelPopupLeft(triggerRight, popupWidth, viewportWidth){
+ return Math.max(8,Math.min(triggerRight+8,viewportWidth-popupWidth-8))
+}
