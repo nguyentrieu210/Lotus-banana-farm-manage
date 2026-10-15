@@ -1,0 +1,7 @@
+
+/* Lotus Kho: align visible table headings and values centrally without changing other apps. */
+.stock-shell .lotus-ag-grid .ag-cell { text-align:center !important; }
+.stock-shell .lotus-ag-grid .ag-cell-value { text-align:center !important; width:100%; }
+.stock-shell .lotus-ag-grid .ag-header-cell-comp-wrapper { justify-content:center; }
+.stock-shell .lotus-ag-grid .excel-header { justify-content:center; }
+.stock-shell .lotus-ag-grid .excel-sort { text-align:center; }

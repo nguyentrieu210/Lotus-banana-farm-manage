@@ -3,6 +3,8 @@ import {computed,nextTick,onMounted,onUnmounted,ref,useId,watch} from 'vue'
 defineOptions({inheritAttrs:false})
 const props=defineProps({modelValue:{type:String,default:''},displayValue:{type:String,default:''},options:{type:Array,default:()=>[]},fetchOptions:Function,hideValues:Boolean,disabled:Boolean,readonly:Boolean,required:Boolean,placeholder:{type:String,default:'Chọn hoặc tìm…'}})
 const emit=defineEmits(['update:modelValue','select','change'])
+const chosenLabel=ref({value:'',label:''})
+const shownValue=computed(()=>props.displayValue||(props.modelValue===chosenLabel.value.value?chosenLabel.value.label:'')||props.options.find(x=>x.value===props.modelValue)?.label||props.modelValue)
 const root=ref(null),input=ref(null),popup=ref(null),position=ref({}),isOpen=ref(false),query=ref(''),remote=ref([]),loading=ref(false),error=ref(''),selected=ref(0),id=useId()
 let version=0,timer
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
@@ -13,7 +15,7 @@ async function show(){reposition();await nextTick();if(popup.value&&!popup.value
 async function open(){if(props.disabled||props.readonly||isOpen.value)return;isOpen.value=true;query.value='';load('');await show();input.value.focus();input.value.select()}
 function close(){isOpen.value=false;clearTimeout(timer);version++;loading.value=false}
 function type(event){const text=event.target.value;query.value=text;emit('update:modelValue',text);isOpen.value=true;show();clearTimeout(timer);timer=setTimeout(()=>load(text),150)}
-function choose(row){emit('update:modelValue',row.value);emit('select',row);emit('change',row.value);close()}
+function choose(row){chosenLabel.value={value:row.value,label:row.label||row.value};emit('update:modelValue',row.value);emit('select',row);emit('change',row.value);close()}
 function outside(event){if(root.value&&!root.value.contains(event.target))close()}
 function keys(event){if(event.key==='Escape'){event.stopPropagation();event.preventDefault();close()}else if(event.key==='Tab')close();else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(!isOpen.value)open();else selected.value=(selected.value+(event.key==='ArrowDown'?1:-1)+rows.value.length)%Math.max(rows.value.length,1)}else if(event.key==='Enter'&&isOpen.value){event.preventDefault();if(rows.value[selected.value])choose(rows.value[selected.value])}}
 watch(()=>props.disabled,value=>{if(value)close()})
@@ -21,7 +23,7 @@ onMounted(()=>{document.addEventListener('pointerdown',outside);window.addEventL
 onUnmounted(()=>{document.removeEventListener('pointerdown',outside);window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true);clearTimeout(timer);version++})
 </script>
 <template>
- <div ref="root" class="link-picker"><div class="link-picker-input"><input ref="input" v-bind="$attrs" :value="isOpen?query:(displayValue||modelValue)" :disabled="disabled" :readonly="readonly" :required="required" :placeholder="placeholder" role="combobox" aria-autocomplete="list" :aria-expanded="isOpen" :aria-controls="id+'-options'" :aria-activedescendant="isOpen&&rows[selected]?id+'-'+selected:undefined" autocomplete="off" @focus="open" @click="open" @input="type" @keydown="keys"><button type="button" tabindex="-1" aria-label="Mở danh sách lựa chọn" :disabled="disabled||readonly" @pointerdown.prevent @click="isOpen?close():open()">⌄</button></div>
+ <div ref="root" class="link-picker"><div class="link-picker-input"><input ref="input" v-bind="$attrs" :value="isOpen?query:shownValue" :disabled="disabled" :readonly="readonly" :required="required" :placeholder="placeholder" role="combobox" aria-autocomplete="list" :aria-expanded="isOpen" :aria-controls="id+'-options'" :aria-activedescendant="isOpen&&rows[selected]?id+'-'+selected:undefined" autocomplete="off" @focus="open" @click="open" @input="type" @keydown="keys"><button type="button" tabindex="-1" aria-label="Mở danh sách lựa chọn" :disabled="disabled||readonly" @pointerdown.prevent @click="isOpen?close():open()">⌄</button></div>
   <div v-if="isOpen" ref="popup" popover="manual" :style="position" :id="id+'-options'" class="link-picker-options" role="listbox"><div v-if="loading" role="status">Đang tải…</div><div v-else-if="error" role="alert">{{error}}</div><template v-else><button v-for="(row,index) in rows" :id="id+'-'+index" :key="row.value" type="button" role="option" :aria-selected="index===selected" :class="{selected:index===selected}" @pointerdown.prevent @click="choose(row)"><strong>{{row.label||row.value}}</strong><small v-if="!hideValues">{{row.value}}</small></button><div v-if="!rows.length" role="status">Không tìm thấy lựa chọn.</div></template></div>
  </div>
 </template>

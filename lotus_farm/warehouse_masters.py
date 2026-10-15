@@ -7,8 +7,9 @@ def install_fields():
     create_custom_fields({'Item':[dict(fieldname='lotus_minimum_stock',label='Lotus minimum stock by warehouse',fieldtype='Code',options='JSON',hidden=1,read_only=1)],
         'Warehouse': [
             dict(fieldname='lotus_address',label='Địa chỉ nhận hàng',fieldtype='Small Text'),
-            dict(fieldname='lotus_contact_name',label='Người phụ trách kho',fieldtype='Data'),
-            dict(fieldname='lotus_contact_phone',label='Số điện thoại kho',fieldtype='Data'),
+            dict(fieldname='lotus_contact_employee',label='Người phụ trách (HRMS)',fieldtype='Link',options='Employee',insert_after='lotus_address'),
+            dict(fieldname='lotus_contact_name',label='Tên người phụ trách (HRMS)',fieldtype='Data',read_only=1),
+            dict(fieldname='lotus_contact_phone',label='Điện thoại người phụ trách (HRMS)',fieldtype='Data',read_only=1),
             dict(fieldname='lotus_receiving_hours',label='Giờ nhận hàng',fieldtype='Data'),
             dict(fieldname='lotus_default_lead_days',label='Số ngày chờ hàng mặc định',fieldtype='Int'),
             dict(fieldname='lotus_delivery_note',label='Ghi chú giao hàng',fieldtype='Small Text'),
@@ -17,17 +18,69 @@ def install_fields():
 
 WAREHOUSE_DETAIL_FIELDS = {
     'lotus_address': 500,
-    'lotus_contact_name': 140,
-    'lotus_contact_phone': 40,
+
+
     'lotus_receiving_hours': 140,
     'lotus_delivery_note': 500,
 }
+
+
+
+def warehouse_code(name, company):
+    """Same naming scheme as ERPNext Warehouse.autoname."""
+    from lotus_farm.warehouse import _text
+    label = _text(name, 'Tên kho')
+    abbr = frappe.get_cached_value('Company', company, 'abbr')
+    if not abbr:
+        frappe.throw('Chưa cấu hình mã viết tắt công ty.')
+    suffix = ' - ' + abbr
+    return label if label.endswith(suffix) else label + suffix
+
+
+def employee_contact(company, employee, active_only=True):
+    if not employee:
+        return None
+    info = frappe.db.get_value('Employee', employee,
+        ['name', 'employee_name', 'cell_number', 'company', 'status'], as_dict=True)
+    if not info or info.company != company or (active_only and info.status != 'Active'):
+        frappe.throw('Người phụ trách phải là nhân viên HRMS đang làm việc trong công ty.')
+    return info
+
+
+@frappe.whitelist()
+def employee_choices(company):
+    from lotus_farm.warehouse import _access, _company
+    _access()
+    _company(company)
+    # Only operational display names, never CCCD, salary or private addresses.
+    rows = frappe.get_all('Employee', filters={'company': company, 'status': 'Active'},
+        fields=['name', 'employee_name'], order_by='employee_name asc', limit_page_length=500)
+    return [dict(value=r.name, label=r.employee_name) for r in rows]
+
+
+def warehouse_contact(doc):
+    employee = employee_contact(doc.company, doc.get('lotus_contact_employee'), active_only=False)
+    return dict(
+        lotus_contact_employee=employee.name if employee else '',
+        lotus_contact_name=employee.employee_name if employee else doc.get('lotus_contact_name') or '',
+        lotus_contact_phone=(employee.cell_number or '') if employee else doc.get('lotus_contact_phone') or '',
+    )
 
 
 def update_warehouse_details(doc, values):
     """Operational warehouse address and receiving defaults; not supplier accounting."""
     if not isinstance(values, dict):
         frappe.throw('Thông tin kho không hợp lệ.')
+    if 'lotus_contact_employee' in values:
+        info = employee_contact(doc.company, values.get('lotus_contact_employee'))
+        if info:
+            doc.lotus_contact_employee = info.name
+            doc.lotus_contact_name = info.employee_name
+            doc.lotus_contact_phone = info.cell_number or ''
+        elif doc.get('lotus_contact_employee'):
+            doc.lotus_contact_employee = None
+            doc.lotus_contact_name = ''
+            doc.lotus_contact_phone = ''
     for field, limit in WAREHOUSE_DETAIL_FIELDS.items():
         value = str(values.get(field) or '').strip()
         if len(value) > limit:
@@ -44,6 +97,7 @@ def update_warehouse_details(doc, values):
 
 def warehouse_details(doc):
     return {**{field:doc.get(field) or '' for field in WAREHOUSE_DETAIL_FIELDS},
+            **warehouse_contact(doc),
             'lotus_default_lead_days':doc.get('lotus_default_lead_days') or 0}
 
 
@@ -97,8 +151,8 @@ def master_lists(company):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
     return dict(groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
-                warehouses=frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
-                    fields=['name','warehouse_name','lotus_address','lotus_contact_name','lotus_contact_phone','lotus_default_lead_days'],limit_page_length=0))
+                warehouses=[dict(row, **warehouse_contact(row)) for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
+                    fields=['name','company','warehouse_name','lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_default_lead_days'],limit_page_length=0)])
 
 
 @frappe.whitelist(methods=['POST'])
@@ -116,9 +170,17 @@ def save_master(company,kind,name,modified,values):
         doc.description=str(values.get('description') or '')[:2000]
         set_minimum(doc,company,values);doc.save()
     elif kind=='warehouse':
-        doc.warehouse_name=_text(values.get('name'),'Tên kho')
+        label=_text(values.get('name'),'Tên kho')
+        expected=warehouse_code(label,company)
+        rename_needed=(label!=doc.warehouse_name and expected!=doc.name)
+        if rename_needed and frappe.db.exists('Warehouse',expected):
+            frappe.throw('Mã kho từ tên này đã tồn tại.')
+        doc.warehouse_name=label
         update_warehouse_details(doc,values)
         doc.save()
+        if rename_needed:
+            frappe.rename_doc('Warehouse',doc.name,expected,merge=False,force=True)
+            doc=frappe.get_doc('Warehouse',expected)
     else:
         new_name=_text(values.get('name'),'Tên nhóm')
         if new_name!=doc.name:
