@@ -1,6 +1,6 @@
 // Excel-like checklist selections are isolated for predictable unit tests.
 export const excelKey = value => value === null || value === undefined ? '__LOTUS_BLANK__' : String(value)
-const normalized = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLocaleLowerCase('vi').trim()
+const normalized = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLocaleLowerCase('vi').trim()
 export function filterExcelChoices(choices,query){
  const search=normalized(query)
  return !search?[...choices]:choices.filter(row=>
