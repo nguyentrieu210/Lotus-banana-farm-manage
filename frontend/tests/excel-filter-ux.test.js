@@ -28,11 +28,11 @@ test('Typing in a column filter selects matching rows instead of leaving every r
 })
 
 test('Checkbox changes keep manual selections when the search text changes',()=>{
- assert.match(header,/const manualSelection = ref\\(false\\)/)
- assert.match(header,/watch\\(search, value =>/)
- assert.match(header,/!manualSelection\\.value/)
- assert.match(header,/manualSelection\\.value = true/)
- assert.match(header,/excelDefaultSelection\\(choices\\.value, props\\.params\\.selection, value\\)/)
+ assert.match(header,/const manualSelection = ref\(false\)/)
+ assert.match(header,/watch\(search, value =>/)
+ assert.match(header,/!manualSelection\.value/)
+ assert.match(header,/manualSelection\.value = true/)
+ assert.match(header,/excelDefaultSelection\(choices\.value, props\.params\.selection, value\)/)
 })
 
 test('Select all in searched results keeps values selected outside the search',()=>{
