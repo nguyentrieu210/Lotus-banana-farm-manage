@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { excelKey, filterExcelChoices, toggleExcelVisible, excelAppliedValues, excelPopupLeft } from '../excel-filter-state'
+import { excelKey, filterExcelChoices, toggleExcelVisible, excelAppliedValues, excelPopupLeft, excelDefaultSelection } from '../excel-filter-state'
 
 const props = defineProps({ params: { type: Object, required: true } })
 const opened = ref(false)
@@ -9,6 +9,7 @@ const popup = ref(null)
 const searchInput = ref(null)
 const search = ref('')
 const selected = ref([])
+const manualSelection = ref(false)
 const position = ref({ top: '0px', left: '0px' })
 
 const choices = computed(() => props.params.choices || [])
@@ -38,7 +39,8 @@ async function open(event) {
   event.stopPropagation()
   if (opened.value) { close(); return }
   search.value = ''
-  selected.value = (active.value ? props.params.selection : choices.value.map(row => row.value)).map(key)
+  manualSelection.value = false
+  selected.value = excelDefaultSelection(choices.value, props.params.selection, '')
   opened.value = true
   await nextTick()
   positionPopup()
@@ -46,10 +48,14 @@ async function open(event) {
 }
 function close() { opened.value = false; search.value = '' }
 function toggle(value) {
+  manualSelection.value = true
   const k = key(value)
   selected.value = selected.value.includes(k) ? selected.value.filter(v => v !== k) : [...selected.value, k]
 }
-function selectVisible() { selected.value = toggleExcelVisible(selected.value, visible.value, allVisible.value) }
+function selectVisible() {
+  manualSelection.value = true
+  selected.value = toggleExcelVisible(selected.value, visible.value, allVisible.value)
+}
 function apply() {
   props.params.apply(excelAppliedValues(choices.value, selected.value))
   close()
@@ -62,6 +68,12 @@ function onKeydown(event) {
   if (event.key === 'Escape' && opened.value) { event.stopPropagation(); close(); trigger.value?.focus() }
 }
 function onScroll() { if (opened.value) positionPopup() }
+// Searching selects matching values by default. Once a user changes checkboxes,
+// preserve that explicit selection while they search for additional values.
+watch(search, value => {
+  if (opened.value && !manualSelection.value)
+    selected.value = excelDefaultSelection(choices.value, props.params.selection, value)
+})
 watch(() => props.params.selection, () => { if (!opened.value) return; close() })
 onMounted(() => {
   document.addEventListener('pointerdown', outside)
@@ -87,7 +99,7 @@ onUnmounted(() => {
       <div v-if="opened" ref="popup" class="excel-popup lotus-excel-popup" :style="position"
         :aria-label="'Lọc cột '+params.displayName" role="dialog" @click.stop @keydown.stop>
         <strong>Lọc: {{ params.displayName }}</strong>
-        <input ref="searchInput" v-model="search" type="search" aria-label="Tìm giá trị trong cột" placeholder="Tìm giá trị…" autocomplete="off">
+        <input ref="searchInput" v-model="search" type="search" aria-label="Tìm giá trị trong cột" placeholder="Gõ để lọc giá trị…" autocomplete="off">
         <label class="excel-select-all">
           <input type="checkbox" :checked="allVisible" :indeterminate="someVisible" :disabled="!visible.length" @change="selectVisible">
           <span>Chọn tất cả kết quả ({{ visible.length }})</span>
