@@ -1,7 +1,7 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {excelKey,filterExcelChoices,toggleExcelVisible,excelAppliedValues} from '../src/excel-filter-state.js'
+import {excelKey,filterExcelChoices,toggleExcelVisible,excelAppliedValues,excelDefaultSelection} from '../src/excel-filter-state.js'
 
 const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
 const header=readFileSync(new URL('../src/components/ExcelHeader.vue',import.meta.url),'utf8')
@@ -13,6 +13,26 @@ test('Excel search finds Vietnamese labels without requiring accents',()=>{
  assert.deepEqual(filterExcelChoices(choices,'BVTV').map(r=>r.value),[2])
  assert.deepEqual(filterExcelChoices(choices,'').length,3)
  assert.equal(excelKey(null),'__LOTUS_BLANK__')
+})
+
+test('Typing in a column filter selects matching rows instead of leaving every row selected',()=>{
+ const choices=[{value:'A',label:'Phân bón'},{value:'B',label:'Thuốc BVTV'},{value:'C',label:'Đường ống'}]
+ assert.deepEqual(excelDefaultSelection(choices,undefined,'thuoc'),['B'])
+ assert.deepEqual(excelAppliedValues(choices,excelDefaultSelection(choices,undefined,'thuoc')),['B'])
+ assert.deepEqual(excelDefaultSelection(choices,['A'],'duong'),['C'])
+ assert.deepEqual(excelDefaultSelection(choices,['A'],''),['A'])
+ assert.deepEqual(excelDefaultSelection(choices,undefined,'không có'),[])
+ assert.deepEqual(excelAppliedValues(choices,[]),[])
+ assert.deepEqual(excelAppliedValues([],[]),[])
+ assert.deepEqual(filterExcelChoices(choices,'DUONG').map(r=>r.value),['C'])
+})
+
+test('Checkbox changes keep manual selections when the search text changes',()=>{
+ assert.match(header,/const manualSelection = ref\\(false\\)/)
+ assert.match(header,/watch\\(search, value =>/)
+ assert.match(header,/!manualSelection\\.value/)
+ assert.match(header,/manualSelection\\.value = true/)
+ assert.match(header,/excelDefaultSelection\\(choices\\.value, props\\.params\\.selection, value\\)/)
 })
 
 test('Select all in searched results keeps values selected outside the search',()=>{
