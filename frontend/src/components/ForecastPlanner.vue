@@ -4,6 +4,7 @@ import {Button as UiButton} from './ui/button'
 import DesktopPageHeading from './DesktopPageHeading.vue'
 import DesktopMetricCard from './DesktopMetricCard.vue'
 import DesktopEmptyState from './DesktopEmptyState.vue'
+import {sampleForecastCalendar} from '../forecast-sample.js'
 const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
 import '../forecast-calendar.css'
 
@@ -12,27 +13,30 @@ const props=defineProps({
   loading:Boolean,
   canSettings:Boolean,
   canEditBlock:Boolean,
+  canDownloadTemplate:Boolean,
 })
-const emit=defineEmits(['reload','settings','edit-block'])
+const emit=defineEmits(['reload','settings','edit-block','download-template','demo-changed'])
+const demoMode=ref(false)
+const displayPayload=computed(()=>demoMode.value?sampleForecastCalendar(props.payload?.from_date||'2026-10-01'):props.payload)
 const search=ref('')
 const year=ref('')
 const selectedMonth=ref('')
 const numbers=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1})
 const ton=value=>numbers.format((Number(value)||0)/1000)
 const bunches=value=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(Number(value)||0)
-const allMonths=computed(()=>props.payload?.months||[])
+const allMonths=computed(()=>displayPayload.value?.months||[])
 const years=computed(()=>[...new Set(allMonths.value.map(x=>x.month.slice(0,4)))])
 watch(years,values=>{if(!values.includes(year.value))year.value=values[0]||''},{immediate:true})
 const months=computed(()=>allMonths.value.filter(x=>x.month.startsWith(year.value)))
 const maxGross=computed(()=>Math.max(1,...months.value.map(m=>Number(m.gross_kg)||0)))
-const allRows=computed(()=>props.payload?.rows||[])
+const allRows=computed(()=>displayPayload.value?.rows||[])
 const rows=computed(()=>allRows.value.filter(r=>
  (!year.value||r.month.startsWith(year.value))
  &&(!selectedMonth.value||r.month===selectedMonth.value)
  &&(!search.value||[r.farm_block,r.block_name,r.cycle,r.source_label].some(x=>String(x||'').toLocaleLowerCase('vi').includes(search.value.toLocaleLowerCase('vi'))))
 ))
 const yearTotal=computed(()=>months.value.reduce((sum,m)=>sum+(Number(m.gross_kg)||0),0))
-const issueCount=computed(()=>props.payload?.issues?.length||0)
+const issueCount=computed(()=>displayPayload.value?.issues?.length||0)
 const confidence=r=>r?.confidence||'—'
 const monthName=m=>String(Number(m.slice(5)))+'/ '+m.slice(0,4)
 function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
@@ -42,14 +46,17 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
   <section class="calendar-board" aria-label="Kế hoạch dự thu chuối 36 tháng">
     <DesktopPageHeading title="Dự thu 3 năm" eyebrow="Kế hoạch sản lượng 36 tháng" description="Tính tự động theo ngày trồng → chọn chồi → trổ buồng → cắt bắp. Dữ liệu mới được ưu tiên hơn.">
       <template #actions><div class="calendar-buttons">
-        <UiButton v-if="canSettings" variant="outline" type="button" @click="emit('settings',null)">Thiết lập hệ số</UiButton>
+        <UiButton v-if="!demoMode&&canSettings" variant="outline" type="button" @click="emit('settings',null)">Thiết lập hệ số</UiButton>
+        <UiButton v-if="!demoMode&&canDownloadTemplate" variant="outline" type="button" @click="emit('download-template')">Tải bảng nhập ngày trồng</UiButton>
+        <UiButton variant="outline" type="button" :aria-pressed="demoMode" @click="demoMode=!demoMode;selectedMonth='';year='';emit('demo-changed',demoMode)">{{demoMode?'Xem dữ liệu thật':'Xem dữ liệu mẫu'}}</UiButton>
         <UiButton variant="outline" type="button" :disabled="loading" @click="emit('reload')">Làm mới</UiButton>
       </div></template>
     </DesktopPageHeading>
+    <div v-if="demoMode" class="calendar-demo-warning" role="status"><strong>ĐANG XEM DỮ LIỆU MẪU</strong> · Đây là các lô giả lập để xem giao diện và kiểm tra thứ tự ưu tiên. Không phải dữ liệu Lotus, không ghi vào hệ thống và không dùng để giao hàng.</div>
     <div class="calendar-kpis">
-      <DesktopMetricCard label="Tổng dự thu 36 tháng" :value="ton(payload.summary?.gross_kg)" unit="tấn buồng" description="Ước tính, chưa phải sản lượng chốt"/>
-      <DesktopMetricCard label="Thành phẩm dự kiến" :value="ton(payload.summary?.packed_kg)" unit="tấn" description="Đã áp dụng hệ số chất lượng và đóng gói"/>
-      <DesktopMetricCard label="Lô đã có dự tính" :value="(payload.summary?.ready_blocks||0)+' / '+(payload.summary?.blocks||0)" description="Chỉ tính khi đủ dữ liệu và hệ số"/>
+      <DesktopMetricCard label="Tổng dự thu 36 tháng" :value="ton(displayPayload.summary?.gross_kg)" unit="tấn buồng" description="Ước tính, chưa phải sản lượng chốt"/>
+      <DesktopMetricCard label="Thành phẩm dự kiến" :value="ton(displayPayload.summary?.packed_kg)" unit="tấn" description="Đã áp dụng hệ số chất lượng và đóng gói"/>
+      <DesktopMetricCard label="Lô đã có dự tính" :value="(displayPayload.summary?.ready_blocks||0)+' / '+(displayPayload.summary?.blocks||0)" description="Chỉ tính khi đủ dữ liệu và hệ số"/>
       <DesktopMetricCard label="Cần kiểm tra" :value="issueCount" description="Thiếu thông số hoặc chưa rõ đợt cây" :warning="issueCount>0"/>
     </div>
     <div class="calendar-toolbar">
@@ -98,10 +105,10 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
     <details v-if="issueCount" class="calendar-issues">
       <summary>Cần bổ sung dữ liệu ({{issueCount}})</summary>
       <div class="calendar-issues-list">
-        <div v-for="(issue,i) in payload.issues" :key="i"><b>{{issue.block_name||issue.farm_block}}:</b> {{issue.message}} <button v-if="canEditBlock" class="calendar-issue-edit" type="button" @click="emit('edit-block',issue.farm_block)">Sửa thông tin lô</button></div>
+        <div v-for="(issue,i) in displayPayload.issues" :key="i"><b>{{issue.block_name||issue.farm_block}}:</b> {{issue.message}} <button v-if="!demoMode&&canEditBlock" class="calendar-issue-edit" type="button" @click="emit('edit-block',issue.farm_block)">Sửa thông tin lô</button></div>
       </div>
       <p v-if="canSettings">Bấm <b>Thiết lập hệ số</b> để thêm số ngày từ trồng đến thu và chu kỳ vụ chồi, sau đó phát hành bộ hệ số theo quy trình duyệt.</p>
     </details>
-    <p class="calendar-footnote">Khoảng kế hoạch: {{payload.from_date||'—'}} đến {{payload.to_date||'—'}}. {{payload.note}}</p>
+    <p class="calendar-footnote">Khoảng kế hoạch: {{displayPayload.from_date||'—'}} đến {{displayPayload.to_date||'—'}}. {{displayPayload.note}}</p>
   </section>
 </template>

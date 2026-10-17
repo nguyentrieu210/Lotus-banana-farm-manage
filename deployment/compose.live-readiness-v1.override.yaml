@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-live-readiness:v1-20261017
+  frontend:
+    image: lotus-live-readiness:v1-20261017
+  queue-short:
+    image: lotus-live-readiness:v1-20261017
+  queue-long:
+    image: lotus-live-readiness:v1-20261017
+  scheduler:
+    image: lotus-live-readiness:v1-20261017

@@ -1,0 +1,6 @@
+# Live read-only sample and planting worksheet; no database fixtures.
+FROM lotus-desktop-ui:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/forecast_setup.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/forecast_setup.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe
