@@ -202,7 +202,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-Df4SOnw6.js",
+    "file": "assets/index-DEqBnKU3.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -220,7 +220,8 @@
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
-      "src/components/LotusImportPreview.vue"
+      "src/components/LotusImportPreview.vue",
+      "src/components/Vip126RollingForecast.vue"
     ],
     "css": [
       "assets/index-BBGtQpMr.css"
@@ -240,7 +241,7 @@
     ]
   },
   "src/components/LotusImportPreview.vue": {
-    "file": "assets/LotusImportPreview-g2xD25QJ.js",
+    "file": "assets/LotusImportPreview-D3H9ixei.js",
     "name": "LotusImportPreview",
     "src": "src/components/LotusImportPreview.vue",
     "isDynamicEntry": true,
@@ -249,7 +250,24 @@
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "css": [
-      "assets/LotusImportPreview-BAlfE3pB.css"
+      "assets/LotusImportPreview-Cc8l29Mp.css"
+    ]
+  },
+  "src/components/Vip126RollingForecast.vue": {
+    "file": "assets/Vip126RollingForecast-D46_U85x.js",
+    "name": "Vip126RollingForecast",
+    "src": "src/components/Vip126RollingForecast.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_api-DBVSZ-7-.js",
+      "__plugin-vue_export-helper-BDNMzG2s.js",
+      "index.html"
+    ],
+    "dynamicImports": [
+      "src/components/DesktopForecastChart.vue"
+    ],
+    "css": [
+      "assets/Vip126RollingForecast-BRS10ugo.css"
     ]
   },
   "stock.html": {

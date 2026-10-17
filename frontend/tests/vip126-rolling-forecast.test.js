@@ -1,0 +1,36 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+const root=new URL('../../',import.meta.url)
+const read=p=>readFileSync(new URL(p,root),'utf8')
+test('live VIP 126 calendar has zone A-E and scenario selector',()=>{
+ const src=read('frontend/src/components/Vip126RollingForecast.vue')
+ assert.match(src,/zoneNames=\['ALL','A','B','C','D','E'\]/)
+ assert.match(src,/scenario=ref\('base'\)/)
+ assert.match(src,/low.*base.*high/s)
+ assert.match(src,/lotus_farm\.vip126_timeline\.calendar/)
+ assert.match(src,/DỰ PHÓNG VẬN HÀNH/)
+ assert.match(src,/36 THÁNG CUỐN CHIẾU/)
+ assert.match(src,/Được phép giao bán/)
+})
+test('rolling model is read-only, override forecast only',()=>{
+ const code=read('lotus_farm/vip126_timeline.py')
+ assert.match(code,/harvest_actual/)
+ assert.match(code,/source_date.*priority/)
+ assert.match(code,/timedelta\(days=i\*config\["ratoon_days"\]\)/)
+ assert.match(code,/nowdate\(\)/)
+ assert.match(code,/commit_ready":False/)
+ assert.doesNotMatch(code,/\.save\(|\.insert\(|set_value\(|\.db\.sql\(/)
+ const app=read('frontend/src/App.vue')
+ assert.match(app,/Vip126RollingForecast/)
+})
+test('census import stores dated estimates apart from observed planting',()=>{
+ const src=read('lotus_farm/vip126_live.py')
+ assert.match(src,/lotus_tree_count/)
+ assert.match(src,/lotus_inferred_planting_date/)
+ assert.match(src,/lotus_estimated_flowering_date/)
+ assert.doesNotMatch(src,/\bupdates\.update\(planting_date/)
+ const profile=read('lotus_farm/vip126_profile.py')
+ assert.match(profile,/"approval_state": "Draft"/)
+ assert.match(profile,/"active": 0/)
+})
