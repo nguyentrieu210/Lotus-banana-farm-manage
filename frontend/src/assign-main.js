@@ -5,5 +5,8 @@ import './shadcn.css'
 import './attio.css'
 import './assign-attio.css'
 import './compact.css'
+import './desktop-system.css'
+import './desktop-components.css'
+import './desktop-shell.css'
 createApp(AssignApp).mount('#app')
 import './register-worker'

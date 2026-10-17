@@ -6,5 +6,8 @@ import './attio.css'
 import './stock-attio.css'
 import './compact.css'
 import './timekeeping.css'
+import './desktop-system.css'
+import './desktop-components.css'
+import './desktop-shell.css'
 createApp(TimekeepingApp).mount('#app')
 import './register-worker'

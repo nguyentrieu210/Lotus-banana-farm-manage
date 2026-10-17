@@ -267,7 +267,7 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 </script>
 
 <template>
- <div class="stock-shell" :class="{'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
+ <div class="stock-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
   <WorkspaceBar v-if="desktop" :branded="true" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
   <aside class="stock-sidebar">
    <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a>

@@ -6,4 +6,7 @@ import './attio.css'
 import './stock-attio.css'
 import './compact.css'
 import './hr.css'
+import './desktop-system.css'
+import './desktop-components.css'
+import './desktop-shell.css'
 createApp(HrApp).mount('#app')

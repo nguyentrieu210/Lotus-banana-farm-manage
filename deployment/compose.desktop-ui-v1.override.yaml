@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-desktop-ui:v1-20261017
+  frontend:
+    image: lotus-desktop-ui:v1-20261017
+  queue-short:
+    image: lotus-desktop-ui:v1-20261017
+  queue-long:
+    image: lotus-desktop-ui:v1-20261017
+  scheduler:
+    image: lotus-desktop-ui:v1-20261017

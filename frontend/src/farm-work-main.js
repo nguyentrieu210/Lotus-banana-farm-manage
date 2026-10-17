@@ -6,5 +6,8 @@ import './attio.css'
 import './stock-attio.css'
 import './compact.css'
 import './farm-work.css'
+import './desktop-system.css'
+import './desktop-components.css'
+import './desktop-shell.css'
 createApp(FarmWorkApp).mount('#app')
 import './register-worker'

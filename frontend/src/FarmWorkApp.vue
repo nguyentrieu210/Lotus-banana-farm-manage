@@ -129,7 +129,7 @@ watch(kind,()=>search.value='')
 onMounted(boot)
 </script>
 <template>
- <div class="stock-shell farm-work-shell" :class="{'sidebar-collapsed':sidebarCollapsed}">
+ <div class="stock-shell farm-work-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed}">
   <aside class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech"></a><p class="stock-nav-label">CÔNG VIỆC VƯỜN</p><nav aria-label="Công việc vườn"><UiButton v-for="t in tabs" :key="t.id" variant="outline" :class="{selected:tab===t.id}" @click="choose(t.id)">{{t.icon}} <span>{{t.label}}</span></UiButton></nav><div class="farm-side-links"><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/cham-cong">Nhân sự & chấm công ↗</a></div></aside>
   <main class="stock-main"><WorkspaceBar :user="session?.user" title="Công việc vườn" :actions="actions"/>
    <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>

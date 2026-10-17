@@ -72,7 +72,7 @@ const exportLink=kind=>'/api/method/lotus_farm.timekeeping.export_month?'+new UR
 onMounted(init)
 </script>
 
-<template><div class="stock-shell attendance-shell" :class="{'sidebar-collapsed':sidebarCollapsed}">
+<template><div class="stock-shell attendance-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed}">
  <aside class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a><p class="stock-nav-label">CHẤM CÔNG & NHÂN SỰ</p><nav aria-label="Chấm công"><UiButton v-for="item in tabs" :key="item.id" variant="outline" :class="{selected:tab===item.id}" @click="chooseTab(item.id)">{{{staff:'◷',crew:'♧',month:'▦',setup:'⚙'}[item.id]}} <span>{{item.label}}</span></UiButton></nav><div class="stock-sidebar-bottom"><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/nhan-su">Hồ sơ nhân sự Lotus ↗</a><a href="/desk/hr-setup">Frappe HRMS ↗</a></div></aside>
  <main class="stock-main"><WorkspaceBar :user="session?.user" :title="tabs.find(t=>t.id===tab)?.label||'Chấm công'" :actions="actions"/>
   <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>

@@ -1,0 +1,129 @@
+/* Lotus desktop design system v1.
+   Applied only to desktop entrypoints. Mobile Vant PWAs do not import it.
+   Existing business logic, permissions, and values remain untouched. */
+@media (min-width:901px) {
+  .lotus-ui {
+    --lotus-page:#f7f7f8; --lotus-surface:#ffffff; --lotus-sidebar:#fff;
+    --lotus-text:#2c3036; --lotus-muted:#686e79; --lotus-border:#e8e5e1;
+    --lotus-soft:#faf6f2; --lotus-accent:#b8401b; --lotus-accent-soft:#fff0e6;
+    --lotus-table-header:#fcfaf7; --lotus-table-heading:#60636b;
+    --lotus-control-height:36px; --lotus-radius:10px;
+    --background:0 0% 100%; --foreground:216 10% 19%;
+    --card:0 0% 100%; --card-foreground:216 10% 19%;
+    --popover:0 0% 100%; --popover-foreground:216 10% 19%;
+    --primary:14 74% 41%; --primary-foreground:0 0% 100%;
+    --secondary:30 30% 96%; --secondary-foreground:216 10% 19%;
+    --muted:30 30% 96%; --muted-foreground:224 5% 43%;
+    --accent:26 100% 95%; --accent-foreground:14 74% 35%;
+    --border:34 13% 90%; --input:34 13% 87%; --ring:14 74% 41%;
+    background:var(--lotus-page);color:var(--lotus-text);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:13px; line-height:1.5;
+  }
+  .dark .lotus-ui {
+    --lotus-page:#171b22;--lotus-surface:#20262f;--lotus-sidebar:#1c222b;
+    --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-border:#3b414b;
+    --lotus-soft:#2d2c2d;--lotus-accent:#ffb690;--lotus-accent-soft:#423028;
+    --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
+    --background:216 19% 15%;--foreground:220 19% 94%;
+    --card:216 19% 15%;--card-foreground:220 19% 94%;
+    --popover:216 19% 15%;--popover-foreground:220 19% 94%;
+    --primary:21 100% 78%;--primary-foreground:216 19% 15%;
+    --secondary:216 13% 21%;--secondary-foreground:220 19% 94%;
+    --muted:216 13% 21%;--muted-foreground:218 11% 72%;
+    --accent:24 24% 21%;--accent-foreground:21 100% 78%;
+    --border:218 12% 26%;--input:218 12% 30%;--ring:21 100% 78%;
+  }
+  .lotus-ui button,.lotus-ui input,.lotus-ui select,.lotus-ui textarea {font-family:inherit}
+  .lotus-ui button,.lotus-ui a,.lotus-ui input,.lotus-ui select,.lotus-ui textarea {transition:background-color .14s,border-color .14s,color .14s,box-shadow .14s}
+  .lotus-ui :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible {outline:2px solid var(--lotus-accent);outline-offset:2px}
+  .lotus-ui :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {border-radius:8px;min-height:var(--lotus-control-height);border-color:var(--lotus-border);background:var(--lotus-surface);color:var(--lotus-text)}
+  .lotus-ui :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):focus {border-color:var(--lotus-accent);box-shadow:0 0 0 2px var(--lotus-accent-soft)}
+  .lotus-ui :is(button,[role="button"]):disabled {opacity:.5;cursor:not-allowed}
+  .lotus-ui :is(.panel,.stock-panel,.calendar-panel,.assignment-panel,.attendance-month,.hr-editor) {
+    background:var(--lotus-surface);border:1px solid var(--lotus-border);
+    border-radius:var(--lotus-radius);box-shadow:0 1px 3px #29252108;
+    color:var(--lotus-text);
+  }
+  .lotus-ui :is(.panel,.stock-panel,.calendar-panel,.assignment-panel) > :is(h2,h3):first-child {letter-spacing:-.015em}
+  .lotus-ui :is(.section-title,.stock-panel-head,.stock-list-heading,.calendar-panel-title) {
+    border-color:var(--lotus-border);gap:12px;
+  }
+  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.forecast-filterbar,.stock-planning-toolbar,.attendance-toolbar) {
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
+    border-color:var(--lotus-border);min-width:0;
+  }
+  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.forecast-filterbar,.stock-planning-toolbar,.attendance-toolbar) label{
+    color:var(--lotus-muted);font-size:12px;font-weight:550;
+  }
+  .lotus-ui :is(.tabs,.forecast-tabs,.calendar-years,.stock-issue-tabs) button.active,
+  .lotus-ui :is(.tabs,.forecast-tabs,.calendar-years,.stock-issue-tabs) button[aria-selected="true"] {
+    background:var(--lotus-accent-soft);border-color:var(--lotus-accent);
+    color:var(--lotus-accent);font-weight:650;
+  }
+  .lotus-ui :is(.kpi,.kpi-grid>*,.stock-metrics>*,.calendar-kpis>*,.hr-kpi) {
+    background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:10px;
+    box-shadow:0 1px 3px #29252106;color:var(--lotus-text);
+  }
+  .lotus-ui :is(.kpi,.stock-metrics>*,.calendar-kpis>*) :is(small,span) {color:var(--lotus-muted)}
+  .lotus-ui :is(.calendar-board,.forecast-workspace,.assignment-workspace,.farm-work-shell,.hr-shell,.attendance-shell){min-width:0}
+  .lotus-ui :is(.calendar-board,.forecast-workspace,.warehouse-planning) :is(input,select){font-size:13px}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog){
+    background:var(--lotus-surface);border:1px solid var(--lotus-border);color:var(--lotus-text);
+    border-radius:14px;box-shadow:0 24px 80px #11182733;
+  }
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(header,footer) {
+    background:var(--lotus-surface);border-color:var(--lotus-border);
+  }
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
+  .lotus-ui :is(.lotus-ag-grid,.ag-root-wrapper,.lotus-data-table) {border-color:var(--lotus-border);border-radius:9px}
+  .lotus-ui :is(.lotus-ag-grid,.calendar-table,.stock-table,.attendance-roster,.hr-table) :is(th,.ag-header-cell) {
+    color:var(--lotus-table-heading);background:var(--lotus-table-header);
+    border-color:var(--lotus-border);font-weight:650;
+  }
+  .lotus-ui :is(.calendar-table,.stock-table,.attendance-roster,.hr-table) td {border-color:var(--lotus-border)}
+  .lotus-ui :is(.calendar-table,.stock-table,.attendance-roster,.hr-table) tbody tr:hover {background:var(--lotus-soft)}
+  /* Match the Kho desktop shell without changing the Vant-based mobile PWAs. */
+  .lotus-ui.app-shell:not(.mobile-landing){background:var(--lotus-page)}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar,
+  .lotus-ui.stock-shell:not(.warehouse-pwa) .stock-sidebar {
+    background:var(--lotus-sidebar);border-right:1px solid var(--lotus-border);
+    color:var(--lotus-muted);
+  }
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar{width:224px;padding:18px 12px;gap:13px}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar .brand{display:flex;align-items:center;justify-content:flex-start;padding:4px 8px;margin:0}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar .lotus-brand-image {width:130px;max-height:48px;object-fit:contain;object-position:left center}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar nav {display:grid;gap:3px}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar nav button {
+    text-align:left;justify-content:flex-start;color:var(--lotus-muted);border:none;
+    background:transparent;border-radius:8px;min-height:37px;padding:7px 11px;font-size:13px;
+  }
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar nav button:hover{background:var(--lotus-soft);color:var(--lotus-accent)}
+  .lotus-ui.app-shell:not(.mobile-landing) .sidebar nav button.active{
+    color:var(--lotus-accent);background:var(--lotus-accent-soft);font-weight:650;
+  }
+  .lotus-ui.app-shell:not(.mobile-landing) main{max-width:none;padding:0 22px 22px;min-width:0}
+  .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar{margin:0 -22px 15px;width:calc(100% + 44px)}
+  .lotus-ui.app-shell:not(.mobile-landing) main>.scope-picker{padding:11px 0 15px;margin:0 0 15px;border-bottom:1px solid var(--lotus-border)}
+  .lotus-ui.app-shell:not(.mobile-landing) main>.scope-picker>label {min-width:145px;flex:0 1 220px}
+  .lotus-ui.app-shell:not(.mobile-landing) main>.scope-picker select{height:36px}
+  .lotus-ui.app-shell:not(.mobile-landing) .view-controls{margin:0 0 12px;padding:8px 0 14px;border-bottom:1px solid var(--lotus-border)}
+  .lotus-ui.app-shell:not(.mobile-landing) .document-dialog{max-height:90dvh;overflow:auto}
+  .lotus-ui.app-shell:not(.mobile-landing) .section-title h2{font-size:15px}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main {padding:0 22px 18px}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar {margin:0 -22px 16px;width:calc(100% + 44px)}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar {width:224px}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main{margin-left:224px;width:calc(100% - 224px)}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar nav button {min-height:38px;color:var(--lotus-muted)}
+  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar nav button.selected{color:var(--lotus-accent);background:var(--lotus-accent-soft);font-weight:650}
+  .lotus-ui.assignment-workspace .shell {max-width:none}
+  .lotus-ui :is(.notice,.stock-error,.stock-success) {border-radius:9px}
+}
+@media (max-width:900px){
+  /* The mobile layout and Vant 4 theme intentionally keep their existing behavior. */
+  .lotus-ui :is(.calendar-board,.forecast-workspace){min-width:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .lotus-ui :is(button,a,input,select,textarea){transition:none!important}
+}
