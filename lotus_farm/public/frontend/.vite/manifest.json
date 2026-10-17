@@ -1,4 +1,12 @@
 {
+  "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
+    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
+    "src": "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
+  },
+  "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
+    "file": "assets/Inter.var-C9xDBOS3.woff2",
+    "src": "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
+  },
   "_AssignApp-BFkbCXcW.css": {
     "file": "assets/AssignApp-BFkbCXcW.css",
     "src": "_AssignApp-BFkbCXcW.css"
@@ -189,7 +197,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-BSeklItK.js",
+    "file": "assets/index-BW1d8V-h.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -208,20 +216,12 @@
       "src/components/DesktopForecastChart.vue"
     ],
     "css": [
-      "assets/index-DilRkG2D.css"
+      "assets/index-CQcBCxL2.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
       "assets/Inter-Italic.var-BGHziHgI.woff2"
     ]
-  },
-  "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
-    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
-    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
-  },
-  "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
-    "file": "assets/Inter.var-C9xDBOS3.woff2",
-    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "src/components/DesktopForecastChart.vue": {
     "file": "assets/DesktopForecastChart-CHfP7l1k.js",
