@@ -1,6 +1,10 @@
 <script setup>
-import {computed,ref,watch} from 'vue'
+import {computed,defineAsyncComponent,ref,watch} from 'vue'
 import {Button as UiButton} from './ui/button'
+import DesktopPageHeading from './DesktopPageHeading.vue'
+import DesktopMetricCard from './DesktopMetricCard.vue'
+import DesktopEmptyState from './DesktopEmptyState.vue'
+const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
 import '../forecast-calendar.css'
 
 const props=defineProps({
@@ -36,21 +40,17 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
 
 <template>
   <section class="calendar-board" aria-label="Kế hoạch dự thu chuối 36 tháng">
-    <div class="calendar-head">
-      <div>
-        <h2>Dự thu 3 năm</h2>
-        <p>Tự tính theo ngày trồng → chọn chồi → trổ buồng → cắt bắp. Có số liệu mới thì ưu tiên nguồn sát thu hoạch hơn.</p>
-      </div>
-      <div class="calendar-buttons">
+    <DesktopPageHeading title="Dự thu 3 năm" eyebrow="Kế hoạch sản lượng 36 tháng" description="Tính tự động theo ngày trồng → chọn chồi → trổ buồng → cắt bắp. Dữ liệu mới được ưu tiên hơn.">
+      <template #actions><div class="calendar-buttons">
         <UiButton v-if="canSettings" variant="outline" type="button" @click="emit('settings',null)">Thiết lập hệ số</UiButton>
         <UiButton variant="outline" type="button" :disabled="loading" @click="emit('reload')">Làm mới</UiButton>
-      </div>
-    </div>
+      </div></template>
+    </DesktopPageHeading>
     <div class="calendar-kpis">
-      <article><small>Tổng dự thu 36 tháng</small><strong>{{ton(payload.summary?.gross_kg)}} <em>tấn buồng</em></strong><span>Ước tính, chưa phải sản lượng chốt</span></article>
-      <article><small>Thành phẩm dự kiến</small><strong>{{ton(payload.summary?.packed_kg)}} <em>tấn</em></strong><span>Đã áp dụng hệ số chất lượng và đóng gói</span></article>
-      <article><small>Lô đã có dự tính</small><strong>{{payload.summary?.ready_blocks||0}} / {{payload.summary?.blocks||0}}</strong><span>Chỉ dùng lô có dữ liệu và bộ hệ số hợp lệ</span></article>
-      <article><small>Cần kiểm tra</small><strong>{{issueCount}}</strong><span>Thiếu thông số hoặc chưa rõ đợt cây</span></article>
+      <DesktopMetricCard label="Tổng dự thu 36 tháng" :value="ton(payload.summary?.gross_kg)" unit="tấn buồng" description="Ước tính, chưa phải sản lượng chốt"/>
+      <DesktopMetricCard label="Thành phẩm dự kiến" :value="ton(payload.summary?.packed_kg)" unit="tấn" description="Đã áp dụng hệ số chất lượng và đóng gói"/>
+      <DesktopMetricCard label="Lô đã có dự tính" :value="(payload.summary?.ready_blocks||0)+' / '+(payload.summary?.blocks||0)" description="Chỉ tính khi đủ dữ liệu và hệ số"/>
+      <DesktopMetricCard label="Cần kiểm tra" :value="issueCount" description="Thiếu thông số hoặc chưa rõ đợt cây" :warning="issueCount>0"/>
     </div>
     <div class="calendar-toolbar">
       <div class="calendar-years" role="tablist" aria-label="Chọn năm">
@@ -61,6 +61,8 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
     </div>
     <section class="calendar-panel">
       <div class="calendar-panel-title"><strong>Sản lượng theo tháng</strong><span>Chọn tháng để xem các lô dự kiến thu</span></div>
+      <DesktopForecastChart v-if="months.some(m=>Number(m.gross_kg)>0||Number(m.actual_gross_kg)>0)" :months="months"/>
+      <DesktopEmptyState v-else title="Chưa có sản lượng dự thu đủ căn cứ" description="Nhập ngày trồng trên lô và bổ sung bộ hệ số đã duyệt. Lotus không tự đoán sản lượng khi thiếu thông tin." icon="▤"/>
       <div v-if="months.length" class="calendar-months">
         <button v-for="m in months" :key="m.month" type="button" :aria-pressed="selectedMonth===m.month" :class="{active:selectedMonth===m.month}" @click="pickMonth(m.month)">
           <span>Tháng {{Number(m.month.slice(5))}}</span>

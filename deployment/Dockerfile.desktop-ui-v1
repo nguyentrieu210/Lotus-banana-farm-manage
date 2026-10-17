@@ -1,0 +1,5 @@
+# Presentation-only deployment: inherit the verified 36-month forecast backend.
+FROM lotus-forecast-calendar:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

@@ -1,1 +1,0 @@
-import{s as e}from"./api-DaKsCuQq.js";import"./compact-D81drUhM.js";import{t}from"./AssignApp-BR4v6OIx.js";import"./register-worker-CKMNsoSQ.js";e(t).mount(`#app`);

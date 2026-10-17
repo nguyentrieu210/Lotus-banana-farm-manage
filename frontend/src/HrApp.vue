@@ -97,7 +97,7 @@ onMounted(init)
 </script>
 
 <template>
-<div class="stock-shell hr-shell" :class="{'sidebar-collapsed':sidebarCollapsed}">
+<div class="stock-shell hr-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed}">
   <aside class="stock-sidebar">
     <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech"></a>
     <p class="stock-nav-label">NHÂN SỰ LOTUS</p>

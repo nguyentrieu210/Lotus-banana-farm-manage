@@ -82,7 +82,7 @@ onMounted(boot)
 const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},{id:'farm-work',label:'Công việc vườn',navigation:true,href:'/lotus/cong-viec'+(farm.value?'?farm='+encodeURIComponent(farm.value):'')},...(session.value?.capabilities?.stock?[{id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'}]:[]),{id:'new-job',label:'Thêm công việc',run:add}])
 </script>
 <template>
- <div class="assignment-workspace"><WorkspaceBar v-if="!embedded" :user="session?.user" title="Giao việc nhanh" :actions="workspaceActions" :sidebar="false" /><main class="shell">
+ <div class="assignment-workspace lotus-ui"><WorkspaceBar v-if="!embedded" :user="session?.user" title="Giao việc nhanh" :actions="workspaceActions" :sidebar="false" /><main class="shell">
 
   <div v-if="busy&&!session" class="spinner">Đang mở dữ liệu vườn…</div>
   <template v-else>

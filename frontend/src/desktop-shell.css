@@ -1,0 +1,63 @@
+/* Common desktop navigation: Kho-inspired terracotta header and calm sidebar. */
+@media(min-width:901px){
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar,
+ .lotus-ui.assignment-workspace>.workspace-bar{
+  --lotus-text:#fff;--lotus-muted:#fff5ed;--lotus-soft:#ffffff24;--lotus-border:#ffffff55;
+  background:linear-gradient(110deg,#b73c19,#d85024 65%,#e66b32);
+  color:white;border:none;border-bottom:1px solid #d95c2e;
+  min-height:60px;padding:10px 22px;z-index:40;
+  box-shadow:0 2px 10px #833b1814;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{
+  grid-template-columns:minmax(155px,1fr) minmax(165px,300px) minmax(150px,1fr);
+  gap:12px;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button),
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button),
+ .lotus-ui.assignment-workspace>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button){
+  color:#fff;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-search,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search,
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-search{
+  background:#fff;border:1px solid #fff;color:#77665e;min-height:36px;border-radius:9px;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-search kbd,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search kbd,
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-search kbd {
+  background:#f8f1ec;color:#736157;border:1px solid #eee1d8;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-menu,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu,
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu {
+  --lotus-text:#2c3036;--lotus-muted:#686e79;--lotus-border:#e8e5e1;
+  color:#2c3036;background:#fff;border:1px solid #e8e5e1;box-shadow:0 12px 32px #29252122;
+ }
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-menu button,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu button,
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu button{color:#2c3036}
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-avatar,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-avatar,
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-avatar{background:#ffffff24;color:white;border:1px solid #ffffff3b}
+ .lotus-ui.app-shell:not(.mobile-landing) .sidebar .field-link {color:var(--lotus-muted);font-size:11px;line-height:1.5;white-space:normal}
+ .lotus-ui.app-shell:not(.mobile-landing) .sidebar .field-link:hover {color:var(--lotus-accent)}
+ .lotus-ui.app-shell:not(.mobile-landing) .sidebar>small {font-size:11px;color:var(--lotus-muted);overflow-wrap:anywhere}
+ .lotus-ui :is(.sidebar,.stock-sidebar) nav button {transition:background-color .12s,color .12s}
+ .lotus-ui :is(.sidebar,.stock-sidebar) nav button:focus-visible {outline:2px solid var(--lotus-accent);outline-offset:-2px}
+ .lotus-ui :is(.stock-panel,.panel,.calendar-panel) {min-width:0}
+ .lotus-ui :is(.stock-panel,.panel,.calendar-panel) :is(table,.lotus-ag-grid-shell) {max-width:100%}
+ .lotus-ui :is(.stock-panel,.panel,.calendar-panel) :is(table) {font-variant-numeric:tabular-nums}
+ .lotus-ui :is(.section-title,.stock-panel-head,.calendar-panel-title) :is(h2,h3){color:var(--lotus-text)}
+ .lotus-ui :is(.stock-button,.stock-scope button,.stock-setup-toolbar button) {border-radius:8px}
+ .lotus-ui .workspace-search:focus-visible{outline:2px solid #fff;outline-offset:3px}
+}
+@media(min-width:901px) and (max-width:1160px){
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{grid-template-columns:minmax(125px,1fr) minmax(145px,210px) minmax(125px,1fr);padding-inline:14px}
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar .workspace-nav,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-nav{display:none}
+ .lotus-ui.app-shell:not(.mobile-landing) main{padding-inline:14px}
+ .lotus-ui.app-shell:not(.mobile-landing) main>.workspace-bar{margin-left:-14px;margin-right:-14px;width:calc(100% + 28px)}
+}

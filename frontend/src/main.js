@@ -9,4 +9,7 @@ import './attio.css'
 window.addEventListener('lotus-csrf',event=>setCSRF(event.detail))
 import './compact.css'
 createApp(App).use(createPinia()).use(createLotusRouter()).mount('#app')
+import './desktop-system.css'
+import './desktop-components.css'
+import './desktop-shell.css'
 import './register-worker'
