@@ -21,7 +21,13 @@
     "amended_from",
     "amendment_reason",
     "field_capture",
-    "actual_labor"
+    "actual_labor",
+    "review_state",
+    "verified_by",
+    "verified_at",
+    "reviewed_by",
+    "reviewed_at",
+    "review_note"
   ],
   "fields": [
     {
@@ -143,6 +149,45 @@
       "label": "Actual Labor",
       "fieldtype": "Table",
       "options": "Work Actual Labor"
+    },
+    {
+      "fieldname": "review_state",
+      "label": "Trạng thái kiểm tra",
+      "fieldtype": "Select",
+      "options": "Pending\nVerified\nChanges Requested\nApproved",
+      "read_only": 1
+    },
+    {
+      "fieldname": "verified_by",
+      "label": "Người kiểm tra",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "verified_at",
+      "label": "Thời gian kiểm tra",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_by",
+      "label": "Người duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_at",
+      "label": "Thời gian duyệt",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_note",
+      "label": "Ghi chú kiểm tra",
+      "fieldtype": "Small Text",
+      "read_only": 1
     }
   ],
   "autoname": "hash",

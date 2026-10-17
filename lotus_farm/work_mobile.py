@@ -59,6 +59,67 @@ def _own_tasks(farm, posting_date):
     return tasks
 
 
+def _apply_review_state(farm, posting_date, tasks):
+    """Overlay pending drafts only on task lines that already passed scope filtering."""
+    if not tasks:
+        return
+    lines = [task.get("line") for task in tasks if task.get("line")]
+    if not lines:
+        return
+    drafts = frappe.get_all(
+        "Daily Work Result",
+        filters={"farm": farm, "posting_date": posting_date,
+                 "docstatus": 0, "work_plan_line": ["in", lines]},
+        fields=["name", "owner", "work_plan_line", "review_state", "review_note", "verified_by",
+                "completed_qty", "actual_workdays", "unfinished_reason", "modified"],
+        order_by="modified desc", limit_page_length=2000,
+    )
+    latest = {}
+    for entry in drafts:
+        latest.setdefault(entry.work_plan_line, entry)
+    for task in tasks:
+        task["result_state"] = "Approved" if task.get("result") else ""
+        entry = latest.get(task.get("line")) if not task.get("result") else None
+        if not entry:
+            continue
+        task.update({
+            "result": entry.name, "result_owner": entry.owner,
+            "result_state": entry.review_state or "Pending", "verified_by": entry.verified_by,
+            "review_note": entry.review_note,
+            "completed_qty": flt(entry.completed_qty),
+            "actual_workdays": flt(entry.actual_workdays),
+            "unfinished_reason": entry.unfinished_reason,
+            "status": {
+                "Pending": "Pending Review", "Verified": "Pending Approval",
+                "Changes Requested": "Changes Requested",
+            }.get(entry.review_state or "Pending", "Pending Review"),
+        })
+
+
+def _apply_ready_hints(tasks):
+    """Show labor and material prerequisites without leaking other teams' tasks."""
+    lines = list({task.get("line") for task in tasks if task.get("line")})
+    if not lines:
+        return
+    allocations = frappe.get_all(
+        "Labor Allocation", filters={"work_plan_line": ["in", lines], "docstatus": 1},
+        fields=["work_plan_line", "allocated_workdays"], limit_page_length=10000)
+    workdays = {}
+    for item in allocations:
+        workdays[item.work_plan_line] = workdays.get(item.work_plan_line, 0) + flt(item.allocated_workdays)
+    requirements = set(frappe.get_all(
+        "Material Requirement", filters={"work_plan_line": ["in", lines], "docstatus": 1},
+        pluck="work_plan_line", limit_page_length=10000))
+    norms = {row.name: bool(row.norm_profile) for row in frappe.get_all(
+        "Daily Work Plan Line", filters={"name": ["in", lines]},
+        fields=["name", "norm_profile"], limit_page_length=10000)}
+    for task in tasks:
+        line = task.get("line")
+        task["allocated_workdays"] = round(workdays.get(line, 0), 6)
+        task["has_material_norm"] = norms.get(line, False)
+        task["material_requirement_ready"] = (not norms.get(line, False) or line in requirements)
+
+
 @frappe.whitelist()
 def day(farm, posting_date):
     record = _farm(farm)
@@ -80,6 +141,8 @@ def day(farm, posting_date):
             order_by="modified desc") if frappe.has_permission("Daily Work Plan", "read") else []
     else:
         tasks, plans = _own_tasks(farm, date), []
+    _apply_review_state(farm, date, tasks)
+    _apply_ready_hints(tasks)
     return {
         "farm": farm, "farm_name": record.farm_name,
         "posting_date": str(date), "tasks": tasks, "plans": plans,

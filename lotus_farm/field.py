@@ -64,7 +64,7 @@ def map_block_data(farm, block=None):
 
 
 @frappe.whitelist(methods=['POST'])
-def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None):
+def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None,revision_of=None):
     if expected_user and expected_user!=frappe.session.user:frappe.throw('Account changed; keep the event for its original user.',frappe.PermissionError)
     from lotus_farm.mobile_access import roles, is_manager, LEADER, SUPERVISOR
     scoped = (not is_manager() and
@@ -90,6 +90,7 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
         if not names:frappe.throw('Use a private photo uploaded by the signed-in user.')
         frappe.get_doc('File',names[0]).check_permission('read')
     payload=dict(target_doctype=target_doctype,values=values,farm=farm,captured_at=captured_at,latitude=latitude,longitude=longitude,gps_accuracy_m=gps_accuracy_m,photo=photo)
+    if revision_of:payload['revision_of']=revision_of
     key=canonical_hash([frappe.session.user,client_event_id]);hashed=canonical_hash(payload)
     existing=frappe.db.get_value('Field Capture',{'event_key':key},'name')
     if existing:
@@ -101,15 +102,32 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
             previous.check_permission('read')
         if previous.payload_hash!=hashed:frappe.throw('Event ID already has a different payload; preserve the original event or use a new ID.')
         return dict(capture=previous.name,document=previous.target_name,replayed=True)
-    if scoped:
-        from lotus_farm.mobile_access import scoped_result_capture
-        with scoped_result_capture(values['work_plan'], values['work_plan_line']):
-            doc=frappe.get_doc(dict(doctype=target_doctype,**values,farm=farm))
-            doc.flags.ignore_permissions=True
-            doc.insert(ignore_permissions=True)
-            doc.submit()
+    # Mobile results are drafts pending verification; integration events retain
+    # the existing immediate-submit contract for backward compatibility.
+    from lotus_farm.mobile_access import scoped_result_capture
+    from lotus_farm.work_review import assert_new_result, prepare_revision
+    work_review = (target_doctype == 'Daily Work Result' and
+                   (is_manager() or scoped or 'Lotus Integration User' not in roles()))
+    if work_review:
+        lock('Daily Work Plan', values['work_plan'])
+        if revision_of:
+            doc = frappe.get_doc('Daily Work Result', revision_of, for_update=True)
+            if doc.farm != farm:
+                frappe.throw('Báo cáo cần sửa không thuộc vườn.', frappe.PermissionError)
+            doc = prepare_revision(doc, values)
+        else:
+            assert_new_result(values)
+            with scoped_result_capture(values['work_plan'], values['work_plan_line']):
+                doc = frappe.get_doc(dict(doctype=target_doctype, **values, farm=farm,
+                                          review_state='Pending'))
+                doc.flags.ignore_permissions = scoped
+                doc.insert(ignore_permissions=scoped)
+    elif scoped:
+        frappe.throw('Tài khoản chỉ được báo kết quả công việc.', frappe.PermissionError)
     else:
-        doc=frappe.get_doc(dict(doctype=target_doctype,**values,farm=farm)).insert()
+        if revision_of:
+            frappe.throw('Không được sửa loại bản ghi này qua hàng chờ.')
+        doc = frappe.get_doc(dict(doctype=target_doctype, **values, farm=farm)).insert()
         doc.submit()
     evidence=frappe.get_doc(dict(doctype='Field Capture',farm=farm,client_event_id=client_event_id,captured_by=frappe.session.user,
         captured_at=captured_at,latitude=latitude,longitude=longitude,gps_accuracy_m=gps_accuracy_m,photo=photo,
@@ -122,7 +140,10 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
     if latitude is not None and doc.get('farm_plot'):
         match=next((g for g in map_data(farm)['features'] if g['properties']['plot']==doc.farm_plot),None)
         if match and not point_in_geometry(latitude,longitude,match['geometry']):warning='GPS is outside the approved Plot boundary; review the capture.'
-    return dict(capture=evidence.name,document=doc.name,replayed=False,warning=warning)
+    if work_review:
+        from lotus_farm.work_review import notify_transition
+        notify_transition(doc, 'Pending')
+    return dict(capture=evidence.name,document=doc.name,replayed=False,warning=warning,review_state=doc.get('review_state') if work_review else None)
 
 
 @frappe.whitelist()

@@ -45,9 +45,14 @@ const shortDate=value=>{const s=String(value||'').slice(0,10);return /^\d{4}-\d{
 const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')?'home':'profile')
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const canAssign=computed(()=>!!session.value?.abilities?.['work.assign'])
+const canPrepare=computed(()=>!!session.value?.abilities?.['work.prepare'])
 const canCapture=computed(()=>!!session.value?.abilities?.['work.result.capture'])
+const canVerify=computed(()=>!!session.value?.abilities?.['work.result.verify'])
+const canFinalize=computed(()=>!!session.value?.abilities?.['work.result.approve'])
+const reviewNote=ref('')
 const canApprove=computed(()=>!!session.value?.abilities?.['work.rate.approve'])
 const tasks=computed(()=>day.value?.tasks||[])
+const needingReview=computed(()=>tasks.value.filter(t=>(t.result_state==='Pending'&&canVerify.value&&t.result_owner!==session.value?.user)||(t.result_state==='Verified'&&canFinalize.value&&t.result_owner!==session.value?.user&&t.verified_by!==session.value?.user)))
 const planRows=computed(()=>day.value?.plans||[])
 const done=computed(()=>tasks.value.filter(t=>t.status==='Completed').length)
 const blocked=computed(()=>tasks.value.filter(t=>t.status==='Blocked').length)
@@ -57,7 +62,8 @@ const pendingCount=computed(()=>queue.value.filter(r=>!['Sent','Discarded'].incl
 const pendingLines=computed(()=>new Set(queue.value.filter(r=>!['Sent','Discarded'].includes(r.status)).map(r=>r.event?.values?.work_plan_line).filter(Boolean)))
 const fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
 const filteredTasks=computed(()=>tasks.value.filter(t=>{
- if(status.value==='open'&&t.status==='Completed')return false
+ if(status.value==='open'&&['Completed','Pending Review','Pending Approval'].includes(t.status))return false
+ if(status.value==='review'&&!needingReview.value.some(row=>row.line===t.line))return false
  if(status.value==='blocked'&&t.status!=='Blocked')return false
  if(status.value==='done'&&t.status!=='Completed')return false
  return !search.value||fold([t.work_name,t.plot_code,t.farm_plot,t.work_team,t.plan,t.status].join(' ')).includes(fold(search.value))
@@ -72,8 +78,8 @@ const taskSuggestions=computed(()=>filteredTasks.value.map(t=>({value:t.line,lab
 const histSuggestions=computed(()=>filteredHistory.value.map(r=>({value:r.name,label:r.work_name,description:r.block_code||r.plot_code+' · '+r.posting_date})))
 const fmt=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:2})
 const unit=x=>unitLabel(x)||x||''
-const labelState=s=>({Planned:'Chưa bắt đầu',Ready:'Sẵn sàng','In Progress':'Đang làm',Blocked:'Đang vướng',Completed:'Đã ghi kết quả'})[s]||stateLabel(s)||s||'Chưa bắt đầu'
-const badgeState=s=>({Planned:'neutral',Ready:'soft','In Progress':'running',Blocked:'warning',Completed:'success'})[s]||'neutral'
+const labelState=s=>({Planned:'Chưa bắt đầu',Ready:'Sẵn sàng','In Progress':'Đang làm',Blocked:'Đang vướng',Completed:'Đã duyệt','Pending Review':'Chờ đội trưởng kiểm tra','Pending Approval':'Chờ quản lý duyệt','Changes Requested':'Cần sửa báo cáo'})[s]||stateLabel(s)||s||'Chưa bắt đầu'
+const badgeState=s=>({Planned:'neutral',Ready:'soft','In Progress':'running',Blocked:'warning',Completed:'success','Pending Review':'soft','Pending Approval':'running','Changes Requested':'warning'})[s]||'neutral'
 function clear(){error.value='';message.value=''}
 function messageFor(e){return String(e?.message||'Không kết nối được máy chủ.')}
 function go(next){
@@ -185,10 +191,12 @@ async function bootstrap(){
  }catch(e){error.value=messageFor(e)}
  finally{busy.value=false}
 }
-function openTask(t){selected.value={...t};go('detail')}
+function openTask(t){selected.value={...t};reviewNote.value='';go('detail')}
+function canRevise(t){return t?.result_state==='Changes Requested'&&t.result_owner===session.value?.user}
 function openResult(){
- if(!canCapture.value||!selected.value||selected.value.result||pendingLines.value.has(selected.value.line))return
- resultForm.value={completed_qty:'',actual_workdays:'',unfinished_reason:''}
+ if(!canCapture.value||!selected.value||(selected.value.result&&!canRevise(selected.value))||pendingLines.value.has(selected.value.line))return
+ const old=canRevise(selected.value)?selected.value:null
+ resultForm.value={completed_qty:old?String(old.completed_qty):'',actual_workdays:old?String(old.actual_workdays):'',unfinished_reason:old?.unfinished_reason||''}
  photo.value=null
  go('result')
 }
@@ -219,6 +227,7 @@ async function saveResult(){
  try{
   const position=await gps()
   const event={client_event_id:crypto.randomUUID(),farm:farm.value,
+   ...(canRevise(t)?{revision_of:t.result}:{}),
    target_doctype:'Daily Work Result',captured_at:new Date().toISOString(),...position,
    values:{farm_block:t.farm_block,farm_plot:t.farm_plot,crop_cycle:t.crop_cycle,
     sucker_selection_batch:t.cohort||null,posting_date:t.posting_date||date.value,
@@ -227,9 +236,40 @@ async function saveResult(){
   await queueCapture(session.value.user,event,photo.value)
   await refreshQueue()
   resultForm.value=null;photo.value=null;go('tasks')
-  message.value='Đã lưu bản báo cáo trên máy. '+(online.value?'Đang gửi lên máy chủ.':'Khi có mạng hãy vào Tôi → Hàng chờ để gửi.')
+  message.value='Đã lưu báo cáo trên điện thoại. Khi đồng bộ xong, báo cáo sẽ chờ đội trưởng kiểm tra, chưa tính là đã duyệt.'
   saving.value=false
   if(online.value)await syncQueue(false)
+ }catch(e){error.value=messageFor(e)}
+ finally{saving.value=false}
+}
+async function prepareSelected(){
+ if(!canPrepare.value||!selected.value||!online.value||saving.value)return
+ saving.value=true;clear()
+ try{
+  const t=selected.value
+  const r=await call('lotus_farm.work_prepare.prepare',{plan:t.plan,line:t.line},true)
+  message.value=r.note||'Đã chuẩn bị công dự kiến và nhu cầu vật tư. Kiểm tra cấp vật tư ở app Kho.'
+  await loadDay()
+  const updated=tasks.value.find(x=>x.line===t.line)
+  if(updated)selected.value={...updated}
+ }catch(e){error.value=messageFor(e)}
+ finally{saving.value=false}
+}
+async function decideResult(decision){
+ if(!selected.value?.result||saving.value||!online.value)return
+ if(decision==='Request Changes'&&!reviewNote.value.trim()){
+  error.value='Nhập lý do yêu cầu sửa báo cáo.';return
+ }
+ saving.value=true;clear()
+ try{
+  const r=await call('lotus_farm.work_review.decide',{
+   result:selected.value.result,decision,reason:reviewNote.value.trim()
+  },true)
+  reviewNote.value=''
+  message.value=decision==='Verify'?'Đã kiểm tra, chuyển quản lý duyệt.':decision==='Approve'?'Đã duyệt kết quả chính thức.':'Đã trả lại báo cáo để tổ trưởng sửa.'
+  await loadDay()
+  const updated=tasks.value.find(t=>t.line===selected.value.line)
+  if(updated)selected.value={...updated}
  }catch(e){error.value=messageFor(e)}
  finally{saving.value=false}
 }
@@ -289,7 +329,7 @@ async function logout(){
  finally{saving.value=false}
 }
 async function changeState(next,reason=''){
- if(!(canAssign.value||(next==='Blocked'&&canCapture.value))||!selected.value||saving.value||!online.value)return
+ if(!canAssign.value||!selected.value||saving.value||!online.value)return
  saving.value=true;clear()
  try{
   await consoleAPI('work_state',{plan:selected.value.plan,line:selected.value.line,state:next,reason},true)
@@ -461,6 +501,7 @@ onBeforeUnmount(()=>{
       <LotusMobileAction v-if="canCapture" icon="completed" title="Báo kết quả" @select="status='open';go('tasks')"/>
       <LotusMobileAction icon="apps-o" title="Công việc đã giao" @select="status='all';go('tasks')"/>
       <LotusMobileAction icon="flag-o" title="Việc vướng mắc" @select="status='blocked';go('tasks')"/>
+      <LotusMobileAction v-if="needingReview.length" icon="passed" :title="'Chờ tôi kiểm / duyệt ('+needingReview.length+')'" @select="status='review';go('tasks')"/>
       <LotusMobileAction icon="clock-o" title="Kết quả đã ghi" @select="changeTab('history')"/>
      </div>
      <div class="work-summary">Ngày {{shortDate(date)}}: <strong>{{remaining}}</strong> việc chưa xong · <strong>{{done}}</strong> đã ghi kết quả
@@ -554,12 +595,31 @@ onBeforeUnmount(()=>{
      </div>
      <p v-if="selected.blocked_reason" class="mobile-message work-warning">Vướng mắc: {{selected.blocked_reason}}</p>
      <p v-if="pendingLines.has(selected.line)" class="mobile-message work-warning">Việc này đã có báo cáo lưu trên điện thoại. Mở hàng chờ thay vì ghi trùng.</p>
+     <div v-if="['Planned','Blocked','Ready'].includes(selected.status)" class="mobile-list-card">
+      <strong>Điều kiện chuẩn bị công việc</strong>
+      <div class="mobile-inline"><span>Đã phân / Cần phân</span><b>{{fmt(selected.allocated_workdays)}} / {{fmt(selected.required_workdays)}} công</b></div>
+      <p v-if="selected.has_material_norm" class="work-muted">Phiếu nhu cầu vật tư: {{selected.material_requirement_ready?'Đã có':'Chưa có'}}</p>
+      <p v-else class="work-muted">Việc này chưa có định mức vật tư hoặc không cần vật tư theo kế hoạch.</p>
+      <LotusMobileButton v-if="canPrepare" type="button" class="work-outline" :disabled="saving||!online" @click="prepareSelected">Chuẩn bị tổng công và phiếu vật tư</LotusMobileButton>
+      <small class="work-muted">Chuẩn bị không phải là xuất kho hay chấm công thực tế. Nếu có vật tư, cần kiểm tra cấp phát trên app Kho.</small>
+     </div>
      <div class="work-actions">
       <LotusMobileButton v-if="canAssign&&['Planned','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('Ready')">Sẵn sàng làm <b>›</b></LotusMobileButton>
       <LotusMobileButton v-if="canAssign&&['Ready','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('In Progress')">Bắt đầu làm <b>›</b></LotusMobileButton>
-      <LotusMobileButton v-if="(canAssign||canCapture)&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b>›</b></LotusMobileButton>
-      <LotusMobileButton v-if="canCapture&&!selected.result&&!pendingLines.has(selected.line)" type="button" class="mobile-submit" :disabled="saving" @click="openResult">Ghi kết quả →</LotusMobileButton>
-      <p v-if="selected.result" class="mobile-message success">Đã có phiếu kết quả {{selected.result}}. Muốn sửa cần hủy hoặc điều chỉnh theo quyền.</p>
+      <LotusMobileButton v-if="canAssign&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b>›</b></LotusMobileButton>
+      <LotusMobileButton v-if="canCapture&&(!selected.result||canRevise(selected))&&!pendingLines.has(selected.line)" type="button" class="mobile-submit" :disabled="saving" @click="openResult">{{canRevise(selected)?'Sửa và gửi lại kết quả →':'Gửi báo cáo kết quả →'}}</LotusMobileButton>
+      <p v-if="selected.result" class="mobile-message" :class="selected.result_state==='Approved'?'success':'work-warning'">Phiếu {{selected.result}} · {{labelState(selected.status)}}.</p>
+      <p v-if="selected.review_note" class="mobile-message work-warning">Nhận xét: {{selected.review_note}}</p>
+      <div v-if="canVerify&&selected.result_state==='Pending'&&selected.result_owner!==session.user">
+       <div class="mobile-field"><label>Nhận xét kiểm tra (nếu có)</label><LotusMobileInput type="textarea" v-model="reviewNote" rows="2"/></div>
+       <LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Verify')">Kiểm tra đạt → Chờ quản lý duyệt</LotusMobileButton>
+       <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu tổ trưởng sửa</LotusMobileButton>
+      </div>
+      <div v-if="canVerify&&selected.result_state==='Verified'&&selected.result_owner!==session.user">
+       <div class="mobile-field"><label>Nhận xét duyệt (nếu có)</label><LotusMobileInput type="textarea" v-model="reviewNote" rows="2"/></div>
+       <LotusMobileButton v-if="canFinalize&&selected.verified_by!==session.user" type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Approve')">Duyệt kết quả chính thức</LotusMobileButton>
+       <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu kiểm tra lại</LotusMobileButton>
+      </div>
      </div>
     </template>
 
@@ -575,7 +635,7 @@ onBeforeUnmount(()=>{
       <div class="mobile-field"><label>Lý do chưa đạt chỉ tiêu (nếu có)</label><LotusMobileInput type="textarea" v-model="resultForm.unfinished_reason" rows="2" placeholder="Ví dụ: trời mưa, thiếu vật tư…"/></div>
       <div class="mobile-field"><label>Ảnh hiện trường (nếu có)</label><LotusMobileFile accept="image/*" capture="environment" @change="pickPhoto"/></div>
       <p v-if="photo" class="mobile-message success">Đã chọn ảnh: {{photo.name}}</p>
-      <p class="work-muted">Ghi công theo tổng công của tổ, không tự chia cho từng người. Nếu mất mạng, báo cáo được giữ trong Hàng chờ.</p>
+      <p class="work-muted">Ghi công theo tổng công của tổ, không tự chia cho từng người. Báo cáo gửi lên sẽ chờ đội trưởng kiểm tra và quản lý duyệt; chưa tính công chính thức. Khi mất mạng, báo cáo được giữ trong Hàng chờ.</p>
       <LotusMobileButton type="submit" class="mobile-submit">{{saving?'Đang lưu…':'Lưu báo cáo →'}}</LotusMobileButton>
      </fieldset></form>
     </template>
