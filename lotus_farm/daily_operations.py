@@ -109,7 +109,9 @@ def company_scope(doc):
 
 def plan_line(doc):
     plan = frappe.get_doc('Daily Work Plan', doc.work_plan, for_update=True)
-    plan.check_permission('read')
+    from lotus_farm.mobile_access import can_skip_plan_read
+    if not can_skip_plan_read(doc):
+        plan.check_permission('read')
     lock('Daily Work Plan', plan.name)
     if plan.docstatus != 1 or plan.farm != doc.farm or getdate(plan.posting_date) != getdate(doc.posting_date):
         frappe.throw('Work Plan must be submitted for the same Farm/day.')

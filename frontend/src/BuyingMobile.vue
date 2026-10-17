@@ -1,4 +1,5 @@
 <script setup>
+import BuyingOrderCard from './components/BuyingOrderCard.vue'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
@@ -41,7 +42,7 @@ function confirmLeave(target=''){
  return dirtySupplier||dirtyOrder?askLeave(purchaseLeaveMessage(!!savedPurchase.value?.quoteError)):Promise.resolve(true)
 }
 function beforeUnload(event){if(saving.value||view.value==='form'&&dirtyPurchase()||view.value==='supplier'&&(JSON.stringify(supplierForm.value)!==initialSupplier||supplierReturn==='form'&&dirtyPurchase())){event.preventDefault();event.returnValue=''}}
-const online=ref(navigator.onLine),installPrompt=ref(null),installHelp=ref(false)
+const online=ref(navigator.onLine)
 let navigationReady=false, restoring=false
 const baseTabs=['home','orders','suppliers','profile']
 const mobileTabs=[
@@ -100,13 +101,6 @@ async function browserBack(e){
  restoring=false
 }
 function refreshNetwork(){online.value=navigator.onLine}
-function handleInstall(e){e.preventDefault();installPrompt.value=e}
-async function install(){
- if(installPrompt.value){
-  await installPrompt.value.prompt()
-  installPrompt.value=null
- }else installHelp.value=!installHelp.value
-}
 async function run(task){
  if(saving.value||!online.value)return
  saving.value=true;resetFeedback()
@@ -252,13 +246,13 @@ onMounted(()=>{window.history.replaceState({lotusBuying:true,tab:'home',view:''}
  navigationReady=true;window.addEventListener('popstate',browserBack)
  window.addEventListener('beforeunload',beforeUnload)
  window.addEventListener('online',refreshNetwork);window.addEventListener('offline',refreshNetwork)
- window.addEventListener('beforeinstallprompt',handleInstall);initialize().then(()=>{
+ initialize().then(()=>{
  const doc=new URLSearchParams(location.search).get('doc')
  if(session.value&&doc)openOrder(doc)
 })})
 onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.removeEventListener('online',refreshNetwork);
  window.removeEventListener('beforeunload',beforeUnload)
- window.removeEventListener('offline',refreshNetwork);window.removeEventListener('beforeinstallprompt',handleInstall)})
+ window.removeEventListener('offline',refreshNetwork)})
 </script>
 
 <template>
@@ -280,34 +274,27 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <LotusMobileButton @click="openView('requests')"><b>{{counts.requests}}</b><small>Đề nghị mua</small></LotusMobileButton>
    </div>
    <div class="mobile-actions" aria-label="Thao tác Mua hàng">
-    <LotusMobileAction primary icon="cart-o" title="Tạo đơn mua" :disabled="!canCreate" @select="newOrder()"/>
+    <LotusMobileAction v-if="canCreate" primary icon="cart-o" title="Tạo đơn mua" @select="newOrder()"/>
     <LotusMobileAction icon="notes-o" title="Đề nghị mua" @select="openView('requests')"/>
-    <LotusMobileAction icon="passed" title="Duyệt đơn" @select="status='Chờ duyệt';changeTab('orders')"/>
+    <LotusMobileAction v-if="session?.can_approve" icon="passed" title="Duyệt đơn" @select="status='Chờ duyệt';changeTab('orders')"/>
     <LotusMobileAction icon="shop-o" title="Nhà cung cấp" @select="changeTab('suppliers')"/>
    </div>
    <h2>Đơn gần đây</h2>
-   <LotusMobileButton v-for="r in orders.slice(0,5)" :key="r.name" class="buy-card" @click="openOrder(r.name)">
-    <div class="buy-line"><strong>{{r.supplier_name}}</strong><span class="buy-pill">{{r.approval_status}}</span></div>
-    <small>{{r.name}} · {{r.warehouse}}</small><div class="buy-line"><span>{{r.status}}</span><b>{{money(r.amount)}}</b></div>
-   </LotusMobileButton>
+   <BuyingOrderCard v-for="r in orders.slice(0,5)" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" @select="openOrder"/>
    <p v-if="!orders.length&&!busy" class="buy-empty">Chưa có đơn mua.</p>
   </template>
 
   <template v-if="!view&&tab==='orders'">
    <div class="buy-toolbar"><LotusMobileInput v-model="filter" type="search" placeholder="Tìm số đơn, nhà cung cấp…" aria-label="Tìm đơn mua"/>
     <LotusMobileSelect v-model="status" aria-label="Lọc đơn mua"><option>Tất cả</option><option>Nháp</option><option>Chờ duyệt</option><option>Đã duyệt</option><option>Từ chối</option><option>Đã đóng</option><option>Đã hủy</option><option>Quá hẹn</option><option>Về một phần</option><option>Đã nhận đủ</option></LotusMobileSelect></div>
-   <LotusMobileButton class="buy-primary" :disabled="!canCreate" @click="newOrder()">+ Tạo đơn mua</LotusMobileButton>
-   <LotusMobileButton v-for="r in visibleOrders" :key="r.name" class="buy-card" @click="openOrder(r.name)">
-    <div class="buy-line"><strong>{{r.supplier_name}}</strong><span class="buy-pill">{{r.approval_status}}</span></div>
-    <small>{{r.name}} · Hẹn {{r.expected_date}}</small>
-    <div class="buy-line"><span>{{r.status}}</span><b>{{money(r.amount)}}</b></div>
-   </LotusMobileButton>
+   <LotusMobileButton v-if="canCreate" class="buy-primary" @click="newOrder()">+ Tạo đơn mua</LotusMobileButton>
+   <BuyingOrderCard v-for="r in visibleOrders" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" show-date @select="openOrder"/>
    <p v-if="!visibleOrders.length&&!busy" class="buy-empty">Không tìm thấy đơn phù hợp.</p>
   </template>
 
   <template v-if="!view&&tab==='suppliers'">
    <LotusMobileInput v-model="supplierSearch" class="buy-search" type="search" placeholder="Gõ tên hoặc số điện thoại NCC…" aria-label="Tìm nhà cung cấp"/>
-   <LotusMobileButton class="buy-primary" :disabled="!catalog?.can_create_supplier" @click="addSupplier()">+ Thêm nhà cung cấp</LotusMobileButton>
+   <LotusMobileButton v-if="catalog?.can_create_supplier" class="buy-primary" @click="addSupplier()">+ Thêm nhà cung cấp</LotusMobileButton>
    <LotusMobileButton v-for="s in visibleSuppliers" :key="s.name" class="buy-card" @click="editSupplier(s)">
     <div class="buy-line"><strong>{{s.supplier_name}}</strong><span class="buy-pill">{{s.disabled?'Ngừng dùng':'Đang dùng'}}</span></div>
     <small>{{s.lotus_supplier_contact||'Chưa có người liên hệ'}}</small>
@@ -318,8 +305,6 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
   <template v-if="!view&&tab==='profile'">
    <div class="buy-card"><strong>{{session?.user||'—'}}</strong><small>{{company}}</small>
     <p>Quyền: {{session?.can_approve?'Duyệt đơn mua':'Không có quyền duyệt'}} · {{canCreate?'Lập đơn':'Chỉ xem'}}</p></div>
-   <LotusMobileButton class="buy-primary" type="button" @click="install()">Cài App Mua hàng lên điện thoại</LotusMobileButton>
-   <p v-if="installHelp" class="buy-muted">Android: dùng Chrome → Cài ứng dụng. iPhone: dùng Safari → Chia sẻ → Thêm vào Màn hình chính.</p>
    <LotusMobileButton class="buy-outline" type="button" @click="openSetup()">Cài ứng dụng và thông báo</LotusMobileButton>
    <LotusMobileButton class="buy-outline" type="button" @click="refresh()">Làm mới</LotusMobileButton>
    <LotusMobileButton class="buy-outline" type="button" @click="logout()">Đăng xuất</LotusMobileButton>

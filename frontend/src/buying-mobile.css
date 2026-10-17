@@ -53,3 +53,31 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .buy-bottom button.active{background:#fff0e9;color:#e45f33}
 .buy-keyboard{padding-bottom:10px}
 @media(min-width:720px){.buy-bottom{left:50%;width:690px;transform:translateX(-50%)}.buy-head{justify-content:center}.buy-head>strong{flex:0 1 600px}.buy-main{padding:20px 24px 55px}}
+/* Purchase-order cards: do not let Vant's inline button text squeeze fields into columns. */
+.buy-order-card.van-button{
+ display:block;width:100%;height:auto;min-height:94px;margin:10px 0;padding:13px 14px;
+ border:1px solid #e8e5e1;border-radius:15px;background:#fff;
+ box-shadow:0 2px 7px #321b1010;color:#303830;text-align:left;white-space:normal;
+}
+.buy-order-card .van-button__content,.buy-order-card .van-button__text{
+ display:block;width:100%;min-width:0;max-width:100%;text-align:left;line-height:normal;
+}
+.buy-order-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;}
+.buy-order-supplier{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;line-height:1.35;font-weight:750;}
+.buy-order-status{display:inline-flex;align-items:center;flex:none;max-width:48%;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.25;white-space:nowrap;}
+.buy-order-status--draft{background:#f1f2f3;color:#626970;}
+.buy-order-status--pending{background:#fff0e4;color:#b85c23;}
+.buy-order-status--rejected,.buy-order-status--late,.buy-order-status--cancelled{background:#fff0f0;color:#a63838;}
+.buy-order-status--approved,.buy-order-status--done{background:#e8f6ec;color:#267044;}
+.buy-order-status--partial{background:#eef2ff;color:#465eb0;}
+.buy-order-status--closed{background:#f1edfa;color:#7254a2;}
+.buy-order-code{margin-top:7px;color:#71777b;font-size:12px;font-weight:450;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.buy-order-bottom{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;column-gap:12px;row-gap:4px;margin-top:7px;min-width:0;}
+.buy-order-meta{flex:1 1 95px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#737a7f;font-size:12px;line-height:1.4;}
+.buy-order-amount{flex:none;margin-left:auto;font-size:16px;line-height:1.35;font-weight:800;color:#242c27;white-space:nowrap;font-variant-numeric:tabular-nums;}
+@media(max-width:360px){
+ .buy-order-card.van-button{padding:12px}
+ .buy-order-supplier{font-size:15px}
+ .buy-order-status{padding:4px 8px;font-size:11px}
+ .buy-order-amount{font-size:15px}
+}

@@ -32,7 +32,7 @@ const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const session=ref(null),company=ref(''),warehouse=ref(''),setup=ref(null),employees=ref([])
 const screen=ref('home'),kind=ref('receipt'),busy=ref(false),saving=ref(false)
-const error=ref(''),message=ref(''),online=ref(navigator.onLine),installPrompt=ref(null),showInstallHelp=ref(false)
+const error=ref(''),message=ref(''),online=ref(navigator.onLine)
 const installed=ref(false),form=ref(null),order=ref(null),quote=ref(null)
 const requestForm=ref(null),supplierForm=ref(null),savedPurchase=ref(null),purchaseRequests=ref([]),selectedPurchaseRequest=ref('')
 let supplierInitial=''
@@ -221,12 +221,7 @@ watch(screen,(next,previous)=>{
  window.scrollTo(0,0)
 },{flush:'sync'})
 function connection(){online.value=navigator.onLine}
-function captureInstall(e){e.preventDefault();installPrompt.value=e}
-function installedEvent(){installed.value=true;installPrompt.value=null}
-async function install(){
- if(installPrompt.value){const e=installPrompt.value;installPrompt.value=null;await e.prompt()}
- else showInstallHelp.value=!showInstallHelp.value
-}
+function installedEvent(){installed.value=true}
 async function bootstrap(){
  busy.value=true;error.value=''
  try{
@@ -526,7 +521,7 @@ onMounted(()=>{
  navigationReady=true
  installed.value=window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true
  window.addEventListener('online',connection);window.addEventListener('offline',connection)
- window.addEventListener('beforeinstallprompt',captureInstall);window.addEventListener('appinstalled',installedEvent)
+ window.addEventListener('appinstalled',installedEvent)
  navigator.serviceWorker?.addEventListener('controllerchange',onWorkerChange)
  bootstrap().then(()=>{
   const qs=new URLSearchParams(location.search)
@@ -542,7 +537,7 @@ onUnmounted(()=>{
  window.removeEventListener('beforeunload',beforeUnload)
  navigator.serviceWorker?.removeEventListener('controllerchange',onWorkerChange)
  window.removeEventListener('online',connection);window.removeEventListener('offline',connection)
- window.removeEventListener('beforeinstallprompt',captureInstall);window.removeEventListener('appinstalled',installedEvent)
+ window.removeEventListener('appinstalled',installedEvent)
 })
 </script>
 
@@ -563,14 +558,14 @@ onUnmounted(()=>{
     <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Công ty</label><MobileLinkField :model-value="company" :options="companyOptions" :searchable="false" placeholder="Chọn công ty" @update:modelValue="v=>changeCompany(v)"/></div>
     <div class="mobile-field"><label>Kho đang làm việc</label><MobileLinkField :model-value="warehouse" :options="storeOptions" :searchable="false" :disabled="!setup" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/></div>
     <div class="mobile-actions" aria-label="Thao tác Kho">
-     <LotusMobileAction primary icon="cart-o" title="Tạo đơn mua" :disabled="!setup" @select="startBuying"/>
-     <LotusMobileAction icon="notes-o" title="Đề nghị mua" :disabled="!setup?.can_request" @select="startRequest"/>
-     <LotusMobileAction icon="logistics" title="Nhập theo đơn" :disabled="!setup||!allowed('Purchase Receipt')" @select="startReceiving"/>
-     <LotusMobileAction icon="upgrade" title="Xuất kho" :disabled="!setup||!allowed('Stock Entry')" @select="start('issue')"/>
-     <LotusMobileAction icon="exchange" title="Chuyển kho" :disabled="!setup||!allowed('Stock Entry')" @select="start('transfer')"/>
-     <LotusMobileAction icon="down" title="Nhập không theo đơn" :disabled="!setup||!allowed('Stock Entry')" @select="start('receipt')"/>
+     <LotusMobileAction v-if="setup?.can_create" primary icon="cart-o" title="Tạo đơn mua" :disabled="!setup" @select="startBuying"/>
+     <LotusMobileAction v-if="setup?.can_request" icon="notes-o" title="Đề nghị mua" @select="startRequest"/>
+     <LotusMobileAction v-if="allowed('Purchase Receipt')" icon="logistics" title="Nhập theo đơn" :disabled="!setup" @select="startReceiving"/>
+     <LotusMobileAction v-if="allowed('Stock Entry')" icon="upgrade" title="Xuất kho" :disabled="!setup" @select="start('issue')"/>
+     <LotusMobileAction v-if="allowed('Stock Entry')" icon="exchange" title="Chuyển kho" :disabled="!setup" @select="start('transfer')"/>
+     <LotusMobileAction v-if="allowed('Stock Entry')" icon="down" title="Nhập không theo đơn" :disabled="!setup" @select="start('receipt')"/>
     </div>
-    <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="install">＋ Thêm Kho Lotus lên màn hình chính</LotusMobileButton><p v-if="showInstallHelp">Android: mở bằng Chrome và chọn Cài đặt ứng dụng. iPhone: mở bằng Safari → Chia sẻ → Thêm vào màn hình chính. Cần HTTPS.</p></div>
+    <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="openSetup">＋ Thêm Kho Lotus lên màn hình chính</LotusMobileButton></div>
    </template>
 
    <template v-if="screen==='stock-form'&&form">
@@ -729,7 +724,7 @@ onUnmounted(()=>{
     </div>
     <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Đổi công ty</label><MobileLinkField :model-value="company" :options="companyOptions" :searchable="false" @update:modelValue="v=>changeCompany(v)"/></div>
     <div class="mobile-field"><label>Đổi kho làm việc</label><MobileLinkField :model-value="warehouse" :options="storeOptions" :searchable="false" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/></div>
-    <div class="mobile-install"><LotusMobileButton v-if="!installed" @click="install">Cài Kho Lotus lên điện thoại</LotusMobileButton><p v-if="showInstallHelp">Android: Chrome → Cài ứng dụng. iPhone: Safari → Chia sẻ → Thêm vào màn hình chính.</p></div>
+    
     <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
     <LotusMobileButton class="mobile-logout" type="button" :disabled="saving" @click="logout">Đăng xuất</LotusMobileButton>
    </template>

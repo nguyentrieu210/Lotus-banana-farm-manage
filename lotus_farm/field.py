@@ -66,11 +66,22 @@ def map_block_data(farm, block=None):
 @frappe.whitelist(methods=['POST'])
 def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None):
     if expected_user and expected_user!=frappe.session.user:frappe.throw('Account changed; keep the event for its original user.',frappe.PermissionError)
-    require_role('Lotus Farm Manager','Lotus Integration User')
+    from lotus_farm.mobile_access import roles, is_manager, LEADER, SUPERVISOR
+    scoped = (not is_manager() and
+              'Lotus Integration User' not in roles() and
+              bool({LEADER, SUPERVISOR}.intersection(roles())))
+    if scoped:
+        if target_doctype != 'Daily Work Result':
+            frappe.throw('Tài khoản chỉ được báo kết quả công việc.', frappe.PermissionError)
+    else:
+        require_role('Lotus Farm Manager','Lotus Integration User')
     frappe.get_doc('Farm',farm).check_permission('read');lock('Farm',farm)
     if not client_event_id or target_doctype not in CAPTURE_TYPES:frappe.throw('Select a supported field event and an event ID.')
     values=json.loads(values) if isinstance(values,str) else values
     if not isinstance(values,dict) or any(k not in IMPORT_FIELDS[target_doctype] for k in values):frappe.throw('Unsupported field event fields.')
+    if scoped:
+        from lotus_farm.mobile_access import validate_capture
+        validate_capture(farm, values)
     if (latitude is None)!=(longitude is None):frappe.throw('Provide both GPS coordinates, or neither.')
     if latitude is not None:coordinates(latitude,longitude)
     captured_at=str(local_timestamp(captured_at))
@@ -82,15 +93,28 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
     key=canonical_hash([frappe.session.user,client_event_id]);hashed=canonical_hash(payload)
     existing=frappe.db.get_value('Field Capture',{'event_key':key},'name')
     if existing:
-        previous=frappe.get_doc('Field Capture',existing);previous.check_permission('read')
+        previous=frappe.get_doc('Field Capture',existing)
+        if scoped:
+            if previous.captured_by != frappe.session.user or previous.farm != farm:
+                frappe.throw('Không có quyền xem báo cáo này.', frappe.PermissionError)
+        else:
+            previous.check_permission('read')
         if previous.payload_hash!=hashed:frappe.throw('Event ID already has a different payload; preserve the original event or use a new ID.')
         return dict(capture=previous.name,document=previous.target_name,replayed=True)
-    doc=frappe.get_doc(dict(doctype=target_doctype,**values,farm=farm)).insert()
-    doc.submit()
+    if scoped:
+        from lotus_farm.mobile_access import scoped_result_capture
+        with scoped_result_capture(values['work_plan'], values['work_plan_line']):
+            doc=frappe.get_doc(dict(doctype=target_doctype,**values,farm=farm))
+            doc.flags.ignore_permissions=True
+            doc.insert(ignore_permissions=True)
+            doc.submit()
+    else:
+        doc=frappe.get_doc(dict(doctype=target_doctype,**values,farm=farm)).insert()
+        doc.submit()
     evidence=frappe.get_doc(dict(doctype='Field Capture',farm=farm,client_event_id=client_event_id,captured_by=frappe.session.user,
         captured_at=captured_at,latitude=latitude,longitude=longitude,gps_accuracy_m=gps_accuracy_m,photo=photo,
         payload_json=json.dumps(payload,sort_keys=True,default=str),target_doctype=doc.doctype,target_name=doc.name))
-    with command(evidence,'field_capture'):evidence.insert()
+    with command(evidence,'field_capture'):evidence.insert(ignore_permissions=scoped)
     frappe.db.set_value(doc.doctype,doc.name,'field_capture',evidence.name,update_modified=False)
     if photo:
         frappe.db.set_value('File',names[0],{'attached_to_doctype':'Field Capture','attached_to_name':evidence.name})
@@ -169,7 +193,7 @@ def session_info():
     from frappe.sessions import get_csrf_token
     return dict(user=frappe.session.user,csrf_token=get_csrf_token(),capabilities=dict(
         stock=all(frappe.has_permission(t,'read') for t in ('Stock Entry','Warehouse','Item','Bin','Company')),
-        field=frappe.has_permission('Daily Work Result','create'),
+        field=frappe.has_permission('Daily Work Result','create') or __import__('lotus_farm.mobile_access', fromlist=['can_capture']).can_capture(),
         home=all(frappe.has_permission(t,'read') for t in ('Daily Work Plan','Daily Work Result','Labor Allocation','Daily Labor Summary','Bunch Cancellation','Disease Observation','Harvest Actual','Incoming Quality Inspection','Packout Run','Material Requirement','Material Consumption','Harvest Forecast')),
         packhouse=frappe.has_permission('Harvest Lot','read'),
         imports=frappe.has_permission('Source Import Mapping','read'),map=frappe.has_permission('Plot Geometry','read'),
@@ -200,10 +224,17 @@ def lot_qr(harvest_lot):
 
 @frappe.whitelist()
 def capture_status(client_event_id):
-    require_role('Lotus Farm Manager','Lotus Integration User')
+    require_role('Lotus Farm Manager','Lotus Integration User','Lotus Team Leader','Lotus Field Supervisor')
     name=frappe.db.get_value('Field Capture',{'event_key':canonical_hash([frappe.session.user,client_event_id])},'name')
     if not name:return dict(received=False)
-    doc=frappe.get_doc('Field Capture',name);doc.check_permission('read')
+    doc=frappe.get_doc('Field Capture',name)
+    from lotus_farm.mobile_access import is_manager, roles, require_farm
+    if is_manager() or 'Lotus Integration User' in roles():
+        doc.check_permission('read')
+    else:
+        if doc.captured_by != frappe.session.user:
+            frappe.throw('Không có quyền xem báo cáo này.', frappe.PermissionError)
+        require_farm(doc.farm)
     return dict(received=True,capture=doc.name,document=doc.target_name)
 
 
@@ -212,6 +243,8 @@ def save_uploaded_photo():
     # Frappe upload_file validates the session, CSRF and upload type before dispatching here.
     if frappe.form_dict.get('expected_user')!=frappe.session.user or frappe.session.user=='Guest':
         frappe.throw('Account changed before photo upload.',frappe.PermissionError)
-    require_role('Lotus Farm Manager','Lotus Integration User')
+    require_role('Lotus Farm Manager','Lotus Integration User','Lotus Team Leader','Lotus Field Supervisor')
     if not frappe.local.uploaded_file:frappe.throw('A photo file is required.')
-    return frappe.get_doc(dict(doctype='File',file_name=frappe.local.uploaded_filename,is_private=1,content=frappe.local.uploaded_file)).save()
+    from lotus_farm.mobile_access import is_manager, roles
+    bypass = not is_manager() and 'Lotus Integration User' not in roles()
+    return frappe.get_doc(dict(doctype='File',file_name=frappe.local.uploaded_filename,is_private=1,content=frappe.local.uploaded_file)).save(ignore_permissions=bypass)

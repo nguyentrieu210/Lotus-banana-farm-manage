@@ -86,6 +86,16 @@ def farm_allowed(farm, user=None):
     return farm in allowed
 
 
+def work_team_permission(doc, user=None, permission_type=None):
+    from lotus_farm.mobile_access import roles, is_manager, allowed_teams, LEADER, SUPERVISOR
+    user = user or frappe.session.user
+    if not farm_permission(doc, user, permission_type):
+        return False
+    if not is_manager(user) and {LEADER, SUPERVISOR}.intersection(roles(user)):
+        return doc.name in allowed_teams(doc.farm, user)
+    return True
+
+
 def farm_permission(doc, user=None, permission_type=None):
     farm = doc.name if doc.doctype == "Farm" else doc.get("farm")
     if not farm:

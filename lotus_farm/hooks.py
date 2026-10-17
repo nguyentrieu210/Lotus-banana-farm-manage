@@ -76,6 +76,7 @@ _daily_doctypes = [
 for _name in _daily_doctypes:
     has_permission[_name] = "lotus_farm.controls.farm_permission"
     permission_query_conditions[_name] = "lotus_farm.permissions." + _name.lower().replace(" ", "_")
+has_permission["Work Team"] = "lotus_farm.controls.work_team_permission"
 for _name in ("Crop Cycle", "Sucker Selection Batch", "Bunch Operation", "Harvest Actual", "Defect Inspection", "Harvest Forecast"):
     _current = doc_events[_name].get("validate", [])
     if isinstance(_current, str):

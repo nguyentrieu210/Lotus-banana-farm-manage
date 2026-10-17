@@ -1,4 +1,4 @@
-import test from 'node:test'
+﻿import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const read=file=>readFileSync(new URL(file,import.meta.url),'utf8')
@@ -44,7 +44,8 @@ test('shared home action uses Vant Cell and keeps permissions',()=>{
  assert.match(tile,/:disabled="disabled"/)
  assert.match(tile,/@click="choose"/)
  const warehouse=read('../src/WarehouseMobile.vue')
- assert.match(warehouse,/:disabled="!setup\?\.can_request"/)
+ assert.match(warehouse,/v-if="setup\?\.can_request"/)
  assert.match(warehouse,/@select="startRequest"/)
  assert.ok(warehouse.indexOf('title="Tạo đơn mua"')<warehouse.indexOf('title="Nhập theo đơn"'))
 })
+

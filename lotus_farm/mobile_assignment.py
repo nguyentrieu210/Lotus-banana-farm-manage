@@ -11,7 +11,7 @@ from lotus_farm.rules import RuleError, quantity
 
 
 def permitted_farm(farm):
-    require_role("Lotus Farm Manager")
+    require_role("Lotus Farm Manager", "Lotus Field Supervisor")
     if not farm:
         frappe.throw("Chọn vườn trước.")
     doc = frappe.get_doc("Farm", farm)
@@ -60,6 +60,8 @@ def _planned_lines(farm, team, items, posting_date=None):
         items = frappe.parse_json(items)
     if not isinstance(items, list) or not 1 <= len(items) <= 50:
         frappe.throw("Nhập từ 1 đến 50 công việc.")
+    from lotus_farm.mobile_access import require_team
+    require_team(farm, team)
     team_doc = frappe.get_doc("Work Team", team)
     team_doc.check_permission("read")
     if team_doc.farm != farm or not team_doc.active:
@@ -186,7 +188,7 @@ def create(farm, posting_date, work_team, items, rate_request_reason=None):
         frappe.throw("Chọn ngày giao việc.")
     lock("Farm", farm)
     lines = _planned_lines(farm, work_team, items, date)
-    existing = frappe.get_list(
+    existing = frappe.get_all(
         "Daily Work Plan",
         filters={"farm": farm, "posting_date": date, "docstatus": 1},
         fields=["name"], limit_page_length=10000)
@@ -218,7 +220,11 @@ def create(farm, posting_date, work_team, items, rate_request_reason=None):
                             "piecework_rate", "required_workdays",
                             "estimated_piecework_amount", "materials", "requires_approval")}
             for row in lines]))
-    doc.insert()
+    from lotus_farm.mobile_access import is_manager
+    if not is_manager():
+        # Only this verified, team-scoped endpoint can create for a supervisor.
+        doc.flags.ignore_permissions = True
+    doc.insert(ignore_permissions=not is_manager())
     if not pending:
         doc.submit()
     return dict(

@@ -9,6 +9,8 @@ ROLES = (
     "Lotus Auditor",
     "Lotus Stock Reviewer",
     "Lotus Price Approver",
+    "Lotus Team Leader",
+    "Lotus Field Supervisor",
 )
 
 
@@ -22,6 +24,11 @@ def create_roles():
 
 def setup():
     create_roles()
+    from frappe.permissions import add_permission, update_permission_property
+    for _dt in ("Farm", "Farm Block", "Work Team", "Work Type"):
+        for _role in ("Lotus Team Leader", "Lotus Field Supervisor"):
+            add_permission(_dt, _role)
+            update_permission_property(_dt, _role, 0, "read", 1)
     from lotus_farm.warehouse_issue import install_fields
     install_fields()
     from lotus_farm.warehouse_masters import install_fields as install_minimum_fields

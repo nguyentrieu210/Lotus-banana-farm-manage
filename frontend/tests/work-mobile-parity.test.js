@@ -27,7 +27,8 @@ test('work and warehouse use the SAME Vant 4 header, logo and navigation',()=>{
 })
 test('work home uses shared Vant action tiles in two columns',()=>{
  need(work,'class="mobile-actions"')
- need(work,'<LotusMobileAction primary')
+ assert.match(work,/<LotusMobileAction\b[^>]*\bprimary\b/)
+ need(work,'v-if="canAssign"')
  need(work,'@select="openAssign"')
  need(workCss,'grid-template-columns:repeat(2,minmax(0,1fr))')
  assert.doesNotMatch(work,/work-stats|work-brand-icon|work-task-card/)

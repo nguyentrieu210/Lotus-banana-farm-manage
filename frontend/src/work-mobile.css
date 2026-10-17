@@ -1,4 +1,4 @@
-/* The warehouse mobile UI is the source of truth. Only work-specific pieces live here. */
+/* Work-only styles. Base legacy mobile primitives are in mobile-work-legacy.css; Vant 4 components and tokens are in mobile-ui.css. */
 .lotus-work .mobile-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0 22px}
 .lotus-work .mobile-action:first-child{grid-column:span 2}
 .lotus-work .mobile-action strong{font-size:17px}

@@ -118,7 +118,19 @@ def farm_plot(user=None):
 
 
 def work_team(user=None):
-    return query_condition("Work Team", user)
+    from lotus_farm.mobile_access import allowed_teams, roles, is_manager, LEADER, SUPERVISOR
+    import frappe
+    user = user or frappe.session.user
+    if is_manager(user) or not {LEADER, SUPERVISOR}.intersection(roles(user)):
+        return query_condition("Work Team", user)
+    farms = frappe.get_all("User Permission", filters={"user": user, "allow": "Farm"}, pluck="for_value")
+    permitted = set()
+    for farm in farms:
+        permitted.update(allowed_teams(farm, user))
+    if not permitted:
+        return "1=0"
+    values = ",".join(frappe.db.escape(value) for value in sorted(permitted))
+    return f"`tabWork Team`.`name` in ({values})"
 
 
 def material_norm_profile(user=None):

@@ -26,7 +26,7 @@ const busy=ref(false),saving=ref(false),loadingHistory=ref(false),error=ref(''),
 const online=ref(navigator.onLine),search=ref(''),status=ref('all'),historySearch=ref('')
 const selected=ref(null),resultForm=ref(null),photo=ref(null),blockReason=ref(''),assignOptions=ref(null)
 const assignTeam=ref(''),assignLines=ref([]),preview=ref(null),rateReason=ref(''),queue=ref([])
-const rejection=ref(''),rejectReason=ref(''),installPrompt=ref(null),installHelp=ref(false)
+const rejection=ref(''),rejectReason=ref('')
 const installed=ref(false),discardDialog=ref(null),discardReason=ref(''),discardEntry=ref(null)
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
 let swipe=null
@@ -44,9 +44,9 @@ const screenTitle=computed(()=>({home:'Trang chủ',tasks:'Công việc',history
 const shortDate=value=>{const s=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split('-').reverse().join('/'):s||'—'}
 const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')?'home':'profile')
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
-const canAssign=computed(()=>!!session.value?.commands?.work)
-const canCapture=computed(()=>!!session.value?.commands?.capture&&!!session.value?.creatable?.['Daily Work Result'])
-const canApprove=computed(()=>!!session.value?.commands?.rate_approve)
+const canAssign=computed(()=>!!session.value?.abilities?.['work.assign'])
+const canCapture=computed(()=>!!session.value?.abilities?.['work.result.capture'])
+const canApprove=computed(()=>!!session.value?.abilities?.['work.rate.approve'])
 const tasks=computed(()=>day.value?.tasks||[])
 const planRows=computed(()=>day.value?.plans||[])
 const done=computed(()=>tasks.value.filter(t=>t.status==='Completed').length)
@@ -289,7 +289,7 @@ async function logout(){
  finally{saving.value=false}
 }
 async function changeState(next,reason=''){
- if(!canAssign.value||!selected.value||saving.value||!online.value)return
+ if(!(canAssign.value||(next==='Blocked'&&canCapture.value))||!selected.value||saving.value||!online.value)return
  saving.value=true;clear()
  try{
   await consoleAPI('work_state',{plan:selected.value.plan,line:selected.value.line,state:next,reason},true)
@@ -408,19 +408,14 @@ watch(screen,(next,prev)=>{
 watch(error,value=>{
  if(value)requestAnimationFrame(()=>document.querySelector('.mobile-message.danger')?.scrollIntoView({block:'nearest',behavior:'smooth'}))
 })
-function onInstall(e){e.preventDefault();installPrompt.value=e}
-function onInstalled(){installed.value=true;installPrompt.value=null;installHelp.value=false}
-async function installApp(){
- if(installPrompt.value){const p=installPrompt.value;installPrompt.value=null;await p.prompt()}
- else installHelp.value=!installHelp.value
-}
+function onInstalled(){installed.value=true}
+function installApp(){openSetup()}
 onMounted(async()=>{
  window.history.replaceState({...window.history.state,lotusWorkRoot:true},'',location.href)
  window.history.pushState({lotusWork:{screen:'home'}},'',location.href)
  window.addEventListener('popstate',onPopstate)
  window.addEventListener('online',connection);window.addEventListener('offline',connection)
  window.addEventListener('beforeunload',beforeUnload)
- window.addEventListener('beforeinstallprompt',onInstall)
  window.addEventListener('appinstalled',onInstalled)
  installed.value=window.matchMedia('(display-mode:standalone)').matches||navigator.standalone===true
  navigationReady=true
@@ -433,7 +428,6 @@ onBeforeUnmount(()=>{
  window.removeEventListener('popstate',onPopstate)
  window.removeEventListener('online',connection);window.removeEventListener('offline',connection)
  window.removeEventListener('beforeunload',beforeUnload)
- window.removeEventListener('beforeinstallprompt',onInstall)
  window.removeEventListener('appinstalled',onInstalled)
 })
 
@@ -463,8 +457,8 @@ onBeforeUnmount(()=>{
       </div>
      </div>
      <div class="mobile-actions" aria-label="Thao tác Công việc ngoài vườn">
-      <LotusMobileAction primary icon="edit" title="Lập kế hoạch / Giao việc" :disabled="!canAssign||!online||busy" @select="openAssign"/>
-      <LotusMobileAction icon="completed" title="Báo kết quả" @select="status='open';go('tasks')"/>
+      <LotusMobileAction v-if="canAssign" primary icon="edit" title="Lập kế hoạch / Giao việc" :disabled="!online||busy" @select="openAssign"/>
+      <LotusMobileAction v-if="canCapture" icon="completed" title="Báo kết quả" @select="status='open';go('tasks')"/>
       <LotusMobileAction icon="apps-o" title="Công việc đã giao" @select="status='all';go('tasks')"/>
       <LotusMobileAction icon="flag-o" title="Việc vướng mắc" @select="status='blocked';go('tasks')"/>
       <LotusMobileAction icon="clock-o" title="Kết quả đã ghi" @select="changeTab('history')"/>
@@ -487,7 +481,7 @@ onBeforeUnmount(()=>{
      <p v-if="!tasks.length&&!busy" class="mobile-empty">Ngày này chưa có việc được giao.</p>
      <p v-if="drafts" class="work-muted">{{drafts}} phiếu đang chờ duyệt giá, chưa tính là đã giao.</p>
      <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="installApp">＋ Thêm Công việc ngoài vườn lên màn hình chính</LotusMobileButton>
-      <p v-if="installHelp">Android: Chrome → Cài ứng dụng. iPhone: Safari → Chia sẻ → Thêm vào màn hình chính. Cần HTTPS.</p>
+
      </div>
     </template>
 
@@ -541,7 +535,7 @@ onBeforeUnmount(()=>{
      <a class="work-outline" href="/lotus/cong-viec">Mở trên máy tính <b>↗</b></a>
      <a class="work-outline" href="/warehouse">Kho Lotus <b>↗</b></a>
      <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="installApp">Cài Công việc ngoài vườn lên điện thoại</LotusMobileButton>
-      <p v-if="installHelp">Android: Chrome → Cài ứng dụng. iPhone: Safari → Chia sẻ → Thêm vào màn hình chính. Cần HTTPS.</p>
+
      </div>
      <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
      <LotusMobileButton class="mobile-logout" type="button" :disabled="saving" @click="logout">Đăng xuất</LotusMobileButton>
@@ -563,7 +557,7 @@ onBeforeUnmount(()=>{
      <div class="work-actions">
       <LotusMobileButton v-if="canAssign&&['Planned','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('Ready')">Sẵn sàng làm <b>›</b></LotusMobileButton>
       <LotusMobileButton v-if="canAssign&&['Ready','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('In Progress')">Bắt đầu làm <b>›</b></LotusMobileButton>
-      <LotusMobileButton v-if="canAssign&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b>›</b></LotusMobileButton>
+      <LotusMobileButton v-if="(canAssign||canCapture)&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b>›</b></LotusMobileButton>
       <LotusMobileButton v-if="canCapture&&!selected.result&&!pendingLines.has(selected.line)" type="button" class="mobile-submit" :disabled="saving" @click="openResult">Ghi kết quả →</LotusMobileButton>
       <p v-if="selected.result" class="mobile-message success">Đã có phiếu kết quả {{selected.result}}. Muốn sửa cần hủy hoặc điều chỉnh theo quyền.</p>
      </div>

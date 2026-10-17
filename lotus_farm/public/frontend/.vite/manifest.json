@@ -15,8 +15,8 @@
       "assets/AssignApp-BFkbCXcW.css"
     ]
   },
-  "_DataTable-CDcV1_Ry.js": {
-    "file": "assets/DataTable-CDcV1_Ry.js",
+  "_DataTable-B91vvjRR.js": {
+    "file": "assets/DataTable-B91vvjRR.js",
     "name": "DataTable",
     "imports": [
       "_api-DaKsCuQq.js",
@@ -31,13 +31,13 @@
       "_api-DaKsCuQq.js"
     ]
   },
-  "_MobileSupplierForm-D2SvtmPU.js": {
-    "file": "assets/MobileSupplierForm-D2SvtmPU.js",
+  "_MobileSupplierForm-FaLF_pJp.js": {
+    "file": "assets/MobileSupplierForm-FaLF_pJp.js",
     "name": "MobileSupplierForm",
     "imports": [
       "_api-DaKsCuQq.js",
       "_units-DwW3lwNS.js",
-      "_mobile-ui-Dgj32FhX.js"
+      "_mobile-ui-C1XrVK1W.js"
     ]
   },
   "_SchemaForm-Bk5LZz0z.js": {
@@ -82,19 +82,27 @@
     "file": "assets/labels-BkSEv7tt.js",
     "name": "labels"
   },
-  "_mobile-ui-6tPAndqf.css": {
-    "file": "assets/mobile-ui-6tPAndqf.css",
-    "src": "_mobile-ui-6tPAndqf.css"
+  "_mobile-swipe-BbCHmTkf.js": {
+    "file": "assets/mobile-swipe-BbCHmTkf.js",
+    "name": "mobile-swipe",
+    "imports": [
+      "_api-DaKsCuQq.js",
+      "_mobile-ui-C1XrVK1W.js"
+    ]
   },
-  "_mobile-ui-Dgj32FhX.js": {
-    "file": "assets/mobile-ui-Dgj32FhX.js",
+  "_mobile-ui-C1XrVK1W.js": {
+    "file": "assets/mobile-ui-C1XrVK1W.js",
     "name": "mobile-ui",
     "imports": [
       "_api-DaKsCuQq.js"
     ],
     "css": [
-      "assets/mobile-ui-6tPAndqf.css"
+      "assets/mobile-ui-CRPg1Lsm.css"
     ]
+  },
+  "_mobile-ui-CRPg1Lsm.css": {
+    "file": "assets/mobile-ui-CRPg1Lsm.css",
+    "src": "_mobile-ui-CRPg1Lsm.css"
   },
   "_offline-DcIimw0s.js": {
     "file": "assets/offline-DcIimw0s.js",
@@ -116,21 +124,6 @@
     "file": "assets/units-DwW3lwNS.js",
     "name": "units"
   },
-  "_warehouse-mobile-BhB5_bIN.js": {
-    "file": "assets/warehouse-mobile-BhB5_bIN.js",
-    "name": "warehouse-mobile",
-    "imports": [
-      "_api-DaKsCuQq.js",
-      "_mobile-ui-Dgj32FhX.js"
-    ],
-    "css": [
-      "assets/warehouse-mobile-DghTqBoQ.css"
-    ]
-  },
-  "_warehouse-mobile-DghTqBoQ.css": {
-    "file": "assets/warehouse-mobile-DghTqBoQ.css",
-    "src": "_warehouse-mobile-DghTqBoQ.css"
-  },
   "assign.html": {
     "file": "assets/assign-BmssDKDP.js",
     "name": "assign",
@@ -147,18 +140,18 @@
     ]
   },
   "buying.html": {
-    "file": "assets/buying-8kyMKVio.js",
+    "file": "assets/buying-Bbaxa39Y.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
     "imports": [
       "_api-DaKsCuQq.js",
       "_units-DwW3lwNS.js",
-      "_mobile-ui-Dgj32FhX.js",
-      "_MobileSupplierForm-D2SvtmPU.js"
+      "_mobile-ui-C1XrVK1W.js",
+      "_MobileSupplierForm-FaLF_pJp.js"
     ],
     "css": [
-      "assets/buying-BhErS14a.css"
+      "assets/buying-ral7PPmK.css"
     ]
   },
   "farm-work.html": {
@@ -196,7 +189,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-DcgqGdaU.js",
+    "file": "assets/index-EufT-XhD.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -207,7 +200,7 @@
       "_compact-J5uaW1hW.js",
       "_Select-iLbUn7ET.js",
       "_labels-BkSEv7tt.js",
-      "_DataTable-CDcV1_Ry.js",
+      "_DataTable-B91vvjRR.js",
       "_offline-DcIimw0s.js",
       "_register-worker-CKMNsoSQ.js"
     ],
@@ -228,7 +221,7 @@
     "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
   },
   "stock.html": {
-    "file": "assets/stock-BwGU9tj-.js",
+    "file": "assets/stock-BmwFlVbU.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
@@ -237,7 +230,7 @@
       "_units-DwW3lwNS.js",
       "_compact-J5uaW1hW.js",
       "_Select-iLbUn7ET.js",
-      "_DataTable-CDcV1_Ry.js",
+      "_DataTable-B91vvjRR.js",
       "_LinkPicker-BHKTWKUX.js",
       "_register-worker-CKMNsoSQ.js",
       "_register-warehouse-worker-ClozO1u8.js"
@@ -248,7 +241,7 @@
     ]
   },
   "timekeeping.html": {
-    "file": "assets/timekeeping-BF6AC5UC.js",
+    "file": "assets/timekeeping-BoMY-yl6.js",
     "name": "timekeeping",
     "src": "timekeeping.html",
     "isEntry": true,
@@ -257,7 +250,7 @@
       "_units-DwW3lwNS.js",
       "_compact-J5uaW1hW.js",
       "_Select-iLbUn7ET.js",
-      "_DataTable-CDcV1_Ry.js",
+      "_DataTable-B91vvjRR.js",
       "_register-worker-CKMNsoSQ.js"
     ],
     "css": [
@@ -266,7 +259,7 @@
     ]
   },
   "warehouse.html": {
-    "file": "assets/warehouse-C2T4hrho.js",
+    "file": "assets/warehouse-BCtCcyLG.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
@@ -274,13 +267,16 @@
       "_api-DaKsCuQq.js",
       "_units-DwW3lwNS.js",
       "_register-warehouse-worker-ClozO1u8.js",
-      "_mobile-ui-Dgj32FhX.js",
-      "_MobileSupplierForm-D2SvtmPU.js",
-      "_warehouse-mobile-BhB5_bIN.js"
+      "_mobile-ui-C1XrVK1W.js",
+      "_MobileSupplierForm-FaLF_pJp.js",
+      "_mobile-swipe-BbCHmTkf.js"
+    ],
+    "css": [
+      "assets/warehouse-DghTqBoQ.css"
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-DfxwYyhC.js",
+    "file": "assets/work-mobile-BdlnCE1Q.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
@@ -289,11 +285,11 @@
       "_units-DwW3lwNS.js",
       "_labels-BkSEv7tt.js",
       "_offline-DcIimw0s.js",
-      "_mobile-ui-Dgj32FhX.js",
-      "_warehouse-mobile-BhB5_bIN.js"
+      "_mobile-ui-C1XrVK1W.js",
+      "_mobile-swipe-BbCHmTkf.js"
     ],
     "css": [
-      "assets/work-mobile-CUc8NJOR.css"
+      "assets/work-mobile-CA2POtoj.css"
     ]
   }
 }

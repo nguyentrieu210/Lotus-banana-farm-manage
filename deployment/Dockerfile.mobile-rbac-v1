@@ -1,0 +1,19 @@
+# Lotus mobile role-scoped rollout. Inherit the currently deployed buying v3 image.
+FROM lotus-pwa-buying:v3-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/mobile_access.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/mobile_access.py
+COPY --chown=frappe:frappe lotus_farm/work_mobile.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/work_mobile.py
+COPY --chown=frappe:frappe lotus_farm/mobile_assignment.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/mobile_assignment.py
+COPY --chown=frappe:frappe lotus_farm/permissions.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/permissions.py
+COPY --chown=frappe:frappe lotus_farm/controls.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/controls.py
+COPY --chown=frappe:frappe lotus_farm/console.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/console.py
+COPY --chown=frappe:frappe lotus_farm/field.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/field.py
+COPY --chown=frappe:frappe lotus_farm/install.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/install.py
+COPY --chown=frappe:frappe lotus_farm/daily_operations.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/daily_operations.py
+COPY --chown=frappe:frappe lotus_farm/hooks.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/hooks.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+COPY --chown=frappe:frappe lotus_farm/public/images/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/
+COPY --chown=frappe:frappe lotus_farm/public/buying.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/buying.webmanifest
+COPY --chown=frappe:frappe lotus_farm/public/warehouse.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/warehouse.webmanifest
+COPY --chown=frappe:frappe lotus_farm/public/work.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work.webmanifest
+USER frappe

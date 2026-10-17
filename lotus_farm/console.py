@@ -43,10 +43,14 @@ def bootstrap():
     session['creatable']={t:frappe.has_permission(t,'create') for t in ALLOWED}
     roles=set(frappe.get_roles());admin=frappe.session.user=='Administrator'
     has_role=lambda *names:admin or bool(roles.intersection(names))
+    from lotus_farm.mobile_access import abilities, allowed_teams, can_assign, can_capture
+    session["abilities"] = abilities()
+    session["scopes"] = {"farms": [f["name"] for f in session["farms"]]}
+    session["scopes"]["teams"] = {f["name"]: sorted(allowed_teams(f["name"])) for f in session["farms"]}
     session['commands']={
-        'work':has_role('Lotus Farm Manager'),
+        'work':can_assign(),
         'rate_approve':has_role('Lotus Price Approver'),
-        'capture':has_role('Lotus Farm Manager','Lotus Integration User'),
+        'capture':can_capture() or has_role('Lotus Integration User'),
         'preview_close':has_role('Lotus Farm Manager','Lotus Auditor'),
         'sales':has_role('Lotus Sales Planner'),
         'imports':has_role('Lotus Integration User'),
@@ -262,10 +266,23 @@ def audit(doctype,name):
 
 @frappe.whitelist(methods=['POST'])
 def work_state(plan,line,state,reason=None):
-    require_role('Lotus Farm Manager');doc=frappe.get_doc('Daily Work Plan',plan);doc.check_permission('write');day_guard(doc);lock('Daily Work Plan',plan);doc.reload()
+    from lotus_farm.mobile_access import is_manager, require_farm, require_team
+    require_role('Lotus Farm Manager', 'Lotus Field Supervisor', 'Lotus Team Leader')
+    doc=frappe.get_doc('Daily Work Plan',plan)
+    if is_manager():
+        doc.check_permission('write')
+    else:
+        require_farm(doc.farm)
+    day_guard(doc);lock('Daily Work Plan',plan);doc.reload()
     if doc.docstatus!=1:frappe.throw('Submit the work plan first.')
     row=next((r for r in doc.lines if r.name==line),None)
     if not row:frappe.throw('Task does not belong to this plan.')
+    if not is_manager():
+        require_team(doc.farm, row.work_team)
+        from lotus_farm.mobile_access import roles, LEADER, SUPERVISOR
+        if LEADER in roles() and SUPERVISOR not in roles() and state != 'Blocked':
+            frappe.throw('Tổ trưởng chỉ được báo vướng mắc.', frappe.PermissionError)
+        doc.flags.ignore_permissions = True
     if frappe.db.exists('Daily Work Result',{'work_plan_line':line,'docstatus':1}):frappe.throw('Completed actual requires cancel/amend.')
     transitions={'Planned':{'Ready','Blocked'},'Ready':{'In Progress','Blocked'},'In Progress':{'Blocked'},'Blocked':{'Ready','In Progress'}}
     if state not in transitions.get(row.execution_state or 'Planned',set()):frappe.throw('Unsupported task transition.')
