@@ -1,0 +1,5 @@
+# Chỉ cập nhật chữ trên giao diện, giữ nguyên nghiệp vụ và dữ liệu.
+FROM lotus-forecast-desktop:v2-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe
