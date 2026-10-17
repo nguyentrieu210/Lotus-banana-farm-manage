@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-work-review:v1-20261017
+  frontend:
+    image: lotus-work-review:v1-20261017
+  queue-short:
+    image: lotus-work-review:v1-20261017
+  queue-long:
+    image: lotus-work-review:v1-20261017
+  scheduler:
+    image: lotus-work-review:v1-20261017
