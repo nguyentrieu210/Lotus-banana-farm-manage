@@ -1,0 +1,8 @@
+FROM lotus-forecast-vietnamese:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/forecast_calendar.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/forecast_calendar.py
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/harvest_profile/harvest_profile.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/harvest_profile/harvest_profile.json
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/harvest_profile/harvest_profile.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/harvest_profile/harvest_profile.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/farm_block/farm_block.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/farm_block/farm_block.json
+USER frappe

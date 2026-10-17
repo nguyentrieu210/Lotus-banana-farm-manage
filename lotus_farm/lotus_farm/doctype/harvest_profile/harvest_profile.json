@@ -13,6 +13,7 @@
     "valid_from",
     "valid_to",
     "cut_bud_to_harvest_days",
+    "planting_to_harvest_days",
     "avg_bunch_weight_kg",
     "bunch_survival_rate_percent",
     "quality_pass_rate_percent",
@@ -24,6 +25,7 @@
     "approval_state",
     "cycle_type",
     "sucker_to_harvest_days",
+    "ratoon_interval_days",
     "shooting_to_harvest_days",
     "calibration_json",
     "calibration_hash"
@@ -71,6 +73,13 @@
       "fieldtype": "Int",
       "label": "Cut Bud to Harvest (days)",
       "non_negative": 1
+    },
+    {
+      "fieldname": "planting_to_harvest_days",
+      "fieldtype": "Int",
+      "label": "Từ trồng đến thu (ngày)",
+      "non_negative": 1,
+      "description": "Chỉ dùng dự phóng; nhập hệ số đã được quản lý xác nhận."
     },
     {
       "fieldname": "avg_bunch_weight_kg",
@@ -139,6 +148,13 @@
       "fieldname": "sucker_to_harvest_days",
       "fieldtype": "Int",
       "label": "Sucker To Harvest Days"
+    },
+    {
+      "fieldname": "ratoon_interval_days",
+      "fieldtype": "Int",
+      "label": "Khoảng cách dự kiến giữa các vụ chồi (ngày)",
+      "non_negative": 1,
+      "description": "Chỉ dùng dự phóng; nhập hệ số đã được quản lý xác nhận."
     },
     {
       "fieldname": "shooting_to_harvest_days",
