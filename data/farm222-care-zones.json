@@ -1,0 +1,392 @@
+{
+  "farm": "LOTUS-222",
+  "source_pdf": "Bản đồ lô farm 222ha.pdf",
+  "source_pdf_sha256": "9b4582d52dde4043a73bb37fad3cc7d9b1dfc253fbda65f67a30d744d44fbab9",
+  "verified_date": "2026-10-17",
+  "lots": [
+    {
+      "code": "A1",
+      "name": "Lô chăm sóc A1",
+      "zone": "A",
+      "area_ha": 2.88
+    },
+    {
+      "code": "A2",
+      "name": "Lô chăm sóc A2",
+      "zone": "A",
+      "area_ha": 3.45
+    },
+    {
+      "code": "A3",
+      "name": "Lô chăm sóc A3",
+      "zone": "A",
+      "area_ha": 3.38
+    },
+    {
+      "code": "A4",
+      "name": "Lô chăm sóc A4",
+      "zone": "A",
+      "area_ha": 3.93
+    },
+    {
+      "code": "A5",
+      "name": "Lô chăm sóc A5",
+      "zone": "A",
+      "area_ha": 3.96
+    },
+    {
+      "code": "A6",
+      "name": "Lô chăm sóc A6",
+      "zone": "A",
+      "area_ha": 3.5
+    },
+    {
+      "code": "A7",
+      "name": "Lô chăm sóc A7",
+      "zone": "A",
+      "area_ha": 2.37
+    },
+    {
+      "code": "A8",
+      "name": "Lô chăm sóc A8",
+      "zone": "A",
+      "area_ha": 4.48
+    },
+    {
+      "code": "A9",
+      "name": "Lô chăm sóc A9",
+      "zone": "A",
+      "area_ha": 3.91
+    },
+    {
+      "code": "A10",
+      "name": "Lô chăm sóc A10",
+      "zone": "A",
+      "area_ha": 4.7
+    },
+    {
+      "code": "A11",
+      "name": "Lô chăm sóc A11",
+      "zone": "A",
+      "area_ha": 2.53
+    },
+    {
+      "code": "A12",
+      "name": "Lô chăm sóc A12",
+      "zone": "A",
+      "area_ha": 4.64
+    },
+    {
+      "code": "A13",
+      "name": "Lô chăm sóc A13",
+      "zone": "A",
+      "area_ha": 1.72
+    },
+    {
+      "code": "B1",
+      "name": "Lô chăm sóc B1",
+      "zone": "B",
+      "area_ha": 3.8
+    },
+    {
+      "code": "B2",
+      "name": "Lô chăm sóc B2",
+      "zone": "B",
+      "area_ha": 0.6
+    },
+    {
+      "code": "B3",
+      "name": "Lô chăm sóc B3",
+      "zone": "B",
+      "area_ha": 4.78
+    },
+    {
+      "code": "B4",
+      "name": "Lô chăm sóc B4",
+      "zone": "B",
+      "area_ha": 1.54
+    },
+    {
+      "code": "B5",
+      "name": "Lô chăm sóc B5",
+      "zone": "B",
+      "area_ha": 4.7
+    },
+    {
+      "code": "B6",
+      "name": "Lô chăm sóc B6",
+      "zone": "B",
+      "area_ha": 1.61
+    },
+    {
+      "code": "B7",
+      "name": "Lô chăm sóc B7",
+      "zone": "B",
+      "area_ha": 4.76
+    },
+    {
+      "code": "B8",
+      "name": "Lô chăm sóc B8",
+      "zone": "B",
+      "area_ha": 5.92
+    },
+    {
+      "code": "B9",
+      "name": "Lô chăm sóc B9",
+      "zone": "B",
+      "area_ha": 2.85
+    },
+    {
+      "code": "B10",
+      "name": "Lô chăm sóc B10",
+      "zone": "B",
+      "area_ha": 4.66
+    },
+    {
+      "code": "B11",
+      "name": "Lô chăm sóc B11",
+      "zone": "B",
+      "area_ha": 4.74
+    },
+    {
+      "code": "B12",
+      "name": "Lô chăm sóc B12",
+      "zone": "B",
+      "area_ha": 2.48
+    },
+    {
+      "code": "C1",
+      "name": "Lô chăm sóc C1",
+      "zone": "C",
+      "area_ha": 4.55
+    },
+    {
+      "code": "C2",
+      "name": "Lô chăm sóc C2",
+      "zone": "C",
+      "area_ha": 4.34
+    },
+    {
+      "code": "C3",
+      "name": "Lô chăm sóc C3",
+      "zone": "C",
+      "area_ha": 4.83
+    },
+    {
+      "code": "C4",
+      "name": "Lô chăm sóc C4",
+      "zone": "C",
+      "area_ha": 2.84
+    },
+    {
+      "code": "C5",
+      "name": "Lô chăm sóc C5",
+      "zone": "C",
+      "area_ha": 4.7
+    },
+    {
+      "code": "C6",
+      "name": "Lô chăm sóc C6",
+      "zone": "C",
+      "area_ha": 2.78
+    },
+    {
+      "code": "C7",
+      "name": "Lô chăm sóc C7",
+      "zone": "C",
+      "area_ha": 2.88
+    },
+    {
+      "code": "C8",
+      "name": "Lô chăm sóc C8",
+      "zone": "C",
+      "area_ha": 2.3
+    },
+    {
+      "code": "C9",
+      "name": "Lô chăm sóc C9",
+      "zone": "C",
+      "area_ha": 2.22
+    },
+    {
+      "code": "C10",
+      "name": "Lô chăm sóc C10",
+      "zone": "C",
+      "area_ha": 1.81
+    },
+    {
+      "code": "C11",
+      "name": "Lô chăm sóc C11",
+      "zone": "C",
+      "area_ha": 0.94
+    },
+    {
+      "code": "C12",
+      "name": "Lô chăm sóc C12",
+      "zone": "C",
+      "area_ha": 1.05
+    },
+    {
+      "code": "C13",
+      "name": "Lô chăm sóc C13",
+      "zone": "C",
+      "area_ha": 3.18
+    },
+    {
+      "code": "C14",
+      "name": "Lô chăm sóc C14",
+      "zone": "C",
+      "area_ha": 7.15
+    },
+    {
+      "code": "D1",
+      "name": "Lô chăm sóc D1",
+      "zone": "D",
+      "area_ha": 4.43
+    },
+    {
+      "code": "D2",
+      "name": "Lô chăm sóc D2",
+      "zone": "D",
+      "area_ha": 3.32
+    },
+    {
+      "code": "D3",
+      "name": "Lô chăm sóc D3",
+      "zone": "D",
+      "area_ha": 4.77
+    },
+    {
+      "code": "D4",
+      "name": "Lô chăm sóc D4",
+      "zone": "D",
+      "area_ha": 4.77
+    },
+    {
+      "code": "D5",
+      "name": "Lô chăm sóc D5",
+      "zone": "D",
+      "area_ha": 4.26
+    },
+    {
+      "code": "D6",
+      "name": "Lô chăm sóc D6",
+      "zone": "D",
+      "area_ha": 3.24
+    },
+    {
+      "code": "D7",
+      "name": "Lô chăm sóc D7",
+      "zone": "D",
+      "area_ha": 3.06
+    },
+    {
+      "code": "D8",
+      "name": "Lô chăm sóc D8",
+      "zone": "D",
+      "area_ha": 3.25
+    },
+    {
+      "code": "D9",
+      "name": "Lô chăm sóc D9",
+      "zone": "D",
+      "area_ha": 2.43
+    },
+    {
+      "code": "D10",
+      "name": "Lô chăm sóc D10",
+      "zone": "D",
+      "area_ha": 3.1
+    },
+    {
+      "code": "D11",
+      "name": "Lô chăm sóc D11",
+      "zone": "D",
+      "area_ha": 2.37
+    },
+    {
+      "code": "D12",
+      "name": "Lô chăm sóc D12",
+      "zone": "D",
+      "area_ha": 3.43
+    },
+    {
+      "code": "E1",
+      "name": "Lô chăm sóc E1",
+      "zone": "E",
+      "area_ha": 4.27
+    },
+    {
+      "code": "E2",
+      "name": "Lô chăm sóc E2",
+      "zone": "E",
+      "area_ha": 4.29
+    },
+    {
+      "code": "E3",
+      "name": "Lô chăm sóc E3",
+      "zone": "E",
+      "area_ha": 3.06
+    },
+    {
+      "code": "E4",
+      "name": "Lô chăm sóc E4",
+      "zone": "E",
+      "area_ha": 2.35
+    },
+    {
+      "code": "E5",
+      "name": "Lô chăm sóc E5",
+      "zone": "E",
+      "area_ha": 3.04
+    },
+    {
+      "code": "E6",
+      "name": "Lô chăm sóc E6",
+      "zone": "E",
+      "area_ha": 1.98
+    },
+    {
+      "code": "E7",
+      "name": "Lô chăm sóc E7",
+      "zone": "E",
+      "area_ha": 2.0
+    },
+    {
+      "code": "E8",
+      "name": "Lô chăm sóc E8",
+      "zone": "E",
+      "area_ha": 4.44
+    },
+    {
+      "code": "E9",
+      "name": "Lô chăm sóc E9",
+      "zone": "E",
+      "area_ha": 2.08
+    },
+    {
+      "code": "E10",
+      "name": "Lô chăm sóc E10",
+      "zone": "E",
+      "area_ha": 3.88
+    },
+    {
+      "code": "E11",
+      "name": "Lô chăm sóc E11",
+      "zone": "E",
+      "area_ha": 3.25
+    },
+    {
+      "code": "E12",
+      "name": "Lô chăm sóc E12",
+      "zone": "E",
+      "area_ha": 2.52
+    },
+    {
+      "code": "E13",
+      "name": "Lô chăm sóc E13",
+      "zone": "E",
+      "area_ha": 2.11
+    }
+  ]
+}
