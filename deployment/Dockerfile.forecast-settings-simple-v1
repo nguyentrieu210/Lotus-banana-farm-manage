@@ -1,0 +1,5 @@
+# Presentation-only improvement: no DB mutation or new seed data.
+FROM lotus-live-readiness:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-forecast-settings-simple:v1-20261018
+  frontend:
+    image: lotus-forecast-settings-simple:v1-20261018
+  queue-short:
+    image: lotus-forecast-settings-simple:v1-20261018
+  queue-long:
+    image: lotus-forecast-settings-simple:v1-20261018
+  scheduler:
+    image: lotus-forecast-settings-simple:v1-20261018
