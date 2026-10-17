@@ -202,7 +202,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-B-mpn2vp.js",
+    "file": "assets/index-Df4SOnw6.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -219,10 +219,11 @@
       "_register-worker-CKMNsoSQ.js"
     ],
     "dynamicImports": [
-      "src/components/DesktopForecastChart.vue"
+      "src/components/DesktopForecastChart.vue",
+      "src/components/LotusImportPreview.vue"
     ],
     "css": [
-      "assets/index-BotZ5FAz.css"
+      "assets/index-BBGtQpMr.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
@@ -236,6 +237,19 @@
     "isDynamicEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js"
+    ]
+  },
+  "src/components/LotusImportPreview.vue": {
+    "file": "assets/LotusImportPreview-g2xD25QJ.js",
+    "name": "LotusImportPreview",
+    "src": "src/components/LotusImportPreview.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_api-DBVSZ-7-.js",
+      "__plugin-vue_export-helper-BDNMzG2s.js"
+    ],
+    "css": [
+      "assets/LotusImportPreview-BAlfE3pB.css"
     ]
   },
   "stock.html": {
