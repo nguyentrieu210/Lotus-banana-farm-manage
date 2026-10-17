@@ -1,5 +1,27 @@
 # Nông trường Farm 222 Thuận Phú
 
+## Khu và diện tích lô đã đối chiếu ngày 17/10/2026
+
+64 lô chăm sóc có sẵn đã khớp toàn bộ diện tích bảng PDF/ảnh chủ vườn gửi.
+Đã bổ sung trường `Farm Block.farm_zone` (Khu) và gán A–E cho đúng các lô;
+không tạo lô trùng hoặc thay số diện tích nguồn. Trường Khu dùng để lọc/nhóm
+trong danh sách ERPNext, độc lập với trường khu tưới `irrigation_zone`.
+
+| Khu | Lô chăm sóc | Diện tích ha |
+|---|---:|---:|
+| A | 13 | 45,45 |
+| B | 12 | 42,44 |
+| C | 14 | 45,57 |
+| D | 12 | 42,43 |
+| E | 13 | 39,27 |
+| Tổng | 64 | 215,16 |
+
+Nguồn đối chiếu được lưu tại `data/farm222-care-zones.json`, kèm SHA của PDF.
+`tools/sync_farm222_zones.py` mặc định chỉ kiểm tra; thêm `--commit` để lưu Khu.
+Script kiểm tra đủ 64 mã, diện tích từng lô, tổng từng khu; đối chiếu dữ liệu
+trước/sau và giữ nguyên các trường khác, 210 thửa đã xác nhận, ranh và vụ cây.
+Nguồn/báo cáo được đính kèm Farm dưới dạng File riêng tư; chạy lại cần 0 sửa đổi.
+
 Đã nhập vào site local `frontend`, công ty `Lotus Agritech`, mã nông trường
 `LOTUS-222`. Đây là dữ liệu danh mục lấy từ bản đồ 222, không dùng seed demo
 và không bao gồm bản đồ HTT 170 ha.
