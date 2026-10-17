@@ -42,6 +42,8 @@ class HarvestProfile(Document):
             frappe.throw(str(exc))
         for fieldname in (
             "sucker_to_harvest_days",
+            "planting_to_harvest_days",
+            "ratoon_interval_days",
             "shooting_to_harvest_days",
             "cut_bud_to_harvest_days",
         ):

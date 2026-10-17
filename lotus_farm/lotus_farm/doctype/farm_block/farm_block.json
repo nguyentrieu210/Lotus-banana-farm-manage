@@ -11,6 +11,7 @@
     "block_code",
     "area_ha",
     "variety",
+    "planting_date",
     "planting_density",
     "irrigation_zone",
     "manager",
@@ -50,6 +51,12 @@
       "fieldtype": "Link",
       "label": "Variety",
       "options": "Banana Variety"
+    },
+    {
+      "fieldname": "planting_date",
+      "fieldtype": "Date",
+      "label": "Ngày trồng ban đầu",
+      "description": "Dùng dự phóng khi chưa khai báo vụ; nếu trồng nhiều đợt phải tách đợt/vụ."
     },
     {
       "fieldname": "planting_density",

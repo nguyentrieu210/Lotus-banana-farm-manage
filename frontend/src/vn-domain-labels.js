@@ -1,5 +1,7 @@
 // Chỉ đổi chữ cho người dùng. Không đổi fieldname, mã phiếu, trạng thái lưu trong ERP.
 export const extraFieldNames = Object.freeze({
+  planting_to_harvest_days: 'Từ trồng đến thu (ngày)',
+  ratoon_interval_days: 'Khoảng cách giữa các vụ chồi (ngày)',
   forecast_basis: 'Nguồn tính dự thu',
   planning_granularity: 'Lập dự thu theo',
   harvest_profile: 'Bộ hệ số dự thu',

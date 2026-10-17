@@ -1,0 +1,54 @@
+.calendar-board{display:grid;gap:14px;min-width:0;padding:0 0 20px;color:var(--foreground,#202c3b)}
+.calendar-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.calendar-head h2{font-size:20px;margin:0 0 4px;font-weight:700}
+.calendar-head p{color:#697a8d;font-size:12px;margin:0;line-height:1.5}
+.calendar-buttons{display:flex;gap:8px;align-items:center}
+.calendar-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.calendar-kpis article{display:flex;gap:7px;flex-direction:column;border:1px solid #e3e9ef;border-radius:10px;background:white;padding:12px 14px}
+.calendar-kpis article small{font-size:12px;color:#64758a}
+.calendar-kpis article strong{font-size:22px;color:#152d42;font-variant-numeric:tabular-nums}
+.calendar-kpis article strong em{font-size:12px;color:#6c7b89;font-style:normal;font-weight:400}
+.calendar-kpis article span{font-size:11px;color:#8793a0;line-height:1.4}
+.calendar-toolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.calendar-years{display:flex;gap:4px;padding:3px;border:1px solid #e2e8ee;border-radius:9px;background:#eef2f7}
+.calendar-years button{border:0;border-radius:6px;padding:7px 14px;font:inherit;font-size:13px;background:transparent;cursor:pointer;color:#5e6e83}
+.calendar-years button.active{background:white;color:#1e4f71;font-weight:700;box-shadow:0 1px 4px #1e2d4b14}
+.calendar-toolbar label{font-size:12px;color:#64758a;display:flex;align-items:center;gap:7px}
+.calendar-toolbar input{font:inherit;font-size:13px;width:190px;border:1px solid #d9e1e9;border-radius:8px;background:white;padding:8px 11px}
+.calendar-total{font-size:12px;color:#59697d;margin-left:auto}
+.calendar-panel{background:white;border:1px solid #e2e7ee;border-radius:10px;overflow:hidden;min-width:0}
+.calendar-panel-title{display:flex;gap:10px;justify-content:space-between;padding:13px 15px;border-bottom:1px solid #e8edf1;align-items:center}
+.calendar-panel-title strong{font-size:14px}
+.calendar-panel-title span{font-size:11px;color:#8a95a3}
+.calendar-months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;padding:15px;min-width:600px;overflow-x:auto}
+.calendar-months button{cursor:pointer;border:1px solid transparent;border-radius:9px;padding:8px 4px;display:flex;flex-direction:column;gap:4px;align-items:center;color:#67788a;background:transparent;font:inherit}
+.calendar-months button:hover,.calendar-months button.active{background:#edf7f5;border-color:#9bd4c6}
+.calendar-months button span{font-size:11px;white-space:nowrap}
+.calendar-months button strong{color:#20384d;font-size:12px;font-variant-numeric:tabular-nums}
+.calendar-months button small{font-size:10px}
+.calendar-track{height:92px;width:28px;border-radius:6px;background:#f0f3f5;display:flex;align-items:flex-end;overflow:hidden}
+.calendar-track>div{width:100%;background:#248972;border-radius:6px 6px 0 0}
+.calendar-scroll{overflow-x:auto}
+.calendar-table{border-collapse:collapse;width:100%;min-width:920px;font-size:12px}
+.calendar-table th{text-align:left;white-space:nowrap;background:#f8fafc;color:#64758a;font-weight:650;padding:11px 13px;border-bottom:1px solid #e8edf1}
+.calendar-table td{padding:11px 13px;border-bottom:1px solid #eff2f5;font-variant-numeric:tabular-nums}
+.calendar-table tr:last-child td{border-bottom:0}
+.calendar-table td strong{display:block}
+.calendar-table td small{display:block;margin-top:3px;color:#8896a5;font-size:11px}
+.calendar-table td:nth-last-child(-n+3){text-align:right}
+.calendar-confidence{border-radius:100px;background:#edf1f5;padding:3px 8px;font-size:11px;color:#526b7e;white-space:nowrap}
+.calendar-confidence.cut{background:#e4f5ee;color:#147a51}
+.calendar-confidence.shoot{background:#eaf2f8;color:#296ea6}
+.calendar-confidence.sucker{background:#fff3e1;color:#996a19}
+.calendar-note,.calendar-footnote{margin:0;color:#748295;font-size:12px;line-height:1.6;padding:10px 14px}
+.calendar-hint{text-align:center;color:#7d8898;padding:18px}
+.calendar-issues{border:1px solid #eddcc5;border-radius:10px;background:#fffaf3;color:#715c40}
+.calendar-issues summary{cursor:pointer;padding:12px 14px;font-weight:650;font-size:13px}
+.calendar-issues-list{display:grid;gap:8px;padding:0 14px 12px;font-size:12px}
+.calendar-issues p{margin:0;padding:0 14px 13px;font-size:12px}
+.calendar-issue-edit{border:0;background:transparent;text-decoration:underline;color:#276a88;cursor:pointer;font:inherit;font-weight:600;margin-left:6px}
+.forecast-legacy{border:1px solid #dfe7ed;border-radius:10px;background:white;padding:12px;margin-bottom:20px}
+.forecast-legacy>summary{cursor:pointer;font-size:13px;font-weight:650;padding:6px;color:#526576}
+.forecast-legacy[open]>summary{margin-bottom:12px}
+@media(max-width:1000px){.calendar-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-months{overflow:auto}.calendar-board{gap:12px}}
+@media(max-width:640px){.calendar-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-kpis article strong{font-size:19px}.calendar-months{grid-template-columns:repeat(12,52px);overflow-x:auto}.calendar-toolbar input{width:148px}.calendar-total{margin-left:0}}

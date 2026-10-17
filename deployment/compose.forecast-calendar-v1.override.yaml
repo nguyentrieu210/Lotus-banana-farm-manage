@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-forecast-calendar:v1-20261017
+  frontend:
+    image: lotus-forecast-calendar:v1-20261017
+  queue-short:
+    image: lotus-forecast-calendar:v1-20261017
+  queue-long:
+    image: lotus-forecast-calendar:v1-20261017
+  scheduler:
+    image: lotus-forecast-calendar:v1-20261017
