@@ -58,6 +58,6 @@ test('Installed buying app remains inside its scope when session expires',()=>{
   assert.match(html,/\/login\?redirect-to=%2Fbuying/)
   assert.match(worker,/Promise\.allSettled/)
   assert.match(worker,/cache:'no-store'/)
-  assert.match(web,/methods=\['GET', 'HEAD'\]\)\ndef buying_manifest/)
-  assert.match(web,/methods=\['GET', 'HEAD'\]\)\ndef buying_service_worker/)
+  assert.match(web,/@frappe\.whitelist\([^)]*methods=\['GET', 'HEAD'\]\)\s*\ndef buying_manifest/)
+  assert.match(web,/@frappe\.whitelist\([^)]*methods=\['GET', 'HEAD'\]\)\s*\ndef buying_service_worker/)
 })
