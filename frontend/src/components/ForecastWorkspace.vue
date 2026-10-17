@@ -79,7 +79,7 @@ function create(){emit('create',{farm_block:block.value||undefined,period_start_
         <div class="forecast-week-head"><strong>Kế hoạch theo tuần</strong><span>Phiếu nhiều tuần được xếp một lần vào tuần bắt đầu trong khoảng lọc, không chia đều sản lượng.</span></div>
         <div class="forecast-week-scroll">
           <table class="forecast-week-table">
-            <thead><tr><th>Tuần bắt đầu</th><th>Buồng dự kiến (kg)</th><th>Đóng gói dự kiến (kg)</th><th>Đã thu (kg buồng)</th><th>Số dự thu</th></tr></thead>
+            <thead><tr><th>Tuần bắt đầu</th><th>Dự thu ngoài vườn (kg)</th><th>Đóng gói dự kiến (kg)</th><th>Đã thu (kg buồng)</th><th>Số dự thu</th></tr></thead>
             <tbody>
               <tr v-for="week in weeks" :key="week.week_start">
                 <td class="forecast-no-wrap"><strong>{{week.week_start}}</strong><small>– {{week.week_end}}</small></td>

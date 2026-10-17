@@ -9,7 +9,9 @@ const groups=[
   {title:'Sản phẩm dự kiến',fields:['item','packout_profile','output_plan']},
   {title:'Điều chỉnh và ghi chú',fields:['supersedes','revision_reason','notes']},
 ]
-const grouping=name=>({fields:(props.schema?.fields||[]).filter(f=>groups.find(g=>g.title===name)?.fields.includes(f.fieldname)),tables:props.schema?.tables||{}})
+const displayName=(field,child=false)=>field.fieldname==='item'?(child?'Sản phẩm':'Sản phẩm dự kiến'):field.fieldname==='quality_standard'?'Tiêu chuẩn chất lượng':null
+const tables=computed(()=>Object.fromEntries(Object.entries(props.schema?.tables||{}).map(([table,fields])=>[table,fields.map(f=>({...f,display_label:displayName(f,true)}))])))
+const grouping=name=>({fields:(props.schema?.fields||[]).filter(f=>groups.find(g=>g.title===name)?.fields.includes(f.fieldname)).map(f=>({...f,display_label:displayName(f)})),tables:tables.value})
 const validGroups=computed(()=>groups.filter(g=>grouping(g.title).fields.length))
 </script>
 <template>
