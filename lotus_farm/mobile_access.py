@@ -6,7 +6,6 @@ be served to a team-scoped account through the mobile APIs.
 """
 import frappe
 from frappe.utils import flt, getdate
-from math import isfinite
 from contextvars import ContextVar
 from contextlib import contextmanager
 
@@ -93,8 +92,10 @@ def abilities(user=None):
     return {
         "work.task.read": is_field_user(user),
         "work.assign": can_assign(user),
+        "work.prepare": is_manager(user),
         "work.result.capture": can_capture(user),
-        "work.block.report": can_capture(user),
+        "work.result.verify": user == "Administrator" or bool({MANAGER, SUPERVISOR} & roles(user)),
+        "work.result.approve": user == "Administrator" or MANAGER in roles(user),
         "work.rate.approve": user == "Administrator" or PRICE in roles(user),
         "work.summary.all": can_review_all(user),
     }
@@ -120,12 +121,9 @@ def validate_capture(farm, values):
     for field in ("farm_block", "farm_plot", "crop_cycle", "sucker_selection_batch"):
         if (values.get(field) or "") != (line.get(field) or ""):
             frappe.throw("Lô và phạm vi báo cáo không khớp công việc.", frappe.PermissionError)
-    try:
-        completed = float(values["completed_qty"])
-        days = float(values["actual_workdays"])
-    except (ValueError, TypeError):
-        frappe.throw("Số lượng hoặc số công không hợp lệ.")
-    if not isfinite(completed) or not isfinite(days) or completed < 0 or completed > flt(line.planned_qty) + 0.000001 or days < 0:
+    completed = flt(values["completed_qty"])
+    days = flt(values["actual_workdays"])
+    if completed < 0 or completed > flt(line.planned_qty) + 0.000001 or days < 0:
         frappe.throw("Số lượng hoặc số công không hợp lệ.")
     if completed < flt(line.planned_qty) and not str(values.get("unfinished_reason") or "").strip():
         frappe.throw("Chưa đạt kế hoạch phải ghi lý do.")

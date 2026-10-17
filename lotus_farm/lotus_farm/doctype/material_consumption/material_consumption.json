@@ -54,14 +54,16 @@
       "label": "Farm Plot",
       "fieldtype": "Link",
       "options": "Farm Plot",
-      "reqd": 1
+      "reqd": 0,
+      "hidden": 1
     },
     {
       "fieldname": "crop_cycle",
       "label": "Crop Cycle",
       "fieldtype": "Link",
       "options": "Crop Cycle",
-      "reqd": 1
+      "reqd": 0,
+      "hidden": 1
     },
     {
       "fieldname": "sucker_selection_batch",
