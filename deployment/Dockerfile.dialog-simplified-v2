@@ -1,0 +1,5 @@
+# UI-only dialog simplification, preserve verified live backend and all business logic.
+FROM lotus-forecast-settings-simple:v1-20261018
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

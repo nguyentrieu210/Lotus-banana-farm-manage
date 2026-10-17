@@ -202,7 +202,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-UMKo8XDP.js",
+    "file": "assets/index-B-mpn2vp.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -222,7 +222,7 @@
       "src/components/DesktopForecastChart.vue"
     ],
     "css": [
-      "assets/index-DPGuLEI6.css"
+      "assets/index-BotZ5FAz.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",

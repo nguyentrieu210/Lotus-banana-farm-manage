@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-dialog-simplified:v2-20261018
+  frontend:
+    image: lotus-dialog-simplified:v2-20261018
+  queue-short:
+    image: lotus-dialog-simplified:v2-20261018
+  queue-long:
+    image: lotus-dialog-simplified:v2-20261018
+  scheduler:
+    image: lotus-dialog-simplified:v2-20261018
