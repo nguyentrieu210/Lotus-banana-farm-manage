@@ -46,7 +46,7 @@ def bootstrap():
     return dict(user=frappe.session.user, csrf_token=get_csrf_token(), today=nowdate(),
                 companies=frappe.get_list('Company', fields=['name', 'abbr', 'default_currency'], limit_page_length=1000),
                 permissions={dt: frappe.has_permission(dt, 'create') for dt in
-                             ('Item', 'Item Group', 'Warehouse', 'Stock Entry', 'Stock Reconciliation', 'Company')})
+                             ('Item', 'Item Group', 'Warehouse', 'Stock Entry', 'Stock Reconciliation', 'Company', 'Purchase Receipt', 'Purchase Order')})
 
 
 @frappe.whitelist()

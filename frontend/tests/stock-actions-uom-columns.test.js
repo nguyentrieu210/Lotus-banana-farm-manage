@@ -30,7 +30,9 @@ test('Four stock actions are quick buttons above the stock table and call existi
  }
  assert.match(stock,/const quickStockActions=/)
  assert.match(stock,/aria-label="Thao tác kho nhanh"/)
- assert.match(stock,/@click="open\(action\.kind\)"/)
+ assert.match(stock,/@click="quickAction\(action\.kind\)"/)
+ assert.match(stock,/function quickAction\(kind\)|async function quickAction\(kind\)/)
+ assert.match(stock,/buyingView\.value\?\.startReceiving\(\)/)
  assert.match(stock,/:disabled="!canCreate\|\|busy\|\|!session\?\.permissions/)
  const actionsIndex=stock.indexOf('aria-label="Thao tác kho nhanh"')
  const tableIndex=stock.indexOf('class="stock-panel stock-inventory-table"')

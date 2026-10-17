@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-pwa-buying:v1-20261017
+  frontend:
+    image: lotus-pwa-buying:v1-20261017

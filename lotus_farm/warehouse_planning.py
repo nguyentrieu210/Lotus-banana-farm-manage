@@ -11,7 +11,7 @@ def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
     create_custom_fields({
         'Company':[dict(fieldname='lotus_print_farm',label='Nông trường trên phiếu in',fieldtype='Data'),
-                   dict(fieldname='lotus_print_project',label='Dự án trên phiếu in',fieldtype='Data')],
+                   dict(fieldname='lotus_print_project',label='Vườn chuối trên phiếu in',fieldtype='Data')],
         'Material Requirement':[dict(fieldname='lotus_warehouse',label='Kho cấp vật tư',fieldtype='Link',options='Warehouse',allow_on_submit=1)],
         'Material Request Item':[
             dict(fieldname='lotus_requirement',label='Nhu cầu kế hoạch gốc',fieldtype='Link',options='Material Requirement'),
@@ -371,7 +371,16 @@ def receipt_action(name,modified,action):
     lock('Company',doc.company)
     for order in sorted({r.purchase_order for r in doc.items if r.purchase_order}):lock('Purchase Order',order)
     lock('Purchase Receipt',name);doc.reload()
-    if str(doc.modified)!=modified or doc.docstatus!=0 or doc.is_return:frappe.throw('Phiếu đã thay đổi hoặc không còn là phiếu nhận nháp.')
+    if str(doc.modified)!=modified or doc.is_return:
+        frappe.throw('Phiếu đã thay đổi hoặc không hợp lệ. Tải lại trước khi thao tác.')
+    if action=='cancel':
+        if doc.docstatus!=1:
+            frappe.throw('Chỉ được hủy phiếu đã ghi sổ.')
+        doc.check_permission('cancel')
+        doc.cancel()  # ERPNext reverses Stock Ledger and recalculates PO received_qty
+        return dict(name=name,action='cancel')
+    if doc.docstatus!=0:
+        frappe.throw('Phiếu nhận không còn là bản nháp.')
     if action=='submit':
         doc.check_permission('submit')
         from lotus_farm.warehouse import _warehouse

@@ -1,0 +1,4 @@
+FROM lotus-print-costs:v1-20261016
+USER root
+COPY --chown=frappe:frappe lotus_farm/www/lotus_stock_print.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_stock_print.html
+USER frappe

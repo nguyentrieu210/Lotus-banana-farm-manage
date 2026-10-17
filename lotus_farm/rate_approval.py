@@ -48,7 +48,7 @@ def _signature(doc):
         "approved_at": str(doc.rate_approved_at),
         "lines": [
             {
-                "name": row.name, "plot": row.farm_plot,
+                "name": row.name, "block": row.farm_block, "plot": row.farm_plot,
                 "cycle": row.crop_cycle, "batch": row.sucker_selection_batch,
                 "work": row.work_type, "team": row.work_team,
                 "mode": row.payment_mode, "qty": str(row.planned_qty),

@@ -1,0 +1,20 @@
+FROM lotus-print-costs:v3-20261016
+USER root
+COPY --chown=frappe:frappe lotus_farm/work_mobile.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/work_mobile.py
+COPY --chown=frappe:frappe lotus_farm/web.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/web.py
+COPY --chown=frappe:frappe lotus_farm/www/work.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/work.py
+COPY --chown=frappe:frappe lotus_farm/www/work.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/work.html
+COPY --chown=frappe:frappe lotus_farm/public/work.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work.webmanifest
+COPY --chown=frappe:frappe lotus_farm/public/work-offline.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work-offline.html
+COPY --chown=frappe:frappe lotus_farm/public/work-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/images/work-icon-v3-192.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/work-icon-v3-192.png
+COPY --chown=frappe:frappe lotus_farm/public/images/work-icon-v3-512.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/work-icon-v3-512.png
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+COPY --chown=frappe:frappe lotus_farm/garden_setup.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/garden_setup.py
+COPY --chown=frappe:frappe lotus_farm/mobile_assignment.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/mobile_assignment.py
+COPY --chown=frappe:frappe lotus_farm/daily_operations.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/daily_operations.py
+COPY --chown=frappe:frappe lotus_farm/daily_api.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/daily_api.py
+COPY --chown=frappe:frappe lotus_farm/rate_approval.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/rate_approval.py
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/daily_work_plan_line/daily_work_plan_line.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/daily_work_plan_line/daily_work_plan_line.json
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.json
+USER frappe

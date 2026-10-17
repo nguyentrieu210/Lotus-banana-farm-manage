@@ -1,0 +1,7 @@
+FROM lotus-pwa-print:v11-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/www/lotus_stock_print.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_stock_print.py
+COPY --chown=frappe:frappe lotus_farm/www/lotus_stock_print.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_stock_print.html
+COPY --chown=frappe:frappe lotus_farm/www/lotus_timekeeping_print.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_timekeeping_print.py
+COPY --chown=frappe:frappe lotus_farm/warehouse_planning.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_planning.py
+USER frappe

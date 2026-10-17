@@ -5,7 +5,7 @@ description = "Lotus banana farm operations and harvest availability on Frappe/E
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
-dependencies = ["openpyxl>=3.1.5,<4", "qrcode>=8,<9"]
+dependencies = ["openpyxl>=3.1.5,<4", "qrcode>=8,<9", "pywebpush>=2.0,<3"]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]

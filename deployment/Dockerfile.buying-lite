@@ -1,0 +1,6 @@
+FROM lotus-warehouse-ui-audit:20261015
+USER root
+COPY --chown=frappe:frappe lotus_farm/warehouse_buying_lite.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_buying_lite.py
+COPY --chown=frappe:frappe lotus_farm/install.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/install.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+USER frappe

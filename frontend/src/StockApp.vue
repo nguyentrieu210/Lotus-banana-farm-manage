@@ -2,12 +2,16 @@
 import {unitLabel,stockItemUomOptions} from './units'
 import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceBar from './components/WorkspaceBar.vue'
+import LotusIcon from './components/LotusIcon.vue'
+import {useDesktopWorkspace} from './use-desktop-workspace'
 import {sidebarCollapsed} from './workspace'
-import {computed,nextTick,onMounted,onUnmounted,reactive,ref,watch} from 'vue'
+import {computed,nextTick,onMounted,onUnmounted,provide,reactive,ref,watch} from 'vue'
 import {call,setCSRF} from './api'
 import DataTable from './components/DataTable.vue'
 import LinkPicker from './components/LinkPicker.vue'
 import WarehousePlanning from './components/WarehousePlanning.vue'
+import WarehouseBuyingLite from './components/WarehouseBuyingLite.vue'
+import WarehouseInstall from './components/WarehouseInstall.vue'
 import {dismissOnBackdrop} from './dialogs'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -15,12 +19,14 @@ import {Textarea as UiTextarea} from './components/ui/textarea'
 import UiSelect from './components/ui/select/Select.vue'
 
 const masterAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_masters.'+name,args,write)
+const {desktop,density,gridDensity,setDensity}=useDesktopWorkspace()
+provide('lotusDesktopDensity',gridDensity)
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const session=ref(null),data=ref(null),company=ref(''),warehouse=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),tab=ref('stock')
 const sortStock=ref([]),sortMovement=ref([]),sortDocument=ref([])
 const columnFilters=ref({}),demandFrom=ref(''),demandTo=ref('')
 const movementData=ref(null),movementFilters=ref({}),movementStart=ref(0),documentStart=ref(0),movementFrom=ref(''),movementTo=ref('')
-const documentData=ref(null),documentFilters=ref({}),planningView=ref(null)
+const documentData=ref(null),documentFilters=ref({}),planningView=ref(null),buyingView=ref(null)
 const busy=ref(false),saving=ref(false),error=ref(''),saved=ref(null),dialog=ref(null)
 const masterEditing=ref(null),masterDeleting=ref(false),masterLists=ref({groups:[],warehouses:[]}),draftDeleting=ref(false)
 const masterClearDefaults=ref(false)
@@ -242,23 +248,43 @@ const detailColumns=[{headerName:'Vật tư',minWidth:220,flex:2,valueGetter:p=>
 const receiptDetailColumns=[{field:'rate',headerName:'Đơn giá',type:'numericColumn',valueFormatter:p=>cash(p.value)},{field:'additional_cost',headerName:'Chi phí phân bổ',type:'numericColumn',valueFormatter:p=>cash(p.value)},{field:'amount',headerName:'Thành tiền',type:'numericColumn',valueFormatter:p=>cash(p.value)}]
 onMounted(initialize)
 function filterStock({field,values}){columnFilters.value=updateColumnFilter(columnFilters.value,field,values);refresh(true)}
-const stockTabs={stock:'Tồn kho',planning:'Nhu cầu & mua vật tư',history:'Phiếu nhập · xuất',movements:'Lịch sử nhập xuất',setup:'Thiết lập kho'}
-const workspaceActions=computed(()=>[{id:'farm-work',label:'Công việc vườn',navigation:true,href:'/lotus/cong-viec'},{id:'attendance',label:'Chấm công',navigation:true,href:'/lotus/cham-cong'},{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...Object.entries(stockTabs).map(([id,label])=>({id,label,navigation:true,run:()=>tab.value=id})),...Object.entries(kinds).filter(([kind])=>canCreate.value&&session.value?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']).map(([kind,label])=>({id:kind,label,run:()=>open(kind)})),...(session.value?.permissions.Item?[{id:'new-item',label:'Thêm vật tư',run:()=>openMaster('item')}]:[])])
+const stockTabs={stock:'Tồn kho',planning:'Nhu cầu vật tư',buying:'Mua hàng',history:'Phiếu nhập · xuất',movements:'Lịch sử nhập xuất',setup:'Thiết lập kho'}
+const desktopNavIcons={stock:'boxes',planning:'list',buying:'cart',history:'document',movements:'transfer',setup:'settings'}
+const desktopActionIcons={receipt:'receive',issue:'issue',transfer:'transfer',count:'check'}
+async function createPurchase(){tab.value='buying';await nextTick();await buyingView.value?.createOrder()}
+async function quickAction(kind){
+ if(kind==='receipt'){
+  tab.value='buying'
+  await nextTick()
+  buyingView.value?.startReceiving()
+  return
+ }
+ return open(kind)
+}
+const warehousePwa=window.location.pathname.replace(/\/$/,'')==='/warehouse'
+const workspaceActions=computed(()=>[{id:'farm-work',label:'Công việc vườn',navigation:true,href:'/lotus/cong-viec'},{id:'attendance',label:'Chấm công',navigation:true,href:'/lotus/cham-cong'},{id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},...Object.entries(stockTabs).map(([id,label])=>({id,label,navigation:true,run:()=>tab.value=id})),...Object.entries(kinds).filter(([kind])=>canCreate.value&&session.value?.permissions[kind==='count'?'Stock Reconciliation':'Stock Entry']).map(([kind,label])=>({id:kind,label,run:()=>quickAction(kind)})),...(session.value?.permissions.Item?[{id:'new-item',label:'Thêm vật tư',run:()=>openMaster('item')}]:[]),...(desktop.value?[{id:'density-compact',label:'Mật độ bảng: gọn',run:()=>setDensity('compact')},{id:'density-comfortable',label:'Mật độ bảng: dễ đọc',run:()=>setDensity('comfortable')}]:[])])
 function itemCell(params){const cell=document.createElement('span');cell.className='lotus-item-cell';for(const [cls,text] of [['name',params.data.item_name],['code',params.data.name]]){const span=document.createElement('span');span.className=cls;span.textContent=text;cell.append(span)}return cell}
 </script>
 
 <template>
- <div class="stock-shell" :class="{'sidebar-collapsed':sidebarCollapsed}">
-  <aside class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a><p class="stock-nav-label">KHÔNG GIAN LÀM VIỆC</p><nav aria-label="Quản lý kho"><UiButton variant="outline" :title="'Tồn kho'" aria-label="Tồn kho" :class="{selected:tab==='stock'}" @click="tab='stock'">▦ <span>Tồn kho</span></UiButton><UiButton variant="outline" title="Nhu cầu & mua vật tư" aria-label="Nhu cầu & mua vật tư" :class="{selected:tab==='planning'}" @click="tab='planning'">◎ <span>Nhu cầu & mua vật tư</span></UiButton><UiButton variant="outline" :title="'Phiếu nhập · xuất'" aria-label="Phiếu nhập · xuất" :class="{selected:tab==='history'}" @click="tab='history'">▤ <span>Phiếu nhập · xuất</span></UiButton><UiButton variant="outline" title="Lịch sử nhập xuất" aria-label="Lịch sử nhập xuất" :class="{selected:tab==='movements'}" @click="tab='movements'">↕ <span>Lịch sử nhập xuất</span></UiButton><UiButton variant="outline" :title="'Thiết lập kho'" aria-label="Thiết lập kho" :class="{selected:tab==='setup'}" @click="tab='setup'">⚙ <span>Thiết lập kho</span></UiButton></nav><div class="stock-sidebar-bottom"><a href="/lotus/mobile">← Về Lotus Farm</a><small>{{session?.user||'Đang kết nối…'}}</small></div></aside>
-  <main class="stock-main"><WorkspaceBar :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
+ <div class="stock-shell" :class="{'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
+  <WorkspaceBar v-if="desktop" :branded="true" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
+  <aside class="stock-sidebar">
+   <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a>
+   <p class="stock-nav-label">QUẢN LÝ KHO</p>
+   <nav aria-label="Quản lý kho"><UiButton v-for="(label,id) in stockTabs" :key="id" variant="outline" :title="label" :aria-label="label" :aria-current="tab===id?'page':undefined" :class="{selected:tab===id}" @click="tab=id"><LotusIcon :name="desktopNavIcons[id]"/><span>{{label}}</span></UiButton></nav>
+   <div class="stock-sidebar-bottom"><p v-if="desktop" class="stock-nav-label">KHÔNG GIAN LOTUS</p><a v-if="desktop" href="/lotus/cong-viec"><LotusIcon name="leaf"/>Công việc vườn</a><a v-if="desktop" href="/lotus/cham-cong"><LotusIcon name="people"/>Chấm công & nhân sự</a><a href="/lotus/mobile">← Về Lotus Farm</a><small>{{session?.user||'Đang kết nối…'}}</small></div>
+  </aside>
+  <main class="stock-main"><WarehouseInstall v-if="warehousePwa"/><WorkspaceBar v-if="!desktop" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
-   <div class="stock-scope"><label v-if="tab!=='setup'">Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><UiButton v-if="['stock','history','movements'].includes(tab)&&activeTabFilters" variant="outline" class="stock-button" @click="clearTabFilters">Bỏ lọc</UiButton><div v-if="tab==='history'||tab==='movements'" class="stock-date-filters"><label>Từ ngày<UiInput v-model="movementFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="movementTo" type="date" @change="refresh(true)"/></label></div><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton><div v-if="['stock','movements','history'].includes(tab)" class="stock-search stock-search--instant"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm vật tư…':tab==='history'?'Tìm phiếu…':'Tìm vật tư/phiếu…'" /></div></div>
+   <div v-if="tab!=='buying'&&(!desktop||tab!=='planning')" class="stock-scope"><label v-if="tab!=='setup'">Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" @change="companyChanged"><option v-if="!session?.companies.length" value="">Chưa có công ty</option><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><UiButton v-if="['stock','history','movements'].includes(tab)&&activeTabFilters" variant="outline" class="stock-button" @click="clearTabFilters">Bỏ lọc</UiButton><div v-if="tab==='history'||tab==='movements'" class="stock-date-filters"><label>Từ ngày<UiInput v-model="movementFrom" type="date" @change="refresh(true)"/></label><label>Đến ngày<UiInput v-model="movementTo" type="date" @change="refresh(true)"/></label></div><UiButton v-if="tab!=='stock'" variant="outline" class="stock-button" :disabled="busy" @click="tab==='planning'?planningView?.refresh():tab==='buying'?buyingView?.refresh():refresh()">{{busy?'Đang tải':'Làm mới'}}</UiButton><div v-if="['stock','movements','history'].includes(tab)" class="stock-search stock-search--instant"><UiInput v-model="searchDraft" aria-label="Tìm vật tư" :placeholder="tab==='stock'?'Tìm vật tư…':tab==='history'?'Tìm phiếu…':'Tìm vật tư/phiếu…'" /></div></div>
    <div v-if="['stock','history'].includes(tab)" class="stock-quick-actions" role="group" aria-label="Thao tác kho nhanh">
+    <UiButton v-if="desktop" variant="outline" class="stock-quick-action desktop-purchase-action" :disabled="!company||busy||!session?.permissions['Purchase Order']" @click="createPurchase"><span class="stock-quick-action-icon" aria-hidden="true"><LotusIcon name="cart"/></span><span>Tạo đơn mua</span></UiButton>
     <UiButton v-for="action in quickStockActions" :key="action.kind" variant="outline" class="stock-quick-action"
       :disabled="!canCreate||busy||!session?.permissions[action.kind==='count'?'Stock Reconciliation':'Stock Entry']"
-      @click="open(action.kind)"><span class="stock-quick-action-icon" aria-hidden="true">{{action.icon}}</span>{{action.label}}</UiButton>
+      @click="quickAction(action.kind)"><span class="stock-quick-action-icon" aria-hidden="true"><LotusIcon :name="desktopActionIcons[action.kind]"/></span><span>{{desktop&&action.kind==='receipt'?'Nhập theo đơn':action.label}}</span></UiButton>
    </div>
    <section v-if="tab==='stock'" class="stock-panel stock-inventory-table">
     <DataTable :rows="stocks" :columns="stockColumns" :show-empty-headers="(data?.catalogue_count??0)>0"
@@ -273,7 +299,11 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
       </div>
     </footer>
    </section>
-   <WarehousePlanning v-if="tab==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session?.today"/>
+   <WarehousePlanning v-if="tab==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session?.today">
+    <template v-if="desktop" #scope><label class="desktop-warehouse-scope">Kho<UiSelect v-model="warehouse" :disabled="!company||busy" @change="warehouseChanged()"><option value="">Tất cả kho được phân quyền</option><option v-for="w in data?.warehouses" :key="w.name" :value="w.name">{{w.warehouse_name}}</option></UiSelect></label><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" @change="companyChanged"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label></template>
+    <template v-if="desktop" #actions><UiButton variant="outline" :disabled="busy" @click="planningView?.refresh()">Làm mới</UiButton></template>
+   </WarehousePlanning>
+   <WarehouseBuyingLite v-if="tab==='buying'" ref="buyingView" :company="company" :warehouse="warehouse" :today="session?.today"/>
    <section v-if="tab==='history'" class="stock-panel"><DataTable :rows="historyRows" :columns="historyColumns" show-empty-headers empty="Không có phiếu phù hợp. Thử bỏ lọc hoặc thay đổi khoảng ngày." server-sort @sort="model=>{sortDocument=model;refresh(true)}" :loading="busy" :filter-values="documentData?.filter_values" :server-filters="documentFilters" @filter="filterDocument" interactive @open="row=>openStockDocument(row.doctype,row.name)"/><footer class="stock-pagination"><span>{{documentData?.total_count?documentStart+1:0}}–{{documentStart+(documentData?.rows?.length||0)}} / {{documentData?.total_count||0}} phiếu</span><div><UiButton variant="outline" :disabled="!documentStart||busy" @click="documentStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" :disabled="!documentData?.has_more||busy" @click="documentStart+=50;refresh()">Sau →</UiButton></div></footer></section>
    <template v-if="tab==='movements'">
     <section class="stock-panel"><DataTable :rows="movementData?.rows||[]" :columns="movementColumns" show-empty-headers server-sort @sort="model=>{sortMovement=model;refresh(true)}" :loading="busy" :filter-values="movementData?.filter_values" :server-filters="movementFilters" @filter="filterMovement" interactive @open="openMovement" empty="Không có phát sinh nhập xuất phù hợp. Thử bỏ lọc hoặc thay đổi ngày."/><footer class="stock-pagination"><span>{{movementData?.total_count?movementStart+1:0}}–{{movementStart+(movementData?.rows.length||0)}} / {{movementData?.total_count||0}} phát sinh</span><div><UiButton variant="outline" class="stock-button" :disabled="!movementStart||busy" @click="movementStart-=50;refresh()">← Trước</UiButton><UiButton variant="outline" class="stock-button" :disabled="!movementData?.has_more||busy" @click="movementStart+=50;refresh()">Sau →</UiButton></div></footer></section>
@@ -294,6 +324,10 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
     </section>
    </div>
 
+   <nav v-if="warehousePwa" class="warehouse-pwa-bottom-nav" aria-label="Điều hướng Kho điện thoại">
+    <button v-for="(label,id) in {stock:'Tồn kho',buying:'Mua hàng',planning:'Nhu cầu',history:'Phiếu',movements:'Lịch sử',setup:'Thiết lập'}"
+      :key="id" type="button" :class="{active:tab===id}" @click="tab=id">{{label}}</button>
+   </nav>
   </main>
   <dialog @click="dismissOnBackdrop($event,saving)" ref="dialog" class="stock-dialog" @cancel="error=''">
    <form @submit.prevent="save"><header><div><h2>{{kinds[form.kind]}}</h2></div><UiButton variant="outline" type="button" class="stock-button" aria-label="Đóng" :disabled="saving" @click="dialog.close()">✕</UiButton></header><p v-if="form.kind==='receipt'" class="stock-form-help">Chọn kho nhận, vật tư và số lượng thực nhận. Có thể nhập đơn giá theo kg, bao hoặc can nếu đã khai báo quy đổi.</p><p v-if="error" class="stock-error" role="alert">{{error}}</p>

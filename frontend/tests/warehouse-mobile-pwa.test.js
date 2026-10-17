@@ -1,0 +1,38 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+const app=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+const purchase=readFileSync(new URL('../src/components/WarehouseBuyingLite.vue',import.meta.url),'utf8')
+const pwa=readFileSync(new URL('../src/components/WarehouseInstall.vue',import.meta.url),'utf8')
+const worker=readFileSync(new URL('../../lotus_farm/public/warehouse-worker.js',import.meta.url),'utf8')
+const manifest=JSON.parse(readFileSync(new URL('../../lotus_farm/public/warehouse.webmanifest',import.meta.url),'utf8'))
+test('dedicated /warehouse manifest has two square icons; desktop stock stays separate',()=>{
+ assert.equal(manifest.start_url,'/warehouse')
+ assert.equal(manifest.scope,'/warehouse')
+ assert.equal(manifest.display,'standalone')
+ assert.equal(manifest.icons.length,2)
+ assert.match(app,/warehousePwa/)
+ assert.match(app,/warehouse-pwa-bottom-nav/)
+ assert.match(pwa,/beforeinstallprompt/)
+})
+test('supplier receiving quick action defaults to purchase order instead of duplicating Stock Entry',()=>{
+ assert.match(app,/if\(kind==='receipt'\)/)
+ assert.match(app,/tab\.value='buying'/)
+ assert.match(app,/buyingView\.value\?\.startReceiving\(\)/)
+ assert.match(purchase,/function startReceiving\(\)/)
+ assert.match(purchase,/status\.value='pending'/)
+ assert.match(purchase,/receivingAPI\('receive_order'/)
+ assert.match(purchase,/receivingAPI\('receipt_action'/)
+})
+test('PO unit inputs convert to Stock UOM exactly once before server submission',()=>{
+ assert.match(purchase,/Number\(qty\)\*\(Number\(item\?\.conversion_factor\)\|\|1\)/)
+ assert.match(purchase,/:max="r.remaining_qty"/)
+ assert.match(purchase,/unitLabel\(r.uom\)/)
+})
+test('warehouse SW caches only shell assets and cannot cache authenticated API data',()=>{
+ assert.match(worker,/request\.method!=='GET'/)
+ assert.match(worker,/url\.pathname\.startsWith\('\/api\/'\)/)
+ assert.match(worker,/request\.mode==='navigate'/)
+ assert.match(worker,/warehouse-offline.html/)
+ assert.doesNotMatch(worker,/cache\.put\(request/)
+})

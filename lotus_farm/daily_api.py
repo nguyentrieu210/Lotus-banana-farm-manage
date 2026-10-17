@@ -24,7 +24,7 @@ def daily_overview(farm, posting_date, block=None, plot=None, cycle=None, status
             result=results[0] if results else {}
             tasks.append(dict(plan=plan.name,line=line.name,farm_block=line.farm_block,farm_plot=line.farm_plot,
                               crop_cycle=line.crop_cycle,cohort=line.sucker_selection_batch,work_type=line.work_type,
-                              work_category=frappe.db.get_value('Work Type',line.work_type,'category'),work_name=frappe.db.get_value('Work Type',line.work_type,'work_name'),plot_code=frappe.db.get_value('Farm Plot',line.farm_plot,'plot_code'),uom=line.uom,planned_qty=line.planned_qty,completed_qty=flt(result.get('completed_qty')),
+                              work_category=frappe.db.get_value('Work Type',line.work_type,'category'),work_name=frappe.db.get_value('Work Type',line.work_type,'work_name'),block_code=frappe.db.get_value('Farm Block',line.farm_block,'block_code'),plot_code=frappe.db.get_value('Farm Plot',line.farm_plot,'plot_code') if line.farm_plot else None,uom=line.uom,planned_qty=line.planned_qty,completed_qty=flt(result.get('completed_qty')),
                               required_workdays=line.required_workdays,allocated_workdays=allocated,
                               actual_workdays=flt(result.get('actual_workdays')),labor_gap=allocated-flt(line.required_workdays),
                               result=result.get('name'),unfinished_reason=result.get('unfinished_reason'),

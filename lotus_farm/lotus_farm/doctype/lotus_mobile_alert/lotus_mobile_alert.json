@@ -1,0 +1,91 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Mobile Alert",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 0,
+  "field_order": [
+    "user",
+    "app",
+    "event_key",
+    "title",
+    "body",
+    "url",
+    "document_type",
+    "document_name",
+    "is_read",
+    "pushed"
+  ],
+  "fields": [
+    {
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "label": "Người nhận",
+      "options": "User",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "app",
+      "fieldtype": "Select",
+      "label": "Ứng dụng",
+      "options": "warehouse\nbuying\nwork",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "event_key",
+      "fieldtype": "Data",
+      "label": "Mã thông báo",
+      "unique": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "title",
+      "fieldtype": "Data",
+      "label": "Tiêu đề",
+      "reqd": 1
+    },
+    {
+      "fieldname": "body",
+      "fieldtype": "Small Text",
+      "label": "Nội dung"
+    },
+    {
+      "fieldname": "url",
+      "fieldtype": "Data",
+      "label": "Đường dẫn"
+    },
+    {
+      "fieldname": "document_type",
+      "fieldtype": "Data",
+      "label": "Loại chứng từ"
+    },
+    {
+      "fieldname": "document_name",
+      "fieldtype": "Data",
+      "label": "Mã chứng từ"
+    },
+    {
+      "fieldname": "is_read",
+      "fieldtype": "Check",
+      "label": "Đã xem",
+      "default": "0"
+    },
+    {
+      "fieldname": "pushed",
+      "fieldtype": "Check",
+      "label": "Đã gửi",
+      "default": "0"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    }
+  ]
+}

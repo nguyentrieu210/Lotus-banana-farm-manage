@@ -2,6 +2,7 @@ import frappe
 from base64 import b64encode
 from pathlib import Path
 from urllib.parse import urlencode
+import re
 no_cache=1
 
 
@@ -14,7 +15,7 @@ def get_context(context,company=None,month=None,kind=None,farm=None):
     if not frappe.has_permission(dt,'print'):frappe.throw('Chưa có quyền in bảng công.',frappe.PermissionError)
     doc=_company(company)
     context.data=monthly(company,month) if kind=='staff' else crew_monthly(company,month,farm)
-    context.info=frappe._dict(company=company);context.project_label=doc.get('lotus_print_project') or '';context.farm_label=doc.get('lotus_print_farm') or ''
+    context.info=frappe._dict(company=company);context.project_label=re.sub(r'^\s*dự\s+án\s+chuối\b','VƯỜN CHUỐI',doc.get('lotus_print_project') or '',flags=re.IGNORECASE);context.farm_label=doc.get('lotus_print_farm') or ''
     context.logo_data='data:image/jpeg;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech.jpg')).read_bytes()).decode('ascii')
     context.kind=kind;context.month_label=str(month)[5:7]+'/'+str(month)[:4]
     context.label='Nhân sự chính thức' if kind=='staff' else 'Đội khoán'

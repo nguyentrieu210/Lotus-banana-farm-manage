@@ -1,0 +1,5 @@
+FROM lotus-pwa-push:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/push_notifications.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/push_notifications.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+USER frappe

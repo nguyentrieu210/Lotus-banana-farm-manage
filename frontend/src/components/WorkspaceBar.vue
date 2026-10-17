@@ -4,7 +4,7 @@ import {Button as UiButton} from './ui/button'
 import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
 import {call} from '../api'
-const props=defineProps({user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true}})
+const props=defineProps({user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false}})
 const {dark,sidebarCollapsed,toggleTheme,toggleSidebar}=useWorkspace()
 const palette=ref(null),input=ref(null),query=ref(''),selected=ref(0),menu=ref(null),userMenu=ref(null),loggingOut=ref(false),logoutError=ref('')
 const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
@@ -24,7 +24,8 @@ onUnmounted(()=>{window.removeEventListener('keydown',shortcut);document.removeE
 <template>
  <div class="workspace-bar" aria-label="Thanh điều hướng">
   <div class="workspace-left"><UiButton v-if="sidebar" variant="ghost" size="icon" :aria-label="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'" :aria-expanded="!sidebarCollapsed" @click="toggleSidebar">☰</UiButton>
-  <a class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus" title="Trang chủ Lotus Agritech">⌂</a>
+  <a v-if="branded" class="workspace-brand" href="/lotus/mobile" aria-label="Trang chủ Lotus"><img :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="112" height="44"><span>Kho Lotus</span></a>
+  <a v-else class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus" title="Trang chủ Lotus Agritech">⌂</a>
   <details ref="menu" class="workspace-nav"><summary>{{title}} <span aria-hidden="true">⌄</span></summary><div class="workspace-menu"><UiButton v-for="action in actions.filter(a=>a.navigation)" :key="action.id" variant="ghost" @click="choose(action)">{{action.label}}</UiButton></div></details></div>
   <UiButton class="workspace-search" variant="outline" @click="open"><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" :title="dark?'Giao diện sáng':'Giao diện tối'" @click="toggleTheme">{{dark?'☀':'☾'}}</UiButton>

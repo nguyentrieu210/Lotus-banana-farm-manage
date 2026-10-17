@@ -1,0 +1,17 @@
+FROM lotus-buying-lite:20261015b
+USER root
+COPY --chown=frappe:frappe lotus_farm/warehouse_buying_lite.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_buying_lite.py
+COPY --chown=frappe:frappe lotus_farm/warehouse_planning.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_planning.py
+COPY --chown=frappe:frappe lotus_farm/warehouse.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse.py
+COPY --chown=frappe:frappe lotus_farm/warehouse_access.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_access.py
+COPY --chown=frappe:frappe lotus_farm/install.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/install.py
+COPY --chown=frappe:frappe lotus_farm/web.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/web.py
+COPY --chown=frappe:frappe lotus_farm/www/warehouse.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/warehouse.py
+COPY --chown=frappe:frappe lotus_farm/www/warehouse.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/warehouse.html
+COPY --chown=frappe:frappe lotus_farm/public/warehouse.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/warehouse.webmanifest
+COPY --chown=frappe:frappe lotus_farm/public/warehouse-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/warehouse-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/warehouse-offline.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/warehouse-offline.html
+COPY --chown=frappe:frappe lotus_farm/public/images/warehouse-icon-v3-192.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/warehouse-icon-v3-192.png
+COPY --chown=frappe:frappe lotus_farm/public/images/warehouse-icon-v3-512.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/warehouse-icon-v3-512.png
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+USER frappe

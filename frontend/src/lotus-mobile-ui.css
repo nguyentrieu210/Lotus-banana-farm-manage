@@ -1,0 +1,2 @@
+/* Compatibility alias. The canonical mobile design system is mobile-ui.css. */
+@import './mobile-ui.css';

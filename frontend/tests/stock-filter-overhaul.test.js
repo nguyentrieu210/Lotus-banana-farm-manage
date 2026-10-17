@@ -8,7 +8,7 @@ const header=readFileSync(new URL('../src/components/ExcelHeader.vue',import.met
 const backend=readFileSync(new URL('../../lotus_farm/warehouse.py',import.meta.url),'utf8')
 
 test('Stock screen contains only compact scope filters and its inventory table',()=>{
- assert.match(app,/<div class="stock-scope">/)
+ assert.match(app,/<div v-if="tab!=='buying'[^\"]*" class="stock-scope">/)
  assert.match(app,/<section v-if="tab==='stock'" class="stock-panel stock-inventory-table">/)
  assert.match(app,/@filter="filterStock"/)
  assert.match(app,/v-if="\['stock','history','movements'\]\.includes\(tab\)&&activeTabFilters"/)

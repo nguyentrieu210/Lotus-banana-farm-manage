@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-two-pwa:v6-20261016
+  frontend:
+    image: lotus-two-pwa:v6-20261016

@@ -1,0 +1,26 @@
+{
+  "id": "/warehouse",
+  "name": "Kho Lotus — Quản lý kho",
+  "short_name": "Kho Lotus",
+  "description": "Mua hàng, nhập kho, xuất kho, chuyển kho và xem lịch sử trên điện thoại",
+  "start_url": "/warehouse",
+  "scope": "/warehouse",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f3653c",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/assets/lotus_farm/images/warehouse-icon-v3-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/lotus_farm/images/warehouse-icon-v3-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

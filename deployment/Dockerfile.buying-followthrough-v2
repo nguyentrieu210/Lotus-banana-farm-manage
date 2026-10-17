@@ -1,0 +1,6 @@
+FROM lotus-pwa-buying:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/purchasing.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/purchasing.py
+COPY --chown=frappe:frappe lotus_farm/warehouse_access.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_access.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

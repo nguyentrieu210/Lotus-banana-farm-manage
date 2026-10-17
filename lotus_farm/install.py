@@ -28,6 +28,10 @@ def setup():
     install_minimum_fields()
     from lotus_farm.warehouse_planning import install_fields as install_planning_fields
     install_planning_fields()
+    from lotus_farm.warehouse_buying_lite import install_fields as install_buying_fields
+    install_buying_fields()
+    from lotus_farm.warehouse_access import install_roles as install_warehouse_roles
+    install_warehouse_roles()
     from lotus_farm.timekeeping import install_fields as install_timekeeping_fields
     install_timekeeping_fields()
     from lotus_farm.hr_workspace import install_fields as install_hr_fields

@@ -149,6 +149,16 @@ doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_s
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
 doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.validate_requirement_warehouse','before_update_after_submit':'lotus_farm.warehouse_planning.validate_requirement_warehouse'}
 doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
+doc_events['Purchase Order']={'before_submit':'lotus_farm.purchasing.check_submission'}
+
+# Shared mobile PWA notification hooks. Keep existing validation and stock posting hooks.
+for _dt in ('Purchase Order', 'Material Request', 'Purchase Receipt', 'Stock Entry',
+            'Daily Work Plan', 'Daily Work Result'):
+    for _event in (('on_update', 'on_submit') if _dt == 'Purchase Order' else ('on_submit',)):
+        _value = doc_events.setdefault(_dt, {}).get(_event, [])
+        if isinstance(_value, str):
+            _value = [_value]
+        doc_events[_dt][_event] = [*_value, 'lotus_farm.push_notifications.document_hook']
 
 has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'

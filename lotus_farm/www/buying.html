@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#f3653c">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-title" content="Mua hàng Lotus">
+ <meta name="mobile-web-app-capable" content="yes">
+ <link rel="manifest" href="/api/method/lotus_farm.web.buying_manifest">
+ <link rel="icon" type="image/png" sizes="192x192" href="/assets/lotus_farm/images/buying-icon-192.png">
+ <link rel="apple-touch-icon" href="/assets/lotus_farm/images/buying-icon-192.png">
+ <title>Mua hàng Lotus</title>
+ {% for css in styles %}<link rel="stylesheet" href="{{ css }}">{% endfor %}
+</head>
+<body>
+{% if guest %}
+ <main style="font-family:system-ui,-apple-system,sans-serif;min-height:85vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f8f8f8;color:#333">
+  <section style="width:100%;max-width:380px;background:white;border-radius:18px;padding:24px;box-shadow:0 3px 24px #00000010;text-align:center">
+   <img src="/assets/lotus_farm/images/buying-icon-192.png" width="76" height="76" alt="" style="border-radius:18px">
+   <h1 style="font-size:24px;margin:14px 0">Mua hàng Lotus</h1>
+   <p style="line-height:1.5;color:#666">Cần đăng nhập để xem và xử lý đơn mua hàng.</p>
+   <a href="/login?redirect-to=%2Fbuying" style="display:block;background:#f3653c;color:white;border-radius:12px;padding:15px;text-decoration:none;font-weight:700;margin-top:20px">Đăng nhập</a>
+   <p style="font-size:13px;color:#777;margin-top:16px">Nếu vừa cài ứng dụng, hãy đăng nhập một lần rồi mở lại ứng dụng.</p>
+  </section>
+ </main>
+{% else %}
+ <div id="app"></div>
+ <script type="module" src="{{ script }}"></script>
+{% endif %}
+</body>
+</html>

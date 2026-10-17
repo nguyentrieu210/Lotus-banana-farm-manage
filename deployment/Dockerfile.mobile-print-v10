@@ -1,0 +1,7 @@
+FROM lotus-pwa-logo-fix:v9-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+COPY --chown=frappe:frappe lotus_farm/www/lotus_stock_print.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_stock_print.py
+COPY --chown=frappe:frappe lotus_farm/www/lotus_stock_print.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/lotus_stock_print.html
+COPY --chown=frappe:frappe lotus_farm/warehouse_access.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/warehouse_access.py
+USER frappe

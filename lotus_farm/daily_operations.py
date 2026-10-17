@@ -235,9 +235,21 @@ class WorkPlan(DailyDocument):
             row.farm = self.farm
             row.company = self.company
             row.posting_date = self.posting_date
-            plot_scope(row)
-            if not frappe.db.get_value('Farm Plot', row.farm_plot, 'active'):
-                frappe.throw('Work requires an active Plot.')
+            block = frappe.get_doc('Farm Block', row.farm_block)
+            block.check_permission('read')
+            if block.farm != self.farm or not block.active:
+                frappe.throw('Công việc phải thuộc Lô lớn đang hoạt động của vườn.')
+            # Legacy cycles/plots remain readable; newly assigned jobs have only a Farm Block.
+            if row.farm_plot or row.crop_cycle:
+                if not row.crop_cycle:
+                    frappe.throw('Dữ liệu cũ có thửa phải liên kết vụ phù hợp.')
+                plot_scope(row)
+                if not frappe.db.get_value('Farm Plot', row.farm_plot, 'active'):
+                    frappe.throw('Historical work requires an active Plot.')
+            else:
+                row.farm_plot = None
+                row.crop_cycle = None
+                row.sucker_selection_batch = None
 
             work = frappe.get_doc('Work Type', row.work_type)
             work.check_permission('read')
@@ -256,9 +268,11 @@ class WorkPlan(DailyDocument):
             except ValueError as exc:
                 frappe.throw(str(exc))
             row.payment_mode = labor['mode']
-            key = (row.crop_cycle, row.sucker_selection_batch, row.work_type, row.payment_mode)
+            scope_key = ('plot', row.farm_plot, row.crop_cycle, row.sucker_selection_batch) if row.farm_plot else ('block', row.farm_block)
+            key = (scope_key, row.work_type, row.payment_mode)
             if key in seen:
-                frappe.throw('Combine duplicate Cycle/Cohort/Work Type/Payment Mode tasks into one line.')
+                frappe.throw('Gộp các dòng trùng Lô, công việc và hình thức trả công.')
+
             seen.add(key)
             row.productivity_per_workday = labor['productivity']
             row.required_workdays = estimated['required_workdays']

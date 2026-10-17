@@ -1,0 +1,23 @@
+{
+  "id": "/buying",
+  "name": "Mua hàng Lotus",
+  "short_name": "Mua hàng",
+  "start_url": "/buying",
+  "scope": "/buying",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f3653c",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/assets/lotus_farm/images/buying-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/lotus_farm/images/buying-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

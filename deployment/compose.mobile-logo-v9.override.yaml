@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-pwa-logo-fix:v9-20261017
+  frontend:
+    image: lotus-pwa-logo-fix:v9-20261017

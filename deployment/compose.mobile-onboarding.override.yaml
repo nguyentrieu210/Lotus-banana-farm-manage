@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-pwa-onboarding:v7-20261017
+  frontend:
+    image: lotus-pwa-onboarding:v7-20261017

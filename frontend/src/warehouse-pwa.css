@@ -1,0 +1,27 @@
+/* Dedicated Warehouse PWA without introducing a second inventory implementation. */
+.stock-shell.warehouse-pwa .warehouse-install-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;margin:0 0 8px;background:#f0f6f2;border:1px solid #d1dfd6;border-radius:8px}
+.stock-shell.warehouse-pwa .warehouse-install-bar>div{display:flex;flex-direction:column;gap:2px;font-size:11px;min-width:0}
+.stock-shell.warehouse-pwa .warehouse-install-bar strong{color:#173e2e;font-size:13px}
+.stock-shell.warehouse-pwa .warehouse-install-bar span[role=alert]{color:#b04136;font-weight:650}
+.stock-shell.warehouse-pwa .warehouse-install-bar button{border:1px solid #173e2e;color:#173e2e;font-size:11px;background:transparent;border-radius:6px;padding:6px 9px;white-space:nowrap}
+.stock-shell.warehouse-pwa .warehouse-install-help{font-size:12px;line-height:1.5;padding:9px;border:1px solid #d1dfd6;border-radius:6px}
+.stock-shell.warehouse-pwa .warehouse-pwa-bottom-nav{display:none}
+@media(max-width:740px){
+ .stock-shell.warehouse-pwa .stock-sidebar{display:none!important}
+ .stock-shell.warehouse-pwa .stock-main{width:100%;max-width:100vw;min-width:0;margin:0;padding:12px 9px 88px!important}
+ .stock-shell.warehouse-pwa .warehouse-pwa-bottom-nav{
+  display:flex;position:fixed;z-index:90;bottom:0;left:0;right:0;
+  padding:7px max(8px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  gap:3px;background:#fff;border-top:1px solid #ccd7cf;
+  justify-content:space-between;box-shadow:0 -3px 14px #182c2117;
+ }
+ .stock-shell.warehouse-pwa .warehouse-pwa-bottom-nav>button{
+  flex:1;min-width:0;text-align:center;background:transparent;border:0;border-radius:5px;
+  color:#5c6b60;font-size:10px;line-height:1.25;min-height:42px;padding:4px 2px
+ }
+ .stock-shell.warehouse-pwa .warehouse-pwa-bottom-nav>button.active{background:#e9f1eb;color:#173e2e;font-weight:750}
+ .stock-shell.warehouse-pwa .stock-panel{max-width:100%;min-width:0}
+ .stock-shell.warehouse-pwa .stock-scope{display:flex;gap:6px}
+ .stock-shell.warehouse-pwa .stock-quick-actions .stock-quick-action{font-size:11px}
+ .stock-shell.warehouse-pwa .stock-buying-dialog{max-width:calc(100vw - 14px)}
+}

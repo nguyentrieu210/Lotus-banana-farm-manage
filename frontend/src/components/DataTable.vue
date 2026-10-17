@@ -1,6 +1,6 @@
 <script setup>
-import {computed,ref,watch} from 'vue'
-import {compactGridTheme as theme} from '../grid-theme'
+import {computed,inject,ref,watch} from 'vue'
+import {compactGridTheme,desktopGridThemes} from '../grid-theme'
 import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import ExcelHeader from './ExcelHeader.vue'
 import {uiFarmLabel} from '../labels'
@@ -8,6 +8,8 @@ import {AgGridVue} from 'ag-grid-vue3'
 import {AllCommunityModule,ModuleRegistry,themeQuartz} from 'ag-grid-community'
 import {Button as UiButton} from './ui/button'
 ModuleRegistry.registerModules([AllCommunityModule])
+const desktopDensity=inject('lotusDesktopDensity',null)
+const theme=computed(()=>desktopGridThemes[desktopDensity?.value]||compactGridTheme)
 const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},interactive:Boolean,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})}})
 const emit=defineEmits(['open','cell-open','filter','sort'])
 const localFilters=ref({})

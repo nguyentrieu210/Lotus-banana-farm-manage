@@ -1,0 +1,7 @@
+FROM lotus-pwa-vant4-push:v6-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+COPY --chown=frappe:frappe lotus_farm/public/images/lotus-agritech-header.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/lotus-agritech-header.png
+COPY --chown=frappe:frappe lotus_farm/public/work.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work.webmanifest
+COPY --chown=frappe:frappe lotus_farm/www/work.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/work.html
+USER frappe

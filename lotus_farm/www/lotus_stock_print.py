@@ -1,6 +1,7 @@
 """Full, permission-checked stock print. No virtualized grid or Desk redirect."""
 import frappe
-from frappe.utils import getdate,strip_html
+from frappe.utils import flt,getdate,strip_html
+import re
 no_cache=1
 
 
@@ -17,13 +18,17 @@ def get_context(context,doctype=None,name=None):
     else:frappe.throw('Loại phiếu không hỗ trợ in.',frappe.PermissionError)
     doc=frappe.get_doc(dt,name);doc.check_permission('read');doc.check_permission('print')
     context.farm_label=frappe.get_cached_value('Company',info['company'],'lotus_print_farm') or ''
-    context.project_label=frappe.get_cached_value('Company',info['company'],'lotus_print_project') or ''
+    context.company_label=frappe.get_cached_value('Company',info['company'],'company_name') or info['company']
+    # Older Company settings may still say 'DỰ ÁN CHUỐI'; print uses the actual garden name.
+    raw_garden_label=frappe.get_cached_value('Company',info['company'],'lotus_print_project') or ''
+    context.project_label=re.sub(r'^\s*dự\s+án\s+chuối\b', 'VƯỜN CHUỐI', raw_garden_label, flags=re.IGNORECASE)
     from base64 import b64encode
     from pathlib import Path
-    context.logo_data='data:image/jpeg;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech.jpg')).read_bytes()).decode('ascii')
+    context.logo_data='data:image/png;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech-header-v2.png')).read_bytes()).decode('ascii')
     context.info=info;context.heading=title;context.date=getdate(doc.get('posting_date') or doc.get('transaction_date')).strftime('%d/%m/%Y')
-    context.status=['NHÁP — CHƯA GHI SỔ','ĐÃ GHI SỔ','ĐÃ HỦY'][doc.docstatus]
-    if dt=='Material Request':context.status=['NHÁP — CHƯA DUYỆT','ĐÃ DUYỆT','ĐÃ HỦY'][doc.docstatus]
+    context.extra_costs=[dict(description=strip_html(row.get('description') or '').strip() or row.get('expense_account') or 'Chi phí phụ khác',amount=flt(row.get('amount')))
+                         for row in info.get('additional_costs',[]) if flt(row.get('amount'))]
+    context.extra_cost_total=flt(info.get('additional_total')) or sum(row['amount'] for row in context.extra_costs)
     context.notes=strip_html(doc.get('remarks') or '')
     context.owner=doc.owner;context.show_cost=dt=='Purchase Receipt' or info.get('kind')=='Material Receipt'
     context.units={'Kg':'kg','Litre':'Lít','Nos':'Cái','Tonne':'Tấn','Gram':'g','Millilitre':'ml','Box':'Hộp / thùng','Pair':'Đôi','Meter':'Mét','Unit':'Đơn vị'}

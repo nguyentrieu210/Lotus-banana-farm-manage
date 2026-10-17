@@ -1,0 +1,13 @@
+FROM lotus-pwa-vant4:v2-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/push_notifications.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/push_notifications.py
+COPY --chown=frappe:frappe lotus_farm/hooks.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/hooks.py
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/lotus_push_device /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/lotus_push_device
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/lotus_mobile_alert /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/lotus_mobile_alert
+COPY --chown=frappe:frappe lotus_farm/public/warehouse-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/warehouse-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/buying-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/buying-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/work-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/lotus-push-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/lotus-push-worker.js
+COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+RUN /home/frappe/frappe-bench/env/bin/pip install --no-cache-dir 'pywebpush>=2.0,<3'
+USER frappe

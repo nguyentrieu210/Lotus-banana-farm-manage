@@ -42,24 +42,26 @@
     },
     {
       "fieldname": "farm_block",
-      "label": "Farm Block",
+      "label": "Lô lớn",
       "fieldtype": "Link",
       "options": "Farm Block",
       "reqd": 1
     },
     {
       "fieldname": "farm_plot",
-      "label": "Farm Plot",
+      "label": "Thửa (dữ liệu cũ)",
       "fieldtype": "Link",
       "options": "Farm Plot",
-      "reqd": 1
+      "reqd": 0,
+      "hidden": 1
     },
     {
       "fieldname": "crop_cycle",
-      "label": "Crop Cycle",
+      "label": "Vụ (dữ liệu cũ)",
       "fieldtype": "Link",
       "options": "Crop Cycle",
-      "reqd": 1
+      "reqd": 0,
+      "hidden": 1
     },
     {
       "fieldname": "sucker_selection_batch",

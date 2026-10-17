@@ -1,0 +1,8 @@
+import 'vant/lib/index.css'
+import {createApp} from 'vue'
+import WarehouseMobile from './WarehouseMobile.vue'
+import './warehouse-mobile.css'
+import './register-warehouse-worker'
+createApp(WarehouseMobile).mount('#app')
+
+import './mobile-ui.css'

@@ -1,0 +1,9 @@
+services:
+  backend:
+    image: lotus-pwa-vant4-push:v6-20261017
+  frontend:
+    image: lotus-pwa-vant4-push:v6-20261017
+  queue-short:
+    image: lotus-pwa-vant4-push:v6-20261017
+  queue-long:
+    image: lotus-pwa-vant4-push:v6-20261017
