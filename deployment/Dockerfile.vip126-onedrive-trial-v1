@@ -1,0 +1,7 @@
+# Dedicated read-only trial API + frontend, based on verified live VIP126 image.
+FROM lotus-vip126-live:v1-20261018
+USER root
+COPY --chown=frappe:root lotus_farm/vip126_trial.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/vip126_trial.py
+COPY --chown=frappe:root lotus_farm/vip126_trial_check.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/vip126_trial_check.py
+COPY --chown=frappe:root lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

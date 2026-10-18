@@ -202,7 +202,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-DEqBnKU3.js",
+    "file": "assets/index-BbKAfK4p.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -254,7 +254,7 @@
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-D46_U85x.js",
+    "file": "assets/Vip126RollingForecast-C9Hx4xES.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,
@@ -267,7 +267,7 @@
       "src/components/DesktopForecastChart.vue"
     ],
     "css": [
-      "assets/Vip126RollingForecast-BRS10ugo.css"
+      "assets/Vip126RollingForecast-C3wXb1ym.css"
     ]
   },
   "stock.html": {
