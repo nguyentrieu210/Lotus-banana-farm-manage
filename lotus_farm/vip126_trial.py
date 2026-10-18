@@ -10,6 +10,7 @@ from frappe.utils import add_months, flt, getdate, nowdate
 from lotus_farm.reporting import records
 from lotus_farm.scoping import land_scope, land_filters
 from lotus_farm.vip126_live import FARM, VARIETY
+from lotus_farm.vip126_zone_plan import planned_dates
 from lotus_farm.vip126_timeline import (
     SCENARIOS, _event_candidates, _pick_anchor, _year_rows,
     _month_end, _monthbins,
@@ -37,8 +38,8 @@ TRIAL = {
 # User-selected trial rule; NOT an observed distribution at Lotus.
 FLOWERING_DISTRIBUTION = (20, 60, 20)
 
-# User-confirmed estimate ONLY for zone A: 2026-11-01. B–E dates below
-# are model-generated offsets solely to exercise all zone filters.
+# A–D flowering estimates stored on Farm Block follow A's planting sequence.
+# E remains unconfirmed; E's date is mocked in trial only.
 TRIAL_FLOWERING = {"A": "2026-11-01", "B": "2026-12-01",
                    "C": "2027-01-01", "D": "2027-02-01",
                    "E": "2027-03-01"}
@@ -70,7 +71,7 @@ DESCRIPTION = (
     "thực tế tại Lotus. Dữ liệu cũ có mật độ 2.269 / 2.600 cây/ha. "
     "Khoảng cách chọn chồi trong lịch cũ khoảng 6 tháng; KHÔNG đồng nhất "
     "với khoảng cách giữa hai lần thu hoạch. "
-    "Tỷ lệ phát buồng, sống tới cắt, thu/cắt, kg thô, ngày B-E và các dải "
+     "Tỷ lệ phát buồng, sống tới cắt, thu/cắt, kg thô, ngày trổ E và các dải "
     "thấp/cao chỉ phục vụ thử nghiệm công thức. Mọi số tấn đều chưa duyệt. "
     "Phân bố trổ hoa THỬ NGHIỆM 20% tháng đầu, 60% tháng sau, 20% tháng cuối "
     "theo yêu cầu người quản lý; không phải số đo thực địa."
@@ -89,17 +90,21 @@ def _is_positive(value):
 
 
 def _synthetic_anchor(block, count, scenario):
-    """Use A estimated date if present; otherwise schedule mock B-E waves."""
+    """Use stored inferred planting for A-D; keep E mock-only."""
     zone = (block.block_code or "")[:1]
-    estimate = str(block.get("lotus_estimated_flowering_date") or
-                   TRIAL_FLOWERING[zone])
+    inferred_planting = block.get("lotus_inferred_planting_date")
+    flower = block.get("lotus_estimated_flowering_date")
+    inferred = bool(inferred_planting and flower and planned_dates(zone))
+    estimate = str(flower or TRIAL_FLOWERING[zone])
     return {
-        "priority": 1, "source": "estimated_flower" if
-        block.get("lotus_estimated_flowering_date") else "trial_flower",
-        "source_name": ("Trổ dự kiến người dùng (khu A)" if
-                        block.get("lotus_estimated_flowering_date") else
-                        "Ngày trổ giả lập khu " + zone),
-        "source_date": estimate,
+        "priority": 1,
+        "source": ("inferred_plant" if inferred else
+                   ("estimated_flower" if flower else "trial_flower")),
+        "source_name": ("Trồng suy ngược → trổ dự kiến khu " + zone if inferred
+                        else ("Trổ dự kiến khu " + zone if flower else
+                              "Trổ GIẢ LẬP khu " + zone)),
+        "source_date": str(inferred_planting) if inferred else estimate,
+        "planting_estimate": str(inferred_planting) if inferred else None,
         "harvest_date": getdate(estimate) + timedelta(
             days=SCENARIOS[scenario]["flower_to_harvest"]),
         "bunches": count * TRIAL[scenario]["flower_share"],
@@ -182,7 +187,7 @@ def _flowering_rows(block, anchor, config, trial, start, end):
     for base in core_rows:
         is_first = base["cycle_no"] == 1
         split = (not is_first or anchor["source"] in
-                 ("estimated_flower", "trial_flower", "plant", "sucker") or
+                 ("estimated_flower", "trial_flower", "inferred_plant", "plant", "sucker") or
                  (anchor["source"] == "shoot" and not anchor.get("observed")))
         for wave in (range(3) if split else range(1)):
             if split and portions[wave] <= 0:
@@ -281,11 +286,12 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
             continue
         events = observation.get(b.name, [])
         active = _pick_anchor(b, events, config)
-        if active and _is_positive(active.get("bunches")):
+        if active and active.get("observed") and _is_positive(active.get("bunches")):
             source_lots += 1
         else:
             active = _synthetic_anchor(b, count, scenario)
-            synthetic_anchor_lots += 1
+            if active["source"] == "trial_flower":
+                synthetic_anchor_lots += 1
         if trial_block == b.block_code:
             qty = flt(trial_qty) if trial_qty is not None and str(
                 trial_qty).strip() else round(count * trial["flower_share"])
@@ -303,6 +309,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
                 "estimated_stage": not active["observed"],
                 "trial_event": bool(active.get("trial_event")),
                 "synthetic_stage": active["source"] == "trial_flower",
+                "inferred_planting": active.get("planting_estimate"),
                 "trial_mode": True,
                 "confidence": "THỬ NGHIỆM",
                 "approved": False, "commit_ready": False,
@@ -345,6 +352,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
             "known_count_lots": len(blocks) - synthetic_count_lots,
             "synthetic_count_lots": synthetic_count_lots,
             "synthetic_anchor_lots": synthetic_anchor_lots,
+            "estimated_planting_lots": len({r["block"] for r in rows if r["inferred_planting"]}),
             "tested_lots": tested_lots,
             "gross_kg": round(sum(r["gross_kg"] for r in rows), 2),
             "packed_kg": round(sum(r["packed_kg"] for r in rows), 2),

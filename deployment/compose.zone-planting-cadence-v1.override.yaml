@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-zone-planting-cadence:v1-20261018
+  frontend:
+    image: lotus-zone-planting-cadence:v1-20261018
+  queue-short:
+    image: lotus-zone-planting-cadence:v1-20261018
+  queue-long:
+    image: lotus-zone-planting-cadence:v1-20261018
+  scheduler:
+    image: lotus-zone-planting-cadence:v1-20261018

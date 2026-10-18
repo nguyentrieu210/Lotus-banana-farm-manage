@@ -2,6 +2,7 @@
 import {computed,defineAsyncComponent,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
 const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
+const ZonePlantingSchedule=defineAsyncComponent(()=>import('./ZonePlantingSchedule.vue'))
 const props=defineProps({farm:{type:String,default:''},block:{type:String,default:''}})
 const area=ref('ALL'),scenario=ref('base'),year=ref('2027'),mode=ref('trial')
 const trialBlock=ref(''),trialStage=ref('sucker'),trialDate=ref('2026-11-15'),trialQty=ref('')
@@ -20,7 +21,7 @@ const yearRows=computed(()=>(forecast.value?.rows||[]).filter(r=>r.month.startsW
 const ton=n=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(Number(n||0)/1000)
 const integer=n=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(Number(n||0))
 const dm=s=>s?.split('-').reverse().join('/')||'—'
-const stageName=s=>({estimated_flower:'Trổ dự kiến',trial_flower:'Trổ giả lập',sucker:'Chọn chồi',plant:'Ngày trồng',shoot:'Trổ',cut:'Cắt bắp',harvest_actual:'Đã thu'})[s]||s
+const stageName=s=>({estimated_flower:'Trổ dự kiến',inferred_plant:'Trồng suy ngược',trial_flower:'Trổ giả lập',sucker:'Chọn chồi',plant:'Ngày trồng',shoot:'Trổ',cut:'Cắt bắp',harvest_actual:'Đã thu'})[s]||s
 
 let seq=0
 async function load(){
@@ -74,6 +75,7 @@ function clearTrial(){appliedTrial.value=null;load()}
   <template v-else><strong>DỰ PHÓNG VẬN HÀNH · CHƯA HIỆU CHUẨN.</strong> Chỉ hiển thị dự báo từ số liệu đã ghi nhận hoặc ngày dự kiến bạn nhập; các hệ số chưa xác nhận thực địa.</template>
   Không tạo phiếu thật, tồn kho hay cam kết bán.
  </div>
+ <ZonePlantingSchedule :farm="farm" :zone="area" :block="block" />
  <div v-if="mode==='trial'" class="vip126-timeline__flowering">
   <strong>Phân bổ trổ hoa: 20% – 60% – 20%</strong>
   <div class="vip126-timeline__flowering-track">
