@@ -69,7 +69,7 @@ DESCRIPTION = (
     "THỬ NGHIỆM: 17 kg/buồng SƠ CHẾ và khoảng 98% số buồng thu đi sơ chế "
     "được lấy từ dòng kế hoạch VIP 126 cũ trong OneDrive, không phải cân/đếm "
     "thực tế tại Lotus. Dữ liệu cũ có mật độ 2.269 / 2.600 cây/ha. "
-    "Khoảng cách chọn chồi trong lịch cũ khoảng 6 tháng; KHÔNG đồng nhất "
+    "Chọn chồi kế hoạch sau trồng 90 ngày, chồi tính riêng từ mốc chọn; KHÔNG đồng nhất "
     "với khoảng cách giữa hai lần thu hoạch. "
      "Tỷ lệ phát buồng, sống tới cắt, thu/cắt, kg thô, ngày trổ E và các dải "
     "thấp/cao chỉ phục vụ thử nghiệm công thức. Mọi số tấn đều chưa duyệt. "
@@ -115,18 +115,22 @@ def _synthetic_anchor(block, count, scenario):
 
 def _trial_event_anchor(stage, day, qty, scenario):
     config = SCENARIOS[scenario]
-    days = {
-        "plant": config["plant_to_flower"] + config["flower_to_harvest"],
-        "sucker": config["sucker_to_harvest"],
-        "shoot": config["flower_to_harvest"],
-        "cut": config["cut_to_harvest"],
-        "harvest_actual": 0,
-    }[stage]
+    # A selected sucker starts its own six-month-to-flower clock for trial.
+    anchor_day = getdate(day)
+    if stage in ("plant", "sucker"):
+        harvest = getdate(add_months(anchor_day, 6)) + timedelta(
+            days=config["flower_to_harvest"])
+    else:
+        harvest = anchor_day + timedelta(days={
+            "shoot": config["flower_to_harvest"],
+            "cut": config["cut_to_harvest"],
+            "harvest_actual": 0,
+        }[stage])
     return {
         "priority": TEST_STAGES[stage][1], "source": stage,
         "source_name": TEST_STAGES[stage][0],
         "source_date": str(day),
-        "harvest_date": getdate(day) + timedelta(days=days),
+        "harvest_date": harvest,
         "bunches": qty,
         "observed": False, "trial_event": True, "batch": None, "cycle": None,
     }
@@ -271,7 +275,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
 
     selected = land_scope(farm=FARM, block=block)
     fields = ["name", "farm", "block_code", "block_name", "variety", "area_ha",
-              "planting_date", "lotus_tree_count", "lotus_estimated_flowering_date",
+              "planting_date", "lotus_tree_count", "lotus_tree_count_source", "lotus_estimated_flowering_date",
               "lotus_inferred_planting_date"]
     blocks = records("Farm Block",
                      land_filters(frappe.get_meta("Farm Block"), selected),
@@ -339,7 +343,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
                                  "Vụ chồi dự phóng từ mốc thử"),
                 "tree_count_used": count,
                 "tree_count_source": ("Giả lập từ ha × mật độ" if synthetic_count
-                                      else "Số cây từ Excel"),
+                                      else (b.get("lotus_tree_count_source") or "Hồ sơ lô đã nhập")),
             })
             if r["month"] not in months:
                 raise ValueError("Forecast fell outside the monthly 36-month window")
@@ -364,7 +368,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
                    "cut_to_harvest_min": 60,
                    "cut_to_harvest_max": 70,
                    "ratoon_days": config["ratoon_days"],
-                   "sucker_selection_interval_days": 183,
+                   "sucker_selection_after_planting_days": 90,
                    "flowering_distribution_percent": list(FLOWERING_DISTRIBUTION)},
         "trial_event": {
             "block": trial_block, "stage": trial_stage,
@@ -387,6 +391,6 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
         "source_notice": DESCRIPTION,
         "source_links": SOURCE_LINKS,
         "safe_note": ("Không ghi giả lập vào DB, lịch sử, kho hoặc bán hàng. "
-                      "Lịch chọn chồi 183 ngày là nhịp kế hoạch, không phải "
+                      "Mốc kiểm tra chọn chồi 90 ngày sau trồng, không phải "
                       "khoảng cách giữa hai kỳ thu."),
     }

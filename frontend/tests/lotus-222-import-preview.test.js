@@ -18,8 +18,8 @@ test('Không biến số cây trong ảnh thành mật độ trồng hoặc tr�
  assert.match(src,/Ước tính người dùng/)
  assert.match(src,/ready_for_release": False/)
  assert.match(src,/2026-11-01/)
- assert.match(src,/2027-01-10/)
- assert.match(src,/2027-02-07/)
+ assert.match(src,/2027-01-17/)
+ assert.match(src,/2027-03-29/)
 })
 test('Giao diện gọi API có kiểm tra quyền, hiển thị chờ xác nhận',()=>{
  const app=read('frontend/src/App.vue')

@@ -1,7 +1,7 @@
 """Non-mutating forecast contract tests (runnable with bench execute)."""
 from datetime import timedelta
 import frappe
-from frappe.utils import getdate
+from frappe.utils import getdate, add_months
 from lotus_farm.vip126_timeline import _pick_anchor, _year_rows, SCENARIOS
 
 
@@ -20,7 +20,7 @@ def smoke():
     assert all(first[i]["expected_date"] < first[i+1]["expected_date"] for i in range(len(first)-1))
     selection = {
         "priority":2,"source":"sucker","source_name":"Đã chọn chồi",
-        "source_date":"2026-12-01","harvest_date":getdate("2026-12-01")+timedelta(days=245),
+        "source_date":"2026-12-01","harvest_date":getdate(add_months("2026-12-01",6))+timedelta(days=82),
         "bunches":500,"observed":True,"batch":"TEST-001","cycle":"TEST-C1",
     }
     chosen=_pick_anchor(b,[selection],cfg)

@@ -19,14 +19,14 @@ OLD_BLOCK_CODE = "A13"
 OLD_BLOCK_ID = "cihuaei26t"
 FLOWER_DATE = "2026-11-01"
 AS_OF = "2026-10-18"
-PLANT_TO_FLOWER_DAYS = 255  # 8-9 months estimate; not an observed planting date
+PLANT_TO_FLOWER_DAYS = 184  # legacy, do not use for new calendar-month inference
 FLOWER_TO_HARVEST_DAYS = 84  # 12 weeks planning median; range 10-14 weeks
 RATOON_INTERVAL_DAYS = 270  # uncalibrated planning scenario
 SOURCE_NOTICE = "Nguồn số cây: " + SOURCE + " | SHA256 " + SOURCE_SHA256
 ESTIMATE_NOTICE = (
     "VIP 126 do người quản lý xác nhận 18/10/2026. "
     "Trổ hoa khu A 01/11/2026 là DỰ KIẾN, chưa quan sát từng lô. "
-    "Ngày trồng suy ngược 255 ngày từ trổ là ƯỚC TÍNH, không phải ngày trồng thật. "
+    "Ngày trồng suy ngược 6 tháng lịch từ trổ là ƯỚC TÍNH, không phải ngày trồng thật. "
     "Thời gian trổ-đến-thu tham khảo 10–14 tuần, chưa có hiệu chuẩn thực địa. "
     "Các lô A có nhiều thế hệ cây thì không gộp lượng cây để cam kết."
 )
@@ -146,27 +146,25 @@ def import_census():
             variety_code=VARIETY, variety_name="VIP 126", active=1,
             notes="Giống do người quản lý xác nhận 18/10/2026.")).insert(ignore_permissions=True)
     new_fields = _install_fields()
-    inferred = getdate(FLOWER_DATE)-timedelta(days=PLANT_TO_FLOWER_DAYS)
     changed = 0
     counted = 0
     for row in rows:
         code = row["code"]
         doc = frappe.get_doc("Farm Block", existing[code])
-        count = int(row["tree_count"]) if row["tree_count"] else None
-        if count is not None:
+        census_from_excel = int(row["tree_count"]) if row["tree_count"] else None
+        if census_from_excel is not None:
             counted += 1
-        updates = dict(variety=VARIETY,
-            lotus_tree_count=count,
-            lotus_tree_count_source=SOURCE_NOTICE)
-        if code.startswith("A"):
-            updates.update(lotus_estimated_flowering_date=FLOWER_DATE,
-                lotus_inferred_planting_date=str(inferred),
-                lotus_estimation_basis=ESTIMATE_NOTICE)
+        updates = {"variety": VARIETY}
+        # Never overwrite newer photo/manager census, or revisioned zone dates.
+        # The original 64-lot private CSV remains an immutable import source.
+        if census_from_excel is not None and int(doc.get("lotus_tree_count") or 0) == 0:
+            updates["lotus_tree_count"] = census_from_excel
+            updates["lotus_tree_count_source"] = SOURCE_NOTICE
         for field, value in updates.items():
-            if (str(doc.get(field) or "") != str(value or "")):
+            if str(doc.get(field) or "") != str(value or ""):
                 doc.set(field, value)
                 changed += 1
-        if doc.has_value_changed("variety") or any(doc.has_value_changed(x) for x in updates):
+        if any(doc.has_value_changed(x) for x in updates):
             doc.save(ignore_permissions=True)
     frappe.db.commit()
     return {"status": "imported", "farm": FARM, "variety": VARIETY,

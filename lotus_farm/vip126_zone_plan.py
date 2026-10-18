@@ -4,7 +4,7 @@ User confirms only the *relative order*: A then B then C then D,
 one calendar month apart. Absolute date for zone A is inferred from an
 unverified flowering estimate. NEVER set Farm Block.planting_date.
 """
-from collections import Counter
+from datetime import timedelta
 import frappe
 from frappe.utils import add_months, getdate
 from lotus_farm.vip126_live import FARM, VARIETY
@@ -14,18 +14,20 @@ from lotus_farm.reporting import records
 
 CONFIRMED_SEQUENCE = ("A", "B", "C", "D")
 PENDING_ZONE = "E"
-ZONE_A_INFERRED_PLANTING = "2026-02-19"
+ZONE_A_INFERRED_PLANTING = "2026-05-01"
 ZONE_A_EXPECTED_FLOWERING = "2026-11-01"
 DISTRIBUTION = (20, 60, 20)
-REVISION_TAG = "LOTUS-ZONE-SEQUENCE-20261018"
+REVISION_TAG = "LOTUS-ZONE-SEQUENCE-6MONTH-20261018"
+LEGACY_REVISION_TAG = "LOTUS-ZONE-SEQUENCE-20261018"
 ZONE_REASON = (
     "ƯỚC TÍNH KẾ HOẠCH, KHÔNG PHẢI NGÀY TRỒNG THỰC TẾ. "
-    "Khu A suy ngược từ ngày trổ dự kiến 01/11/2026 theo 255 ngày. "
+     "Khu A suy ngược từ ngày trổ đầu tiên dự kiến 01/11/2026 lùi đúng 6 tháng lịch = 01/05/2026. "
     "Người quản lý xác nhận thứ tự trồng A → B → C → D; "
     "mỗi khu sau trồng muộn hơn khu trước đúng 01 tháng lịch. "
     "Trổ dự kiến từng khu được giãn theo tháng tương ứng; "
-    "mỗi đợt trổ phân bổ 20% / 60% / 20% qua 3 tháng. "
-    "Dự phóng chưa có số đo thực địa; chỉ phục vụ tính thử 36 tháng."
+     "Trổ đợt 1 sau trồng 6 tháng (20%), tháng 7 (60%), tháng 8 (20%). "
+    "Chọn chồi kiểm tra dự kiến sau 90 ngày; cắt bắp 17 ngày sau trổ; thu sau cắt 60-70 ngày. "
+    "Dự phóng chưa có số đo thực địa, chỉ phục vụ tính thử 36 tháng."
 )
 
 
@@ -41,6 +43,7 @@ def planned_dates(zone):
         "source": "Zone A baseline inferred; B–D order confirmed by manager",
         "estimate_only": True,
         "flowering_distribution": list(DISTRIBUTION),
+        "sucker_selection_estimate": str(getdate(add_months(ZONE_A_INFERRED_PLANTING, offset)) + timedelta(days=90)),
     }
 
 
@@ -62,6 +65,20 @@ def _check_inventory():
     return docs
 
 
+def _ensure_sucker_estimate_field():
+    fieldname = "lotus_estimated_sucker_selection_date"
+    if frappe.db.exists("Custom Field", "Farm Block-" + fieldname):
+        return False
+    frappe.get_doc({
+        "doctype":"Custom Field", "dt":"Farm Block", "fieldname":fieldname,
+        "fieldtype":"Date", "label":"Ngày chọn chồi dự kiến (90 ngày)",
+        "insert_after":"lotus_inferred_planting_date",
+        "description":"Ngày trồng suy ngược + 90 ngày; chưa phải ngày chọn chồi thực tế.",
+    }).insert(ignore_permissions=True)
+    frappe.clear_cache(doctype="Farm Block")
+    return True
+
+
 def apply_zone_estimates():
     """Apply verified A-D schedule to custom estimate columns, idempotently.
 
@@ -69,6 +86,7 @@ def apply_zone_estimates():
     No actual Planting Event / Crop Cycle / Harvest Actual is created.
     """
     docs = _check_inventory()
+    created_field = _ensure_sucker_estimate_field()
     target = [code for code in docs if code[:1] in CONFIRMED_SEQUENCE]
     proposed = []
     protected = []
@@ -80,11 +98,15 @@ def apply_zone_estimates():
         existing = str(doc.get("lotus_inferred_planting_date") or "")
         expected = plan["planting_estimate"]
         basis = str(doc.get("lotus_estimation_basis") or "")
-        if existing and existing != expected and REVISION_TAG not in basis:
+        if existing and existing != expected and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
+            protected.append(code)
+            continue
+        selected = str(doc.get("lotus_estimated_sucker_selection_date") or "")
+        if selected and selected != plan["sucker_selection_estimate"] and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
             protected.append(code)
             continue
         flowering = str(doc.get("lotus_estimated_flowering_date") or "")
-        if flowering and flowering != plan["flowering_estimate"] and REVISION_TAG not in basis:
+        if flowering and flowering != plan["flowering_estimate"] and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
             protected.append(code)
             continue
         proposed.append((doc, plan))
@@ -96,6 +118,7 @@ def apply_zone_estimates():
         updated = {
             "lotus_inferred_planting_date": plan["planting_estimate"],
             "lotus_estimated_flowering_date": plan["flowering_estimate"],
+            "lotus_estimated_sucker_selection_date": plan["sucker_selection_estimate"],
             "lotus_estimation_basis": REVISION_TAG + " | " + ZONE_REASON
                 + " | Khu " + plan["zone"] + ": chênh " +
                 str(plan["planting_month_offset"]) + " tháng so với A.",
@@ -110,7 +133,7 @@ def apply_zone_estimates():
     frappe.db.commit()
     return {"status":"applied_estimated_only", "farm": FARM, "variety": VARIETY,
         "lots_in_plan": len(proposed), "touched_lots": touched,
-        "changed_values":changed, "zones": [
+        "changed_values":changed, "created_sucker_date_field":created_field, "zones": [
             planned_dates(z) for z in CONFIRMED_SEQUENCE],
         "pending_zone": PENDING_ZONE, "unchanged_planting_date": True,
         "source": REVISION_TAG}
@@ -131,7 +154,8 @@ def status(farm=None, zone=None, block=None):
         frappe.get_meta("Farm Block"), selected),
         ["name","farm","block_code","planting_date",
          "lotus_inferred_planting_date","lotus_estimated_flowering_date",
-         "lotus_tree_count","lotus_estimation_basis"])
+         "lotus_tree_count","lotus_estimation_basis",
+         "lotus_estimated_sucker_selection_date"])
     docs = [d for d in docs if d.farm == FARM and
             (not zone or d.block_code.startswith(zone))]
     result = []
@@ -145,11 +169,14 @@ def status(farm=None, zone=None, block=None):
                 sum(int(x.lotus_tree_count or 0)>0 for x in rows),
             "estimated_planting_date":plan["planting_estimate"] if plan else None,
             "estimated_flowering_date":plan["flowering_estimate"] if plan else None,
+            "estimated_sucker_selection_date":plan["sucker_selection_estimate"] if plan else None,
             "saved_estimated_dates":sum(
                 str(x.lotus_inferred_planting_date or "") ==
                 (plan["planting_estimate"] if plan else "-") and
                 str(x.lotus_estimated_flowering_date or "") ==
-                (plan["flowering_estimate"] if plan else "-") for x in rows),
+                (plan["flowering_estimate"] if plan else "-") and
+                str(x.lotus_estimated_sucker_selection_date or "") ==
+                (plan["sucker_selection_estimate"] if plan else "-") for x in rows),
             "actual_planting_lots":sum(bool(x.planting_date) for x in rows),
             "pending":plan is None,
             "note":("Chưa xác nhận lịch trồng của khu E; chỉ chạy giả lập."

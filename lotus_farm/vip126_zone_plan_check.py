@@ -12,7 +12,7 @@ def smoke():
     assert CONFIRMED_SEQUENCE == ("A","B","C","D")
     assert DISTRIBUTION == (20,60,20)
     assert [planned_dates(z)["planting_estimate"] for z in CONFIRMED_SEQUENCE] == [
-        "2026-02-19","2026-03-19","2026-04-19","2026-05-19"]
+        "2026-05-01","2026-06-01","2026-07-01","2026-08-01"]
     assert [planned_dates(z)["flowering_estimate"] for z in CONFIRMED_SEQUENCE] == [
         "2026-11-01","2026-12-01","2027-01-01","2027-02-01"]
     assert planned_dates("E") is None
@@ -25,7 +25,7 @@ def database_check():
     rows=frappe.get_all("Farm Block",filters={"farm":"LOTUS-222"},
           fields=["name","block_code","planting_date","lotus_tree_count",
                   "lotus_inferred_planting_date","lotus_estimated_flowering_date",
-                  "lotus_estimation_basis"],limit_page_length=100)
+                  "lotus_estimation_basis","lotus_estimated_sucker_selection_date"],limit_page_length=100)
     assert len(rows)==64, len(rows)
     counts={z:0 for z in "ABCDE"}
     saved=0
@@ -37,7 +37,8 @@ def database_check():
         if plan:
             assert str(row.lotus_inferred_planting_date)==plan["planting_estimate"],row
             assert str(row.lotus_estimated_flowering_date)==plan["flowering_estimate"],row
-            assert "LOTUS-ZONE-SEQUENCE-20261018" in (row.lotus_estimation_basis or "")
+            assert "LOTUS-ZONE-SEQUENCE-6MONTH-20261018" in (row.lotus_estimation_basis or "")
+            assert str(row.lotus_estimated_sucker_selection_date)==plan["sucker_selection_estimate"],row
             saved+=1
         else:
             assert not row.lotus_inferred_planting_date

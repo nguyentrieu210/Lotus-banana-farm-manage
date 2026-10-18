@@ -42,7 +42,7 @@ def preview(farm=None, block=None):
     if source is None:
         return {"available": False, "message": "Bảng mẫu chưa được nạp vào bộ nhớ riêng của máy chủ."}
     permitted = records("Farm Block", land_filters(frappe.get_meta("Farm Block"), selected),
-                        ["name", "farm", "block_code", "block_name", "area_ha"])
+                        ["name", "farm", "block_code", "block_name", "area_ha", "lotus_tree_count", "lotus_tree_count_source"])
     permitted_by_code = {r.block_code: r for r in permitted if r.farm == FARM}
     result = []
     for item in source:
@@ -50,7 +50,9 @@ def preview(farm=None, block=None):
         if not existing:
             continue
         count_text = item["tree_count"].strip()
-        count = int(count_text) if count_text else None
+        original_count = int(count_text) if count_text else None
+        count = int(existing.lotus_tree_count or 0) or original_count
+        count_source = str(existing.lotus_tree_count_source or (SOURCE if original_count else ""))
         expected_area = float(item["area_ha"])
         existing_area = float(existing.area_ha or 0)
         match = abs(expected_area - existing_area) <= 0.03
@@ -61,7 +63,9 @@ def preview(farm=None, block=None):
             "system_area_ha": existing_area,
             "area_match": match,
             "tree_count": count,
-            "count_status": "Có trong file, chờ xác nhận hiện trường" if count is not None else "Chưa có số cây",
+            "count_status": ("Đã bổ sung từ ảnh biển lô hoặc xác nhận người quản lý; cần đối chiếu" if count_source and "18/10/2026" in count_source else
+                             "Từ Excel gốc, cần đối chiếu hiện trường" if count is not None else "Chưa có số cây"),
+            "count_source": count_source,
             "source_excel_row": int(item["source_excel_row"]),
         })
     groups = []
@@ -77,7 +81,7 @@ def preview(farm=None, block=None):
     return {
         "available": True, "mode": "import_preview", "farm": FARM,
         "source": SOURCE, "source_sha256": SOURCE_SHA256,
-        "source_status": "Bảng Excel nạp vào vùng riêng để đối chiếu, chưa xác minh ngoài vườn",
+        "source_status": "Excel gốc + số cây mới nhập vào Farm Block, có ghi nguồn từng lô; chưa kiểm kê độc lập",
         "notice": "Không lưu số cây vào mật độ trồng; không tạo bản ghi trổ hoa/thu hoạch thực tế hoặc cam kết bán.",
         "summary": {
             "lots": len(result),
@@ -92,8 +96,8 @@ def preview(farm=None, block=None):
             "zone": "A", "flowering_date": "2026-11-01", "as_of": "2026-10-18",
             "basis": "Ước tính người dùng: khu A còn khoảng 2 tuần sẽ trổ hoa",
             "status": "Dự kiến, chưa quan sát", "confidence": "Thấp",
-            "harvest_from": "2027-01-10", "harvest_to": "2027-02-07",
-            "harvest_basis": "10–14 tuần sau trổ hoa, tham khảo FAO Việt Nam",
+            "harvest_from": "2027-01-17", "harvest_to": "2027-03-29",
+            "harvest_basis": "Ba đợt trổ 20/60/20; cắt sau 17 ngày, thu 60-70 ngày sau cắt bắp",
             "reference": "https://www.fao.org/4/ad523e/ad523e05.htm",
             "scope_note": "Ước tính cấp khu A, không khẳng định mọi cây trong từng lô trổ cùng ngày.",
             "ready_for_release": False

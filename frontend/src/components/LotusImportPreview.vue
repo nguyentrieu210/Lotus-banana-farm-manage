@@ -23,17 +23,17 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
 </script>
 <template>
 <details class="lotus-import" open>
-  <summary><span><strong>Bảng mẫu Vườn 222 từ Excel</strong><small>64 lô lớn · số cây đã ghi trong file · dự kiến trổ hoa khu A</small></span><span class="lotus-import__tag">Chưa xác nhận</span></summary>
+  <summary><span><strong>Đối chiếu số cây Vườn 222</strong><small>Excel gốc + số cây từ biển lô · Chưa xác nhận kiểm kê thực địa</small></span><span class="lotus-import__tag">Cần kiểm kê</span></summary>
   <div class="lotus-import__body">
     <p v-if="loading" class="lotus-import__info">Đang đọc bảng nhập riêng…</p>
     <p v-if="error" role="alert" class="lotus-import__error">{{error}} <button @click="reload">Thử lại</button></p>
     <p v-if="data&&!data.available" class="lotus-import__info">{{data.message}}</p>
     <template v-if="data?.available">
-      <p class="lotus-import__source"><b>Nguồn:</b> {{data.source}} · Chỉ là dữ liệu đối chiếu, không ghi sổ. <button type="button" @click="reload" :disabled="loading">Làm mới</button></p>
+      <p class="lotus-import__source"><b>Nguồn:</b> {{data.source}} · Đã đối chiếu với hồ sơ lô, có nguồn cập nhật từng lô. <button type="button" @click="reload" :disabled="loading">Làm mới</button></p>
       <div class="lotus-import__metrics">
         <article><small>Lô lớn khớp hệ thống</small><strong>{{data.summary.lots}}</strong></article>
-        <article><small>Lô có số cây trong Excel</small><strong>{{data.summary.counted_lots}} / {{data.summary.lots}}</strong></article>
-        <article><small>Số cây đã ghi nhận trong file</small><strong>{{amount(data.summary.known_trees)}}</strong></article>
+        <article><small>Lô đã có số cây</small><strong>{{data.summary.counted_lots}} / {{data.summary.lots}}</strong></article>
+        <article><small>Tổng số cây có nguồn</small><strong>{{amount(data.summary.known_trees)}}</strong></article>
         <article><small>Thiếu số cây</small><strong>{{data.summary.missing_count_lots}} lô</strong></article>
       </div>
       <div v-if="data.summary.area_mismatch_lots?.length" class="lotus-import__error" role="alert">Chênh lệch diện tích so với Lotus: {{data.summary.area_mismatch_lots.join(', ')}}. Cần kiểm tra trước khi sử dụng.</div>
@@ -41,8 +41,8 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
         <div>
           <span class="lotus-import__eyebrow">ƯỚC TÍNH KHU A · CHƯA TRỔ THỰC TẾ</span>
           <h3>Dự kiến trổ hoa {{data.zone_a_outlook.flowering_date.split('-').reverse().join('/')}}</h3>
-          <p>Ngày thu hoạch tham khảo <b>{{data.zone_a_outlook.harvest_from.split('-').reverse().join('/')}} – {{data.zone_a_outlook.harvest_to.split('-').reverse().join('/')}}</b>.</p>
-          <small>{{data.zone_a_outlook.scope_note}} Căn cứ khoảng 10–14 tuần sau trổ theo <a :href="data.zone_a_outlook.reference" target="_blank" rel="noopener noreferrer">FAO về chuối Việt Nam ↗</a>.</small>
+          <p>Khoảng thu của ba đợt trổ <b>{{data.zone_a_outlook.harvest_from.split('-').reverse().join('/')}} – {{data.zone_a_outlook.harvest_to.split('-').reverse().join('/')}}</b>.</p>
+          <small>{{data.zone_a_outlook.scope_note}} Theo quy tắc trổ 20/60/20, cắt bắp sau 17 ngày rồi thu sau 60–70 ngày.</small>
         </div>
         <span class="lotus-import__confidence">Độ tin cậy thấp</span>
       </div>
@@ -55,7 +55,7 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
       </div>
       <div class="lotus-import__scroll">
         <table>
-          <thead><tr><th>Lô lớn</th><th>Diện tích</th><th>Số cây trong Excel</th><th>Trạng thái</th></tr></thead>
+          <thead><tr><th>Lô lớn</th><th>Diện tích</th><th>Số cây có nguồn</th><th>Trạng thái</th></tr></thead>
           <tbody>
             <tr v-for="r in rows" :key="r.block">
               <td><b>{{r.code}}</b></td><td>{{amount(r.area_ha)}} ha</td>

@@ -23,23 +23,23 @@ const date=s=>s?.split('-').reverse().join('/')||'Chưa xác nhận'
 <template>
  <section class="zone-plan" aria-label="Kế hoạch trồng theo khu">
   <header><div><strong>Tiến độ trồng VIP 126 theo khu</strong>
-   <p>A trồng trước, B–C–D lần lượt sau 1 tháng. Ngày trồng bên dưới là <b>suy ngược</b>, không phải ngày ghi nhận thực tế.</p>
+   <p>A trồng suy ngược 01/05/2026, B–C–D lần lượt sau 1 tháng. Ngày trồng bên dưới là <b>suy ngược</b>, không phải ngày ghi nhận thực tế.</p>
   </div><button type="button" @click="load" :disabled="busy">Làm mới</button></header>
   <p v-if="busy" class="zone-plan__note">Đang kiểm tra dữ liệu đã lưu…</p>
   <p v-if="error" role="alert">{{error}}</p>
   <div v-if="result?.available" class="zone-plan__scroll">
-   <table><thead><tr><th>Khu</th><th>Ngày trồng ước tính</th><th>Trổ dự kiến</th><th>Lô</th><th>Đã lưu kế hoạch</th><th>Thực tế</th></tr></thead>
+   <table><thead><tr><th>Khu</th><th>Ngày trồng ước tính</th><th>Chọn chồi dự kiến</th><th>Trổ đợt đầu</th><th>Lô</th><th>Đã lưu kế hoạch</th><th>Thực tế</th></tr></thead>
     <tbody>
      <tr v-for="z in result.zones" :key="z.zone">
       <td><b>Khu {{z.zone}}</b></td><td>{{date(z.estimated_planting_date)}}</td>
-      <td>{{date(z.estimated_flowering_date)}}</td><td>{{z.lots}}</td>
+      <td>{{date(z.estimated_sucker_selection_date)}}</td><td>{{date(z.estimated_flowering_date)}}</td><td>{{z.lots}}</td>
       <td>{{z.pending?'Chờ xác nhận':z.saved_estimated_dates+' / '+z.lots+' lô'}}</td>
       <td>{{z.actual_planting_lots}} lô có ngày trồng thật</td>
      </tr>
     </tbody>
    </table>
   </div>
-  <p v-if="result?.available" class="zone-plan__note"><b>Phân bổ trổ:</b> 20% tháng đầu, 60% tháng tiếp, 20% tháng cuối. Khu E chưa được xác nhận lịch trồng; trong chế độ chạy thử chỉ dùng mốc giả lập. Ngày chọn chồi hoặc trổ ghi nhận mới sẽ thay mốc dự phóng của đợt tương ứng.</p>
+  <p v-if="result?.available" class="zone-plan__note"><b>Phân bổ trổ:</b> 20% tháng đầu, 60% tháng tiếp, 20% tháng cuối. Trổ đầu sau trồng 6 tháng; chọn chồi 90 ngày sau trồng. Khu E chưa được xác nhận lịch trồng; trong chế độ chạy thử chỉ dùng mốc giả lập. Ngày chọn chồi hoặc trổ ghi nhận mới sẽ thay mốc dự phóng của đợt tương ứng.</p>
  </section>
 </template>
 <style scoped>

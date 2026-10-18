@@ -17,20 +17,20 @@ SCENARIOS = {
     "low": {
         "name": "Thấp", "flower_share": .30, "survival": .85,
         "weight_kg": 16., "quality": .80, "packout": .70,
-        "flower_to_harvest": 87, "flower_to_cut": 17, "plant_to_flower": 285,
-        "sucker_to_harvest": 285, "cut_to_harvest": 70, "ratoon_days": 310,
+        "flower_to_harvest": 87, "flower_to_cut": 17, "plant_to_flower": 184,
+        "sucker_to_harvest": 266, "cut_to_harvest": 70, "ratoon_days": 310,
     },
     "base": {
         "name": "Cơ sở", "flower_share": .60, "survival": .90,
         "weight_kg": 20., "quality": .85, "packout": .75,
-        "flower_to_harvest": 82, "flower_to_cut": 17, "plant_to_flower": 255,
-        "sucker_to_harvest": 245, "cut_to_harvest": 65, "ratoon_days": 270,
+        "flower_to_harvest": 82, "flower_to_cut": 17, "plant_to_flower": 184,
+        "sucker_to_harvest": 266, "cut_to_harvest": 65, "ratoon_days": 270,
     },
     "high": {
         "name": "Cao", "flower_share": .85, "survival": .95,
         "weight_kg": 24., "quality": .90, "packout": .80,
-        "flower_to_harvest": 77, "flower_to_cut": 17, "plant_to_flower": 240,
-        "sucker_to_harvest": 215, "cut_to_harvest": 60, "ratoon_days": 240,
+        "flower_to_harvest": 77, "flower_to_cut": 17, "plant_to_flower": 184,
+        "sucker_to_harvest": 266, "cut_to_harvest": 60, "ratoon_days": 240,
     },
 }
 CREDITS = (
@@ -106,7 +106,7 @@ def _event_candidates(blocks, config, from_date, to_date):
             anchors[r.farm_block].append({
                 "priority": 2, "source": "sucker", "source_name": "Đã chọn chồi",
                 "source_date": str(r.selection_date),
-                "harvest_date": getdate(r.selection_date)+timedelta(days=config["sucker_to_harvest"]),
+                "harvest_date": getdate(add_months(r.selection_date,6))+timedelta(days=config["flower_to_harvest"]),
                 "bunches": max(amount, 0), "observed": True,
                 "batch": r.name, "cycle": r.crop_cycle or None,
             })
@@ -154,10 +154,10 @@ def _pick_anchor(block, events, config):
     if planting:
         return {
             "priority": 1, "source": "plant",
-            "source_name": "Ngày trồng thực tế",
+            "source_name": "Ngày trồng thực tế; trổ sau 6 tháng",
             "source_date": str(planting),
-            "harvest_date": getdate(planting)+timedelta(
-                days=config["plant_to_flower"]+config["flower_to_harvest"]),
+            "harvest_date": getdate(add_months(planting,6))+timedelta(
+                days=config["flower_to_harvest"]),
             "bunches": count*config["flower_share"], "observed": False,
             "batch": None, "cycle": None,
         }
