@@ -5,9 +5,8 @@ of Lotus Farm. Missing counts and stage dates are generated in memory, never
 written to Farm Block, Crop Cycle, Harvest Profile, stock or sales.
 """
 from datetime import date, timedelta
-from collections import Counter
 import frappe
-from frappe.utils import cint, flt, getdate, nowdate
+from frappe.utils import add_months, flt, getdate, nowdate
 from lotus_farm.reporting import records
 from lotus_farm.scoping import land_scope, land_filters
 from lotus_farm.vip126_live import FARM, VARIETY
@@ -33,6 +32,10 @@ TRIAL = {
              "preprocess_rate": .99, "packed_kg_per_processed_bunch": 19.,
              "raw_kg_per_cut_bunch": 23.},
 }
+
+# Every projected flowering cohort follows 20% / 60% / 20% across three months.
+# User-selected trial rule; NOT an observed distribution at Lotus.
+FLOWERING_DISTRIBUTION = (20, 60, 20)
 
 # User-confirmed estimate ONLY for zone A: 2026-11-01. B–E dates below
 # are model-generated offsets solely to exercise all zone filters.
@@ -68,7 +71,9 @@ DESCRIPTION = (
     "Khoảng cách chọn chồi trong lịch cũ khoảng 6 tháng; KHÔNG đồng nhất "
     "với khoảng cách giữa hai lần thu hoạch. "
     "Tỷ lệ phát buồng, sống tới cắt, thu/cắt, kg thô, ngày B-E và các dải "
-    "thấp/cao chỉ phục vụ thử nghiệm công thức. Mọi số tấn đều chưa duyệt."
+    "thấp/cao chỉ phục vụ thử nghiệm công thức. Mọi số tấn đều chưa duyệt. "
+    "Phân bố trổ hoa THỬ NGHIỆM 20% tháng đầu, 60% tháng sau, 20% tháng cuối "
+    "theo yêu cầu người quản lý; không phải số đo thực địa."
 )
 TEST_STAGES = {
     "plant": ("Thử ngày trồng", 1),
@@ -153,6 +158,64 @@ def _counts(anchor, cycle_no, trial):
     }
 
 
+def _split_flowering_quantity(total):
+    """Integer allocations sum to exact projected flowering bunches."""
+    total = max(0, round(flt(total)))
+    first = round(total * FLOWERING_DISTRIBUTION[0] / 100)
+    second = round(total * FLOWERING_DISTRIBUTION[1] / 100)
+    return (first, second, total - first - second)
+
+
+def _flowering_rows(block, anchor, config, trial, start, end):
+    """Project independent 20/60/20 flowering cohorts within each 36m cycle.
+
+    Each cohort goes through cut -> harvest -> preprocessing -> kg separately.
+    Observed shooting, cut and actual-harvest first events stay on their
+    reported date and quantity; only future ratoons are modeled in waves.
+    """
+    expanded_start = getdate(add_months(start, -2))
+    core_rows = _year_rows(block, anchor, config, expanded_start, end)
+    base_flower_date = getdate(anchor["harvest_date"]) - timedelta(
+        days=config["flower_to_harvest"])
+    portions = _split_flowering_quantity(anchor["bunches"])
+    result = []
+    for base in core_rows:
+        is_first = base["cycle_no"] == 1
+        split = (not is_first or anchor["source"] in
+                 ("estimated_flower", "trial_flower", "plant", "sucker") or
+                 (anchor["source"] == "shoot" and not anchor.get("observed")))
+        for wave in (range(3) if split else range(1)):
+            if split and portions[wave] <= 0:
+                continue
+            base_flower_month = getdate(add_months(base_flower_date, wave))
+            offset_days = (base_flower_month - base_flower_date).days
+            predicted_date = getdate(base["expected_date"]) + timedelta(
+                days=offset_days if split else 0)
+            if not start <= predicted_date <= end:
+                continue
+            flowering_date = (getdate(base["expected_date"]) -
+                              timedelta(days=config["flower_to_harvest"]) +
+                              timedelta(days=offset_days))
+            counted_anchor = dict(anchor)
+            if split:
+                counted_anchor["bunches"] = portions[wave]
+            row = dict(base)
+            row.update(_counts(counted_anchor, base["cycle_no"], trial))
+            row.update({
+                "expected_date": str(predicted_date),
+                "month": str(predicted_date)[:7],
+                "flowering_date": str(flowering_date) if split else None,
+                "flowering_month": str(flowering_date)[:7] if split else None,
+                "flowering_share_percent": FLOWERING_DISTRIBUTION[wave]
+                    if split else None,
+                "flowering_bunches": portions[wave] if split else None,
+                "flowering_wave": wave + 1 if split else None,
+                "flowering_wave_count": 3 if split else None,
+            })
+            result.append(row)
+    return result
+
+
 @frappe.whitelist()
 def calendar(farm=None, zone=None, block=None, scenario="base",
              from_date=None, trial_block=None, trial_stage=None,
@@ -233,10 +296,8 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
         if len([x for x in events if _is_positive(x.get("bunches"))]) > 1:
             issues.append({"block_code": b.block_code,
                            "reason": "Nhiều đợt cùng lô; cần liên kết đợt chồi để không cộng trùng."})
-        predicted = _year_rows(b, active, config, start, end)
+        predicted = _flowering_rows(b, active, config, trial, start, end)
         for r in predicted:
-            breakdown = _counts(active, r["cycle_no"], trial)
-            r.update(breakdown)
             r.update({
                 "synthetic_count": synthetic_count,
                 "estimated_stage": not active["observed"],
@@ -263,6 +324,7 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
         "status": "LIVE_SIMULATION_ONLY", "simulation": True,
         "scenario": scenario, "scenario_name": trial["name"],
         "from_date": str(start), "to_date": str(end),
+        "flowering_distribution_percent": list(FLOWERING_DISTRIBUTION),
         "rows": rows, "months": list(months.values()), "issues": issues,
         "config": {**trial,
                    "flower_to_harvest": config["flower_to_harvest"],
@@ -270,7 +332,8 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
                    "sucker_to_harvest": config["sucker_to_harvest"],
                    "cut_to_harvest": config["cut_to_harvest"],
                    "ratoon_days": config["ratoon_days"],
-                   "sucker_selection_interval_days": 183},
+                   "sucker_selection_interval_days": 183,
+                   "flowering_distribution_percent": list(FLOWERING_DISTRIBUTION)},
         "trial_event": {
             "block": trial_block, "stage": trial_stage,
             "date": str(event_date) if event_date else None,

@@ -1,0 +1,6 @@
+FROM lotus-vip126-onedrive-trial:v1-20261018
+USER root
+COPY --chown=frappe:root lotus_farm/vip126_trial.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/vip126_trial.py
+COPY --chown=frappe:root lotus_farm/vip126_flowering_check.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/vip126_flowering_check.py
+COPY --chown=frappe:root lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

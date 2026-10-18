@@ -74,6 +74,15 @@ function clearTrial(){appliedTrial.value=null;load()}
   <template v-else><strong>DỰ PHÓNG VẬN HÀNH · CHƯA HIỆU CHUẨN.</strong> Chỉ hiển thị dự báo từ số liệu đã ghi nhận hoặc ngày dự kiến bạn nhập; các hệ số chưa xác nhận thực địa.</template>
   Không tạo phiếu thật, tồn kho hay cam kết bán.
  </div>
+ <div v-if="mode==='trial'" class="vip126-timeline__flowering">
+  <strong>Phân bổ trổ hoa: 20% – 60% – 20%</strong>
+  <div class="vip126-timeline__flowering-track">
+   <div style="flex:2"><b>20%</b><small>Tháng đầu</small></div>
+   <div style="flex:6"><b>60%</b><small>Tháng thứ hai</small></div>
+   <div style="flex:2"><b>20%</b><small>Tháng cuối</small></div>
+  </div>
+  <p>Áp dụng cho từng đợt trổ của mỗi lô; tính ngày thu tương ứng cho 3 đợt và tiếp tục cuốn chiếu các vụ chồi. Ví dụ khu A: 11/2026 (20%), 12/2026 (60%), 01/2027 (20%).</p>
+ </div>
  <div class="vip126-timeline__filters">
   <fieldset><legend>Lọc khu</legend><div class="vip126-timeline__segments">
    <button v-for="z in zoneNames" :key="z" type="button" :aria-pressed="area===z" :class="{selected:area===z}" @click="area=z">{{z==='ALL'?'Tất cả':'Khu '+z}}</button>
@@ -119,16 +128,16 @@ function clearTrial(){appliedTrial.value=null;load()}
   <p v-else class="vip126-timeline__info">Chưa có dự thu trong năm/khu này.</p>
   <div class="vip126-timeline__scroll">
    <table>
-    <thead><tr><th>Lô</th><th>Vụ</th><th>Nguồn</th><th>Ngày mốc</th><th>Thu dự kiến</th><th>Buồng thu</th><th>Tấn buồng thô *</th><th>Tấn thành phẩm **</th></tr></thead>
+    <thead><tr><th>Lô</th><th>Vụ</th><th>Tháng trổ</th><th>Tỷ lệ trổ</th><th>Buồng trổ</th><th>Nguồn</th><th>Ngày mốc</th><th>Thu dự kiến</th><th>Buồng thu</th><th>Tấn buồng thô *</th><th>Tấn thành phẩm **</th></tr></thead>
     <tbody>
      <tr v-for="(r,i) in yearRows" :key="r.block+'-'+r.cycle_no+'-'+i">
       <td><strong>{{r.block_code}}</strong><small v-if="r.synthetic_count">Cây giả lập</small><small v-if="r.synthetic_stage">Mốc giả lập</small></td>
-      <td>{{r.cycle_no}}</td>
+      <td>{{r.cycle_no}}</td><td>{{r.flowering_month||'—'}}</td><td>{{r.flowering_share_percent==null?'—':r.flowering_share_percent+'%'}}</td><td>{{r.flowering_bunches==null?'—':integer(r.flowering_bunches)}}</td>
       <td>{{r.source_label}}<small v-if="r.cycle_no>1">Từ {{stageName(r.anchor_stage)}}</small></td>
       <td>{{dm(r.source_date)}}</td><td>{{dm(r.expected_date)}}</td>
       <td>{{integer(r.bunches)}}</td><td>{{ton(r.gross_kg)}}</td><td>{{ton(r.packed_kg)}}</td>
      </tr>
-     <tr v-if="!yearRows.length"><td colspan="8">Chưa có lịch trong năm này.</td></tr>
+     <tr v-if="!yearRows.length"><td colspan="11">Chưa có lịch trong năm này.</td></tr>
     </tbody>
    </table>
   </div>
@@ -186,6 +195,11 @@ function clearTrial(){appliedTrial.value=null;load()}
 @media(max-width:1000px){.vip126-timeline__metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:580px){.vip126-timeline__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.vip126-timeline{padding:12px}}
 
+.vip126-timeline__flowering{display:grid;gap:8px;padding:13px;border:1px solid var(--lotus-border,#e1e6e9);border-radius:9px;font-size:12px}
+.vip126-timeline__flowering-track{display:flex;gap:4px;max-width:600px}
+.vip126-timeline__flowering-track div{display:grid;justify-items:center;gap:3px;padding:9px 4px;border-radius:5px;background:var(--lotus-accent-soft,#fcece2);color:var(--lotus-accent,#ac411e)}
+.vip126-timeline__flowering-track small{font-size:10px}
+.vip126-timeline__flowering p{font-size:11px;color:var(--lotus-muted,#627284);margin:0}
 .vip126-timeline__trial-box{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;padding:12px;background:var(--lotus-soft,#f6f8fa);border:1px solid var(--lotus-border,#dbe2e8);border-radius:9px;font-size:12px}
 .vip126-timeline__trial-box>div{flex-basis:100%}
 .vip126-timeline__trial-box p{margin:3px 0;color:var(--lotus-muted,#67788c)}

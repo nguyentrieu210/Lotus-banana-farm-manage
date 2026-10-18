@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-vip126-flowering-206020:v1-20261018
+  frontend:
+    image: lotus-vip126-flowering-206020:v1-20261018
+  queue-short:
+    image: lotus-vip126-flowering-206020:v1-20261018
+  queue-long:
+    image: lotus-vip126-flowering-206020:v1-20261018
+  scheduler:
+    image: lotus-vip126-flowering-206020:v1-20261018
