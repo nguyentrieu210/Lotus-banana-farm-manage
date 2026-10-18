@@ -28,7 +28,7 @@ def smoke():
     assert [r["flowering_share_percent"] for r in waves] == [20,60,20]
     assert [r["flowering_bunches"] for r in waves] == [200,600,200]
     assert [r["expected_date"] for r in waves]==[
-       "2027-01-24","2027-02-23","2027-03-26"], waves
+       "2027-01-22","2027-02-21","2027-03-24"], waves
     assert all(r["commit_ready"] is False for r in rows)
     second=[r for r in rows if r["cycle_no"]==2]
     assert len(second)==3

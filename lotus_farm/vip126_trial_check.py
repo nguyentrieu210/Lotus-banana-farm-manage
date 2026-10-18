@@ -24,7 +24,7 @@ def smoke():
     original=_synthetic_anchor(farm_block,1000,scenario)
     before=_year_rows(farm_block,original,SCENARIOS[scenario],
         getdate("2026-10-01"),getdate("2029-10-01"))
-    assert before[0]["expected_date"]=="2027-01-24"
+    assert before[0]["expected_date"]=="2027-01-22"
     selected=_trial_event_anchor("sucker","2026-11-15",1000,scenario)
     after=_year_rows(farm_block,selected,SCENARIOS[scenario],
         getdate("2026-10-01"),getdate("2029-10-01"))

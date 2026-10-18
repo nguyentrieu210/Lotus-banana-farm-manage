@@ -70,7 +70,7 @@ function clearTrial(){appliedTrial.value=null;load()}
  </div>
  <div class="vip126-timeline__warning" role="status">
   <template v-if="mode==='trial'"><strong>THỬ NGHIỆM – KHÔNG PHẢI SẢN LƯỢNG THẬT.</strong>
-   Lô chưa có số cây được giả lập theo ha × mật độ; khu B–E dùng ngày trổ giả lập.
+   Lô chưa có số cây được giả lập theo ha × mật độ; khu E dùng ngày trổ giả lập, khu A–D theo mốc dự kiến đã lưu.
    17 kg là trên mỗi buồng sơ chế theo kế hoạch OneDrive cũ, không phải kg buồng thô.</template>
   <template v-else><strong>DỰ PHÓNG VẬN HÀNH · CHƯA HIỆU CHUẨN.</strong> Chỉ hiển thị dự báo từ số liệu đã ghi nhận hoặc ngày dự kiến bạn nhập; các hệ số chưa xác nhận thực địa.</template>
   Không tạo phiếu thật, tồn kho hay cam kết bán.
@@ -84,6 +84,11 @@ function clearTrial(){appliedTrial.value=null;load()}
    <div style="flex:2"><b>20%</b><small>Tháng cuối</small></div>
   </div>
   <p>Áp dụng cho từng đợt trổ của mỗi lô; tính ngày thu tương ứng cho 3 đợt và tiếp tục cuốn chiếu các vụ chồi. Ví dụ khu A: 11/2026 (20%), 12/2026 (60%), 01/2027 (20%).</p>
+ </div>
+ <div class="vip126-timeline__cut-rule">
+   <strong>Trổ hoa → cắt bắp: 17 ngày</strong>
+   <span>Cắt bắp → thu hoạch: <b>60–70 ngày</b> · Trung bình <b>65 ngày</b> · Từ trổ đến thu: <b>77–87 ngày</b>.</span>
+   <small>Áp dụng theo từng đợt 20% / 60% / 20%. Khi có ngày cắt bắp thực tế, mốc cắt bắp được ưu tiên, không cộng thêm 17 ngày.</small>
  </div>
  <div class="vip126-timeline__filters">
   <fieldset><legend>Lọc khu</legend><div class="vip126-timeline__segments">
@@ -130,16 +135,16 @@ function clearTrial(){appliedTrial.value=null;load()}
   <p v-else class="vip126-timeline__info">Chưa có dự thu trong năm/khu này.</p>
   <div class="vip126-timeline__scroll">
    <table>
-    <thead><tr><th>Lô</th><th>Vụ</th><th>Tháng trổ</th><th>Tỷ lệ trổ</th><th>Buồng trổ</th><th>Nguồn</th><th>Ngày mốc</th><th>Thu dự kiến</th><th>Buồng thu</th><th>Tấn buồng thô *</th><th>Tấn thành phẩm **</th></tr></thead>
+    <thead><tr><th>Lô</th><th>Vụ</th><th>Tháng trổ</th><th>Tỷ lệ trổ</th><th>Buồng trổ</th><th>Nguồn</th><th>Ngày mốc</th><th>Cắt bắp dự kiến</th><th>Khoảng ngày thu</th><th>Thu cơ sở</th><th>Buồng thu</th><th>Tấn buồng thô *</th><th>Tấn thành phẩm **</th></tr></thead>
     <tbody>
      <tr v-for="(r,i) in yearRows" :key="r.block+'-'+r.cycle_no+'-'+i">
       <td><strong>{{r.block_code}}</strong><small v-if="r.synthetic_count">Cây giả lập</small><small v-if="r.synthetic_stage">Mốc giả lập</small></td>
       <td>{{r.cycle_no}}</td><td>{{r.flowering_month||'—'}}</td><td>{{r.flowering_share_percent==null?'—':r.flowering_share_percent+'%'}}</td><td>{{r.flowering_bunches==null?'—':integer(r.flowering_bunches)}}</td>
       <td>{{r.source_label}}<small v-if="r.cycle_no>1">Từ {{stageName(r.anchor_stage)}}</small></td>
-      <td>{{dm(r.source_date)}}</td><td>{{dm(r.expected_date)}}</td>
+      <td>{{dm(r.source_date)}}</td><td>{{dm(r.cut_date)}}</td><td>{{r.harvest_earliest_date?dm(r.harvest_earliest_date)+' – '+dm(r.harvest_latest_date):'—'}}</td><td>{{dm(r.expected_date)}}</td>
       <td>{{integer(r.bunches)}}</td><td>{{ton(r.gross_kg)}}</td><td>{{ton(r.packed_kg)}}</td>
      </tr>
-     <tr v-if="!yearRows.length"><td colspan="11">Chưa có lịch trong năm này.</td></tr>
+     <tr v-if="!yearRows.length"><td colspan="13">Chưa có lịch trong năm này.</td></tr>
     </tbody>
    </table>
   </div>
@@ -202,6 +207,8 @@ function clearTrial(){appliedTrial.value=null;load()}
 .vip126-timeline__flowering-track div{display:grid;justify-items:center;gap:3px;padding:9px 4px;border-radius:5px;background:var(--lotus-accent-soft,#fcece2);color:var(--lotus-accent,#ac411e)}
 .vip126-timeline__flowering-track small{font-size:10px}
 .vip126-timeline__flowering p{font-size:11px;color:var(--lotus-muted,#627284);margin:0}
+.vip126-timeline__cut-rule{display:grid;gap:4px;padding:12px;border:1px solid var(--lotus-border,#e1e7eb);border-radius:9px;background:var(--lotus-soft,#f8f9fa);font-size:12px}
+.vip126-timeline__cut-rule small{font-size:11px;color:var(--lotus-muted,#687687)}
 .vip126-timeline__trial-box{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-end;padding:12px;background:var(--lotus-soft,#f6f8fa);border:1px solid var(--lotus-border,#dbe2e8);border-radius:9px;font-size:12px}
 .vip126-timeline__trial-box>div{flex-basis:100%}
 .vip126-timeline__trial-box p{margin:3px 0;color:var(--lotus-muted,#67788c)}

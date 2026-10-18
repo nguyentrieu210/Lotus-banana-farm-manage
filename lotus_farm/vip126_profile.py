@@ -9,8 +9,9 @@ NAME = "VIP 126 | Lotus 222 | Bộ hệ số khởi tạo (chờ đo thực tế
 NOTES = (
  "CHƯA HIỆU CHUẨN; không được xem là đã duyệt hoặc dùng cam kết bán. "
  "Giống VIP 126 theo xác nhận của người quản lý 18/10/2026. "
- "Số ngày trồng đến thu 339 = 255 ngày trồng->trổ (giả định 8,5 tháng)"
- " + 84 ngày trổ->thu (12 tuần trong khoảng FAO 10-14 tuần). "
+ "Thông số trồng đến thu 339 ngày là hệ số kế hoạch cũ, chưa sửa khi chưa chốt lại trồng đến trổ. "
+ "Trổ đến cắt bắp 17 ngày, cắt bắp đến thu 60-70 ngày, lấy giữa 65 ngày, "
+ "nên trổ đến thu cơ sở 82 ngày theo người quản lý. "
  "Từ chọn chồi đến thu 245 ngày và vụ chồi cách 270 ngày là giả định kế hoạch. "
  "Kg/buồng 20, tỷ lệ sống 90%, QC đạt 85%, đóng gói 75%, "
  "dự phòng 10% là GIẢ ĐỊNH thử tính, chưa cân mẫu VIP 126 tại Lotus. "
@@ -28,7 +29,7 @@ def seed():
         "farm": "LOTUS-222", "farm_block": None, "variety": "VIP 126",
         "valid_from": "2026-10-18", "version": 1,
         "active": 0, "approval_state": "Draft",
-        "planting_to_harvest_days": 339, "shooting_to_harvest_days": 84,
+        "planting_to_harvest_days": 339, "shooting_to_harvest_days": 82, "cut_bud_to_harvest_days": 65,
         "sucker_to_harvest_days": 245, "ratoon_interval_days": 270,
         "avg_bunch_weight_kg": 20,
         "bunch_survival_rate_percent": 90,
@@ -42,3 +43,40 @@ def seed():
     return {"status": "created_draft", "name": record.name,
             "approval_state": record.approval_state, "active": record.active,
             "note": "Persisted for operator editing. Approval and stock release stay blocked."}
+
+def sync_cutbud_draft():
+    """Controlled, idempotent update of the existing unapproved VIP126 setup.
+
+    Does not modify any approved/active profile or a manually edited value.
+    Only this known startup draft gets the 17+65 day rule.
+    """
+    name = frappe.db.get_value("Harvest Profile", {"profile_name": NAME}, "name")
+    if not name:
+        return {"status": "missing_profile"}
+    doc = frappe.get_doc("Harvest Profile", name)
+    if doc.name != "HP-00002" or doc.approval_state != "Draft" or int(doc.active or 0) != 0:
+        return {"status": "blocked_protected_profile", "name": doc.name}
+    current = (int(doc.shooting_to_harvest_days or 0), int(doc.cut_bud_to_harvest_days or 0))
+    if current == (82, 65):
+        return {"status": "already_applied", "name": doc.name, "days": current}
+    if current != (84, 0):
+        return {"status": "blocked_manually_changed", "name": doc.name, "days": current}
+    doc.shooting_to_harvest_days = 82
+    doc.cut_bud_to_harvest_days = 65
+    doc.notes = (doc.notes or "") + (
+        "\\n[18/10/2026 - Mốc bổ sung người quản lý] Trổ hoa đến cắt bắp 17 ngày. "
+        "Cắt bắp đến thu 60–70 ngày (mốc cơ sở 65). "
+        "Tổng trổ đến thu cơ sở 82, sớm 77, muộn 87 ngày. "
+        "Không tự động sửa ngày trồng, tỷ lệ sống hay duyệt hệ số."
+    )
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "updated_draft", "name": doc.name,
+            "flower_to_cut_days": 17,
+            "cut_to_harvest_min_days": 60,
+            "cut_to_harvest_base_days": 65,
+            "cut_to_harvest_max_days": 70,
+            "shooting_to_harvest_days": int(doc.shooting_to_harvest_days),
+            "cut_bud_to_harvest_days": int(doc.cut_bud_to_harvest_days),
+            "approval_state": doc.approval_state,
+            "active": doc.active}

@@ -13,10 +13,10 @@ def smoke():
         planting_date=None
     )
     flower = _pick_anchor(b, [], cfg)
-    assert str(flower["harvest_date"]) == "2027-01-24", flower
+    assert str(flower["harvest_date"]) == "2027-01-22", flower
     first = _year_rows(b,flower,cfg,getdate("2026-10-01"),getdate("2029-09-30"))
     assert len(first)>=3
-    assert first[0]["expected_date"] == "2027-01-24"
+    assert first[0]["expected_date"] == "2027-01-22"
     assert all(first[i]["expected_date"] < first[i+1]["expected_date"] for i in range(len(first)-1))
     selection = {
         "priority":2,"source":"sucker","source_name":"Đã chọn chồi",
@@ -32,7 +32,7 @@ def smoke():
     shoot = {
         **selection,"priority":3,"source":"shoot","source_name":"Đã trổ",
         "source_date":"2027-01-20",
-        "harvest_date":getdate("2027-01-20")+timedelta(days=84),
+        "harvest_date":getdate("2027-01-20")+timedelta(days=82),
         "bunches":420,
     }
     latest=_pick_anchor(b,[selection,shoot],cfg)

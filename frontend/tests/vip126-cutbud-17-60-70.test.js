@@ -1,0 +1,36 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+const root=new URL('../../',import.meta.url)
+const read=p=>readFileSync(new URL(p,root),'utf8')
+test('Cut bud at day 17, harvest 60 to 70 days after cut; same totals for scenario',()=>{
+ const source=read('lotus_farm/vip126_timeline.py')
+ assert.match(source,/"flower_to_cut": 17/)
+ assert.match(source,/"cut_to_harvest": 65/)
+ assert.match(source,/"cut_to_harvest": 70/)
+ assert.match(source,/"cut_to_harvest": 60/)
+ assert.match(source,/config\["flower_to_harvest"\] != config\["flower_to_cut"\] \+ config\["cut_to_harvest"\]/)
+})
+test('Trial rows show cut date and 60-70 harvest window, do not write to source DB',()=>{
+ const source=read('lotus_farm/vip126_trial.py')
+ assert.match(source,/"cut_date"/)
+ assert.match(source,/"harvest_earliest_date"/)
+ assert.match(source,/"harvest_latest_date"/)
+ assert.match(source,/getdate\(anchor\["source_date"\]\)/)
+ assert.match(source,/timedelta\(days=60\)/)
+ assert.match(source,/timedelta\(days=70\)/)
+ assert.doesNotMatch(source,/\.insert\(|\.save\(|set_value\(/)
+ const ui=read('frontend/src/components/Vip126RollingForecast.vue')
+ assert.match(ui,/Trổ hoa → cắt bắp: 17 ngày/)
+ assert.match(ui,/60–70 ngày/)
+ assert.match(ui,/Cắt bắp dự kiến/)
+ assert.match(ui,/Khoảng ngày thu/)
+})
+test('Draft harvest profile controlled update only; approved remains protected',()=>{
+ const p=read('lotus_farm/vip126_profile.py')
+ assert.match(p,/sync_cutbud_draft/)
+ assert.match(p,/doc\.approval_state != "Draft"/)
+ assert.match(p,/blocked_manually_changed/)
+ assert.match(p,/doc\.cut_bud_to_harvest_days = 65/)
+ assert.match(p,/doc\.shooting_to_harvest_days = 82/)
+})

@@ -17,20 +17,20 @@ SCENARIOS = {
     "low": {
         "name": "Thấp", "flower_share": .30, "survival": .85,
         "weight_kg": 16., "quality": .80, "packout": .70,
-        "flower_to_harvest": 98, "plant_to_flower": 285,
-        "sucker_to_harvest": 285, "cut_to_harvest": 65, "ratoon_days": 310,
+        "flower_to_harvest": 87, "flower_to_cut": 17, "plant_to_flower": 285,
+        "sucker_to_harvest": 285, "cut_to_harvest": 70, "ratoon_days": 310,
     },
     "base": {
         "name": "Cơ sở", "flower_share": .60, "survival": .90,
         "weight_kg": 20., "quality": .85, "packout": .75,
-        "flower_to_harvest": 84, "plant_to_flower": 255,
-        "sucker_to_harvest": 245, "cut_to_harvest": 55, "ratoon_days": 270,
+        "flower_to_harvest": 82, "flower_to_cut": 17, "plant_to_flower": 255,
+        "sucker_to_harvest": 245, "cut_to_harvest": 65, "ratoon_days": 270,
     },
     "high": {
         "name": "Cao", "flower_share": .85, "survival": .95,
         "weight_kg": 24., "quality": .90, "packout": .80,
-        "flower_to_harvest": 70, "plant_to_flower": 240,
-        "sucker_to_harvest": 215, "cut_to_harvest": 45, "ratoon_days": 240,
+        "flower_to_harvest": 77, "flower_to_cut": 17, "plant_to_flower": 240,
+        "sucker_to_harvest": 215, "cut_to_harvest": 60, "ratoon_days": 240,
     },
 }
 CREDITS = (
@@ -38,8 +38,22 @@ CREDITS = (
     "thời gian trổ đến thu tham khảo FAO 10–14 tuần: "
     "https://www.fao.org/4/ad523e/ad523e05.htm . "
     "Tất cả tỷ lệ cây cùng trổ, kg/buồng, QC, đóng gói, ngày chọn chồi đến thu "
-    "ngày cắt bắp đến thu và khoảng cách vụ chồi là các kịch bản CHƯA HIỆU CHUẨN theo giống/vườn."
+    "mốc trổ đến cắt bắp 17 ngày, cắt bắp đến thu 60–70 ngày do quản lý nhập ngày 18/10/2026. "
+    "Tổng 77–87 ngày, cơ sở 82 ngày. Số ngày chưa hiệu chuẩn theo kết quả vườn. "
+    "Các hệ số khác và khoảng cách vụ chồi vẫn chưa hiệu chuẩn."
 )
+
+
+def _validate_milestones():
+    """Every scenario must be cut at day 17, then harvest 60–70 days later."""
+    for config in SCENARIOS.values():
+        if config["flower_to_cut"] != 17 or not 60 <= config["cut_to_harvest"] <= 70:
+            raise ValueError("Invalid VIP 126 bud-cut to harvest schedule")
+        if config["flower_to_harvest"] != config["flower_to_cut"] + config["cut_to_harvest"]:
+            raise ValueError("Flower-to-harvest does not equal 17 + cut-to-harvest")
+
+
+_validate_milestones()
 
 
 def _month_end(start):

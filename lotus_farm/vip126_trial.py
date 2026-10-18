@@ -73,8 +73,9 @@ DESCRIPTION = (
     "với khoảng cách giữa hai lần thu hoạch. "
      "Tỷ lệ phát buồng, sống tới cắt, thu/cắt, kg thô, ngày trổ E và các dải "
     "thấp/cao chỉ phục vụ thử nghiệm công thức. Mọi số tấn đều chưa duyệt. "
-    "Phân bố trổ hoa THỬ NGHIỆM 20% tháng đầu, 60% tháng sau, 20% tháng cuối "
-    "theo yêu cầu người quản lý; không phải số đo thực địa."
+    "Phân bố trổ hoa THỬ NGHIỆM 20% tháng đầu, 60% tháng sau, 20% tháng cuối. "
+    "Người quản lý xác nhận trổ tới cắt bắp 17 ngày, cắt bắp tới thu 60–70 ngày. "
+    "Hệ thống lấy 65 ngày làm cơ sở, tổng trổ tới thu 82 ngày; chưa hiệu chuẩn thực địa."
 )
 TEST_STAGES = {
     "plant": ("Thử ngày trồng", 1),
@@ -201,6 +202,22 @@ def _flowering_rows(block, anchor, config, trial, start, end):
             flowering_date = (getdate(base["expected_date"]) -
                               timedelta(days=config["flower_to_harvest"]) +
                               timedelta(days=offset_days))
+            if split:
+                cut_date = flowering_date + timedelta(days=config["flower_to_cut"])
+                cut_observed = False
+            elif is_first and anchor["source"] == "cut":
+                # Real recorded cutting is the authority; never add 17 again.
+                cut_date = getdate(anchor["source_date"])
+                cut_observed = bool(anchor.get("observed"))
+            elif is_first and anchor["source"] == "shoot":
+                cut_date = getdate(anchor["source_date"]) + timedelta(
+                    days=config["flower_to_cut"])
+                cut_observed = False
+            else:
+                cut_date = None
+                cut_observed = False
+            harvested_earliest = cut_date + timedelta(days=60) if cut_date else None
+            harvested_latest = cut_date + timedelta(days=70) if cut_date else None
             counted_anchor = dict(anchor)
             if split:
                 counted_anchor["bunches"] = portions[wave]
@@ -209,8 +226,13 @@ def _flowering_rows(block, anchor, config, trial, start, end):
             row.update({
                 "expected_date": str(predicted_date),
                 "month": str(predicted_date)[:7],
-                "flowering_date": str(flowering_date) if split else None,
+                "flowering_date": str(flowering_date) if split else (
+                    str(anchor["source_date"]) if is_first and anchor["source"] == "shoot" else None),
                 "flowering_month": str(flowering_date)[:7] if split else None,
+                "cut_date": str(cut_date) if cut_date else None,
+                "cut_observed": cut_observed,
+                "harvest_earliest_date": str(harvested_earliest) if harvested_earliest else None,
+                "harvest_latest_date": str(harvested_latest) if harvested_latest else None,
                 "flowering_share_percent": FLOWERING_DISTRIBUTION[wave]
                     if split else None,
                 "flowering_bunches": portions[wave] if split else None,
@@ -338,6 +360,9 @@ def calendar(farm=None, zone=None, block=None, scenario="base",
                    "plant_to_flower": config["plant_to_flower"],
                    "sucker_to_harvest": config["sucker_to_harvest"],
                    "cut_to_harvest": config["cut_to_harvest"],
+                   "flower_to_cut": config["flower_to_cut"],
+                   "cut_to_harvest_min": 60,
+                   "cut_to_harvest_max": 70,
                    "ratoon_days": config["ratoon_days"],
                    "sucker_selection_interval_days": 183,
                    "flowering_distribution_percent": list(FLOWERING_DISTRIBUTION)},
