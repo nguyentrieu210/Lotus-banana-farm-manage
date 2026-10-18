@@ -1,0 +1,9 @@
+# Incremental live release: preserve the currently deployed ERPNext / Lotus image.
+FROM lotus-vip126-complete-cycle:v1-20261018
+USER root
+COPY --chown=frappe:root lotus_farm/console.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/console.py
+COPY --chown=frappe:root lotus_farm/promax_controls.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/promax_controls.py
+COPY --chown=frappe:root lotus_farm/plan_norm.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/plan_norm.py
+COPY --chown=frappe:root lotus_farm/lotus_farm/doctype/plan_cohort/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/plan_cohort/
+COPY --chown=frappe:root lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe
