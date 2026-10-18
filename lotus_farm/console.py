@@ -19,7 +19,7 @@ MODULES={
  'packhouse':['Packhouse Shift','Packout Run','Material Recovery','Secondary Product Movement','Supply Reconciliation'],
  'daily-close':['Daily Production Close'],'cycle-close':['Cycle Closing Report'],
  'trace':['Harvest Lot','Packout Run','Farm Plot'],'map':['Plot Geometry'],'settings':['Lotus Farm Settings'],
- 'masters':['Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
+ 'masters':['Plan Cohort','Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
 ALLOWED={d for names in MODULES.values() for d in names}
 MODULES['masters'].append('Banana Variety')

@@ -1,0 +1,135 @@
+{
+  "doctype": "DocType",
+  "name": "Plan Cohort",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "cohort_name",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Lô lớn",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cohort_code",
+      "label": "Mã đợt cây",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cohort_name",
+      "label": "Tên đợt cây",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Vụ cây (nếu có)",
+      "fieldtype": "Link",
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "anchor",
+      "label": "Mốc bắt đầu",
+      "fieldtype": "Select",
+      "options": "Planting\nSelection\nShooting\nCut Bud",
+      "reqd": 1
+    },
+    {
+      "fieldname": "anchor_date",
+      "label": "Ngày dự kiến của mốc",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "quantity_basis",
+      "label": "Đơn vị số lượng",
+      "fieldtype": "Select",
+      "options": "Trees\nSelected Suckers\nBunches",
+      "reqd": 1
+    },
+    {
+      "fieldname": "planned_qty",
+      "label": "Số lượng dự kiến",
+      "fieldtype": "Float",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Phiên bản",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "supersedes",
+      "label": "Thay thế bản",
+      "fieldtype": "Link",
+      "options": "Plan Cohort"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Căn cứ ước tính / ghi chú",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "farm_block",
+    "cohort_code",
+    "cohort_name",
+    "crop_cycle",
+    "anchor",
+    "anchor_date",
+    "quantity_basis",
+    "planned_qty",
+    "version",
+    "approval_state",
+    "supersedes",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

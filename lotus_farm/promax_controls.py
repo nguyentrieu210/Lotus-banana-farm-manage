@@ -38,7 +38,7 @@ class ScheduleMaster(Document):
     def validate(self):
         check_farm(self)
         validate_version(self,'rule_name',('Lotus Farm Manager',))
-        if int(self.offset_days or 0)<0 or int(self.repeat_days or 0)<0 or getdate(self.valid_to)<getdate(self.valid_from):
+        if not -365 <= int(self.offset_days or 0) <= 365 or int(self.repeat_days or 0)<0 or getdate(self.valid_to)<getdate(self.valid_from):
             frappe.throw('Schedule offsets and effective period are invalid.')
         if self.norm_profile:
             profile=frappe.get_doc('Material Norm Profile',self.norm_profile);profile.check_permission('read')
