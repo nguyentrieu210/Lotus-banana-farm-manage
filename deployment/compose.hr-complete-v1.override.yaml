@@ -1,0 +1,12 @@
+# LAST overlay in existing live Compose stack; no change to MariaDB / Redis.
+services:
+  backend:
+    image: lotus-hr-complete:v1-20261018
+  frontend:
+    image: lotus-hr-complete:v1-20261018
+  scheduler:
+    image: lotus-hr-complete:v1-20261018
+  queue-short:
+    image: lotus-hr-complete:v1-20261018
+  queue-long:
+    image: lotus-hr-complete:v1-20261018

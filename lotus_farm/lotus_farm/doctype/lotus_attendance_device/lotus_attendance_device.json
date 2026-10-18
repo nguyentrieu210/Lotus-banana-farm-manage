@@ -1,0 +1,113 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Attendance Device",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device_code",
+      "label": "Mã máy",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "device_name",
+      "label": "Tên máy",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "model",
+      "label": "Model máy",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "serial_number",
+      "label": "Số serial",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "connection_mode",
+      "label": "Cách kết nối",
+      "fieldtype": "Select",
+      "options": "File CSV\nADMS\nLAN SDK\nVendor Cloud",
+      "reqd": 1
+    },
+    {
+      "fieldname": "timezone",
+      "label": "Múi giờ",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "active",
+      "label": "Đang sử dụng",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "last_event_at",
+      "label": "Giờ quẹt cuối",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú / vị trí máy",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "company",
+    "farm",
+    "device_code",
+    "device_name",
+    "model",
+    "serial_number",
+    "connection_mode",
+    "timezone",
+    "active",
+    "last_event_at",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Integration User",
+      "read": 1
+    }
+  ]
+}

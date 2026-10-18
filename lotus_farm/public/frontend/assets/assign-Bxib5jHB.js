@@ -1,0 +1,1 @@
+import{s as e}from"./api-DBVSZ-7-.js";import"./desktop-shell-B-UoVnqO.js";import"./register-worker-CKMNsoSQ.js";import{t}from"./AssignApp-XsEqVZaV.js";e(t).mount(`#app`);

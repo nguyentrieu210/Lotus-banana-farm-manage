@@ -1,6 +1,8 @@
 <script setup>
 import {computed,onMounted,reactive,ref} from 'vue'
 import WorkspaceBar from './components/WorkspaceBar.vue'
+import HrOperations from './components/HrOperations.vue'
+import CccdQrScanner from './components/CccdQrScanner.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
@@ -12,7 +14,7 @@ const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,
 const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
 const overview=ref({employees:[],candidates:[]}),payroll=ref({grades:[],assignments:[]}),readiness=ref(null)
-const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null)
+const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null),cccdScanOpen=ref(false)
 const selectedEmployee=ref(null),selectedCandidate=ref(null)
 const employeeForm=reactive({}),candidateForm=reactive({})
 const isManager=computed(()=>session.value?.is_hr_manager||false)
@@ -21,7 +23,7 @@ const cats={Permanent:'Dài hạn', 'Fixed-term':'Hợp đồng xác định h�
 const bases={Monthly:'Lương tháng',Daywork:'Công nhật',Piecework:'Khoán sản lượng',Mixed:'Hỗn hợp'}
 const stages={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 const genderName={Male:'Nam',Female:'Nữ',Other:'Khác'}
-const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'payroll',label:'Cấu hình lương'}]
+const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Import · Máy chấm công'},{id:'payroll',label:'Cấu hình lương'}]
 const tabs=computed(()=>routes.filter(r=>r.id!=='payroll'||isManager.value))
 const actions=computed(()=>[
   {id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},
@@ -42,7 +44,7 @@ const teamChoices=computed(()=>catalog.value.teams.filter(t=>t.farm===employeeFo
 const missingCount=computed(()=>overview.value.employees.filter(e=>e.lotus_onboarding_state!=='Ready').length)
 const today=computed(()=>session.value?.today||'')
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}
-function resetPanels(){editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
+function resetPanels(){cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
 function chooseTab(t){resetPanels();search.value='';tab.value=t;if(t==='payroll')loadPayroll()}
 async function refresh(){if(!company.value)return;busy.value=true;error.value='';try{
   const [c,data]=await Promise.all([api('catalogue',{company:company.value}),api('overview',{company:company.value})])
@@ -67,6 +69,30 @@ async function openEmployee(item){if(!isManager.value)return;busy.value=true;err
   try{const data=await api('employee_detail',{company:company.value,employee:item.name})
     resetPanels();clear(employeeForm);Object.assign(employeeForm,data,{cccd:''});selectedEmployee.value=item.name;editEmployee.value=true
   }catch(e){error.value=e.message}finally{busy.value=false}}
+async function applyScannedCccd(info){
+  if (!isManager.value || !editEmployee.value || saving.value) return
+  // Candidate name comes from the hiring record and cannot be overwritten here.
+  if (candidateHire.value && employeeForm.employee_name.trim() !== info.employee_name) {
+    window.alert('Tên trên QR khác tên ứng viên đã tiếp nhận. Kiểm tra và sửa hồ sơ ứng viên trước.')
+    return
+  }
+  const changed=['employee_name','date_of_birth','gender','current_address','lotus_id_issue_on']
+    .some(key => employeeForm[key] && String(employeeForm[key]).trim() !== String(info[key]||'').trim())
+  if (changed && !window.confirm('Thông tin QR khác dữ liệu đang nhập. Dùng thông tin trên QR để thay các trường này?')) return
+  saving.value=true;error.value=''
+  try{
+    const check=await api('check_cccd',{company:company.value,cccd:info.cccd,employee:selectedEmployee.value},true)
+    if(check.duplicate){
+      window.alert('CCCD này đã tồn tại trong hệ thống. Không thể nhập trùng.')
+      return
+    }
+    // The residence field is not necessarily the registered permanent address.
+    Object.assign(employeeForm,info)
+    cccdScanOpen.value=false
+    notice.value='Đã điền từ QR. Kiểm tra nơi cư trú và các trường còn thiếu trước khi lưu hồ sơ.'
+  }catch(e){error.value=e.message;window.alert('Không kiểm tra được CCCD: '+e.message)}
+  finally{saving.value=false}
+}
 async function saveEmployee(){saving.value=true;error.value='';notice.value=''
   try{
     const args={company:company.value,values:{...employeeForm}}
@@ -141,6 +167,7 @@ onMounted(init)
       <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
     </template>
 
+    <template v-if="tab==='operations'"><HrOperations :company="company" :manager="isManager"/></template>
     <template v-if="tab==='designations'">
       <div class="attendance-toolbar"><h2>Danh mục chức danh vườn</h2><UiButton v-if="isManager" :disabled="saving" @click="seed">Tạo các chức danh Lotus còn thiếu</UiButton></div>
       <p class="attendance-legend">Chức danh là Designation chuẩn HRMS, không tự gắn mức lương. Nhóm và tổ/đội thể hiện ở Department, Farm và Work Team. Mức lương do HRMS Salary Structure Assignment quyết định.</p>
@@ -175,6 +202,8 @@ onMounted(init)
     <section v-if="editEmployee&&['employees','onboarding'].includes(tab)" class="stock-panel hr-editor">
       <div class="attendance-toolbar"><h2>{{selectedEmployee?'Hồ sơ '+selectedEmployee:candidateHire?'Tiếp nhận từ ứng viên':'Tạo hồ sơ nhân viên'}}</h2><UiButton variant="outline" @click="editEmployee=false;candidateHire=null">Đóng</UiButton></div>
       <p class="attendance-legend">CCCD được lưu mã hóa; hệ thống chỉ hiển thị 4 số cuối, không gửi CCCD vào bảng nhân viên. Nhập CCCD mới chỉ khi tạo hoặc cần cập nhật. Đối chiếu giấy tờ gốc trước khi duyệt.</p>
+      <div class="attendance-toolbar"><UiButton v-if="isManager" type="button" :disabled="saving" @click="cccdScanOpen=true">▣ Quét QR CCCD</UiButton><span class="attendance-legend">Quét để tự điền thông tin. Chỉ lưu khi bấm Lưu hồ sơ.</span></div>
+      <CccdQrScanner v-if="cccdScanOpen" @close="cccdScanOpen=false" @confirmed="applyScannedCccd"/>
       <form @submit.prevent="saveEmployee"><div class="hr-form-grid">
         <label>Họ tên *<UiInput v-model="employeeForm.employee_name" required :disabled="!!candidateHire" maxlength="140"/></label>
         <label>Giới tính *<UiSelect v-model="employeeForm.gender" required><option value="">Chọn</option><option v-for="g in catalog.genders" :key="g.name" :value="g.name">{{genderName[g.name]||g.name}}</option></UiSelect></label>

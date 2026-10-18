@@ -1,0 +1,92 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Attendance Identity",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device",
+      "label": "Máy chấm công",
+      "fieldtype": "Link",
+      "options": "Lotus Attendance Device",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device_user_id",
+      "label": "Mã nhân viên trên máy",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "employee",
+      "label": "Nhân viên HRMS",
+      "fieldtype": "Link",
+      "options": "Employee",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Hiệu lực từ ngày",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Hiệu lực đến ngày",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "active",
+      "label": "Đang sử dụng",
+      "fieldtype": "Check"
+    }
+  ],
+  "field_order": [
+    "company",
+    "farm",
+    "device",
+    "device_user_id",
+    "employee",
+    "valid_from",
+    "valid_to",
+    "active"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

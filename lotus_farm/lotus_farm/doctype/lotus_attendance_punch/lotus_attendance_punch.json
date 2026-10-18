@@ -1,0 +1,139 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Attendance Punch",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device",
+      "label": "Máy chấm công",
+      "fieldtype": "Link",
+      "options": "Lotus Attendance Device",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device_user_id",
+      "label": "Mã trên máy",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "punched_at",
+      "label": "Thời điểm quẹt",
+      "fieldtype": "Datetime",
+      "reqd": 1
+    },
+    {
+      "fieldname": "log_type",
+      "label": "Vào hoặc ra",
+      "fieldtype": "Select",
+      "options": "\nIN\nOUT"
+    },
+    {
+      "fieldname": "source_event_id",
+      "label": "Mã log gốc",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "event_hash",
+      "label": "Mã chống trùng",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "employee",
+      "label": "Nhân viên liên kết",
+      "fieldtype": "Link",
+      "options": "Employee"
+    },
+    {
+      "fieldname": "state",
+      "label": "Trạng thái xử lý",
+      "fieldtype": "Select",
+      "options": "Unmapped\nReady\nSynced\nNeeds Review"
+    },
+    {
+      "fieldname": "employee_checkin",
+      "label": "Log HRMS",
+      "fieldtype": "Link",
+      "options": "Employee Checkin"
+    },
+    {
+      "fieldname": "source",
+      "label": "Nguồn",
+      "fieldtype": "Select",
+      "options": "CSV\nADMS\nLAN SDK\nVendor Cloud"
+    },
+    {
+      "fieldname": "received_at",
+      "label": "Thời điểm nhận",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "company",
+    "farm",
+    "device",
+    "device_user_id",
+    "punched_at",
+    "log_type",
+    "source_event_id",
+    "event_hash",
+    "employee",
+    "state",
+    "employee_checkin",
+    "source",
+    "received_at",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Integration User",
+      "create": 1
+    }
+  ]
+}

@@ -43,6 +43,8 @@ def setup():
     install_timekeeping_fields()
     from lotus_farm.hr_workspace import install_fields as install_hr_fields
     install_hr_fields()
+    from lotus_farm.hr_setup import install_fields as install_org_fields
+    install_org_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

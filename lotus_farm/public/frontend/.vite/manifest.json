@@ -1,35 +1,27 @@
 {
-  "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
-    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
-    "src": "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
-  },
-  "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
-    "file": "assets/Inter.var-C9xDBOS3.woff2",
-    "src": "../../Lotus-desktop-design-system/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
-  },
   "_AssignApp-BFkbCXcW.css": {
     "file": "assets/AssignApp-BFkbCXcW.css",
     "src": "_AssignApp-BFkbCXcW.css"
   },
-  "_AssignApp-DMcsg4P5.js": {
-    "file": "assets/AssignApp-DMcsg4P5.js",
+  "_AssignApp-XsEqVZaV.js": {
+    "file": "assets/AssignApp-XsEqVZaV.js",
     "name": "AssignApp",
     "imports": [
       "_api-DBVSZ-7-.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
+      "_desktop-shell-B-UoVnqO.js",
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "css": [
       "assets/AssignApp-BFkbCXcW.css"
     ]
   },
-  "_DataTable-BUPiQPuh.js": {
-    "file": "assets/DataTable-BUPiQPuh.js",
+  "_DataTable-B4cl9_po.js": {
+    "file": "assets/DataTable-B4cl9_po.js",
     "name": "DataTable",
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_desktop-shell-Dqpd1hJb.js",
+      "_desktop-shell-B-UoVnqO.js",
       "_labels-Cq9s9Bd-.js"
     ]
   },
@@ -49,24 +41,24 @@
       "_mobile-ui-5XlkO8Ph.js"
     ]
   },
-  "_SchemaForm-DFr4Vd7e.js": {
-    "file": "assets/SchemaForm-DFr4Vd7e.js",
+  "_SchemaForm-BvghSKId.js": {
+    "file": "assets/SchemaForm-BvghSKId.js",
     "name": "SchemaForm",
     "imports": [
       "_api-DBVSZ-7-.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
-      "_Select-Da_pKA4n.js",
+      "_desktop-shell-B-UoVnqO.js",
+      "_Select-CmqHXh6g.js",
       "_labels-Cq9s9Bd-.js",
       "_LinkPicker-_glDNdLJ.js"
     ]
   },
-  "_Select-Da_pKA4n.js": {
-    "file": "assets/Select-Da_pKA4n.js",
+  "_Select-CmqHXh6g.js": {
+    "file": "assets/Select-CmqHXh6g.js",
     "name": "Select",
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_desktop-shell-Dqpd1hJb.js"
+      "_desktop-shell-B-UoVnqO.js"
     ]
   },
   "__plugin-vue_export-helper-BDNMzG2s.js": {
@@ -77,19 +69,19 @@
     "file": "assets/api-DBVSZ-7-.js",
     "name": "api"
   },
-  "_desktop-shell-CNP9tf4N.css": {
-    "file": "assets/desktop-shell-CNP9tf4N.css",
-    "src": "_desktop-shell-CNP9tf4N.css"
-  },
-  "_desktop-shell-Dqpd1hJb.js": {
-    "file": "assets/desktop-shell-Dqpd1hJb.js",
+  "_desktop-shell-B-UoVnqO.js": {
+    "file": "assets/desktop-shell-B-UoVnqO.js",
     "name": "desktop-shell",
     "imports": [
       "_api-DBVSZ-7-.js"
     ],
     "css": [
-      "assets/desktop-shell-CNP9tf4N.css"
+      "assets/desktop-shell-icQDDN_C.css"
     ]
+  },
+  "_desktop-shell-icQDDN_C.css": {
+    "file": "assets/desktop-shell-icQDDN_C.css",
+    "src": "_desktop-shell-icQDDN_C.css"
   },
   "_labels-Cq9s9Bd-.js": {
     "file": "assets/labels-Cq9s9Bd-.js",
@@ -121,6 +113,10 @@
     "file": "assets/offline-DcIimw0s.js",
     "name": "offline"
   },
+  "_preload-helper-BB2FBftw.js": {
+    "file": "assets/preload-helper-BB2FBftw.js",
+    "name": "preload-helper"
+  },
   "_register-warehouse-worker-ClozO1u8.js": {
     "file": "assets/register-warehouse-worker-ClozO1u8.js",
     "name": "register-warehouse-worker"
@@ -128,6 +124,10 @@
   "_register-worker-CKMNsoSQ.js": {
     "file": "assets/register-worker-CKMNsoSQ.js",
     "name": "register-worker"
+  },
+  "_rolldown-runtime-hePW80VL.js": {
+    "file": "assets/rolldown-runtime-hePW80VL.js",
+    "name": "rolldown-runtime"
   },
   "_stock-attio-DveR0dcA.css": {
     "file": "assets/stock-attio-DveR0dcA.css",
@@ -138,15 +138,15 @@
     "name": "units"
   },
   "assign.html": {
-    "file": "assets/assign-BUlpjtO8.js",
+    "file": "assets/assign-Bxib5jHB.js",
     "name": "assign",
     "src": "assign.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_desktop-shell-Dqpd1hJb.js",
+      "_desktop-shell-B-UoVnqO.js",
       "_register-worker-CKMNsoSQ.js",
-      "_AssignApp-DMcsg4P5.js"
+      "_AssignApp-XsEqVZaV.js"
     ],
     "css": [
       "assets/assign-C0PKXeDN.css"
@@ -168,18 +168,18 @@
     ]
   },
   "farm-work.html": {
-    "file": "assets/farm-work-B29xFdMn.js",
+    "file": "assets/farm-work-BMzT8uAZ.js",
     "name": "farm-work",
     "src": "farm-work.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_SchemaForm-DFr4Vd7e.js",
+      "_SchemaForm-BvghSKId.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
+      "_desktop-shell-B-UoVnqO.js",
       "_labels-Cq9s9Bd-.js",
       "_register-worker-CKMNsoSQ.js",
-      "_AssignApp-DMcsg4P5.js"
+      "_AssignApp-XsEqVZaV.js"
     ],
     "css": [
       "assets/farm-work-CbFLQQ4H.css",
@@ -187,34 +187,40 @@
     ]
   },
   "hr.html": {
-    "file": "assets/hr-DoqD18-M.js",
+    "file": "assets/hr-Ch0NAOdl.js",
     "name": "hr",
     "src": "hr.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_desktop-shell-Dqpd1hJb.js",
-      "_Select-Da_pKA4n.js"
+      "_desktop-shell-B-UoVnqO.js",
+      "_Select-CmqHXh6g.js",
+      "__plugin-vue_export-helper-BDNMzG2s.js",
+      "_preload-helper-BB2FBftw.js"
+    ],
+    "dynamicImports": [
+      "node_modules/html5-qrcode/esm/index.js"
     ],
     "css": [
-      "assets/hr-CKhOdnb1.css",
+      "assets/hr-Celjun_j.css",
       "assets/stock-attio-DveR0dcA.css"
     ]
   },
   "index.html": {
-    "file": "assets/index-frJCdPXX.js",
+    "file": "assets/index-D7UnWbYk.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
-      "_SchemaForm-DFr4Vd7e.js",
+      "_SchemaForm-BvghSKId.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
-      "_Select-Da_pKA4n.js",
+      "_desktop-shell-B-UoVnqO.js",
+      "_Select-CmqHXh6g.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "_labels-Cq9s9Bd-.js",
-      "_DataTable-BUPiQPuh.js",
+      "_DataTable-B4cl9_po.js",
+      "_preload-helper-BB2FBftw.js",
       "_offline-DcIimw0s.js",
       "_register-worker-CKMNsoSQ.js"
     ],
@@ -224,24 +230,42 @@
       "src/components/Vip126RollingForecast.vue"
     ],
     "css": [
-      "assets/index-BBGtQpMr.css"
+      "assets/index-DJRTWjKk.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
       "assets/Inter-Italic.var-BGHziHgI.woff2"
     ]
   },
+  "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
+    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
+    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
+  },
+  "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
+    "file": "assets/Inter.var-C9xDBOS3.woff2",
+    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
+  },
+  "node_modules/html5-qrcode/esm/index.js": {
+    "file": "assets/esm-CNv3qjHR.js",
+    "name": "esm",
+    "src": "node_modules/html5-qrcode/esm/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-hePW80VL.js"
+    ]
+  },
   "src/components/DesktopForecastChart.vue": {
-    "file": "assets/DesktopForecastChart-CHfP7l1k.js",
+    "file": "assets/DesktopForecastChart-BfwABhYY.js",
     "name": "DesktopForecastChart",
     "src": "src/components/DesktopForecastChart.vue",
     "isDynamicEntry": true,
     "imports": [
+      "_rolldown-runtime-hePW80VL.js",
       "_api-DBVSZ-7-.js"
     ]
   },
   "src/components/LotusImportPreview.vue": {
-    "file": "assets/LotusImportPreview-DreOx5Da.js",
+    "file": "assets/LotusImportPreview-CUYgOhG6.js",
     "name": "LotusImportPreview",
     "src": "src/components/LotusImportPreview.vue",
     "isDynamicEntry": true,
@@ -250,18 +274,18 @@
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "css": [
-      "assets/LotusImportPreview-CFK_A6LF.css"
+      "assets/LotusImportPreview-BbabbUeJ.css"
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-CAgj5gt2.js",
+    "file": "assets/Vip126RollingForecast-CUx_t-n8.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
-      "index.html"
+      "_preload-helper-BB2FBftw.js"
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
@@ -272,7 +296,7 @@
     ]
   },
   "src/components/ZonePlantingSchedule.vue": {
-    "file": "assets/ZonePlantingSchedule-JpCb6-FB.js",
+    "file": "assets/ZonePlantingSchedule-BCtpHRNU.js",
     "name": "ZonePlantingSchedule",
     "src": "src/components/ZonePlantingSchedule.vue",
     "isDynamicEntry": true,
@@ -281,20 +305,20 @@
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "css": [
-      "assets/ZonePlantingSchedule-E-hFylMS.css"
+      "assets/ZonePlantingSchedule-k6m4c2fM.css"
     ]
   },
   "stock.html": {
-    "file": "assets/stock-D5myz3yS.js",
+    "file": "assets/stock-BT5oNV_k.js",
     "name": "stock",
     "src": "stock.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
-      "_Select-Da_pKA4n.js",
-      "_DataTable-BUPiQPuh.js",
+      "_desktop-shell-B-UoVnqO.js",
+      "_Select-CmqHXh6g.js",
+      "_DataTable-B4cl9_po.js",
       "_LinkPicker-_glDNdLJ.js",
       "_register-worker-CKMNsoSQ.js",
       "_register-warehouse-worker-ClozO1u8.js"
@@ -305,16 +329,16 @@
     ]
   },
   "timekeeping.html": {
-    "file": "assets/timekeeping-Bbjvh0B0.js",
+    "file": "assets/timekeeping-BqwFenbd.js",
     "name": "timekeeping",
     "src": "timekeeping.html",
     "isEntry": true,
     "imports": [
       "_api-DBVSZ-7-.js",
       "_units-DwW3lwNS.js",
-      "_desktop-shell-Dqpd1hJb.js",
-      "_Select-Da_pKA4n.js",
-      "_DataTable-BUPiQPuh.js",
+      "_desktop-shell-B-UoVnqO.js",
+      "_Select-CmqHXh6g.js",
+      "_DataTable-B4cl9_po.js",
       "_register-worker-CKMNsoSQ.js"
     ],
     "css": [

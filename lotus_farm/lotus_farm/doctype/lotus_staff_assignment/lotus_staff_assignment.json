@@ -1,0 +1,110 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Staff Assignment",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "employee",
+      "label": "Nhân viên",
+      "fieldtype": "Link",
+      "options": "Employee"
+    },
+    {
+      "fieldname": "department",
+      "label": "Bộ phận",
+      "fieldtype": "Link",
+      "options": "Department"
+    },
+    {
+      "fieldname": "designation",
+      "label": "Chức danh",
+      "fieldtype": "Link",
+      "options": "Designation"
+    },
+    {
+      "fieldname": "work_team",
+      "label": "Tổ/đội",
+      "fieldtype": "Link",
+      "options": "Work Team"
+    },
+    {
+      "fieldname": "role_title",
+      "label": "Chức vụ kiêm nhiệm",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Bắt đầu",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Kết thúc",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "approver",
+      "label": "Người quản lý trực tiếp",
+      "fieldtype": "Link",
+      "options": "Employee"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "company",
+    "farm",
+    "employee",
+    "department",
+    "designation",
+    "work_team",
+    "role_title",
+    "valid_from",
+    "valid_to",
+    "approver",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}
