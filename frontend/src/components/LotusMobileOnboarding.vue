@@ -8,13 +8,14 @@ const visible=ref(false),step=ref('install'),installPrompt=ref(null),installed=r
 const installing=ref(false),subscribing=ref(false),pushDone=ref(false)
 const error=ref(''),info=ref('')
 const isIOS=typeof navigator!=='undefined'&&/iphone|ipad|ipod/i.test(navigator.userAgent)
-const appTitle=computed(()=>({warehouse:'Kho Lotus',buying:'Mua hàng Lotus',work:'Công việc ngoài vườn'})[props.app]||props.title)
+const appTitle=computed(()=>({warehouse:'Kho Lotus',buying:'Mua hàng Lotus',work:'Công việc ngoài vườn',hr:'Nhân sự Lotus'})[props.app]||props.title)
 const storageKey=computed(()=>'lotus-pwa-setup-v1:'+props.app)
 const installKey=computed(()=>'lotus-pwa-installed:'+props.app)
 const featureText=computed(()=>({
  warehouse:'Tạo phiếu nhập, xuất kho và theo dõi hàng đang về.',
  buying:'Lập đơn mua, theo dõi nhà cung cấp và duyệt đơn theo quyền.',
- work:'Nhận việc tại vườn, ghi kết quả và xem tiến độ.'
+ work:'Nhận việc tại vườn, ghi kết quả và xem tiến độ.',
+ hr:'Lập hồ sơ nhân viên, tiếp nhận và xử lý các thông báo nhân sự.'
 })[props.app]||'Sử dụng ứng dụng trên điện thoại.')
 const manualInstall=computed(()=>isIOS?
  'Mở bằng Safari, bấm Chia sẻ rồi chọn “Thêm vào Màn hình chính”.':

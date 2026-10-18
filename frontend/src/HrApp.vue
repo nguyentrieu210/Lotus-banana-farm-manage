@@ -23,6 +23,7 @@ const cats={Permanent:'Dài hạn', 'Fixed-term':'Hợp đồng xác định h�
 const bases={Monthly:'Lương tháng',Daywork:'Công nhật',Piecework:'Khoán sản lượng',Mixed:'Hỗn hợp'}
 const stages={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 const genderName={Male:'Nam',Female:'Nữ',Other:'Khác'}
+const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
 const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Import · Máy chấm công'},{id:'payroll',label:'Cấu hình lương'}]
 const tabs=computed(()=>routes.filter(r=>r.id!=='payroll'||isManager.value))
 const actions=computed(()=>[
@@ -152,7 +153,7 @@ onMounted(init)
       <tbody><tr v-for="person in filteredEmployees" :key="person.name">
         <td>{{person.name}}</td><td><strong>{{person.employee_name}}</strong><small>{{person.department}}</small></td>
         <td>{{person.designation||'—'}}</td><td>{{person.lotus_farm||'—'}}</td>
-        <td>{{cats[person.lotus_worker_category]||person.employment_type||'—'}}</td>
+        <td>{{cats[person.lotus_worker_category]||contractTypeNames[person.employment_type]||person.employment_type||'—'}}</td>
         <td>{{bases[person.lotus_payment_basis]||'Chưa cấu hình'}}</td>
         <td>{{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}} · {{person.status}}<small v-if="person.contract_end_date&&person.contract_end_date<=today">Hợp đồng đến hạn: {{person.contract_end_date}}</small></td>
         <td><UiButton v-if="isManager" variant="outline" size="sm" @click="openEmployee(person)">Xem / sửa</UiButton></td></tr>
@@ -176,9 +177,9 @@ onMounted(init)
     </template>
 
     <template v-if="tab==='payroll'&&isManager">
-      <div class="attendance-toolbar"><h2>Chính sách và cấu hình lương</h2><a href="/app/salary-structure-assignment" class="stock-button">Quyết định lương HRMS ↗</a><a href="/app/salary-structure" class="stock-button">Cấu trúc lương ↗</a><a href="/app/employee-grade" class="stock-button">Cấp bậc ↗</a></div>
+      <div class="attendance-toolbar"><h2>Chính sách và cấu hình lương</h2><a href="/app/salary-structure-assignment" class="stock-button">Quyết định lương HRMS ↗</a><a href="/app/salary-structure" class="stock-button">Cấu trúc lương ↗</a></div>
       <p class="attendance-legend">Đơn giá công khoán theo công việc nằm trong Work Type, chỉ là giá trị kế hoạch. Lương cơ bản và thay đổi lương phải lập qua Salary Structure Assignment theo ngày hiệu lực. Không lấy giá khoán x khối lượng để tự động lập Salary Slip khi chưa có dữ liệu duyệt và kiểm soát đối soát.</p>
-      <section v-if="readiness" class="stock-panel"><h3>Đối soát trước kỳ lương · {{readiness.month}}</h3><p>Nhân viên đang làm: <strong>{{readiness.employees}}</strong> · Chưa có quyết định lương: <strong>{{readiness.employees_without_salary.length}}</strong> · Phiếu chấm công nháp: <strong>{{readiness.attendance_draft_count}}</strong> · Phiếu khoán đội chờ duyệt: <strong>{{readiness.crew_pending_count}}</strong>.</p><p class="attendance-legend">Giá trị khoán đội đã duyệt (chưa phải lương): {{money(readiness.crew_approved_amount)}}; {{readiness.note}}</p><p v-if="readiness.employees_without_salary.length">Chưa cấu hình Salary Structure Assignment: {{readiness.employees_without_salary.map(x=>x.employee_name).join(', ')}}</p></section><section class="stock-panel hr-table"><h3>Cấp bậc lương cấu hình</h3><table><thead><tr><th>Bậc</th><th>Cấu trúc mặc định</th><th>Lương cơ sở tham chiếu</th></tr></thead><tbody><tr v-for="g in payroll.grades" :key="g.name"><td>{{g.name}}</td><td>{{g.default_salary_structure||'Chưa thiết lập'}}</td><td>{{money(g.default_base_pay,g.currency)}}</td></tr></tbody></table></section>
+      <section v-if="readiness" class="stock-panel"><h3>Đối soát trước kỳ lương · {{readiness.month}}</h3><p>Nhân viên đang làm: <strong>{{readiness.employees}}</strong> · Chưa có quyết định lương: <strong>{{readiness.employees_without_salary.length}}</strong> · Phiếu chấm công nháp: <strong>{{readiness.attendance_draft_count}}</strong> · Phiếu khoán đội chờ duyệt: <strong>{{readiness.crew_pending_count}}</strong>.</p><p class="attendance-legend">Giá trị khoán đội đã duyệt (chưa phải lương): {{money(readiness.crew_approved_amount)}}; {{readiness.note}}</p><p v-if="readiness.employees_without_salary.length">Chưa cấu hình Salary Structure Assignment: {{readiness.employees_without_salary.map(x=>x.employee_name).join(', ')}}</p></section>
       <section class="stock-panel hr-table"><h3>Quyết định lương đã duyệt mới nhất theo nhân viên</h3><table><thead><tr><th>Mã nhân viên</th><th>Cấu trúc lương</th><th>Hiệu lực từ</th><th>Lương cơ bản</th></tr></thead><tbody><tr v-for="(a,i) in payroll.assignments" :key="i"><td>{{a.employee}}</td><td>{{a.salary_structure}}</td><td>{{a.from_date}}</td><td>{{money(a.base,a.currency)}}</td></tr></tbody></table></section>
     </template>
 
@@ -215,9 +216,9 @@ onMounted(init)
         <label>Cơ chế công/lương *<UiSelect v-model="employeeForm.lotus_payment_basis" required><option value="">Chọn</option><option v-for="v in catalog.payment_bases" :key="v" :value="v">{{bases[v]}}</option></UiSelect></label>
         <label>Vườn<UiSelect v-model="employeeForm.lotus_farm" :disabled="!!candidateHire" @change="employeeForm.lotus_work_team=''"><option value="">Chưa phân công</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
         <label>Tổ/đội nội bộ<UiSelect v-model="employeeForm.lotus_work_team"><option value="">Chưa phân tổ</option><option v-for="t in teamChoices" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect></label>
-        <label>Loại HĐ lao động chuẩn HRMS<UiSelect v-model="employeeForm.employment_type"><option value="">Chưa chọn</option><option v-for="t in catalog.employment_types" :key="t.name" :value="t.name">{{t.name}}</option></UiSelect></label>
+        <label>Hình thức làm việc / hợp đồng<UiSelect v-model="employeeForm.employment_type"><option value="">Chưa chọn</option><option v-for="t in catalog.employment_types" :key="t.name" :value="t.name">{{contractTypeNames[t.name]||t.name}}</option></UiSelect></label>
         <label>Ngày hết hạn hợp đồng<UiInput v-model="employeeForm.contract_end_date" type="date"/></label>
-        <label>Cấp bậc HRMS<UiSelect v-model="employeeForm.grade"><option value="">Chưa phân bậc</option><option v-for="g in catalog.grades" :key="g.name" :value="g.name">{{g.name}}</option></UiSelect></label>
+
         <label>Số điện thoại<UiInput v-model="employeeForm.cell_number" required/></label>
         <label>Email cá nhân<UiInput v-model="employeeForm.personal_email" type="email"/></label>
         <label>CCCD {{employeeForm.cccd_recorded?'(đã có, ****'+employeeForm.lotus_cccd_last4+')':''}}<UiInput v-model="employeeForm.cccd" autocomplete="off" inputmode="numeric" maxlength="18" placeholder="12 chữ số"/></label>

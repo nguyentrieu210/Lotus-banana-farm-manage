@@ -11,8 +11,9 @@ const supported=typeof window!=='undefined'&&window.isSecureContext&&
 const api=(name,args={},write=false)=>call('lotus_farm.push_notifications.'+name,args,write)
 let polling
 function appWorker(app){
- return '/api/method/lotus_farm.web.'+({warehouse:'warehouse_service_worker',buying:'buying_service_worker',work:'work_service_worker'}[app])
+ return '/api/method/lotus_farm.web.'+({warehouse:'warehouse_service_worker',buying:'buying_service_worker',work:'work_service_worker',hr:'hr_mobile_service_worker'}[app])
 }
+const appScope=app=>app==='hr'?'/hr-mobile':'/'+app
 function decodeKey(raw){
  const padding='='.repeat((4-raw.length%4)%4)
  const bytes=atob(raw.replace(/-/g,'+').replace(/_/g,'/')+padding)
@@ -30,7 +31,7 @@ async function refresh(){
 async function getWorker(){
  let worker=await navigator.serviceWorker.getRegistration(location.pathname)
  if(!worker)worker=await navigator.serviceWorker.register(appWorker(props.app),{
-  scope:'/'+props.app,
+  scope:appScope(props.app),
   updateViaCache:'none'
  })
  await navigator.serviceWorker.ready
@@ -79,7 +80,7 @@ async function openAlert(item){
   item.is_read=1;unread.value=Math.max(0,unread.value-1)
  }catch(e){error.value=e.message;return}
  const route=String(item.url||'')
- if(route.startsWith('/'+props.app) && !route.startsWith('//')){
+ if((route===appScope(props.app)||route.startsWith(appScope(props.app)+'?')||route.startsWith(appScope(props.app)+'/')) && !route.startsWith('//')){
   show.value=false
   location.href=route
  }

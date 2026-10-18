@@ -1,0 +1,7 @@
+services:
+  backend:
+    image: lotus-hr-setup:v2-20261019
+  frontend:
+    image: lotus-hr-setup:v2-20261019
+  queue-short:
+    image: lotus-hr-setup:v2-20261019

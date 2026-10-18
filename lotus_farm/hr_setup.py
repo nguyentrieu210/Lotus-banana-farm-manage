@@ -63,3 +63,21 @@ def save_assignment(company,values):
  doc=frappe.get_doc(dict(doctype="Lotus Staff Assignment",**data))
  doc.insert()
  return dict(name=doc.name)
+
+@frappe.whitelist(methods=["POST"])
+def ensure_leadership_department(company):
+ """Create the leadership department only when absent; do not touch existing roles or staff."""
+ _manager()
+ _company(company)
+ rows=frappe.get_all("Department", filters={"company":company,"department_name":"Ban lãnh đạo"},
+                     pluck="name", limit_page_length=2)
+ if rows:return {"name":rows[0],"created":False}
+ if not frappe.has_permission("Department","create"):
+  frappe.throw("Chưa có quyền tạo phòng ban.",frappe.PermissionError)
+ parent=frappe.db.get_value("Department",{"department_name":"All Departments","is_group":1},"name")
+ if not parent:
+  frappe.throw("Không tìm thấy nhóm phòng ban gốc. Cần kiểm tra trước khi tạo.")
+ dep=frappe.get_doc({"doctype":"Department","department_name":"Ban lãnh đạo",
+                     "company":company,"is_group":0,"parent_department":parent})
+ dep.insert()
+ return {"name":dep.name,"created":True}

@@ -59,6 +59,8 @@ has_permission["Integration Event"] = "lotus_farm.controls.farm_permission"
 permission_query_conditions["Integration Event"] = "lotus_farm.permissions.integration_event"
 doc_events["Integration Event"] = {"validate": "lotus_farm.controls.check_farm"}
 
+doctype_list_js = {"Role": "public/js/role_list.js"}
+
 doctype_js = {
     "Harvest Forecast": "public/js/harvest_forecast.js",
     "Packout Run": "public/js/packout_run.js",
@@ -165,7 +167,9 @@ has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
 scheduler_events['hourly'].append('lotus_farm.alerts.refresh_alerts')
 
-doc_events['Employee'] = {**doc_events.get('Employee', {}), 'validate': 'lotus_farm.hr_workspace.employee_identity_guard'}
+doc_events['Employee'] = {**doc_events.get('Employee', {}),
+                          'validate': 'lotus_farm.hr_workspace.employee_identity_guard',
+                          'on_update': 'lotus_farm.push_notifications.document_hook'}
 doc_events['Lotus Candidate'] = {'validate': 'lotus_farm.hr_workspace.candidate_guard'}
 has_permission['Lotus Crew Attendance']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Crew Attendance']='lotus_farm.timekeeping.crew_query'

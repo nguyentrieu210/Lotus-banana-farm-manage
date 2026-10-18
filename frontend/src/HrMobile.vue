@@ -11,10 +11,11 @@ import {useMobileViewport} from './use-mobile-viewport'
 const api=(name,args={},post=false)=>call('lotus_farm.hr_workspace.'+name,args,post)
 const {keyboard}=useMobileViewport()
 const session=ref(null),company=ref(''),busy=ref(false),saving=ref(false)
-const error=ref(''),notice=ref(''),screen=ref('home'),search=ref(''),scanOpen=ref(false)
+const initialTab=new URLSearchParams(window.location.search).get('tab')
+const error=ref(''),notice=ref(''),screen=ref(['home','employees','onboarding','profile','candidates'].includes(initialTab)?initialTab:'home'),search=ref(''),scanOpen=ref(false)
 const people=ref([]),candidates=ref([]),catalog=ref({farms:[],teams:[],departments:[],designations:[],genders:[],employment_types:[],grades:[],worker_categories:[],payment_bases:[]})
 const employee=reactive({}),candidate=reactive({})
-const selectedEmployee=ref(null),selectedCandidate=ref(null),hireFrom=ref(null),installPrompt=ref(null)
+const selectedEmployee=ref(null),selectedCandidate=ref(null),hireFrom=ref(null)
 const roots=['home','employees','onboarding','profile']
 const tabs=[{name:'home',label:'Trang chủ',icon:'wap-home-o'},{name:'employees',label:'Nhân viên',icon:'friends-o'},{name:'onboarding',label:'Tiếp nhận',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
 const title=computed(()=>({home:'Nhân sự Lotus',employees:'Hồ sơ nhân viên',onboarding:'Tiếp nhận',profile:'Tài khoản',employee:'Hồ sơ nhân viên',candidates:'Tuyển dụng',candidate:'Hồ sơ ứng viên'})[screen.value]||'Nhân sự Lotus')
@@ -33,6 +34,8 @@ const departments=computed(()=>(catalog.value.departments||[]).map(p=>({value:p.
 const titles=computed(()=>(catalog.value.designations||[]).map(p=>({value:p.name,label:p.designation_name||p.name})))
 const teams=computed(()=>(catalog.value.teams||[]).filter(p=>p.farm===employee.lotus_farm&&p.lotus_team_type!=='Contractor').map(p=>({value:p.name,label:p.team_name||p.name})))
 const choices=values=>(values||[]).map(x=>({value:x.name||x,label:x.name||x}))
+const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
+const contractTypes=computed(()=>(catalog.value.employment_types||[]).map(t=>({value:t.name,label:contractTypeNames[t.name]||t.name})))
 const categories=[{value:'Permanent',label:'Dài hạn'},{value:'Fixed-term',label:'Hợp đồng xác định hạn'},{value:'Seasonal',label:'Thời vụ'},{value:'Probation',label:'Thử việc'}]
 const payments=[{value:'Monthly',label:'Lương tháng'},{value:'Daywork',label:'Công nhật'},{value:'Piecework',label:'Khoán sản lượng'},{value:'Mixed',label:'Hỗn hợp'}]
 const when=x=>String(x||'').slice(0,10)
@@ -142,22 +145,13 @@ function hireCandidate(){
  employee.designation=candidate.designation
  employee.lotus_farm=candidate.farm||''
 }
-function installRequest(e){e.preventDefault();installPrompt.value=e}
-async function install(){
- if(installPrompt.value){
-  const e=installPrompt.value;installPrompt.value=null
-  try{await e.prompt()}catch{}return
- }
- notice.value='Mở link bằng Chrome → menu ⋮ → Cài ứng dụng. Trên iPhone dùng Safari → Chia sẻ → Thêm vào Màn hình chính.'
-}
-onMounted(()=>{window.addEventListener('beforeinstallprompt',installRequest);void init()})
-onBeforeUnmount(()=>window.removeEventListener('beforeinstallprompt',installRequest))
+function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
+onMounted(()=>{void init()})
 </script>
 
 <template>
  <LotusMobileShell app="hr" :tabs="tabs" :title="title" :active-tab="rootTab"
   :back="!roots.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
-  :notifications="false" :onboarding="false"
   @navigate="nav" @back="back">
   <main class="hr-mobile-main">
    <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
@@ -229,9 +223,8 @@ onBeforeUnmount(()=>window.removeEventListener('beforeinstallprompt',installRequ
       <LotusMobileSelect v-model="employee.lotus_work_team" label="Tổ/đội" :options="[{value:'',label:'Chưa phân tổ'},...teams]"/>
       <LotusMobileSelect v-model="employee.lotus_worker_category" label="Loại lao động" :options="categories" required/>
       <LotusMobileSelect v-model="employee.lotus_payment_basis" label="Cơ chế công/lương" :options="payments" required/>
-      <LotusMobileSelect v-model="employee.employment_type" label="Loại hợp đồng" :options="[{value:'',label:'Chưa chọn'},...choices(catalog.employment_types)]"/>
+      <LotusMobileSelect v-model="employee.employment_type" label="Hình thức làm việc / hợp đồng" :options="[{value:'',label:'Chưa chọn'},...contractTypes]"/>
       <LotusMobileInput v-model="employee.contract_end_date" type="date" label="Ngày hết hạn hợp đồng"/>
-      <LotusMobileSelect v-model="employee.grade" label="Bậc HRMS" :options="[{value:'',label:'Chưa chọn'},...choices(catalog.grades)]"/>
      </section>
      <section class="hr-mobile-card">
       <h2>Thông tin bổ sung</h2>
@@ -289,7 +282,7 @@ onBeforeUnmount(()=>window.removeEventListener('beforeinstallprompt',installRequ
      <LotusMobileSelect v-if="session?.companies?.length>1" v-model="company" label="Công ty"
       :options="session.companies.map(c=>({value:c.name,label:c.name}))" @update:model-value="reload"/>
      <VanButton block plain icon="replay" @click="reload">Tải lại</VanButton>
-     <VanButton block plain icon="apps-o" @click="install">Cài ứng dụng Nhân sự</VanButton>
+     <VanButton block plain icon="apps-o" @click="openSetup">Cài đặt / hướng dẫn ban đầu</VanButton>
      <p class="hr-mobile-caption">Để cài PWA, mở bằng Chrome hoặc Safari thay vì trình duyệt bên trong ChatGPT/Zalo.</p>
      <a href="/lotus/nhan-su">Nhân sự trên máy tính ↗</a>
      <a href="/logout">Đăng xuất</a>

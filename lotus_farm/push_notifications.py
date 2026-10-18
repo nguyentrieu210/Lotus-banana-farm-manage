@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 import frappe
 from frappe.utils import now_datetime
 
-APPS = {"warehouse": "/warehouse", "buying": "/buying", "work": "/work"}
+APPS = {"warehouse": "/warehouse", "buying": "/buying", "work": "/work", "hr": "/hr-mobile"}
 DEVICE = "Lotus Push Device"
 ALERT = "Lotus Mobile Alert"
 ALLOWED_PUSH_HOSTS = {
@@ -34,6 +34,9 @@ def _user():
 def _app(value):
     if value not in APPS:
         frappe.throw("Ứng dụng không hợp lệ.")
+    if value == "hr":
+        from lotus_farm.hr_workspace import _hr_access
+        _hr_access()
     return value
 
 
@@ -273,6 +276,11 @@ def _recipients(doc, event):
     elif doc.doctype == "Daily Work Result":
         if doc.get("work_plan"):
             users.add(frappe.db.get_value("Daily Work Plan", doc.work_plan, "owner"))
+    if doc.doctype == "Employee":
+        users.update(frappe.get_all(
+            "Has Role", filters={"role": "HR Manager"},
+            pluck="parent", limit_page_length=1000))
+        users.add("Administrator")
     return sorted(user for user in users if user and _visible_to(user, doc))
 
 
@@ -286,6 +294,8 @@ def _event_content(doc, event):
         ("Stock Entry", "submitted"): ("warehouse", "Có phiếu kho mới", "Phiếu " + doc.name, "/warehouse?doc=" + doc.name + "&doctype=Stock%20Entry"),
         ("Daily Work Plan", "submitted"): ("work", "Có công việc được giao", "Kế hoạch " + doc.name, "/work?tab=tasks"),
         ("Daily Work Result", "submitted"): ("work", "Đã báo cáo công việc", "Báo cáo " + doc.name, "/work?tab=history"),
+        ("Employee", "pending"): ("hr", "Có hồ sơ chờ tiếp nhận", "Mã nhân viên " + doc.name, "/hr-mobile?tab=onboarding"),
+        ("Employee", "ready"): ("hr", "Đã duyệt tiếp nhận", "Mã nhân viên " + doc.name, "/hr-mobile?tab=employees"),
     }
     return mapping.get((doc.doctype, event))
 
@@ -318,6 +328,16 @@ def document_hook(doc, method=None):
             return
     elif doc.doctype == "Purchase Order" and method == "on_submit":
         event = "approved"
+    elif doc.doctype == "Employee" and method == "on_update":
+        old = doc.get_doc_before_save()
+        before = old.get("lotus_onboarding_state") if old else None
+        after = doc.get("lotus_onboarding_state")
+        if not old and after == "Pending":
+            event = "pending"
+        elif old and before != "Ready" and after == "Ready":
+            event = "ready"
+        else:
+            return
     elif method == "on_submit":
         event = "submitted"
     else:
@@ -325,3 +345,20 @@ def document_hook(doc, method=None):
     frappe.enqueue("lotus_farm.push_notifications.dispatch_document",
                    queue="short", enqueue_after_commit=True,
                    doctype=doc.doctype, name=doc.name, event=event)
+
+def allow_hr_notifications():
+    """One-time idempotent metadata update; preserves all existing push devices and alerts."""
+    updated = []
+    for doctype in (DEVICE, ALERT):
+        row = frappe.db.get_value(
+            "DocField", {"parent": doctype, "fieldname": "app"},
+            ["name", "options"], as_dict=True)
+        if not row:
+            frappe.throw("Thiếu trường ứng dụng của " + doctype)
+        options = [x.strip() for x in (row.options or "").splitlines() if x.strip()]
+        if "hr" not in options:
+            options.append("hr")
+            frappe.db.set_value("DocField", row.name, "options", "\n".join(options))
+            updated.append(doctype)
+        frappe.clear_cache(doctype=doctype)
+    return {"updated": updated, "hr_enabled": True}

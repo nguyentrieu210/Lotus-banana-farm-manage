@@ -1,0 +1,48 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+const read=p=>readFileSync(new URL(p,import.meta.url),'utf8')
+test('HR PWA uses initial setup and its own bell',()=>{
+ const app=read('../src/HrMobile.vue')
+ const shell=read('../src/components/LotusMobileShell.vue')
+ const setup=read('../src/components/LotusMobileOnboarding.vue')
+ assert.match(app,/app="hr"/)
+ assert.doesNotMatch(app,/:notifications="false"|:onboarding="false"/)
+ assert.match(app,/lotus:open-setup/)
+ assert.match(shell,/<LotusMobileNotifications v-if="notifications"/)
+ assert.match(shell,/<LotusMobileOnboarding v-if="onboarding"/)
+ assert.match(setup,/hr:'Nhân sự Lotus'/)
+})
+test('HR push app scope, worker and event routing are isolated',()=>{
+ const web=read('../../lotus_farm/push_notifications.py')
+ const push=read('../src/mobile-push-subscription.js')
+ const bell=read('../src/components/LotusMobileNotifications.vue')
+ const worker=read('../../lotus_farm/public/hr-mobile-worker.js')
+ assert.match(web,/"hr": "\/hr-mobile"/)
+ assert.match(web,/\("Employee", "pending"\)/)
+ assert.match(web,/\("Employee", "ready"\)/)
+ assert.match(push,/hr_mobile_service_worker/)
+ assert.match(push,/app==='hr'\?'\/hr-mobile'/)
+ assert.match(bell,/appScope\(props.app\)/)
+ assert.match(worker,/lotus-push-worker.js/)
+ assert.match(worker,/url.pathname.startsWith\('\/private\/'\)/)
+})
+test('HRMS grade is hidden and contract categories have Vietnamese labels',()=>{
+ const mobile=read('../src/HrMobile.vue')
+ const desktop=read('../src/HrApp.vue')
+ assert.doesNotMatch(mobile,/label="Bậc HRMS"/)
+ assert.doesNotMatch(desktop,/Cấp bậc HRMS<UiSelect/)
+ for(const name of ['Học việc','Thử việc','Bán thời gian','Toàn thời gian','Khoán theo sản phẩm']){
+  assert.ok(mobile.includes(name))
+  assert.ok(desktop.includes(name))
+ }
+})
+test('Role filter only changes the list, leadership department is reusable',()=>{
+ const role=read('../../lotus_farm/public/js/role_list.js')
+ const org=read('../../lotus_farm/hr_setup.py')
+ assert.match(role,/frappe.listview_settings\["Role"\]/)
+ assert.match(role,/Lotus %/)
+ assert.doesNotMatch(role,/frappe.db.delete|frappe.client.delete/)
+ assert.match(org,/def ensure_leadership_department/)
+ assert.match(org,/Ban lãnh đạo/)
+})

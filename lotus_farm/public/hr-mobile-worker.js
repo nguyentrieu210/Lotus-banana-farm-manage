@@ -1,4 +1,5 @@
 /* HR PWA worker: cache only build files and a static offline notice. Never private HR data. */
+importScripts('/assets/lotus_farm/lotus-push-worker.js?v=1');
 const CACHE='lotus-hr-mobile-__HR_VERSION__'
 const ASSETS=__HR_ASSETS__
 const OFFLINE='/assets/lotus_farm/hr-mobile-offline.html'
