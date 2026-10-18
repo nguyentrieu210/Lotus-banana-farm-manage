@@ -145,7 +145,7 @@ onMounted(init)
 
     <template v-if="tab==='employees'||tab==='onboarding'">
       <div class="attendance-toolbar"><h2>{{tab==='employees'?'Danh sách nhân viên':'Tiếp nhận & kích hoạt'}}</h2>
-        <UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">+ Thêm nhân viên</UiButton><a class="stock-button" href="/app/employee-transfer">Điều chuyển nhân viên (HRMS) ↗</a>
+        <UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">+ Thêm nhân viên</UiButton><a class="stock-button" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="stock-button" href="/app/employee-transfer">Điều chuyển nhân viên (HRMS) ↗</a>
       </div>
       <p class="attendance-legend">Công nhân thử việc, thời vụ hoặc dài hạn có hồ sơ Employee. Đội khoán/nhà thầu chấm theo đội ở module Chấm công, không tự tạo nhân viên giả. Nhân viên chờ tiếp nhận chưa được kích hoạt.</p>
       <section class="stock-panel hr-table"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Vườn</th><th>Loại lao động</th><th>Hình thức công/lương</th><th>Tiếp nhận</th><th></th></tr></thead>

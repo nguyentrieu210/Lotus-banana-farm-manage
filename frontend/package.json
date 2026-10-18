@@ -16,6 +16,7 @@
     "clsx": "2.1.1",
     "echarts": "^6.1.0",
     "frappe-ui": "1.0.0",
+    "html5-qrcode": "2.3.8",
     "pinia": "3.0.4",
     "reka-ui": "2.11.0",
     "tailwind-merge": "2.6.0",

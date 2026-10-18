@@ -1,0 +1,6 @@
+# Append as the last override: backend API and HR frontend only.
+services:
+  backend:
+    image: lotus-cccd-qr:v1-20261018
+  frontend:
+    image: lotus-cccd-qr:v1-20261018

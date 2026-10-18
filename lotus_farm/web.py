@@ -119,3 +119,34 @@ def warehouse_manifest():
     return Response(path.read_text(encoding='utf-8'),
                     content_type='application/manifest+json; charset=utf-8',
                     headers={'Cache-Control':'no-cache'})
+
+@frappe.whitelist(allow_guest=True, methods=['GET', 'HEAD'])
+def hr_mobile_manifest():
+    path=Path(frappe.get_app_path('lotus_farm','public','hr-mobile.webmanifest'))
+    return Response(path.read_text(encoding='utf-8'),
+                    content_type='application/manifest+json; charset=utf-8',
+                    headers={'Cache-Control':'no-cache'})
+
+
+@frappe.whitelist(allow_guest=True, methods=['GET'])
+def hr_mobile_service_worker():
+    """Separate HR scope. No data or authenticated HTML caching."""
+    root=Path(frappe.get_app_path('lotus_farm','public'))
+    manifest=json.loads((root/'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
+    assets={'/assets/lotus_farm/hr-mobile-offline.html',
+            '/assets/lotus_farm/images/hr-icon-192.png',
+            '/assets/lotus_farm/images/hr-icon-512.png'}
+    seen=set()
+    def add(key):
+        if key in seen:return
+        seen.add(key)
+        chunk=manifest[key]
+        for dep in chunk.get('imports',[]):add(dep)
+        for name in [chunk.get('file'),*chunk.get('css',[]),*chunk.get('assets',[])]:
+            if name:assets.add('/assets/lotus_farm/frontend/'+name)
+    add('hr-mobile.html')
+    code=(root/'hr-mobile-worker.js').read_text(encoding='utf-8')
+    version=hashlib.sha256(json.dumps(sorted(assets)).encode()).hexdigest()[:16]
+    return Response(code.replace('__HR_ASSETS__',json.dumps(sorted(assets))).replace('__HR_VERSION__',version),
+                    content_type='application/javascript; charset=utf-8',
+                    headers={'Service-Worker-Allowed':'/hr-mobile','Cache-Control':'no-store'})

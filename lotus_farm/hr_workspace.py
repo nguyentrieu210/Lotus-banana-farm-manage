@@ -382,6 +382,26 @@ def _apply_employee(doc, values, company, new):
 
 
 @frappe.whitelist(methods=["POST"])
+def check_cccd(company, cccd, employee=None):
+    """Preflight duplicate check; never return another employee's details."""
+    _manager()
+    _company(company)
+    if not frappe.has_permission("Employee", "read"):
+        frappe.throw("Không có quyền kiểm tra CCCD.", frappe.PermissionError)
+    try:
+        value = normalize_cccd(cccd)
+    except ValueError as exc:
+        frappe.throw(str(exc))
+    if employee:
+        current = _choose("Employee", employee, company)
+        current.check_permission("read")
+    duplicate = frappe.db.exists(
+        "Employee", {"lotus_cccd_hash": _id_digest(value), "name": ["!=", employee or ""]}
+    )
+    return {"duplicate": bool(duplicate)}
+
+
+@frappe.whitelist(methods=["POST"])
 def save_employee(company, values, employee=None, modified=None):
     _manager()
     _company(company)
