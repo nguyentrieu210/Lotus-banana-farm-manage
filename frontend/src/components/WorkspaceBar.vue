@@ -37,7 +37,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
     <DropdownMenuContent><DropdownMenuItem v-for="action in allActions.filter(a=>a.navigation)" :key="action.id" @select="choose(action)">{{action.label}}</DropdownMenuItem></DropdownMenuContent>
    </DropdownMenu>
   </div>
-  <UiButton class="workspace-search" variant="outline" @click="open"><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
+  <UiButton class="workspace-search" variant="outline" aria-label="Tìm nhanh (Ctrl K)" @click="open"><LotusIcon name="search" class="workspace-search-icon"/><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right">
    <Tooltip :content="dark?'Giao diện sáng':'Giao diện tối'"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" @click="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/></UiButton></Tooltip>
    <DropdownMenu>

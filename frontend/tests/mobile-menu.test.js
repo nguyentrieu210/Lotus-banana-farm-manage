@@ -40,7 +40,7 @@ test('QC-only account has a usable landing tab without full dashboard access',()
 test('unassigned user has no module actions',()=>{
  const user=session()
  assert.equal(hasMobileAccess(user),false)
- assert.deepEqual(mobileTabs(user),[{id:'mobile',label:'Trang chủ',path:'mobile',symbol:'⌂'}])
+ assert.deepEqual(mobileTabs(user),[{id:'mobile',label:'Trang chủ',path:'mobile',icon:'home'}])
 })
 
 test('stock-only account can open warehouse from mobile home without farm permissions',()=>{

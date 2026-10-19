@@ -24,7 +24,7 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
    <h3>{{group.title}} <span>{{group.actions.length}}</span></h3>
    <div class="mobile-action-grid">
     <UiButton variant="outline" v-for="action in group.actions" :key="action.id" class="mobile-action" type="button" @click="emit('select',action)">
-     <span class="mobile-action-icon" aria-hidden="true">{{action.symbol}}</span>
+     <span class="mobile-action-icon" aria-hidden="true"><LotusIcon :name="action.icon"/></span>
      <span class="mobile-action-text"><strong>{{action.label}}</strong><small>{{action.detail}}</small></span>
      <LotusIcon name="chevron" class="mobile-action-chevron"/>
     </UiButton>

@@ -78,12 +78,13 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .app-shell .sidebar nav button:hover{background:var(--lotus-neutral-800);color:#fff}
 .app-shell .sidebar .field-link{color:var(--lotus-neutral-400)}
 .stock-shell .stock-logo{background:var(--lotus-primary-900);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
-.workspace-bar{--lotus-text:var(--lotus-neutral-100);--lotus-muted:var(--lotus-neutral-300);--lotus-border:var(--lotus-neutral-700);--lotus-soft:var(--lotus-neutral-800);background:var(--lotus-neutral-900);color:var(--lotus-neutral-100);border-radius:0;padding:9px 12px;border-color:var(--lotus-neutral-700)}
-.workspace-bar button{background:transparent;color:var(--lotus-neutral-100)}
-.workspace-bar .workspace-search{background:var(--lotus-neutral-800);border-color:var(--lotus-neutral-600);color:var(--lotus-neutral-200);font-size:12px}
-.workspace-bar .workspace-search:hover{background:var(--lotus-neutral-700);border-color:var(--lotus-primary-600)}
-.workspace-bar .workspace-home{color:var(--lotus-primary-200)}
-.workspace-bar .workspace-avatar{background:var(--lotus-primary-900);color:var(--lotus-primary-200)}
+/* Lotus red bar at every width, same as desktop >=901px and the PWA header. */
+.workspace-bar{--lotus-text:#fff;--lotus-muted:var(--lotus-primary-50);--lotus-border:#ffffff55;--lotus-soft:#ffffff24;background:var(--lotus-primary-600);color:#fff;border-radius:0;padding:9px 12px;border-color:var(--lotus-neutral-700)}
+.workspace-bar button{background:transparent;color:#fff}
+.workspace-bar .workspace-search{background:#fff;border-color:#fff;color:var(--lotus-neutral-600);font-size:12px}
+.workspace-bar .workspace-search:hover{background:var(--lotus-neutral-25);border-color:#fff}
+.workspace-bar .workspace-home{color:#fff}
+.workspace-bar .workspace-avatar{background:#ffffff24;color:#fff;border:1px solid #ffffff40}
 .workspace-bar .workspace-menu{background:var(--lotus-neutral-900);color:var(--lotus-neutral-100)}
 .workspace-bar .workspace-menu button:hover{background:var(--lotus-neutral-700)}
 .stock-shell .stock-actions>button:first-child,.stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600);font-weight:650}
@@ -222,7 +223,7 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .sidebar-collapsed .sidebar nav button{justify-content:center;padding:7px;min-height:34px}
 }
 @media(max-width:700px){
- .app-shell .sidebar{width:100%;position:relative;height:auto;padding:10px 12px}
+ .app-shell .sidebar{width:100%;position:relative;height:auto;padding:10px 12px;background:var(--lotus-surface);border-right:0;border-bottom:1px solid var(--lotus-border)}
  .app-shell .sidebar nav,.app-shell .sidebar>.field-link,.app-shell .sidebar>small{display:none}
  .app-shell{display:block}
  .stock-shell .stock-main,.stock-shell.sidebar-collapsed .stock-main{margin:0;width:100%;padding:0 12px 10px}
@@ -231,7 +232,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .workspace-left>.workspace-sidebar-toggle{display:none}
  .workspace-search{min-width:30px;width:38px;margin:0;padding:0!important}
  .workspace-search>span,.workspace-search kbd,.workspace-username{display:none}
- .workspace-search:before{content:'⌕';font-size:22px}
  .workspace-nav-trigger{max-width:calc(100vw - 180px)}
  .workspace-menu{min-width:200px}
  .workspace-nav-trigger .workspace-menu{left:-35px}

@@ -54,8 +54,9 @@
 @media(min-width:901px) and (max-width:1160px){
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{grid-template-columns:minmax(125px,1fr) minmax(145px,210px) minmax(125px,1fr);padding-inline:14px}
- .lotus-ui.app-shell main>.workspace-bar .workspace-nav-trigger,
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-nav-trigger{display:none}
+ /* keep the module switcher, just shorter */
+ .lotus-ui.app-shell main>.workspace-bar .workspace-nav-title{max-width:120px}
+
  .lotus-ui.app-shell main{padding-inline:14px}
  .lotus-ui.app-shell main>.workspace-bar{margin-left:-14px;margin-right:-14px;width:calc(100% + 28px)}
 }

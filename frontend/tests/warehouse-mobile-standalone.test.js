@@ -45,7 +45,7 @@ test('all link fields open options on focus and filter while typing',()=>{
  assert.match(link,/@focus="reveal"/)
  assert.match(link,/@input="changed"/)
  assert.match(link,/role="listbox"/)
- assert.match(link,/\.filter\(r=>norm/)
+ assert.match(link,/\.filter\(r=>matchesOption\(r,q\)\)/)
  const purchase=readFileSync(new URL('../src/components/MobilePurchaseOrderForm.vue',import.meta.url),'utf8')
  assert.match(app,/<MobilePurchaseOrderForm/)
  for(const kind of [':options="storeOptions"',':options="employeeOptions"',':options="supplierOptions"',':options="itemOptions"'])assert.ok((app+purchase).includes(kind),kind)

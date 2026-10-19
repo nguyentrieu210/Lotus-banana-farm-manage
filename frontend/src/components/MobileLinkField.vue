@@ -4,7 +4,7 @@ import LotusMobileSelect from './LotusMobileSelect.vue'
 import LotusMobileButton from './LotusMobileButton.vue'
 import {computed,nextTick,ref,watch,useId} from 'vue'
 import {useMobilePopup} from '../use-mobile-popup'
-import {foldVietnamese} from '../warehouse-mobile-helpers'
+import {matchesOption} from '../option-search.js'
 const props=defineProps({
  modelValue:{type:String,default:''},
  options:{type:Array,default:()=>[]},
@@ -16,13 +16,13 @@ const emit=defineEmits(['update:modelValue'])
 const root=ref(null),input=ref(null),open=ref(false),query=ref(''),typing=ref(false)
 const listId=useId(),active=ref(-1)
 const {popup,style,above,close,schedule,pointerStart,pointerMove,canChoose,highlight}=useMobilePopup(root,input,open,()=>{typing.value=false;active.value=-1})
-const norm=foldVietnamese
 const searchEnabled=computed(()=>props.searchable==='auto'?true:!!props.searchable)
 const chosen=computed(()=>props.options.find(r=>r.value===props.modelValue))
 const shown=computed(()=>open.value&&typing.value?query.value:chosen.value?.label||props.modelValue||'')
 const filtered=computed(()=>{
- const q=norm(query.value.trim())
- return (q?props.options.filter(r=>norm((r.label||'')+' '+r.value).includes(q)):props.options).slice(0,60)
+ // same accent/space/dash-insensitive search as the desktop Combobox
+ const q=query.value.trim()
+ return (q?props.options.filter(r=>matchesOption(r,q)):props.options).slice(0,60)
 })
 function reveal(){
  if(props.disabled||open.value)return
