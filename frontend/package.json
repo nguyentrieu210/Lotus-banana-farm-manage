@@ -15,6 +15,7 @@
     "ag-grid-vue3": "36.2.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "cropperjs": "2.2.0",
     "echarts": "^6.1.0",
     "frappe-ui": "1.0.0",
     "html5-qrcode": "2.3.8",
