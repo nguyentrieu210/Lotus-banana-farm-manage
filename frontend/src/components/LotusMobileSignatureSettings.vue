@@ -36,7 +36,7 @@ async function chooseFile(event){
  if(!file||saving.value)return
  error.value='';notice.value=''
  if(!['image/png','image/jpeg'].includes(file.type)){error.value='Chỉ nhận ảnh PNG hoặc JPG.';return}
- if(file.size>1500000){error.value='Ảnh phải nhỏ hơn 1,5 MB.';return}
+ if(file.size>10000000){error.value='Ảnh phải nhỏ hơn 10 MB.';return}
  saving.value=true
  try{
   const image_data=await asBase64(file)
