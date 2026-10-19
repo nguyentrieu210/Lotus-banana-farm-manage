@@ -125,6 +125,17 @@ async function sync(){
   selected.value=[];await refresh()
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
+const syncFrom=ref(''),syncTo=ref('')
+async function syncRange(){
+ if(!props.manager||!syncFrom.value||!syncTo.value)return
+ if(!await askConfirm('Chuyển mọi log chưa chuyển từ '+syncFrom.value+' đến '+syncTo.value+' vào Employee Checkin? Log chưa ghép mã sẽ giữ lại để kiểm tra.'))return
+ busy.value=true;error.value=''
+ try{
+  const r=await api('sync_ready_checkins',{company:props.company,from_date:syncFrom.value,to_date:syncTo.value},true)
+  notice.value='Đã chuyển '+r.synced+', đã có '+r.skipped+', cần kiểm tra '+r.needs_review+' log.'+(r.more?' Còn log trong khoảng này, bấm chuyển tiếp.':'')
+  selected.value=[];await refresh()
+ }catch(e){error.value=e.message}finally{busy.value=false}
+}
 </script>
 <template>
 <div class="hr-ops">
@@ -218,6 +229,7 @@ async function sync(){
    <div class="hr-ops-actions"><a href="/app/employee-checkin">Xem log HRMS ↗</a><a href="/app/shift-assignment">Xem lịch ca ↗</a><a href="/app/attendance">Chấm công đã duyệt ↗</a></div>
    <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span></div>
    <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
+   <div v-if="manager" class="hr-ops-actions"><label>Từ ngày<UiInput v-model="syncFrom" type="date" :disabled="busy"/></label><label>Đến ngày<UiInput v-model="syncTo" type="date" :min="syncFrom" :disabled="busy"/></label><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hằng đêm hệ thống tự chuyển log của ngày hôm trước.</span></div>
    <div class="hr-ops-scroll"><table><thead><tr><th>Chọn</th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>Vào / Ra</th><th>Trạng thái</th></tr></thead>
     <tbody><tr v-for="p in hardware?.punches||[]" :key="p.name">
      <td><input v-if="manager&&p.state!=='Synced'" type="checkbox" :value="p.name" v-model="selected"/></td>

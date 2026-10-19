@@ -621,24 +621,66 @@ def sync_checkins(company,names):
     for name in set(names):
         row=frappe.get_doc("Lotus Attendance Punch",name);row.check_permission("write")
         if row.company!=company:frappe.throw("Có log ngoài công ty.")
-        if row.state=="Synced":result["skipped"]+=1;continue
-        emp=_mapping(company,row.device,row.device_user_id,str(row.punched_at))
-        if not emp:
-            row.employee=None;row.state="Unmapped";row.flags.lotus_promotion=True;row.save()
-            result["needs_review"]+=1;continue
-        person=_same_company_employee(company,emp)
-        if person.status!="Active":
-            row.state="Needs Review";row.flags.lotus_promotion=True;row.save()
-            result["needs_review"]+=1;continue
-        existing=frappe.db.exists("Employee Checkin",{
-            "employee":emp,"time":row.punched_at,"log_type":row.log_type or ["is","not set"]})
-        if existing:
-            row.employee=emp;row.employee_checkin=existing;row.state="Synced";row.flags.lotus_promotion=True;row.save()
-            result["skipped"]+=1;continue
-        checkin=frappe.get_doc({"doctype":"Employee Checkin","employee":emp,
-            "time":row.punched_at,"log_type":row.log_type or "",
-            "device_id":row.device})
-        checkin.insert()
-        row.employee=emp;row.employee_checkin=checkin.name;row.state="Synced";row.flags.lotus_promotion=True;row.save()
-        result["synced"]+=1
+        result[_promote(company,row)]+=1
     return result
+
+
+def _promote(company,row):
+    """One raw punch -> Employee Checkin when exactly one active identity maps it. Returns the result bucket."""
+    if row.state=="Synced":return "skipped"
+    emp=_mapping(company,row.device,row.device_user_id,str(row.punched_at))
+    if not emp:
+        row.employee=None;row.state="Unmapped";row.flags.lotus_promotion=True;row.save()
+        return "needs_review"
+    person=_same_company_employee(company,emp)
+    if person.status!="Active":
+        row.state="Needs Review";row.flags.lotus_promotion=True;row.save()
+        return "needs_review"
+    existing=frappe.db.exists("Employee Checkin",{
+        "employee":emp,"time":row.punched_at,"log_type":row.log_type or ["is","not set"]})
+    if existing:
+        row.employee=emp;row.employee_checkin=existing;row.state="Synced";row.flags.lotus_promotion=True;row.save()
+        return "skipped"
+    checkin=frappe.get_doc({"doctype":"Employee Checkin","employee":emp,
+        "time":row.punched_at,"log_type":row.log_type or "",
+        "device_id":row.device})
+    checkin.insert()
+    row.employee=emp;row.employee_checkin=checkin.name;row.state="Synced";row.flags.lotus_promotion=True;row.save()
+    return "synced"
+
+
+def _sync_range(company,from_date,to_date,limit=2000):
+    names=frappe.get_all("Lotus Attendance Punch",filters={"company":company,"state":["!=","Synced"],
+        "punched_at":["between",[str(from_date)+" 00:00:00",str(to_date)+" 23:59:59"]]},
+        pluck="name",order_by="punched_at",limit_page_length=limit+1)
+    result={"synced":0,"skipped":0,"needs_review":0,"more":len(names)>limit}
+    for name in names[:limit]:
+        result[_promote(company,frappe.get_doc("Lotus Attendance Punch",name))]+=1
+    return result
+
+
+@frappe.whitelist(methods=["POST"])
+def sync_ready_checkins(company,from_date,to_date):
+    """Promote every unsynced punch of a date range (max 31 days, 2000 punches) in one step."""
+    _manager();_company(company)
+    if not from_date or not to_date:frappe.throw("Chọn khoảng ngày.")
+    begin,end=getdate(from_date),getdate(to_date)
+    if end<begin or (end-begin).days>31:frappe.throw("Chọn khoảng tối đa 31 ngày.")
+    if not frappe.has_permission("Employee Checkin","create"):
+        frappe.throw("Không có quyền ghi Employee Checkin.",frappe.PermissionError)
+    from lotus_farm.controls import lock
+    lock("Company",company)
+    return _sync_range(company,begin,end)
+
+
+def sync_yesterday():
+    """Daily job: yesterday's punches of companies with an active device become Employee Checkin."""
+    from frappe.utils import add_days,nowdate
+    day=add_days(nowdate(),-1)
+    for company in sorted(set(frappe.get_all("Lotus Attendance Device",filters={"active":1},pluck="company"))):
+        try:
+            _sync_range(company,day,day)
+            frappe.db.commit()
+        except Exception:
+            frappe.db.rollback()
+            frappe.log_error(title="Lotus: đồng bộ chấm công máy "+str(company))

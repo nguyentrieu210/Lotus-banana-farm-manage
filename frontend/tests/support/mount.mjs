@@ -28,11 +28,14 @@ export function compile(filename){
  let code=fs.readFileSync(absolute,'utf8')
  code=code.replace(/^import ['"][^'"]*\.css['"];?\s*$/gm,'')
  if(absolute.endsWith('.vue')){const {descriptor}=parse(code);code=descriptor.scriptSetup||descriptor.script?compileScript(descriptor,{id:path.basename(absolute),inlineTemplate:true}).content:'export default {}'}
- code=code.replace(/from\s+(['"])(\.[^'"]+|@\/[^'"]+)\1/g,(match,quote,spec)=>{
+ // Vite-only build flags have no meaning outside Vite; tests run as a production build.
+ code=code.replace(/import\.meta\.env/g,'({DEV:false,PROD:true,MODE:"test"})')
+ // Both `import x from './y'` and side-effect `import './y.js'` must resolve to compiled files.
+ code=code.replace(/(from\s+|^import\s+)(['"])(\.[^'"]+|@\/[^'"]+)\2/gm,(match,keyword,quote,spec)=>{
   let target=spec.startsWith('@/')?path.join(project,'src',spec.slice(2)):path.resolve(path.dirname(absolute),spec)
   if(!path.extname(target))target=fs.existsSync(target+'.js')?target+'.js':path.join(target,'index.js')
-  if(target.endsWith('.css'))return 'from "data:text/javascript,"'
-  return 'from '+JSON.stringify(pathToFileURL(compile(target)).href)
+  if(target.endsWith('.css'))return keyword+'"data:text/javascript,"'
+  return keyword+JSON.stringify(pathToFileURL(compile(target)).href)
  })
  fs.writeFileSync(out,code)
  return out

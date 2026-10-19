@@ -4,7 +4,7 @@ import hashlib
 import json
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate,nowdate,flt,cint
+from frappe.utils import add_days,get_datetime,getdate,nowdate,flt,cint
 from lotus_farm.controls import lock,check_farm,require_role,command
 from lotus_farm.timekeeping_rules import crew_values,status_days
 
@@ -13,7 +13,7 @@ def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
     fields={'Work Team':[dict(fieldname='lotus_team_type',label='Loại đội',fieldtype='Select',options='Internal\nContractor',default='Internal'),dict(fieldname='lotus_foreman',label='Đầu câu / người phụ trách',fieldtype='Data'),dict(fieldname='lotus_foreman_phone',label='Điện thoại đầu câu',fieldtype='Data')]}
     if frappe.db.exists('DocType','Attendance'):
-        fields['Attendance']=[dict(fieldname='lotus_note',label='Ghi chú Lotus',fieldtype='Small Text'),dict(fieldname='lotus_cancel_reason',label='Lý do hủy Lotus',fieldtype='Small Text',allow_on_submit=1),dict(fieldname='lotus_client_key',label='Lotus request identity',fieldtype='Data',hidden=1,read_only=1,no_copy=1,unique=1),dict(fieldname='lotus_payload_hash',label='Lotus request content',fieldtype='Data',hidden=1,read_only=1,no_copy=1)]
+        fields['Attendance']=[dict(fieldname='lotus_note',label='Ghi chú Lotus',fieldtype='Small Text'),dict(fieldname='lotus_cancel_reason',label='Lý do hủy Lotus',fieldtype='Small Text',allow_on_submit=1),dict(fieldname='lotus_client_key',label='Lotus request identity',fieldtype='Data',hidden=1,read_only=1,no_copy=1,unique=1),dict(fieldname='lotus_payload_hash',label='Lotus request content',fieldtype='Data',hidden=1,read_only=1,no_copy=1),dict(fieldname='lotus_overtime_hours',label='Lotus · Giờ tăng ca được duyệt',fieldtype='Float',insert_after='working_hours')]
     create_custom_fields(fields,update=True,ignore_validate=True)
     from frappe.permissions import add_permission,update_permission_property
     for role in ('HR Manager','HR User'):
@@ -60,7 +60,9 @@ def bootstrap():
     installed=bool(frappe.db.exists('DocType','Attendance'))
     return dict(user=frappe.session.user,today=nowdate(),csrf_token=get_csrf_token(),hrms_installed=installed,companies=frappe.get_list('Company',fields=['name','default_currency'],limit_page_length=0),
         capabilities={dt:{action:bool(frappe.has_permission(dt,action)) for action in ('read','create','write','submit','cancel','delete','export','print')} for dt in ('Employee','Attendance','Work Team','Lotus Crew Attendance') if frappe.db.exists('DocType',dt)},
-        can_create_farm=frappe.session.user=='Administrator' or ('System Manager' in frappe.get_roles() and frappe.has_permission('Farm','create')))
+        can_create_farm=frappe.session.user=='Administrator' or ('System Manager' in frappe.get_roles() and frappe.has_permission('Farm','create')),
+        is_hr_manager=frappe.session.user=='Administrator' or bool({'HR Manager','System Manager'}&set(frappe.get_roles())),
+        can_read_checkins=bool(frappe.db.exists('DocType','Employee Checkin') and frappe.has_permission('Employee Checkin','read')))
 
 
 @frappe.whitelist()
@@ -79,15 +81,48 @@ def staff_day(company,date,shift=None,search=None):
     _company(company);date=_date(date)
     if not frappe.has_permission('Attendance','read'):frappe.throw('Chưa có quyền đọc chấm công.',frappe.PermissionError)
     people=frappe.get_list('Employee',filters={'company':company,'status':'Active'},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
-    attendance=frappe.get_list('Attendance',filters={'company':company,'attendance_date':date,'docstatus':['<',2],'shift':shift or ['is','not set']},fields=['name','employee','status','working_hours','docstatus','modified','lotus_note','actual_overtime_duration'],limit_page_length=0)
+    attendance=frappe.get_list('Attendance',filters={'company':company,'attendance_date':date,'docstatus':['<',2],'shift':shift or ['is','not set']},fields=['name','employee','status','working_hours','docstatus','modified','lotus_note','actual_overtime_duration','lotus_overtime_hours','in_time','out_time','late_entry','early_exit','leave_type'],limit_page_length=0)
     by_employee={r.employee:r for r in attendance};rows=[]
     for person in people:
         if search and str(search).casefold() not in (person.name+' '+person.employee_name).casefold():continue
-        row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,name=None,status='',working_hours=0,note='',docstatus=0,modified=None)
+        row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,name=None,status='',working_hours=0,overtime_hours=0,in_time=None,out_time=None,late_entry=0,early_exit=0,note='',docstatus=0,modified=None)
         if person.name in by_employee:
-            entry=by_employee[person.name];row.update(dict(entry));row['note']=entry.lotus_note or ''
+            entry=by_employee[person.name];row.update(dict(entry));row['note']=entry.lotus_note or '';row['overtime_hours']=flt(entry.lotus_overtime_hours)
         rows.append(row)
-    return dict(rows=rows,date=str(date))
+    from lotus_farm.hr_period import holiday_map,is_closed
+    holidays=holiday_map(company,date,date)
+    holiday=frappe.db.get_value('Holiday',{'parent':holidays.name,'holiday_date':date},['description','weekly_off'],as_dict=True) if holidays else None
+    return dict(rows=rows,date=str(date),holiday=dict(holiday) if holiday else None,has_calendar=bool(holidays),period_closed=is_closed(company,date))
+
+
+@frappe.whitelist()
+def propose_from_checkins(company,date,shift=None):
+    """Device check-ins of one day -> proposed status per active employee. Nothing is saved here."""
+    _company(company);date=_date(date)
+    if not (frappe.has_permission('Attendance','create') and frappe.has_permission('Employee Checkin','read')):frappe.throw('Chưa có quyền lấy công từ máy chấm.',frappe.PermissionError)
+    from datetime import datetime,timedelta
+    from lotus_farm.checkin_rules import day_status,shift_window
+    from lotus_farm.hr_period import holiday_map
+    settings={}
+    if shift:
+        doc=frappe.get_doc('Shift Type',shift);doc.check_permission('read');settings=doc.as_dict()
+    begin,end=shift_window(date,settings)
+    if begin:
+        begin-=timedelta(minutes=cint(settings.get('begin_check_in_before_shift_start_time')))
+        end+=timedelta(minutes=cint(settings.get('allow_check_out_after_shift_end_time')))
+    else:
+        begin=datetime.combine(date,datetime.min.time());end=begin+timedelta(days=1)-timedelta(seconds=1)
+    people=frappe.get_list('Employee',filters={'company':company,'status':'Active'},pluck='name',limit_page_length=0)
+    checkins=frappe.get_list('Employee Checkin',filters={'employee':['in',people or ['']],'time':['between',[begin,end]]},fields=['employee','time','log_type'],order_by='time',limit_page_length=0)
+    by_employee={}
+    for row in checkins:by_employee.setdefault(row.employee,[]).append(row)
+    holidays=holiday_map(company,date,date)
+    off=bool(holidays and date in holidays.days)
+    rows=[]
+    for employee in people:
+        proposal=day_status(date,by_employee.get(employee,[]),settings,is_holiday=off)
+        rows.append(dict(employee=employee,checkins=len(by_employee.get(employee,[])),**{k:(str(v) if hasattr(v,'hour') else v) for k,v in proposal.items()}))
+    return dict(rows=rows,date=str(date),shift=shift or '',checkins=len(checkins))
 
 
 @frappe.whitelist(methods=['POST'])
@@ -107,7 +142,18 @@ def save_staff(company,date,rows,client_event_id,shift=None):
         from lotus_farm.warehouse import _number
         hours=_number(entry.get('working_hours',0),'Giờ làm',allow_zero=True)
         if hours>24 or (status=='Absent' and hours):frappe.throw('Giờ làm không hợp lệ cho trạng thái đã chọn.')
-        payload=dict(company=company,date=str(date),employee=employee.name,status=status,hours=hours,shift=shift or '',note=str(entry.get('note') or '')[:2000])
+        overtime=_number(entry.get('overtime_hours',0) or 0,'Giờ tăng ca',allow_zero=True)
+        if overtime>16 or (status=='Absent' and overtime):frappe.throw('Giờ tăng ca không hợp lệ cho trạng thái đã chọn.')
+        clock={}
+        for field in ('in_time','out_time'):
+            if entry.get(field):
+                moment=get_datetime(entry[field])
+                # A night shift may end on the next calendar day, never later.
+                if not date<=moment.date()<=add_days(date,1):frappe.throw('Giờ vào/ra phải thuộc ngày công.')
+                clock[field]=str(moment)
+        if clock.get('in_time') and clock.get('out_time') and clock['out_time']<=clock['in_time']:frappe.throw('Giờ ra phải sau giờ vào.')
+        payload=dict(company=company,date=str(date),employee=employee.name,status=status,hours=hours,overtime=overtime,shift=shift or '',note=str(entry.get('note') or '')[:2000],
+            late=cint(entry.get('late_entry')),early=cint(entry.get('early_exit')),**clock)
         key,digest=_request(str(client_event_id)+':'+employee.name,payload)
         retry=frappe.db.get_value('Attendance',{'lotus_client_key':key},['name','lotus_payload_hash'],as_dict=True)
         if retry:
@@ -120,7 +166,7 @@ def save_staff(company,date,rows,client_event_id,shift=None):
         else:
             if frappe.db.exists('Attendance',{'employee':employee.name,'attendance_date':date,'docstatus':['<',2],'shift':shift or ['is','not set']}):frappe.throw('Nhân viên đã được chấm công. Tải lại bảng để sửa phiếu nháp.')
             doc=frappe.new_doc('Attendance')
-        doc.company=company;doc.employee=employee.name;doc.attendance_date=date;doc.status=status;doc.shift=shift or None;doc.working_hours=hours;doc.lotus_note=payload['note'];doc.lotus_client_key=key;doc.lotus_payload_hash=digest
+        doc.company=company;doc.employee=employee.name;doc.attendance_date=date;doc.status=status;doc.shift=shift or None;doc.working_hours=hours;doc.lotus_overtime_hours=overtime;doc.in_time=clock.get('in_time');doc.out_time=clock.get('out_time');doc.late_entry=payload['late'];doc.early_exit=payload['early'];doc.lotus_note=payload['note'];doc.lotus_client_key=key;doc.lotus_payload_hash=digest
         doc.save();saved.append(doc.name)
     return dict(names=saved)
 
@@ -148,7 +194,7 @@ def monthly(company,month):
     _company(company)
     begin=getdate(str(month)+'-01');end=begin.replace(day=calendar.monthrange(begin.year,begin.month)[1])
     people=frappe.get_list('Employee',filters={'company':company},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
-    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration'],limit_page_length=0)
+    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration','lotus_overtime_hours'],limit_page_length=0)
     rows=[]
     for employee in people:
         entries=[r for r in records if r.employee==employee.name];approved=[r for r in entries if r.docstatus==1]
@@ -156,8 +202,9 @@ def monthly(company,month):
         for entry in entries:days.setdefault(str(getdate(entry.attendance_date).day),[]).append(dict(entry))
         # A person can have multiple non-overlapping shifts. Never count more than one workday per calendar day.
         workdays=sum(min(1,sum(status_days(r.status) for r in approved if getdate(r.attendance_date).day==day)) for day in range(1,end.day+1))
-        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.actual_overtime_duration) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
-    return dict(rows=rows,days=end.day,month=str(month),company=company)
+        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) or flt(r.actual_overtime_duration) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
+    from lotus_farm.hr_period import is_closed
+    return dict(rows=rows,days=end.day,month=str(month),company=company,period_closed=is_closed(company,begin))
 
 
 class CrewAttendanceDocument(Document):
@@ -319,9 +366,14 @@ def crew_monthly(company,month,farm=None):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_shift(name,start_time,end_time):
+def create_shift(name,start_time,end_time,late_grace=0,early_grace=0,half_day_hours=0,absent_hours=0,company=None):
     from lotus_farm.warehouse import _text
-    doc=frappe.get_doc(dict(doctype='Shift Type',start_time=start_time,end_time=end_time,enable_auto_attendance=0)).insert(set_name=_text(name,'Tên ca'))
+    values=dict(late_entry_grace_period=cint(late_grace),early_exit_grace_period=cint(early_grace),working_hours_threshold_for_half_day=flt(half_day_hours),working_hours_threshold_for_absent=flt(absent_hours))
+    if not 0<=values['late_entry_grace_period']<=240 or not 0<=values['early_exit_grace_period']<=240:frappe.throw('Thời gian cho phép đi muộn/về sớm tối đa 240 phút.')
+    if not 0<=values['working_hours_threshold_for_absent']<=values['working_hours_threshold_for_half_day'] or values['working_hours_threshold_for_half_day']>24:frappe.throw('Ngưỡng vắng phải nhỏ hơn hoặc bằng ngưỡng nửa ngày (tối đa 24 giờ).')
+    holiday_list=frappe.get_cached_value('Company',_company(company).name,'default_holiday_list') if company else None
+    # Lotus builds attendance drafts from check-ins itself; HRMS auto attendance would submit them unreviewed.
+    doc=frappe.get_doc(dict(doctype='Shift Type',start_time=start_time,end_time=end_time,enable_auto_attendance=0,holiday_list=holiday_list,**values)).insert(set_name=_text(name,'Tên ca'))
     return dict(name=doc.name)
 
 

@@ -1,0 +1,355 @@
+"""Timekeeping calendar, month close and the monthly payroll sheet handed to accounting.
+
+Closing a month freezes Attendance, crew sheets and labour allocation for its dates and stores the
+payroll sheet as a snapshot. Amounts are gross before social insurance and personal income tax;
+contractor crew piecework is listed as a payable to the crew, never as an employee wage.
+"""
+import hashlib
+import json
+from datetime import date
+
+import frappe
+from frappe.utils import cint, flt, getdate, now_datetime, nowdate
+
+from lotus_farm.payroll_rules import employee_pay, standard_days, summarize_attendance
+from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
+
+PERIOD = 'Lotus Timekeeping Period'
+GUARDED = {'Attendance': 'attendance_date', 'Lotus Crew Attendance': 'posting_date', 'Labor Allocation': 'posting_date'}
+
+
+def _hr_manager():
+    if frappe.session.user == 'Guest':
+        frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
+    if not (frappe.session.user == 'Administrator' or {'HR Manager', 'System Manager'} & set(frappe.get_roles())):
+        frappe.throw('Cần vai trò HR Manager để xử lý kỳ công và bảng lương.', frappe.PermissionError)
+
+
+def _company(name):
+    from lotus_farm.timekeeping import _company as check
+    return check(name)
+
+
+def _month(month):
+    try:
+        return month_range(month)
+    except ValueError as exc:
+        frappe.throw(str(exc))
+
+
+def _list_name(company, year):
+    abbr = frappe.get_cached_value('Company', company, 'abbr') or company
+    return 'LOTUS-' + abbr + '-' + str(year)
+
+
+def holiday_map(company, begin, end):
+    """The Holiday List covering [begin, end] for the company, with {date: weekly_off}; None when not set up."""
+    for name in (frappe.get_cached_value('Company', company, 'default_holiday_list'), _list_name(company, begin.year)):
+        if not name:
+            continue
+        span = frappe.db.get_value('Holiday List', name, ['from_date', 'to_date'], as_dict=True)
+        if span and getdate(span.from_date) <= begin and getdate(span.to_date) >= end:
+            rows = frappe.get_all('Holiday', filters={'parent': name, 'parenttype': 'Holiday List',
+                                                      'holiday_date': ['between', [begin, end]]},
+                                  fields=['holiday_date', 'weekly_off'], limit_page_length=0)
+            return frappe._dict(name=name, days={getdate(r.holiday_date): cint(r.weekly_off) for r in rows})
+    return None
+
+
+def _ym(value):
+    return getdate(value).strftime('%Y-%m')
+
+
+def is_closed(company, day):
+    return bool(company and day and frappe.db.exists(PERIOD, {'company': company, 'month': _ym(day), 'status': 'Closed'}))
+
+
+def period_guard(doc, method=None):
+    """doc_events hook: no Attendance, crew sheet or labour allocation changes inside a closed month."""
+    field = GUARDED.get(doc.doctype)
+    if not field or doc.flags.get('lotus_period_reopen'):
+        return
+    company = doc.get('company') or (frappe.db.get_value('Employee', doc.get('employee'), 'company') if doc.get('employee') else None)
+    before = doc.get_doc_before_save() if method == 'validate' else None
+    for day in {doc.get(field), before.get(field) if before else None} - {None, ''}:
+        if is_closed(company, day):
+            frappe.throw('Tháng ' + _ym(day) + ' đã khóa công. HR Manager mở lại kỳ trước khi sửa.')
+
+
+# Calendar ---------------------------------------------------------------------------------------
+
+@frappe.whitelist()
+def calendar_info(company, year=None):
+    _company(company)
+    year = cint(year) or getdate(nowdate()).year
+    name = _list_name(company, year)
+    rows = frappe.get_all('Holiday', filters={'parent': name, 'parenttype': 'Holiday List'},
+                          fields=['holiday_date', 'description', 'weekly_off'], order_by='holiday_date',
+                          limit_page_length=0) if frappe.db.exists('Holiday List', name) else []
+    return dict(year=year, name=name if rows else None,
+                is_default=frappe.get_cached_value('Company', company, 'default_holiday_list') == name,
+                holidays=[dict(date=str(r.holiday_date), description=frappe.utils.strip_html(r.description or ''),
+                               weekly_off=cint(r.weekly_off)) for r in rows],
+                weekdays=list(WEEKDAYS))
+
+
+@frappe.whitelist(methods=['POST'])
+def setup_calendar(company, year, weekly_off=None, extra=None):
+    """Create or rebuild the company Holiday List of one year: weekly off days, fixed holidays, manual extras."""
+    _hr_manager()
+    _company(company)
+    year = cint(year)
+    if not 2020 <= year <= 2100:
+        frappe.throw('Năm không hợp lệ.')
+    weekly = frappe.parse_json(weekly_off) if isinstance(weekly_off, str) else (weekly_off or ['Sunday'])
+    extras = frappe.parse_json(extra) if isinstance(extra, str) else (extra or [])
+    if not isinstance(weekly, list) or any(day not in WEEKDAYS for day in weekly) or len(weekly) > 2:
+        frappe.throw('Chọn tối đa 2 ngày nghỉ hằng tuần.')
+    if not isinstance(extras, list) or len(extras) > 40:
+        frappe.throw('Danh sách ngày lễ thêm không hợp lệ.')
+    try:
+        rows = calendar_days(year, weekly, [(item.get('date'), item.get('description')) for item in extras])
+    except (ValueError, TypeError, AttributeError) as exc:
+        frappe.throw('Ngày lễ không hợp lệ: ' + str(exc))
+    closed = frappe.get_all(PERIOD, filters={'company': company, 'status': 'Closed', 'month': ['like', str(year) + '-%']}, pluck='month')
+    if closed:
+        frappe.throw('Mở lại các kỳ đã khóa trước khi sửa lịch năm: ' + ', '.join(sorted(closed)))
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    name = _list_name(company, year)
+    doc = frappe.get_doc('Holiday List', name) if frappe.db.exists('Holiday List', name) else frappe.new_doc('Holiday List')
+    doc.holiday_list_name = name
+    doc.from_date, doc.to_date = date(year, 1, 1), date(year, 12, 31)
+    doc.set('holidays', [dict(holiday_date=day, description=label, weekly_off=flag) for day, label, flag in rows])
+    doc.save()
+    current = frappe.get_cached_value('Company', company, 'default_holiday_list')
+    if not current or year == getdate(nowdate()).year:
+        # HRMS reads the company default list for leave and attendance; HR Manager may lack Company write.
+        frappe.db.set_value('Company', company, 'default_holiday_list', name)
+        frappe.clear_document_cache('Company', company)
+    return dict(name=name, days=len(rows), weekly_off=sum(1 for r in rows if r[2]))
+
+
+# Month close ------------------------------------------------------------------------------------
+
+def _people(company, begin, end):
+    rows = frappe.get_all('Employee', filters={'company': company, 'date_of_joining': ['<=', end]},
+                          fields=['name', 'employee_name', 'status', 'department', 'designation', 'lotus_work_team',
+                                  'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
+                                  'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date',
+                                  'lotus_onboarding_state'],
+                          order_by='employee_name', limit_page_length=0)
+    # People who left before the month are out; Inactive means onboarding is not finished.
+    return [r for r in rows if r.status == 'Active' or (r.status == 'Left' and r.relieving_date and getdate(r.relieving_date) >= begin)]
+
+
+def blockers(company, begin, end):
+    holidays = holiday_map(company, begin, end)
+    count = lambda dt, filters: frappe.db.count(dt, filters)
+    drafts = count('Attendance', {'company': company, 'attendance_date': ['between', [begin, end]], 'docstatus': 0})
+    crew = count('Lotus Crew Attendance', {'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 0})
+    punches = count('Lotus Attendance Punch', {'company': company, 'state': ['!=', 'Synced'],
+                                               'punched_at': ['between', [str(begin) + ' 00:00:00', str(end) + ' 23:59:59']]})
+    people = [p for p in _people(company, begin, end) if p.lotus_payment_basis != 'Piecework']
+    records = frappe.get_all('Attendance', filters={'company': company, 'attendance_date': ['between', [begin, end]],
+                                                    'docstatus': ['<', 2]},
+                             fields=['employee', 'attendance_date'], limit_page_length=0)
+    gaps = missing_attendance(people, records, begin, end, holidays.days if holidays else {}, getdate(nowdate()))
+    names = {p.name: p.employee_name for p in people}
+    rows = close_blockers(drafts, crew, punches, gaps, has_calendar=bool(holidays))
+    for row in rows:
+        if row.get('employees'):
+            row['employees'] = [dict(name=n, employee_name=names.get(n, n), days=[str(d) for d in gaps[n]][:31]) for n in row['employees']]
+    return rows
+
+
+@frappe.whitelist()
+def period_status(company, month):
+    _hr_manager()
+    _company(company)
+    begin, end = _month(month)
+    doc = frappe.db.get_value(PERIOD, {'company': company, 'month': month},
+                              ['name', 'status', 'closed_by', 'closed_at', 'reopen_reason'], as_dict=True)
+    return dict(month=month, status=doc.status if doc else 'Open', closed_by=doc.closed_by if doc else None,
+                closed_at=str(doc.closed_at) if doc and doc.closed_at else None,
+                reopen_reason=doc.reopen_reason if doc else None,
+                blockers=[] if doc and doc.status == 'Closed' else blockers(company, begin, end),
+                future=end >= getdate(nowdate()))
+
+
+@frappe.whitelist(methods=['POST'])
+def close_period(company, month):
+    _hr_manager()
+    _company(company)
+    begin, end = _month(month)
+    if end >= getdate(nowdate()):
+        frappe.throw('Chỉ khóa kỳ khi tháng đã kết thúc.')
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    found = blockers(company, begin, end)
+    if found:
+        frappe.throw('Chưa khóa được kỳ: ' + '; '.join(r['label'] + ' (' + str(r['count']) + ')' for r in found))
+    sheet = _sheet(company, month, begin, end)
+    snapshot = json.dumps(sheet, sort_keys=True, default=str, ensure_ascii=False)
+    name = frappe.db.get_value(PERIOD, {'company': company, 'month': month})
+    doc = frappe.get_doc(PERIOD, name) if name else frappe.new_doc(PERIOD)
+    if doc.status == 'Closed':
+        frappe.throw('Kỳ đã khóa.')
+    doc.update(dict(company=company, month=month, status='Closed', closed_by=frappe.session.user, closed_at=now_datetime(),
+                    snapshot=snapshot, snapshot_hash=hashlib.sha256(snapshot.encode()).hexdigest()))
+    doc.flags.lotus_period_action = True
+    doc.save()
+    return dict(name=doc.name, status=doc.status)
+
+
+@frappe.whitelist(methods=['POST'])
+def reopen_period(company, month, reason):
+    _hr_manager()
+    _company(company)
+    _month(month)
+    reason = str(reason or '').strip()
+    if len(reason) < 5:
+        frappe.throw('Ghi lý do mở lại kỳ (ít nhất 5 ký tự).')
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    name = frappe.db.get_value(PERIOD, {'company': company, 'month': month, 'status': 'Closed'})
+    if not name:
+        frappe.throw('Kỳ chưa khóa.')
+    doc = frappe.get_doc(PERIOD, name)
+    stamp = str(now_datetime())[:16] + ' · ' + frappe.session.user + ': ' + reason[:500]
+    doc.update(dict(status='Open', reopen_reason=((doc.reopen_reason or '') + '\n' + stamp).strip(), snapshot=None, snapshot_hash=None))
+    doc.flags.lotus_period_action = True
+    doc.save()
+    return dict(name=doc.name, status=doc.status)
+
+
+# Payroll sheet ----------------------------------------------------------------------------------
+
+def _sheet(company, month, begin, end):
+    holidays = holiday_map(company, begin, end)
+    days = holidays.days if holidays else {}
+    standard = standard_days(begin, end, days) if holidays else 0
+    people = _people(company, begin, end)
+    records = frappe.get_all('Attendance', filters={'company': company, 'attendance_date': ['between', [begin, end]], 'docstatus': 1},
+                             fields=['employee', 'attendance_date', 'status', 'leave_type', 'lotus_overtime_hours as overtime_hours'],
+                             limit_page_length=0)
+    worked = {r.employee for r in records}
+    known = {p.name for p in people}
+    # An employee with approved attendance stays on the sheet even if the profile changed later.
+    if worked - known:
+        people += frappe.get_all('Employee', filters={'name': ['in', list(worked - known)]},
+                                 fields=['name', 'employee_name', 'status', 'department', 'designation', 'lotus_work_team',
+                                         'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
+                                         'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date',
+                                         'lotus_onboarding_state'])
+    unpaid = frappe.get_all('Leave Type', filters={'is_lwp': 1}, pluck='name')
+    summaries = summarize_attendance(records, days, unpaid)
+    empty = dict(regular=0, weekly_off=0, holiday=0, paid_leave=0, unpaid_leave=0, absent=0, half_days=0,
+                 overtime=dict(regular=0, weekly_off=0, holiday=0))
+    employees = []
+    for person in people:
+        summary = summaries.get(person.name, empty)
+        pay = employee_pay(person.lotus_payment_basis, summary, standard, person.lotus_base_salary, person.lotus_daily_rate)
+        employees.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department,
+                              designation=person.designation, work_team=person.lotus_work_team,
+                              worker_category=person.lotus_worker_category, payment_basis=person.lotus_payment_basis,
+                              base_salary=flt(person.lotus_base_salary), daily_rate=flt(person.lotus_daily_rate),
+                              tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
+                              onboarding=person.lotus_onboarding_state, status=person.status,
+                              workdays=summary['regular'], weekly_off_days=summary['weekly_off'], holiday_days=summary['holiday'],
+                              paid_leave=summary['paid_leave'], unpaid_leave=summary['unpaid_leave'], absent=summary['absent'],
+                              half_days=summary['half_days'], overtime_hours=sum(summary['overtime'].values()), **pay))
+    crews = {}
+    for row in frappe.get_all('Lotus Crew Attendance', filters={'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 1},
+                              fields=['work_team', 'work_type', 'uom', 'unit_rate', 'completed_qty', 'workdays', 'present', 'amount'],
+                              limit_page_length=0):
+        key = (row.work_team, row.work_type or '', row.uom or '', flt(row.unit_rate))
+        item = crews.setdefault(key, dict(work_team=row.work_team, work_type=row.work_type, uom=row.uom, unit_rate=flt(row.unit_rate),
+                                          completed_qty=0.0, workdays=0.0, person_days=0, amount=0.0))
+        item['completed_qty'] += flt(row.completed_qty)
+        item['workdays'] += flt(row.workdays)
+        item['person_days'] += cint(row.present)
+        item['amount'] += flt(row.amount)
+    teams = {t.name: t for t in frappe.get_all('Work Team', filters={'name': ['in', list({k[0] for k in crews}) or ['']]},
+                                                fields=['name', 'team_name', 'lotus_foreman', 'lotus_foreman_phone'])}
+    works = {w.name: w.work_name for w in frappe.get_all('Work Type', filters={'name': ['in', list({k[1] for k in crews}) or ['']]},
+                                                          fields=['name', 'work_name'])}
+    crew_rows = []
+    for key in sorted(crews):
+        item = crews[key]
+        team = teams.get(item['work_team']) or frappe._dict()
+        crew_rows.append(dict(item, team_name=team.team_name or item['work_team'], foreman=team.lotus_foreman,
+                              foreman_phone=team.lotus_foreman_phone, work_name=works.get(item['work_type']) or item['work_type'] or '',
+                              amount=round(item['amount'])))
+    issues = [dict(employee=e['employee'], employee_name=e['employee_name'], issue=text) for e in employees for text in e['issues']]
+    issues += [dict(employee=e['employee'], employee_name=e['employee_name'], issue='Đang tính công nhưng hồ sơ chưa duyệt tiếp nhận')
+               for e in employees if e['status'] == 'Active' and e['onboarding'] != 'Ready']
+    return dict(month=month, company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'),
+                standard_days=standard, holiday_list=holidays.name if holidays else None, employees=employees, crews=crew_rows,
+                issues=issues,
+                totals=dict(employees=len(employees), gross=sum(e['total'] for e in employees),
+                            crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees)))
+
+
+@frappe.whitelist()
+def payroll_sheet(company, month):
+    _hr_manager()
+    _company(company)
+    begin, end = _month(month)
+    period = frappe.db.get_value(PERIOD, {'company': company, 'month': month}, ['status', 'snapshot', 'snapshot_hash', 'closed_at'], as_dict=True)
+    if period and period.status == 'Closed' and period.snapshot:
+        if hashlib.sha256(period.snapshot.encode()).hexdigest() != period.snapshot_hash:
+            frappe.throw('Dữ liệu kỳ đã khóa không khớp mã kiểm tra. Mở lại và khóa lại kỳ.')
+        return dict(json.loads(period.snapshot), draft=False, closed_at=str(period.closed_at))
+    return dict(_sheet(company, month, begin, end), draft=True, closed_at=None)
+
+
+def _cell(value):
+    if isinstance(value, str) and value[:1] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + value
+    return value
+
+
+@frappe.whitelist()
+def export_payroll(company, month):
+    data = payroll_sheet(company, month)
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    book = Workbook()
+    banner = 'BẢN NHÁP — kỳ chưa khóa, số liệu còn thay đổi' if data['draft'] else 'Kỳ đã khóa lúc ' + str(data['closed_at'])[:16]
+    labels = {'Monthly': 'Lương tháng', 'Daywork': 'Công nhật', 'Piecework': 'Khoán sản lượng', 'Mixed': 'Hỗn hợp'}
+
+    def sheet(ws, title, header, rows):
+        ws.title = title
+        ws.append(['Bảng lương ' + str(month) + ' · ' + str(company) + ' · ' + banner])
+        ws.append(['Số tiền trước BHXH và thuế TNCN. Công chuẩn: ' + str(data['standard_days']) + ' ngày.'])
+        ws.append(header)
+        for cell in ws[3]:
+            cell.font = Font(bold=True)
+        for row in rows:
+            ws.append([_cell(v) for v in row])
+        ws.freeze_panes = 'C4'
+
+    sheet(book.active, 'Nhân sự',
+          ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Công chuẩn', 'Công ngày thường',
+           'Công ngày nghỉ tuần', 'Công ngày lễ', 'Phép có lương', 'Nghỉ không lương', 'Nửa ngày', 'Vắng', 'Giờ tăng ca',
+           'Lương cơ bản', 'Đơn giá công', 'Lương theo công', 'Tiền làm ngày nghỉ/lễ', 'Tiền tăng ca', 'Tổng trước BHXH/thuế',
+           'MST', 'Số BHXH', 'Ghi chú'],
+          [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
+            labels.get(e['payment_basis'], e['payment_basis']), data['standard_days'], e['workdays'], e['weekly_off_days'],
+            e['holiday_days'], e['paid_leave'], e['unpaid_leave'], e['half_days'], e['absent'], e['overtime_hours'],
+            e['base_salary'], e['daily_rate'], e['time_pay'], e['off_day_pay'], e['overtime_pay'], e['total'],
+            e['tax_code'], e['social_insurance_no'],
+            'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
+    sheet(book.create_sheet(), 'Đội khoán',
+          ['Đội', 'Đầu câu', 'Điện thoại', 'Công việc', 'Khối lượng', 'Đơn vị', 'Đơn giá', 'Thành tiền', 'Tổng công', 'Người-ngày'],
+          [[c['team_name'], c['foreman'], c['foreman_phone'], c['work_name'], c['completed_qty'], c['uom'], c['unit_rate'],
+            c['amount'], c['workdays'], c['person_days']] for c in data['crews']])
+    sheet(book.create_sheet(), 'Kiểm tra', ['Mã NV', 'Họ tên', 'Vấn đề'],
+          [[i['employee'], i['employee_name'], i['issue']] for i in data['issues']])
+    from io import BytesIO
+    output = BytesIO()
+    book.save(output)
+    frappe.local.response.filename = 'bang-luong-' + str(month) + '.xlsx'
+    frappe.local.response.filecontent = output.getvalue()
+    frappe.local.response.type = 'download'

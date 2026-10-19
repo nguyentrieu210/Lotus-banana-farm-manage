@@ -24,7 +24,12 @@ const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:conf
 const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,write)
 const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
-const overview=ref({employees:[],candidates:[]}),payroll=ref({grades:[],assignments:[]}),readiness=ref(null)
+const overview=ref({employees:[],candidates:[]}),readiness=ref(null)
+const periodApi=(name,args={},write=false)=>call('lotus_farm.hr_period.'+name,args,write)
+const payMonth=ref(''),period=ref(null),sheet=ref(null),reopenOpen=ref(false),reopenReason=ref(''),offboardOpen=ref(false)
+const offboard=reactive({relieving_date:'',reason:''})
+const exportPayroll=computed(()=>'/api/method/lotus_farm.hr_period.export_payroll?'+new URLSearchParams({company:company.value,month:payMonth.value}))
+const lastMonth=()=>{const d=new Date((session.value?.today||new Date().toISOString().slice(0,10))+'T00:00:00');d.setDate(1);d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null),cccdScanOpen=ref(false)
 const selectedEmployee=ref(null),selectedCandidate=ref(null)
 const employeeForm=reactive({}),candidateForm=reactive({})
@@ -35,7 +40,7 @@ const bases={Monthly:'Lương tháng',Daywork:'Công nhật',Piecework:'Khoán s
 const stages={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 const genderName={Male:'Nam',Female:'Nữ',Other:'Khác'}
 const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
-const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Nhập dữ liệu · Máy chấm công'},{id:'payroll',label:'Cấu hình lương'}]
+const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Nhập dữ liệu · Máy chấm công'},{id:'payroll',label:'Kỳ công & bảng lương'}]
 const tabs=computed(()=>routes.filter(r=>r.id!=='payroll'||isManager.value))
 const actions=computed(()=>[
   {id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},
@@ -62,7 +67,12 @@ async function refresh(){if(!company.value)return;busy.value=true;error.value=''
   const [c,data]=await Promise.all([api('catalogue',{company:company.value}),api('overview',{company:company.value})])
   catalog.value=c;overview.value=data
 }catch(e){error.value=e.message}finally{busy.value=false}}
-async function loadPayroll(){if(!isManager.value||!company.value)return;busy.value=true;error.value='';try{[payroll.value,readiness.value]=await Promise.all([api('payroll_overview',{company:company.value}),api('payroll_readiness',{company:company.value,month:today.value.slice(0,7)})])}catch(e){error.value=e.message}finally{busy.value=false}}
+async function loadPayroll(){if(!isManager.value||!company.value)return;payMonth.value||=lastMonth();busy.value=true;error.value='';try{const args={company:company.value,month:payMonth.value};[readiness.value,period.value,sheet.value]=await Promise.all([api('payroll_readiness',args),periodApi('period_status',args),periodApi('payroll_sheet',args)])}catch(e){error.value=e.message}finally{busy.value=false}}
+async function closePeriod(){if(!await askConfirm('Khóa kỳ công '+payMonth.value+'? Sau khi khóa, chấm công, phiếu khoán và phân công lao động của tháng không sửa được; bảng lương được chốt.'))return
+  saving.value=true;error.value='';try{await periodApi('close_period',{company:company.value,month:payMonth.value},true);notice.value='Đã khóa kỳ '+payMonth.value+'.';await loadPayroll()}catch(e){error.value=e.message}finally{saving.value=false}}
+async function reopenPeriod(){saving.value=true;error.value='';try{await periodApi('reopen_period',{company:company.value,month:payMonth.value,reason:reopenReason.value},true);reopenOpen.value=false;reopenReason.value='';notice.value='Đã mở lại kỳ '+payMonth.value+'.';await loadPayroll()}catch(e){error.value=e.message}finally{saving.value=false}}
+function startOffboard(){offboard.relieving_date=today.value;offboard.reason='';error.value='';offboardOpen.value=true}
+async function confirmOffboard(){saving.value=true;error.value='';try{await api('offboard_employee',{company:company.value,employee:selectedEmployee.value,modified:employeeForm.modified,...offboard},true);offboardOpen.value=false;notice.value='Đã ghi nhận nghỉ việc.';resetPanels();await refresh()}catch(e){error.value=e.message}finally{saving.value=false}}
 async function init(){busy.value=true;try{
   session.value=await api('bootstrap');setCSRF(session.value.csrf_token)
   company.value=session.value.companies[0]?.name||''
@@ -74,7 +84,8 @@ function emptyEmployee(){
     employment_type:'',grade:'',reports_to:'',lotus_worker_category:'Seasonal',lotus_payment_basis:'Daywork',
     lotus_farm:'',lotus_work_team:'',cell_number:'',personal_email:'',current_address:'',permanent_address:'',
     cccd:'',lotus_id_issue_on:'',lotus_id_issue_at:'',lotus_emergency_name:'',lotus_emergency_phone:'',
-    lotus_tax_code:'',lotus_social_insurance_no:'',health_insurance_no:'',contract_end_date:'',lotus_onboarding_state:'Pending'})
+    lotus_tax_code:'',lotus_social_insurance_no:'',health_insurance_no:'',contract_end_date:'',lotus_onboarding_state:'Pending',
+    lotus_base_salary:0,lotus_daily_rate:0})
   editEmployee.value=true
 }
 async function openEmployee(item){if(!isManager.value)return;busy.value=true;error.value=''
@@ -144,9 +155,9 @@ useNoticeToast(notice)
     <p v-if="error" class="stock-error" role="alert">{{error}}</p>
     <WorkspaceSummaryStrip v-if="['employees','onboarding','candidates'].includes(tab)" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
     <WorkspaceListToolbar v-model="search" :searchable="['employees','onboarding','candidates'].includes(tab)" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="tab==='payroll'?loadPayroll():refresh()">
-      <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label></template>
+      <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label><label v-if="tab==='payroll'">Tháng <UiInput v-model="payMonth" type="month" :max="today.slice(0,7)" aria-label="Tháng công" :disabled="busy||saving" @change="loadPayroll"/></label></template>
       <template v-if="['employees','onboarding'].includes(tab)"><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/app/employee-transfer">Điều chuyển ↗</a><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">＋ Thêm nhân viên</UiButton></template>
-      <template v-if="tab==='payroll'"><a class="workspace-secondary-link" href="/app/salary-structure-assignment">Quyết định lương HRMS ↗</a><a class="workspace-secondary-link" href="/app/salary-structure">Cấu trúc lương ↗</a></template>
+      <template v-if="tab==='payroll'"><a class="stock-button" :href="exportPayroll">Xuất bảng lương Excel</a></template>
       <template v-if="tab==='candidates'"><a class="workspace-secondary-link" href="/app/job-opening">Tin tuyển dụng ↗</a><UiButton :disabled="saving" @click="emptyCandidate">＋ Thêm ứng viên</UiButton></template>
     </WorkspaceListToolbar>
 
@@ -178,14 +189,31 @@ useNoticeToast(notice)
 
     <template v-if="tab==='payroll'&&isManager">
       <div class="hr-payroll">
-        <section v-if="readiness" class="stock-panel" aria-label="Đối soát trước kỳ lương">
-          <h3>Đối soát trước kỳ lương · {{readiness.month}}</h3>
-          <WorkspaceSummaryStrip :items="[{label:'Đang làm',value:readiness.employees},{label:'Chưa có quyết định lương',value:readiness.employees_without_salary.length},{label:'Chấm công nháp',value:readiness.attendance_draft_count},{label:'Khoán đội chờ duyệt',value:readiness.crew_pending_count}]"/>
-          <p class="hr-payroll-note">Khoán đội đã duyệt (chưa phải lương): <strong>{{money(readiness.crew_approved_amount)}}</strong></p>
-          <p v-if="readiness.employees_without_salary.length" class="hr-payroll-warning">Chưa có quyết định lương: {{readiness.employees_without_salary.map(x=>x.employee_name).join(', ')}}</p>
-          <details><summary>Lưu ý đối soát</summary><p class="hr-payroll-note">Đơn giá công khoán là giá trị kế hoạch. Lương cơ bản được quản lý bằng quyết định lương theo ngày hiệu lực. {{readiness.note}}</p></details>
+        <section v-if="period" class="stock-panel" aria-label="Kỳ công">
+          <div class="attendance-toolbar"><h3>Kỳ công {{period.month}}</h3><span class="workspace-status" :class="{'is-ready':period.status==='Closed'}">{{period.status==='Closed'?'Đã khóa':'Đang mở'}}</span>
+            <UiButton v-if="period.status!=='Closed'" :disabled="saving||busy||period.future||period.blockers.length>0" @click="closePeriod">Khóa kỳ</UiButton>
+            <UiButton v-else variant="outline" :disabled="saving||busy" @click="reopenReason='';reopenOpen=true">Mở lại kỳ</UiButton>
+            <small v-if="period.status==='Closed'">Khóa bởi {{period.closed_by}} lúc {{String(period.closed_at||'').slice(0,16)}}</small><small v-else-if="period.future">Chỉ khóa khi tháng đã kết thúc.</small></div>
+          <ul v-if="period.status!=='Closed'&&period.blockers.length" class="hr-payroll-blockers" aria-label="Việc cần xử lý trước khi khóa"><li v-for="b in period.blockers" :key="b.code"><strong>{{b.label}}</strong>: {{b.count}}<small v-if="b.employees"> · {{b.employees.slice(0,8).map(e=>e.employee_name).join(', ')}}{{b.employees.length>8?'…':''}}</small></li></ul>
+          <p v-else-if="period.status!=='Closed'" class="hr-payroll-note">Đã đủ điều kiện khóa kỳ.</p>
         </section>
-        <section class="stock-panel hr-table" aria-label="Quyết định lương đã duyệt"><table><caption class="sr-only">Quyết định lương đã duyệt mới nhất theo nhân viên</caption><thead><tr><th>Mã nhân viên</th><th>Cấu trúc lương</th><th>Hiệu lực từ</th><th>Lương cơ bản</th></tr></thead><tbody><tr v-for="(a,i) in payroll.assignments" :key="i"><td>{{a.employee}}</td><td>{{a.salary_structure}}</td><td>{{a.from_date}}</td><td>{{money(a.base,a.currency)}}</td></tr></tbody></table><p v-if="!payroll.assignments.length&&!busy" class="stock-empty">Chưa có quyết định lương đã duyệt.</p></section>
+        <section v-if="readiness" class="stock-panel" aria-label="Đối soát trước kỳ lương">
+          <WorkspaceSummaryStrip :items="[{label:'Đang làm',value:readiness.employees},{label:'Thiếu lương CB / đơn giá',value:readiness.employees_without_salary.length},{label:'Chấm công nháp',value:readiness.attendance_draft_count},{label:'Khoán đội chờ duyệt',value:readiness.crew_pending_count},{label:'Log máy chưa chuyển',value:readiness.open_punches}]"/>
+          <p v-if="readiness.employees_without_salary.length" class="hr-payroll-warning">Thiếu mức lương: {{readiness.employees_without_salary.map(x=>x.employee_name+' ('+x.issue+')').join(', ')}}</p>
+          <p v-if="readiness.onboarding_pending?.length" class="hr-payroll-warning">Đang làm nhưng chưa duyệt tiếp nhận: {{readiness.onboarding_pending.map(x=>x.employee_name).join(', ')}}</p>
+        </section>
+        <section v-if="sheet" class="stock-panel hr-table" aria-label="Bảng lương nhân sự">
+          <div class="attendance-toolbar"><h3>Bảng lương {{sheet.month}}{{sheet.draft?' · bản nháp':''}}</h3><span>Công chuẩn {{sheet.standard_days}} ngày · Tổng trước BHXH/thuế <strong>{{money(sheet.totals.gross,sheet.currency)}}</strong></span></div>
+          <table><thead><tr><th>Nhân viên</th><th>Cơ chế</th><th>Công</th><th>Phép có lương</th><th>Công nghỉ tuần / lễ</th><th>Tăng ca (giờ)</th><th>Lương theo công</th><th>Ngày nghỉ / lễ</th><th>Tăng ca</th><th>Tổng</th><th>Ghi chú</th></tr></thead>
+          <tbody><tr v-for="e in sheet.employees" :key="e.employee"><td><strong>{{e.employee_name}}</strong><small>{{e.employee}}</small></td><td>{{bases[e.payment_basis]||'—'}}</td><td>{{e.workdays}}</td><td>{{e.paid_leave}}</td><td>{{e.weekly_off_days}} / {{e.holiday_days}}</td><td>{{e.overtime_hours}}</td><td>{{money(e.time_pay,sheet.currency)}}</td><td>{{money(e.off_day_pay,sheet.currency)}}</td><td>{{money(e.overtime_pay,sheet.currency)}}</td><td><strong>{{money(e.total,sheet.currency)}}</strong></td><td>{{e.via_crew?'Trả qua đội khoán':e.issues.join('; ')}}</td></tr></tbody></table>
+          <p v-if="!sheet.employees.length" class="stock-empty">Chưa có nhân viên trong tháng này.</p>
+        </section>
+        <section v-if="sheet" class="stock-panel hr-table" aria-label="Phải trả đội khoán">
+          <div class="attendance-toolbar"><h3>Phải trả đội khoán</h3><span>Tổng <strong>{{money(sheet.totals.crew_amount,sheet.currency)}}</strong></span></div>
+          <table><thead><tr><th>Đội</th><th>Đầu câu</th><th>Công việc</th><th>Khối lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Tổng công</th></tr></thead>
+          <tbody><tr v-for="(c,i) in sheet.crews" :key="i"><td>{{c.team_name}}</td><td>{{c.foreman}}</td><td>{{c.work_name||'—'}}</td><td>{{c.completed_qty}} {{c.uom}}</td><td>{{money(c.unit_rate,sheet.currency)}}</td><td><strong>{{money(c.amount,sheet.currency)}}</strong></td><td>{{c.workdays}}</td></tr></tbody></table>
+          <p v-if="!sheet.crews.length" class="stock-empty">Chưa có phiếu khoán đã duyệt trong tháng.</p>
+        </section>
       </div>
     </template>
 
@@ -235,6 +263,8 @@ useNoticeToast(notice)
         <label>BHXH<UiInput v-model="employeeForm.lotus_social_insurance_no"/></label>
         <label>BHYT<UiInput v-model="employeeForm.health_insurance_no"/></label>
         <label>Mã số thuế cá nhân<UiInput v-model="employeeForm.lotus_tax_code"/></label>
+        <label v-if="['Monthly','Mixed'].includes(employeeForm.lotus_payment_basis)">Lương cơ bản tháng (VND)<UiInput v-model.number="employeeForm.lotus_base_salary" type="number" min="0" step="1000"/></label>
+        <label v-if="['Daywork','Mixed'].includes(employeeForm.lotus_payment_basis)">Đơn giá công nhật (VND)<UiInput v-model.number="employeeForm.lotus_daily_rate" type="number" min="0" step="1000"/></label>
         <label class="hr-span">Địa chỉ hiện tại<UiTextarea v-model="employeeForm.current_address"/></label>
         <label class="hr-span">Địa chỉ thường trú<UiTextarea v-model="employeeForm.permanent_address"/></label>
       </div>
@@ -245,7 +275,24 @@ useNoticeToast(notice)
       <div class="attendance-toolbar"><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu hồ sơ'}}</UiButton>
         <UiButton v-if="selectedEmployee&&employeeForm.lotus_onboarding_state!=='Ready'&&!employeeForm.onboarding_gaps?.length" variant="outline" type="button" :disabled="saving" @click="approveOnboarding">Duyệt tiếp nhận & kích hoạt</UiButton>
         <a v-if="selectedEmployee" class="stock-button" :href="'/app/employee/'+encodeURIComponent(selectedEmployee)" target="_blank" rel="noopener">Employee HRMS ↗</a>
+        <UiButton v-if="selectedEmployee&&employeeForm.status!=='Left'" variant="outline" type="button" :disabled="saving" @click="startOffboard">Cho nghỉ việc</UiButton>
+        <small v-if="employeeForm.status==='Left'">Đã nghỉ việc từ {{employeeForm.relieving_date}}</small>
       </div></form>
+    </WorkspaceModal>
+
+    <WorkspaceModal v-model="offboardOpen" :title="'Cho nghỉ việc · '+(employeeForm.employee_name||'')" :busy="saving">
+      <p v-if="error" class="stock-error" role="alert">{{error}}</p>
+      <form @submit.prevent="confirmOffboard"><div class="hr-form-grid">
+        <label>Ngày làm việc cuối *<UiInput v-model="offboard.relieving_date" type="date" required :min="employeeForm.date_of_joining"/></label>
+        <label class="hr-span">Lý do *<UiTextarea v-model="offboard.reason" required maxlength="500"/></label>
+      </div><p class="attendance-legend">Hồ sơ chuyển sang Đã nghỉ; phân công tổ và mã máy chấm công đang mở được đóng tại ngày này.</p>
+      <div class="attendance-toolbar"><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Xác nhận nghỉ việc'}}</UiButton><UiButton type="button" variant="outline" :disabled="saving" @click="offboardOpen=false">Quay lại</UiButton></div></form>
+    </WorkspaceModal>
+
+    <WorkspaceModal v-model="reopenOpen" :title="'Mở lại kỳ công '+payMonth" :busy="saving">
+      <p v-if="error" class="stock-error" role="alert">{{error}}</p>
+      <form @submit.prevent="reopenPeriod"><label class="hr-span">Lý do mở lại *<UiTextarea v-model="reopenReason" required minlength="5" maxlength="500"/></label>
+      <div class="attendance-toolbar"><UiButton type="submit" :disabled="saving">Mở lại kỳ</UiButton><UiButton type="button" variant="outline" :disabled="saving" @click="reopenOpen=false">Quay lại</UiButton></div></form>
     </WorkspaceModal>
   </component>
 <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>

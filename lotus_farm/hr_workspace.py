@@ -210,6 +210,11 @@ def install_fields():
              fieldtype="Data", permlevel=1, insert_after="lotus_emergency_phone"),
         dict(fieldname="lotus_social_insurance_no", label="Lotus · Mã số BHXH",
              fieldtype="Data", permlevel=1, insert_after="lotus_tax_code"),
+        # Pay rates feed the monthly payroll sheet (lotus_farm.hr_period); HR Manager only.
+        dict(fieldname="lotus_base_salary", label="Lotus · Lương cơ bản tháng",
+             fieldtype="Currency", permlevel=1, insert_after="lotus_social_insurance_no"),
+        dict(fieldname="lotus_daily_rate", label="Lotus · Đơn giá công nhật",
+             fieldtype="Currency", permlevel=1, insert_after="lotus_base_salary"),
     ]
     create_custom_fields({"Employee": values}, update=True, ignore_validate=True)
     # Database uniqueness protects against parallel registrations bypassing API prechecks.
@@ -315,7 +320,8 @@ def employee_detail(company, employee):
         "lotus_cccd_last4", "lotus_id_issue_on", "lotus_id_issue_at",
         "lotus_emergency_name", "lotus_emergency_phone", "lotus_tax_code",
         "lotus_social_insurance_no", "health_insurance_no",
-        "contract_end_date", "job_applicant",
+        "contract_end_date", "job_applicant", "relieving_date", "reason_for_leaving",
+        "lotus_base_salary", "lotus_daily_rate",
     ]
     return {k: doc.get(k) for k in fields} | {
         "cccd_recorded": bool(doc.get("lotus_cccd_hash")),
@@ -325,7 +331,15 @@ def employee_detail(company, employee):
 
 
 def _apply_employee(doc, values, company, new):
-    # Explicit allowlist: never accept docstatus, linked user, salary amount or role data.
+    # Explicit allowlist: never accept docstatus, linked user or role data. Pay rates are permlevel 1
+    # (HR Manager) and every caller of this function already requires HR Manager.
+    for field, label in (("lotus_base_salary", "Lương cơ bản"), ("lotus_daily_rate", "Đơn giá công nhật")):
+        if field in values:
+            from lotus_farm.warehouse import _number
+            amount = _number(values[field] or 0, label, allow_zero=True)
+            if amount > 1_000_000_000:
+                frappe.throw(label + " vượt giới hạn hợp lệ.")
+            doc.set(field, amount)
     simple = (
         "gender", "date_of_birth", "date_of_joining", "designation", "department",
         "employment_type", "grade", "reports_to", "cell_number", "personal_email",
@@ -528,30 +542,32 @@ def payroll_readiness(company, month):
     _manager()
     _company(company)
     if not (frappe.has_permission("Employee", "read")
-            and frappe.has_permission("Salary Structure Assignment", "read")
             and frappe.has_permission("Attendance", "read")):
         frappe.throw("Chưa có quyền xem dữ liệu đối soát lương.", frappe.PermissionError)
-    import calendar
+    from lotus_farm.timekeeping_rules import month_range
     text = str(month or "")
     try:
-        begin = getdate(text + "-01")
-        if begin.strftime("%Y-%m") != text:
-            raise ValueError()
-    except (ValueError, TypeError):
+        begin, end = month_range(text)
+    except ValueError:
         frappe.throw("Tháng đối soát cần ở dạng YYYY-MM.")
-    end = begin.replace(day=calendar.monthrange(begin.year, begin.month)[1])
     people = frappe.get_list(
         "Employee", filters={"company": company, "status": "Active", "date_of_joining": ["<=", end]},
-        fields=["name", "employee_name"], limit_page_length=0,
+        fields=["name", "employee_name", "lotus_payment_basis", "lotus_base_salary", "lotus_daily_rate",
+                "lotus_onboarding_state"], limit_page_length=0,
     )
-    salary = frappe.get_list(
-        "Salary Structure Assignment",
-        filters={"company": company, "docstatus": 1, "from_date": ["<=", end]},
-        fields=["employee"], limit_page_length=0,
-    )
-    with_assignment = {s.employee for s in salary}
-    missing = [dict(name=e.name, employee_name=e.employee_name)
-               for e in people if e.name not in with_assignment]
+
+    def rate_gap(person):
+        basis = person.lotus_payment_basis
+        if not basis:
+            return "Chưa chọn cơ chế lương"
+        if basis in ("Monthly", "Mixed") and not person.lotus_base_salary:
+            return "Thiếu lương cơ bản"
+        if basis in ("Daywork", "Mixed") and not person.lotus_daily_rate:
+            return "Thiếu đơn giá công"
+        return None
+
+    missing = [dict(name=e.name, employee_name=e.employee_name, issue=rate_gap(e)) for e in people if rate_gap(e)]
+    pending = [dict(name=e.name, employee_name=e.employee_name) for e in people if e.lotus_onboarding_state != "Ready"]
     drafts = frappe.get_list(
         "Attendance",
         filters={"company": company, "attendance_date": ["between", [begin, end]], "docstatus": 0},
@@ -571,7 +587,49 @@ def payroll_readiness(company, month):
                 crew_pending_count=sum(1 for c in crew_rows if c.docstatus == 0),
                 crew_submitted_count=sum(1 for c in crew_rows if c.docstatus == 1),
                 crew_approved_amount=sum(float(c.amount or 0) for c in crew_rows if c.docstatus == 1),
-                note="Giá trị khoán đội không phải lương người lao động. Cần phân bổ và nghiệm thu riêng.")
+                onboarding_pending=pending,
+                open_punches=frappe.db.count("Lotus Attendance Punch", {
+                    "company": company, "state": ["!=", "Synced"],
+                    "punched_at": ["between", [str(begin) + " 00:00:00", str(end) + " 23:59:59"]]}),
+                note="Giá trị khoán đội là khoản phải trả cho đội, không phải lương người lao động.")
+
+
+@frappe.whitelist(methods=["POST"])
+def offboard_employee(company, employee, relieving_date, reason, modified):
+    """Mark an employee as left and close the open staff assignment and device identity."""
+    _manager()
+    _company(company)
+    doc = _choose("Employee", employee, company)
+    doc.check_permission("write")
+    if str(doc.modified) != str(modified):
+        frappe.throw("Hồ sơ đã thay đổi. Tải lại trước khi cập nhật.")
+    if doc.status == "Left":
+        frappe.throw("Nhân viên đã nghỉ việc.")
+    last_day = getdate(relieving_date) if relieving_date else None
+    reason = str(reason or "").strip()
+    if not last_day or not reason:
+        frappe.throw("Nhập ngày nghỉ việc và lý do.")
+    if doc.date_of_joining and last_day < getdate(doc.date_of_joining):
+        frappe.throw("Ngày nghỉ việc không được trước ngày vào làm.")
+    later = frappe.db.count("Attendance", {"employee": doc.name, "attendance_date": [">", last_day], "docstatus": ["<", 2]})
+    if later:
+        frappe.throw("Còn " + str(later) + " phiếu công sau ngày nghỉ việc. Hủy hoặc xóa các phiếu đó trước.")
+    from lotus_farm.controls import lock
+    lock("Employee", doc.name)
+    doc.status = "Left"
+    doc.relieving_date = last_day
+    doc.reason_for_leaving = reason[:500]
+    doc.save()
+    closed = 0
+    for doctype, start in (("Lotus Staff Assignment", "valid_from"), ("Lotus Attendance Identity", "valid_from")):
+        for name in frappe.get_all(doctype, filters={"employee": doc.name, "valid_to": ["is", "not set"]}, pluck="name"):
+            item = frappe.get_doc(doctype, name)
+            item.valid_to = max(last_day, getdate(item.get(start))) if item.get(start) else last_day
+            if doctype == "Lotus Attendance Identity":
+                item.active = 0
+            item.save()
+            closed += 1
+    return dict(name=doc.name, status=doc.status, closed=closed)
 
 @frappe.whitelist()
 def payroll_overview(company):

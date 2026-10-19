@@ -1,0 +1,95 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Timekeeping Period",
+  "module": "Lotus Farm",
+  "autoname": "format:{company}-{month}",
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "month",
+      "label": "Tháng (YYYY-MM)",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Open\nClosed",
+      "default": "Open",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "closed_by",
+      "label": "Người khóa",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "closed_at",
+      "label": "Thời điểm khóa",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reopen_reason",
+      "label": "Lịch sử mở lại",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "snapshot",
+      "label": "Bảng lương khi khóa",
+      "fieldtype": "Long Text",
+      "read_only": 1,
+      "hidden": 1
+    },
+    {
+      "fieldname": "snapshot_hash",
+      "label": "Mã kiểm tra bảng lương",
+      "fieldtype": "Data",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "company",
+    "month",
+    "status",
+    "closed_by",
+    "closed_at",
+    "reopen_reason",
+    "snapshot",
+    "snapshot_hash"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

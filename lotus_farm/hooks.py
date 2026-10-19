@@ -177,3 +177,12 @@ doc_events['Employee'] = {**doc_events.get('Employee', {}),
 doc_events['Lotus Candidate'] = {'validate': 'lotus_farm.hr_workspace.candidate_guard'}
 has_permission['Lotus Crew Attendance']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Crew Attendance']='lotus_farm.timekeeping.crew_query'
+
+# Closed timekeeping months freeze Attendance, crew sheets and labour allocation (lotus_farm.hr_period).
+for _dt in ('Attendance', 'Lotus Crew Attendance', 'Labor Allocation'):
+    for _event in ('validate', 'before_submit', 'before_cancel', 'on_trash'):
+        _value = doc_events.setdefault(_dt, {}).get(_event, [])
+        if isinstance(_value, str):
+            _value = [_value]
+        doc_events[_dt][_event] = [*_value, 'lotus_farm.hr_period.period_guard']
+scheduler_events.setdefault('daily', []).append('lotus_farm.hr_operations.sync_yesterday')

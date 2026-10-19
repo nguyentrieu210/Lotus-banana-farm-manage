@@ -155,6 +155,7 @@
 .hr-payroll-warning{font-size:12px;line-height:1.6;margin:12px 0 0;color:var(--lotus-accent)}
 .hr-payroll .stock-empty{min-height:0;margin:0;padding:18px;font-size:12px}
 .hr-payroll details{font-size:12px;color:var(--lotus-muted);margin-top:12px}.hr-payroll summary{cursor:pointer}
+.hr-payroll .attendance-toolbar h3{margin:0}.hr-payroll .attendance-toolbar small{color:var(--lotus-muted);font-size:12px}.hr-payroll-blockers{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.7}.hr-payroll-blockers small{color:var(--lotus-muted)}
 /* HR's legacy stylesheet may load after the common shell; these surfaces own their spacing. */
 .hr-shell .stock-panel.workspace-record-list,.hr-shell .hr-payroll .stock-panel{margin:0}
 /* One dialog look for every desktop dialog kind (WorkspaceModal, native stock/pn dialogs, App.vue document/small dialogs).
