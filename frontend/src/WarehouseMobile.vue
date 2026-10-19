@@ -148,6 +148,8 @@ function appBack(){
  if(screen.value==='home')return
  window.history.back()
 }
+// Pull-to-refresh reloads the list of the tab on screen.
+async function pullRefresh(){if(screen.value==='history')await loadHistory(true);else if(screen.value==='inventory')await loadInventory(true);else await loadPending(true)}
 async function refreshApp(){if(await confirmLeave())window.location.reload()}
 let hadWorker=!!navigator.serviceWorker?.controller
 function onWorkerChange(){if(hadWorker)updateReady.value=true;hadWorker=true}
@@ -520,7 +522,7 @@ onUnmounted(()=>{
 </script>
 
 <template>
- <LotusMobileShell app="warehouse" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
+ <LotusMobileShell app="warehouse" :refresh="pullRefresh" :refreshable="rootScreens.has(screen)" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="activeTab"
   :back="!baseTabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="goTab"  @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipeCancel">

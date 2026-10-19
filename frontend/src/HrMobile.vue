@@ -162,7 +162,7 @@ onMounted(()=>{void init()})
 </script>
 
 <template>
- <LotusMobileShell app="hr" :tabs="tabs" :title="title" :active-tab="rootTab"
+ <LotusMobileShell app="hr" :refresh="reload" :refreshable="roots.includes(screen)" :tabs="tabs" :title="title" :active-tab="rootTab"
   :back="!roots.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @navigate="nav" @back="back">
   <main class="hr-mobile-main">

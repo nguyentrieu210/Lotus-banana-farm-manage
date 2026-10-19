@@ -20,7 +20,7 @@
   --lotus-primary:var(--lotus-primary-600);--lotus-primary-hover:var(--lotus-primary-700);--lotus-primary-active:var(--lotus-primary-800);
   --lotus-primary-subtle:var(--lotus-primary-50);--lotus-primary-text:var(--lotus-primary-700);--lotus-on-primary:#fff;
   --lotus-page:var(--lotus-neutral-50);--lotus-surface:#fff;--lotus-sidebar:#fff;--lotus-soft:var(--lotus-neutral-25);--lotus-hover:var(--lotus-neutral-100);
-  --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-border:var(--lotus-neutral-200);--lotus-border-strong:var(--lotus-neutral-300);
+  --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-text-strong:var(--lotus-neutral-900);--lotus-text-secondary:var(--lotus-neutral-700);--lotus-subtle:var(--lotus-neutral-500);--lotus-border:var(--lotus-neutral-200);--lotus-border-strong:var(--lotus-neutral-300);
   --lotus-accent:var(--lotus-primary);--lotus-accent-soft:var(--lotus-primary-subtle);
   --lotus-table-header:var(--lotus-neutral-25);--lotus-table-heading:var(--lotus-neutral-600);
   --lotus-success:var(--lotus-success-600);--lotus-success-soft:var(--lotus-success-50);
@@ -51,7 +51,7 @@
 :root.dark{
   --lotus-primary:#ff8f80;--lotus-primary-hover:#ffa699;--lotus-primary-active:#ffbcb2;--lotus-primary-subtle:#3d2523;--lotus-primary-text:#ffa699;--lotus-on-primary:#1b1f26;
   --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-sidebar:#1c222b;--lotus-soft:#262c35;--lotus-hover:#2c333d;
-  --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-border:#3b414b;--lotus-border-strong:#4b525d;
+  --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-text-strong:#f5f6f8;--lotus-text-secondary:#c7cbd3;--lotus-subtle:#8f97a3;--lotus-border:#3b414b;--lotus-border-strong:#4b525d;
   --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
   --lotus-success:#6fd19e;--lotus-success-soft:#173527;--lotus-warning:#f4c25a;--lotus-warning-soft:#3a2d12;
   --lotus-danger:#ff9b8f;--lotus-danger-soft:#3f2121;--lotus-info:#8fb2e3;--lotus-info-soft:#1c2a3d;

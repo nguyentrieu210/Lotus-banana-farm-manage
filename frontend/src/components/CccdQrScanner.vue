@@ -368,7 +368,7 @@ watch(enabled,accepted=>{ if (accepted && !nativeBridge.value) void openCamera()
 
 <style scoped>
 .cccd-dialog::backdrop{background:rgba(12,20,18,.72)}
-.cccd-dialog{border:0;margin:auto;width:min(100% - 20px,430px);max-height:calc(100dvh - 20px);overflow-y:auto;background:#fff!important;color:var(--lotus-neutral-900)!important;border-radius:18px;padding:16px;box-shadow:0 12px 36px #0005;overscroll-behavior:contain}
+.cccd-dialog{border:0;margin:auto;width:min(100% - 20px,430px);max-height:calc(100dvh - 20px);overflow-y:auto;background:var(--lotus-surface)!important;color:var(--lotus-neutral-900)!important;border-radius:18px;padding:16px;box-shadow:0 12px 36px #0005;overscroll-behavior:contain}
 .cccd-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .cccd-heading strong{font-size:18px;font-weight:750}
 .cccd-x{border:0;background:transparent;font-size:30px;line-height:1;color:var(--lotus-neutral-800);cursor:pointer;padding:0;min-width:44px;min-height:44px;display:grid;place-items:center;border-radius:var(--lotus-radius-md)}

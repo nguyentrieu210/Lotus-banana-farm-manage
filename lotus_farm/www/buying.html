@@ -8,13 +8,13 @@
  <meta name="apple-mobile-web-app-title" content="Mua hàng Lotus">
  <meta name="mobile-web-app-capable" content="yes">
  <link rel="manifest" href="/api/method/lotus_farm.web.buying_manifest">
- <link rel="icon" type="image/png" sizes="192x192" href="/assets/lotus_farm/images/buying-icon-192.png">
- <link rel="apple-touch-icon" href="/assets/lotus_farm/images/buying-icon-192.png">
+ <link rel="icon" type="image/png" sizes="192x192" href="/assets/lotus_farm/images/buying-icon-v4-192.png">
+ <link rel="apple-touch-icon" href="/assets/lotus_farm/images/buying-icon-v4-192.png">
  <title>Mua hàng Lotus</title>
  {% for css in styles %}<link rel="stylesheet" href="{{ css }}">{% endfor %}
 </head>
 <body>
-{% if guest %}<main class="lotus-gate" style="font-family:var(--lotus-font,Inter,system-ui,-apple-system,'Segoe UI',sans-serif);min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--lotus-page,#f7f7f8);color:var(--lotus-text,#2c3036)"><section style="width:100%;max-width:380px;background:var(--lotus-surface,#fff);border:1px solid var(--lotus-border,#e8e5e1);border-radius:16px;padding:28px 24px;box-shadow:0 4px 12px rgb(23 27 34/.08);text-align:center"><img src="/assets/lotus_farm/images/buying-icon-192.png" width="72" height="72" alt="" style="border-radius:16px"><h1 style="font-size:22px;font-weight:650;margin:16px 0 8px;letter-spacing:-.01em">Mua hàng Lotus</h1><p style="margin:0;line-height:1.55;color:var(--lotus-muted,#656b76)">Cần đăng nhập để xem và xử lý đơn mua hàng.</p><a href="/login?redirect-to=%2Fbuying" style="display:block;margin-top:22px;padding:14px;min-height:48px;box-sizing:border-box;border-radius:12px;background:var(--lotus-primary,#c43224);color:#fff;font-weight:650;text-decoration:none">Đăng nhập</a><p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:var(--lotus-muted,#656b76)">Nếu vừa cài ứng dụng, hãy đăng nhập một lần rồi mở lại ứng dụng.</p></section></main>{% else %}
+{% if guest %}<main class="lotus-gate" style="font-family:var(--lotus-font,Inter,system-ui,-apple-system,'Segoe UI',sans-serif);min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--lotus-page,#f7f7f8);color:var(--lotus-text,#2c3036)"><section style="width:100%;max-width:380px;background:var(--lotus-surface,#fff);border:1px solid var(--lotus-border,#e8e5e1);border-radius:16px;padding:28px 24px;box-shadow:0 4px 12px rgb(23 27 34/.08);text-align:center"><img src="/assets/lotus_farm/images/buying-icon-v4-192.png" width="72" height="72" alt="" style="border-radius:16px"><h1 style="font-size:22px;font-weight:650;margin:16px 0 8px;letter-spacing:-.01em">Mua hàng Lotus</h1><p style="margin:0;line-height:1.55;color:var(--lotus-muted,#656b76)">Cần đăng nhập để xem và xử lý đơn mua hàng.</p><a href="/login?redirect-to=%2Fbuying" style="display:block;margin-top:22px;padding:14px;min-height:48px;box-sizing:border-box;border-radius:12px;background:var(--lotus-primary,#c43224);color:#fff;font-weight:650;text-decoration:none">Đăng nhập</a><p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:var(--lotus-muted,#656b76)">Nếu vừa cài ứng dụng, hãy đăng nhập một lần rồi mở lại ứng dụng.</p></section></main>{% else %}
  <div id="app"></div>
  <script type="module" src="{{ script }}"></script>
 {% endif %}

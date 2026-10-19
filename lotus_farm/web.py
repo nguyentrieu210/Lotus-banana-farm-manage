@@ -24,8 +24,8 @@ def warehouse_service_worker():
     root=Path(frappe.get_app_path('lotus_farm','public'))
     manifest=json.loads((root/'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
     assets={'/assets/lotus_farm/warehouse-offline.html',
-            '/assets/lotus_farm/images/warehouse-icon-v3-192.png',
-            '/assets/lotus_farm/images/warehouse-icon-v3-512.png'}
+            '/assets/lotus_farm/images/warehouse-icon-v4-192.png',
+            '/assets/lotus_farm/images/warehouse-icon-v4-512.png'}
     visited=set()
     def add(entry_key):
         if entry_key in visited:
@@ -52,8 +52,8 @@ def work_service_worker():
     root = Path(frappe.get_app_path('lotus_farm', 'public'))
     manifest = json.loads((root / 'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
     assets = {'/assets/lotus_farm/work-offline.html',
-              '/assets/lotus_farm/images/work-icon-v3-192.png',
-              '/assets/lotus_farm/images/work-icon-v3-512.png'}
+              '/assets/lotus_farm/images/work-icon-v4-192.png',
+              '/assets/lotus_farm/images/work-icon-v4-512.png'}
     seen = set()
     def add(entry):
         if entry in seen:
@@ -86,8 +86,8 @@ def buying_service_worker():
     root=Path(frappe.get_app_path('lotus_farm','public'))
     manifest=json.loads((root/'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
     assets={'/assets/lotus_farm/buying-offline.html',
-            '/assets/lotus_farm/images/buying-icon-192.png',
-            '/assets/lotus_farm/images/buying-icon-512.png'}
+            '/assets/lotus_farm/images/buying-icon-v4-192.png',
+            '/assets/lotus_farm/images/buying-icon-v4-512.png'}
     seen=set()
     def add(key):
         if key in seen:return
@@ -134,8 +134,8 @@ def hr_mobile_service_worker():
     root=Path(frappe.get_app_path('lotus_farm','public'))
     manifest=json.loads((root/'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
     assets={'/assets/lotus_farm/hr-mobile-offline.html',
-            '/assets/lotus_farm/images/hr-icon-192.png',
-            '/assets/lotus_farm/images/hr-icon-512.png'}
+            '/assets/lotus_farm/images/hr-icon-v4-192.png',
+            '/assets/lotus_farm/images/hr-icon-v4-512.png'}
     seen=set()
     def add(key):
         if key in seen:return

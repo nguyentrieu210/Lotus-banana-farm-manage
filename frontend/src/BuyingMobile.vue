@@ -263,7 +263,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
 </script>
 
 <template>
-<LotusMobileShell app="buying" class="buy-app" :class="{'buy-keyboard':keyboard}"
+<LotusMobileShell app="buying" :refresh="refresh" :refreshable="!view" class="buy-app" :class="{'buy-keyboard':keyboard}"
  :title="mobileTitle" :tabs="mobileTabs" :active-tab="tab" :back="!!view"
  :keyboard-open="keyboard" :disabled="saving" @back="back" @navigate="changeTab">
 <main class="buy-main">
