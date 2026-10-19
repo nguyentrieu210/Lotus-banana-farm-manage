@@ -47,3 +47,13 @@ test('approved Purchase Order snapshots the image into a private PDF exactly onc
  assert.match(backend,/doc\.check_permission\("print"\)/)
  assert.match(document,/lotus_farm\.digital_signature\.download_purchase_pdf/)
 })
+test('signature upload uses a real full-size native file input with a direct touch target',()=>{
+ const css=read('../src/components/lotus-mobile-signature.css')
+ assert.match(widget,/<input type="file" class="lotus-signature-native-file"/)
+ assert.match(widget,/@change="chooseFile"/)
+ assert.match(widget,/accept="\.png,\.jpg,\.jpeg,image\/png,image\/jpeg"/)
+ assert.doesNotMatch(widget,/<LotusMobileFile/)
+ assert.match(css,/\.lotus-signature-file-control\{position:relative/)
+ assert.match(css,/input\[type=file\]\{position:absolute;inset:0;display:block;width:100%;height:100%/)
+ assert.match(css,/pointer-events:auto/)
+})
