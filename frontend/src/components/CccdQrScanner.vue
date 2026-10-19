@@ -14,6 +14,7 @@ const cameraList = ref([])
 const cameraId = ref('')
 const torchAvailable = ref(false)
 const torchOn = ref(false)
+const nativeBridge = ref(false)
 const zoomSupported = ref(false)
 const zoomLevel = ref(1)
 const zoomRange = ref(null)
@@ -23,8 +24,32 @@ let alive = true
 let generation = 0
 let lastInvalidNotice = 0
 
-onMounted(() => scannerDialog.value?.showModal())
-onBeforeUnmount(() => { alive = false; void stopCamera(); scannerDialog.value?.close() })
+function nativeResult(event) {
+  pending.value = false
+  const raw = event?.detail?.raw
+  if (typeof raw === 'string') void decoded(raw)
+}
+function nativeCancel() { pending.value = false }
+function scanNative() {
+  if (!enabled.value || pending.value || !nativeBridge.value) return
+  error.value = ''
+  pending.value = true
+  try { window.LotusCccdNative.postMessage('scan') }
+  catch (_) { pending.value = false; error.value = 'Không gọi được camera Android. Dùng camera trình duyệt hoặc ảnh QR.' }
+}
+onMounted(() => {
+  scannerDialog.value?.showModal()
+  nativeBridge.value = typeof window.LotusCccdNative?.postMessage === 'function'
+  window.addEventListener('lotus:cccd-native-result',nativeResult)
+  window.addEventListener('lotus:cccd-native-cancel',nativeCancel)
+})
+onBeforeUnmount(() => {
+  alive = false
+  window.removeEventListener('lotus:cccd-native-result',nativeResult)
+  window.removeEventListener('lotus:cccd-native-cancel',nativeCancel)
+  void stopCamera()
+  scannerDialog.value?.close()
+})
 
 function cameraErrorMessage(e) {
   const message = String(e?.name || '') + ' ' + String(e?.message || e || '')
@@ -279,7 +304,7 @@ async function confirm() {
   emit('confirmed',{...parsed.value})
   await stopCamera()
 }
-watch(enabled,accepted=>{ if (accepted) void openCamera(); else void stopCamera() })
+watch(enabled,accepted=>{ if (accepted && !nativeBridge.value) void openCamera(); else void stopCamera() })
 </script>
 
 <template>
@@ -322,7 +347,8 @@ watch(enabled,accepted=>{ if (accepted) void openCamera(); else void stopCamera(
     <button type="button" class="cccd-textbutton" @click="openCamera()">Quét lại</button>
    </template>
    <template v-else>
-    <button v-if="enabled&&!scanning&&!pending" class="cccd-primary" type="button" @click="openCamera()">Mở camera quét QR</button>
+    <button v-if="enabled&&nativeBridge" class="cccd-primary" type="button" :disabled="pending" @click="scanNative">{{pending?'Đang mở camera Android…':'Quét nhanh bằng camera Android'}}</button>
+    <button v-if="enabled&&!scanning&&!pending" :class="nativeBridge?'cccd-textbutton':'cccd-primary'" type="button" @click="openCamera()">{{nativeBridge?'Dùng camera trình duyệt':'Mở camera quét QR'}}</button>
     <div class="cccd-photos">
      <label :class="{disabled:!enabled||pending}">
       <span>Chụp ảnh QR</span>
