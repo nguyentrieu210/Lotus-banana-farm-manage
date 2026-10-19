@@ -9,10 +9,10 @@ import './lotus-mobile-signature.css'
 
 const props=defineProps({user:{type:String,default:''}})
 const expanded=ref(false),loading=ref(false),saving=ref(false),loaded=ref(false)
-const profile=ref(null),error=ref(''),notice=ref('')
+const profile=ref(null),error=ref(''),notice=ref(''),selectedFile=ref(''),uploadStep=ref('')
 const endpoint='lotus_farm.digital_signature.'
 const {dialog:deleteDialog,message:deleteMessage,ask:askDelete,finish:finishDelete}=useMobileConfirm()
-watch(()=>props.user,()=>{expanded.value=false;loaded.value=false;profile.value=null;error.value='';notice.value=''})
+watch(()=>props.user,()=>{expanded.value=false;loaded.value=false;profile.value=null;error.value='';notice.value='';selectedFile.value='';uploadStep.value=''})
 async function load(){
  if(!props.user)return
  loading.value=true;error.value=''
@@ -32,17 +32,28 @@ function asBase64(file){
 async function chooseFile(event){
  const input=event.target
  const file=input.files?.[0]
- input.value=''
  if(!file||saving.value)return
+ selectedFile.value=file.name+' · '+(file.size/1000000).toFixed(1)+' MB'
+ uploadStep.value='Đã chọn ảnh, đang kiểm tra…'
+ input.value=''
  error.value='';notice.value=''
- if(!['image/png','image/jpeg'].includes(file.type)){error.value='Chỉ nhận ảnh PNG hoặc JPG.';return}
- if(file.size>10000000){error.value='Ảnh phải nhỏ hơn 10 MB.';return}
+ const knownMime=['image/png','image/jpeg'].includes(file.type)
+ const extension=/\.(png|jpe?g)$/i.test(file.name)
+ if(!knownMime&&!(extension&&(!file.type||file.type==='application/octet-stream'))){
+  error.value='Chỉ nhận ảnh PNG hoặc JPG. Nếu là HEIC, hãy đổi sang JPG.'
+  uploadStep.value='Định dạng ảnh không hỗ trợ'
+  return
+ }
+ if(file.size>10000000){error.value='Ảnh phải nhỏ hơn 10 MB.';uploadStep.value='Ảnh vượt giới hạn';return}
  saving.value=true
  try{
+  uploadStep.value='Đang đọc ảnh…'
   const image_data=await asBase64(file)
+  uploadStep.value='Đang gửi ảnh lên Lotus…'
   profile.value=await call(endpoint+'save_my_signature_image',{image_data},true)
+  uploadStep.value='Đã lưu thành công'
   notice.value='Đã lưu ảnh chữ ký cho tài khoản của bạn.'
- }catch(e){error.value=e.message||'Không lưu được ảnh chữ ký.'}
+ }catch(e){uploadStep.value='Lưu ảnh thất bại';error.value=e.message||'Không lưu được ảnh chữ ký.'}
  finally{saving.value=false}
 }
 async function remove(){
@@ -74,11 +85,12 @@ async function remove(){
      <small v-if="profile.updated_at">Cập nhật: {{profile.updated_at}}</small>
     </div>
     <div class="lotus-signature-uploader">
-     <label class="lotus-signature-file-control" :class="{'lotus-signature-file-disabled':saving||!profile.configured}">
-      <span><Icon name="photograph" aria-hidden="true"/> {{saving?'Đang lưu ảnh…':profile.has_signature?'Chọn ảnh chữ ký khác':'Chọn ảnh chữ ký'}}</span>
-      <input type="file" class="lotus-signature-native-file" name="signature-image" accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-       :disabled="saving||!profile.configured" aria-label="Chọn ảnh chữ ký từ điện thoại" @change="chooseFile"/>
-     </label>
+     <label for="lotus-signature-photo-file" class="lotus-signature-upload-label">Chọn ảnh chữ ký từ điện thoại (tối đa 10 MB)</label>
+     <input id="lotus-signature-photo-file" type="file" class="lotus-signature-visible-input"
+      accept="image/jpeg,image/png,.jpg,.jpeg,.png" name="signature-image" :disabled="saving||!profile.configured"
+      aria-label="Chọn ảnh chữ ký từ điện thoại" @change="chooseFile"/>
+     <p v-if="selectedFile" class="lotus-signature-selected-file">{{selectedFile}}</p>
+     <p v-if="uploadStep" class="lotus-signature-upload-step" role="status">{{uploadStep}}</p>
      <small>Nên dùng ảnh PNG nền trong suốt hoặc ảnh JPG chụp trên giấy trắng, chỉ chứa chữ ký.</small>
     </div>
     <LotusMobileButton v-if="profile.has_signature" type="button" :disabled="saving" @click="remove">Xóa chữ ký</LotusMobileButton>
