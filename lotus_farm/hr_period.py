@@ -11,7 +11,7 @@ from datetime import date
 import frappe
 from frappe.utils import cint, flt, getdate, now_datetime, nowdate
 
-from lotus_farm.payroll_rules import employee_pay, standard_days, summarize_attendance
+from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
@@ -215,6 +215,11 @@ def reopen_period(company, month, reason):
     name = frappe.db.get_value(PERIOD, {'company': company, 'month': month, 'status': 'Closed'})
     if not name:
         frappe.throw('Kỳ chưa khóa.')
+    begin, end = _month(month)
+    # Posted pay must be reversed in HRMS first, so accounting and attendance never disagree.
+    posted = frappe.db.count('Salary Slip', {'company': company, 'start_date': begin, 'end_date': end, 'docstatus': 1})
+    if posted:
+        frappe.throw('Tháng đã có ' + str(posted) + ' phiếu lương đã duyệt. Hủy phiếu lương và bút toán trong HRMS trước khi mở lại kỳ.')
     doc = frappe.get_doc(PERIOD, name)
     stamp = str(now_datetime())[:16] + ' · ' + frappe.session.user + ': ' + reason[:500]
     doc.update(dict(status='Open', reopen_reason=((doc.reopen_reason or '') + '\n' + stamp).strip(), snapshot=None, snapshot_hash=None))
@@ -225,14 +230,28 @@ def reopen_period(company, month, reason):
 
 # Payroll sheet ----------------------------------------------------------------------------------
 
-def _sheet(company, month, begin, end):
+def month_hours(company, begin, end, people):
+    """Approved hours per employee for [begin, end]; shared by the payroll sheet and the HRMS salary slip hook."""
     holidays = holiday_map(company, begin, end)
     days = holidays.days if holidays else {}
-    standard = standard_days(begin, end, days) if holidays else 0
+    names = [p.name for p in people] or ['']
+    records = frappe.get_all('Attendance', filters={'company': company, 'employee': ['in', names],
+                                                    'attendance_date': ['between', [begin, end]], 'docstatus': 1},
+                             fields=['employee', 'attendance_date', 'status', 'leave_type', 'working_hours', 'shift',
+                                     'in_time', 'out_time', 'lotus_overtime_hours as overtime_hours'],
+                             limit_page_length=0)
+    shifts = {s.name: s for s in frappe.get_all('Shift Type', filters={'name': ['in', list({r.shift for r in records if r.shift}) or ['']]},
+                                                fields=['name', 'start_time', 'end_time'])}
+    employment = {p.name: (max(begin, getdate(p.date_of_joining)) if p.date_of_joining else begin,
+                           min(end, getdate(p.relieving_date)) if p.relieving_date else end) for p in people}
+    unpaid = frappe.get_all('Leave Type', filters={'is_lwp': 1}, pluck='name')
+    return hour_summary(records, days, unpaid, shifts, employment), holidays
+
+
+def _sheet(company, month, begin, end):
     people = _people(company, begin, end)
     records = frappe.get_all('Attendance', filters={'company': company, 'attendance_date': ['between', [begin, end]], 'docstatus': 1},
-                             fields=['employee', 'attendance_date', 'status', 'leave_type', 'lotus_overtime_hours as overtime_hours'],
-                             limit_page_length=0)
+                             fields=['employee'], limit_page_length=0)
     worked = {r.employee for r in records}
     known = {p.name for p in people}
     # An employee with approved attendance stays on the sheet even if the profile changed later.
@@ -242,23 +261,18 @@ def _sheet(company, month, begin, end):
                                          'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
                                          'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date',
                                          'lotus_onboarding_state'])
-    unpaid = frappe.get_all('Leave Type', filters={'is_lwp': 1}, pluck='name')
-    summaries = summarize_attendance(records, days, unpaid)
-    empty = dict(regular=0, weekly_off=0, holiday=0, paid_leave=0, unpaid_leave=0, absent=0, half_days=0,
-                 overtime=dict(regular=0, weekly_off=0, holiday=0))
+    summaries, holidays = month_hours(company, begin, end, people)
     employees = []
     for person in people:
-        summary = summaries.get(person.name, empty)
-        pay = employee_pay(person.lotus_payment_basis, summary, standard, person.lotus_base_salary, person.lotus_daily_rate)
+        summary = summaries.get(person.name, empty_summary())
+        pay = hourly_pay(person.lotus_payment_basis, summary, person.lotus_base_salary, person.lotus_daily_rate,
+                         insured=bool(person.lotus_social_insurance_no))
         employees.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department,
                               designation=person.designation, work_team=person.lotus_work_team,
                               worker_category=person.lotus_worker_category, payment_basis=person.lotus_payment_basis,
                               base_salary=flt(person.lotus_base_salary), daily_rate=flt(person.lotus_daily_rate),
                               tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
-                              onboarding=person.lotus_onboarding_state, status=person.status,
-                              workdays=summary['regular'], weekly_off_days=summary['weekly_off'], holiday_days=summary['holiday'],
-                              paid_leave=summary['paid_leave'], unpaid_leave=summary['unpaid_leave'], absent=summary['absent'],
-                              half_days=summary['half_days'], overtime_hours=sum(summary['overtime'].values()), **pay))
+                              onboarding=person.lotus_onboarding_state, status=person.status, **summary, **pay))
     crews = {}
     for row in frappe.get_all('Lotus Crew Attendance', filters={'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 1},
                               fields=['work_team', 'work_type', 'uom', 'unit_rate', 'completed_qty', 'workdays', 'present', 'amount'],
@@ -285,9 +299,11 @@ def _sheet(company, month, begin, end):
     issues += [dict(employee=e['employee'], employee_name=e['employee_name'], issue='Đang tính công nhưng hồ sơ chưa duyệt tiếp nhận')
                for e in employees if e['status'] == 'Active' and e['onboarding'] != 'Ready']
     return dict(month=month, company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'),
-                standard_days=standard, holiday_list=holidays.name if holidays else None, employees=employees, crews=crew_rows,
-                issues=issues,
-                totals=dict(employees=len(employees), gross=sum(e['total'] for e in employees),
+                standard_days=STANDARD_DAYS, hours_base=HOURS_BASE, holiday_list=holidays.name if holidays else None,
+                employees=employees, crews=crew_rows, issues=issues,
+                totals=dict(employees=len(employees), gross=sum(e['gross'] for e in employees), net=sum(e['net'] for e in employees),
+                            employee_insurance=sum(e['employee_insurance'] for e in employees),
+                            employer_insurance=sum(e['employer_insurance'] for e in employees),
                             crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees)))
 
 
@@ -322,7 +338,8 @@ def export_payroll(company, month):
     def sheet(ws, title, header, rows):
         ws.title = title
         ws.append(['Bảng lương ' + str(month) + ' · ' + str(company) + ' · ' + banner])
-        ws.append(['Số tiền trước BHXH và thuế TNCN. Công chuẩn: ' + str(data['standard_days']) + ' ngày.'])
+        ws.append(['Lương CB cho ' + str(data['standard_days']) + ' công × 8 giờ: đơn giá giờ = lương CB ÷ ' + str(data['hours_base'])
+                   + '. Ca đêm +30%; tăng ca 150% / 200% / 300%. Chưa trừ thuế TNCN.'])
         ws.append(header)
         for cell in ws[3]:
             cell.font = Font(bold=True)
@@ -331,15 +348,17 @@ def export_payroll(company, month):
         ws.freeze_panes = 'C4'
 
     sheet(book.active, 'Nhân sự',
-          ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Công chuẩn', 'Công ngày thường',
-           'Công ngày nghỉ tuần', 'Công ngày lễ', 'Phép có lương', 'Nghỉ không lương', 'Nửa ngày', 'Vắng', 'Giờ tăng ca',
-           'Lương cơ bản', 'Đơn giá công', 'Lương theo công', 'Tiền làm ngày nghỉ/lễ', 'Tiền tăng ca', 'Tổng trước BHXH/thuế',
-           'MST', 'Số BHXH', 'Ghi chú'],
+          ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Lương CB (26 công)', 'Đơn giá giờ',
+           'Công', 'Giờ công thường', 'Giờ đêm', 'Giờ TC ngày thường', 'Giờ làm ngày nghỉ tuần', 'Giờ làm ngày lễ',
+           'Phép có lương (ngày)', 'Lễ hưởng lương (ngày)', 'Nghỉ không lương', 'Vắng',
+           'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Tổng thu nhập',
+           'BHXH+BHYT+BHTN NLĐ', 'Thực lĩnh trước thuế', 'BH doanh nghiệp đóng', 'MST', 'Số BHXH', 'Ghi chú'],
           [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
-            labels.get(e['payment_basis'], e['payment_basis']), data['standard_days'], e['workdays'], e['weekly_off_days'],
-            e['holiday_days'], e['paid_leave'], e['unpaid_leave'], e['half_days'], e['absent'], e['overtime_hours'],
-            e['base_salary'], e['daily_rate'], e['time_pay'], e['off_day_pay'], e['overtime_pay'], e['total'],
-            e['tax_code'], e['social_insurance_no'],
+            labels.get(e['payment_basis'], e['payment_basis']), e['base'], e['hour_rate'],
+            e['workdays'], e['regular_hours'], e['night_hours'], e['ot_regular'], e['ot_weekly_off'], e['ot_holiday'],
+            e['paid_leave_days'], e['paid_holiday_days'], e['unpaid_leave_days'], e['absent_days'],
+            e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e['gross'],
+            e['employee_insurance'], e['net'], e['employer_insurance'], e['tax_code'], e['social_insurance_no'],
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
     sheet(book.create_sheet(), 'Đội khoán',
           ['Đội', 'Đầu câu', 'Điện thoại', 'Công việc', 'Khối lượng', 'Đơn vị', 'Đơn giá', 'Thành tiền', 'Tổng công', 'Người-ngày'],

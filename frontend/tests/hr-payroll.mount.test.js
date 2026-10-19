@@ -15,8 +15,8 @@ globalThis.fetch=async(url,options={})=>{
 }
 const HrApp=await load('HrApp.vue')
 const employee={name:'HR-EMP-1',employee_name:'An',lotus_onboarding_state:'Ready',status:'Active',lotus_payment_basis:'Daywork'}
-const sheet={month:'2026-09',standard_days:26,currency:'VND',draft:true,totals:{gross:5250000,crew_amount:1500000,employees:1,workdays:21},
- employees:[{employee:'HR-EMP-1',employee_name:'An',payment_basis:'Daywork',workdays:21,paid_leave:0,weekly_off_days:0,holiday_days:0,overtime_hours:0,time_pay:5250000,off_day_pay:0,overtime_pay:0,total:5250000,via_crew:false,issues:[]}],
+const sheet={month:'2026-09',standard_days:26,hours_base:208,currency:'VND',draft:true,totals:{gross:5250000,net:5250000,crew_amount:1500000,employees:1,workdays:21},
+ employees:[{employee:'HR-EMP-1',employee_name:'An',payment_basis:'Daywork',base:6500000,workdays:21,regular_hours:168,night_hours:0,ot_regular:0,ot_weekly_off:0,ot_holiday:0,paid_hours:0,gross:5250000,employee_insurance:0,net:5250000,via_crew:false,issues:[]}],
  crews:[{team_name:'Đội A',foreman:'Ba',work_name:'Bao buồng',completed_qty:500,uom:'Buồng',unit_rate:3000,amount:1500000,workdays:10}],issues:[]}
 const routesFor=manager=>({
  'lotus_farm.hr_workspace.bootstrap':{user:'hr@lotus',today:'2026-10-19',csrf_token:'t',companies:[{name:'Lotus'}],is_hr_manager:manager},
@@ -26,6 +26,7 @@ const routesFor=manager=>({
  'lotus_farm.hr_workspace.payroll_readiness':{month:'2026-09',employees:1,employees_without_salary:[],attendance_draft_count:2,crew_pending_count:0,open_punches:0,onboarding_pending:[]},
  'lotus_farm.hr_period.period_status':{month:'2026-09',status:'Open',future:false,blockers:[{code:'draft_attendance',label:'Phiếu công nhân sự còn nháp',count:2}]},
  'lotus_farm.hr_period.payroll_sheet':sheet,
+ 'lotus_farm.hr_payroll.payroll_run':{month:'2026-09',structure:'Lotus Giờ công - LT',entry:null,slips:[],journal_entries:[],totals:{gross:0,deductions:0,net:0}},
 })
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const tab=(root,label)=>[...root.querySelectorAll('[role=tab]')].find(b=>b.textContent===label)
@@ -58,4 +59,21 @@ test('pay rate inputs follow the payment basis and only managers see payroll',as
  const staff=mount(HrApp,{embedded:true});await tick()
  assert.equal(tab(staff.root,'Kỳ công & bảng lương'),undefined)
  staff.unmount()
+})
+
+test('HRMS payroll steps follow the period and slip state',async()=>{
+ routes=routesFor(true)
+ const view=mount(HrApp,{embedded:true});await tick()
+ tab(view.root,'Kỳ công & bảng lương').click();await tick();await tick()
+ assert.ok(button(view.root,'Tạo phiếu lương HRMS').disabled,'an open period cannot create salary slips')
+ view.unmount()
+ routes={...routesFor(true),'lotus_farm.hr_period.period_status':{month:'2026-09',status:'Closed',closed_by:'hr@lotus',closed_at:'2026-10-02 08:00:00',future:false,blockers:[]},
+  'lotus_farm.hr_payroll.payroll_run':{month:'2026-09',structure:'Lotus Giờ công - LT',entry:{name:'HR-PRUN-1',status:'Submitted',docstatus:1},journal_entries:[],totals:{gross:5250000,deductions:0,net:5250000},
+   slips:[{name:'Sal Slip/1',employee:'HR-EMP-1',employee_name:'An',gross_pay:5250000,total_deduction:0,net_pay:5250000,docstatus:0,difference:0}]}}
+ const closed=mount(HrApp,{embedded:true});await tick()
+ tab(closed.root,'Kỳ công & bảng lương').click();await tick();await tick()
+ assert.ok(button(closed.root,'Duyệt & hạch toán'),'draft slips can be posted')
+ assert.equal(button(closed.root,'Tạo phiếu lương HRMS'),undefined)
+ assert.match(text(closed.root),/Sal Slip\/1.*An.*Nháp/)
+ closed.unmount()
 })

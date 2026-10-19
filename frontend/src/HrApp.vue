@@ -26,7 +26,8 @@ const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),sav
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
 const overview=ref({employees:[],candidates:[]}),readiness=ref(null)
 const periodApi=(name,args={},write=false)=>call('lotus_farm.hr_period.'+name,args,write)
-const payMonth=ref(''),period=ref(null),sheet=ref(null),reopenOpen=ref(false),reopenReason=ref(''),offboardOpen=ref(false)
+const payrollApi=(name,args={},write=false)=>call('lotus_farm.hr_payroll.'+name,args,write)
+const payMonth=ref(''),period=ref(null),sheet=ref(null),run=ref(null),reopenOpen=ref(false),reopenReason=ref(''),offboardOpen=ref(false)
 const offboard=reactive({relieving_date:'',reason:''})
 const exportPayroll=computed(()=>'/api/method/lotus_farm.hr_period.export_payroll?'+new URLSearchParams({company:company.value,month:payMonth.value}))
 const lastMonth=()=>{const d=new Date((session.value?.today||new Date().toISOString().slice(0,10))+'T00:00:00');d.setDate(1);d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
@@ -67,10 +68,14 @@ async function refresh(){if(!company.value)return;busy.value=true;error.value=''
   const [c,data]=await Promise.all([api('catalogue',{company:company.value}),api('overview',{company:company.value})])
   catalog.value=c;overview.value=data
 }catch(e){error.value=e.message}finally{busy.value=false}}
-async function loadPayroll(){if(!isManager.value||!company.value)return;payMonth.value||=lastMonth();busy.value=true;error.value='';try{const args={company:company.value,month:payMonth.value};[readiness.value,period.value,sheet.value]=await Promise.all([api('payroll_readiness',args),periodApi('period_status',args),periodApi('payroll_sheet',args)])}catch(e){error.value=e.message}finally{busy.value=false}}
+async function loadPayroll(){if(!isManager.value||!company.value)return;payMonth.value||=lastMonth();busy.value=true;error.value='';try{const args={company:company.value,month:payMonth.value};[readiness.value,period.value,sheet.value,run.value]=await Promise.all([api('payroll_readiness',args),periodApi('period_status',args),periodApi('payroll_sheet',args),payrollApi('payroll_run',args)])}catch(e){error.value=e.message}finally{busy.value=false}}
 async function closePeriod(){if(!await askConfirm('Khóa kỳ công '+payMonth.value+'? Sau khi khóa, chấm công, phiếu khoán và phân công lao động của tháng không sửa được; bảng lương được chốt.'))return
   saving.value=true;error.value='';try{await periodApi('close_period',{company:company.value,month:payMonth.value},true);notice.value='Đã khóa kỳ '+payMonth.value+'.';await loadPayroll()}catch(e){error.value=e.message}finally{saving.value=false}}
 async function reopenPeriod(){saving.value=true;error.value='';try{await periodApi('reopen_period',{company:company.value,month:payMonth.value,reason:reopenReason.value},true);reopenOpen.value=false;reopenReason.value='';notice.value='Đã mở lại kỳ '+payMonth.value+'.';await loadPayroll()}catch(e){error.value=e.message}finally{saving.value=false}}
+// HRMS payroll: one-time structure setup, then Payroll Entry -> Salary Slips -> accounting entry for a closed month.
+async function payrollStep(step){const ask={setup_payroll:'Tạo thành phần lương, tài khoản và cấu trúc lương giờ công trong HRMS?',create_payroll:'Tạo bảng lương HRMS và phiếu lương nháp cho tháng '+payMonth.value+'?',post_payroll:'Duyệt toàn bộ phiếu lương tháng '+payMonth.value+' và hạch toán sang kế toán? Bút toán: Nợ chi phí lương / Có phải trả người lao động, bảo hiểm phải nộp.'}[step]
+ if(!await askConfirm(ask))return
+ saving.value=true;error.value='';try{const r=await payrollApi(step,step==='setup_payroll'?{company:company.value}:{company:company.value,month:payMonth.value},true);notice.value=step==='setup_payroll'?'Đã cài đặt cấu trúc '+r.structure+'.':step==='create_payroll'?'Đã tạo bảng lương '+r.name+' ('+r.employees+' nhân viên).':'Đã duyệt phiếu lương và hạch toán '+(r.journal_entries||[]).join(', ')+'.';await loadPayroll()}catch(e){error.value=e.message}finally{saving.value=false}}
 function startOffboard(){offboard.relieving_date=today.value;offboard.reason='';error.value='';offboardOpen.value=true}
 async function confirmOffboard(){saving.value=true;error.value='';try{await api('offboard_employee',{company:company.value,employee:selectedEmployee.value,modified:employeeForm.modified,...offboard},true);offboardOpen.value=false;notice.value='Đã ghi nhận nghỉ việc.';resetPanels();await refresh()}catch(e){error.value=e.message}finally{saving.value=false}}
 async function init(){busy.value=true;try{
@@ -203,10 +208,23 @@ useNoticeToast(notice)
           <p v-if="readiness.onboarding_pending?.length" class="hr-payroll-warning">Đang làm nhưng chưa duyệt tiếp nhận: {{readiness.onboarding_pending.map(x=>x.employee_name).join(', ')}}</p>
         </section>
         <section v-if="sheet" class="stock-panel hr-table" aria-label="Bảng lương nhân sự">
-          <div class="attendance-toolbar"><h3>Bảng lương {{sheet.month}}{{sheet.draft?' · bản nháp':''}}</h3><span>Công chuẩn {{sheet.standard_days}} ngày · Tổng trước BHXH/thuế <strong>{{money(sheet.totals.gross,sheet.currency)}}</strong></span></div>
-          <table><thead><tr><th>Nhân viên</th><th>Cơ chế</th><th>Công</th><th>Phép có lương</th><th>Công nghỉ tuần / lễ</th><th>Tăng ca (giờ)</th><th>Lương theo công</th><th>Ngày nghỉ / lễ</th><th>Tăng ca</th><th>Tổng</th><th>Ghi chú</th></tr></thead>
-          <tbody><tr v-for="e in sheet.employees" :key="e.employee"><td><strong>{{e.employee_name}}</strong><small>{{e.employee}}</small></td><td>{{bases[e.payment_basis]||'—'}}</td><td>{{e.workdays}}</td><td>{{e.paid_leave}}</td><td>{{e.weekly_off_days}} / {{e.holiday_days}}</td><td>{{e.overtime_hours}}</td><td>{{money(e.time_pay,sheet.currency)}}</td><td>{{money(e.off_day_pay,sheet.currency)}}</td><td>{{money(e.overtime_pay,sheet.currency)}}</td><td><strong>{{money(e.total,sheet.currency)}}</strong></td><td>{{e.via_crew?'Trả qua đội khoán':e.issues.join('; ')}}</td></tr></tbody></table>
+          <div class="attendance-toolbar"><h3>Bảng lương {{sheet.month}}{{sheet.draft?' · bản nháp':''}}</h3><span>Đơn giá giờ = lương CB ÷ {{sheet.hours_base}} · Thu nhập <strong>{{money(sheet.totals.gross,sheet.currency)}}</strong> · Thực lĩnh trước thuế <strong>{{money(sheet.totals.net,sheet.currency)}}</strong></span></div>
+          <table><thead><tr><th>Nhân viên</th><th>Lương CB</th><th>Công</th><th>Giờ thường</th><th>Giờ đêm</th><th>Giờ tăng ca</th><th>Lễ, phép (giờ)</th><th>Thu nhập</th><th>BH người LĐ</th><th>Thực lĩnh</th><th>Ghi chú</th></tr></thead>
+          <tbody><tr v-for="e in sheet.employees" :key="e.employee"><td><strong>{{e.employee_name}}</strong><small>{{bases[e.payment_basis]||'—'}}</small></td><td>{{money(e.base,sheet.currency)}}</td><td>{{e.workdays}}</td><td>{{e.regular_hours}}</td><td>{{e.night_hours}}</td><td>{{e.ot_regular+e.ot_weekly_off+e.ot_holiday}}</td><td>{{e.paid_hours}}</td><td>{{money(e.gross,sheet.currency)}}</td><td>{{money(e.employee_insurance,sheet.currency)}}</td><td><strong>{{money(e.net,sheet.currency)}}</strong></td><td>{{e.via_crew?'Trả qua đội khoán':e.issues.join('; ')}}</td></tr></tbody></table>
           <p v-if="!sheet.employees.length" class="stock-empty">Chưa có nhân viên trong tháng này.</p>
+        </section>
+        <section v-if="run" class="stock-panel hr-table" aria-label="Lương HRMS và hạch toán">
+          <div class="attendance-toolbar"><h3>Lương HRMS &amp; hạch toán</h3>
+            <UiButton v-if="!run.structure" :disabled="saving||busy" @click="payrollStep('setup_payroll')">Cài đặt lương HRMS</UiButton>
+            <UiButton v-else-if="!run.entry" :disabled="saving||busy||period?.status!=='Closed'" @click="payrollStep('create_payroll')">Tạo phiếu lương HRMS</UiButton>
+            <UiButton v-else-if="run.slips.some(s=>s.docstatus===0)" :disabled="saving||busy" @click="payrollStep('post_payroll')">Duyệt &amp; hạch toán</UiButton>
+            <small v-if="run.structure&&!run.entry&&period?.status!=='Closed'">Khóa kỳ công trước khi tạo phiếu lương.</small>
+            <a v-if="run.entry" class="workspace-secondary-link" :href="'/app/payroll-entry/'+encodeURIComponent(run.entry.name)" target="_blank" rel="noopener">{{run.entry.name}} ↗</a>
+            <a v-for="j in run.journal_entries" :key="j" class="workspace-secondary-link" :href="'/app/journal-entry/'+encodeURIComponent(j)" target="_blank" rel="noopener">Bút toán {{j}} ↗</a></div>
+          <table v-if="run.slips.length"><thead><tr><th>Phiếu lương</th><th>Nhân viên</th><th>Thu nhập HRMS</th><th>Khấu trừ</th><th>Thực lĩnh</th><th>Lệch so với bảng Lotus</th><th>Trạng thái</th></tr></thead>
+          <tbody><tr v-for="s in run.slips" :key="s.name"><td><a :href="'/app/salary-slip/'+encodeURIComponent(s.name)" target="_blank" rel="noopener">{{s.name}}</a></td><td>{{s.employee_name}}</td><td>{{money(s.gross_pay,sheet?.currency)}}</td><td>{{money(s.total_deduction,sheet?.currency)}}</td><td><strong>{{money(s.net_pay,sheet?.currency)}}</strong></td><td :class="{'hr-payroll-warning':Math.abs(s.difference)>1}">{{money(s.difference,sheet?.currency)}}</td><td>{{s.docstatus===1?(s.journal_entry?'Đã hạch toán':'Đã duyệt'):'Nháp'}}</td></tr></tbody></table>
+          <p v-else-if="run.structure" class="hr-payroll-note">Chưa có phiếu lương HRMS cho tháng này.</p>
+          <p class="hr-payroll-note">Thuế TNCN chưa tự tính: kế toán nhập bằng Additional Salary (Income Tax) trước khi duyệt phiếu.</p>
         </section>
         <section v-if="sheet" class="stock-panel hr-table" aria-label="Phải trả đội khoán">
           <div class="attendance-toolbar"><h3>Phải trả đội khoán</h3><span>Tổng <strong>{{money(sheet.totals.crew_amount,sheet.currency)}}</strong></span></div>
@@ -265,6 +283,7 @@ useNoticeToast(notice)
         <label>Mã số thuế cá nhân<UiInput v-model="employeeForm.lotus_tax_code"/></label>
         <label v-if="['Monthly','Mixed'].includes(employeeForm.lotus_payment_basis)">Lương cơ bản tháng (VND)<UiInput v-model.number="employeeForm.lotus_base_salary" type="number" min="0" step="1000"/></label>
         <label v-if="['Daywork','Mixed'].includes(employeeForm.lotus_payment_basis)">Đơn giá công nhật (VND)<UiInput v-model.number="employeeForm.lotus_daily_rate" type="number" min="0" step="1000"/></label>
+        <label v-if="selectedEmployee&&employeeForm.lotus_payment_basis&&employeeForm.lotus_payment_basis!=='Piecework'">Mức lương áp dụng từ<UiInput v-model="employeeForm.pay_from_date" type="date" :min="employeeForm.date_of_joining"/></label>
         <label class="hr-span">Địa chỉ hiện tại<UiTextarea v-model="employeeForm.current_address"/></label>
         <label class="hr-span">Địa chỉ thường trú<UiTextarea v-model="employeeForm.permanent_address"/></label>
       </div>

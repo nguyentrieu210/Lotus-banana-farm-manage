@@ -186,3 +186,11 @@ for _dt in ('Attendance', 'Lotus Crew Attendance', 'Labor Allocation'):
             _value = [_value]
         doc_events[_dt][_event] = [*_value, 'lotus_farm.hr_period.period_guard']
 scheduler_events.setdefault('daily', []).append('lotus_farm.hr_operations.sync_yesterday')
+
+# Lotus hours on HRMS salary slips (lotus_farm.hr_payroll).
+_slip = doc_events.setdefault('Salary Slip', {})
+for _event, _method in (('before_validate', 'lotus_farm.hr_payroll.fill_slip_hours'), ('before_submit', 'lotus_farm.hr_payroll.slip_period_guard')):
+    _value = _slip.get(_event, [])
+    if isinstance(_value, str):
+        _value = [_value]
+    _slip[_event] = [*_value, _method]

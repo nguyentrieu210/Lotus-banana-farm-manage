@@ -429,7 +429,12 @@ def save_employee(company, values, employee=None, modified=None):
         frappe.throw("Hồ sơ đã thay đổi. Tải lại trước khi cập nhật.")
     _apply_employee(doc, values, company, new)
     doc.save() if not new else doc.insert()
-    return dict(name=doc.name, onboarding_state=doc.lotus_onboarding_state)
+    assignment = None
+    if doc.status == "Active":
+        # A changed pay rate becomes a new HRMS Salary Structure Assignment from the chosen date.
+        from lotus_farm.hr_payroll import assign_salary
+        assignment = assign_salary(doc, values.get("pay_from_date"))
+    return dict(name=doc.name, onboarding_state=doc.lotus_onboarding_state, salary_assignment=assignment)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -450,6 +455,8 @@ def set_onboarding_ready(company, employee, modified):
     doc.lotus_onboarding_state = "Ready"
     doc.status = "Active"
     doc.save()
+    from lotus_farm.hr_payroll import assign_salary
+    assign_salary(doc)
     return dict(name=doc.name, status=doc.status)
 
 
