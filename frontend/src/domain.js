@@ -2,12 +2,16 @@ export const pages=[['mobile','Trang chủ'],['nguoi-dung','Người dùng & ph�
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
+ // Ordered by the operating flow: land & cycle → daily work → plant & bunch → harvest → forecast.
  {label:'Tổng quan',items:[['mobile','home'],['today','calendar'],['alerts','alert'],['reports','chart']]},
- {label:'Sản xuất vườn',items:[['farms','sprout'],['map','map'],['plans','clipboard'],['plan-norm','sliders','Cấu hình KH & định mức'],['forecast','trending'],['cong-viec','check'],['work','list','Tiến độ công việc'],['measurements','ruler'],['losses','trash']]},
- {label:'Thu hoạch & đóng gói',items:[['harvest','basket'],['incoming-qc','shield'],['packhouse','package'],['trace','route'],['daily-close','lock'],['cycle-close','flag']]},
- {label:'Kho & vật tư',items:[['kho','warehouse'],['materials','boxes']]},
- {label:'Nhân sự',items:[['nhan-su','id-card'],['cham-cong','clock'],['labor','people']]},
- {label:'Quản trị',items:[['nguoi-dung','user-cog'],['admin/masters','database'],['admin/imports','upload'],['admin/settings','settings']]},
+ {label:'Vườn & vụ',items:[['farms','sprout'],['map','map']]},
+ {label:'Công việc hằng ngày',items:[['cong-viec','check'],['plans','clipboard'],['work','list','Tiến độ công việc'],['labor','people'],['materials','boxes','Vật tư theo việc'],['daily-close','lock']]},
+ {label:'Cây & buồng',items:[['measurements','ruler'],['losses','trash'],['cycle-close','flag']]},
+ {label:'Thu hoạch & đóng gói',items:[['harvest','basket'],['incoming-qc','shield'],['packhouse','package'],['trace','route']]},
+ {label:'Dự thu',items:[['forecast','trending']]},
+ {label:'Kho & mua hàng',items:[['kho','warehouse']]},
+ {label:'Nhân sự',items:[['nhan-su','id-card'],['cham-cong','clock']]},
+ {label:'Thiết lập',items:[['admin/masters','database'],['plan-norm','sliders','Cấu hình KH & định mức'],['admin/imports','upload'],['admin/settings','settings'],['nguoi-dung','user-cog']]},
 ]
 export const moduleKey=p=>p==='plan-norm'?'plans':p.replace('admin/','')
 // A permission module can contain several pages; router names must remain unique.

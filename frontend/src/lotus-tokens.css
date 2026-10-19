@@ -27,6 +27,9 @@
   --lotus-warning:var(--lotus-warning-600);--lotus-warning-soft:var(--lotus-warning-50);
   --lotus-danger:#b42318;--lotus-danger-soft:#fef1ef;
   --lotus-info:var(--lotus-info-600);--lotus-info-soft:var(--lotus-info-50);
+  /* Chart series in fixed order (validated: dataviz validate_palette, light surface). Charts use at most 3 series;
+     slot 4 only with legend + table view (contrast 2.99:1). */
+  --lotus-chart-1:var(--lotus-primary-600);--lotus-chart-2:var(--lotus-info-600);--lotus-chart-3:var(--lotus-success-600);--lotus-chart-4:var(--lotus-warning-500);
   --lotus-focus:0 0 0 3px color-mix(in srgb,var(--lotus-primary) 28%,transparent);
 
   /* Type */
@@ -55,6 +58,8 @@
   --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
   --lotus-success:#6fd19e;--lotus-success-soft:#173527;--lotus-warning:#f4c25a;--lotus-warning-soft:#3a2d12;
   --lotus-danger:#ff9b8f;--lotus-danger-soft:#3f2121;--lotus-info:#8fb2e3;--lotus-info-soft:#1c2a3d;
+  /* Dark chart steps chosen separately and validated against the dark surface, not flipped from light. */
+  --lotus-chart-1:var(--lotus-primary-500);--lotus-chart-2:var(--lotus-info-400);--lotus-chart-3:var(--lotus-success-500);--lotus-chart-4:var(--lotus-warning-600);
   --lotus-shadow-sm:0 1px 2px rgb(0 0 0/.3);--lotus-shadow-md:0 4px 12px rgb(0 0 0/.35);--lotus-shadow-lg:0 16px 40px rgb(0 0 0/.5);
   --background:216 19% 15%;--foreground:220 19% 94%;--card:216 19% 15%;--card-foreground:220 19% 94%;--popover:216 19% 15%;--popover-foreground:220 19% 94%;
   --primary:7 100% 75%;--primary-foreground:216 19% 13%;--secondary:216 13% 21%;--secondary-foreground:220 19% 94%;

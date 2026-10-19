@@ -57,7 +57,10 @@
 .workspace-modal :is(input,select,textarea):not([type=checkbox]):not([type=radio]){width:100%;min-width:0}
 .workspace-modal .attendance-legend{margin:0 0 12px;color:var(--lotus-muted);font-size:12px;line-height:1.6}
 @media(min-width:901px){
- .lotus-ui.app-shell .sidebar{height:100dvh;overflow:auto;overscroll-behavior:contain}
+ /* Logo stays at the top and footer links at the bottom: only the menu between them scrolls. */
+ .lotus-ui.app-shell .sidebar{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+ .lotus-ui.app-shell .sidebar>.brand,.lotus-ui.app-shell .sidebar>.field-link,.lotus-ui.app-shell .sidebar>small{flex-shrink:0}
+ :root:root .lotus-ui.app-shell .sidebar>nav{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;align-content:start;scrollbar-width:thin;margin:0 calc(-1 * var(--lotus-space-1));padding:0 var(--lotus-space-1)}
  .workspace-shell{height:100dvh;overflow:hidden}
  .workspace-shell>main{height:100dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
  .workspace-shell>.sidebar{height:100dvh;flex-shrink:0}
@@ -225,3 +228,22 @@
 .app-shell.sidebar-collapsed .sidebar .nav-label{display:none}
 .app-shell.sidebar-collapsed .sidebar .nav-group-title{height:1px;padding:0;margin:0 var(--lotus-space-2) var(--lotus-space-1);overflow:hidden;font-size:0;background:var(--lotus-border)}
 .app-shell.sidebar-collapsed .sidebar .nav-group:first-child .nav-group-title{display:none}
+/* Report charts (ReportsWorkspace.vue, LotusChart.vue). */
+.lotus-reports{display:grid;gap:var(--lotus-space-4)}
+.lotus-reports-period{margin:0;font-size:var(--lotus-text-sm)}
+.lotus-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--lotus-space-3)}
+.lotus-stat{display:grid;gap:2px;padding:var(--lotus-space-3) var(--lotus-space-4);background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg)}
+.lotus-stat span,.lotus-stat small{color:var(--lotus-muted);font-size:var(--lotus-text-sm)}
+.lotus-stat strong{color:var(--lotus-text-strong);font-size:var(--lotus-text-2xl);font-weight:650;font-variant-numeric:tabular-nums}
+.lotus-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--lotus-space-3)}
+.lotus-chart-grid--single{grid-template-columns:minmax(0,1fr)}
+@media(max-width:1100px){.lotus-chart-grid{grid-template-columns:minmax(0,1fr)}}
+.lotus-chart-card{min-width:0;padding:var(--lotus-space-3) var(--lotus-space-4) var(--lotus-space-4);background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg)}
+.lotus-chart-head{display:flex;align-items:center;justify-content:space-between;gap:var(--lotus-space-2);min-height:32px;margin-bottom:var(--lotus-space-2)}
+.lotus-chart-head h3{margin:0;font-size:var(--lotus-text-base);font-weight:650;color:var(--lotus-text-strong)}
+.lotus-chart-unit{display:block;margin-top:2px;font-size:var(--lotus-text-xs);font-weight:400;color:var(--lotus-muted)}
+.lotus-chart-empty{margin:0;padding:var(--lotus-space-8) var(--lotus-space-4);text-align:center;color:var(--lotus-muted);font-size:var(--lotus-text-sm);border:1px dashed var(--lotus-border);border-radius:var(--lotus-radius-md)}
+.lotus-chart-table{max-height:320px;overflow:auto}
+.lotus-chart-table table{width:100%;border-collapse:collapse;font-size:var(--lotus-text-sm);font-variant-numeric:tabular-nums}
+.lotus-chart-table :is(th,td){padding:6px 10px;border-bottom:1px solid var(--lotus-border);text-align:right;white-space:nowrap}
+.lotus-chart-table :is(thead th,tbody th){text-align:left;color:var(--lotus-muted);font-weight:600}

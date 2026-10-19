@@ -290,3 +290,72 @@ def packhouse_day(farm,posting_date):
         lots.append(row)
     return dict(lots=lots,runs=records('Packout Run',{'farm':farm,'docstatus':['<',2],'packing_date':date},['name','docstatus','input_kg','output_kg','mass_variance_kg','stock_entry']),
         defects=frappe.get_list('Defect Reason',filters={'active':1},fields=['name','defect_name'],limit_page_length=1000))
+
+
+def _section(build):
+    """One chart section; a missing read permission hides that section instead of failing the page."""
+    try:
+        return dict(allowed=True,**build())
+    except frappe.PermissionError:
+        frappe.clear_messages()
+        return dict(allowed=False)
+
+
+@frappe.whitelist()
+def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
+    """Aggregated series for the report charts. Same land scope and permissions as dashboard()."""
+    from lotus_farm import report_charts as rc
+    start,end=getdate(from_date),getdate(to_date)
+    if start>end or (end-start).days>365:frappe.throw('Select a reporting period of at most 366 days.')
+    selected=land_scope(company,farm,block,plot,cycle)
+    farms=[f.name for f in records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name'])]
+    in_farms={'farm':['in',farms or ['__none__']]}
+    land_only=bool(block or plot or cycle)
+
+    def land():
+        meta=frappe.get_meta('Farm Block')
+        fields=['name','farm_zone','area_ha']+[f for f in ('lotus_tree_count','lotus_estimated_flowering_date') if meta.has_field(f)]
+        blocks=records('Farm Block',{**land_filters(meta,selected),**({} if selected['farm'] else in_farms)},fields)
+        return dict(zones=rc.land_by_zone(blocks),flowering=rc.flowering_by_month(blocks),blocks=len(blocks),
+            area_ha=sum(flt(b.area_ha) for b in blocks),trees=sum(flt(b.get('lotus_tree_count')) for b in blocks),
+            counted_blocks=sum(1 for b in blocks if flt(b.get('lotus_tree_count'))>0))
+
+    def work():
+        # daily_overview is per farm and day; keep the window small like dashboard().
+        if (end-start).days>93:return dict(days=None,types=None,note='Chọn tối đa 94 ngày để xem công việc theo ngày.')
+        from lotus_farm.daily_api import daily_overview
+        days,all_tasks=[],[]
+        day=start
+        while day<=end:
+            tasks=[t for f in farms for t in daily_overview(f,day,block=block,plot=plot,cycle=cycle)['tasks']]
+            days.append((day,tasks));all_tasks.extend(tasks)
+            day=getdate(add_days(day,1))
+        return dict(days=rc.work_by_day(days),types=rc.work_by_type(all_tasks))
+
+    def harvest():
+        actuals=records('Harvest Actual',{**land_filters(frappe.get_meta('Harvest Actual'),selected),**in_farms,'docstatus':1,'harvest_date':['between',[start,end]]},['harvest_date','gross_weight_kg','saleable_weight_kg'])
+        result=dict(harvest=rc.weekly(actuals,'harvest_date',['gross_weight_kg','saleable_weight_kg'],start,end),packout=None,qc=None)
+        if land_only:
+            # QC and packout mix lots from many plots; dashboard() attributes them by lineage, charts stay at farm level.
+            result['note']='QC và đóng gói chỉ xem theo vườn, không chia theo lô/thửa.'
+            return result
+        qc=records('Incoming Quality Inspection',{**in_farms,'docstatus':1,'posting_date':['between',[start,end]]},['posting_date','received_kg','accepted_kg'])
+        result['qc']=rc.weekly(qc,'posting_date',['received_kg','accepted_kg'],start,end)
+        runs=records('Packout Run',{**in_farms,'docstatus':1,'packing_date':['between',[start,end]]},['name','packing_date','input_kg'])
+        rows=[]
+        for r in runs:
+            run=frappe.get_doc('Packout Run',r.name)
+            rows.append(dict(packing_date=r.packing_date,input_kg=r.input_kg,finished_kg=sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Finished')))
+        result['packout']=rc.weekly(rows,'packing_date',['input_kg','finished_kg'],start,end)
+        return result
+
+    def losses():
+        rows=records('Bunch Cancellation',{**land_filters(frappe.get_meta('Bunch Cancellation'),selected),**in_farms,'docstatus':1,'posting_date':['between',[start,end]]},['reason','bunch_qty'])
+        return dict(reasons=rc.top_totals(rows,'reason','bunch_qty'),total=sum(flt(r.bunch_qty) for r in rows))
+
+    def stock():
+        filters={'docstatus':1,'posting_date':['between',[start,end]],**({'company':selected['company']} if selected['company'] else {})}
+        return dict(months=rc.stock_by_month(records('Stock Entry',filters,['posting_date','stock_entry_type'])))
+
+    return dict(from_date=str(start),to_date=str(end),farms=farms,land=_section(land),work=_section(work),
+        harvest=_section(harvest),losses=_section(losses),stock=_section(stock))
