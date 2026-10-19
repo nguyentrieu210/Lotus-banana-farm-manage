@@ -6,3 +6,14 @@ export function loadColumnWidths(key){
 export function saveColumnWidths(key,state){
  try{localStorage.setItem(prefix+key,JSON.stringify((state||[]).filter(c=>c.colId&&c.width).map(c=>({colId:c.colId,width:Math.round(c.width)}))))}catch{}
 }
+
+// Named table views (column filters + sort), per table and per browser.
+const viewPrefix='lotus-grid-views:'
+export function loadViews(key){try{const views=JSON.parse(localStorage.getItem(viewPrefix+key)||'[]');return Array.isArray(views)?views.filter(v=>v&&v.name):[]}catch{return []}}
+export function saveView(key,view){
+ const views=loadViews(key).filter(v=>v.name!==view.name)
+ views.push({name:view.name,filters:view.filters||{},sort:view.sort||[]})
+ try{localStorage.setItem(viewPrefix+key,JSON.stringify(views.slice(-12)))}catch{}
+ return loadViews(key)
+}
+export function deleteView(key,name){const views=loadViews(key).filter(v=>v.name!==name);try{localStorage.setItem(viewPrefix+key,JSON.stringify(views))}catch{};return views}

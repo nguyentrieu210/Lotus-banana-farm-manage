@@ -17,11 +17,14 @@ import WorkspaceModal from './WorkspaceModal.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import DesktopEmptyState from './DesktopEmptyState.vue'
 import LotusIcon from './LotusIcon.vue'
+import DataTable from './DataTable.vue'
 import {useWorkspace} from '../workspace'
 // Dev-only catalogue of the shared components (frontend/showcase.html, served by `npm run dev`, not built).
 const {dark,toggleTheme}=useWorkspace()
 const farms=[{value:'LOTUS-222',label:'Vườn Lô 222',subtitle:'Lotus Agritech',group:'Đồng Nai'},{value:'VIP-126',label:'Vườn VIP 126',subtitle:'Lotus Agritech',group:'Đồng Nai'},{value:'BD-01',label:'Bình Dương 01',group:'Bình Dương'}]
 const farm=ref('VIP-126'),item=ref(''),date=ref('2026-10-19'),from=ref('2026-10-01'),to=ref('2026-10-19'),start=ref(0),start2=ref(100)
+const stockRows=[{item:'Phân NPK',warehouse:'Kho tổng',qty:120},{item:'Bao buồng',warehouse:'Kho tổng',qty:4000},{item:'Dây buộc',warehouse:'Kho Vườn A',qty:35},{item:'Thuốc nấm',warehouse:'Kho Vườn A',qty:8},{item:'Phân NPK',warehouse:'Kho Vườn A',qty:60},{item:'Bao buồng',warehouse:'Kho Vườn B',qty:900}]
+const stockColumns=[{field:'item',headerName:'Vật tư'},{field:'warehouse',headerName:'Kho'},{field:'qty',headerName:'Tồn'}]
 const tab=ref('a'),modal=ref(false),sheet=ref(false),name=ref(''),nameError=ref('Nhập họ tên trước khi lưu.')
 async function fetchItems(search){await new Promise(r=>setTimeout(r,250));return ['Phân NPK 16-16-8','Bao buồng chuối','Dây buộc','Thuốc phòng nấm'].filter(x=>x.toLowerCase().includes(search.toLowerCase())).map((label,i)=>({value:'VT-00'+(i+1),label}))}
 </script>
@@ -50,6 +53,7 @@ async function fetchItems(search){await new Promise(r=>setTimeout(r,250));return
    <UiButton variant="outline" @click="sheet=true">Mở Sheet chi tiết</UiButton>
    <UiButton variant="outline" @click="modal=true">Mở hộp thoại có Combobox</UiButton>
   </div></section>
+  <section><h2>Bảng (lọc cột, chế độ xem)</h2><DataTable :rows="stockRows" :columns="stockColumns" storage-key="showcase-stock"/></section>
   <section><h2>Tab, phân trang, tải, trống</h2>
    <WorkspaceTabs v-model="tab" :items="[{id:'a',label:'Tồn kho'},{id:'b',label:'Lịch sử'},{id:'c',label:'Nhập xuất'}]" label="Ví dụ tab"/>
    <Pagination v-model:start="start" :count="50" has-more/>

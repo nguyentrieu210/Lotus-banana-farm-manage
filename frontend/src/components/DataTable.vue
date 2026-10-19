@@ -11,6 +11,7 @@ import {Button as UiButton} from './ui/button'
 import {Skeleton as UiSkeleton} from './ui/skeleton'
 import DesktopEmptyState from './DesktopEmptyState.vue'
 import LotusIcon from './LotusIcon.vue'
+import DataTableViews from './DataTableViews.vue'
 import {loadColumnWidths,saveColumnWidths} from '../grid-state'
 const desktopDensity=inject('lotusDesktopDensity',null)
 const theme=computed(()=>desktopGridThemes[desktopDensity?.value]||compactGridTheme)
@@ -25,16 +26,21 @@ function headerParams(col){const field=key(col);const choices=props.filterValues
 const defs=computed(()=>props.columns.map(c=>({...c,headerName:uiFarmLabel(c.headerName),flex:c.flex||1,minWidth:c.minWidth||100,sortable:true,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c)})))
 
 function value(row,col){if(col.mobileValue)return col.mobileValue(row);const value=col.valueGetter?col.valueGetter({data:row}):row[col.field];return col.valueFormatter?col.valueFormatter({value,data:row}):value??'—'}
-function sorted(event){if(props.serverSort)emit('sort',event.api.getColumnState().filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
+function sorted(event){sortState.value=event.api.getColumnState().filter(c=>c.sort).map(c=>({colId:c.colId,sort:c.sort,sortIndex:c.sortIndex}));if(props.serverSort)emit('sort',event.api.getColumnState().filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
 function open(event){if(props.interactive&&event.data)emit('open',event.data)}
 const hasLocalFilters=computed(()=>!props.filterValues&&Object.keys(localFilters.value).length>0)
 // Column widths persist per table (storageKey, or the column set) so a resized grid stays that way after reload.
 const widthKey=computed(()=>props.storageKey||props.columns.map(key).join('|'))
-function restoreWidths(event){const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths})}
+const gridApi=ref(null),sortState=ref([])
+const columnLabels=computed(()=>Object.fromEntries(props.columns.map(c=>[key(c),uiFarmLabel(c.headerName)])))
+// Saved views: column filters (local tables) + sort, applied back onto the grid.
+function applyView(view){if(!props.filterValues)localFilters.value={...(view.filters||{})};gridApi.value?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})}
+function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths})}
 function resized(event){if(event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,event.api.getColumnState())}
 </script>
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
+  <DataTableViews v-if="!filterValues" :storage-key="widthKey" :filters="localFilters" :sort="sortState" :labels="columnLabels" @apply="applyView" @clear="localFilters={}"/>
   <div v-if="!visibleRows.length&&!showEmptyHeaders&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 5" :key="n" class="lotus-table-skeleton__row"/></div>
   <DesktopEmptyState v-else-if="!visibleRows.length&&!showEmptyHeaders" class="empty stock-empty" :title="empty" :description="hasLocalFilters?'Bộ lọc cột đang ẩn toàn bộ dòng.':emptyHint">
    <template v-if="hasLocalFilters||$slots['empty-actions']" #actions><UiButton v-if="hasLocalFilters" type="button" variant="outline" size="sm" @click="localFilters={}">Xóa bộ lọc</UiButton><slot name="empty-actions"/></template>

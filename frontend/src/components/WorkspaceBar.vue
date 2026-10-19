@@ -8,13 +8,23 @@ import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
 import {call,consoleAPI} from '../api'
 import {loadWorkspaceDirectory,mergeWorkspaceActions} from '../workspace-directory'
-const props=defineProps({user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function})
+const props=defineProps({user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
 const {dark,sidebarCollapsed,toggleTheme,toggleSidebar}=useWorkspace()
 const palette=ref(null),input=ref(null),query=ref(''),selected=ref(0),loggingOut=ref(false),logoutError=ref('')
 const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
 const directory=ref([])
 const allActions=computed(()=>mergeWorkspaceActions(props.actions,directory.value))
-const results=computed(()=>allActions.value.filter(a=>normalized(a.label).includes(normalized(query.value))))
+const actionResults=computed(()=>allActions.value.filter(a=>normalized(a.label).includes(normalized(query.value))))
+// Records come from the server (permission-checked), after a short pause in typing.
+const records=ref([]),searching=ref(false)
+let searchTimer,searchVersion=0
+watch(query,text=>{
+ clearTimeout(searchTimer);records.value=[]
+ if(!props.recordSearch||text.trim().length<2){searching.value=false;return}
+ searching.value=true;const version=++searchVersion
+ searchTimer=setTimeout(async()=>{try{const rows=await props.recordSearch(text.trim());if(version===searchVersion)records.value=rows||[]}catch{if(version===searchVersion)records.value=[]}finally{if(version===searchVersion)searching.value=false}},250)
+})
+const results=computed(()=>[...actionResults.value,...records.value])
 const initials=computed(()=>props.user.slice(0,2).toUpperCase()||'…')
 watch(query,()=>selected.value=0)
 async function logout(){loggingOut.value=true;logoutError.value='';try{await call('logout',{},true);location.assign('/login?redirect-to=/lotus/mobile')}catch(e){logoutError.value=e.message}finally{loggingOut.value=false}}
@@ -56,8 +66,8 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
   </div>
  </div>
  <dialog ref="palette" class="command-dialog" aria-label="Tìm nhanh" @click="dismissOnBackdrop($event)">
-  <div class="command-input"><input ref="input" v-model="query" aria-label="Tìm màn hình hoặc thao tác" placeholder="Tìm màn hình hoặc thao tác…" role="combobox" aria-autocomplete="list" :aria-expanded="true" aria-controls="lotus-command-results" :aria-activedescendant="results[selected]?'lotus-command-'+selected:undefined" @keydown="keys"><UiButton variant="ghost" size="sm" aria-label="Đóng tìm nhanh" @click="palette.close()">Esc</UiButton></div>
-  <div id="lotus-command-results" role="listbox" class="command-results"><UiButton v-for="(action,index) in results" :id="'lotus-command-'+index" :key="action.id" variant="ghost" role="option" :aria-selected="index===selected" :class="{selected:index===selected}" @click="choose(action)">{{action.label}} <small>{{action.navigation?'Đi đến':'Thao tác'}}</small></UiButton><p v-if="!results.length" role="status">Không tìm thấy kết quả.</p></div>
+  <div class="command-input"><input ref="input" v-model="query" aria-label="Tìm màn hình, thao tác hoặc bản ghi" placeholder="Tìm màn hình, thao tác hoặc mã/tên bản ghi…" role="combobox" aria-autocomplete="list" :aria-expanded="true" aria-controls="lotus-command-results" :aria-activedescendant="results[selected]?'lotus-command-'+selected:undefined" @keydown="keys"><UiButton variant="ghost" size="sm" aria-label="Đóng tìm nhanh" @click="palette.close()">Esc</UiButton></div>
+  <div id="lotus-command-results" role="listbox" class="command-results"><UiButton v-for="(action,index) in results" :id="'lotus-command-'+index" :key="action.id" variant="ghost" role="option" :aria-selected="index===selected" :class="{selected:index===selected}" @click="choose(action)">{{action.label}} <small>{{action.record?action.kind:action.navigation?'Đi đến':'Thao tác'}}</small></UiButton><p v-if="searching" role="status">Đang tìm bản ghi…</p><p v-else-if="!results.length" role="status">Không tìm thấy kết quả.</p></div>
   <footer>↑ ↓ chọn · Enter mở · Esc đóng</footer>
  </dialog>
 </template>

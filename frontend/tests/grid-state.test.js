@@ -13,3 +13,16 @@ test('column widths persist per table and ignore junk',()=>{
  delete globalThis.localStorage
  assert.deepEqual(loadColumnWidths('stock'),[],'private mode without storage still works')
 })
+
+test('named table views are saved per table, replaced by name and removable',async()=>{
+ const {loadViews,saveView,deleteView}=await import('../src/grid-state.js')
+ const store=new Map()
+ globalThis.localStorage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))}
+ saveView('stock',{name:'Kho A',filters:{warehouse:['Kho A']},sort:[]})
+ saveView('stock',{name:'Kho A',filters:{warehouse:['Kho A','Kho B']},sort:[{colId:'qty',sort:'desc'}]})
+ assert.equal(loadViews('stock').length,1,'same name replaces')
+ assert.deepEqual(loadViews('stock')[0].filters.warehouse,['Kho A','Kho B'])
+ assert.deepEqual(loadViews('other'),[])
+ assert.deepEqual(deleteView('stock','Kho A'),[])
+ delete globalThis.localStorage
+})
