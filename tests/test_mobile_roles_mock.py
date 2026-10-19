@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import types
 import unittest
+from unittest import mock
 
 
 class Row(dict):
@@ -110,6 +111,10 @@ def records(doctype, filters, fields=None, pluck=None, **_kwargs):
         if filters.get("farm"):
             matches = [r for r in matches if r.farm == filters["farm"]]
         return [r.name for r in matches] if pluck else matches
+    if doctype in ("Labor Allocation", "Material Requirement"):
+        return []
+    if doctype == "Daily Work Plan Line":
+        return [Row(name=name, norm_profile=None) for name in filters["name"][1] if name in LINES]
     raise AssertionError("Unexpected query: " + doctype)
 
 
@@ -138,18 +143,16 @@ utils = types.ModuleType("frappe.utils")
 utils.flt = lambda value: float(value or 0)
 utils.getdate = lambda value: value if isinstance(value, datetime.date) else datetime.date.fromisoformat(str(value))
 utils.add_days = lambda value, days: utils.getdate(value) + datetime.timedelta(days=int(days))
-sys.modules["frappe"] = frappe
-sys.modules["frappe.utils"] = utils
-
 package = types.ModuleType("lotus_farm")
 package.__path__ = []
-sys.modules["lotus_farm"] = package
 controls = types.ModuleType("lotus_farm.controls")
 controls.farm_allowed = lambda farm, user=None: farm in GRANTS.get(user or frappe.session.user, {}).get("farms", ())
-sys.modules["lotus_farm.controls"] = controls
 daily_api = types.ModuleType("lotus_farm.daily_api")
 daily_api.daily_overview = lambda *_args: {"tasks": []}
-sys.modules["lotus_farm.daily_api"] = daily_api
+# Stubs are only installed while loading and inside each test, so other test
+# modules in the same process still import the real lotus_farm package.
+STUBS = {"frappe": frappe, "frappe.utils": utils, "lotus_farm": package,
+         "lotus_farm.controls": controls, "lotus_farm.daily_api": daily_api}
 
 source = Path(os.environ.get("LOTUS_RBAC_SOURCE_ROOT", Path(__file__).resolve().parents[1] / "lotus_farm"))
 
@@ -157,17 +160,22 @@ source = Path(os.environ.get("LOTUS_RBAC_SOURCE_ROOT", Path(__file__).resolve().
 def load(name):
     spec = importlib.util.spec_from_file_location("lotus_farm." + name, source / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
+    STUBS["lotus_farm." + name] = module
     sys.modules["lotus_farm." + name] = module
     spec.loader.exec_module(module)
     return module
 
 
-access = load("mobile_access")
-work = load("work_mobile")
+with mock.patch.dict(sys.modules, STUBS):
+    access = load("mobile_access")
+    work = load("work_mobile")
 
 
 class MobileAccessTest(unittest.TestCase):
     def setUp(self):
+        patcher = mock.patch.dict(sys.modules, STUBS)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         frappe.session.user = "lead.a"
 
     def test_leader_only_sees_own_team(self):

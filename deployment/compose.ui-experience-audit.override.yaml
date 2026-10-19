@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: lotus-ui-experience-audit:v8-20261019
+  frontend:
+    image: lotus-ui-experience-audit:v8-20261019
+  queue-short:
+    image: lotus-ui-experience-audit:v8-20261019
+
+
+
+

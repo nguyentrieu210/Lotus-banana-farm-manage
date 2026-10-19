@@ -49,7 +49,7 @@ for(const [name,Component] of [['Warehouse',Warehouse],['Buyer',Buyer]]){
  })
  await check(name+' confirmed navigation exits without sending a purchase order',async()=>{
   const before=api.calls.filter(c=>c.write&&c.method.endsWith('.save_order')).length
-  button(app.root,'Trang chủ').click();await tick();button(app.root,'Tiếp tục').click();await tick()
+  button(app.root,'Trang chủ').click();await tick();button(app.root,'Rời đi').click();await tick()
   assert.equal(app.root.querySelector('.lotus-purchase-form'),null)
   assert.equal(api.calls.filter(c=>c.write&&c.method.endsWith('.save_order')).length,before)
  })

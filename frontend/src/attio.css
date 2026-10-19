@@ -115,3 +115,5 @@ input::placeholder{color:#98a1ae}
   .lotus-mobile-record-arrow{position:absolute;right:12px;top:15px;color:#8994a6;font-size:19px}
   .lotus-grid-footer{font-size:10px}
 }
+/* SchemaForm checks use native controls; text-field and Frappe resets must not hide the tick. */
+.schema-grid input[type=checkbox]{appearance:auto;width:16px;height:16px;min-height:0;padding:0;flex-shrink:0;border-radius:3px;box-shadow:none;background-image:none;accent-color:var(--lotus-accent)}

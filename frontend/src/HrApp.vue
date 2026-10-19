@@ -1,6 +1,11 @@
 <script setup>
+const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,onMounted,reactive,ref} from 'vue'
 import WorkspaceBar from './components/WorkspaceBar.vue'
+import WorkspaceTabs from './components/WorkspaceTabs.vue'
+import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
+import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
+import WorkspaceModal from './components/WorkspaceModal.vue'
 import HrOperations from './components/HrOperations.vue'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {Button as UiButton} from './components/ui/button'
@@ -9,6 +14,8 @@ import UiSelect from './components/ui/select/Select.vue'
 import {Textarea as UiTextarea} from './components/ui/textarea'
 import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
+import {stateLabel} from './labels'
+import {hrCatalogLabel} from './hr-catalog-labels'
 
 const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,write)
 const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
@@ -24,7 +31,7 @@ const bases={Monthly:'Lương tháng',Daywork:'Công nhật',Piecework:'Khoán s
 const stages={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 const genderName={Male:'Nam',Female:'Nữ',Other:'Khác'}
 const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
-const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Import · Máy chấm công'},{id:'payroll',label:'Cấu hình lương'}]
+const routes=[{id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},{id:'designations',label:'Chức danh'},{id:'operations',label:'Cơ cấu · Nhập dữ liệu · Máy chấm công'},{id:'payroll',label:'Cấu hình lương'}]
 const tabs=computed(()=>routes.filter(r=>r.id!=='payroll'||isManager.value))
 const actions=computed(()=>[
   {id:'home',label:'Trang chủ Lotus',navigation:true,href:'/lotus/mobile'},
@@ -124,46 +131,38 @@ onMounted(init)
 </script>
 
 <template>
-<div class="stock-shell hr-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed}">
-  <aside class="stock-sidebar">
-    <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech"></a>
+<div class="stock-shell hr-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
+  <aside v-if="!embedded" class="stock-sidebar">
+    <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech"></a>
     <p class="stock-nav-label">NHÂN SỰ LOTUS</p>
     <nav aria-label="Module nhân sự"><UiButton v-for="item in tabs" :key="item.id" variant="outline" :class="{selected:tab===item.id}" @click="chooseTab(item.id)">{{item.label}}</UiButton></nav>
     <div class="stock-sidebar-bottom"><a href="/lotus/cham-cong">Chấm công ↗</a><a href="/desk/hr-setup">Quản trị HRMS ↗</a></div>
   </aside>
-  <main class="stock-main">
-    <WorkspaceBar :user="session?.user" :title="tabs.find(x=>x.id===tab)?.label||'Nhân sự'" :actions="actions"/>
+  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/>
+    <WorkspaceBar v-if="!embedded" :user="session?.user" :title="tabs.find(x=>x.id===tab)?.label||'Nhân sự'" :actions="actions"/>
     <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
-    <div class="stock-scope"><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label>
-      <label v-if="['employees','onboarding','candidates'].includes(tab)">Tìm nhanh <UiInput v-model="search" placeholder="Tên, mã, chức danh hoặc số liên lạc"/></label>
-      <UiButton variant="outline" :disabled="busy||saving" @click="tab==='payroll'?loadPayroll():refresh()">{{busy?'Đang tải…':'Làm mới'}}</UiButton>
-    </div>
-    <section class="hr-headline">
-      <div><small>HỒ SƠ NHÂN SỰ</small><strong>{{overview.employees.length}}</strong><span>Người đã ghi nhận trong Employee</span></div>
-      <div><small>TIẾP NHẬN</small><strong>{{missingCount}}</strong><span>Chưa xác nhận đủ hồ sơ</span></div>
-      <div><small>TUYỂN DỤNG</small><strong>{{overview.candidates.filter(x=>x.status!=='Hired'&&x.status!=='Rejected').length}}</strong><span>Ứng viên đang xử lý</span></div>
-    </section>
+    <WorkspaceSummaryStrip v-if="['employees','onboarding','candidates'].includes(tab)" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
+    <WorkspaceListToolbar v-model="search" :searchable="['employees','onboarding','candidates'].includes(tab)" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="tab==='payroll'?loadPayroll():refresh()">
+      <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label></template>
+      <template v-if="['employees','onboarding'].includes(tab)"><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/app/employee-transfer">Điều chuyển ↗</a><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">＋ Thêm nhân viên</UiButton></template>
+      <template v-if="tab==='payroll'"><a class="workspace-secondary-link" href="/app/salary-structure-assignment">Quyết định lương HRMS ↗</a><a class="workspace-secondary-link" href="/app/salary-structure">Cấu trúc lương ↗</a></template>
+      <template v-if="tab==='candidates'"><a class="workspace-secondary-link" href="/app/job-opening">Tin tuyển dụng ↗</a><UiButton :disabled="saving" @click="emptyCandidate">＋ Thêm ứng viên</UiButton></template>
+    </WorkspaceListToolbar>
 
     <template v-if="tab==='employees'||tab==='onboarding'">
-      <div class="attendance-toolbar"><h2>{{tab==='employees'?'Danh sách nhân viên':'Tiếp nhận & kích hoạt'}}</h2>
-        <UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee">+ Thêm nhân viên</UiButton><a class="stock-button" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="stock-button" href="/app/employee-transfer">Điều chuyển nhân viên (HRMS) ↗</a>
-      </div>
-      <p class="attendance-legend">Công nhân thử việc, thời vụ hoặc dài hạn có hồ sơ Employee. Đội khoán/nhà thầu chấm theo đội ở module Chấm công, không tự tạo nhân viên giả. Nhân viên chờ tiếp nhận chưa được kích hoạt.</p>
-      <section class="stock-panel hr-table"><table><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Vườn</th><th>Loại lao động</th><th>Hình thức công/lương</th><th>Tiếp nhận</th><th></th></tr></thead>
+      <section class="stock-panel hr-table workspace-record-list workspace-employee-list"><table><colgroup><col><col><col><col><col><col><col class="workspace-col-status"><col class="workspace-col-actions"></colgroup><thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Vườn</th><th>Loại lao động</th><th>Hình thức công/lương</th><th>Tiếp nhận</th><th></th></tr></thead>
       <tbody><tr v-for="person in filteredEmployees" :key="person.name">
         <td>{{person.name}}</td><td><strong>{{person.employee_name}}</strong><small>{{person.department}}</small></td>
-        <td>{{person.designation||'—'}}</td><td>{{person.lotus_farm||'—'}}</td>
+        <td>{{hrCatalogLabel(person.designation)||'—'}}</td><td>{{person.lotus_farm||'—'}}</td>
         <td>{{cats[person.lotus_worker_category]||contractTypeNames[person.employment_type]||person.employment_type||'—'}}</td>
         <td>{{bases[person.lotus_payment_basis]||'Chưa cấu hình'}}</td>
-        <td>{{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}} · {{person.status}}<small v-if="person.contract_end_date&&person.contract_end_date<=today">Hợp đồng đến hạn: {{person.contract_end_date}}</small></td>
+        <td><span class="workspace-status" :class="{'is-ready':person.lotus_onboarding_state==='Ready'}">{{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}}</span><small>{{stateLabel(person.status)}}</small><small v-if="person.contract_end_date&&person.contract_end_date<=today">Hợp đồng đến hạn: {{person.contract_end_date}}</small></td>
         <td><UiButton v-if="isManager" variant="outline" size="sm" @click="openEmployee(person)">Xem / sửa</UiButton></td></tr>
       </tbody></table><p v-if="!filteredEmployees.length" class="stock-empty">Không có nhân viên trong phạm vi này.</p></section>
     </template>
 
     <template v-if="tab==='candidates'">
-      <div class="attendance-toolbar"><h2>Ứng viên và tuyển dụng</h2><UiButton :disabled="saving" @click="emptyCandidate">+ Ứng viên mới</UiButton><a class="stock-button" href="/app/job-opening">Tin tuyển dụng HRMS ↗</a><a class="stock-button" href="/app/job-applicant">Ứng viên HRMS có email ↗</a></div>
-      <p class="attendance-legend">Ứng viên Lotus có thể đăng ký bằng số điện thoại, không ép cung cấp email giả. Ứng viên có email hoặc tuyển văn phòng vẫn có thể sử dụng Job Applicant/Job Offer chuẩn HRMS.</p>
-      <section class="stock-panel hr-table"><table><thead><tr><th>Ứng viên</th><th>Liên hệ</th><th>Chức danh</th><th>Vườn</th><th>Nguồn</th><th>Trạng thái</th><th></th></tr></thead>
+      <section class="stock-panel hr-table workspace-record-list"><table><colgroup><col><col><col><col><col><col class="workspace-col-status"><col class="workspace-col-actions"></colgroup><thead><tr><th>Ứng viên</th><th>Liên hệ</th><th>Chức danh</th><th>Vườn</th><th>Nguồn</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody><tr v-for="c in filteredCandidates" :key="c.name"><td><strong>{{c.applicant_name}}</strong><small>{{c.applied_on}}</small></td><td>{{c.phone}}</td><td>{{c.designation}}</td><td>{{c.farm||'—'}}</td><td>{{c.source||'—'}}</td><td>{{stages[c.status]}}</td><td><UiButton variant="outline" size="sm" @click="openCandidate(c)">Xử lý</UiButton><UiButton v-if="isManager&&c.status==='Offered'&&!c.employee" size="sm" @click="startHire(c)">Tiếp nhận</UiButton></td></tr></tbody></table>
       <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
     </template>
@@ -177,19 +176,25 @@ onMounted(init)
     </template>
 
     <template v-if="tab==='payroll'&&isManager">
-      <div class="attendance-toolbar"><h2>Chính sách và cấu hình lương</h2><a href="/app/salary-structure-assignment" class="stock-button">Quyết định lương HRMS ↗</a><a href="/app/salary-structure" class="stock-button">Cấu trúc lương ↗</a></div>
-      <p class="attendance-legend">Đơn giá công khoán theo công việc nằm trong Work Type, chỉ là giá trị kế hoạch. Lương cơ bản và thay đổi lương phải lập qua Salary Structure Assignment theo ngày hiệu lực. Không lấy giá khoán x khối lượng để tự động lập Salary Slip khi chưa có dữ liệu duyệt và kiểm soát đối soát.</p>
-      <section v-if="readiness" class="stock-panel"><h3>Đối soát trước kỳ lương · {{readiness.month}}</h3><p>Nhân viên đang làm: <strong>{{readiness.employees}}</strong> · Chưa có quyết định lương: <strong>{{readiness.employees_without_salary.length}}</strong> · Phiếu chấm công nháp: <strong>{{readiness.attendance_draft_count}}</strong> · Phiếu khoán đội chờ duyệt: <strong>{{readiness.crew_pending_count}}</strong>.</p><p class="attendance-legend">Giá trị khoán đội đã duyệt (chưa phải lương): {{money(readiness.crew_approved_amount)}}; {{readiness.note}}</p><p v-if="readiness.employees_without_salary.length">Chưa cấu hình Salary Structure Assignment: {{readiness.employees_without_salary.map(x=>x.employee_name).join(', ')}}</p></section>
-      <section class="stock-panel hr-table"><h3>Quyết định lương đã duyệt mới nhất theo nhân viên</h3><table><thead><tr><th>Mã nhân viên</th><th>Cấu trúc lương</th><th>Hiệu lực từ</th><th>Lương cơ bản</th></tr></thead><tbody><tr v-for="(a,i) in payroll.assignments" :key="i"><td>{{a.employee}}</td><td>{{a.salary_structure}}</td><td>{{a.from_date}}</td><td>{{money(a.base,a.currency)}}</td></tr></tbody></table></section>
+      <div class="hr-payroll">
+        <section v-if="readiness" class="stock-panel" aria-label="Đối soát trước kỳ lương">
+          <h3>Đối soát trước kỳ lương · {{readiness.month}}</h3>
+          <WorkspaceSummaryStrip :items="[{label:'Đang làm',value:readiness.employees},{label:'Chưa có quyết định lương',value:readiness.employees_without_salary.length},{label:'Chấm công nháp',value:readiness.attendance_draft_count},{label:'Khoán đội chờ duyệt',value:readiness.crew_pending_count}]"/>
+          <p class="hr-payroll-note">Khoán đội đã duyệt (chưa phải lương): <strong>{{money(readiness.crew_approved_amount)}}</strong></p>
+          <p v-if="readiness.employees_without_salary.length" class="hr-payroll-warning">Chưa có quyết định lương: {{readiness.employees_without_salary.map(x=>x.employee_name).join(', ')}}</p>
+          <details><summary>Lưu ý đối soát</summary><p class="hr-payroll-note">Đơn giá công khoán là giá trị kế hoạch. Lương cơ bản được quản lý bằng quyết định lương theo ngày hiệu lực. {{readiness.note}}</p></details>
+        </section>
+        <section class="stock-panel hr-table" aria-label="Quyết định lương đã duyệt"><table><caption class="sr-only">Quyết định lương đã duyệt mới nhất theo nhân viên</caption><thead><tr><th>Mã nhân viên</th><th>Cấu trúc lương</th><th>Hiệu lực từ</th><th>Lương cơ bản</th></tr></thead><tbody><tr v-for="(a,i) in payroll.assignments" :key="i"><td>{{a.employee}}</td><td>{{a.salary_structure}}</td><td>{{a.from_date}}</td><td>{{money(a.base,a.currency)}}</td></tr></tbody></table><p v-if="!payroll.assignments.length&&!busy" class="stock-empty">Chưa có quyết định lương đã duyệt.</p></section>
+      </div>
     </template>
 
-    <section v-if="editCandidate&&tab==='candidates'" class="stock-panel hr-editor">
-      <div class="attendance-toolbar"><h2>{{selectedCandidate?'Cập nhật ứng viên':'Thêm ứng viên'}}</h2><UiButton variant="outline" @click="editCandidate=false">Đóng</UiButton></div>
+    <WorkspaceModal v-model="editCandidate" :title="selectedCandidate?'Cập nhật ứng viên':'Thêm ứng viên'" :busy="saving">
+      <p v-if="error" class="stock-error" role="alert">{{error}}</p>
       <form @submit.prevent="saveCandidate"><div class="hr-form-grid">
         <label>Họ tên *<UiInput v-model="candidateForm.applicant_name" required maxlength="140"/></label>
         <label>Số điện thoại *<UiInput v-model="candidateForm.phone" required maxlength="25"/></label>
         <label>Email (không bắt buộc)<UiInput v-model="candidateForm.email" type="email"/></label>
-        <label>Chức danh ứng tuyển *<UiSelect v-model="candidateForm.designation" required :disabled="candidateForm.status==='Hired'"><option value="">Chọn chức danh</option><option v-for="d in catalog.designations" :key="d.name" :value="d.name">{{d.designation_name}}</option></UiSelect></label>
+        <label>Chức danh ứng tuyển *<UiSelect v-model="candidateForm.designation" required :disabled="candidateForm.status==='Hired'"><option value="">Chọn chức danh</option><option v-for="d in catalog.designations" :key="d.name" :value="d.name">{{hrCatalogLabel(d.designation_name)}}</option></UiSelect></label>
         <label>Vườn dự kiến<UiSelect v-model="candidateForm.farm"><option value="">Chưa xác định</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
         <label>Tin tuyển dụng<UiSelect v-model="candidateForm.job_opening" @change="chooseOpening"><option value="">Không gắn tin</option><option v-for="j in catalog.openings" :key="j.name" :value="j.name">{{j.job_title}}</option></UiSelect></label>
         <label>Ngày đăng ký<UiInput v-model="candidateForm.applied_on" type="date" required/></label>
@@ -198,20 +203,20 @@ onMounted(init)
         <label>Ngày phỏng vấn<UiInput v-model="candidateForm.interview_on" type="date"/></label>
         <label class="hr-span">Ghi chú đánh giá<UiTextarea v-model="candidateForm.notes" maxlength="2000"/></label>
       </div><div class="attendance-toolbar"><UiButton type="submit" :disabled="saving||candidateForm.status==='Hired'">{{saving?'Đang lưu…':'Lưu ứng viên'}}</UiButton><UiButton v-if="isManager&&candidateForm.status==='Offered'&&selectedCandidate" type="button" variant="outline" @click="startHire(candidateForm)">Tiếp nhận làm nhân viên</UiButton></div></form>
-    </section>
+    </WorkspaceModal>
 
-    <section v-if="editEmployee&&['employees','onboarding'].includes(tab)" class="stock-panel hr-editor">
-      <div class="attendance-toolbar"><h2>{{selectedEmployee?'Hồ sơ '+selectedEmployee:candidateHire?'Tiếp nhận từ ứng viên':'Tạo hồ sơ nhân viên'}}</h2><UiButton variant="outline" @click="editEmployee=false;candidateHire=null">Đóng</UiButton></div>
+    <WorkspaceModal v-model="editEmployee" :title="selectedEmployee?'Hồ sơ '+selectedEmployee:candidateHire?'Tiếp nhận từ ứng viên':'Tạo hồ sơ nhân viên'" :busy="saving" width="1080px">
+      <p v-if="error" class="stock-error" role="alert">{{error}}</p>
       <p class="attendance-legend">CCCD được lưu mã hóa; hệ thống chỉ hiển thị 4 số cuối, không gửi CCCD vào bảng nhân viên. Nhập CCCD mới chỉ khi tạo hoặc cần cập nhật. Đối chiếu giấy tờ gốc trước khi duyệt.</p>
       <div class="attendance-toolbar"><UiButton v-if="isManager" type="button" :disabled="saving" @click="cccdScanOpen=true">▣ Quét QR CCCD</UiButton><span class="attendance-legend">Quét để tự điền thông tin. Chỉ lưu khi bấm Lưu hồ sơ.</span></div>
       <CccdQrScanner v-if="cccdScanOpen" @close="cccdScanOpen=false" @confirmed="applyScannedCccd"/>
       <form @submit.prevent="saveEmployee"><div class="hr-form-grid">
         <label>Họ tên *<UiInput v-model="employeeForm.employee_name" required :disabled="!!candidateHire" maxlength="140"/></label>
-        <label>Giới tính *<UiSelect v-model="employeeForm.gender" required><option value="">Chọn</option><option v-for="g in catalog.genders" :key="g.name" :value="g.name">{{genderName[g.name]||g.name}}</option></UiSelect></label>
+        <label>Giới tính *<UiSelect v-model="employeeForm.gender" required><option value="">Chọn</option><option v-for="g in catalog.genders" :key="g.name" :value="g.name">{{genderName[g.name]||hrCatalogLabel(g.name)}}</option></UiSelect></label>
         <label>Ngày sinh *<UiInput v-model="employeeForm.date_of_birth" type="date" :max="today" required/></label>
         <label>Ngày vào làm *<UiInput v-model="employeeForm.date_of_joining" type="date" required/></label>
-        <label>Chức danh *<UiSelect v-model="employeeForm.designation" required :disabled="!!candidateHire"><option value="">Chọn</option><option v-for="d in catalog.designations" :key="d.name" :value="d.name">{{d.name}}</option></UiSelect></label>
-        <label>Phòng ban<UiSelect v-model="employeeForm.department"><option value="">Chưa gắn</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{d.department_name}}</option></UiSelect></label>
+        <label>Chức danh *<UiSelect v-model="employeeForm.designation" required :disabled="!!candidateHire"><option value="">Chọn</option><option v-for="d in catalog.designations" :key="d.name" :value="d.name">{{hrCatalogLabel(d.name)}}</option></UiSelect></label>
+        <label>Phòng ban<UiSelect v-model="employeeForm.department"><option value="">Chưa gắn</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name)}}</option></UiSelect></label>
         <label>Loại lao động *<UiSelect v-model="employeeForm.lotus_worker_category" required><option value="">Chọn</option><option v-for="c in catalog.worker_categories" :key="c" :value="c">{{cats[c]}}</option></UiSelect></label>
         <label>Cơ chế công/lương *<UiSelect v-model="employeeForm.lotus_payment_basis" required><option value="">Chọn</option><option v-for="v in catalog.payment_bases" :key="v" :value="v">{{bases[v]}}</option></UiSelect></label>
         <label>Vườn<UiSelect v-model="employeeForm.lotus_farm" :disabled="!!candidateHire" @change="employeeForm.lotus_work_team=''"><option value="">Chưa phân công</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
@@ -240,7 +245,7 @@ onMounted(init)
         <UiButton v-if="selectedEmployee&&employeeForm.lotus_onboarding_state!=='Ready'&&!employeeForm.onboarding_gaps?.length" variant="outline" type="button" :disabled="saving" @click="approveOnboarding">Duyệt tiếp nhận & kích hoạt</UiButton>
         <a v-if="selectedEmployee" class="stock-button" :href="'/app/employee/'+encodeURIComponent(selectedEmployee)" target="_blank" rel="noopener">Employee HRMS ↗</a>
       </div></form>
-    </section>
-  </main>
+    </WorkspaceModal>
+  </component>
 </div>
 </template>

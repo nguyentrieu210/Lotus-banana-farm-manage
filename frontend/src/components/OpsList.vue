@@ -7,7 +7,8 @@ import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import {AgGridVue} from 'ag-grid-vue3'
 import {AllCommunityModule,ModuleRegistry,themeQuartz} from 'ag-grid-community'
 import {fmt} from '../domain'
-import {label,stateLabel} from '../labels'
+import {label,stateLabel,docLabel} from '../labels'
+import {unitLabel} from '../units'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 const props=defineProps({
@@ -19,6 +20,8 @@ const emit=defineEmits(['open','filter'])
 const labels={name:'Phiếu',docstatus:'Trạng thái',farm:'Vườn',farm_block:'Lô',farm_plot:'Thửa',crop_cycle:'Vụ',posting_date:'Ngày',harvest_date:'Ngày thu',received_date:'Ngày nhận',packing_date:'Ngày đóng gói',gross_weight_kg:'Kg thu',accepted_kg:'Kg đạt',rejected_kg:'Kg loại',input_kg:'Kg vào',output_kg:'Kg ra',stock_entry:'Phiếu kho',modified:'Cập nhật',status:'Trạng thái',approval_state:'Duyệt',supply_state:'Dự thu',resolved_percent:'% xử lý'}
 const numericFields=new Set(['planned_qty','completed_qty','actual_workdays','quantity_per_workday','gross_weight_kg','accepted_kg','rejected_kg','input_kg','output_kg','forecast_kg','actual_kg','remaining_demand_kg','ordered_kg','delivered_kg','contributed_kg'])
 function displayValue(column,value){
+  if(column==='uom')return unitLabel(value)
+  if(column==='doctype')return docLabel(value)
   if(column==='docstatus')return ['Nháp','Đã nộp','Đã hủy'][Number(value)]||String(value??'')
   return stateLabel(fmt(value))
 }

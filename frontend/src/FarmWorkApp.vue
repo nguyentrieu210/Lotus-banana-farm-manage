@@ -1,7 +1,10 @@
 <script setup>
+const props=defineProps({embedded:Boolean,navigationKey:String})
+const emit=defineEmits(['navigation-consumed'])
 import {unitLabel} from './units'
-import {computed,nextTick,onMounted,ref,watch} from 'vue'
+import {computed,nextTick,onActivated,onMounted,ref,watch} from 'vue'
 import WorkspaceBar from './components/WorkspaceBar.vue'
+import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import SearchSelect from './components/SearchSelect.vue'
 import SchemaForm from './components/SchemaForm.vue'
 import WorkMaterialSettings from './components/WorkMaterialSettings.vue'
@@ -19,7 +22,7 @@ const kinds=[{id:'works',label:'Công việc & năng suất',type:'Work Type'},{
 const session=ref(null),data=ref(null),farm=ref(''),date=ref(''),tab=ref('overview'),kind=ref('works'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),search=ref(''),taskState=ref(''),team=ref('')
 const editor=ref(null),schema=ref(null),dialog=ref(null),editorError=ref('')
 const assignmentPortal=ref(null),assignmentDialog=ref(null),assignmentOpen=ref(false),assignmentBusy=ref(false)
-async function openAssignment(){if(!farm.value||!session.value?.commands?.work||busy.value)return;assignmentOpen.value=true;await nextTick();assignmentDialog.value.showModal();const url=new URL(location.href);url.searchParams.delete('action');history.replaceState(null,'',url)}
+async function openAssignment(){if(assignmentOpen.value||!farm.value||!session.value?.commands?.work||busy.value)return;assignmentOpen.value=true;await nextTick();assignmentDialog.value.showModal();if(props.embedded)emit('navigation-consumed');else{const url=new URL(location.href);url.searchParams.delete('action');history.replaceState(history.state,'',url)}}
 function closeAssignment(){if(!assignmentBusy.value){assignmentDialog.value.close();assignmentOpen.value=false}}
 function cancelAssignment(event){event.preventDefault();closeAssignment()}
 function assignmentClosed(){if(!assignmentDialog.value?.open)assignmentOpen.value=false}
@@ -70,7 +73,7 @@ const actions=computed(()=>[
  ...(session.value?.commands?.work?[{id:'assign',label:'Lập kế hoạch / giao việc',run:openAssignment}]:[]),
  {id:'stock',label:'Quản lý kho',navigation:true,href:'/lotus/kho'},
  {id:'hr',label:'Nhân sự & chấm công',navigation:true,href:'/lotus/nhan-su'}])
-function choose(id){tab.value=id;search.value='';const url=new URL(location.href);url.searchParams.set('tab',id);history.replaceState(null,'',url)}
+function choose(id){tab.value=id;search.value='';const url=new URL(location.href);url.searchParams.set('tab',id);history.replaceState(history.state,'',url)}
 function configure(id){kind.value=id;choose('setup')}
 async function load(){
  const request=++version;error.value='';busy.value=true
@@ -84,7 +87,7 @@ async function load(){
    if(request!==version)return
    overview.value=result
   }else overview.value={tasks:[]}
-  const url=new URL(location.href);url.searchParams.set('farm',farm.value);history.replaceState(null,'',url)
+  const url=new URL(location.href);url.searchParams.set('farm',farm.value);history.replaceState(history.state,'',url)
  }catch(e){if(request===version){error.value=e.message;data.value=null;overview.value={tasks:[]}}}
  finally{if(request===version)busy.value=false}
 }
@@ -126,12 +129,14 @@ async function save(){
  finally{saving.value=false}
 }
 watch(kind,()=>search.value='')
+watch(()=>props.navigationKey,()=>{if(farm.value&&!busy.value&&new URL(location.href).searchParams.get('action')==='assign')openAssignment()},{flush:'post'})
 onMounted(boot)
+onActivated(()=>{if(farm.value&&!busy.value&&new URL(location.href).searchParams.get('action')==='assign')openAssignment()})
 </script>
 <template>
- <div class="stock-shell farm-work-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed}">
-  <aside class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech"></a><p class="stock-nav-label">CÔNG VIỆC VƯỜN</p><nav aria-label="Công việc vườn"><UiButton v-for="t in tabs" :key="t.id" variant="outline" :class="{selected:tab===t.id}" @click="choose(t.id)">{{t.icon}} <span>{{t.label}}</span></UiButton></nav><div class="farm-side-links"><a :href="'/lotus/plan-norm'+(farm?'?farm='+encodeURIComponent(farm):'')">Cấu hình kế hoạch & định mức ↗</a><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/cham-cong">Nhân sự & chấm công ↗</a></div></aside>
-  <main class="stock-main"><WorkspaceBar :user="session?.user" title="Công việc vườn" :actions="actions"/>
+ <div class="stock-shell farm-work-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
+  <aside v-if="!embedded" class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech"></a><p class="stock-nav-label">CÔNG VIỆC VƯỜN</p><nav aria-label="Công việc vườn"><UiButton v-for="t in tabs" :key="t.id" variant="outline" :class="{selected:tab===t.id}" @click="choose(t.id)">{{t.icon}} <span>{{t.label}}</span></UiButton></nav><div class="farm-side-links"><a :href="'/lotus/plan-norm'+(farm?'?farm='+encodeURIComponent(farm):'')">Cấu hình kế hoạch & định mức ↗</a><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/cham-cong">Nhân sự & chấm công ↗</a></div></aside>
+  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="choose($event)"/><WorkspaceBar v-if="!embedded" :user="session?.user" title="Công việc vườn" :actions="actions"/>
    <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <div class="farm-work-scope"><a class="farm-primary-link" href="/work">↗ Mở app công việc điện thoại</a><label>Vườn<SearchSelect v-model="farm" :options="farmOptions" label="Vườn" placeholder="Chọn vườn" :disabled="busy" @change="load"/></label><label v-if="tab!=='setup'">Ngày kế hoạch<UiInput v-model="date" type="date" :disabled="busy" @change="load"/></label><UiButton variant="outline" :disabled="busy" @click="load">{{busy?'Đang tải…':'Làm mới'}}</UiButton><UiButton v-if="tab!=='setup'&&session?.commands?.work" class="farm-primary-link" :disabled="busy||!data" @click="openAssignment">＋ Lập kế hoạch / giao việc</UiButton></div>
    <p v-if="!farm&&!busy" class="farm-empty">Chưa có vườn được phân quyền cho tài khoản này.</p>
@@ -159,7 +164,7 @@ onMounted(boot)
      </section>
     </template>
    </template>
-  </main>
+  </component>
  </div>
  <dialog ref="assignmentDialog" class="farm-assignment" aria-label="Lập kế hoạch và giao việc" @click="!assignmentBusy&&dismissOnBackdrop($event)" @cancel="cancelAssignment" @close="assignmentClosed">
   <header class="farm-assignment-header"><div><h2>Lập kế hoạch / giao việc</h2><p>{{data?.farm_name}}</p></div><UiButton type="button" variant="ghost" :disabled="assignmentBusy" aria-label="Đóng giao việc" @click="closeAssignment">✕</UiButton></header>

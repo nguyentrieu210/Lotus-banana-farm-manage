@@ -157,7 +157,8 @@ class TestWarehouseGuards(unittest.TestCase):
         self.assertEqual(query['filters']['warehouse'],['in',['W']])
         self.assertEqual(query['filters']['item_code'],['in',['I']])
         self.assertEqual(query['filters']['posting_date'],['between',['2026-10-01','2026-10-13']])
-        self.assertEqual(len(result['filter_values']['voucher_no']),65)
+        # Faceted choices: other columns' filters apply, the column's own does not.
+        self.assertEqual([c['value'] for c in result['filter_values']['voucher_no']],['V-60'])
         self.frappe.has_permission.return_value=False
         with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}), self.assertRaises(ValueError):
             self.module.movements('Farm')

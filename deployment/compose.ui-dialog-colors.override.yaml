@@ -1,0 +1,7 @@
+services:
+  backend:
+    image: lotus-ui-dialog-colors:v1-20261019
+  frontend:
+    image: lotus-ui-dialog-colors:v1-20261019
+  queue-short:
+    image: lotus-ui-dialog-colors:v1-20261019

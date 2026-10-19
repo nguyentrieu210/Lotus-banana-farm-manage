@@ -8,7 +8,7 @@ import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import {Badge as UiBadge} from './components/ui/badge'
 import {consoleAPI,call,setCSRF} from './api'
-import {cleanItems,placeOptions} from './assign-model'
+import {cleanItems,placeOptions,assignmentCatalogueReady} from './assign-model'
 
 const props=defineProps({embedded:Boolean,initialFarm:{type:String,default:''},initialDate:{type:String,default:''},initialSession:{type:Object,default:null},portalTarget:{type:Object,default:null}})
 const emit=defineEmits(['busy-change','created'])
@@ -22,7 +22,7 @@ const farmOptions=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,
 const teamOptions=computed(()=>(catalog.value?.teams||[]).map(t=>({value:t.name,label:t.team_name})))
 const workOptions=computed(()=>works.value.map(w=>({value:w.name,label:w.work_name})))
 function modes(name){const w=works.value.find(x=>x.name===name);if(!w)return [];return [...(Number(w.allow_daywork)?[{value:'Daywork',label:'Công nhật'}]:[]),...(Number(w.allow_piecework)?[{value:'Piece',label:'Công khoán'}]:[]),...(Number(w.allow_daywork)&&Number(w.allow_piecework)?[{value:'Both',label:'Cả công nhật và khoán (theo dõi riêng)'}]:[])]}
-const locationOptions=computed(()=>places.value.map(p=>({...p,group:p.value.startsWith('block:')?'Theo lô — tự chia xuống các thửa':'Theo thửa — chỉ giao đúng thửa đó'})).sort((a,b)=>a.group.localeCompare(b.group,'vi')||a.label.localeCompare(b.label,'vi',{numeric:true})))
+const locationOptions=computed(()=>places.value.filter(p=>p.value.startsWith('block:')).map(p=>({...p,subtitle:'Giao việc trực tiếp cho lô'})))
 const activeFarm=computed(()=>session.value?.farms?.find(f=>f.name===farm.value))
 const previewTotal=computed(()=>preview.value?.lines?.length||0)
 const previewWorkdays=computed(()=>preview.value?.lines?.reduce((total,line)=>total+Number(line.required_workdays||0),0)||0)
@@ -98,15 +98,15 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
       <SearchSelect v-model="team" :options="teamOptions" label="Giao cho tổ" placeholder="Chọn tổ" :disabled="busy||submitting" @change="invalidate"/>
      </label>
     </div>
-    <div v-if="!catalog&&farm" class="hint">Đang lấy các lô, thửa và tổ của vườn…</div>
-    <div v-if="catalog&&(!catalog.plots.length||!catalog.teams.length||!catalog.works.length)" class="error">Vườn chưa có đủ lô/thửa, tổ hoặc loại công việc. Cần nạp dữ liệu mẫu hoặc danh mục thật.</div>
+    <div v-if="!catalog&&farm" class="hint">Đang lấy danh sách lô, tổ và công việc…</div>
+    <div v-if="catalog&&(!assignmentCatalogueReady(catalog))" class="error">Vườn chưa có đủ lô, tổ hoặc công việc đang hoạt động. Kiểm tra danh mục trước khi giao việc.</div>
    </section>
    <section v-for="(item,i) in items" :key="i" class="panel fields">
     <div class="job-head"><strong>Việc {{i+1}}</strong><UiButton v-if="items.length>1" type="button" :disabled="busy||submitting" class="remove" @click="remove(i)" :aria-label="'Xóa việc '+(i+1)">Xóa</UiButton></div>
     <label>Vị trí thực hiện
-     <SearchSelect v-model="item.location" :options="locationOptions" label="Vị trí thực hiện" placeholder="Chọn hoặc gõ tìm lô, thửa" :disabled="busy||submitting" @change="invalidate"/>
+     <SearchSelect v-model="item.location" :options="locationOptions" label="Lô thực hiện" placeholder="Chọn hoặc gõ tìm lô" :disabled="busy||submitting" @change="invalidate"/>
     </label>
-    <p v-if="item.location?.startsWith('block:')" class="hint">Lô này gồm nhiều thửa. Số lượng sẽ được chia theo diện tích, có bảng xem trước.</p>
+    <p v-if="item.location?.startsWith('block:')" class="hint">Khối lượng giao được ghi trực tiếp cho lô đã chọn.</p>
     <label>Công việc
      <SearchSelect v-model="item.work_type" :options="workOptions" label="Công việc" placeholder="Chọn hoặc gõ tìm công việc" :disabled="busy||submitting" @change="invalidate"/>
     </label>

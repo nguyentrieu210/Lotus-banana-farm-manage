@@ -1,4 +1,9 @@
 /* Canonical Vant 4 layout for every Lotus mobile PWA. Load after app-specific CSS. */
+/* Match desktop interaction timing while keeping touch controls stable. */
+.lotus-pwa-shell :is(button,a,input,select,textarea){transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease}
+.lotus-pwa-shell :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--lotus-pwa-accent);outline-offset:3px}
+.lotus-pwa-shell :is(button,a):active{filter:brightness(.96)}
+@media(prefers-reduced-motion:reduce){.lotus-pwa-shell *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 :root{--lotus-pwa-accent:#ed633c;--lotus-pwa-bg:#f5f7f6;--lotus-pwa-line:#e6ebe7;--lotus-pwa-ink:#26352e;--lotus-pwa-muted:#69766f;--lotus-pwa-width:600px;--van-nav-bar-height:54px;--van-tabbar-height:60px}
 .lotus-pwa-shell{box-sizing:border-box;min-height:100dvh;background:var(--lotus-pwa-bg);color:var(--lotus-pwa-ink);padding-bottom:calc(76px + env(safe-area-inset-bottom));font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.5}
 .lotus-pwa-shell *{box-sizing:border-box}

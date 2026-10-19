@@ -1,0 +1,15 @@
+const {execFileSync}=require('node:child_process');
+const fs=require('node:fs');
+const path=require('node:path');
+const apk=path.resolve(__dirname,'../lotus_farm/public/downloads/Lotus-HR-Scanner.apk');
+if(!fs.existsSync(apk)||fs.statSync(apk).size<1024*1024)throw Error('APK missing/too small.');
+const cur=JSON.parse(execFileSync('docker',['inspect','lotus-frontend-1'],{encoding:'utf8'}))[0];
+if(cur.Config.Image!=='lotus-hr-native-bridge:v1-20261019')throw Error('Newer Lotus image detected: abort stale deployment');
+const files=cur.Config.Labels['com.docker.compose.project.config_files'].split(',');
+const cwd=cur.Config.Labels['com.docker.compose.project.working_dir'];
+const flags=['compose','-p','lotus',...files.flatMap(f=>['-f',f]),'-f',path.resolve(__dirname,'compose.hr-android-release.override.yaml')];
+const target='lotus-hr-native-download:v1-20261019';
+const cfg=JSON.parse(execFileSync('docker',[...flags,'config','--format','json'],{cwd,encoding:'utf8',maxBuffer:32*1024*1024}));
+if(cfg.services.frontend.image!==target||cfg.services.backend.image!==target)throw Error('Wrong target image');
+console.log('Publish native APK without changing database or background workers.');
+console.log(execFileSync('docker',[...flags,'up','-d','--no-deps','backend','frontend'],{cwd,encoding:'utf8',maxBuffer:1024*1024*5}));

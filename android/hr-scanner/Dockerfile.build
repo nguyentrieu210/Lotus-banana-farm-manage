@@ -1,0 +1,17 @@
+# Reproducible debug Android builder. No keystore, secrets, or personnel data.
+FROM gradle:8.11.1-jdk17
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH="/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:${PATH}"
+RUN mkdir -p /opt/android-sdk/cmdline-tools /tmp/android-cli \
+    && curl -fLsS --retry 3 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/android-sdk.zip \
+    && unzip -q /tmp/android-sdk.zip -d /tmp/android-cli \
+    && mv /tmp/android-cli/cmdline-tools /opt/android-sdk/cmdline-tools/latest \
+    && rm -rf /tmp/android-cli /tmp/android-sdk.zip
+RUN yes | sdkmanager --sdk_root=/opt/android-sdk --licenses >/dev/null || true
+RUN sdkmanager --sdk_root=/opt/android-sdk "platforms;android-35" "build-tools;35.0.0"
+WORKDIR /work
+COPY . /work/
+RUN gradle --no-daemon --stacktrace :app:assembleDebug

@@ -4,6 +4,8 @@ A role answers which actions are allowed; User Permission for Farm/Work Team
 answers where. Full plan documents can contain multiple teams and must never
 be served to a team-scoped account through the mobile APIs.
 """
+import math
+
 import frappe
 from frappe.utils import flt, getdate
 from contextvars import ContextVar
@@ -123,6 +125,9 @@ def validate_capture(farm, values):
             frappe.throw("Lô và phạm vi báo cáo không khớp công việc.", frappe.PermissionError)
     completed = flt(values["completed_qty"])
     days = flt(values["actual_workdays"])
+    # JSON accepts NaN/Infinity and NaN fails every comparison below.
+    if not (math.isfinite(completed) and math.isfinite(days)):
+        frappe.throw("Số lượng hoặc số công không hợp lệ.")
     if completed < 0 or completed > flt(line.planned_qty) + 0.000001 or days < 0:
         frappe.throw("Số lượng hoặc số công không hợp lệ.")
     if completed < flt(line.planned_qty) and not str(values.get("unfinished_reason") or "").strip():

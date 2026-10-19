@@ -1,0 +1,7 @@
+# Keep all Lotus modules intact, only adding the native scanner interface to HR mobile.
+FROM lotus-hr-cccd-fullframe:v3-20261019
+USER root
+COPY --chown=frappe:root deployment/hr-native-staging/assets/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/assets/
+COPY --chown=frappe:root deployment/hr-native-staging/manifest.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/.vite/manifest.json
+COPY --chown=frappe:root frontend/src/components/CccdQrScanner.vue /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/components/CccdQrScanner.vue
+USER frappe

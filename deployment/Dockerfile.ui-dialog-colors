@@ -1,0 +1,5 @@
+FROM lotus-hr-setup:v2-20261019
+USER root
+COPY --chown=frappe:root frontend/src/attio.css frontend/src/forecast-calendar.css frontend/src/forecast-workspace.css frontend/src/hr-operations.css frontend/src/hr.css frontend/src/plan-norm-settings.css /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/
+COPY --chown=frappe:root lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

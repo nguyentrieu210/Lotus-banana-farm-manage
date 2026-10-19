@@ -22,7 +22,8 @@ class TestWebStyles(unittest.TestCase):
             module=importlib.util.module_from_spec(spec)
             with patch.dict(sys.modules,{'frappe':frappe}):
                 spec.loader.exec_module(module)
-            for path,key in [('/lotus/mobile','index.html'),('/lotus/giao-viec','assign.html'),('/lotus/kho','stock.html')]:
+            # One workspace shell serves every /lotus route (docs/WORKSPACE_UI_STANDARD.md).
+            for path,key in [('/lotus/mobile','index.html'),('/lotus/giao-viec','index.html'),('/lotus/kho','index.html')]:
                 with self.subTest(path=path):
                     frappe.request=types.SimpleNamespace(path=path)
                     context=types.SimpleNamespace()

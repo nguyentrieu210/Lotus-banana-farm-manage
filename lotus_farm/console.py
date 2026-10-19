@@ -62,6 +62,8 @@ def bootstrap():
         'qc':has_role('Lotus QC Manager'),
     }
     session['today']=nowdate()
+    session.setdefault('capabilities',{})['user_admin']=has_role('System Manager') and bool(frappe.has_permission('User','read'))
+    session.setdefault('capabilities',{})['hr']=has_role('HR Manager','HR User')
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
     return session
 

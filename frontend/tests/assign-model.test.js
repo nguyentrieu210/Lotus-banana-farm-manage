@@ -1,6 +1,15 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {placeOptions,cleanItems} from '../src/assign-model.js'
+import {placeOptions,cleanItems,assignmentCatalogueReady} from '../src/assign-model.js'
+
+test('current block-only catalogue is ready without a legacy plots array',()=>{
+ const catalog={blocks:[{name:'B1'}],teams:[{name:'T1'}],works:[{name:'W1'}]}
+ assert.equal(assignmentCatalogueReady(catalog),true)
+ assert.equal(assignmentCatalogueReady({...catalog,blocks:[]}),false)
+ assert.equal(assignmentCatalogueReady({...catalog,teams:[]}),false)
+ assert.equal(assignmentCatalogueReady(null),false)
+ assert.equal(placeOptions(catalog)[0].value,'block:B1')
+})
 
 test('one picker shows block OR plot; plots carry parent label',()=>{
  const options=placeOptions({blocks:[{name:'B1',block_code:'A01'}],plots:[{name:'P1',plot_code:'A01-01',farm_block:'B1'}]})

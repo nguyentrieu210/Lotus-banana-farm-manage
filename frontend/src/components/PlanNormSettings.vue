@@ -1,5 +1,7 @@
 <script setup>
 import {computed,nextTick,ref,watch} from 'vue'
+import {unitLabel} from '../units'
+import {dismissOnBackdrop} from '../dialogs'
 import SchemaForm from './SchemaForm.vue'
 import HarvestProfileSettings from './HarvestProfileSettings.vue'
 import {Button as UiButton} from './ui/button'
@@ -166,7 +168,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
      </div>
      <div class="pn-cards">
       <button v-for="r in types" :key="r.name" type="button" class="pn-item" @click="open('Work Type',r)">
-       <span><strong>{{r.work_name}}</strong><small>Năng suất: {{fmt(r.productivity_per_workday)}} {{r.uom}}/công · Giá khoán: {{fmt(r.piecework_rate,0)}} đ/{{r.uom}}</small></span>
+       <span><strong>{{r.work_name}}</strong><small>Năng suất: {{fmt(r.productivity_per_workday)}} {{unitLabel(r.uom)}}/công · Giá khoán: {{fmt(r.piecework_rate,0)}} đ/{{unitLabel(r.uom)}}</small></span>
        <span class="pn-chevron">Sửa ↗</span>
       </button>
      </div>
@@ -217,13 +219,13 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
          <td><strong>{{m.month}}</strong></td><td>{{m.tasks}}</td><td>{{fmt(m.workdays)}}</td><td>{{fmt(m.piecework_cost,0)}}</td><td>{{fmt(m.bunches,0)}}</td><td>{{fmt(m.gross_kg,0)}}</td><td>{{fmt(m.packed_kg,0)}}</td></tr></tbody></table></div>
        <details class="pn-details"><summary>Công việc đến hạn ({{visibleEvents.length}})</summary>
          <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Lô</th><th>Đợt</th><th>Công việc</th><th>Khối lượng</th><th>Số công</th></tr></thead>
-          <tbody><tr v-for="e in visibleEvents" :key="e.key"><td>{{e.date}}</td><td>{{blockNames[e.farm_block]||e.farm_block}}</td><td>{{e.cohort}}</td><td>{{e.work_type}}</td><td>{{fmt(e.qty)}} {{e.uom}}</td><td>{{fmt(e.required_workdays)}}</td></tr></tbody></table></div></details>
+          <tbody><tr v-for="e in visibleEvents" :key="e.key"><td>{{e.date}}</td><td>{{blockNames[e.farm_block]||e.farm_block}}</td><td>{{e.cohort}}</td><td>{{e.work_type}}</td><td>{{fmt(e.qty)}} {{unitLabel(e.uom)}}</td><td>{{fmt(e.required_workdays)}}</td></tr></tbody></table></div></details>
        <details class="pn-details"><summary>Đợt thu hoạch dự kiến ({{visibleHarvests.length}})</summary>
          <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Lô</th><th>Đợt</th><th>Số buồng</th><th>Kg buồng</th><th>Kg đóng gói</th></tr></thead>
           <tbody><tr v-for="h in visibleHarvests" :key="h.cohort+h.date+h.wave"><td>{{h.date}}</td><td>{{blockNames[h.farm_block]||h.farm_block}}</td><td>{{h.cohort}}</td><td>{{fmt(h.bunches,0)}}</td><td>{{fmt(h.gross_kg,0)}}</td><td>{{fmt(h.packed_kg,0)}}</td></tr></tbody></table></div></details>
        <details class="pn-details"><summary>Vật tư cần dùng ({{summary.materials.length}} dòng tính)</summary>
          <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Mã vật tư</th><th>Số lượng</th><th>Đơn vị</th></tr></thead><tbody>
-          <tr v-for="(m,i) in summary.materials" :key="i"><td>{{m.date}}</td><td>{{m.item}}</td><td>{{fmt(m.quantity,3)}}</td><td>{{m.uom}}</td></tr></tbody></table></div></details>
+          <tr v-for="(m,i) in summary.materials" :key="i"><td>{{m.date}}</td><td>{{m.item}}</td><td>{{fmt(m.quantity,3)}}</td><td>{{unitLabel(m.uom)}}</td></tr></tbody></table></div></details>
        <div v-if="summary.warnings?.length" class="pn-warning">
         <button type="button" @click="showWarnings=!showWarnings">⚠ Có {{summary.warnings.length}} vấn đề cần kiểm tra {{showWarnings?'⌃':'⌄'}}</button>
         <ul v-if="showWarnings"><li v-for="w in summary.warnings" :key="w">{{w}}</li></ul>
@@ -233,7 +235,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     </div>
    </template>
   </template>
-  <Teleport to="body"><dialog ref="dialog" class="pn-dialog" @cancel="saving&&$event.preventDefault()">
+  <Teleport to="body"><dialog ref="dialog" class="pn-dialog" :aria-label="modalTitle" @click="dismissOnBackdrop($event,saving)" @cancel="saving&&$event.preventDefault()">
     <form v-if="editor&&schema" @submit.prevent="save">
       <header><div><h2>{{modalTitle}}</h2><small>{{editor.name?'Xem hoặc cập nhật bản ghi':'Tạo cấu hình mới'}} · {{farm}}</small></div>
        <UiButton type="button" variant="outline" :disabled="saving" @click="dialog.close()">Đóng ✕</UiButton></header>

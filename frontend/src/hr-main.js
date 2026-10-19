@@ -10,3 +10,4 @@ import './desktop-system.css'
 import './desktop-components.css'
 import './desktop-shell.css'
 createApp(HrApp).mount('#app')
+import './workspace-experience.css'

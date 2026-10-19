@@ -1,15 +1,17 @@
 <script setup>
 import {computed,onMounted,reactive,ref,watch} from 'vue'
 import {call} from '../api'
+import {stateLabel} from '../labels'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
 import '../hr-operations.css'
+import WorkspaceModal from './WorkspaceModal.vue'
 
 const props=defineProps({company:{type:String,default:''},manager:Boolean})
-const tabs=[{id:'organization',label:'Sơ đồ tổ chức'},{id:'import',label:'Nhập Excel'},{id:'devices',label:'Máy chấm công'},{id:'logs',label:'Log máy'}]
+const tabs=[{id:'organization',label:'Sơ đồ tổ chức'},{id:'import',label:'Nhập Excel'},{id:'devices',label:'Máy chấm công'},{id:'logs',label:'Lượt chấm công'}]
 const kinds=['Department','Designation','Work Team','Employee','Staff Assignment','Shift Type','Shift Assignment','Device Mapping','Checkin CSV']
-const kindLabels={'Department':'Bộ phận','Designation':'Chức danh','Work Team':'Đội/tổ','Employee':'Nhân viên','Staff Assignment':'Chức vụ / phân công','Shift Type':'Loại ca','Shift Assignment':'Xếp ca nhân viên','Device Mapping':'Mã máy ↔ nhân viên','Checkin CSV':'Log quẹt máy'}
+const kindLabels={'Department':'Bộ phận','Designation':'Chức danh','Work Team':'Đội/tổ','Employee':'Nhân viên','Staff Assignment':'Chức vụ / phân công','Shift Type':'Loại ca','Shift Assignment':'Xếp ca nhân viên','Device Mapping':'Mã máy ↔ nhân viên','Checkin CSV':'Dữ liệu quẹt máy'}
 const columns={
  Department:['department_name','parent_department'],Designation:['designation_name'],
  'Work Team':['farm','team_code','team_name'],
@@ -21,6 +23,7 @@ const columns={
  'Checkin CSV':['device','device_user_id','punched_at','log_type','source_event_id']
 }
 const api=(method,args={},post=false)=>call('lotus_farm.hr_operations.'+method,args,post)
+const editAssignment=ref(false),editDevice=ref(false)
 const active=ref('organization'),farm=ref(''),busy=ref(false),error=ref(''),notice=ref('')
 const org=ref(null),hardware=ref(null),kind=ref('Designation'),uploadName=ref('')
 const uploadData=ref([]),preview=ref(null),selected=ref([])
@@ -94,7 +97,7 @@ async function saveDevice(){
  busy.value=true;error.value=''
  try{
   const r=await api('save_device',{company:props.company,values:{...machine}},true)
-  notice.value='Đã lưu máy '+r.name+' (chưa bật kết nối thiết bị nếu chưa cấu hình giao thức).'
+  editDevice.value=false;notice.value='Đã lưu máy '+r.name+' (chưa bật kết nối thiết bị nếu chưa cấu hình giao thức).'
   Object.assign(machine,{device_code:'',device_name:'',model:'',serial_number:'',connection_mode:'File CSV',timezone:'Asia/Ho_Chi_Minh',active:1,farm:farm.value,notes:''})
   await refresh()
  }catch(e){error.value=e.message}finally{busy.value=false}
@@ -104,7 +107,7 @@ async function saveAssignment(){
  busy.value=true;error.value=''
  try{
   await call('lotus_farm.hr_setup.save_assignment',{company:props.company,values:{...assignment}},true)
-  notice.value='Đã ghi lịch sử phân công. Nếu đổi vườn chính thức, phải làm điều chuyển trong HRMS.'
+  editAssignment.value=false;notice.value='Đã ghi lịch sử phân công. Nếu đổi vườn chính thức, phải làm điều chuyển trong HRMS.'
   Object.assign(assignment,{employee:'',farm:farm.value,department:'',designation:'',work_team:'',role_title:'',valid_from:'',valid_to:'',approver:'',notes:''})
   await refresh()
  }catch(e){error.value=e.message}finally{busy.value=false}
@@ -150,7 +153,7 @@ async function sync(){
   <section class="hr-ops-panel">
    <h3>Lịch sử phân công nhân viên</h3>
    <p>Dùng để biết một nhân viên thuộc tổ nào trong từng giai đoạn. Điều chuyển chính thức và hợp đồng vẫn thực hiện trong HRMS.</p>
-   <form v-if="manager" class="hr-ops-form" @submit.prevent="saveAssignment">
+   <UiButton v-if="manager" type="button" @click="editAssignment=true">＋ Thêm phân công</UiButton><WorkspaceModal v-if="manager" v-model="editAssignment" title="Phân công nhân viên" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveAssignment">
     <label>Nhân viên<UiSelect v-model="assignment.employee" required><option value="">Chọn nhân viên</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
     <label>Vườn<UiSelect v-model="assignment.farm" required><option value="">Chọn vườn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
     <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{d.department_name}}</option></UiSelect></label>
@@ -161,7 +164,7 @@ async function sync(){
     <label>Ngày kết thúc (nếu có)<UiInput type="date" v-model="assignment.valid_to"/></label>
     <label>Cấp trên<UiSelect v-model="assignment.approver"><option value="">Chưa chọn</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}}</option></UiSelect></label>
     <UiButton type="submit" :disabled="busy">Lưu phân công</UiButton>
-   </form>
+   </form></WorkspaceModal>
    <div class="hr-ops-scroll"><table><thead><tr><th>Nhân viên</th><th>Vườn</th><th>Tổ/đội</th><th>Chức vụ</th><th>Từ ngày</th><th>Đến ngày</th></tr></thead>
     <tbody><tr v-for="a in org?.assignments||[]" :key="a.name"><td>{{org.employees.find(e=>e.name===a.employee)?.employee_name||a.employee}}</td><td>{{a.farm}}</td><td>{{org.teams.find(t=>t.name===a.work_team)?.team_name||'—'}}</td><td>{{a.role_title||'—'}}</td><td>{{a.valid_from}}</td><td>{{a.valid_to||'Hiện tại'}}</td></tr></tbody></table></div>
   </section>
@@ -189,19 +192,19 @@ async function sync(){
  </template>
  <template v-else-if="active==='devices'">
   <section class="hr-ops-panel"><h3>Danh sách máy chấm công</h3><p>Mỗi máy có mã riêng. Muốn nối trực tiếp cần xác định model, hãng và giao thức; hiện hỗ trợ nhập dữ liệu máy qua Excel/CSV.</p>
-   <div class="hr-ops-scroll"><table><thead><tr><th>Mã máy</th><th>Tên</th><th>Vườn</th><th>Model</th><th>Kiểu kết nối</th><th>Trạng thái</th></tr></thead>
+   <div class="hr-ops-scroll"><table><thead><tr><th>Mã máy</th><th>Tên</th><th>Vườn</th><th>Dòng máy</th><th>Kiểu kết nối</th><th>Trạng thái</th></tr></thead>
      <tbody><tr v-for="m in hardware?.machines||[]" :key="m.name"><td>{{m.device_code}}</td><td>{{m.device_name}}</td><td>{{m.farm}}</td><td>{{m.model||'Chưa rõ'}}</td><td>{{m.connection_mode}}</td><td>{{m.active?'Đang dùng':'Tắt'}}</td></tr></tbody></table></div>
-   <h3 v-if="manager">Khai báo máy</h3>
-   <form v-if="manager" class="hr-ops-form" @submit.prevent="saveDevice">
+   <UiButton v-if="manager" type="button" @click="editDevice=true">＋ Khai báo máy</UiButton>
+   <WorkspaceModal v-if="manager" v-model="editDevice" title="Khai báo máy chấm công" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveDevice">
     <label>Vườn<UiSelect v-model="machine.farm" required><option value="">Chọn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
     <label>Mã máy<UiInput v-model="machine.device_code" required placeholder="VD: ATT-A-01"/></label>
     <label>Tên máy<UiInput v-model="machine.device_name" required placeholder="VD: Cổng đội khu A"/></label>
-    <label>Model / hãng<UiInput v-model="machine.model" placeholder="Mã chính xác trên tem máy"/></label>
+    <label>Dòng máy / hãng<UiInput v-model="machine.model" placeholder="Mã chính xác trên tem máy"/></label>
     <label>Serial máy<UiInput v-model="machine.serial_number"/></label>
     <label>Cách kết nối<UiSelect v-model="machine.connection_mode"><option v-for="mode in ['File CSV','ADMS','LAN SDK','Vendor Cloud']" :key="mode">{{mode}}</option></UiSelect></label>
     <label>Múi giờ<UiInput v-model="machine.timezone" readonly/></label>
     <UiButton type="submit" :disabled="busy">Lưu máy</UiButton>
-   </form>
+   </form></WorkspaceModal>
    <p class="hr-ops-tip">ADMS, LAN SDK hoặc Cloud là loại giao thức khai báo, chưa phải kết nối đang hoạt động. Không tự mở cổng mạng hoặc tải dữ liệu sinh trắc học.</p>
   </section>
  </template>
@@ -212,10 +215,10 @@ async function sync(){
    <div class="hr-ops-actions"><a href="/app/employee-checkin">Xem log HRMS ↗</a><a href="/app/shift-assignment">Xem lịch ca ↗</a><a href="/app/attendance">Chấm công đã duyệt ↗</a></div>
    <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span></div>
    <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
-   <div class="hr-ops-scroll"><table><thead><tr><th>Chọn</th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>IN/OUT</th><th>Trạng thái</th></tr></thead>
+   <div class="hr-ops-scroll"><table><thead><tr><th>Chọn</th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>Vào / Ra</th><th>Trạng thái</th></tr></thead>
     <tbody><tr v-for="p in hardware?.punches||[]" :key="p.name">
      <td><input v-if="manager&&p.state!=='Synced'" type="checkbox" :value="p.name" v-model="selected"/></td>
-     <td>{{p.punched_at}}</td><td>{{p.device}}</td><td>{{p.device_user_id}}</td><td>{{p.employee||'Chưa ghép'}}</td><td>{{p.log_type||'Chưa xác định'}}</td><td>{{p.state}}</td>
+     <td>{{p.punched_at}}</td><td>{{p.device}}</td><td>{{p.device_user_id}}</td><td>{{p.employee||'Chưa ghép'}}</td><td>{{stateLabel(p.log_type||'Unknown')}}</td><td>{{stateLabel(p.state)}}</td>
     </tr></tbody></table></div>
    <p class="hr-ops-tip">Nếu chưa có log, vào tab Nhập Excel → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>

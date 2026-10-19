@@ -17,3 +17,4 @@ import './desktop-shell.css'
 createApp(StockApp).mount('#app')
 import './register-worker'
 import './register-warehouse-worker'
+import './workspace-experience.css'

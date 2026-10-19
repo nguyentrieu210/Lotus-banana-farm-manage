@@ -11,3 +11,4 @@ import './desktop-components.css'
 import './desktop-shell.css'
 createApp(TimekeepingApp).mount('#app')
 import './register-worker'
+import './workspace-experience.css'

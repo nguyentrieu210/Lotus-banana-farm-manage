@@ -1,0 +1,5 @@
+# Only add the built Android testing APK; leave Lotus services and database unchanged.
+FROM lotus-hr-native-bridge:v1-20261019
+USER root
+COPY --chown=frappe:root lotus_farm/public/downloads/Lotus-HR-Scanner.apk /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/Lotus-HR-Scanner.apk
+USER frappe

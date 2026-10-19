@@ -1,7 +1,9 @@
 <script setup>
+const props=defineProps({embedded:Boolean,navigationKey:String})
 import {unitLabel,stockItemUomOptions} from './units'
 import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceBar from './components/WorkspaceBar.vue'
+import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import LotusIcon from './components/LotusIcon.vue'
 import {useDesktopWorkspace} from './use-desktop-workspace'
 import {sidebarCollapsed} from './workspace'
@@ -19,7 +21,7 @@ import {Textarea as UiTextarea} from './components/ui/textarea'
 import UiSelect from './components/ui/select/Select.vue'
 
 const masterAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_masters.'+name,args,write)
-const {desktop,density,gridDensity,setDensity}=useDesktopWorkspace()
+const {desktop,density,gridDensity,setDensity}=useDesktopWorkspace({embedded:props.embedded})
 provide('lotusDesktopDensity',gridDensity)
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const session=ref(null),data=ref(null),company=ref(''),warehouse=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),tab=ref('stock')
@@ -267,15 +269,15 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 </script>
 
 <template>
- <div class="stock-shell lotus-ui" :class="{'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
+ <div class="stock-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
   <WorkspaceBar v-if="desktop" :branded="true" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
-  <aside class="stock-sidebar">
-   <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="707" height="411"></a>
+  <aside v-if="!embedded" class="stock-sidebar">
+   <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech" width="641" height="213"></a>
    <p class="stock-nav-label">QUẢN LÝ KHO</p>
    <nav aria-label="Quản lý kho"><UiButton v-for="(label,id) in stockTabs" :key="id" variant="outline" :title="label" :aria-label="label" :aria-current="tab===id?'page':undefined" :class="{selected:tab===id}" @click="tab=id"><LotusIcon :name="desktopNavIcons[id]"/><span>{{label}}</span></UiButton></nav>
    <div class="stock-sidebar-bottom"><p v-if="desktop" class="stock-nav-label">KHÔNG GIAN LOTUS</p><a v-if="desktop" href="/lotus/cong-viec"><LotusIcon name="leaf"/>Công việc vườn</a><a v-if="desktop" href="/lotus/cham-cong"><LotusIcon name="people"/>Chấm công & nhân sự</a><a href="/lotus/mobile">← Về Lotus Farm</a><small>{{session?.user||'Đang kết nối…'}}</small></div>
   </aside>
-  <main class="stock-main"><WarehouseInstall v-if="warehousePwa"/><WorkspaceBar v-if="!desktop" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
+  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="Object.entries(stockTabs).map(([id,label])=>({id,label}))" :model-value="tab" @update:model-value="tab=$event"/><WarehouseInstall v-if="warehousePwa"/><WorkspaceBar v-if="!desktop&&!embedded" :user="session?.user" :title="stockTabs[tab]" :actions="workspaceActions" />
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
    <p v-if="saved" class="stock-success" role="status">{{saved.master?"Đã lưu danh mục":"Đã lưu nháp"}} <strong>{{saved.name}}</strong>. <UiButton variant="ghost" v-if="!saved.master" class="stock-text-button" @click="openDocument(saved.doctype,saved.name)">Xem phiếu →</UiButton></p>
@@ -328,7 +330,7 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
     <button v-for="(label,id) in {stock:'Tồn kho',buying:'Mua hàng',planning:'Nhu cầu',history:'Phiếu',movements:'Lịch sử',setup:'Thiết lập'}"
       :key="id" type="button" :class="{active:tab===id}" @click="tab=id">{{label}}</button>
    </nav>
-  </main>
+  </component>
   <dialog @click="dismissOnBackdrop($event,saving)" ref="dialog" class="stock-dialog" @cancel="error=''">
    <form @submit.prevent="save"><header><div><h2>{{kinds[form.kind]}}</h2></div><UiButton variant="outline" type="button" class="stock-button" aria-label="Đóng" :disabled="saving" @click="dialog.close()">✕</UiButton></header><p v-if="form.kind==='receipt'" class="stock-form-help">Chọn kho nhận, vật tư và số lượng thực nhận. Có thể nhập đơn giá theo kg, bao hoặc can nếu đã khai báo quy đổi.</p><p v-if="error" class="stock-error" role="alert">{{error}}</p>
     <section v-if="form.kind==='issue'" class="stock-issue-picker">

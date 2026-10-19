@@ -10,3 +10,4 @@ import './desktop-components.css'
 import './desktop-shell.css'
 createApp(AssignApp).mount('#app')
 import './register-worker'
+import './workspace-experience.css'

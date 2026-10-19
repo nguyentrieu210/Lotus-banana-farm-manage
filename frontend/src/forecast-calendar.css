@@ -1,5 +1,5 @@
 .calendar-demo-warning{padding:12px 15px;border:1px solid #dfc1aa;border-radius:9px;background:#fffaee;color:#8f401e;font-size:12px;line-height:1.5}.calendar-demo-warning strong{font-weight:750;letter-spacing:.025em}
-.calendar-board{display:grid;gap:14px;min-width:0;padding:0 0 20px;color:var(--foreground,#202c3b)}
+.calendar-board{display:grid;gap:14px;min-width:0;padding:0 0 20px;color:var(--lotus-text,#202c3b)}
 .calendar-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .calendar-head h2{font-size:20px;margin:0 0 4px;font-weight:700}
 .calendar-head p{color:#697a8d;font-size:12px;margin:0;line-height:1.5}

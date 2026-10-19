@@ -1,12 +1,15 @@
 // Mobile navigation is derived from real Frappe permissions, not the displayed job title.
 // A user with multiple roles receives the union of the work they can actually access.
 const items = [
+  {group:'Quản trị',id:'users',label:'Người dùng & phân quyền',detail:'Tài khoản, vai trò và phạm vi vườn',symbol:'♙',href:'/lotus/nguoi-dung',capability:'user_admin'},
+  {group:'Nhân sự và chấm công',id:'hr',label:'Hồ sơ nhân sự',detail:'Nhân viên, tuyển dụng và tiếp nhận',symbol:'♙',href:'/lotus/nhan-su',capability:'hr'},
+  {group:'Nhân sự và chấm công',id:'attendance',label:'Chấm công',detail:'Công ngày, đội khoán và bảng công tháng',symbol:'◷',href:'/lotus/cham-cong',capability:'attendance'},
   {group:'Công việc ngoài Vườn',id:'farm-work',label:'Công việc ngoài Vườn',detail:'Giao việc, báo kết quả trên điện thoại',symbol:'☑',href:'/work',module:'work'},
   {group:'Xưởng và vật tư',id:'stock',label:'Quản lý kho',detail:'Tồn, nhập xuất và kiểm kê',symbol:'▦',href:'/lotus/kho',capability:'stock'},
   {group:'Công việc ngoài Vườn',id:'assign',label:'Giao việc cho tổ',detail:'Chọn lô lớn và công việc',symbol:'↗',href:'/work?action=assign',module:'work',command:'work'},
   {group:'Công việc ngoài Vườn',id:'work',label:'Xem công việc',detail:'Kế hoạch và tiến độ hôm nay',symbol:'☑',path:'work',module:'work'},
   {group:'Công việc ngoài Vườn',id:'actual',label:'Báo kết quả',detail:'Ghi số lượng đã làm',symbol:'✓',path:'work',module:'work',doctype:'Daily Work Result',create:'Daily Work Result'},
-  {group:'Công việc ngoài Vườn',id:'labor',label:'Nhân công',detail:'Bố trí và chấm công',symbol:'♙',path:'labor',module:'labor'},
+  {group:'Nhân sự và chấm công',id:'labor',label:'Bố trí nhân công',detail:'Phân bổ lao động theo công việc',symbol:'♙',path:'labor',module:'labor'},
   {group:'Công việc ngoài Vườn',id:'disease',label:'Kiểm tra sâu bệnh',detail:'Ghi nhận tình hình vườn',symbol:'✿',path:'work',module:'work',doctype:'Disease Observation',create:'Disease Observation'},
   {group:'Công việc ngoài Vườn',id:'losses',label:'Hủy buồng',detail:'Ghi nhận hủy và tổn thất',symbol:'!',path:'losses',module:'losses'},
   {group:'Công việc ngoài Vườn',id:'fruit',label:'Đo trái',detail:'Theo dõi mẫu đo',symbol:'◉',path:'measurements',module:'measurements'},
@@ -17,6 +20,7 @@ const items = [
   {group:'Xưởng và vật tư',id:'materials',label:'Vật tư',detail:'Nhu cầu và sử dụng vật tư',symbol:'▤',path:'materials',module:'materials'},
   {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Lô, thửa và vụ chuối',symbol:'⌂',path:'farms',module:'farms'},
   {group:'Điều hành và báo cáo',id:'plans',label:'Kế hoạch',detail:'Lập và theo dõi kế hoạch',symbol:'☷',path:'plans',module:'plans'},
+  {group:'Điều hành và báo cáo',id:'plan-norm',label:'Kế hoạch & định mức',detail:'Chu kỳ cây, lịch công việc và đơn giá',symbol:'⚙',path:'plan-norm',module:'plans'},
   {group:'Điều hành và báo cáo',id:'forecast',label:'Dự thu',detail:'Sản lượng dự kiến',symbol:'▥',path:'forecast',module:'forecast'},
   {group:'Điều hành và báo cáo',id:'close',label:'Chốt ngày',detail:'Kiểm tra kết quả cuối ngày',symbol:'✓',path:'daily-close',module:'daily-close'},
   {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',symbol:'▦',path:'reports',capability:'home'},
@@ -24,7 +28,7 @@ const items = [
 ]
 
 export function hasMobileAccess(session) {
-  return !!session && (Object.values(session.modules || {}).some(types => Array.isArray(types) && types.length) || !!session.capabilities?.field || !!session.capabilities?.stock)
+  return !!session && (Object.values(session.modules || {}).some(types => Array.isArray(types) && types.length) || !!session.capabilities?.field || !!session.capabilities?.stock || !!session.capabilities?.hr || !!session.capabilities?.attendance || !!session.capabilities?.user_admin)
 }
 
 export function mobileActions(session) {

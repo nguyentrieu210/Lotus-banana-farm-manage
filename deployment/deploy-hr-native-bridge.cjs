@@ -1,0 +1,13 @@
+const {execFileSync}=require('node:child_process');
+const path=require('node:path');
+const current=JSON.parse(execFileSync('docker',['inspect','lotus-frontend-1'],{encoding:'utf8'}))[0];
+const files=current.Config.Labels['com.docker.compose.project.config_files'].split(',');
+const expectedImage='lotus-hr-cccd-fullframe:v3-20261019';
+if(current.Config.Image!==expectedImage)throw Error('Lotus runtime changed; abort to avoid overwriting newer work.');
+const cwd=current.Config.Labels['com.docker.compose.project.working_dir'];
+const flags=['compose','-p','lotus',...files.flatMap(f=>['-f',f]),'-f',path.resolve(__dirname,'compose.hr-native-bridge.override.yaml')];
+const cfg=JSON.parse(execFileSync('docker',[...flags,'config','--format','json'],{cwd,encoding:'utf8',maxBuffer:32*1024*1024}));
+const target='lotus-hr-native-bridge:v1-20261019';
+if(cfg.services.backend.image!==target||cfg.services.frontend.image!==target)throw Error('Wrong image in compose');
+console.log('Update HR bridge on backend/frontend only');
+console.log(execFileSync('docker',[...flags,'up','-d','--no-deps','backend','frontend'],{cwd,encoding:'utf8',maxBuffer:1024*1024*5}));

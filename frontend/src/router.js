@@ -1,12 +1,14 @@
 import {createRouter,createWebHistory} from 'vue-router'
-import {pages,moduleKey} from './domain'
+import {pages,moduleKey,pageRoutes} from './domain'
 import {useSession} from './store'
 import {hasMobileAccess} from './mobile-menu'
+import {workspaceModules} from './workspace-routes'
 const placeholder={template:'<span />'}
 export function permittedRoute(path,session){
  const page=path.replace(/^\//,'')
  if(page==='denied')return true
  if(page==='mobile')return hasMobileAccess(session)
+ if(workspaceModules[page]){const module=workspaceModules[page];return module.capability?!!session.capabilities?.[module.capability]:!!session.modules?.[module.module]?.length}
  if(['today','reports'].includes(page))return !!session.capabilities.home
  if(/^(farms|farm|blocks|block|plots|plot|cycles|cycle)\//.test(page))return !!session.modules.farms?.length
  const key=moduleKey(page)
@@ -14,7 +16,7 @@ export function permittedRoute(path,session){
 }
 export function routeScope(route){const q={...route.query};for(const key of ['farm','block','plot','cycle'])if(route.params?.[key])q[key]=String(route.params[key]);return q}
 export function createLotusRouter(){
- const routes=[{path:'/',redirect:'/mobile'},...pages.map(([path])=>({path:'/'+path,name:moduleKey(path),component:placeholder})),
+ const routes=[{path:'/',redirect:'/mobile'},{path:'/giao-viec',redirect:to=>({path:'/cong-viec',query:{...to.query,action:'assign'}})},...pageRoutes(placeholder),
  ...[['farm','farms'],['block','blocks'],['plot','plots'],['cycle','cycles']].map(([name,path])=>({path:'/'+path+'/:'+name,name,alias:'/'+name+'/:'+name,component:placeholder})),
  {path:'/denied',name:'denied',component:placeholder},{path:'/:pathMatch(.*)*',redirect:'/denied'}]
  const router=createRouter({history:createWebHistory('/lotus'),routes})

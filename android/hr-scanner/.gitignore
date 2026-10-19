@@ -1,0 +1,7 @@
+# Generated APKs, SDK files and build logs
+.gradle/
+app/build/
+build/
+*.apk
+build-native.log
+local.properties

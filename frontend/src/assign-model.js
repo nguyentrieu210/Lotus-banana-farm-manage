@@ -1,4 +1,5 @@
 /** Pure mobile form helpers; backend independently validates every input. */
+export function assignmentCatalogueReady(catalog){return !!(catalog?.blocks?.length&&catalog?.teams?.length&&catalog?.works?.length)}
 export function placeOptions(catalog){
  const blocks=(catalog.blocks||[]).map(b=>({
   value:'block:'+b.name,label:'Lô '+(b.block_code||b.block_name||b.name),

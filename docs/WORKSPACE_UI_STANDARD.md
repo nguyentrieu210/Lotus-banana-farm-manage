@@ -1,0 +1,17 @@
+# Khung giao diện Lotus
+
+Từ 19/10/2026, các trang `/lotus/*` dùng một ứng dụng và một khung điều hướng trong `App.vue`. Trang chủ, hồ sơ nhân sự, chấm công, Kho và công việc giữ cùng thanh đầu trang, thanh bên, màu sắc và vùng cuộn. Các PWA `/warehouse`, `/buying`, `/work`, `/hr-mobile` tiếp tục dùng khung Vant riêng theo chuẩn điện thoại.
+
+- Trên máy tính: thanh đầu trang 60px, thanh bên 224px, thanh bên thu gọn 64px. Vùng nội dung có chỗ dành cố định cho thanh cuộn để tránh xê dịch ngang.
+- Phân hệ mới khai báo trong `workspace-routes.js`, `domain.js` và danh sách component của `App.vue`. Server phục vụ `index.html` và service worker cũng dùng cùng khung khi ngoại tuyến.
+- Chuyển màn nội bộ qua Vue Router. `WorkspaceBar.navigate` và bộ xử lý liên kết của `App.vue` tiếp nhận các đường dẫn Lotus; không dùng `location.assign` để chuyển giữa các phân hệ trong khung.
+- Phân hệ nhúng không tạo thêm thanh đầu trang hay thanh bên. Các tab của phân hệ nằm ngang trong nội dung. `KeepAlive` giữ trạng thái biểu mẫu chưa lưu khi chuyển qua lại; không tự gửi biểu mẫu khi chuyển màn.
+- Màu, khoảng cách, focus và chuyển động dùng `workspace-experience.css`; tôn trọng `prefers-reduced-motion`. Không thêm hiệu ứng dịch chuyển vị trí cho toàn bộ nội dung khi đổi trang.
+- Nhãn hiển thị dùng `labels.js` và các từ điển tiếng Việt. Giữ nguyên mã trường, lựa chọn lưu trong ERP và mã chứng từ. `SchemaForm` dịch cả lựa chọn đang sửa và giá trị chỉ đọc.
+- Kiểm tra: toàn bộ frontend unit tests, build, phân giải từng tuyến; chuyển Trang chủ → Nhân sự → Chấm công → Kho → Công việc và quay lại; kiểm tra khung không đổi vị trí, không có thanh điều hướng trùng và nội dung chưa lưu còn nguyên. Kiểm tra 320px/390px và các PWA theo `MOBILE_UI_STANDARD.md` khi sửa thành phần chung.
+
+Danh sách mới dùng WorkspaceListToolbar, WorkspaceSummaryStrip và WorkspaceTabs; tránh thêm thẻ KPI lớn hoặc tiêu đề bảng lặp. Form thêm/sửa độc lập dùng WorkspaceModal; tác vụ nhập dữ liệu theo nhiều bước có thể giữ workspace riêng. Modal con phải nằm trong top layer bằng dialog native để vẫn tương tác được. Logo dùng lotus-agritech-header-v2.png đã cắt khoảng trắng.
+
+Người dùng & phân quyền là phân hệ được bảo vệ bởi capability user_admin từ server. Không suy ra quyền quản trị tài khoản từ vai trò HR, chức danh hay quyền nghiệp vụ vườn. User và User Permission được lưu chung transaction, kiểm tra phiên bản hồ sơ/phạm vi, giữ các cấu hình ngoài phạm vi màn hình này.
+
+Toolbar danh sách phân nhóm filters/search/refresh/actions. Filter mặc định 180px; không thả select w-full trực tiếp thành flex item của toolbar. Search basis 360px, min 280px, max 420px; nút/trường 36px, refresh min 88px không xuống dòng; gap 10px. Khoảng cách toolbar–bảng và giữa panel 12px. Hai bảng Người dùng/Nhân sự dùng workspace-record-list với col trạng thái 160px, thao tác 144px. CSS HR tải muộn phải giữ cùng spacing; không khắc phục bằng thay đổi global UiSelect/UiButton gây ảnh hưởng các form khác.
