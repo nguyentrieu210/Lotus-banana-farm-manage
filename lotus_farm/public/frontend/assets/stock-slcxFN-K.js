@@ -1,1 +1,0 @@
-import{s as e}from"./api-96FY2n7-.js";import"./workspace-experience-cInleM7p.js";import"./stock-attio-DWwMxjc1.js";/* empty css                              */import"./register-worker-CKMNsoSQ.js";import{n as t}from"./StockApp-PxY_DoxZ.js";import"./register-warehouse-worker-ClozO1u8.js";e(t).mount(`#app`);
