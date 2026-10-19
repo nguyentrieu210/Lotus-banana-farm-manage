@@ -1,5 +1,6 @@
 <script setup>
 const props=defineProps({embedded:Boolean,navigationKey:String})
+import {formatDate} from './format'
 import {unitLabel,stockItemUomOptions} from './units'
 import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from './stock-filter-state'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
@@ -193,7 +194,7 @@ async function save(){
  finally{saving.value=false}
 }
 const status=s=>['Nháp','Đã ghi sổ','Đã hủy'][s]||s
-const dateLabel=value=>/^\d{4}-\d{2}-\d{2}$/.test(String(value||''))?String(value).split('-').reverse().join('/'):value||'—'
+const dateLabel=value=>formatDate(value)
 const type=t=>({'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói','Opening Stock':'Tồn đầu kỳ','Stock Reconciliation':'Kiểm kê'})[t]||t
 async function openMaster(kind){
  if(kind==='warehouse'){try{await loadHREmployees()}catch(e){error.value=e.message;return}}

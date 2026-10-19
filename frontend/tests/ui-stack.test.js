@@ -48,7 +48,9 @@ test('main pages use shadcn-vue Button and still keep Frappe API provider',()=>{
     assert.match(source,/import \{Button as UiButton\}/)
     assert.equal((source.match(/<UiButton\b/g)||[]).length,(source.match(/<\/UiButton>/g)||[]).length)
   }
-  assert.match(main,/<FrappeUIProvider>/)
+  // frappe-ui components are not used; only its Tailwind preset remains (its 880 KB stylesheet is no longer loaded)
+  assert.doesNotMatch(main,/FrappeUIProvider/)
+  assert.doesNotMatch(read('src/style.css'),/frappe-ui\/style\.css/)
   assert.match(read('src/main.js'),/import '\.\/shadcn\.css'/)
 })
 test('shared form inputs preserve number and text model types',()=>{
@@ -66,7 +68,10 @@ test('shared form inputs preserve number and text model types',()=>{
 test('shared grid keeps open-row event and mobile record view',()=>{
   const source=read('src/components/OpsList.vue')
   assert.match(source,/from 'ag-grid-vue3'/)
-  assert.match(source,/AllCommunityModule/)
+  // Only the AG Grid modules Lotus uses are registered, once, in grid-modules.js
+  assert.match(source,/import '\.\.\/grid-modules\.js'/)
+  assert.match(read('src/grid-modules.js'),/ClientSideRowModelModule/)
+  assert.doesNotMatch(read('src/grid-modules.js'),/import \{[^}]*AllCommunityModule/)
   assert.match(source,/@row-clicked="onRowClicked"/)
   assert.match(source,/emit\('open',event\.data\)/)
   assert.match(source,/lotus-mobile-records/)

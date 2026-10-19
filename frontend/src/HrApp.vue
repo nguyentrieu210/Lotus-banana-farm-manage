@@ -14,6 +14,7 @@ import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
 import {Textarea as UiTextarea} from './components/ui/textarea'
+import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
 import {stateLabel} from './labels'
@@ -131,6 +132,8 @@ async function seed(){if(!await askConfirm('Tạo các chức danh Lotus chưa c
   saving.value=true;error.value=''
   try{const r=await api('seed_designations',{company:company.value},true);notice.value='Đã tạo thêm '+r.count+' chức danh.';await refresh()}catch(e){error.value=e.message}finally{saving.value=false}}
 onMounted(init)
+// Success messages show as toasts (errors stay inline next to the form).
+useNoticeToast(notice)
 </script>
 
 <template>
@@ -138,7 +141,7 @@ onMounted(init)
   
   <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/>
     
-    <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
+    <p v-if="error" class="stock-error" role="alert">{{error}}</p>
     <WorkspaceSummaryStrip v-if="['employees','onboarding','candidates'].includes(tab)" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
     <WorkspaceListToolbar v-model="search" :searchable="['employees','onboarding','candidates'].includes(tab)" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="tab==='payroll'?loadPayroll():refresh()">
       <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label></template>

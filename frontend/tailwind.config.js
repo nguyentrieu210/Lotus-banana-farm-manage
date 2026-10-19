@@ -1,4 +1,4 @@
-import preset, { content } from 'frappe-ui/tailwind'
+import preset from 'frappe-ui/tailwind'
 import animate from 'tailwindcss-animate'
 
 // Keep the ERPNext/Frappe UI preset and add shadcn-vue (Tailwind v3) tokens.
@@ -6,7 +6,7 @@ export default {
   presets:[preset],
   // App toggles .dark on <html> (src/workspace.js); the frappe-ui preset defaults to [data-theme=dark].
   darkMode:['selector','.dark'],
-  content:[...content,'./index.html','./src/**/*.{vue,js,ts}'],
+  content:['./index.html','./src/**/*.{vue,js,ts}'],
   theme:{
     extend:{
       borderRadius:{lg:'var(--radius)',md:'calc(var(--radius) - 2px)',sm:'calc(var(--radius) - 4px)'},

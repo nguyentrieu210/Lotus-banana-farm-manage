@@ -1,4 +1,5 @@
 <script setup>
+import {formatDate} from './format'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
 import {Icon} from 'vant'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
@@ -420,7 +421,7 @@ function again(){
 
 const stockPrintURL=(doctype,name)=>'/lotus/in-phieu?'+new URLSearchParams({doctype,name})
 const statusLabel=code=>code===0?'Nháp':code===1?'Đã ghi sổ':'Đã hủy'
-const shortDate=value=>{const s=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split('-').reverse().join('/'):s||'—'}
+const shortDate=value=>formatDate(value)
 async function loadHistory(reset=false){
  if(!company.value)return
  if(reset)historyStart.value=0

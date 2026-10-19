@@ -1,7 +1,7 @@
 <script setup>
 import {computed,ref,watch} from 'vue'
 import {AgGridVue} from 'ag-grid-vue3'
-import {AllCommunityModule,ModuleRegistry} from 'ag-grid-community'
+import '../grid-modules.js'
 import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
@@ -10,7 +10,6 @@ import {compactGridTheme} from '../grid-theme'
 import {forecastStates,availabilityStates,filterForecasts,blockTotals,peakWeek,percent,kg} from '../forecast-planning'
 import '../forecast-workspace.css'
 
-ModuleRegistry.registerModules([AllCommunityModule])
 const props=defineProps({payload:{type:Object,default:()=>({})},loading:Boolean,canCreate:Boolean})
 const emit=defineEmits(['open','create','revise','reload','plan','reports'])
 const tab=ref('weeks'),query=ref(''),state=ref(''),block=ref(''),selected=ref(null)

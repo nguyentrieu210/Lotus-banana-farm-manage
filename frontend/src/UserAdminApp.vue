@@ -7,6 +7,7 @@ import WorkspaceModal from './components/WorkspaceModal.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
+import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
 defineProps({embedded:Boolean})
 const api=(name,args={},write=false)=>call('lotus_farm.user_admin.'+name,args,write)
@@ -30,9 +31,11 @@ function toggle(key,value,checked){const next=new Set(form[key]||[]);checked?nex
 async function save(){if(readOnly.value||saving.value)return;if(!form.first_name?.trim()||!form.email?.includes('@')){tab.value='profile';formError.value='Nhập tên và email đăng nhập hợp lệ.';return}saving.value=true;formError.value='';try{const data=await api('save',{user:selected.value,values:{...form,roles:form.roles.filter(x=>roleNames.value[x])}},true);notice.value='Đã lưu hồ sơ và phân quyền cho '+data.email;open.value=false;await load()}catch(e){formError.value=e.message}finally{saving.value=false}}
 function page(delta){start.value=Math.max(0,start.value+delta*50);load()}
 onMounted(async()=>{busy.value=true;try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);await load()}catch(e){error.value=e.message}finally{busy.value=false}})
+// Success messages show as toasts (errors stay inline next to the form).
+useNoticeToast(notice)
 </script>
 <template><section class="user-admin lotus-ui">
-<p v-if="error" role="alert" class="stock-error">{{error}}</p><p v-if="notice" role="status" class="stock-success">{{notice}}</p>
+<p v-if="error" role="alert" class="stock-error">{{error}}</p>
 <WorkspaceSummaryStrip :items="[{label:'Tài khoản hiển thị',value:rows.length},{label:'Đang hoạt động',value:rows.filter(x=>x.enabled).length},{label:'Đã khóa',value:rows.filter(x=>!x.enabled).length}]"/>
 <WorkspaceListToolbar v-model="search" placeholder="Tìm tên, email hoặc tên đăng nhập…" :busy="busy" @refresh="load"><template #filters><UiSelect v-model="status" aria-label="Trạng thái tài khoản"><option value="">Tất cả trạng thái</option><option value="1">Đang hoạt động</option><option value="0">Đã khóa</option></UiSelect></template><UiButton v-if="session?.can_create" :disabled="busy" @click="create">＋ Tạo người dùng</UiButton></WorkspaceListToolbar>
 <section class="stock-panel hr-table workspace-record-list"><table><colgroup><col><col><col><col class="workspace-col-status"><col class="workspace-col-actions"></colgroup><thead><tr><th>Người dùng</th><th>Email đăng nhập</th><th>Tên đăng nhập</th><th>Trạng thái</th><th></th></tr></thead><tbody><tr v-for="row in rows" :key="row.name"><td><strong>{{row.full_name||row.name}}</strong></td><td>{{row.name}}</td><td>{{row.username||'—'}}</td><td><span class="workspace-status" :class="{'is-ready':row.enabled}">{{row.enabled?'Đang hoạt động':'Đã khóa'}}</span></td><td><UiButton variant="outline" size="sm" :disabled="busy" @click="edit(row)">Hồ sơ & quyền</UiButton></td></tr></tbody></table><p v-if="!rows.length&&!busy" class="stock-empty">Không có tài khoản phù hợp.</p></section>

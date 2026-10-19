@@ -6,12 +6,12 @@ import ExcelHeader from './ExcelHeader.vue'
 import {compactGridTheme as theme} from '../grid-theme'
 import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import {AgGridVue} from 'ag-grid-vue3'
-import {AllCommunityModule,ModuleRegistry,themeQuartz} from 'ag-grid-community'
+import {themeQuartz} from 'ag-grid-community'
+import '../grid-modules.js'
 import {fmt} from '../domain'
 import {label,stateLabel,docLabel} from '../labels'
 import {unitLabel} from '../units'
 
-ModuleRegistry.registerModules([AllCommunityModule])
 const props=defineProps({
   rows:{type:Array,default:()=>[]},
   columns:{type:Array,default:()=>[]},

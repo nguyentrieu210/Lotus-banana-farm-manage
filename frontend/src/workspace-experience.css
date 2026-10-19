@@ -40,7 +40,10 @@
 .workspace-module-host .embedded-workspace .farm-heading{display:none}
 .workspace-module-host .embedded-workspace .farm-work-scope{padding-top:0}
 .workspace-loading{display:grid;gap:12px;min-height:260px;color:var(--lotus-muted);font-size:12px}
-.workspace-loading div{height:48px;border:1px solid var(--lotus-border);border-radius:8px;background:var(--lotus-surface)}
+.workspace-loading div{height:48px;border-radius:8px;background:var(--lotus-hover);animation:lotus-pulse 1.4s ease-in-out infinite}
+.workspace-loading div:nth-of-type(2){animation-delay:.15s}.workspace-loading div:nth-of-type(3){animation-delay:.3s}
+@keyframes lotus-pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.workspace-loading div{animation:none}}
 .workspace-modal{max-height:calc(100dvh - 32px);margin:auto;padding:0;border:1px solid var(--lotus-border);border-radius:12px;background:var(--lotus-surface);color:var(--lotus-text);overflow:auto;overscroll-behavior:contain;box-shadow:0 24px 80px #17233d40}
 .workspace-modal::backdrop{background:#151c2c66;backdrop-filter:blur(2px)}
 .workspace-modal[open]{animation:lotus-dialog-enter 180ms var(--lotus-ease)}
@@ -174,3 +177,11 @@
 :root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) tbody tr:hover,:root:root :is(.pn-table,.forecast-week-table) tbody tr:hover{background:var(--lotus-soft)}
 /* Sidebar footer links: only the first one pushes the group to the bottom, the rest stack with the sidebar gap. */
 .app-shell .sidebar .field-link~.field-link{margin-top:0}
+.lotus-table-skeleton{display:grid;gap:8px;padding:12px 0}
+.lotus-table-skeleton__row{height:36px;border-radius:var(--lotus-radius-md);background:var(--lotus-hover)}
+.lotus-table-skeleton__row:first-child{height:34px;background:var(--lotus-table-header)}
+@media (prefers-reduced-motion:reduce){.lotus-table-skeleton__row{animation:none}}
+/* Skip link: hidden until focused with the keyboard. */
+.lotus-skip-link{position:fixed;left:12px;top:-60px;z-index:2147483001;padding:10px 14px;border-radius:var(--lotus-radius-md);background:var(--lotus-primary);color:var(--lotus-on-primary);font-weight:600;text-decoration:none;box-shadow:var(--lotus-shadow-md)}
+.lotus-skip-link:focus{top:12px;outline:2px solid var(--lotus-on-primary);outline-offset:2px}
+#lotus-main:focus{outline:none}

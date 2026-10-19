@@ -1,0 +1,2 @@
+/* Tailwind preflight for the desktop app, kept in the low-priority lotus-legacy layer (was pulled in via frappe-ui/style.css). */
+@tailwind base;

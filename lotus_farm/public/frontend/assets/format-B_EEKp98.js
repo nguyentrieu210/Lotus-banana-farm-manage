@@ -1,0 +1,1 @@
+var e=new Intl.DateTimeFormat(`vi-VN`,{day:`2-digit`,month:`2-digit`,year:`numeric`,timeZone:`UTC`}),t=e=>/^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec(String(e||``));function n(n,r=`—`){let i=t(n);return!i||!i[3]?n?String(n):r:e.format(Date.UTC(+i[1],i[2]-1,+i[3]))}function r(e,n=`—`){let r=t(e);return r?r[2]+`/`+r[1].slice(2):e?String(e):n}export{r as n,n as t};

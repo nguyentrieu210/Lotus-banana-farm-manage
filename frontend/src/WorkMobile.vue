@@ -1,4 +1,5 @@
 <script setup>
+import {formatDate} from './format'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {Icon} from 'vant'
 import {useMobileConfirm} from './use-mobile-confirm'
@@ -41,7 +42,7 @@ const mobileTabs=[
 const mobileTitle=computed(()=>screen.value==='home'?'Công việc ngoài vườn':screenTitle.value)
 
 const screenTitle=computed(()=>({home:'Trang chủ',tasks:'Công việc',history:'Lịch sử',profile:'Tôi',detail:'Chi tiết công việc',result:'Ghi kết quả',block:'Báo vướng mắc',assign:'Lập kế hoạch / Giao việc','assign-preview':'Xem lại kế hoạch',queue:'Hàng chờ',done:'Hoàn tất'})[screen.value]||'Công việc ngoài vườn')
-const shortDate=value=>{const s=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s.split('-').reverse().join('/'):s||'—'}
+const shortDate=value=>formatDate(value)
 const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')?'home':'profile')
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const canAssign=computed(()=>!!session.value?.abilities?.['work.assign'])

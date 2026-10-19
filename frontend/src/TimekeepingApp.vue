@@ -7,6 +7,7 @@ import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
 import {Textarea as UiTextarea} from './components/ui/textarea'
+import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
 import {unitLabel} from './units'
@@ -71,12 +72,14 @@ function monthColumns(data,kind){return [{field:'label',headerName:kind==='staff
 const printLink=kind=>'/lotus/in-cong?'+new URLSearchParams({company:company.value,month:month.value,kind,...(farm.value&&kind==='crew'?{farm:farm.value}:{})})
 const exportLink=kind=>'/api/method/lotus_farm.timekeeping.export_month?'+new URLSearchParams({company:company.value,month:month.value,kind,...(farm.value&&kind==='crew'?{farm:farm.value}:{})})
 onMounted(init)
+// Success messages show as toasts (errors stay inline next to the form).
+useNoticeToast(notice)
 </script>
 
 <template><div class="stock-shell attendance-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
  
  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/>
-  <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
+  <p v-if="error" class="stock-error" role="alert">{{error}}</p>
   <div class="stock-scope"><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" :disabled="busy||saving||dirty" @change="changeCompany"><option v-for="c in session?.companies" :key="c.name">{{c.name}}</option></UiSelect></label><label v-if="tab!=='month'">Ngày công<UiInput v-model="date" type="date" :max="session?.today" :disabled="busy||saving||dirty" @change="load"/></label><label v-else>Tháng<UiInput v-model="month" type="month" :disabled="busy||saving" @change="load"/></label><label v-if="tab==='staff'">Ca làm việc<UiSelect v-model="shift" :disabled="busy||saving||dirty" @change="load"><option value="">Không phân ca</option><option v-for="s in catalog.shifts" :key="s.name">{{s.name}}</option></UiSelect></label><label v-if="['crew','month','setup'].includes(tab)">Vườn<UiSelect v-model="farm" :disabled="busy||saving" @change="load"><option value="">Tất cả được phân quyền</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label><UiButton variant="outline" :disabled="busy||saving||dirty" @click="load">{{busy?'Đang tải…':'Làm mới'}}</UiButton></div>
   <template v-if="tab==='staff'">
    <div class="attendance-toolbar"><strong>{{staffCounts.people}} nhân viên</strong><span>{{staffCounts.approved}} đã duyệt · {{staffCounts.pending}} nháp · {{staffCounts.unknown}} chưa chấm</span><UiButton v-if="cap.Attendance?.create" variant="outline" @click="markPresent">Có mặt tất cả</UiButton><UiButton v-if="cap.Attendance?.create||cap.Attendance?.write" :disabled="saving||busy" @click="saveStaff">Lưu nháp</UiButton><UiButton v-if="cap.Attendance?.submit" variant="outline" :disabled="saving" @click="askStaff('submit')">Duyệt đã chọn</UiButton><UiButton v-if="cap.Attendance?.cancel" variant="outline" :disabled="saving" @click="askStaff('cancel')">Hủy đã duyệt</UiButton><UiButton v-if="cap.Attendance?.delete" variant="outline" :disabled="saving" @click="askStaff('delete')">Xóa nháp</UiButton><UiButton v-if="dirty" variant="outline" @click="load">Bỏ thay đổi</UiButton></div>

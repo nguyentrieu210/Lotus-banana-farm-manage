@@ -44,7 +44,6 @@ const contractTypes=computed(()=>(catalog.value.employment_types||[]).map(t=>({v
 const categories=[{value:'Permanent',label:'Dài hạn'},{value:'Fixed-term',label:'Hợp đồng xác định hạn'},{value:'Seasonal',label:'Thời vụ'},{value:'Probation',label:'Thử việc'}]
 const payments=[{value:'Monthly',label:'Lương tháng'},{value:'Daywork',label:'Công nhật'},{value:'Piecework',label:'Khoán sản lượng'},{value:'Mixed',label:'Hỗn hợp'}]
 const candidateStatuses={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
-const when=x=>String(x||'').slice(0,10)
 function msg(e){return String(e?.message||'Không thể kết nối Lotus.')}
 function nav(dest){if(saving.value||screen.value===dest)return;scanOpen.value=false;screen.value=dest;search.value='';error.value='';notice.value='';window.scrollTo({top:0,behavior:'instant'})}
 function back(){nav(selectedEmployee.value?'employees':'home')}

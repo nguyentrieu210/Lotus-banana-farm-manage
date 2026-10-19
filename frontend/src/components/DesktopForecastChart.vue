@@ -1,5 +1,6 @@
 <script setup>
 import {computed,onMounted,onBeforeUnmount,ref,watch,nextTick} from 'vue'
+import {formatMonthShort} from '../format'
 import {init as initChart,use as useEcharts} from 'echarts/core'
 import {BarChart,LineChart} from 'echarts/charts'
 import {GridComponent,TooltipComponent,LegendComponent,DataZoomComponent} from 'echarts/components'
@@ -25,7 +26,7 @@ function render(){
    tooltip:{trigger:'axis',valueFormatter:v=>format(v)+' tấn'},
    legend:{top:0,right:0,textStyle:{color:foreground,fontSize:11},data:['Dự thu buồng','Thành phẩm','Đã thu thực tế']},
    grid:{top:40,right:12,left:18,bottom:48,containLabel:true},
-   xAxis:{type:'category',data:props.months.map(m=>m.month.slice(5)+'/'+m.month.slice(2,4)),axisLine:{lineStyle:{color:grid}},axisLabel:{color:foreground,fontSize:10}},
+   xAxis:{type:'category',data:props.months.map(m=>formatMonthShort(m.month)),axisLine:{lineStyle:{color:grid}},axisLabel:{color:foreground,fontSize:10}},
    yAxis:{type:'value',name:'kg',nameTextStyle:{color:foreground},splitLine:{lineStyle:{color:grid}},axisLabel:{color:foreground,formatter:v=>format(v)+' t'}},
    series:[
     {name:'Dự thu buồng',type:'bar',barMaxWidth:28,data:props.months.map(m=>m.gross_kg||0),itemStyle:{borderRadius:[3,3,0,0]}},
