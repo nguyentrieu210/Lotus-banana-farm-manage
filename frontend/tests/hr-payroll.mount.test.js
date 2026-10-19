@@ -31,6 +31,7 @@ const routesFor=manager=>({
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const tab=(root,label)=>[...root.querySelectorAll('[role=tab]')].find(b=>b.textContent===label)
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
+const sub=(root,label)=>[...root.querySelectorAll('.tk-subnav button')].find(b=>b.textContent.trim().startsWith(label))
 
 test('payroll tab shows last month, blockers keep the close button disabled, sheet and crew payable listed',async()=>{
  calls.length=0;routes=routesFor(true)
@@ -39,7 +40,9 @@ test('payroll tab shows last month, blockers keep the close button disabled, she
  assert.equal(calls.find(c=>c.method==='lotus_farm.hr_period.payroll_sheet').args.month,'2026-09','defaults to the month just ended')
  assert.match(text(view.root),/Phiếu công nhân sự còn nháp: 2/)
  assert.ok(button(view.root,'Khóa kỳ').disabled,'cannot close while blockers remain')
- assert.match(text(view.root),/Bảng lương 2026-09 · bản nháp/)
+ assert.match(text(view.root),/Bảng lương Tháng 09\/2026 ?Bản nháp/)
+ assert.equal(view.root.querySelectorAll('.hr-steps li').length,4,'the month runs in four steps')
+ sub(view.root,'Phải trả đội khoán').click();await tick()
  assert.match(text(view.root),/Đội A.*Bao buồng.*500 Buồng/)
  const link=[...view.root.querySelectorAll('a')].find(a=>a.textContent==='Xuất bảng lương Excel')
  assert.match(link.getAttribute('href'),/export_payroll\?company=Lotus&month=2026-09/)
@@ -57,7 +60,7 @@ test('pay rate inputs follow the payment basis and only managers see payroll',as
  view.unmount()
  routes=routesFor(false)
  const staff=mount(HrApp,{embedded:true});await tick()
- assert.equal(tab(staff.root,'Kỳ công & bảng lương'),undefined)
+ assert.ok(!tab(staff.root,'Kỳ công & bảng lương'),'payroll is HR Manager only')
  staff.unmount()
 })
 
@@ -73,7 +76,8 @@ test('HRMS payroll steps follow the period and slip state',async()=>{
  const closed=mount(HrApp,{embedded:true});await tick()
  tab(closed.root,'Kỳ công & bảng lương').click();await tick();await tick()
  assert.ok(button(closed.root,'Duyệt & hạch toán'),'draft slips can be posted')
- assert.equal(button(closed.root,'Tạo phiếu lương HRMS'),undefined)
+ assert.ok(!button(closed.root,'Tạo phiếu lương HRMS'),'slips already exist')
+ sub(closed.root,'Phiếu lương HRMS').click();await tick()
  assert.match(text(closed.root),/Sal Slip\/1.*An.*Nháp/)
  closed.unmount()
 })

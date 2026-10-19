@@ -73,7 +73,7 @@ def catalogue(company):
     farms=rows('Farm',{'company':company,'active':1},['name','farm_name'])
     return dict(farms=farms,teams=rows('Work Team',{'active':1,'lotus_team_type':'Contractor','farm':['in',[f.name for f in farms]]},['name','team_name','farm','lotus_foreman','lotus_foreman_phone']),
         works=rows('Work Type',{'active':1,'allow_piecework':1},['name','work_name','uom','piecework_rate']),
-        shifts=rows('Shift Type',{},['name','start_time','end_time']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
+        shifts=rows('Shift Type',{},['name','start_time','end_time','late_entry_grace_period','early_exit_grace_period','working_hours_threshold_for_half_day','working_hours_threshold_for_absent']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
 
 
 @frappe.whitelist()
@@ -273,7 +273,14 @@ def monthly(company,month):
         workdays=sum(min(1,sum(status_days(r.status) for r in approved if getdate(r.attendance_date).day==day)) for day in range(1,end.day+1))
         rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) or flt(r.actual_overtime_duration) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
     from lotus_farm.hr_period import is_closed
-    return dict(rows=rows,days=end.day,month=str(month),company=company,period_closed=is_closed(company,begin))
+    return dict(rows=rows,days=end.day,month=str(month),company=company,period_closed=is_closed(company,begin),holidays=_month_holidays(company,begin,end))
+
+
+def _month_holidays(company,begin,end):
+    """{day number: 1 weekly off / 0 public holiday} for shading the month sheet."""
+    from lotus_farm.hr_period import holiday_map
+    found=holiday_map(company,begin,end)
+    return {str(day.day):flag for day,flag in found.days.items()} if found else {}
 
 
 class CrewAttendanceDocument(Document):
@@ -431,7 +438,7 @@ def crew_monthly(company,month,farm=None):
         team=frappe.get_doc('Work Team',team_name);team.check_permission('read');entries=[r for r in records if r.work_team==team_name];approved=[r for r in entries if r.docstatus==1];days={}
         for entry in entries:days.setdefault(str(getdate(entry.posting_date).day),[]).append(dict(entry))
         result.append(dict(team=team.name,team_name=team.team_name,foreman=team.lotus_foreman,days=days,workdays=sum(flt(r.workdays) for r in approved),person_days=sum(cint(r.present) for r in approved),amount=sum(flt(r.amount) for r in approved),currency=frappe.get_cached_value('Company',company,'default_currency'),draft_count=sum(r.docstatus==0 for r in entries)))
-    return dict(rows=result,days=end.day,month=str(month),company=company)
+    return dict(rows=result,days=end.day,month=str(month),company=company,holidays=_month_holidays(company,begin,end))
 
 
 @frappe.whitelist(methods=['POST'])

@@ -1,0 +1,70 @@
+/* /lotus/nhan-su — payroll steps, sectioned employee form, designation catalogue. Tokens only. */
+.hr-shell .tk-card{background:var(--lotus-surface)}
+
+/* Payroll period: four steps */
+.hr-pay .hr-pay__export{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto}
+.hr-pay .hr-pay__export svg,.hr-pay .tk-filters button svg{width:15px;height:15px}
+.hr-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:4px 0 12px;padding:0;list-style:none;counter-reset:none}
+.hr-steps li{display:flex;gap:10px;padding:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface)}
+.hr-steps__mark{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:999px;border:2px solid var(--lotus-border-strong);font-weight:700;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.hr-steps__mark svg{width:15px;height:15px}
+.hr-steps__body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hr-steps__body strong{font-size:var(--lotus-text-md)}
+.hr-steps__body small{font-size:var(--lotus-text-sm);color:var(--lotus-muted);overflow-wrap:anywhere}
+.hr-steps__actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.hr-steps__actions:empty{display:none}
+.hr-steps__actions button svg{width:14px;height:14px}
+.hr-steps__link{font-size:var(--lotus-text-sm)}
+.hr-steps li.is-done{border-color:var(--lotus-success-200);background:var(--lotus-success-soft)}
+.hr-steps li.is-done .hr-steps__mark{border-color:var(--lotus-success-600);background:var(--lotus-success-600);color:var(--lotus-on-primary)}
+.hr-steps li.is-current{border-color:var(--lotus-primary);box-shadow:0 0 0 1px var(--lotus-primary)}
+.hr-steps li.is-current .hr-steps__mark{border-color:var(--lotus-primary);color:var(--lotus-primary-text)}
+.hr-steps li.is-todo{opacity:.72}
+.dark .hr-steps li.is-done{border-color:var(--lotus-success-800)}
+.hr-pay__blockers ul{margin:0;padding-left:18px;line-height:1.8;font-size:var(--lotus-text-md)}
+.hr-pay__blockers small{color:var(--lotus-muted)}
+.hr-pay__stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0}
+.hr-pay__stats div{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.hr-pay__stats span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.hr-pay__stats strong{font-size:var(--lotus-text-lg);font-variant-numeric:tabular-nums}
+.hr-pay__count{display:inline-grid;place-items:center;min-width:20px;height:18px;padding:0 5px;border-radius:999px;background:var(--lotus-soft);font-size:var(--lotus-text-xs);font-weight:600}
+.hr-pay__scroll{overflow:auto}
+.hr-pay__table table{width:100%;min-width:860px;border-collapse:collapse;font-size:var(--lotus-text-md)}
+.hr-pay__table th{padding:8px 10px;text-align:left;font-size:var(--lotus-text-sm);font-weight:600;background:var(--lotus-table-header);color:var(--lotus-table-heading);border-bottom:1px solid var(--lotus-border);white-space:nowrap}
+.hr-pay__table td{padding:8px 10px;border-bottom:1px solid var(--lotus-border);vertical-align:top}
+.hr-pay__table td small{display:block;font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.hr-pay__table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hr-pay__table td.is-warn{color:var(--lotus-warning-800);font-weight:600}
+.hr-pay__table .tk-pill+.tk-pill{margin-left:4px}
+
+/* Employee form */
+.hr-form-section{display:flex;align-items:center;gap:10px;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--lotus-border);font-size:var(--lotus-text-md);font-weight:600}
+form>.hr-form-section:first-child{margin-top:4px;padding-top:0;border-top:0}
+.hr-form-section button svg{width:14px;height:14px}
+.hr-form-grid.hr-form-grid{margin:0;gap:12px 14px;align-items:start}
+.hr-form-grid--single{grid-template-columns:1fr!important}
+.hr-form-note{margin:0;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.hr-form-footer{position:sticky;bottom:-18px;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:18px -20px -18px;padding:12px 20px;border-top:1px solid var(--lotus-border);background:var(--lotus-surface)}
+.hr-form-footer small{color:var(--lotus-muted)}
+.hr-checklist.hr-checklist{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);font-size:var(--lotus-text-md)}
+.hr-checklist.hr-checklist.is-warn{background:var(--lotus-warning-soft);border-color:var(--lotus-warning-200)}
+.hr-checklist.hr-checklist.is-ok{background:var(--lotus-success-soft);border-color:var(--lotus-success-200)}
+.hr-checklist.hr-checklist button{margin-left:auto}
+
+/* Designation catalogue */
+.hr-roles .hr-role-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.hr-role-group{border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);overflow:hidden}
+.hr-role-group h4{margin:0;padding:8px 12px;font-size:var(--lotus-text-md);font-weight:600;background:var(--lotus-table-header);color:var(--lotus-table-heading);border-bottom:1px solid var(--lotus-border)}
+.hr-role-group ul{margin:0;padding:0;list-style:none}
+.hr-role-group li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid var(--lotus-border);font-size:var(--lotus-text-md)}
+.hr-role-group li:last-child{border-bottom:0}
+
+@media(max-width:1100px){.hr-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.hr-pay__stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.hr-steps,.hr-pay__stats{grid-template-columns:1fr 1fr}.hr-steps{grid-template-columns:1fr}.hr-form-footer{margin:14px -14px -14px;padding:10px 14px;bottom:-14px}}
+
+/* HR operations (organisation, import, devices) */
+.hr-ops-panel>button,.hr-ops-panel>.hr-ops-actions>button{justify-self:start;width:auto}
+.hr-ops-panel h3{font-size:var(--lotus-text-lg);font-weight:600}
+.hr-ops-tabs button.active{border-color:var(--lotus-primary);background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
+.hr-ops .lotus-date{min-width:150px}
+.hr-ops-actions label{display:grid;gap:4px;font-size:var(--lotus-text-sm)}

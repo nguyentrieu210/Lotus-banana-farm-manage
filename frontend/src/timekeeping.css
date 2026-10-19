@@ -1,2 +1,171 @@
-.attendance-toolbar{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:8px 0}.attendance-toolbar>span{font-size:11px;color:var(--lotus-muted)}.attendance-roster{overflow:auto}.attendance-roster table{border-collapse:collapse;min-width:880px;width:100%;font-size:12px}.attendance-roster th,.attendance-roster td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--lotus-line)}.attendance-roster td small{display:block;font-size:10px;color:var(--lotus-muted);margin-top:2px}.attendance-roster th{background:var(--lotus-table-header);color:var(--lotus-table-heading)}.attendance-roster td:nth-child(2){min-width:160px}.attendance-roster td:nth-child(4){min-width:145px}.attendance-roster td:nth-child(5){width:90px}.attendance-roster td:nth-child(6){min-width:160px}.attendance-roster select{min-width:0;width:100%}.attendance-roster input[type=number]{width:80px}.attendance-approved{color:var(--lotus-success-600);font-weight:700}.dark .attendance-approved{color:var(--lotus-success-300)}.attendance-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.attendance-form label{min-width:0}.attendance-form select{min-width:0;width:100%}.attendance-month{margin-top:12px}.attendance-month>.attendance-toolbar{padding:0 10px}.attendance-legend{font-size:11px;color:var(--lotus-muted);margin:9px 10px}.attendance-shell .stock-dialog label{display:grid;gap:5px}.attendance-roster input[type=checkbox]{width:16px;height:16px;padding:0;accent-color:var(--lotus-primary-600)}.attendance-shell .stock-dialog footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:14px}@media(max-width:600px){.attendance-form{grid-template-columns:1fr}.attendance-toolbar{gap:6px}.attendance-toolbar button{min-height:38px}.attendance-shell .stock-scope{flex-wrap:wrap}.attendance-shell .stock-scope label{flex:1 1 140px}}
-.attendance-notice{margin:8px 0;padding:8px 10px;border:1px solid var(--lotus-border);border-radius:8px;background:var(--lotus-soft);font-size:12px}.attendance-review td{background:var(--lotus-warning-50)}.dark .attendance-review td{background:transparent;box-shadow:inset 3px 0 0 var(--lotus-warning-500)}.attendance-calendar{margin-top:12px;padding:10px}.attendance-calendar .attendance-toolbar label{display:flex;gap:6px;align-items:center}.attendance-calendar .attendance-toolbar input[type=number]{width:90px}.attendance-weekdays{display:flex;flex-wrap:wrap;gap:10px;border:0;padding:0;margin:6px 0;font-size:12px}.attendance-weekdays legend{font-weight:600;margin-bottom:4px}.attendance-weekdays label{display:flex;gap:4px;align-items:center}.attendance-holidays{border-collapse:collapse;width:100%;max-width:640px;font-size:12px}.attendance-holidays th,.attendance-holidays td{padding:5px 6px;text-align:left;border-bottom:1px solid var(--lotus-border)}
+/* /lotus/cham-cong — attendance roster, month sheet and setup. Colours come from lotus-tokens.css only. */
+.attendance-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.attendance-toolbar>span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.attendance-approved{color:var(--lotus-success-600);font-weight:700}
+.dark .attendance-approved{color:var(--lotus-success-300)}
+.attendance-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.attendance-form>*{min-width:0}
+.attendance-legend{font-size:var(--lotus-text-sm);color:var(--lotus-muted);margin:8px 0}
+.attendance-shell .stock-dialog footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
+.attendance-shell .stock-dialog form>.lotus-field{margin-top:4px}
+
+/* Filters: one row (AGENTS.md), scrolls inside itself on narrow screens. */
+.tk-shell .tk-filters{flex-wrap:nowrap;overflow-x:auto;align-items:flex-end;gap:8px;padding-bottom:10px}
+.tk-shell .tk-filters label{flex:0 0 auto;min-width:150px}
+.tk-shell .tk-filters .stock-search{flex:1 1 220px;min-width:180px}
+.tk-shell .tk-filters .lotus-date{min-width:150px}
+.tk-shell .tk-filters>button{flex:0 0 auto}
+
+/* Notices */
+.tk-banner{display:flex;align-items:center;gap:8px;margin:8px 0;padding:8px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);font-size:var(--lotus-text-md);background:var(--lotus-soft)}
+.tk-banner svg{flex:0 0 auto;width:16px;height:16px}
+.tk-banner.is-lock{background:var(--lotus-success-soft);border-color:var(--lotus-success-200);color:var(--lotus-success-700)}
+.tk-banner.is-holiday{background:var(--lotus-warning-soft);border-color:var(--lotus-warning-200);color:var(--lotus-warning-800)}
+.tk-banner.is-info{background:var(--lotus-info-soft);border-color:var(--lotus-info-200);color:var(--lotus-info-700)}
+.dark .tk-banner.is-lock{color:var(--lotus-success-200);border-color:var(--lotus-success-800)}
+.dark .tk-banner.is-holiday{color:var(--lotus-warning-200);border-color:var(--lotus-warning-800)}
+.dark .tk-banner.is-info{color:var(--lotus-info-200);border-color:var(--lotus-info-800)}
+
+/* Status views */
+.tk-views{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.tk-views button{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--lotus-border);border-radius:999px;background:var(--lotus-surface);color:var(--lotus-text-secondary);font-size:var(--lotus-text-sm);cursor:pointer}
+.tk-views button strong{font-variant-numeric:tabular-nums;color:var(--lotus-text)}
+.tk-views button:hover{background:var(--lotus-hover)}
+.tk-views button.active{border-color:var(--lotus-primary);background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
+.tk-views button.is-review:not(.active){border-color:var(--lotus-warning-300)}
+
+/* Action bar */
+.tk-actions{gap:8px}
+.tk-actions__spacer{flex:1 1 auto}
+.tk-actions__count{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.tk-actions button svg,.tk-card__head a svg,.tk-card__head button svg{width:15px;height:15px}
+.tk-card__head a.stock-button{display:inline-flex;align-items:center;gap:6px}
+
+/* Daily roster */
+.tk-roster{overflow:auto;padding:0}
+.tk-roster table{width:100%;min-width:980px;border-collapse:collapse;font-size:var(--lotus-text-md)}
+.tk-roster th{position:sticky;top:0;z-index:1;padding:8px 10px;text-align:left;font-size:var(--lotus-text-sm);font-weight:600;background:var(--lotus-table-header);color:var(--lotus-table-heading);border-bottom:1px solid var(--lotus-border);white-space:nowrap}
+.tk-roster td{padding:6px 10px;border-bottom:1px solid var(--lotus-border);vertical-align:middle}
+.tk-roster tbody tr:hover td{background:var(--lotus-hover)}
+.tk-roster tr.is-selected td{background:var(--lotus-primary-subtle)}
+.tk-roster tr.attendance-review td{background:var(--lotus-warning-soft)}
+.tk-roster tr.attendance-review td:first-child{box-shadow:inset 3px 0 0 var(--lotus-warning-500)}
+.tk-roster small{display:block;margin-top:2px;font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.tk-roster input[type=checkbox]{width:16px;height:16px;accent-color:var(--lotus-primary)}
+.tk-roster .tk-col-check{width:36px}
+.tk-roster .tk-col-person{min-width:200px}
+.tk-roster .tk-col-shift{width:90px;white-space:nowrap}
+.tk-roster .tk-col-status{width:150px}
+.tk-roster .tk-col-status select{width:100%;min-width:130px}
+.tk-roster .tk-col-punch{width:130px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tk-roster .tk-col-num{width:84px}
+.tk-roster .tk-col-num input{width:72px;text-align:right;font-variant-numeric:tabular-nums}
+.tk-roster .tk-col-note input{width:100%;min-width:140px}
+.tk-roster .tk-col-state{width:110px;white-space:nowrap}
+.tk-flag{display:inline-block!important;margin-right:4px;padding:0 6px;border-radius:4px;background:var(--lotus-soft);font-size:var(--lotus-text-xs)}
+.tk-flag.is-warn{background:var(--lotus-warning-soft);color:var(--lotus-warning-800)}
+.dark .tk-flag.is-warn{color:var(--lotus-warning-200)}
+
+/* Pills */
+.tk-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:var(--lotus-text-xs);font-weight:600;background:var(--lotus-soft);color:var(--lotus-text-secondary);white-space:nowrap}
+.tk-pill svg{width:12px;height:12px}
+.tk-pill.is-approved,.tk-pill.is-ok{background:var(--lotus-success-soft);color:var(--lotus-success-700)}
+.tk-pill.is-draft,.tk-pill.is-warn{background:var(--lotus-warning-soft);color:var(--lotus-warning-800)}
+.tk-pill.is-review{background:var(--lotus-warning-soft);color:var(--lotus-warning-800);box-shadow:inset 0 0 0 1px var(--lotus-warning-300)}
+.tk-pill.is-empty,.tk-pill.is-muted{background:var(--lotus-soft);color:var(--lotus-muted)}
+.dark .tk-pill.is-approved,.dark .tk-pill.is-ok{color:var(--lotus-success-200)}
+.dark .tk-pill.is-draft,.dark .tk-pill.is-warn,.dark .tk-pill.is-review{color:var(--lotus-warning-200)}
+
+.tk-empty{margin:0;padding:24px;text-align:center;color:var(--lotus-muted);font-size:var(--lotus-text-md)}
+
+/* Cards (month, setup) */
+.tk-card{margin:12px 0;padding:14px 16px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface)}
+.tk-card__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.tk-card__head h3{margin:0;font-size:var(--lotus-text-lg);font-weight:600}
+.tk-card__sub{margin:18px 0 8px;font-size:var(--lotus-text-md);font-weight:600}
+.tk-card__foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:flex-end;margin-top:12px}
+.tk-card__links{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:var(--lotus-text-sm)}
+.tk-hint{flex:1 1 240px;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.tk-legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:10px 0 0;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.tk-legend span{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 4px;border-radius:4px;font-weight:600}
+.tk-legend .is-day-off{background:var(--lotus-soft);border:1px solid var(--lotus-border)}
+.tk-legend .is-day-holiday{background:var(--lotus-warning-soft);border:1px solid var(--lotus-warning-200)}
+.tk-total{margin:12px 0 0;text-align:right}
+
+/* Month sheet */
+.tk-sheet{overflow:auto;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);max-height:70vh}
+.tk-sheet table{border-collapse:separate;border-spacing:0;font-size:var(--lotus-text-sm);font-variant-numeric:tabular-nums;width:max-content;min-width:100%}
+.tk-sheet th,.tk-sheet td{border-bottom:1px solid var(--lotus-border);border-right:1px solid var(--lotus-border);text-align:center;padding:4px 2px;min-width:32px;height:34px}
+.tk-sheet thead th{position:sticky;top:0;z-index:2;background:var(--lotus-table-header);color:var(--lotus-table-heading);font-weight:600}
+.tk-sheet thead th span{display:block}
+.tk-sheet thead th small{display:block;font-size:10px;font-weight:500;color:var(--lotus-muted)}
+.tk-sheet .tk-sheet__name{position:sticky;left:0;z-index:1;min-width:190px;max-width:240px;padding:4px 10px;text-align:left;background:var(--lotus-surface)}
+.tk-sheet thead .tk-sheet__name{z-index:3;background:var(--lotus-table-header)}
+.tk-sheet tbody .tk-sheet__name strong{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-sheet tbody .tk-sheet__name small{display:block;font-size:10px;color:var(--lotus-muted)}
+.tk-sheet .tk-sheet__total{min-width:64px;padding:4px 8px;text-align:right;background:var(--lotus-soft)}
+.tk-sheet .is-off{background:var(--lotus-soft)}
+.tk-sheet .is-holiday{background:var(--lotus-warning-soft)}
+.tk-sheet td.is-ok,.tk-legend .is-ok{color:var(--lotus-success-700)}
+.tk-sheet td.is-half,.tk-legend .is-half{color:var(--lotus-info-700)}
+.tk-sheet td.is-off.is-off,.tk-legend .is-off{color:var(--lotus-danger)}
+.tk-sheet td.is-leave,.tk-legend .is-leave{color:var(--lotus-primary-text)}
+.tk-sheet td.is-draft,.tk-legend .is-draft{font-style:italic;outline:1px dashed var(--lotus-warning-400);outline-offset:-3px;color:var(--lotus-warning-800)}
+.tk-sheet td.is-warn{color:var(--lotus-warning-800);font-weight:600}
+.dark .tk-sheet td.is-ok,.dark .tk-legend .is-ok{color:var(--lotus-success-300)}
+.dark .tk-sheet td.is-half,.dark .tk-legend .is-half{color:var(--lotus-info-300)}
+.dark .tk-sheet td.is-draft,.dark .tk-legend .is-draft,.dark .tk-sheet td.is-warn{color:var(--lotus-warning-300)}
+.tk-sheet>.tk-empty{position:sticky;left:0}
+
+/* Setup */
+.tk-subnav{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0}
+.tk-subnav button{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text-secondary);font-size:var(--lotus-text-md);cursor:pointer}
+.tk-subnav button svg{width:15px;height:15px}
+.tk-subnav button:hover{background:var(--lotus-hover)}
+.tk-subnav button.active{border-color:var(--lotus-primary);background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-weight:600}
+.tk-form-row{display:grid;align-items:start;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:820px}
+.tk-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tk-picker{margin-top:14px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md)}
+.tk-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--lotus-border);background:var(--lotus-soft)}
+.tk-picker__bar input{flex:1 1 220px;max-width:360px}
+.tk-picker__bar span{margin-left:auto;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.tk-picker__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:2px;max-height:260px;overflow:auto;padding:6px}
+.tk-picker__list label{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:6px 8px;border-radius:var(--lotus-radius-sm);cursor:pointer}
+.tk-picker__list label:hover{background:var(--lotus-hover)}
+.tk-picker__list label.checked{background:var(--lotus-primary-subtle)}
+.tk-picker__list input{grid-row:1/3;width:16px;height:16px;accent-color:var(--lotus-primary)}
+.tk-picker__list small{font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.tk-card__head .tk-year{flex:0 0 140px;width:140px}
+.tk-chips{display:flex;flex-wrap:wrap;gap:6px}
+.tk-chips button{min-width:44px;height:34px;padding:0 10px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);font-weight:600;cursor:pointer}
+.tk-chips button.on{border-color:var(--lotus-primary);background:var(--lotus-primary);color:var(--lotus-on-primary)}
+.tk-holidays{margin-top:14px;max-width:760px}
+.tk-holidays__head,.tk-holidays__row{display:grid;grid-template-columns:180px 1fr 40px;gap:8px;align-items:center}
+.tk-holidays__head{padding:0 0 6px;font-size:var(--lotus-text-sm);font-weight:600;color:var(--lotus-muted);border-bottom:1px solid var(--lotus-border)}
+.tk-holidays__row{padding:6px 0;border-bottom:1px solid var(--lotus-border)}
+.tk-holidays .tk-empty{padding:14px;text-align:left}
+
+/* Phone width: roster rows become cards, forms stack. */
+@media(max-width:720px){
+ .attendance-form,.tk-form-row{grid-template-columns:1fr}
+ .tk-roster table,.tk-roster tbody,.tk-roster tr,.tk-roster td{display:block;min-width:0;width:auto}
+ .tk-roster thead{display:none}
+ .tk-roster tr{display:grid;grid-template-columns:28px 1fr 1fr;gap:6px 10px;padding:10px;border-bottom:1px solid var(--lotus-border)}
+ .tk-roster td{padding:0;border:0}
+ .tk-roster .tk-col-check{grid-row:1;grid-column:1}
+ .tk-roster .tk-col-person{grid-row:1;grid-column:2/4}
+ .tk-roster .tk-col-shift{grid-row:2;grid-column:2}
+ .tk-roster .tk-col-state{grid-row:2;grid-column:3}
+ .tk-roster .tk-col-status{grid-row:3;grid-column:2/4}
+ .tk-roster .tk-col-punch{grid-row:4;grid-column:2/4;white-space:normal}
+ .tk-roster td.tk-col-num[data-label="Giờ làm"]{grid-row:5;grid-column:2}
+ .tk-roster td.tk-col-num[data-label="Tăng ca"]{grid-row:5;grid-column:3}
+ .tk-roster .tk-col-note{grid-row:6;grid-column:2/4}
+ .tk-roster td{width:auto!important}
+ .tk-roster td[data-label]::before{content:attr(data-label);display:block;font-size:var(--lotus-text-xs);color:var(--lotus-muted);margin-bottom:2px}
+ .tk-roster .tk-col-num input{width:100%}
+ .tk-holidays__head{display:none}
+ .tk-holidays__row{grid-template-columns:1fr 40px}
+ .tk-holidays__row>:nth-child(2){grid-column:1}
+ .tk-actions__spacer{display:none}
+}

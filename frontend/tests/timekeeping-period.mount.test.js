@@ -57,3 +57,22 @@ test('a closed month is read-only',async()=>{
  assert.ok(row(view.root,'An').querySelector('select').disabled)
  view.unmount()
 })
+
+test('status chips filter the roster and the month sheet shades days off',async()=>{
+ routes={...base({period_closed:false}),'lotus_farm.timekeeping.monthly':{month:'2026-10',days:31,rows:[{employee:'E1',employee_name:'An',days:{'1':[{status:'Present',docstatus:1}],'2':[{status:'Absent',docstatus:0}]},workdays:1,working_hours:8,overtime_hours:0,draft_count:1}],holidays:{'4':1,'20':0},period_closed:true},'lotus_farm.timekeeping.crew_monthly':{month:'2026-10',days:31,rows:[],holidays:{}}}
+ routes['lotus_farm.timekeeping.staff_day'].rows[0]={...routes['lotus_farm.timekeeping.staff_day'].rows[0],name:'ATT-1',status:'Present',docstatus:1}
+ const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
+ const chip=label=>[...view.root.querySelectorAll('.tk-views button')].find(b=>b.textContent.startsWith(label))
+ chip('Đã duyệt').click();await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent),['An'])
+ chip('Chưa chấm').click();await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent),['Bình'])
+ ;[...view.root.querySelectorAll('[role=tab]')].find(b=>b.textContent==='Bảng công tháng').click();await tick();await tick()
+ const head=[...view.root.querySelectorAll('.tk-sheet thead th')]
+ assert.ok(head[4].classList.contains('is-off'),'4/10 is a weekly off day')
+ assert.ok(head[20].classList.contains('is-holiday'),'20/10 is a public holiday')
+ const cells=[...view.root.querySelectorAll('.tk-sheet tbody tr')[0].querySelectorAll('td')]
+ assert.equal(cells[0].textContent,'X');assert.ok(cells[1].classList.contains('is-draft'),'draft attendance is marked, not counted')
+ assert.match(view.root.textContent,/Đã khóa kỳ/)
+ view.unmount()
+})

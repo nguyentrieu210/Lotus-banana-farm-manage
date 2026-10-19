@@ -53,6 +53,12 @@ const paths={
  'user-cog':['M10 15H6a4 4 0 0 0-4 4v2','m14.305 16.53.923-.382','m15.228 13.852-.923-.383','m16.852 12.228-.383-.923','m16.852 17.772-.383.924','m19.148 12.228.383-.923','m19.53 18.696-.382-.924','m20.772 13.852.924-.383','m20.772 16.148.924.383','M15 15a3 3 0 1 0 6 0 3 3 0 1 0-6 0','M5 7a4 4 0 1 0 8 0 4 4 0 1 0-8 0'],
  database:['M3 5a9 3 0 1 0 18 0 9 3 0 1 0-18 0','M3 5V19A9 3 0 0 0 21 19V5','M3 12A9 3 0 0 0 21 12'],
  upload:['M12 3v12','m17 8-5-5-5 5','M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'],
+ plus:['M12 5v14','M5 12h14'],
+ download:['M12 3v12','m7 10 5 5 5-5','M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'],
+ printer:['M6 9V3h12v6','M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2','M6 14h12v8H6Z'],
+ more:['M5 12h.01','M12 12h.01','M19 12h.01'],
+ refresh:['M21 12a9 9 0 0 1-15.5 6.2L3 16','M3 12a9 9 0 0 1 15.5-6.2L21 8','M21 3v5h-5','M3 21v-5h5'],
+ wallet:['M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5','M17 13h.01'],
 }
 </script>
 <template><svg class="lotus-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path v-for="(d,i) in paths[name]||paths.boxes" :key="i" :d="d"/></svg></template>
