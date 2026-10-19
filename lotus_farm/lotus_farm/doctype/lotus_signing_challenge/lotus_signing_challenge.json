@@ -1,0 +1,66 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Signing Challenge",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 0,
+  "field_order": [
+    "token_hash",
+    "document_type",
+    "document_name",
+    "document_version",
+    "user",
+    "expires_at",
+    "used_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "token_hash",
+      "fieldtype": "Data",
+      "label": "Mã QR băm",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "document_type",
+      "fieldtype": "Data",
+      "label": "Loại chứng từ",
+      "reqd": 1
+    },
+    {
+      "fieldname": "document_name",
+      "fieldtype": "Data",
+      "label": "Mã chứng từ",
+      "reqd": 1
+    },
+    {
+      "fieldname": "document_version",
+      "fieldtype": "Data",
+      "label": "Phiên bản chứng từ"
+    },
+    {
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "label": "Tài khoản",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "expires_at",
+      "fieldtype": "Datetime",
+      "label": "Hết hạn",
+      "reqd": 1
+    },
+    {
+      "fieldname": "used_at",
+      "fieldtype": "Datetime",
+      "label": "Đã sử dụng"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1
+    }
+  ]
+}

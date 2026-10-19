@@ -4,7 +4,7 @@ import {Popup,Slider,Switch,Icon} from 'vant'
 import Cropper from 'cropperjs'
 import './lotus-signature-editor.css'
 
-const props=defineProps({show:Boolean,source:{type:String,default:''}})
+const props=defineProps({show:Boolean,source:{type:String,default:''},typeLabel:{type:String,default:'chữ ký'}})
 const emit=defineEmits(['cancel','save'])
 const host=ref(null),image=ref(null),preview=ref('')
 const screen=ref('crop'),removeBackground=ref(true),strength=ref(38),busy=ref(false),message=ref('')
@@ -85,7 +85,7 @@ function cancel(){emit('cancel')}
   <div class="lotus-signature-editor-layout">
    <header class="lotus-signature-editor-header">
     <button type="button" aria-label="Hủy chỉnh ảnh" @click="cancel"><Icon name="cross"/></button>
-    <strong>{{screen==='crop'?'Cắt ảnh chữ ký':'Xem trước chữ ký'}}</strong>
+    <strong>{{screen==='crop'?'Cắt ảnh '+typeLabel:'Xem trước '+typeLabel}}</strong>
     <button v-if="screen==='crop'" type="button" @click="reset">Đặt lại</button>
     <button v-else type="button" @click="screen='crop'">Sửa lại</button>
    </header>
@@ -111,8 +111,8 @@ function cancel(){emit('cancel')}
    </div>
    <div v-if="screen==='preview'" class="lotus-signature-editor-preview">
     <p>Ảnh sau cắt và xử lý nền:</p>
-    <div class="lotus-signature-editor-paper"><img :src="preview" alt="Chữ ký trong suốt xem trước"/></div>
-    <p class="lotus-signature-editor-help">Đây là mẫu chữ ký sẽ dùng trên phiếu PDF. Chỉ lưu khi đã đúng.</p>
+    <div class="lotus-signature-editor-paper"><img :src="preview" alt="Ảnh đã cắt xem trước"/></div>
+    <p class="lotus-signature-editor-help">Đây là mẫu {{typeLabel}} sẽ dùng trên phiếu PDF. Chỉ lưu khi đã đúng.</p>
    </div>
    <p v-if="message" class="lotus-signature-editor-error" role="alert">{{message}}</p>
    <footer class="lotus-signature-editor-footer">

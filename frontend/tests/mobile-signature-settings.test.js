@@ -51,7 +51,7 @@ test('approved Purchase Order snapshots the image into a private PDF exactly onc
 test('signature picker is a visible, directly touchable native file input',()=>{
  const css=read('../src/components/lotus-mobile-signature.css')
  assert.match(widget,/<input id="lotus-signature-photo-file" type="file" class="lotus-signature-visible-input"/)
- assert.match(widget,/@change="chooseFile"/)
+ assert.match(widget,/@change="event=>chooseFile\(event,'signature'\)"/)
  assert.match(widget,/accept="image\/jpeg,image\/png,\.jpg,\.jpeg,\.png"/)
  assert.match(widget,/selectedFile=ref\(''\),uploadStep=ref\(''\)/)
  assert.match(widget,/uploadStep\.value='Đang gửi ảnh đã cắt lên Lotus…'/)

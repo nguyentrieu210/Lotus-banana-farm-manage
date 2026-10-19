@@ -160,7 +160,7 @@ def request_approval(name, modified):
 
 
 @frappe.whitelist(methods=["POST"])
-def approve_order(name, modified):
+def approve_order(name, modified, sign_token=None):
     access()
     from lotus_farm.controls import lock
     doc = _po(name)
@@ -169,6 +169,10 @@ def approve_order(name, modified):
     _ensure_version(doc, modified)
     if not can_approve(doc):
         frappe.throw("Không được duyệt đơn này. Kiểm tra quyền và người lập đơn.", frappe.PermissionError)
+    from lotus_farm.digital_signature import _assert_signer_qr
+    challenge = _assert_signer_qr(sign_token, name, modified)
+    if challenge:
+        challenge.db_set("used_at", now_datetime(), update_modified=False)
     doc.lotus_approved_by = frappe.session.user
     doc.lotus_approved_at = now_datetime()
     doc.submit()

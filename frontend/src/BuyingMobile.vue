@@ -32,6 +32,7 @@ const session=ref(null),company=ref(''),catalog=ref(null),orders=ref([]),request
 const tab=ref('home'),view=ref(''),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const filter=ref(''),status=ref('Tất cả'),detail=ref(null),draft=ref(null),quote=ref(null),rejectReason=ref('')
 const savedPurchase=ref(null)
+const qrChallenge=ref(null),qrDialog=ref(null),qrSignToken=ref(''),qrSignPending=ref(false)
 const newEta=ref(''),deliveryReason=ref(''),closeReason=ref(''),cancelReason=ref('')
 const showReschedule=ref(false),pendingFinalAction=ref(''),finalDialog=ref(null)
 const supplierForm=ref(null),supplierSearch=ref(''),selectedRequest=ref('')
@@ -186,6 +187,7 @@ async function applyAction(action){
   if(!detail.value)return
   const d=detail.value
   const args={name:d.name,modified:d.modified}
+  if(action==='approve_order'&&qrSignToken.value)args.sign_token=qrSignToken.value
   if(action==='reject_order')args.reason=rejectReason.value.trim()
   if(action==='reschedule_order'){args.expected_date=newEta.value;args.reason=deliveryReason.value.trim()}
   if(action==='close_order')args.reason=closeReason.value.trim()
@@ -198,6 +200,25 @@ async function applyAction(action){
    reschedule_order:'Đã cập nhật ngày giao mới.',close_order:'Đã đóng phần hàng không giao.',
    cancel_order:'Đã hủy đơn mua.'
   }[action]||'Đã cập nhật.'
+ })
+}
+async function initialPurchaseOrder(){
+ await run(async()=>{
+  if(!detail.value?.can_initial)return
+  await call('lotus_farm.digital_signature.initial_purchase_order',
+   {name:detail.value.name,modified:detail.value.modified},true)
+  const name=detail.value.name
+  await refresh()
+  await openOrder(name)
+  notice.value='Đã ký nháy xác nhận kiểm tra.'
+ })
+}
+async function showSigningQR(){
+ await run(async()=>{
+  if(!detail.value?.can_approve)return
+  qrChallenge.value=await call('lotus_farm.digital_signature.create_signing_challenge',
+   {name:detail.value.name,modified:detail.value.modified},true)
+  qrDialog.value?.showModal()
  })
 }
 function confirmFinalAction(action){
@@ -341,8 +362,13 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <div v-if="detail.can_write&&['Nháp','Từ chối'].includes(detail.approval_status)">
     <LotusMobileButton class="buy-outline" @click="editOrder()">Sửa đơn</LotusMobileButton></div>
    <LotusMobileButton v-if="detail.can_request_approval" class="buy-primary" :disabled="saving||!online" @click="applyAction('request_approval')">Gửi duyệt đơn mua</LotusMobileButton>
+   <div v-if="detail.can_initial" class="buy-card">
+    <p v-if="detail.initials_by" class="buy-muted">Đã ký nháy: {{detail.initials_by}} · {{detail.initials_at}}</p>
+    <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="initialPurchaseOrder()">Ký nháy xác nhận đã kiểm tra</LotusMobileButton>
+   </div>
    <div v-if="detail.can_approve">
     <LotusMobileButton class="buy-primary" :disabled="saving||!online" @click="applyAction('approve_order')">Duyệt đơn mua</LotusMobileButton>
+    <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="showSigningQR()">Hiện QR để duyệt trên điện thoại</LotusMobileButton>
     <div class="buy-field"><label>Lý do từ chối</label><LotusMobileInput type="textarea" v-model="rejectReason" rows="2" placeholder="Nêu lý do để người lập sửa lại…"/></div>
     <LotusMobileButton class="buy-danger" :disabled="saving||!online||rejectReason.trim().length<3" @click="applyAction('reject_order')">Trả lại đơn</LotusMobileButton>
    </div>
@@ -372,6 +398,15 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
 
   <MobileSupplierForm v-if="view==='supplier'&&supplierForm" v-model="supplierForm" :saving="saving" :online="online" @submit="saveSupplier"/>
  </main>
+ <LotusMobileDialog ref="qrDialog" class="mobile-leave-dialog">
+  <div class="mobile-leave-content">
+   <h2>QR xác nhận duyệt trên điện thoại</h2>
+   <p>Mã chỉ dùng trong 2 phút, dành riêng cho tài khoản đang đăng nhập. Sau khi quét vẫn phải bấm Duyệt.</p>
+   <img v-if="qrChallenge" :src="qrChallenge.qr_image" alt="QR duyệt bằng điện thoại" style="width:230px;max-width:100%;margin:12px auto;display:block"/>
+   <p v-if="qrChallenge">Hết hạn: {{qrChallenge.expires_at}}</p>
+   <LotusMobileButton type="button" @click="qrDialog?.close()">Đóng</LotusMobileButton>
+  </div>
+ </LotusMobileDialog>
  <LotusMobileDialog ref="finalDialog" class="mobile-leave-dialog">
   <div class="mobile-leave-content"><h2>{{pendingFinalAction==='cancel_order'?'Xác nhận hủy đơn?':'Xác nhận đóng đơn?'}}</h2>
    <p>{{pendingFinalAction==='cancel_order'?'Không thể hủy nếu đơn có phiếu nhập hoặc chứng từ liên quan.':'Phần chưa giao sẽ không còn nằm trong hàng chờ về.'}}</p>
