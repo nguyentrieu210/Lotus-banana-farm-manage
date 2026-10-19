@@ -1,0 +1,10 @@
+const fs = require('fs'), zlib=require('zlib');
+const lots=JSON.parse(fs.readFileSync('excel-export-lots.json','utf8'));
+const pred=JSON.parse(fs.readFileSync('excel-export-trial.json','utf8'));
+const lotCols=['name','block_code','block_name','area_ha','variety','planting_date','lotus_tree_count','lotus_tree_count_source','lotus_inferred_planting_date','lotus_estimated_sucker_selection_date','lotus_estimated_flowering_date','lotus_estimation_basis'];
+const rowCols=['block','block_code','zone','cycle_no','flowering_wave','flowering_date','flowering_month','flowering_share_percent','flowering_bunches','cut_date','harvest_earliest_date','expected_date','harvest_latest_date','cut_bunches','harvest_bunches','preprocessed_bunches','gross_kg','packed_kg','source','source_label','source_date','synthetic_count','tree_count_used','tree_count_source','inferred_planting','confidence','commit_ready'];
+const monCols=['month','bunches','gross_kg','packed_kg'];
+const compact={lots:lots.map(r=>lotCols.map(c=>r[c]??null)), predictions:pred.rows.map(r=>rowCols.map(c=>r[c]??null)), months:pred.months.map(m=>monCols.map(c=>m[c]??null)),lotCols,rowCols,monCols,summary:pred.summary,config:pred.config,from_date:pred.from_date,to_date:pred.to_date,scenario:pred.scenario,status:pred.status,notice:pred.source_notice};
+const json=JSON.stringify(compact), zipped=zlib.deflateRawSync(Buffer.from(json)), b64=zipped.toString('base64');
+fs.writeFileSync('lotus-excel-package.b64',b64);
+console.log(JSON.stringify({lotRows:lots.length,forecastRows:pred.rows.length,months:pred.months.length,bytes:json.length,compressed:zipped.length,base64:b64.length,chunks:Math.ceil(b64.length/4000)}));
