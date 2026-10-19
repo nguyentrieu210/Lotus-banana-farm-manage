@@ -19,29 +19,49 @@ test('every page sits in exactly one sidebar group with a real icon',()=>{
   assert.match(iconSource,new RegExp(`(^|[\\s{,])'?${icon}'?:\\[`,'m'),`${path} uses missing icon ${icon}`)
 })
 
-test('sidebar shows only permitted pages, grouped, without the duplicate stock link',async()=>{
+test('sidebar orders the actual business areas and respects permitted pages',async()=>{
  const session=useSession();Object.assign(session,{user:'lead@lotus',capabilities:{stock:true},commands:{},modules:{}})
  const nav=pages.filter(([path])=>['reports','kho','materials'].includes(path))
  const view=mount(WorkspaceSidebar,{nav,page:'kho'});await tick()
- const titles=[...view.root.querySelectorAll('.nav-group-title')].map(node=>node.textContent)
- assert.deepEqual(titles,['Tổng quan','Công việc hằng ngày','Kho & mua hàng'],'groups without permitted pages are hidden')
+ const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
+ assert.deepEqual(parents,['Tổng quan','Điều hành công việc','Kho & mua hàng'])
  const labels=[...view.root.querySelectorAll('nav button .nav-label')].map(node=>node.textContent)
- assert.deepEqual(labels,['Tổng quan','Vật tư theo việc','Quản lý kho'])
- assert.equal(view.root.querySelectorAll('nav button svg.lotus-icon').length,3,'each item has an icon, not a letter')
- assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Quản lý kho')
+ assert.deepEqual(labels,parents,'single-item groups do not duplicate their screens')
+ assert.equal(view.root.querySelectorAll('.nav-parent svg.lotus-icon').length,3,'each area has an icon')
+ assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Kho & mua hàng')
  assert.equal(view.root.querySelector('nav button.active').getAttribute('aria-current'),'page')
- assert.equal([...view.root.querySelectorAll('.field-link')].some(link=>link.textContent.includes('Quản lý kho')),false)
+ assert.equal(view.root.querySelector('.nav-sub-link')?.textContent.trim(),'Mua hàng')
+ assert.equal(view.root.querySelector('.nav-sub-link')?.getAttribute('href'),'/buying')
  view.unmount()
 })
 
-test('clicking an item asks the shell to navigate; unknown pages still appear',async()=>{
+test('sidebar parent navigates to its existing route; nested pages expand and can be selected',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{},commands:{},modules:{}})
  const visited=[]
+ const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['map','Bản đồ'],['work','Công việc'],['labor','Bố trí nhân công']]
+ const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'work',onGo:path=>visited.push(path)})});await tick()
+ const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
+ assert.deepEqual(parents,['Tổng quan','Bản đồ','Điều hành công việc'])
+ assert.equal(view.root.querySelector('.nav-group-current .nav-submenu button .nav-label')?.textContent,'Bố trí nhân công')
+ view.root.querySelector('.nav-group-current .nav-submenu button').click();await tick()
+ assert.deepEqual(visited,['labor'])
+ const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
+ collapsed.click();await tick()
+ assert.equal(collapsed.getAttribute('aria-expanded'),'false')
+ assert.equal(view.root.querySelector('.nav-group-current .nav-submenu').style.display,'none')
+ view.root.querySelector('.nav-group-current .nav-parent').click();await tick()
+ assert.deepEqual(visited,['labor','work'])
+ view.unmount()
+})
+
+test('unknown permitted pages remain reachable and group changes do not create routes',async()=>{
+ const session=useSession();Object.assign(session,{user:'u',capabilities:{stock:false},commands:{},modules:{}})
+ const visited=[]
  const view=mount({render:()=>h(WorkspaceSidebar,{nav:[['work','Công việc'],['future-page','Màn mới']],page:'',onGo:path=>visited.push(path)})});await tick()
- const buttons=[...view.root.querySelectorAll('nav button')]
- assert.deepEqual(buttons.map(button=>button.querySelector('.nav-label').textContent),['Tiến độ công việc','Màn mới'])
- assert.equal(view.root.querySelector('.nav-group:last-child .nav-group-title').textContent,'Khác')
- buttons[0].click();await tick()
+ const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
+ assert.deepEqual(parents,['Điều hành công việc','Khác'])
+ assert.equal([...view.root.querySelectorAll('.nav-sub-link')].length,0,'no purchasing shortcut without stock permission')
+ view.root.querySelector('.nav-parent').click();await tick()
  assert.deepEqual(visited,['work'])
  view.unmount()
 })

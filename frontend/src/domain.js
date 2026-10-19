@@ -2,17 +2,17 @@ export const pages=[['nguoi-dung','Người dùng & phân quyền'],['nhan-su','
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
- // Ordered by the operating flow: land & cycle → daily work → plant & bunch → harvest → forecast.
- {label:'Tổng quan',items:[['reports','chart']]},
- {label:'Bản đồ',items:[['map','map','Bản đồ chăm sóc']]},
- {label:'Vườn & vụ',items:[['farms','sprout']]},
- {label:'Công việc hằng ngày',items:[['cong-viec','check'],['plans','clipboard'],['work','list','Tiến độ công việc'],['labor','people'],['materials','boxes','Vật tư theo việc'],['daily-close','lock']]},
- {label:'Cây & buồng',items:[['measurements','ruler'],['losses','trash'],['cycle-close','flag']]},
- {label:'Thu hoạch & đóng gói',items:[['harvest','basket'],['incoming-qc','shield'],['packhouse','package'],['trace','route']]},
- {label:'Dự thu',items:[['forecast','trending']]},
- {label:'Kho & mua hàng',items:[['kho','warehouse']]},
- {label:'Nhân sự',items:[['nhan-su','id-card'],['cham-cong','clock']]},
- {label:'Thiết lập',items:[['alerts','alert'],['admin/masters','database'],['plan-norm','sliders','Cấu hình KH & định mức'],['admin/imports','upload'],['admin/settings','settings'],['nguoi-dung','user-cog']]},
+ {label:'Tổng quan',icon:'chart',items:[['reports','chart','Tổng quan'],['alerts','alert','Cảnh báo']]},
+ {label:'Bản đồ',icon:'map',items:[['map','map','Bản đồ']]},
+ {label:'Quản lý vườn',icon:'sprout',items:[['farms','sprout','Vườn & lô'],['measurements','ruler','Đo trái'],['losses','trash','Hủy & tổn thất'],['cycle-close','flag','Kết vụ']]},
+ {label:'Kế hoạch sản xuất',icon:'clipboard',items:[['plans','clipboard','Kế hoạch sản xuất']]},
+ {label:'Điều hành công việc',icon:'check',items:[['cong-viec','check','Công việc ngoài vườn'],['work','list','Tiến độ & kết quả'],['labor','people','Bố trí nhân công'],['materials','boxes','Vật tư theo việc'],['daily-close','lock','Chốt ngày']]},
+ {label:'Dự thu',icon:'trending',items:[['forecast','trending','Dự thu']]},
+ {label:'Thu hoạch & đóng gói',icon:'basket',items:[['harvest','basket','Thu hoạch'],['incoming-qc','shield','QC đầu vào'],['packhouse','package','Đóng gói'],['trace','route','Truy xuất']]},
+ // The purchasing PWA is a standalone, real application; do not invent a /lotus route.
+ {label:'Kho & mua hàng',icon:'warehouse',items:[['kho','warehouse','Quản lý kho']],links:[{href:'/buying',label:'Mua hàng',icon:'cart',capability:'stock'}]},
+ {label:'Nhân sự',icon:'people',items:[['nhan-su','id-card','Hồ sơ nhân sự'],['cham-cong','clock','Chấm công']]},
+ {label:'Thiết lập',icon:'settings',items:[['admin/masters','database','Danh mục'],['plan-norm','sliders','Định mức & chu kỳ'],['admin/imports','upload','Nhập dữ liệu'],['admin/settings','settings','Cấu hình'],['nguoi-dung','user-cog','Người dùng & phân quyền']]},
 ]
 export const moduleKey=p=>p==='plan-norm'?'plans':p.replace('admin/','')
 // A permission module can contain several pages; router names must remain unique.
