@@ -1,8 +1,9 @@
 <script setup>
-import {nextTick,onBeforeUnmount,ref,watch} from 'vue'
+import {nextTick,onMounted,onBeforeUnmount,ref,watch} from 'vue'
 import {parseCccdQr} from '../cccd-qr.js'
 
 const emit = defineEmits(['close','confirmed'])
+const scannerDialog = ref(null)
 const enabled = ref(false)
 const scanning = ref(false)
 const pending = ref(false)
@@ -11,46 +12,45 @@ const error = ref('')
 const notice = ref('')
 const cameraList = ref([])
 const cameraId = ref('')
+const torchAvailable = ref(false)
+const torchOn = ref(false)
 const targetId = 'lotus-cccd-camera-' + Math.random().toString(36).slice(2)
 let reader = null
 let alive = true
 let generation = 0
 let lastInvalidNotice = 0
 
+onMounted(() => scannerDialog.value?.showModal())
+onBeforeUnmount(() => { alive = false; void stopCamera(); scannerDialog.value?.close() })
+
 function cameraErrorMessage(e) {
   const message = String(e?.name || '') + ' ' + String(e?.message || e || '')
-  if (/NotAllowed|PermissionDenied|Permission denied|denied/i.test(message)) {
-    return 'Camera bị từ chối quyền. Hãy cho phép camera trong cài đặt trang web, rồi bấm Mở camera.'
-  }
-  if (/NotFound|DevicesNotFound|no camera|requested device not found/i.test(message)) {
-    return 'Không tìm thấy camera. Hãy thử chụp ảnh mã QR hoặc chọn ảnh từ máy.'
-  }
-  if (/NotReadable|TrackStart|Could not start|in use/i.test(message)) {
-    return 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng camera rồi thử lại.'
-  }
-  return 'Không mở được camera trên trình duyệt này. Hãy thử Chrome/Safari hoặc chọn ảnh QR.'
+  if (/NotAllowed|PermissionDenied|Permission denied|denied/i.test(message)) return 'Chưa cấp quyền camera. Hãy cho phép camera trong cài đặt trang web.'
+  if (/NotFound|DevicesNotFound|no camera|requested device not found/i.test(message)) return 'Không tìm thấy camera. Thử dùng camera điện thoại để chụp QR.'
+  if (/NotReadable|TrackStart|Could not start|in use/i.test(message)) return 'Camera đang bị ứng dụng khác sử dụng. Đóng ứng dụng đó rồi thử lại.'
+  return 'Không mở được camera. Hãy thử Chrome/Safari hoặc chụp QR bằng camera điện thoại.'
 }
+
 async function stopCamera() {
   generation++
   const active = reader
   reader = null
   scanning.value = false
+  torchAvailable.value = false
+  torchOn.value = false
   if (!active) return
-  try { if (active.isScanning) await active.stop() } catch (_) { /* already stopped */ }
-  try { active.clear() } catch (_) { /* no renderer */ }
+  try { if (active.isScanning) await active.stop() } catch (_) { /* camera already stopped */ }
+  try { active.clear() } catch (_) { /* renderer already removed */ }
 }
-async function decoded(text) {
-  if (!alive || pending.value || parsed.value || !enabled.value) return
+
+async function decoded(raw) {
+  if (!alive || !enabled.value || pending.value || parsed.value) return
   let info
-  try {
-    info = parseCccdQr(text)
-  } catch (e) {
-    // Keep the camera running when it sees a QR that is not a CCCD.
-    // Never display or log the raw code content.
-    const now = Date.now()
-    if (now - lastInvalidNotice > 1800) {
-      error.value = e.message || 'Mã vừa quét không phải QR căn cước.'
-      lastInvalidNotice = now
+  try { info = parseCccdQr(raw) }
+  catch (e) {
+    if (Date.now() - lastInvalidNotice > 2000) {
+      error.value = e.message || 'QR vừa thấy không phải QR căn cước.'
+      lastInvalidNotice = Date.now()
     }
     return
   }
@@ -60,175 +60,273 @@ async function decoded(text) {
     if (alive && enabled.value) {
       parsed.value = info
       error.value = ''
-      notice.value = 'Đọc QR thành công. Kiểm tra thông tin trước khi điền.'
+      notice.value = 'Đã đọc QR. Kiểm tra thông tin trước khi điền.'
     }
   } finally { pending.value = false }
 }
-async function openCamera(next = false) {
-  if (!enabled.value || pending.value || !alive) return
-  error.value = ''; notice.value = ''; parsed.value = null
+
+function chooseBackCamera(cameras) {
+  const back = cameras.filter(c => /back|rear|environment|sau|mặt sau/i.test(c.label))
+  const main = back.find(c => /main|wide(?!.*ultra)|camera\s*0|chính/i.test(c.label)
+    && !/ultra|macro|telephoto|depth|0\.5/i.test(c.label))
+    || back.find(c => !/ultra|macro|telephoto|depth|0\.5/i.test(c.label))
+  return main?.id || back[0]?.id || ''
+}
+
+async function improveFocus(active) {
+  try {
+    const caps = active.getRunningTrackCapabilities()
+    const advanced = []
+    if (caps?.focusMode?.includes('continuous')) advanced.push({focusMode:'continuous'})
+    if (caps?.exposureMode?.includes('continuous')) advanced.push({exposureMode:'continuous'})
+    if (advanced.length) await active.applyVideoConstraints({advanced})
+    torchAvailable.value = !!caps?.torch
+  } catch (_) { /* unsupported hardware: keep scanning */ }
+}
+
+async function openCamera(switchLens = false) {
+  if (!alive || !enabled.value || pending.value) return
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-    error.value = 'Camera chỉ hoạt động qua HTTPS hoặc localhost. Nếu đang mở bằng địa chỉ IP http, hãy dùng link HTTPS của Lotus hoặc chọn ảnh QR.'
+    error.value = 'Camera cần link HTTPS. Hãy mở app Lotus qua HTTPS hoặc dùng Chụp QR.'
     return
   }
   pending.value = true
+  error.value = ''
+  notice.value = ''
+  parsed.value = null
   try {
     await stopCamera()
     await nextTick()
     const current = ++generation
     const {Html5Qrcode,Html5QrcodeSupportedFormats} = await import('html5-qrcode')
     if (!alive || !enabled.value || current !== generation) return
-    // Listing cameras after consent helps pick the real back lens on Android.
     let cameras = []
-    try { cameras = await Html5Qrcode.getCameras() } catch (_) { /* use facingMode below */ }
+    try { cameras = await Html5Qrcode.getCameras() } catch (_) { /* facingMode fallback */ }
     if (!alive || !enabled.value || current !== generation) return
     cameraList.value = cameras
-    if (next && cameras.length > 1) {
-      const index = cameras.findIndex(c => c.id === cameraId.value)
-      cameraId.value = cameras[(index + 1) % cameras.length].id
-    } else if (!cameraId.value && cameras.length) {
-      const preferred = cameras.find(c => /back|rear|environment|sau|mặt sau/i.test(c.label) && !/ultra|wide|macro|0\.5/i.test(c.label))
-        || cameras.find(c => /back|rear|environment|sau|mặt sau/i.test(c.label))
-      cameraId.value = preferred?.id || ''
-    }
-    const options = {formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false}
+    if (switchLens && cameras.length > 1) {
+      const idx = cameras.findIndex(c => c.id === cameraId.value)
+      cameraId.value = cameras[(idx + 1) % cameras.length].id
+    } else if (!cameraId.value) cameraId.value = chooseBackCamera(cameras)
+
+    const constraints = cameraId.value
+      ? {deviceId:{exact:cameraId.value},width:{ideal:1920},height:{ideal:1080}}
+      : {facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}
     const config = {
-      fps:15,
-      qrbox:(width,height)=>{
-        const side = Math.floor(Math.min(340,width-16,height-16))
-        return {width:Math.max(100,side),height:Math.max(100,side)}
+      fps:12,
+      qrbox:(w,h)=>{
+        const side = Math.max(160,Math.floor(Math.min(290,w-24,h-24)))
+        return {width:side,height:side}
       },
+      videoConstraints:constraints,
       disableFlip:true,
     }
-    let instance = new Html5Qrcode(targetId, options)
-    reader = instance
-    try {
-      await instance.start(cameraId.value || {facingMode:'environment'},config,decoded,()=>{})
-    } catch (firstError) {
-      if (!cameraId.value && cameras.length) {
-        // Some phones reject facingMode but accept a device ID.
-        try { instance.clear() } catch (_) {}
-        instance = new Html5Qrcode(targetId,options)
-        reader = instance
-        cameraId.value = cameras[0].id
-        await instance.start(cameraId.value,config,decoded,()=>{})
-      } else {
-        throw firstError
-      }
+    let active = new Html5Qrcode(targetId,{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false})
+    reader = active
+    try { await active.start(cameraId.value || {facingMode:'environment'},config,decoded,()=>{}) }
+    catch (first) {
+      // Some Android devices list virtual lenses that cannot actually be opened.
+      if (!cameraId.value) throw first
+      try { active.clear() } catch (_) {}
+      active = new Html5Qrcode(targetId,{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false})
+      reader = active
+      cameraId.value = ''
+      config.videoConstraints = {facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+      await active.start({facingMode:'environment'},config,decoded,()=>{})
     }
-    if (!alive || !enabled.value || current !== generation) {
-      await stopCamera()
-      return
-    }
+    if (!alive || !enabled.value || current !== generation) { await stopCamera(); return }
     scanning.value = true
-    notice.value = 'Camera đã mở. Đưa toàn bộ mã QR vào khung và giữ yên vài giây.'
+    notice.value = 'Đưa mã QR vào giữa khung, giữ cách camera khoảng 10–20 cm.'
+    void improveFocus(active)
   } catch (e) {
     error.value = cameraErrorMessage(e)
     await stopCamera()
   } finally { pending.value = false }
 }
+
+async function toggleTorch() {
+  if (!reader || !scanning.value || pending.value) return
+  try {
+    const on = !torchOn.value
+    await reader.applyVideoConstraints({advanced:[{torch:on}]})
+    torchOn.value = on
+  } catch (_) {
+    torchAvailable.value = false
+    error.value = 'Camera này không hỗ trợ bật đèn.'
+  }
+}
+
+// Read large phone photos locally; do not send ID images to a server.
+async function preparePhoto(file) {
+  if (!file.type.startsWith('image/') && !/\.(jpg|jpeg|png|webp|heic|heif)$/i.test(file.name)) {
+    throw new Error('Hãy chọn ảnh QR (JPG, PNG hoặc WebP).')
+  }
+  if (file.size > 40*1024*1024) throw new Error('Ảnh quá lớn (trên 40 MB). Hãy chụp lại ảnh QR.')
+  let image
+  try { image = await createImageBitmap(file) }
+  catch (_) {
+    const url = URL.createObjectURL(file)
+    try {
+      image = new Image()
+      image.src = url
+      await image.decode()
+    } catch (_) { throw new Error('Không mở được ảnh này. Hãy dùng camera điện thoại chụp JPG.') }
+    finally { URL.revokeObjectURL(url) }
+  }
+  const width = image.width || image.naturalWidth
+  const height = image.height || image.naturalHeight
+  try {
+    const scale = Math.min(1,2600/Math.max(width,height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1,Math.round(width*scale))
+    canvas.height = Math.max(1,Math.round(height*scale))
+    const context = canvas.getContext('2d',{willReadFrequently:true})
+    if (!context) throw new Error('Không xử lý được ảnh QR.')
+    context.drawImage(image,0,0,canvas.width,canvas.height)
+    const blob = await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.9))
+    if (!blob) throw new Error('Không xử lý được ảnh QR.')
+    return new File([blob],'cccd-qr.jpg',{type:'image/jpeg'})
+  } finally { if (typeof image.close === 'function') image.close() }
+}
+
+async function scanPhoto(file) {
+  // Try native barcode reader first where supported (often better with small QR).
+  if (typeof window.BarcodeDetector === 'function') {
+    try {
+      const detector = new window.BarcodeDetector({formats:['qr_code']})
+      const img = await createImageBitmap(file)
+      try {
+        const results = await detector.detect(img)
+        if (results.length) return results[0].rawValue
+      } finally { img.close() }
+    } catch (_) { /* try local JS decoder below */ }
+  }
+  const {Html5Qrcode,Html5QrcodeSupportedFormats} = await import('html5-qrcode')
+  if (!alive) return ''
+  reader = new Html5Qrcode(targetId,{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false})
+  try { return await reader.scanFile(file,false) }
+  catch (_) { throw new Error('Không tìm thấy mã QR rõ nét. Hãy chụp sát phần mã QR, đủ sáng và tránh lóa.') }
+}
+
 async function fromFile(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file || !enabled.value || pending.value) return
-  if (!file.type.startsWith('image/') || file.size > 8 * 1024 * 1024) {
-    error.value = 'Chỉ chọn ảnh tối đa 8 MB.'
-    return
-  }
-  error.value = ''; notice.value = ''; parsed.value = null
+  error.value = ''
+  notice.value = ''
+  parsed.value = null
   pending.value = true
   try {
     await stopCamera()
     await nextTick()
-    const {Html5Qrcode,Html5QrcodeSupportedFormats} = await import('html5-qrcode')
+    const optimized = await preparePhoto(file)
     if (!alive || !enabled.value) return
-    reader = new Html5Qrcode(targetId,{formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],verbose:false})
-    let value
-    try { value = await reader.scanFile(file,true) }
-    catch (_) { throw new Error('Không tìm thấy mã QR rõ nét trong ảnh. Hãy chụp gần hơn, đủ sáng và không bị lóa.') }
-    const info = parseCccdQr(value)
+    const raw = await scanPhoto(optimized)
+    const info = parseCccdQr(raw)
     if (alive && enabled.value) {
       parsed.value = info
-      notice.value = 'Đọc ảnh QR thành công. Kiểm tra thông tin trước khi điền.'
+      notice.value = 'Đã đọc QR từ ảnh. Kiểm tra thông tin trước khi điền.'
+      error.value = ''
     }
-  } catch (e) {
-    error.value = e?.message || 'Không đọc được mã QR trong ảnh.'
-  } finally {
-    await stopCamera()
-    pending.value = false
-  }
+  } catch (e) { error.value = e?.message || 'Không đọc được QR trong ảnh.' }
+  finally { await stopCamera(); pending.value = false }
 }
+
 async function close() { await stopCamera(); emit('close') }
 async function confirm() {
   if (!parsed.value || !enabled.value) return
   emit('confirmed',{...parsed.value})
   await stopCamera()
 }
-watch(enabled,accepted=>{if(accepted)void openCamera();else void stopCamera()})
-onBeforeUnmount(()=>{alive=false;void stopCamera()})
+watch(enabled,accepted=>{ if (accepted) void openCamera(); else void stopCamera() })
 </script>
 
 <template>
- <Teleport to="body"><div class="cccd-overlay" role="presentation" @click.self="close">
-  <section class="cccd-dialog" role="dialog" aria-modal="true" aria-label="Quét căn cước">
+ <Teleport to="body">
+  <dialog ref="scannerDialog" class="cccd-dialog" aria-label="Quét QR căn cước" @cancel.prevent="close">
    <header class="cccd-heading">
-    <strong>Quét QR căn cước</strong>
+    <strong>Quét căn cước</strong>
     <button type="button" aria-label="Đóng" class="cccd-x" @click="close">×</button>
    </header>
-   <p class="cccd-guide">Dùng mã QR in trên thẻ, không phải mã NFC. Quét QR không xác thực thẻ hay chủ thẻ.</p>
-   <label class="cccd-consent"><input type="checkbox" v-model="enabled"> Tôi đã thông báo cho người có thẻ và được đồng ý sử dụng thông tin để lập hồ sơ.</label>
-   <div :id="targetId" class="cccd-camera" :class="{active:scanning}"></div>
+   <p class="cccd-guide">Đưa mã QR trên thẻ vào giữa khung.</p>
+   <label class="cccd-consent">
+    <input v-model="enabled" type="checkbox">
+    <span>Đã được người có thẻ đồng ý dùng thông tin để lập hồ sơ.</span>
+   </label>
+   <div class="cccd-view">
+    <div v-show="!parsed" :id="targetId" class="cccd-camera" :class="{active:scanning}"></div>
+    <div v-if="!parsed&&!scanning&&!pending" class="cccd-placeholder">
+     <span class="cccd-symbol">▣</span><span>{{enabled?'Sẵn sàng quét QR':'Đánh dấu đồng ý để mở camera'}}</span>
+    </div>
+    <div v-if="pending" class="cccd-loading">Đang xử lý…</div>
+    <div v-if="scanning" class="cccd-camera-actions">
+     <button v-if="cameraList.length>1" type="button" aria-label="Đổi camera" title="Đổi camera" :disabled="pending" @click="openCamera(true)">⟳</button>
+     <button v-if="torchAvailable" type="button" :aria-label="torchOn?'Tắt đèn':'Bật đèn'" :disabled="pending" @click="toggleTorch">{{torchOn?'☀':'☼'}}</button>
+    </div>
+   </div>
    <p v-if="error" role="alert" class="cccd-error">{{error}}</p>
-   <p v-if="notice" role="status" class="cccd-success">{{notice}}</p>
+   <p v-else-if="notice&&!parsed" role="status" class="cccd-hint">{{notice}}</p>
    <div v-if="parsed" class="cccd-preview">
-    <div><small>Họ tên</small><strong>{{parsed.employee_name}}</strong></div>
-    <div><small>Số định danh</small><strong>********{{parsed.cccd.slice(-4)}}</strong></div>
+    <div><small>Họ và tên</small><strong>{{parsed.employee_name}}</strong></div>
     <div><small>Ngày sinh</small><strong>{{parsed.date_of_birth}}</strong></div>
     <div><small>Giới tính</small><strong>{{parsed.gender==='Male'?'Nam':parsed.gender==='Female'?'Nữ':'Khác'}}</strong></div>
-    <div><small>Nơi cư trú</small><strong>{{parsed.current_address}}</strong></div>
+    <div><small>Số định danh</small><strong>•••• •••• {{parsed.cccd.slice(-4)}}</strong></div>
+    <div class="cccd-address"><small>Nơi cư trú</small><strong>{{parsed.current_address}}</strong></div>
     <div><small>Ngày cấp</small><strong>{{parsed.lotus_id_issue_on||'Không có'}}</strong></div>
    </div>
-   <div class="cccd-buttons">
-    <button v-if="!parsed" type="button" :disabled="!enabled||pending||scanning" @click="openCamera()">{{pending?'Đang mở…':scanning?'Đang quét…':'Mở camera'}}</button>
-    <button v-if="!parsed&&scanning&&cameraList.length>1" type="button" :disabled="pending" @click="openCamera(true)">Đổi camera</button>
-    <label v-if="!parsed" class="cccd-upload" :class="{disabled:!enabled||pending}">
-      Chụp QR<input type="file" accept="image/*" capture="environment" :disabled="!enabled||pending" @change="fromFile">
-    </label>
-    <label v-if="!parsed" class="cccd-upload" :class="{disabled:!enabled||pending}">
-      Chọn ảnh QR<input type="file" accept="image/*" :disabled="!enabled||pending" @change="fromFile">
-    </label>
-    <button v-if="parsed" type="button" @click="confirm">Dùng thông tin này</button>
-    <button v-if="parsed" type="button" @click="openCamera()">Quét lại</button>
-    <button type="button" @click="close">Đóng</button>
-   </div>
-   <p class="cccd-guide">Đưa mã QR gần camera, tránh bóng và phản sáng. Chỉ điền thông tin khi bạn xác nhận; không lưu ảnh QR.</p>
-  </section>
- </div></Teleport>
+   <template v-if="parsed">
+    <button type="button" class="cccd-primary" @click="confirm">Dùng thông tin này</button>
+    <button type="button" class="cccd-textbutton" @click="openCamera()">Quét lại</button>
+   </template>
+   <template v-else>
+    <button v-if="enabled&&!scanning&&!pending" class="cccd-primary" type="button" @click="openCamera()">Mở camera quét QR</button>
+    <div class="cccd-photos">
+     <label :class="{disabled:!enabled||pending}">
+      <span>Chụp ảnh QR</span>
+      <input type="file" accept="image/*" capture="environment" :disabled="!enabled||pending" @change="fromFile">
+     </label>
+     <label :class="{disabled:!enabled||pending}">
+      <span>Chọn ảnh có QR</span>
+      <input type="file" accept="image/*" :disabled="!enabled||pending" @change="fromFile">
+     </label>
+    </div>
+   </template>
+   <p class="cccd-foot">Chỉ dùng thông tin sau khi xác nhận. Không lưu ảnh QR.</p>
+  </dialog>
+ </Teleport>
 </template>
 
 <style scoped>
-.cccd-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:rgba(12,20,18,.70);padding:12px;isolation:isolate;color:#202c24}
-.cccd-dialog{width:min(100%,480px);max-height:calc(100dvh - 24px);overflow-y:auto;background:#fff!important;opacity:1!important;filter:none!important;color:#202c24!important;border-radius:16px;padding:16px;box-shadow:0 16px 48px #0007;overscroll-behavior:contain}
+.cccd-dialog::backdrop{background:rgba(12,20,18,.72)}
+.cccd-dialog{border:0;margin:auto;width:min(100% - 20px,430px);max-height:calc(100dvh - 20px);overflow-y:auto;background:#fff!important;color:#202c24!important;border-radius:18px;padding:16px;box-shadow:0 12px 36px #0005;overscroll-behavior:contain}
 .cccd-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.cccd-heading strong{font-size:18px}
-.cccd-x{border:0;background:transparent;font-size:30px;color:inherit;cursor:pointer}
-.cccd-guide{font-size:13px;line-height:1.5;margin:8px 0;color:#536258!important}
-.cccd-consent{display:flex;gap:10px;line-height:1.5;font-size:14px;margin:12px 0}
-.cccd-consent input{width:20px;height:20px;flex-shrink:0;margin-top:2px}
-.cccd-camera{min-height:220px;overflow:hidden;border-radius:12px;background:#edf2ed}
-.cccd-camera.active{background:#111}
-.cccd-camera :deep(video){object-fit:cover}
-.cccd-camera :deep(img){max-width:100%}
-.cccd-error{color:#b42318;font-size:14px}.cccd-success{color:#167344;font-size:14px}
-.cccd-preview{margin:12px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cccd-preview div{display:flex;flex-direction:column;gap:3px;min-width:0}
-.cccd-preview small{color:#59695e}
+.cccd-heading strong{font-size:18px;font-weight:750}
+.cccd-x{border:0;background:transparent;font-size:30px;line-height:1;color:#263329;cursor:pointer;padding:4px 6px}
+.cccd-guide{font-size:14px;color:#58695b;margin:6px 0 10px}
+.cccd-consent{display:flex;align-items:flex-start;gap:10px;margin:8px 0 12px;color:#3b4e3f;font-size:13px;line-height:1.4}
+.cccd-consent input{width:20px;height:20px;flex:none;margin:0;accent-color:#e65338}
+.cccd-view{position:relative;border-radius:12px;overflow:hidden;background:#152019;min-height:220px;aspect-ratio:1/1;max-height:360px}
+.cccd-camera{width:100%;height:100%;min-height:220px;overflow:hidden}
+.cccd-camera :deep(video){object-fit:cover;max-width:100%}
+.cccd-placeholder,.cccd-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#fff;font-size:14px;text-align:center;pointer-events:none;padding:12px}
+.cccd-placeholder .cccd-symbol{font-size:52px;opacity:.72}
+.cccd-loading{background:#15201999}
+.cccd-camera-actions{position:absolute;right:9px;top:9px;display:flex;gap:6px}
+.cccd-camera-actions button{border:1px solid #fff6;border-radius:30px;background:#161f1cbb;color:#fff;font-size:24px;line-height:1;width:44px;height:44px;cursor:pointer}
+.cccd-camera-actions button:disabled{opacity:.5}
+.cccd-error{color:#b42318;font-size:13px;line-height:1.4;margin:10px 0}
+.cccd-hint{color:#526659;font-size:13px;line-height:1.4;margin:10px 0}
+.cccd-primary{display:block;width:100%;min-height:46px;border:0;background:#e65338;color:#fff;font-size:15px;font-weight:700;border-radius:12px;margin:12px 0 8px;cursor:pointer}
+.cccd-photos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.cccd-photos label{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;border:1px solid #cbd8d0;border-radius:12px;background:#f8faf8;color:#243a2b;font-size:14px;font-weight:650;cursor:pointer;position:relative}
+.cccd-photos input{position:absolute;width:1px;height:1px;opacity:0}
+.cccd-photos .disabled{opacity:.4;pointer-events:none}
+.cccd-textbutton{display:block;border:0;background:transparent;color:#2c5f4a;font-size:14px;font-weight:650;margin:4px auto 0;padding:12px}
+.cccd-foot{font-size:12px;color:#79877a;text-align:center;margin:10px 0 0;line-height:1.4}
+.cccd-preview{margin:12px 0 8px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cccd-preview>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cccd-preview small{font-size:12px;color:#677469}
 .cccd-preview strong{font-size:14px;overflow-wrap:anywhere}
-.cccd-preview div:nth-child(5){grid-column:1/-1}
-.cccd-buttons{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}.cccd-buttons button{min-height:44px;padding:10px 14px;border:1px solid #d7ded9;border-radius:10px;background:#fff;color:#202c24;font-size:14px;font-weight:650;cursor:pointer}.cccd-buttons button:first-child{background:#e65b35;color:#fff;border:1px solid #e65b35}
-.cccd-buttons button:disabled{opacity:.55;cursor:default}
-.cccd-upload{display:inline-flex;align-items:center;min-height:44px;padding:8px 14px;border:1px solid #c3c3c3;border-radius:10px;cursor:pointer;font-size:14px}
-.cccd-upload input{position:absolute;width:1px;height:1px;opacity:0}
-.cccd-upload.disabled{opacity:.45;pointer-events:none}
-@media(max-width:380px){.cccd-dialog{padding:12px}.cccd-preview{grid-template-columns:1fr 1fr}}
+.cccd-preview .cccd-address{grid-column:1/-1}
+@media(max-width:370px){.cccd-dialog{padding:12px}.cccd-view{min-height:190px}.cccd-camera{min-height:190px}}
 </style>
