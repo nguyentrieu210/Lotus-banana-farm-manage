@@ -42,7 +42,7 @@ DESIGNATION_GROUPS = {
 
 
 def _is_hr_manager():
-    return frappe.session.user == "Administrator" or "HR Manager" in frappe.get_roles()
+    return frappe.session.user == "Administrator" or bool({"HR Manager", "System Manager"} & set(frappe.get_roles()))
 
 
 def _hr_access():
@@ -396,6 +396,24 @@ def _apply_employee(doc, values, company, new):
 
 
 @frappe.whitelist(methods=["POST"])
+def reveal_employee_cccd(company, employee):
+    """Reveal an encrypted ID only to an authorized HR/admin user on explicit click."""
+    _manager()
+    _company(company)
+    doc = _choose("Employee", employee, company)
+    doc.check_permission("read")
+    if not doc.get("lotus_cccd_hash"):
+        frappe.throw("Hồ sơ chưa có CCCD.")
+    cccd = doc.get_password("lotus_cccd", raise_exception=False)
+    if not cccd:
+        frappe.throw("Không đọc được CCCD đã lưu.")
+    frappe.logger("lotus_cccd_access", allow_site=True).info(
+        "ID viewed: employee=%s, user=%s", doc.name, frappe.session.user
+    )
+    return {"cccd": cccd}
+
+
+@frappe.whitelist(methods=["POST"])
 def check_cccd(company, cccd, employee=None):
     """Preflight duplicate check; never return another employee's details."""
     _manager()
@@ -457,6 +475,30 @@ def set_onboarding_ready(company, employee, modified):
     doc.save()
     from lotus_farm.hr_payroll import assign_salary
     assign_salary(doc)
+    # Capture the approving user's image at approval time; later profile edits
+    # cannot silently change the printed signature on this document.
+    import json
+    from lotus_farm.digital_signature import signature_image_bytes
+    from frappe.utils.file_manager import save_file
+    actor = frappe.session.user
+    signed_at = frappe.utils.now_datetime()
+    image = signature_image_bytes(actor)
+    snapshot = None
+    if image:
+        snapshot = save_file(
+            "lotus-intake-" + doc.name.replace("/", "-") + ".png",
+            image, "Employee", doc.name, is_private=1,
+        )
+    frappe.get_doc({
+        "doctype": "Lotus Signature Event",
+        "document_type": "Employee",
+        "document_name": doc.name,
+        "action": "ONBOARD_APPROVE",
+        "actor": actor,
+        "signed_at": signed_at,
+        "signature_type": "IMAGE" if snapshot else "NO_IMAGE",
+        "details": json.dumps({"signature_file": snapshot.name if snapshot else None}),
+    }).insert(ignore_permissions=True)
     return dict(name=doc.name, status=doc.status)
 
 

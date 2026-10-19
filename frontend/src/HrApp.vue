@@ -19,6 +19,7 @@ import {DatePicker} from './components/ui/date-picker'
 import {FormField} from './components/ui/form-field'
 import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
+import {DEFAULT_CCCD_ISSUER} from './cccd-issuer'
 import {sidebarCollapsed} from './workspace'
 import {stateLabel} from './labels'
 import {hrCatalogLabel} from './hr-catalog-labels'
@@ -34,6 +35,7 @@ const overview=ref({employees:[],candidates:[]})
 const employeeFilters=reactive({farm:'',department:'',team:'',status:'',category:'',stage:''})
 const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null),cccdScanOpen=ref(false),offboardOpen=ref(false)
 const selectedEmployee=ref(null),selectedCandidate=ref(null),ops=ref(null),payroll=ref(null)
+const revealedCccd=ref('')
 const employeeForm=reactive({}),candidateForm=reactive({}),offboard=reactive({relieving_date:'',reason:''})
 const isManager=computed(()=>session.value?.is_hr_manager||false)
 const cats={Permanent:'Dài hạn','Fixed-term':'Hợp đồng xác định hạn',Seasonal:'Thời vụ',Probation:'Thử việc'}
@@ -64,7 +66,7 @@ const designationCount=computed(()=>{const all=Object.values(catalog.value.desig
 const today=computed(()=>session.value?.today||'')
 const contractDue=e=>e.contract_end_date&&e.contract_end_date<=today.value
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}
-function resetPanels(){cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
+function resetPanels(){revealedCccd.value='';cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
 function chooseTab(t){resetPanels();search.value='';tab.value=t}
 async function refresh(){if(!company.value)return;busy.value=true;error.value=''
  try{const [c,data]=await Promise.all([api('catalogue',{company:company.value}),api('overview',{company:company.value})]);catalog.value=c;overview.value=data}
@@ -79,7 +81,7 @@ function emptyEmployee(){
  Object.assign(employeeForm,{employee_name:'',gender:'',date_of_birth:'',date_of_joining:today.value,designation:'',department:'',
   employment_type:'',grade:'',reports_to:'',lotus_worker_category:'Seasonal',lotus_payment_basis:'Daywork',
   lotus_farm:'',lotus_work_team:'',cell_number:'',personal_email:'',current_address:'',permanent_address:'',
-  cccd:'',lotus_id_issue_on:'',lotus_id_issue_at:'',lotus_emergency_name:'',lotus_emergency_phone:'',
+  cccd:'',lotus_id_issue_on:'',lotus_id_issue_at:DEFAULT_CCCD_ISSUER,lotus_emergency_name:'',lotus_emergency_phone:'',
   lotus_tax_code:'',lotus_social_insurance_no:'',health_insurance_no:'',contract_end_date:'',lotus_onboarding_state:'Pending',
   lotus_base_salary:0,lotus_daily_rate:0})
  editEmployee.value=true
@@ -87,6 +89,13 @@ function emptyEmployee(){
 async function openEmployee(item){if(!isManager.value)return;busy.value=true;error.value=''
  try{const data=await api('employee_detail',{company:company.value,employee:item.name});resetPanels();clear(employeeForm);Object.assign(employeeForm,data,{cccd:''});selectedEmployee.value=item.name;editEmployee.value=true}
  catch(e){error.value=e.message}finally{busy.value=false}}
+async function revealEmployeeCccd(){
+ if(!selectedEmployee.value||!isManager.value)return
+ try{
+  const result=await api('reveal_employee_cccd',{company:company.value,employee:selectedEmployee.value},true)
+  revealedCccd.value=result.cccd||''
+ }catch(e){error.value=e.message}
+}
 async function applyScannedCccd(info){
  if(!isManager.value||!editEmployee.value||saving.value)return
  // Candidate name comes from the hiring record and cannot be overwritten here.
@@ -111,7 +120,9 @@ async function saveEmployee(){saving.value=true;error.value='';notice.value=''
   resetPanels();await refresh()
  }catch(e){error.value=e.message}finally{saving.value=false}
 }
-async function approveOnboarding(){if(!selectedEmployee.value)return;saving.value=true;error.value=''
+async function approveOnboarding(){if(!selectedEmployee.value)return
+ if(!await askConfirm('Xác nhận đã kiểm tra hồ sơ và duyệt tiếp nhận? Nếu đã lưu ảnh chữ ký, ảnh đó sẽ được gắn vào phiếu in tại thời điểm duyệt.'))return
+ saving.value=true;error.value=''
  try{await api('set_onboarding_ready',{company:company.value,employee:selectedEmployee.value,modified:employeeForm.modified},true);notice.value='Đã duyệt tiếp nhận và kích hoạt nhân viên.';resetPanels();await refresh()}
  catch(e){error.value=e.message}finally{saving.value=false}}
 function startOffboard(){offboard.relieving_date=today.value;offboard.reason='';error.value='';offboardOpen.value=true}
@@ -227,6 +238,10 @@ useNoticeToast(notice)
     <h3 class="hr-form-section">Giấy tờ & bảo hiểm</h3>
     <div class="hr-form-grid">
      <FormField :label="'CCCD'+(employeeForm.cccd_recorded?' (đã có ****'+employeeForm.lotus_cccd_last4+')':'')" hint="Lưu mã hóa; chỉ nhập khi tạo mới hoặc cần cập nhật." v-slot="f"><UiInput v-bind="f" v-model="employeeForm.cccd" autocomplete="off" inputmode="numeric" maxlength="18" placeholder="12 chữ số"/></FormField>
+     <div v-if="selectedEmployee&&employeeForm.cccd_recorded" class="hr-span" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <strong v-if="revealedCccd">{{revealedCccd}}</strong><span v-else>CCCD: ••••••••{{employeeForm.lotus_cccd_last4}}</span>
+      <UiButton type="button" variant="outline" size="sm" :disabled="saving" @click="revealedCccd?revealedCccd='':revealEmployeeCccd()">{{revealedCccd?'Ẩn CCCD':'Hiện đủ 12 số'}}</UiButton>
+     </div>
      <FormField label="Ngày cấp CCCD" v-slot="f"><DatePicker v-bind="f" v-model="employeeForm.lotus_id_issue_on" :max="today" aria-label="Ngày cấp CCCD"/></FormField>
      <FormField label="Nơi cấp CCCD" v-slot="f"><UiInput v-bind="f" v-model="employeeForm.lotus_id_issue_at"/></FormField>
      <FormField label="Số BHXH" hint="Có số BHXH thì bảng lương trừ 10,5% bảo hiểm." v-slot="f"><UiInput v-bind="f" v-model="employeeForm.lotus_social_insurance_no"/></FormField>
@@ -253,6 +268,7 @@ useNoticeToast(notice)
      <p v-if="employeeForm.lotus_payment_basis==='Piecework'" class="hr-span hr-form-note">Khoán sản lượng: tiền trả qua đội khoán, không lên phiếu lương cá nhân.</p>
     </div>
     <div class="hr-form-footer">
+     <a v-if="selectedEmployee" class="workspace-secondary-link" :href="'/lotus_employee_print?company='+encodeURIComponent(company)+'&employee='+encodeURIComponent(selectedEmployee)" target="_blank" rel="noopener">In phiếu tiếp nhận có chữ ký ↗</a>
      <a v-if="selectedEmployee" class="workspace-secondary-link" :href="'/app/employee/'+encodeURIComponent(selectedEmployee)" target="_blank" rel="noopener">Mở trong HRMS ↗</a>
      <UiButton v-if="selectedEmployee&&employeeForm.status!=='Left'" variant="outline" type="button" :disabled="saving" @click="startOffboard">Cho nghỉ việc</UiButton>
      <small v-if="employeeForm.status==='Left'">Đã nghỉ việc từ {{formatDate(employeeForm.relieving_date)}}</small>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><title>Phiếu tiếp nhận nhân sự - {{ employee.employee_name|e }}</title>
+<style>
+*{box-sizing:border-box}body{font-family:"DejaVu Sans",Arial,sans-serif;font-size:12px;line-height:1.55;background:#eef0f3;color:#17232c;margin:0}
+.toolbar{text-align:center;padding:12px}.toolbar button,.toolbar a{font:inherit;border:1px solid #a92126;color:#a92126;background:#fff;border-radius:5px;padding:8px 13px;text-decoration:none;cursor:pointer}
+.sheet{width:210mm;min-height:297mm;margin:12px auto;background:white;padding:17mm;box-shadow:0 4px 24px #0001}
+.header{display:table;width:100%;border-bottom:2px solid #b72b26;padding-bottom:15px}.brand{display:table-cell;vertical-align:middle;width:125px}.brand img{max-width:112px;max-height:62px}.company{display:table-cell;vertical-align:middle}.company strong{font-size:14px;color:#a92126}
+h1{text-align:center;font-size:20px;margin:22px 0 4px}h2{font-size:13px;color:#93332e;background:#f8efeb;padding:7px 10px;margin:22px 0 10px}.subtitle{text-align:center;color:#56636a;margin-bottom:25px}
+table{width:100%;border-collapse:collapse}td{padding:8px;border-bottom:1px solid #e1e5e8;vertical-align:top;word-break:break-word}td:first-child{width:39%;color:#5b626a}.signature-row{display:table;width:100%;table-layout:fixed;margin-top:28px;text-align:center}.signature-box{display:table-cell;width:50%;vertical-align:top;padding:0 12px}.signature-box strong{display:block;margin:0 0 8px}.sign-image{max-width:150px;max-height:78px;display:block;margin:3px auto 0;object-fit:contain}.sign-space{height:86px}.sign-name{font-weight:700;display:block;margin-top:5px}.sign-date{font-size:10px;color:#57616b}.footnote{font-size:10px;margin-top:23px;color:#5c6772}
+@page{size:A4;margin:10mm}@media print{body{background:#fff}.toolbar{display:none}.sheet{margin:0;width:100%;min-height:0;box-shadow:none;padding:0}}
+</style></head>
+<body><nav class="toolbar"><button onclick="window.print()">In phiếu / Lưu PDF</button> <a href="{{ pdf_url|e }}">Tải PDF</a></nav>
+<main class="sheet">
+<div class="header"><div class="brand"><img src="{{ logo_data|e }}" alt="Lotus"></div><div class="company"><strong>{{ company_name|e }}</strong><div>HỒ SƠ TIẾP NHẬN NHÂN SỰ</div></div></div>
+<h1>PHIẾU THÔNG TIN TIẾP NHẬN</h1><p class="subtitle">Mã nhân viên: {{ employee.name|e }} · {{ "Đã tiếp nhận" if employee.lotus_onboarding_state == "Ready" else "Chờ tiếp nhận" }}</p>
+<h2>Thông tin cá nhân</h2>
+<table><tbody>
+<tr><td>Họ và tên</td><td><strong>{{ employee.employee_name|e }}</strong></td></tr>
+<tr><td>Ngày sinh / Giới tính</td><td>{{ (employee.date_of_birth or "")|e }} / {{ (employee.gender or "")|e }}</td></tr>
+<tr><td>Số CCCD</td><td>{{ (cccd or "Chưa có")|e }}</td></tr>
+<tr><td>Ngày cấp / Nơi cấp CCCD</td><td>{{ (employee.lotus_id_issue_on or "")|e }} / {{ issuer|e }}</td></tr>
+<tr><td>Số điện thoại</td><td>{{ (employee.cell_number or "")|e }}</td></tr>
+<tr><td>Địa chỉ hiện tại</td><td>{{ (employee.current_address or "")|e }}</td></tr>
+<tr><td>Liên hệ khẩn cấp</td><td>{{ (employee.lotus_emergency_name or "")|e }} · {{ (employee.lotus_emergency_phone or "")|e }}</td></tr>
+</tbody></table>
+<h2>Thông tin công việc</h2>
+<table><tbody>
+<tr><td>Ngày vào làm</td><td>{{ (employee.date_of_joining or "")|e }}</td></tr>
+<tr><td>Chức danh / Phòng ban</td><td>{{ (employee.designation or "")|e }} / {{ (employee.department or "")|e }}</td></tr>
+<tr><td>Vườn / Tổ đội</td><td>{{ (employee.lotus_farm or "")|e }} / {{ (employee.lotus_work_team or "")|e }}</td></tr>
+<tr><td>Loại nhân sự</td><td>{{ (employee.lotus_worker_category or "")|e }}</td></tr>
+<tr><td>Hình thức tính công/lương</td><td>{{ (employee.lotus_payment_basis or "")|e }}</td></tr>
+</tbody></table>
+<div class="signature-row">
+<div class="signature-box"><strong>NGƯỜI LAO ĐỘNG</strong><span class="sign-date">(Ký, ghi rõ họ tên)</span><div class="sign-space"></div><span class="sign-name">{{ employee.employee_name|e }}</span></div>
+<div class="signature-box"><strong>NGƯỜI DUYỆT TIẾP NHẬN</strong>
+{% if signature_image %}<img class="sign-image" src="{{ signature_image|e }}" alt="Chữ ký người duyệt">
+{% else %}<div class="sign-space"></div>{% endif %}
+{% if signed_by %}<span class="sign-name">{{ signed_by|e }}</span><span class="sign-date">Duyệt lúc {{ signed_at|e }}{% if not signature_image %} · Không có ảnh chữ ký{% endif %}</span>
+{% else %}<span class="sign-date">{{ "Đã tiếp nhận trước khi lưu chứng từ ký" if employee.lotus_onboarding_state == "Ready" else "Chưa duyệt tiếp nhận" }}</span>{% endif %}
+</div></div>
+<p class="footnote">Phiếu nội bộ Lotus, chứa thông tin định danh cá nhân. Chỉ dùng trong phạm vi công việc được phân quyền. Ảnh chữ ký là chữ ký tay được lưu trên Lotus, không phải chữ ký số có chứng thư.</p>
+</main></body></html>

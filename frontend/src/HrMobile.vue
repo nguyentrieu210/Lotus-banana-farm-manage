@@ -12,6 +12,7 @@ import {useMobileConfirm} from './use-mobile-confirm'
 import {logoutPwa} from './mobile-push-session'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {call,setCSRF} from './api'
+import {DEFAULT_CCCD_ISSUER} from './cccd-issuer'
 import {useMobileViewport} from './use-mobile-viewport'
 const api=(name,args={},post=false)=>call('lotus_farm.hr_workspace.'+name,args,post)
 const {keyboard}=useMobileViewport()
@@ -22,6 +23,7 @@ const error=ref(''),notice=ref(''),screen=ref(['home','employees','onboarding','
 const people=ref([]),candidates=ref([]),catalog=ref({farms:[],teams:[],departments:[],designations:[],genders:[],employment_types:[],grades:[],worker_categories:[],payment_bases:[]})
 const employee=reactive({}),candidate=reactive({})
 const selectedEmployee=ref(null),selectedCandidate=ref(null),hireFrom=ref(null)
+const revealedCccd=ref('')
 const roots=['home','employees','onboarding','profile']
 const tabs=[{name:'home',label:'Trang chủ',icon:'wap-home-o'},{name:'employees',label:'Nhân viên',icon:'friends-o'},{name:'onboarding',label:'Tiếp nhận',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
 const title=computed(()=>({home:'Nhân sự Lotus',employees:'Hồ sơ nhân viên',onboarding:'Tiếp nhận',profile:'Tài khoản',employee:'Hồ sơ nhân viên',candidates:'Tuyển dụng',candidate:'Hồ sơ ứng viên'})[screen.value]||'Nhân sự Lotus')
@@ -46,14 +48,14 @@ const categories=[{value:'Permanent',label:'Dài hạn'},{value:'Fixed-term',lab
 const payments=[{value:'Monthly',label:'Lương tháng'},{value:'Daywork',label:'Công nhật'},{value:'Piecework',label:'Khoán sản lượng'},{value:'Mixed',label:'Hỗn hợp'}]
 const candidateStatuses={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 function msg(e){return String(e?.message||'Không thể kết nối Lotus.')}
-function nav(dest){if(saving.value||screen.value===dest)return;scanOpen.value=false;screen.value=dest;search.value='';error.value='';notice.value='';window.scrollTo({top:0,behavior:'instant'})}
+function nav(dest){if(saving.value||screen.value===dest)return;revealedCccd.value='';scanOpen.value=false;screen.value=dest;search.value='';error.value='';notice.value='';window.scrollTo({top:0,behavior:'instant'})}
 function back(){nav(selectedEmployee.value?'employees':'home')}
 function blankEmployee(){
  selectedEmployee.value=null;hireFrom.value=null
  Object.keys(employee).forEach(k=>delete employee[k])
  Object.assign(employee,{employee_name:'',gender:'',date_of_birth:'',date_of_joining:session.value?.today||'',designation:'',department:'',
  employment_type:'',grade:'',lotus_worker_category:'Seasonal',lotus_payment_basis:'Daywork',lotus_farm:'',lotus_work_team:'',
- cell_number:'',personal_email:'',cccd:'',current_address:'',permanent_address:'',lotus_id_issue_on:'',lotus_id_issue_at:'',
+ cell_number:'',personal_email:'',cccd:'',current_address:'',permanent_address:'',lotus_id_issue_on:'',lotus_id_issue_at:DEFAULT_CCCD_ISSUER,
  lotus_emergency_name:'',lotus_emergency_phone:'',lotus_social_insurance_no:'',health_insurance_no:'',lotus_tax_code:'',contract_end_date:''})
  nav('employee')
 }
@@ -66,6 +68,13 @@ async function openEmployee(row){
   Object.assign(employee,value,{cccd:''});selectedEmployee.value=row.name;hireFrom.value=null
   nav('employee')
  }catch(e){error.value=msg(e)}finally{busy.value=false}
+}
+async function revealEmployeeCccd(){
+ if(!selectedEmployee.value||!manager.value)return
+ try{
+  const result=await api('reveal_employee_cccd',{company:company.value,employee:selectedEmployee.value},true)
+  revealedCccd.value=result.cccd||''
+ }catch(e){error.value=msg(e)}
 }
 function updateFarm(value){employee.lotus_farm=value;employee.lotus_work_team=''}
 async function useQr(info){
@@ -113,7 +122,7 @@ async function saveEmployee(){
 }
 async function approve(){
  if(!selectedEmployee.value||!manager.value||saving.value)return
- if(!await askConfirm('Đã kiểm tra giấy tờ gốc và các điều kiện tiếp nhận?'))return
+ if(!await askConfirm('Đã kiểm tra giấy tờ gốc? Khi duyệt, ảnh chữ ký đã lưu (nếu có) sẽ được gắn vào phiếu tiếp nhận để in.'))return
  saving.value=true;error.value=''
  try{
   await api('set_onboarding_ready',{company:company.value,employee:selectedEmployee.value,modified:employee.modified},true)
@@ -211,7 +220,9 @@ onMounted(()=>{void init()})
     <section class="hr-mobile-card">
      <LotusMobileButton variant="primary" block icon="scan" :disabled="saving" @click="scanOpen=true">Quét mã QR căn cước</LotusMobileButton>
      <p class="hr-mobile-caption">Dữ liệu QR chỉ điền vào form. Kiểm tra thẻ gốc trước khi duyệt.</p>
-     <p v-if="employee.cccd_recorded" class="hr-mobile-caption">Đã có CCCD kết thúc bằng {{employee.lotus_cccd_last4}}.</p>
+     <p v-if="employee.cccd_recorded" class="hr-mobile-caption">CCCD: {{revealedCccd||('••••••••'+employee.lotus_cccd_last4)}}.</p>
+     <LotusMobileButton v-if="employee.cccd_recorded&&selectedEmployee" type="button" plain size="small" @click="revealedCccd?revealedCccd='':revealEmployeeCccd()">{{revealedCccd?'Ẩn CCCD':'Hiện đủ 12 số CCCD'}}</LotusMobileButton>
+     <a v-if="selectedEmployee" :href="'/lotus_employee_print?company='+encodeURIComponent(company)+'&employee='+encodeURIComponent(selectedEmployee)" target="_blank" rel="noopener" class="workspace-secondary-link">In phiếu tiếp nhận có chữ ký ↗</a>
     </section>
     <form class="hr-mobile-form" @submit.prevent="saveEmployee">
      <section class="hr-mobile-card">
