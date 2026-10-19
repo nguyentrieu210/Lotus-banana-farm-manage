@@ -53,6 +53,8 @@ def setup():
     install_hr_fields()
     from lotus_farm.hr_setup import install_fields as install_org_fields
     install_org_fields()
+    from lotus_farm.digital_signature import install_fields as install_signature_fields
+    install_signature_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

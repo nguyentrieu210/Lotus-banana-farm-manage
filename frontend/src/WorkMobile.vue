@@ -8,6 +8,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileInput from './components/LotusMobileInput.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
+import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
 import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
@@ -556,7 +557,8 @@ onBeforeUnmount(()=>{
      <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="installApp">Cài Công việc ngoài vườn lên điện thoại</LotusMobileButton>
 
      </div>
-     <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
+     <LotusMobileSignatureSettings :user="session?.user||''"/>
+      <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
      <LotusMobileButton class="mobile-logout" type="button" :disabled="saving" @click="logout">Đăng xuất</LotusMobileButton>
     </template>
 
