@@ -14,6 +14,9 @@ const cameraList = ref([])
 const cameraId = ref('')
 const torchAvailable = ref(false)
 const torchOn = ref(false)
+const zoomSupported = ref(false)
+const zoomLevel = ref(1)
+const zoomRange = ref(null)
 const targetId = 'lotus-cccd-camera-' + Math.random().toString(36).slice(2)
 let reader = null
 let alive = true
@@ -38,6 +41,9 @@ async function stopCamera() {
   scanning.value = false
   torchAvailable.value = false
   torchOn.value = false
+  zoomSupported.value = false
+  zoomLevel.value = 1
+  zoomRange.value = null
   if (!active) return
   try { if (active.isScanning) await active.stop() } catch (_) { /* camera already stopped */ }
   try { active.clear() } catch (_) { /* renderer already removed */ }
@@ -81,6 +87,11 @@ async function improveFocus(active) {
     if (caps?.exposureMode?.includes('continuous')) advanced.push({exposureMode:'continuous'})
     if (advanced.length) await active.applyVideoConstraints({advanced})
     torchAvailable.value = !!caps?.torch
+    if (caps?.zoom?.max > caps?.zoom?.min) {
+      zoomSupported.value = true
+      zoomRange.value = caps.zoom
+      zoomLevel.value = active.getRunningTrackSettings()?.zoom || caps.zoom.min || 1
+    }
   } catch (_) { /* unsupported hardware: keep scanning */ }
 }
 
@@ -106,18 +117,20 @@ async function openCamera(switchLens = false) {
     cameraList.value = cameras
     if (switchLens && cameras.length > 1) {
       const idx = cameras.findIndex(c => c.id === cameraId.value)
-      cameraId.value = cameras[(idx + 1) % cameras.length].id
-    } else if (!cameraId.value) cameraId.value = chooseBackCamera(cameras)
+      cameraId.value = idx === -1 ? (chooseBackCamera(cameras) || cameras[0].id) : cameras[(idx + 1) % cameras.length].id
+    } else if (!switchLens) {
+      // Let Android choose the default back camera first (usually the lens
+      // with working close-focus). Enumerated camera IDs can point to ultrawide.
+      cameraId.value = ''
+    }
 
     const constraints = cameraId.value
       ? {deviceId:{exact:cameraId.value},width:{ideal:1920},height:{ideal:1080}}
       : {facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}
     const config = {
-      fps:12,
-      qrbox:(w,h)=>{
-        const side = Math.max(160,Math.floor(Math.min(290,w-24,h-24)))
-        return {width:side,height:side}
-      },
+      // Important: scan the complete camera frame. The old qrbox was cropped
+      // to a very thin stripe on some Android devices, so QR was never decoded.
+      fps:15,
       videoConstraints:constraints,
       disableFlip:true,
     }
@@ -136,12 +149,25 @@ async function openCamera(switchLens = false) {
     }
     if (!alive || !enabled.value || current !== generation) { await stopCamera(); return }
     scanning.value = true
-    notice.value = 'Đưa mã QR vào giữa khung, giữ cách camera khoảng 10–20 cm.'
+    notice.value = 'Đưa mã QR vào giữa hình. Nếu camera khó lấy nét, thử xa hơn một chút hoặc chụp QR.'
     void improveFocus(active)
   } catch (e) {
     error.value = cameraErrorMessage(e)
     await stopCamera()
   } finally { pending.value = false }
+}
+
+async function toggleZoom() {
+  if (!reader || !zoomSupported.value || !zoomRange.value || pending.value) return
+  try {
+    const caps = zoomRange.value
+    const target = zoomLevel.value > caps.min + 0.2 ? caps.min : Math.min(caps.max,Math.max(1.7,caps.min))
+    await reader.applyVideoConstraints({advanced:[{zoom:target}]})
+    zoomLevel.value = target
+  } catch (_) {
+    zoomSupported.value = false
+    error.value = 'Camera không hỗ trợ phóng to.'
+  }
 }
 
 async function toggleTorch() {
@@ -157,7 +183,7 @@ async function toggleTorch() {
 }
 
 // Read large phone photos locally; do not send ID images to a server.
-async function preparePhoto(file) {
+async function preparePhoto(file,centerCrop = false) {
   if (!file.type.startsWith('image/') && !/\.(jpg|jpeg|png|webp|heic|heif)$/i.test(file.name)) {
     throw new Error('Hãy chọn ảnh QR (JPG, PNG hoặc WebP).')
   }
@@ -176,13 +202,19 @@ async function preparePhoto(file) {
   const width = image.width || image.naturalWidth
   const height = image.height || image.naturalHeight
   try {
-    const scale = Math.min(1,2600/Math.max(width,height))
+    // A centered crop keeps small QR pixels instead of shrinking the entire photo.
+    const factor = centerCrop ? 0.62 : 1
+    const sx = Math.floor(width * (1-factor) / 2)
+    const sy = Math.floor(height * (1-factor) / 2)
+    const sw = Math.floor(width * factor)
+    const sh = Math.floor(height * factor)
+    const scale = Math.min(1,3200/Math.max(sw,sh))
     const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1,Math.round(width*scale))
-    canvas.height = Math.max(1,Math.round(height*scale))
+    canvas.width = Math.max(1,Math.round(sw*scale))
+    canvas.height = Math.max(1,Math.round(sh*scale))
     const context = canvas.getContext('2d',{willReadFrequently:true})
     if (!context) throw new Error('Không xử lý được ảnh QR.')
-    context.drawImage(image,0,0,canvas.width,canvas.height)
+    context.drawImage(image,sx,sy,sw,sh,0,0,canvas.width,canvas.height)
     const blob = await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.9))
     if (!blob) throw new Error('Không xử lý được ảnh QR.')
     return new File([blob],'cccd-qr.jpg',{type:'image/jpeg'})
@@ -219,9 +251,18 @@ async function fromFile(event) {
   try {
     await stopCamera()
     await nextTick()
-    const optimized = await preparePhoto(file)
     if (!alive || !enabled.value) return
-    const raw = await scanPhoto(optimized)
+    let raw = ''
+    // Read the original high-detail photo first. A small QR can disappear when
+    // a phone photo is downscaled before decoding.
+    if (file.size <= 16*1024*1024) {
+      try { raw = await scanPhoto(file) } catch (_) { await stopCamera() }
+    }
+    if (!raw) {
+      try { raw = await scanPhoto(await preparePhoto(file)) }
+      catch (_) { await stopCamera() }
+    }
+    if (!raw) raw = await scanPhoto(await preparePhoto(file,true))
     const info = parseCccdQr(raw)
     if (alive && enabled.value) {
       parsed.value = info
@@ -259,8 +300,10 @@ watch(enabled,accepted=>{ if (accepted) void openCamera(); else void stopCamera(
      <span class="cccd-symbol">▣</span><span>{{enabled?'Sẵn sàng quét QR':'Đánh dấu đồng ý để mở camera'}}</span>
     </div>
     <div v-if="pending" class="cccd-loading">Đang xử lý…</div>
+    <div v-if="scanning" class="cccd-aim" aria-hidden="true"><span></span></div>
     <div v-if="scanning" class="cccd-camera-actions">
      <button v-if="cameraList.length>1" type="button" aria-label="Đổi camera" title="Đổi camera" :disabled="pending" @click="openCamera(true)">⟳</button>
+     <button v-if="zoomSupported" type="button" :aria-label="zoomLevel>1.2?'Thu nhỏ':'Phóng to'" :disabled="pending" @click="toggleZoom" class="cccd-zoom">{{zoomLevel>1.2?'1×':'1.7×'}}</button>
      <button v-if="torchAvailable" type="button" :aria-label="torchOn?'Tắt đèn':'Bật đèn'" :disabled="pending" @click="toggleTorch">{{torchOn?'☀':'☼'}}</button>
     </div>
    </div>
@@ -311,9 +354,13 @@ watch(enabled,accepted=>{ if (accepted) void openCamera(); else void stopCamera(
 .cccd-placeholder,.cccd-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#fff;font-size:14px;text-align:center;pointer-events:none;padding:12px}
 .cccd-placeholder .cccd-symbol{font-size:52px;opacity:.72}
 .cccd-loading{background:#15201999}
+/* Reticle is decoration only; scanning uses the full video frame. */
+.cccd-aim{position:absolute;left:16%;top:16%;width:68%;height:68%;border:2px solid rgba(255,255,255,.9);border-radius:10px;box-shadow:0 0 0 300px rgba(0,0,0,.08);pointer-events:none}
+.cccd-aim span{position:absolute;left:25%;top:50%;width:50%;height:1px;background:rgba(255,255,255,.45)}
 .cccd-camera-actions{position:absolute;right:9px;top:9px;display:flex;gap:6px}
 .cccd-camera-actions button{border:1px solid #fff6;border-radius:30px;background:#161f1cbb;color:#fff;font-size:24px;line-height:1;width:44px;height:44px;cursor:pointer}
 .cccd-camera-actions button:disabled{opacity:.5}
+.cccd-camera-actions .cccd-zoom{font-size:13px;font-weight:750}
 .cccd-error{color:#b42318;font-size:13px;line-height:1.4;margin:10px 0}
 .cccd-hint{color:#526659;font-size:13px;line-height:1.4;margin:10px 0}
 .cccd-primary{display:block;width:100%;min-height:46px;border:0;background:#e65338;color:#fff;font-size:15px;font-weight:700;border-radius:12px;margin:12px 0 8px;cursor:pointer}
