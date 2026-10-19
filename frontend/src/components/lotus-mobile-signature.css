@@ -24,3 +24,7 @@
 .lotus-signature-warning{background:var(--lotus-warning-soft);border-radius:var(--lotus-radius-md);padding:var(--lotus-space-3);color:var(--lotus-text)}
 .lotus-signature-error{color:var(--lotus-danger);margin:0;font-size:var(--lotus-text-sm)}
 .lotus-signature-notice{margin:0;font-size:var(--lotus-text-sm)}
+.lotus-signature-initials{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding-top:14px;border-top:1px solid var(--lotus-border)}
+.lotus-signature-initials strong{font-size:15px}
+.lotus-signature-date-settings{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:600}
+.lotus-signature-date-settings select{width:100%;min-height:48px;border:1px solid var(--lotus-border);border-radius:10px;padding:8px;background:var(--lotus-surface);color:var(--lotus-text);font-size:16px}

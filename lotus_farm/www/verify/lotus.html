@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="referrer" content="no-referrer"/><title>Xác minh chứng từ Lotus</title>
+<style>body{font-family:system-ui,Arial,sans-serif;background:#f6f7f8;color:#24303b;margin:0;padding:28px 16px}main{max-width:540px;margin:0 auto;background:white;border:1px solid #dce1e5;padding:24px;border-radius:16px}h1{font-size:23px}p{line-height:1.5}dl{display:grid;grid-template-columns:135px 1fr;gap:12px;overflow-wrap:anywhere}dt{color:#64748b}dd{margin:0;font-weight:600}.error{color:#aa2222}.valid{color:#237244}small{color:#5b6470}</style>
+</head><body><main>
+<h1>Xác minh chứng từ Lotus</h1>
+{% if result.valid %}
+<p class="valid"><strong>Đã tìm thấy chứng từ trong hệ thống Lotus.</strong></p>
+<dl><dt>Loại chứng từ</dt><dd>{{ result.document_type | e }}</dd>
+<dt>Số chứng từ</dt><dd>{{ result.document_no | e }}</dd>
+<dt>Trạng thái</dt><dd>{{ result.status | e }}</dd>
+<dt>Thời điểm duyệt</dt><dd>{{ result.approved_at | e }}</dd>
+<dt>SHA-256 PDF</dt><dd style="font-size:11px">{{ result.pdf_sha256 | e }}</dd></dl>
+<p><small>QR xác minh này chỉ tra cứu bản lưu trên Lotus, không phải chữ ký số có chứng thư. Muốn xem PDF cần đăng nhập và có quyền.</small></p>
+{% else %}
+<p class="error"><strong>Mã QR không hợp lệ hoặc chứng từ chưa được xác minh.</strong></p>
+<p>Vui lòng kiểm tra bản gốc hoặc liên hệ bộ phận quản trị Lotus.</p>
+{% endif %}
+</main></body></html>
