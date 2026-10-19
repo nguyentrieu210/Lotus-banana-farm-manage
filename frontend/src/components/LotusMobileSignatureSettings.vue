@@ -3,7 +3,6 @@ import {ref,watch} from 'vue'
 import {Icon} from 'vant'
 import {call} from '../api'
 import LotusMobileButton from './LotusMobileButton.vue'
-import LotusMobileFile from './LotusMobileFile.vue'
 import LotusMobileDialog from './LotusMobileDialog.vue'
 import {useMobileConfirm} from '../use-mobile-confirm'
 import './lotus-mobile-signature.css'
@@ -75,8 +74,11 @@ async function remove(){
      <small v-if="profile.updated_at">Cập nhật: {{profile.updated_at}}</small>
     </div>
     <div class="lotus-signature-uploader">
-     <label for="lotus-upload-signature" class="lotus-signature-upload-label">{{profile.has_signature?'Đổi ảnh chữ ký':'Tải ảnh chữ ký lên'}}</label>
-     <LotusMobileFile id="lotus-upload-signature" accept="image/png,image/jpeg" :disabled="saving||!profile.configured" aria-label="Tải ảnh chữ ký PNG hoặc JPG" @change="chooseFile"/>
+     <label class="lotus-signature-file-control" :class="{'lotus-signature-file-disabled':saving||!profile.configured}">
+      <span><Icon name="photograph" aria-hidden="true"/> {{saving?'Đang lưu ảnh…':profile.has_signature?'Chọn ảnh chữ ký khác':'Chọn ảnh chữ ký'}}</span>
+      <input type="file" class="lotus-signature-native-file" name="signature-image" accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+       :disabled="saving||!profile.configured" aria-label="Chọn ảnh chữ ký từ điện thoại" @change="chooseFile"/>
+     </label>
      <small>Nên dùng ảnh PNG nền trong suốt hoặc ảnh JPG chụp trên giấy trắng, chỉ chứa chữ ký.</small>
     </div>
     <LotusMobileButton v-if="profile.has_signature" type="button" :disabled="saving" @click="remove">Xóa chữ ký</LotusMobileButton>
