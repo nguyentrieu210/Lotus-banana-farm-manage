@@ -1,5 +1,14 @@
 export const pages=[['mobile','Trang chủ'],['nguoi-dung','Người dùng & phân quyền'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc vườn'],['today','Hôm nay'],['alerts','Cảnh báo'],['farms','Vườn'],['plans','Kế hoạch'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['work','Công việc'],['labor','Bố trí nhân công'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ thửa'],['reports','Báo cáo'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
 export const titles=Object.fromEntries(pages)
+// Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
+export const navGroups=[
+ {label:'Tổng quan',items:[['mobile','home'],['today','calendar'],['alerts','alert'],['reports','chart']]},
+ {label:'Sản xuất vườn',items:[['farms','sprout'],['map','map'],['plans','clipboard'],['plan-norm','sliders','Cấu hình KH & định mức'],['forecast','trending'],['cong-viec','check'],['work','list','Tiến độ công việc'],['measurements','ruler'],['losses','trash']]},
+ {label:'Thu hoạch & đóng gói',items:[['harvest','basket'],['incoming-qc','shield'],['packhouse','package'],['trace','route'],['daily-close','lock'],['cycle-close','flag']]},
+ {label:'Kho & vật tư',items:[['kho','warehouse'],['materials','boxes']]},
+ {label:'Nhân sự',items:[['nhan-su','id-card'],['cham-cong','clock'],['labor','people']]},
+ {label:'Quản trị',items:[['nguoi-dung','user-cog'],['admin/masters','database'],['admin/imports','upload'],['admin/settings','settings']]},
+]
 export const moduleKey=p=>p==='plan-norm'?'plans':p.replace('admin/','')
 // A permission module can contain several pages; router names must remain unique.
 export const pageRoutes=component=>pages.map(([path])=>({path:'/'+path,name:path,component}))

@@ -215,3 +215,13 @@
  :root:root .app-shell main>.scope-picker>label>select{min-width:150px}
  :root:root .app-shell main>.scope-picker>button{flex-shrink:0}
 }
+/* Grouped sidebar of /lotus (WorkspaceSidebar.vue). Collapsed: icons only, group titles become dividers. */
+:root:root .app-shell .sidebar nav{display:grid;gap:var(--lotus-space-3)}
+.app-shell .sidebar .nav-group{display:grid;gap:2px}
+.app-shell .sidebar .nav-group-title{margin:0;padding:0 11px var(--lotus-space-1);font-size:var(--lotus-text-xs);font-weight:650;line-height:1.4;color:var(--lotus-muted);letter-spacing:.02em}
+:root:root .app-shell .sidebar nav button{display:flex;align-items:center;gap:var(--lotus-space-2)}
+.app-shell .sidebar .nav-icon{width:17px;height:17px;flex-shrink:0;opacity:.8}
+.app-shell .sidebar nav button.active .nav-icon,.app-shell .sidebar nav button:hover .nav-icon{opacity:1}
+.app-shell.sidebar-collapsed .sidebar .nav-label{display:none}
+.app-shell.sidebar-collapsed .sidebar .nav-group-title{height:1px;padding:0;margin:0 var(--lotus-space-2) var(--lotus-space-1);overflow:hidden;font-size:0;background:var(--lotus-border)}
+.app-shell.sidebar-collapsed .sidebar .nav-group:first-child .nav-group-title{display:none}
