@@ -92,3 +92,16 @@ Lưu ý: màu "nguy hiểm" (`--lotus-danger` `#b42318`) cùng họ đỏ với 
 
 - `npm test` 245/245; build chỉ còn 5 entry (`index`, `warehouse`, `buying`, `work-mobile`, `hr-mobile`); DOM 24/24.
 - Ảnh bản build Hôm nay, Kho, Nhân sự, Chấm công, Công việc @1440/1024 sáng/tối và bốn PWA @320/390: không tràn ngang. Bản xem trước dùng dữ liệu giả lập nên nội dung một số phân hệ trống; cần xem lại trên 8080 bằng tài khoản thật.
+
+## Triển khai lên 8080
+
+- Image `lotus-release:6be75f5` build bằng `Dockerfile.release` từ `git archive` commit `6be75f5` (APK lấy từ image đang chạy). Mọi dịch vụ app dùng cùng image; MariaDB/Redis không tạo lại; không chạy migrate (không đổi DocType); đã `clear-cache` + `clear-website-cache`.
+- `deployment/verify_stock_8080.ps1`: backend và frontend cùng `index-Ln4de6wx.js`, HTTP 200.
+- Màn chờ đăng nhập `/buying`, `/hr-mobile` trên 8080 đã dùng mẫu chung, nút Đỏ Lotus.
+- Quay lại bản trước: chạy lại compose với `LOTUS_IMAGE=lotus-release:0d8d05d`.
+
+## Còn lại
+
+- Chưa xem trực tiếp các màn cần đăng nhập trên 8080 (ảnh kiểm tra dùng bản build + dữ liệu giả lập). Cần một lượt xem bằng tài khoản thật: Kho, Nhân sự, Chấm công, Công việc, Dự thu và bốn PWA.
+- Biểu tượng PNG của PWA (Mua hàng, Nhân sự, Kho, Công việc) vẫn tông cam cũ; cần thiết kế lại ảnh theo Đỏ Lotus.
+- GĐ4 (cần duyệt riêng): giao diện `/login` và Desk `/app` của Frappe (tiếng Anh, logo Frappe, nút đen), tách `App.vue`, kiểm thử hình ảnh tự động.
