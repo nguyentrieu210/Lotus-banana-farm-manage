@@ -11,6 +11,9 @@ import frappe
 frappe.init(site='frontend', sites_path='/home/frappe/frappe-bench/sites')
 frappe.connect()
 frappe.set_user('Administrator')
+# HRMS payroll commits after creating/submitting slips unless it runs in test mode; keep everything rollback-able.
+frappe.in_test = True
+frappe.flags.in_test = True
 from frappe.utils import add_days, getdate
 
 from lotus_farm import hr_operations as ops

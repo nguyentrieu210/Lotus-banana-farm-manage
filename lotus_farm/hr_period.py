@@ -122,6 +122,11 @@ def setup_calendar(company, year, weekly_off=None, extra=None):
     doc.from_date, doc.to_date = date(year, 1, 1), date(year, 12, 31)
     doc.set('holidays', [dict(holiday_date=day, description=label, weekly_off=flag) for day, label, flag in rows])
     doc.save()
+    # HRMS 16 resolves holidays through Holiday List Assignment (salary slips, leave), not the Company field.
+    if frappe.db.exists('DocType', 'Holiday List Assignment') and not frappe.db.exists(
+            'Holiday List Assignment', {'applicable_for': 'Company', 'assigned_to': company, 'holiday_list': name, 'docstatus': 1}):
+        frappe.get_doc(dict(doctype='Holiday List Assignment', applicable_for='Company', assigned_to=company, holiday_list=name,
+                            from_date=date(year, 1, 1))).insert().submit()
     current = frappe.get_cached_value('Company', company, 'default_holiday_list')
     if not current or year == getdate(nowdate()).year:
         # HRMS reads the company default list for leave and attendance; HR Manager may lack Company write.

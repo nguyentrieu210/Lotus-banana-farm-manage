@@ -73,7 +73,12 @@ def _accounts(company):
         or _account(company, 'Chi phí lương', ('Indirect Expenses', 'Direct Expenses'), 'Expense')
     payable = frappe.get_cached_value('Company', company, 'default_payroll_payable_account') \
         or frappe.db.get_value('Account', {'company': company, 'account_name': 'Payroll Payable', 'is_group': 0}) \
-        or _account(company, 'Phải trả người lao động', ('Current Liabilities',), 'Liability')
+        or _account(company, 'Phải trả người lao động', ('Current Liabilities',), 'Liability', 'Payable')
+    # HRMS books net pay per employee as a party, which ERPNext allows only on a Payable account.
+    if frappe.db.get_value('Account', payable, 'account_type') != 'Payable':
+        account = frappe.get_doc('Account', payable)
+        account.account_type = 'Payable'
+        account.save()
     insurance = _account(company, 'Bảo hiểm phải nộp', ('Duties and Taxes', 'Current Liabilities'), 'Liability')
     employer = _account(company, 'Chi phí bảo hiểm doanh nghiệp', ('Indirect Expenses', 'Direct Expenses'), 'Expense')
     return frappe._dict(salary=salary, payable=payable, insurance=insurance, employer=employer)
@@ -248,7 +253,7 @@ def create_payroll(company, month):
                                 start_date=begin, end_date=end, currency=frappe.get_cached_value('Company', company, 'default_currency'),
                                 exchange_rate=1, cost_center=frappe.get_cached_value('Company', company, 'cost_center'),
                                 payroll_payable_account=frappe.get_cached_value('Company', company, 'default_payroll_payable_account'),
-                                validate_attendance=0))
+                                validate_attendance=0, salary_slip_based_on_timesheet=0))
     entry.fill_employee_details()
     entry.insert()
     entry.submit()
