@@ -6,10 +6,9 @@ import {purchasePdfUrl,sharePurchasePdf} from '../src/purchase-document.js'
 
 const root=path.resolve(import.meta.dirname,'../..')
 const read=p=>fs.readFileSync(path.join(root,p),'utf8')
-test('Purchase order PDF URL uses an authenticated same-origin ERPNext print endpoint',()=>{
+test('Purchase order PDF URL serves the archived signed PDF when available',()=>{
  const url=purchasePdfUrl('PUR-ORD-2026 0001')
- assert.match(url,/^\/api\/method\/frappe\.utils\.print_format\.download_pdf\?/)
- assert.equal(new URL('https://example.com'+url).searchParams.get('doctype'),'Purchase Order')
+ assert.match(url,/^\/api\/method\/lotus_farm\.digital_signature\.download_purchase_pdf\?/)
  assert.equal(new URL('https://example.com'+url).searchParams.get('name'),'PUR-ORD-2026 0001')
 })
 test('PDF share does not silently mark order as sent',async()=>{
