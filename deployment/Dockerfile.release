@@ -1,0 +1,16 @@
+# Single release image for every Lotus service (backend, frontend, workers, scheduler, websocket).
+# Build context is `git archive` of one commit, so the image is reproducible from git:
+#   git -c core.autocrlf=false archive --prefix=app/ HEAD | tar x -C <ctx>
+#   docker build -f deployment/Dockerfile.release --build-arg REVISION=<sha> -t lotus-release:<sha> <ctx>
+# The base already carries Frappe/ERPNext/HRMS and Python deps (pywebpush, qrcode, openpyxl).
+# Files are copied over the existing app so the HR scanner APK in public/downloads and
+# previously hashed frontend assets (still referenced by cached PWAs) are kept.
+ARG BASE_IMAGE=lotus-hr-cccd-fullframe:v3-20261019
+FROM ${BASE_IMAGE}
+ARG REVISION=unknown
+USER root
+COPY --chown=frappe:root app/ /home/frappe/frappe-bench/apps/lotus_farm/
+RUN find /home/frappe/frappe-bench/apps/lotus_farm -name '*.pyc' -delete
+LABEL org.opencontainers.image.revision=${REVISION} \
+      org.opencontainers.image.source=https://github.com/nguyentrieu210/Lotus-banana-farm-manage
+USER frappe
