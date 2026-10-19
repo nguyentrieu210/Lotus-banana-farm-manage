@@ -67,3 +67,26 @@ test('PWAs use the shared confirm dialog, never native alert/confirm',()=>{
  }
  assert.doesNotMatch(read('HrMobile.vue'),/VanButton|VanLoading/)
 })
+
+test('every var(--lotus-*) without a fallback is defined somewhere',()=>{
+ const all=[...readdirSync(src).filter(f=>/\.(css|vue|js)$/.test(f)),...vueFiles.filter(f=>f.startsWith('components/'))]
+ const defined=new Set(),missing=new Set()
+ for(const file of all)for(const m of read(file).matchAll(/--(lotus-[a-z0-9-]+)\s*:/g))defined.add(m[1])
+ for(const file of all)for(const m of read(file).matchAll(/var\(--(lotus-[a-z0-9-]+)\s*\)/g))if(!defined.has(m[1]))missing.add(file+' '+m[1])
+ assert.deepEqual([...missing],[])
+})
+
+test('confirmations and alerts use in-app dialogs on desktop and phone',()=>{
+ const scripts=[...readdirSync(src).filter(f=>/\.(vue|js)$/.test(f)),...vueFiles.filter(f=>f.startsWith('components/'))]
+ for(const file of scripts)assert.doesNotMatch(read(file),/window\.(alert|confirm)\(/,file)
+ assert.match(read('use-workspace-confirm.js'),/export function useWorkspaceConfirm/)
+})
+
+test('icons are icons, not text glyphs',()=>{
+ for(const file of vueFiles){
+  const template=(read(file).match(/<template>[\s\S]*<\/template>/)||[''])[0]
+  // a trailing chevron or a symbol used as an icon; '›' between breadcrumb parts is fine
+  const hit=template.match(/[↻⟳◌☀☼☾⚙◷♧▦▣]|›\s*</)
+  assert.equal(hit&&template.slice(Math.max(0,hit.index-40),hit.index+10),null,file)
+ }
+})

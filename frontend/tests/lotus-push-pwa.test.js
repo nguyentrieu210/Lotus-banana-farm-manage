@@ -30,8 +30,13 @@ test('users must explicitly enable push and logout revokes the local device',()=
  assert.match(c,/applicationServerKey/)
  assert.match(c,/api\('subscribe'/)
  assert.match(c,/api\('unsubscribe'/)
- for(const file of ['WarehouseMobile.vue','BuyingMobile.vue','WorkMobile.vue']){
-  assert.match(get('src/'+file),/revokeDevicePush/)
+ // Every PWA signs out through the shared helper, which revokes this device's push endpoint first.
+ const session=get('src/mobile-push-session.js')
+ assert.match(session,/export async function logoutPwa\(app,\{csrf='',home\}\)\{\s*await revokeDevicePush\(app\)/)
+ assert.match(session,/'\/api\/method\/logout',\{method:'POST'/)
+ for(const [file,app] of [['WarehouseMobile.vue','warehouse'],['BuyingMobile.vue','buying'],['WorkMobile.vue','work'],['HrMobile.vue','hr']]){
+  assert.match(get('src/'+file),new RegExp(`logoutPwa\\('${app}'`))
+  assert.doesNotMatch(get('src/'+file),/href="\/logout"/)
  }
 })
 

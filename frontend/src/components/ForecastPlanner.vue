@@ -1,6 +1,8 @@
 <script setup>
 import {computed,defineAsyncComponent,ref,watch} from 'vue'
 import {Button as UiButton} from './ui/button'
+import {Input as UiInput} from './ui/input'
+import WorkspaceTabs from './WorkspaceTabs.vue'
 import DesktopPageHeading from './DesktopPageHeading.vue'
 import DesktopMetricCard from './DesktopMetricCard.vue'
 import DesktopEmptyState from './DesktopEmptyState.vue'
@@ -60,10 +62,8 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
       <DesktopMetricCard label="Cần kiểm tra" :value="issueCount" description="Thiếu thông số hoặc chưa rõ đợt cây" :warning="issueCount>0"/>
     </div>
     <div class="calendar-toolbar">
-      <div class="calendar-years" role="tablist" aria-label="Chọn năm">
-        <button v-for="y in years" :key="y" :aria-selected="year===y" role="tab" type="button" :class="{active:year===y}" @click="year=y;selectedMonth=''">{{y}}</button>
-      </div>
-      <label>Tìm lô <input v-model="search" type="search" placeholder="Tên lô, số vụ, nguồn tính…" /></label>
+      <WorkspaceTabs label="Chọn năm" :items="years.map(y=>({id:y,label:y}))" :model-value="year" @update:model-value="y=>{year=y;selectedMonth=''}"/>
+      <label>Tìm lô <UiInput v-model="search" type="search" placeholder="Tên lô, số vụ, nguồn tính…" /></label>
       <span class="calendar-total">Năm {{year}}: <b>{{ton(yearTotal)}} tấn buồng</b></span>
     </div>
     <section class="calendar-panel">
@@ -105,7 +105,7 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
     <details v-if="issueCount" class="calendar-issues">
       <summary>Cần bổ sung dữ liệu ({{issueCount}})</summary>
       <div class="calendar-issues-list">
-        <div v-for="(issue,i) in displayPayload.issues" :key="i"><b>{{issue.block_name||issue.farm_block}}:</b> {{issue.message}} <button v-if="!demoMode&&canEditBlock" class="calendar-issue-edit" type="button" @click="emit('edit-block',issue.farm_block)">Sửa thông tin lô</button></div>
+        <div v-for="(issue,i) in displayPayload.issues" :key="i"><b>{{issue.block_name||issue.farm_block}}:</b> {{issue.message}} <UiButton v-if="!demoMode&&canEditBlock" class="calendar-issue-edit" type="button" variant="outline" size="sm" @click="emit('edit-block',issue.farm_block)">Sửa thông tin lô</UiButton></div>
       </div>
       <p v-if="canSettings">Bấm <b>Thiết lập hệ số</b> để thêm số ngày từ trồng đến thu và chu kỳ vụ chồi, sau đó phát hành bộ hệ số theo quy trình duyệt.</p>
     </details>

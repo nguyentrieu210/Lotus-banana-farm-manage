@@ -1,5 +1,5 @@
 <script setup>
-import {Field,Icon,CellGroup} from 'vant'
+import {Field,Icon,CellGroup,Loading} from 'vant'
 import LotusMobileButton from './LotusMobileButton.vue'
 import {computed,nextTick,ref,useId,watch} from 'vue'
 import {useMobilePopup} from '../use-mobile-popup'
@@ -62,7 +62,7 @@ watch(active,value=>{if(value>=0)highlight(id+'-result-'+value)})
     @focus="open" @click="open" @input="typed" @keydown="keydown"/>
    </template><template #button><LotusMobileButton v-if="modelValue" type="button" class="mobile-live-clear" aria-label="Xóa tìm kiếm"
     @click="emit('update:modelValue','');open()">×</LotusMobileButton>
-   <span v-else-if="loading" class="mobile-live-wait" aria-label="Đang lọc">◌</span></template>
+   <Loading v-else-if="loading" class="mobile-live-wait" size="16px" aria-label="Đang lọc"/></template>
   </Field>
   <Teleport to="body"><div v-if="opened" ref="popup" :style="style" :id="id" class="mobile-link-options mobile-live-results mobile-floating-options" :class="{'mobile-link-up':up}" role="listbox"><CellGroup :border="false">
    <LotusMobileButton v-for="(row,i) in matches" :id="id+'-result-'+i" :key="row.value" type="button"

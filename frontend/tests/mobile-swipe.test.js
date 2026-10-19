@@ -16,3 +16,17 @@ test('phone edge gestures remain available to native browser back',()=>{
  assert.equal(swipeStep({...gesture,startX:10}),0)
  assert.equal(swipeStep({...gesture,startX:380}),0)
 })
+
+test('shared tab swipe moves one root tab and ignores form controls',async()=>{
+ const {createTabSwipe}=await import('../src/mobile-swipe.js')
+ globalThis.window??={};window.innerWidth=390
+ let screen='home';const visited=[]
+ const swipe=createTabSwipe({enabled:()=>true,ignore:'input',tabs:()=>['home','history','profile'],current:()=>screen,go:tab=>{visited.push(tab);screen=tab}})
+ const target={closest:()=>null},touch=(x,y)=>({clientX:x,clientY:y})
+ swipe.start({touches:[touch(300,200)],target});swipe.end({changedTouches:[touch(180,205)]})
+ assert.deepEqual(visited,['history'])
+ swipe.start({touches:[touch(300,200)],target:{closest:()=>({})}});swipe.end({changedTouches:[touch(180,205)]})
+ assert.deepEqual(visited,['history'],'swipe starting on an ignored control does nothing')
+ swipe.start({touches:[touch(300,200)],target});swipe.cancel();swipe.end({changedTouches:[touch(180,205)]})
+ assert.deepEqual(visited,['history'],'cancelled swipe does nothing')
+})

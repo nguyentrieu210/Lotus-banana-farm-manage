@@ -195,3 +195,4 @@
  .lotus-pwa-setup-hero{display:none}
 }
 .lotus-pwa-shell .mobile-empty{margin:0;border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);padding:22px 16px;color:var(--lotus-muted);font-size:14px;text-align:center}
+.lotus-pwa-shell .lotus-pwa-inline-icon{font-size:1em;vertical-align:-.125em}

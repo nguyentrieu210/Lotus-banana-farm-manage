@@ -6,6 +6,9 @@ import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
+import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
+import LotusIcon from './components/LotusIcon.vue'
+import {useWorkspaceConfirm} from './use-workspace-confirm'
 import HrOperations from './components/HrOperations.vue'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {Button as UiButton} from './components/ui/button'
@@ -16,6 +19,7 @@ import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
 import {stateLabel} from './labels'
 import {hrCatalogLabel} from './hr-catalog-labels'
+const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,tell,finish:finishConfirm}=useWorkspaceConfirm()
 
 const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,write)
 const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
@@ -81,24 +85,24 @@ async function applyScannedCccd(info){
   if (!isManager.value || !editEmployee.value || saving.value) return
   // Candidate name comes from the hiring record and cannot be overwritten here.
   if (candidateHire.value && employeeForm.employee_name.trim() !== info.employee_name) {
-    window.alert('Tên trên QR khác tên ứng viên đã tiếp nhận. Kiểm tra và sửa hồ sơ ứng viên trước.')
+    await tell('Tên trên QR khác tên ứng viên đã tiếp nhận. Kiểm tra và sửa hồ sơ ứng viên trước.')
     return
   }
   const changed=['employee_name','date_of_birth','gender','current_address','lotus_id_issue_on']
     .some(key => employeeForm[key] && String(employeeForm[key]).trim() !== String(info[key]||'').trim())
-  if (changed && !window.confirm('Thông tin QR khác dữ liệu đang nhập. Dùng thông tin trên QR để thay các trường này?')) return
+  if (changed && !await askConfirm('Thông tin QR khác dữ liệu đang nhập. Dùng thông tin trên QR để thay các trường này?')) return
   saving.value=true;error.value=''
   try{
     const check=await api('check_cccd',{company:company.value,cccd:info.cccd,employee:selectedEmployee.value},true)
     if(check.duplicate){
-      window.alert('CCCD này đã tồn tại trong hệ thống. Không thể nhập trùng.')
+      await tell('CCCD này đã tồn tại trong hệ thống. Không thể nhập trùng.')
       return
     }
     // The residence field is not necessarily the registered permanent address.
     Object.assign(employeeForm,info)
     cccdScanOpen.value=false
     notice.value='Đã điền từ QR. Kiểm tra nơi cư trú và các trường còn thiếu trước khi lưu hồ sơ.'
-  }catch(e){error.value=e.message;window.alert('Không kiểm tra được CCCD: '+e.message)}
+  }catch(e){error.value=e.message;await tell('Không kiểm tra được CCCD: '+e.message)}
   finally{saving.value=false}
 }
 async function saveEmployee(){saving.value=true;error.value='';notice.value=''
@@ -124,7 +128,7 @@ async function saveCandidate(){saving.value=true;error.value=''
   }catch(e){error.value=e.message}finally{saving.value=false}}
 function startHire(item){emptyEmployee();candidateHire.value=item;employeeForm.employee_name=item.applicant_name;employeeForm.designation=item.designation;employeeForm.lotus_farm=item.farm||'';employeeForm.cell_number=item.phone;tab.value='onboarding';}
 function chooseOpening(){const opening=catalog.value.openings.find(x=>x.name===candidateForm.job_opening);if(opening)candidateForm.designation=opening.designation}
-async function seed(){if(!window.confirm('Tạo các chức danh Lotus chưa có trong HRMS? Hành động không xóa hoặc sửa chức danh hiện hữu.'))return
+async function seed(){if(!await askConfirm('Tạo các chức danh Lotus chưa có trong HRMS? Hành động không xóa hoặc sửa chức danh hiện hữu.'))return
   saving.value=true;error.value=''
   try{const r=await api('seed_designations',{company:company.value},true);notice.value='Đã tạo thêm '+r.count+' chức danh.';await refresh()}catch(e){error.value=e.message}finally{saving.value=false}}
 onMounted(init)
@@ -208,7 +212,7 @@ onMounted(init)
     <WorkspaceModal v-model="editEmployee" :title="selectedEmployee?'Hồ sơ '+selectedEmployee:candidateHire?'Tiếp nhận từ ứng viên':'Tạo hồ sơ nhân viên'" :busy="saving" width="1080px">
       <p v-if="error" class="stock-error" role="alert">{{error}}</p>
       <p class="attendance-legend">CCCD được lưu mã hóa; hệ thống chỉ hiển thị 4 số cuối, không gửi CCCD vào bảng nhân viên. Nhập CCCD mới chỉ khi tạo hoặc cần cập nhật. Đối chiếu giấy tờ gốc trước khi duyệt.</p>
-      <div class="attendance-toolbar"><UiButton v-if="isManager" type="button" :disabled="saving" @click="cccdScanOpen=true">▣ Quét QR CCCD</UiButton><span class="attendance-legend">Quét để tự điền thông tin. Chỉ lưu khi bấm Lưu hồ sơ.</span></div>
+      <div class="attendance-toolbar"><UiButton v-if="isManager" type="button" :disabled="saving" @click="cccdScanOpen=true"><LotusIcon name="scan"/>Quét QR CCCD</UiButton><span class="attendance-legend">Quét để tự điền thông tin. Chỉ lưu khi bấm Lưu hồ sơ.</span></div>
       <CccdQrScanner v-if="cccdScanOpen" @close="cccdScanOpen=false" @confirmed="applyScannedCccd"/>
       <form @submit.prevent="saveEmployee"><div class="hr-form-grid">
         <label>Họ tên *<UiInput v-model="employeeForm.employee_name" required :disabled="!!candidateHire" maxlength="140"/></label>
@@ -247,5 +251,6 @@ onMounted(init)
       </div></form>
     </WorkspaceModal>
   </component>
+<WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
 </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup>
 import BuyingOrderCard from './components/BuyingOrderCard.vue'
+import {Icon} from 'vant'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
@@ -11,7 +12,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
-import {revokeDevicePush} from './mobile-push-session'
+import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
 import LotusMobileInput from './components/LotusMobileInput.vue'
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
@@ -241,7 +242,13 @@ async function saveSupplier(){
   notice.value='Đã lưu nhà cung cấp.'
  })
 }
-async function logout(){if(!saving.value&&await confirmLeave()){await revokeDevicePush('buying');location.href='/logout'}}
+async function logout(){
+ if(saving.value||!await confirmLeave()||!await askLeave('Đăng xuất khỏi Mua hàng Lotus?'))return
+ saving.value=true;error.value=''
+ try{await logoutPwa('buying',{csrf:session.value?.csrf_token||'',home:'/buying'})}
+ catch(e){error.value='Không đăng xuất được: '+e.message}
+ finally{saving.value=false}
+}
 onMounted(()=>{window.history.replaceState({lotusBuying:true,tab:'home',view:''},'',location.href);
  navigationReady=true;window.addEventListener('popstate',browserBack)
  window.addEventListener('beforeunload',beforeUnload)
@@ -298,7 +305,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <LotusMobileButton v-for="s in visibleSuppliers" :key="s.name" class="buy-card" @click="editSupplier(s)">
     <div class="buy-line"><strong>{{s.supplier_name}}</strong><span class="buy-pill">{{s.disabled?'Ngừng dùng':'Đang dùng'}}</span></div>
     <small>{{s.lotus_supplier_contact||'Chưa có người liên hệ'}}</small>
-    <div class="buy-line"><span>{{s.lotus_supplier_phone||'Chưa có số điện thoại'}}</span><span>Chi tiết ›</span></div>
+    <div class="buy-line"><span>{{s.lotus_supplier_phone||'Chưa có số điện thoại'}}</span><span>Chi tiết <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></span></div>
    </LotusMobileButton>
   </template>
 

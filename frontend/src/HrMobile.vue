@@ -8,6 +8,7 @@ import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
+import {logoutPwa} from './mobile-push-session'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {call,setCSRF} from './api'
 import {useMobileViewport} from './use-mobile-viewport'
@@ -151,6 +152,13 @@ function hireCandidate(){
  employee.lotus_farm=candidate.farm||''
 }
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
+async function logout(){
+ if(saving.value||!await askConfirm('Đăng xuất khỏi Nhân sự Lotus?'))return
+ saving.value=true;error.value=''
+ try{await logoutPwa('hr',{csrf:session.value?.csrf_token||'',home:'/hr-mobile'})}
+ catch(e){error.value='Không đăng xuất được: '+msg(e)}
+ finally{saving.value=false}
+}
 onMounted(()=>{void init()})
 </script>
 
@@ -288,7 +296,7 @@ onMounted(()=>{void init()})
      <LotusMobileButton block plain icon="apps-o" @click="openSetup">Cài đặt / hướng dẫn ban đầu</LotusMobileButton>
      <p class="hr-mobile-caption">Để cài PWA, mở bằng Chrome hoặc Safari thay vì trình duyệt bên trong ChatGPT/Zalo.</p>
      <a href="/lotus/nhan-su">Mở Nhân sự trên máy tính</a>
-     <a href="/logout">Đăng xuất</a>
+     <LotusMobileButton block plain type="button" @click="logout">Đăng xuất</LotusMobileButton>
     </section>
     <section class="hr-mobile-card"><h2>Nghiệp vụ nâng cao</h2>
      <p>Nhập Excel, thiết lập máy chấm công và cấu hình lương tiếp tục quản lý trên bản máy tính.</p>

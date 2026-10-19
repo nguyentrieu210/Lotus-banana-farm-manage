@@ -99,7 +99,7 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
      </label>
     </div>
     <div v-if="!catalog&&farm" class="hint">Đang lấy danh sách lô, tổ và công việc…</div>
-    <div v-if="catalog&&(!assignmentCatalogueReady(catalog))" class="error">Vườn chưa có đủ lô, tổ hoặc công việc đang hoạt động. Kiểm tra danh mục trước khi giao việc.</div>
+    <div v-if="catalog&&(!assignmentCatalogueReady(catalog))" class="error" role="alert">Vườn chưa có đủ lô, tổ hoặc công việc đang hoạt động. Kiểm tra danh mục trước khi giao việc.</div>
    </section>
    <section v-for="(item,i) in items" :key="i" class="panel fields">
     <div class="job-head"><strong>Việc {{i+1}}</strong><UiButton v-if="items.length>1" type="button" :disabled="busy||submitting" class="remove" @click="remove(i)" :aria-label="'Xóa việc '+(i+1)">Xóa</UiButton></div>

@@ -19,7 +19,7 @@
   /* Semantic — light */
   --lotus-primary:var(--lotus-primary-600);--lotus-primary-hover:var(--lotus-primary-700);--lotus-primary-active:var(--lotus-primary-800);
   --lotus-primary-subtle:var(--lotus-primary-50);--lotus-primary-text:var(--lotus-primary-700);--lotus-on-primary:#fff;
-  --lotus-page:var(--lotus-neutral-50);--lotus-surface:#fff;--lotus-sidebar:#fff;--lotus-soft:var(--lotus-neutral-25);
+  --lotus-page:var(--lotus-neutral-50);--lotus-surface:#fff;--lotus-sidebar:#fff;--lotus-soft:var(--lotus-neutral-25);--lotus-hover:var(--lotus-neutral-100);
   --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-border:var(--lotus-neutral-200);--lotus-border-strong:var(--lotus-neutral-300);
   --lotus-accent:var(--lotus-primary);--lotus-accent-soft:var(--lotus-primary-subtle);
   --lotus-table-header:var(--lotus-neutral-25);--lotus-table-heading:var(--lotus-neutral-600);
@@ -40,6 +40,7 @@
   --lotus-shadow-sm:0 1px 2px rgb(23 27 34/.06);--lotus-shadow-md:0 4px 12px rgb(23 27 34/.08);--lotus-shadow-lg:0 16px 40px rgb(23 27 34/.16);
   --lotus-control-height:36px;--lotus-control:36px;--lotus-row:36px;--lotus-touch:44px;
   --lotus-motion:160ms;--lotus-ease:cubic-bezier(.2,.7,.2,1);
+  --lotus-backdrop:color-mix(in srgb,var(--lotus-neutral-950) 45%,transparent);
 
   /* shadcn-vue (HSL channels) mapped to the same palette */
   --background:0 0% 100%;--foreground:216 10% 19%;--card:0 0% 100%;--card-foreground:216 10% 19%;--popover:0 0% 100%;--popover-foreground:216 10% 19%;
@@ -49,7 +50,7 @@
 }
 :root.dark{
   --lotus-primary:#ff8f80;--lotus-primary-hover:#ffa699;--lotus-primary-active:#ffbcb2;--lotus-primary-subtle:#3d2523;--lotus-primary-text:#ffa699;--lotus-on-primary:#1b1f26;
-  --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-sidebar:#1c222b;--lotus-soft:#262c35;
+  --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-sidebar:#1c222b;--lotus-soft:#262c35;--lotus-hover:#2c333d;
   --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-border:#3b414b;--lotus-border-strong:#4b525d;
   --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
   --lotus-success:#6fd19e;--lotus-success-soft:#173527;--lotus-warning:#f4c25a;--lotus-warning-soft:#3a2d12;

@@ -1,5 +1,6 @@
 <script setup>
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
+import {Icon} from 'vant'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
@@ -11,7 +12,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
-import {revokeDevicePush} from './mobile-push-session'
+import {logoutPwa} from './mobile-push-session'
 import LotusMobileInput from './components/LotusMobileInput.vue'
 import LotusMobileAction from './components/LotusMobileAction.vue'
 import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
@@ -20,7 +21,7 @@ import {unitLabel} from './units'
 import MobileLinkField from './components/MobileLinkField.vue'
 import MobileLiveSearch from './components/MobileLiveSearch.vue'
 import {useMobileViewport} from './use-mobile-viewport'
-import {swipeStep} from './mobile-swipe'
+import {createTabSwipe} from './mobile-swipe'
 import {validateReceiptInputs} from './warehouse-mobile-helpers'
 
 const stockAPI=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
@@ -113,28 +114,7 @@ function safeError(e){
 function home(){screen.value='home';clear()}
 const rootScreens=new Set(['home','history','inventory','profile'])
 const formScreens=new Set(['stock-form','buy-form','receive-form','request-form','supplier-form'])
-let swipe=null
-function swipeStart(event){
- swipe=null
- if(!rootScreens.has(screen.value)||saving.value||event.touches.length!==1||event.target.closest('input,textarea,select,a,.mobile-link-field,.mobile-live-search,.mobile-bottom,.mobile-leave-dialog'))return
- const t=event.touches[0]
- if(t.clientX<24||t.clientX>window.innerWidth-24)return
- swipe={x:t.clientX,y:t.clientY,time:performance.now(),screen:screen.value}
-}
-function swipeMove(event){
- if(!swipe||event.touches.length!==1){swipe=null;return}
- const t=event.touches[0],dx=t.clientX-swipe.x,dy=t.clientY-swipe.y
- if(Math.abs(dy)>16&&Math.abs(dy)>Math.abs(dx)){swipe=null;return}
- if(Math.abs(dx)>16&&Math.abs(dx)>Math.abs(dy)*2&&event.cancelable)event.preventDefault()
-}
-function swipeEnd(event){
- const s=swipe;swipe=null
- if(!s||s.screen!==screen.value||!event.changedTouches.length)return
- const t=event.changedTouches[0]
- const step=swipeStep({dx:t.clientX-s.x,dy:t.clientY-s.y,elapsed:performance.now()-s.time,startX:s.x,width:window.innerWidth})
- const tab=baseTabs[baseTabs.indexOf(screen.value)+step]
- if(step&&tab)goTab(tab)
-}
+const {start:swipeStart,move:swipeMove,end:swipeEnd,cancel:swipeCancel}=createTabSwipe({enabled:()=>rootScreens.has(screen.value)&&!saving.value,ignore:'input,textarea,select,a,.mobile-link-field,.mobile-live-search,.lotus-pwa-bottom,.mobile-leave-dialog',tabs:()=>baseTabs,current:()=>screen.value,go:goTab})
 let restoreFromBrowser=false, navigationReady=false
 let initialFormValue=''
 function rememberForm(value){initialFormValue=JSON.stringify(value)}
@@ -506,10 +486,7 @@ async function logout(){
  if(!await askLeave('Đăng xuất khỏi Kho Lotus?'))return
  saving.value=true;error.value=''
  try{
-  await revokeDevicePush('warehouse')
-  const response=await fetch('/api/method/logout',{method:'POST',credentials:'same-origin',headers:{'X-Frappe-CSRF-Token':session.value?.csrf_token||''}})
-  if(!response.ok)throw Error('Máy chủ chưa xử lý đăng xuất.')
-  window.location.replace('/login?redirect-to=/warehouse')
+  await logoutPwa('warehouse',{csrf:session.value?.csrf_token||'',home:'/warehouse'})
  }catch(e){error.value='Không đăng xuất được: '+e.message}
  finally{saving.value=false}
 }
@@ -545,7 +522,7 @@ onUnmounted(()=>{
  <LotusMobileShell app="warehouse" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="activeTab"
   :back="!baseTabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
-  @back="appBack" @navigate="goTab"  @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipe=null">
+  @back="appBack" @navigate="goTab"  @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipeCancel">
 <main class="mobile-container" id="lotus-content" :aria-busy="isLoading">
    <LotusMobileFeedback v-if="!online" kind="warning">Mất mạng — chưa thể lưu phiếu.</LotusMobileFeedback>
    <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
@@ -599,7 +576,7 @@ onUnmounted(()=>{
    <template v-if="screen==='choose-order'">
     <p class="mobile-subtle">Chỉ hiện đơn đã xác nhận và chưa nhận đủ.</p>
     <MobileLiveSearch v-model="pendingQuery" :options="pendingSuggestions" :loading="loadingPending" placeholder="Gõ tên nhà cung cấp hoặc số đơn…" @select="r=>showOrder(r.value)"/>
-    <LotusMobileButton v-for="r in pending" :key="r.name" class="mobile-list-card clickable" type="button" @click="showOrder(r.name)"><strong>{{r.supplier_name}}</strong><small>{{r.name}} · Hẹn {{r.expected_date}}</small><div class="mobile-inline"><span>{{r.remaining_lines}} mặt hàng còn chờ</span><b>Nhận hàng ›</b></div></LotusMobileButton>
+    <LotusMobileButton v-for="r in pending" :key="r.name" class="mobile-list-card clickable" type="button" @click="showOrder(r.name)"><strong>{{r.supplier_name}}</strong><small>{{r.name}} · Hẹn {{r.expected_date}}</small><div class="mobile-inline"><span>{{r.remaining_lines}} mặt hàng còn chờ</span><b>Nhận hàng <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></div></LotusMobileButton>
     <p v-if="!loadingPending&&!pending.length&&!error" class="mobile-empty">Chưa có đơn nào đang chờ hàng.</p>
     <div class="mobile-pages"><LotusMobileButton type="button" :disabled="pendingStart===0||loadingPending" @click="pendingStart-=50;loadPending()">← Trước</LotusMobileButton><LotusMobileButton type="button" :disabled="!pendingMore||loadingPending" @click="pendingStart+=50;loadPending()">Sau →</LotusMobileButton></div>
    </template>
@@ -654,7 +631,7 @@ onUnmounted(()=>{
     <LotusMobileButton v-for="entry in historyRows" :key="entry.name" class="mobile-list-card clickable" type="button" @click="inspectHistory(entry)">
      <div class="mobile-history-top"><strong>{{entry.doctype==='Purchase Order'?entry.supplier_name||'Đơn mua':entry.kind}}</strong><span :class="['mobile-status',entry.docstatus===1?'posted':'draft']">{{entry.doctype==='Purchase Order'?entry.status:statusLabel(entry.docstatus)}}</span></div>
      <small>{{entry.name}}</small>
-     <div class="mobile-inline"><span>{{entry.doctype==='Purchase Order'?'Hẹn '+shortDate(entry.expected_date):shortDate(entry.posting_date)}}</span><span>Chi tiết ›</span></div>
+     <div class="mobile-inline"><span>{{entry.doctype==='Purchase Order'?'Hẹn '+shortDate(entry.expected_date):shortDate(entry.posting_date)}}</span><span>Chi tiết <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></span></div>
     </LotusMobileButton>
     <p v-if="!loadingHistory&&!historyRows.length&&!error" class="mobile-empty">Chưa có phiếu phù hợp.</p>
     <div class="mobile-pages"><LotusMobileButton :disabled="!historyStart||loadingHistory" @click="historyStart-=50;loadHistory()">← Trước</LotusMobileButton><LotusMobileButton :disabled="!historyMore||loadingHistory" @click="historyStart+=50;loadHistory()">Sau →</LotusMobileButton></div>
@@ -675,7 +652,7 @@ onUnmounted(()=>{
      <small v-if="historyDetail.doctype==='Purchase Order'">Còn chờ: {{fmt(line.remaining_qty)}} {{unitLabel(line.uom)}}</small>
     </div>
     </template>
-    <a v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" class="lotus-pwa-print-link" :href="stockPrintURL(historyDetail.doctype,historyDetail.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho">In phiếu / Lưu PDF <span aria-hidden="true">↗</span></a>
+    <a v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" class="lotus-pwa-print-link" :href="stockPrintURL(historyDetail.doctype,historyDetail.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
      <LotusMobileButton v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.can_receive&&historyDetail.items?.some(r=>Number(r.remaining_qty)>0)" type="button" class="mobile-submit" @click="showOrder(historyDetail.name)">Nhận hàng theo đơn →</LotusMobileButton>
     <p v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.docstatus===0" class="mobile-subtle">Đơn đang là nháp. Cần xác nhận đơn trước khi nhận hàng.</p>
     <LotusMobileButton class="mobile-add" type="button" @click="appBack">← Về lịch sử</LotusMobileButton>
@@ -734,8 +711,8 @@ onUnmounted(()=>{
      <div class="mobile-done-icon">✓</div>
      
      <p role="status">{{message}}</p>
-      <a v-if="lastPostedDocument" class="lotus-pwa-print-link" :href="stockPrintURL(lastPostedDocument.doctype,lastPostedDocument.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho vừa ghi sổ">In phiếu / Lưu PDF <span aria-hidden="true">↗</span></a>
-     <LotusMobileButton v-if="failedQuote" type="button" class="mobile-submit" :disabled="saving||!online" @click="retryQuote">{{saving?'Đang tải báo giá…':'↻ Tải lại báo giá'}}</LotusMobileButton>
+      <a v-if="lastPostedDocument" class="lotus-pwa-print-link" :href="stockPrintURL(lastPostedDocument.doctype,lastPostedDocument.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho vừa ghi sổ">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
+     <LotusMobileButton v-if="failedQuote" type="button" class="mobile-submit" :disabled="saving||!online" icon="replay" @click="retryQuote">{{saving?'Đang tải báo giá…':'Tải lại báo giá'}}</LotusMobileButton>
      <LotusMobileButton type="button" class="mobile-submit" @click="again">＋ Làm phiếu tiếp</LotusMobileButton>
      <LotusMobileButton type="button" class="mobile-add" @click="home">Về trang chủ</LotusMobileButton>
     </div>

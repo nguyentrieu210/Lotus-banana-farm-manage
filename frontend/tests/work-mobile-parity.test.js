@@ -54,7 +54,7 @@ test('fields reuse the same searchable Warehouse picker',()=>{
 test('hardware Back and swipe remain inside the app',()=>{
  need(work,'window.history.back()')
  need(work,"window.addEventListener('popstate',onPopstate)")
- need(work,'swipeStep({dx:')
+ need(work,'createTabSwipe({enabled:')
  need(work,'lotusWorkRoot')
  need(work,"document.dispatchEvent(new Event('warehouse-dismiss-picker'))")
 })

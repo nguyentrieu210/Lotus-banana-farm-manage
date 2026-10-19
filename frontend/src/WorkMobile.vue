@@ -1,5 +1,6 @@
 <script setup>
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
+import {Icon} from 'vant'
 import {useMobileConfirm} from './use-mobile-confirm'
 import LotusMobileFile from './components/LotusMobileFile.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
@@ -7,7 +8,7 @@ import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileInput from './components/LotusMobileInput.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
-import {revokeDevicePush} from './mobile-push-session'
+import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
 import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import MobileLinkField from './components/MobileLinkField.vue'
@@ -17,7 +18,7 @@ import {queueCapture,queueRows,syncCaptures,reconcileCapture,clearSent} from './
 import {unitLabel} from './units'
 import {stateLabel} from './labels'
 import {useMobileViewport} from './use-mobile-viewport'
-import {swipeStep} from './mobile-swipe'
+import {createTabSwipe} from './mobile-swipe'
 
 const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
@@ -29,7 +30,6 @@ const assignTeam=ref(''),assignLines=ref([]),preview=ref(null),rateReason=ref(''
 const rejection=ref(''),rejectReason=ref('')
 const installed=ref(false),discardDialog=ref(null),discardReason=ref(''),discardEntry=ref(null)
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
-let swipe=null
 let requestId=0,historyId=0,restoring=false,navigationReady=false
 const tabs=['home','history','tasks','profile']
 const mobileTabs=[
@@ -114,27 +114,7 @@ async function changeTab(tab){
  if(tab==='history')await loadHistory()
  if(tab==='profile')await refreshQueue()
 }
-function swipeStart(e){
- swipe=null
- if(!tabs.includes(screen.value)||saving.value||e.touches.length!==1||e.target.closest('input,textarea,select,a,button,.mobile-link-field,.mobile-live-search,.mobile-bottom,.mobile-leave-dialog'))return
- const t=e.touches[0]
- if(t.clientX<24||t.clientX>window.innerWidth-24)return
- swipe={x:t.clientX,y:t.clientY,time:performance.now(),screen:screen.value}
-}
-function swipeMove(e){
- if(!swipe||e.touches.length!==1){swipe=null;return}
- const t=e.touches[0],dx=t.clientX-swipe.x,dy=t.clientY-swipe.y
- if(Math.abs(dy)>16&&Math.abs(dy)>Math.abs(dx)){swipe=null;return}
- if(Math.abs(dx)>16&&Math.abs(dx)>Math.abs(dy)*2&&e.cancelable)e.preventDefault()
-}
-function swipeEnd(e){
- const from=swipe;swipe=null
- if(!from||from.screen!==screen.value||!e.changedTouches?.length)return
- const t=e.changedTouches[0]
- const step=swipeStep({dx:t.clientX-from.x,dy:t.clientY-from.y,elapsed:performance.now()-from.time,startX:from.x,width:window.innerWidth})
- const target=tabs[tabs.indexOf(screen.value)+step]
- if(step&&target)changeTab(target)
-}
+const {start:swipeStart,move:swipeMove,end:swipeEnd,cancel:swipeCancel}=createTabSwipe({enabled:()=>tabs.includes(screen.value)&&!saving.value,ignore:'input,textarea,button,select,a,.mobile-link-field,.mobile-live-search,.lotus-pwa-bottom,.mobile-leave-dialog',tabs:()=>tabs,current:()=>screen.value,go:changeTab})
 function beforeUnload(e){
  if(saving.value||isDirty()){e.preventDefault();e.returnValue=''}
 }
@@ -321,10 +301,7 @@ async function logout(){
  if(saving.value||!await confirmLeave()||!await askLeave('Đăng xuất khỏi Công việc ngoài vườn?'))return
  saving.value=true;error.value=''
  try{
-  await revokeDevicePush('work')
-  const r=await fetch('/api/method/logout',{method:'POST',credentials:'same-origin',headers:{'X-Frappe-CSRF-Token':session.value?.csrf_token||''}})
-  if(!r.ok)throw Error('Máy chủ chưa xử lý đăng xuất.')
-  window.location.replace('/login?redirect-to=/work')
+  await logoutPwa('work',{csrf:session.value?.csrf_token||'',home:'/work'})
  }catch(e){error.value='Không đăng xuất được: '+messageFor(e)}
  finally{saving.value=false}
 }
@@ -478,7 +455,7 @@ onBeforeUnmount(()=>{
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="rootTab"
   :back="!tabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="changeTab" 
-   @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipe=null">
+   @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipeCancel">
 <main class="mobile-container" id="lotus-content" :aria-busy="busy||saving">
    <LotusMobileFeedback v-if="!online" kind="warning">Mất mạng. Báo cáo có thể lưu vào Hàng chờ; giao việc cần có mạng.</LotusMobileFeedback>
    <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
@@ -509,10 +486,10 @@ onBeforeUnmount(()=>{
      </div>
      <div v-if="pendingCount" class="mobile-message work-warning">
       Có {{pendingCount}} báo cáo chưa gửi xong.
-      <LotusMobileButton type="button" class="work-link" @click="go('queue')">Mở hàng chờ ›</LotusMobileButton>
+      <LotusMobileButton type="button" class="work-link" @click="go('queue')">Mở hàng chờ <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></LotusMobileButton>
      </div>
      <div class="work-section">
-      <h2>Việc trong ngày</h2><LotusMobileButton type="button" @click="status='all';go('tasks')">Xem tất cả ›</LotusMobileButton>
+      <h2>Việc trong ngày</h2><LotusMobileButton type="button" @click="status='all';go('tasks')">Xem tất cả <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></LotusMobileButton>
      </div>
      <LotusMobileButton v-for="task in tasks.filter(t=>t.status!=='Completed').slice(0,4)" :key="task.line" class="work-list-row" type="button" @click="openTask(task)">
       <div><strong>{{task.work_name||task.work_type}}</strong><span class="work-status" :class="badgeState(task.status)">{{labelState(task.status)}}</span></div>
@@ -572,9 +549,9 @@ onBeforeUnmount(()=>{
      <div class="mobile-field"><label>Đổi vườn</label>
       <MobileLinkField aria-label="Đổi vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/>
      </div>
-     <LotusMobileButton type="button" class="work-outline" @click="go('queue')">Hàng chờ báo cáo <b>{{pendingCount}} ›</b></LotusMobileButton>
-     <a class="work-outline" href="/lotus/cong-viec">Mở trên máy tính <b>↗</b></a>
-     <a class="work-outline" href="/warehouse">Kho Lotus <b>↗</b></a>
+     <LotusMobileButton type="button" class="work-outline" @click="go('queue')">Hàng chờ báo cáo <b>{{pendingCount}} <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></LotusMobileButton>
+     <a class="work-outline" href="/lotus/cong-viec">Mở trên máy tính <b><Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></a>
+     <a class="work-outline" href="/warehouse">Kho Lotus <b><Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></a>
      <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="installApp">Cài Công việc ngoài vườn lên điện thoại</LotusMobileButton>
 
      </div>
@@ -604,9 +581,9 @@ onBeforeUnmount(()=>{
       <small class="work-muted">Chuẩn bị không phải là xuất kho hay chấm công thực tế. Nếu có vật tư, cần kiểm tra cấp phát trên app Kho.</small>
      </div>
      <div class="work-actions">
-      <LotusMobileButton v-if="canAssign&&['Planned','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('Ready')">Sẵn sàng làm <b>›</b></LotusMobileButton>
-      <LotusMobileButton v-if="canAssign&&['Ready','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('In Progress')">Bắt đầu làm <b>›</b></LotusMobileButton>
-      <LotusMobileButton v-if="canAssign&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b>›</b></LotusMobileButton>
+      <LotusMobileButton v-if="canAssign&&['Planned','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('Ready')">Sẵn sàng làm <b><Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></LotusMobileButton>
+      <LotusMobileButton v-if="canAssign&&['Ready','Blocked'].includes(selected.status)" type="button" class="work-outline" :disabled="saving||!online" @click="changeState('In Progress')">Bắt đầu làm <b><Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></LotusMobileButton>
+      <LotusMobileButton v-if="canAssign&&selected.status!=='Blocked'&&selected.status!=='Completed'" type="button" class="work-outline" :disabled="saving||!online" @click="openBlock">Báo vướng mắc <b><Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></LotusMobileButton>
       <LotusMobileButton v-if="canCapture&&(!selected.result||canRevise(selected))&&!pendingLines.has(selected.line)" type="button" class="mobile-submit" :disabled="saving" @click="openResult">{{canRevise(selected)?'Sửa và gửi lại kết quả →':'Gửi báo cáo kết quả →'}}</LotusMobileButton>
       <p v-if="selected.result" class="mobile-message" :class="selected.result_state==='Approved'?'success':'work-warning'">Phiếu {{selected.result}} · {{labelState(selected.status)}}.</p>
       <p v-if="selected.review_note" class="mobile-message work-warning">Nhận xét: {{selected.review_note}}</p>

@@ -1,5 +1,6 @@
 <script setup>
 import {Button as UiButton} from './ui/button'
+import LotusIcon from './LotusIcon.vue'
 import {computed,ref} from 'vue'
 import ExcelHeader from './ExcelHeader.vue'
 import {compactGridTheme as theme} from '../grid-theme'
@@ -67,7 +68,7 @@ function displayFirst(row){return displayValue(props.columns[0],row[props.column
         <UiButton variant="outline" v-for="(row,i) in visibleRows" :key="row.name||row.line||i" type="button" class="lotus-mobile-record" @click="emit('open',row)">
           <strong>{{displayFirst(row)}}</strong>
           <span v-for="column in columns.slice(1,4)" :key="column" class="lotus-mobile-record-detail"><span>{{label(column,labels[column])}}</span><span>{{displayValue(column,row[column])}}</span></span>
-          <span aria-hidden="true" class="lotus-mobile-record-arrow">›</span>
+          <LotusIcon name="chevron" class="lotus-mobile-record-arrow"/>
         </UiButton>
       </div>
       <div class="lotus-grid-footer">{{visibleRows.length}} dòng trên trang này · Bấm dòng để mở phiếu · Lọc và sắp xếp trong trang hiện tại</div>

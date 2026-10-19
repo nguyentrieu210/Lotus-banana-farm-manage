@@ -16,7 +16,7 @@
 .pn-dialog .schema-grid input,.pn-dialog .schema-grid select{max-width:100%}
 .pn-dialog footer{background:var(--lotus-surface)}
 .lotus-ui .field-value,.pn-dialog .field-value{background:var(--lotus-soft);color:var(--lotus-text)}
-.lotus-ui :is(.empty,.stock-empty){color:var(--lotus-muted);font-size:13px}
+.lotus-ui :is(.empty,.stock-empty){color:var(--lotus-muted);font-size:13px;text-align:center;padding:32px 20px}
 .lotus-ui :is(.panel,.stock-panel,.pn-section,.hr-headline>div,.hr-editor){background:var(--lotus-surface);border-color:var(--lotus-border);color:var(--lotus-text)}
 .lotus-ui :is(.pn-tabs,.tabs,.forecast-tabs) button.active{color:var(--lotus-accent);background:var(--lotus-accent-soft);border-color:var(--lotus-accent)}
 .lotus-ui :is(.mobile-action,.pn-item){transition:background-color var(--lotus-motion) var(--lotus-ease),border-color var(--lotus-motion) var(--lotus-ease),box-shadow var(--lotus-motion) var(--lotus-ease),transform var(--lotus-motion) var(--lotus-ease)}
@@ -162,3 +162,26 @@
 .hr-payroll details{font-size:12px;color:var(--lotus-muted);margin-top:12px}.hr-payroll summary{cursor:pointer}
 /* HR's legacy stylesheet may load after the common shell; these surfaces own their spacing. */
 .hr-shell .stock-panel.workspace-record-list,.hr-shell .hr-payroll .stock-panel{margin:0}
+/* One dialog look for every desktop dialog kind (WorkspaceModal, native stock/pn dialogs, App.vue document/small dialogs).
+   :root:root lifts specificity so the result does not depend on Vite's CSS chunk order. Width/padding stay per dialog. */
+:root:root :is(.workspace-modal,.stock-dialog,.document-dialog,.small-dialog,.pn-dialog){border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);color:var(--lotus-text);box-shadow:var(--lotus-shadow-lg)}
+:root:root :is(.workspace-modal,.stock-dialog,.pn-dialog)::backdrop{background:var(--lotus-backdrop);backdrop-filter:blur(2px)}
+:root:root .modal-backdrop{background:var(--lotus-backdrop);backdrop-filter:blur(2px)}
+:root:root :is(.workspace-modal__header,.stock-dialog header,.document-dialog>header,.small-dialog>header,.pn-dialog header) h2{font-size:18px;font-weight:650;letter-spacing:-.01em;line-height:1.35;color:var(--lotus-text);margin:0}
+:root:root :is(.stock-dialog,.pn-dialog) footer{border-color:var(--lotus-border);color:var(--lotus-muted)}
+.workspace-confirm__message{margin:0 0 var(--lotus-space-4);line-height:1.6;color:var(--lotus-text)}
+.workspace-confirm__actions{display:flex;justify-content:flex-end;gap:var(--lotus-space-2)}
+/* One look for inline messages across desktop modules: error / success / info / warning. Margins stay per screen. */
+:root:root :is(.stock-error,.error,.hr-ops-error,.pn-error,.stock-success,.hr-ops-notice,.notice,.pn-notice,.pn-warning,.forecast-warning,.hr-payroll-warning,.calendar-demo-warning){padding:10px 14px;border:1px solid transparent;border-radius:var(--lotus-radius-md);font-size:var(--lotus-text-md);line-height:1.5}
+:root:root :is(.stock-error,.error,.hr-ops-error,.pn-error){background:var(--lotus-danger-soft);color:var(--lotus-danger);border-color:color-mix(in srgb,var(--lotus-danger) 22%,transparent)}
+:root:root :is(.stock-success,.hr-ops-notice){background:var(--lotus-success-soft);color:var(--lotus-success);border-color:color-mix(in srgb,var(--lotus-success) 22%,transparent)}
+:root:root :is(.notice,.pn-notice){background:var(--lotus-info-soft);color:var(--lotus-info);border-color:color-mix(in srgb,var(--lotus-info) 22%,transparent)}
+:root:root :is(.pn-warning,.forecast-warning,.hr-payroll-warning,.calendar-demo-warning){background:var(--lotus-warning-soft);color:var(--lotus-warning-700);border-color:color-mix(in srgb,var(--lotus-warning) 25%,transparent)}
+:root.dark :is(.pn-warning,.forecast-warning,.hr-payroll-warning,.calendar-demo-warning){color:var(--lotus-warning)}
+/* One look for small HTML tables (AG Grid keeps its own theme): header, rule lines, padding, hover. Widths stay per table. */
+:root:root :is(.farm-table-wrap table,.hr-ops-scroll table,.pn-table,.forecast-week-table,.hr-table table){border-collapse:collapse;font-size:var(--lotus-text-md);text-align:left}
+:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) th,:root:root :is(.pn-table,.forecast-week-table) th{padding:10px 12px;background:var(--lotus-table-header);color:var(--lotus-table-heading);font-size:var(--lotus-text-sm);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--lotus-border)}
+:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) td,:root:root :is(.pn-table,.forecast-week-table) td{padding:10px 12px;border-bottom:1px solid var(--lotus-border);vertical-align:middle}
+:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) tbody tr:hover,:root:root :is(.pn-table,.forecast-week-table) tbody tr:hover{background:var(--lotus-soft)}
+/* Sidebar footer links: only the first one pushes the group to the bottom, the rest stack with the sidebar gap. */
+.app-shell .sidebar .field-link~.field-link{margin-top:0}

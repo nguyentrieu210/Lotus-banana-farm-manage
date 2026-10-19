@@ -104,7 +104,7 @@ input::placeholder{color:var(--lotus-neutral-400)}
   .lotus-mobile-record>strong{font-size:13px;overflow-wrap:anywhere}
   .lotus-mobile-record-detail{display:flex;justify-content:space-between;gap:10px;color:var(--lotus-neutral-600);font-size:11px}
   .lotus-mobile-record-detail span:last-child{color:var(--lotus-neutral-700);font-weight:550;text-align:right}
-  .lotus-mobile-record-arrow{position:absolute;right:12px;top:15px;color:var(--lotus-neutral-500);font-size:19px}
+  .lotus-mobile-record-arrow{position:absolute;right:12px;top:15px;color:var(--lotus-neutral-500);width:18px;height:18px}
   .lotus-grid-footer{font-size:10px}
 }
 /* SchemaForm checks use native controls; text-field and Frappe resets must not hide the tick. */

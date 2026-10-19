@@ -11,3 +11,11 @@ export async function revokeDevicePush(app){
   await sub.unsubscribe()
  }catch{}
 }
+
+/* One sign-out for every PWA: drop this device's push endpoint, end the Frappe session, return to the app's login. */
+export async function logoutPwa(app,{csrf='',home}){
+ await revokeDevicePush(app)
+ const response=await fetch('/api/method/logout',{method:'POST',credentials:'same-origin',headers:{'X-Frappe-CSRF-Token':csrf}})
+ if(!response.ok)throw Error('Máy chủ chưa xử lý đăng xuất.')
+ window.location.replace('/login?redirect-to='+home)
+}

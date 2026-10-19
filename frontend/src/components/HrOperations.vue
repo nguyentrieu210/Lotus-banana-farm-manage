@@ -7,7 +7,10 @@ import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
 import '../hr-operations.css'
 import WorkspaceModal from './WorkspaceModal.vue'
+import WorkspaceConfirm from './WorkspaceConfirm.vue'
+import {useWorkspaceConfirm} from '../use-workspace-confirm'
 
+const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,finish:finishConfirm}=useWorkspaceConfirm()
 const props=defineProps({company:{type:String,default:''},manager:Boolean})
 const tabs=[{id:'organization',label:'Sơ đồ tổ chức'},{id:'import',label:'Nhập Excel'},{id:'devices',label:'Máy chấm công'},{id:'logs',label:'Lượt chấm công'}]
 const kinds=['Department','Designation','Work Team','Employee','Staff Assignment','Shift Type','Shift Assignment','Device Mapping','Checkin CSV']
@@ -74,7 +77,7 @@ async function fileChanged(event){
 }
 async function confirmImport(){
  if(!preview.value||preview.value.errors?.length||!preview.value.ready||!props.manager)return
- if(!window.confirm('Xác nhận ghi '+preview.value.ready+' dòng '+kindLabels[kind.value]+' vào Lotus? Hệ thống không tự duyệt công hoặc trả lương.'))return
+ if(!await askConfirm('Xác nhận ghi '+preview.value.ready+' dòng '+kindLabels[kind.value]+' vào Lotus? Hệ thống không tự duyệt công hoặc trả lương.'))return
  busy.value=true;error.value=''
  try{
   const result=await api('commit_import',{company:props.company,kind:kind.value,rows:uploadData.value,review_hash:preview.value.review_hash},true)
@@ -84,7 +87,7 @@ async function confirmImport(){
 }
 async function seed(){
  if(!props.manager||!farm.value)return
- if(!window.confirm('Tạo bộ phận + đội/tổ mẫu khu A–D cho vườn đã chọn? Không tạo nhân viên và không có lương.'))return
+ if(!await askConfirm('Tạo bộ phận + đội/tổ mẫu khu A–D cho vườn đã chọn? Không tạo nhân viên và không có lương.'))return
  busy.value=true;error.value=''
  try{
   const r=await call('lotus_farm.hr_setup.seed_organization',{company:props.company,farm:farm.value},true)
@@ -114,7 +117,7 @@ async function saveAssignment(){
 }
 async function sync(){
  if(!props.manager||!selectedPunches.value.length)return
- if(!window.confirm('Chuyển '+selectedPunches.value.length+' log đã chọn vào Employee Checkin của HRMS? Đây KHÔNG phải bảng công đã duyệt.'))return
+ if(!await askConfirm('Chuyển '+selectedPunches.value.length+' log đã chọn vào Employee Checkin của HRMS? Đây KHÔNG phải bảng công đã duyệt.'))return
  busy.value=true;error.value=''
  try{
   const r=await api('sync_checkins',{company:props.company,names:selectedPunches.value},true)
@@ -131,7 +134,7 @@ async function sync(){
  <p v-if="error" class="hr-ops-error" role="alert">{{error}}</p>
  <p v-if="notice" class="hr-ops-notice" role="status">{{notice}}</p>
  <div class="hr-ops-actions"><span v-if="!manager">Tài khoản chỉ có quyền xem. Liên hệ HR Manager để thay đổi.</span>
-  <UiButton type="button" variant="outline" :disabled="busy||!company" @click="refresh">{{busy?'Đang tải…':'↻ Làm mới'}}</UiButton>
+  <UiButton type="button" variant="outline" :disabled="busy||!company" @click="refresh">{{busy?'Đang tải…':'Làm mới'}}</UiButton>
  </div>
  <template v-if="active==='organization'">
   <div class="hr-ops-head"><div><h3>Cơ cấu farm chuối</h3><p>Ban quản lý, các bộ phận chuyên môn và 4 đội chăm sóc. Chức danh không đồng nghĩa với quyền đăng nhập.</p></div>
@@ -223,5 +226,6 @@ async function sync(){
    <p class="hr-ops-tip">Nếu chưa có log, vào tab Nhập Excel → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>
  </template>
+ <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
 </div>
 </template>

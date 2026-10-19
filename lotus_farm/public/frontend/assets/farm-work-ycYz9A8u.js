@@ -1,1 +1,0 @@
-import{s as e}from"./lotus-tokens-C1GIxtLF.js";import"./farm-work-BvzZh8Uh.js";import"./workspace-experience-B-bbmxRW.js";import"./stock-attio-D1BNSilV.js";import"./register-worker-CKMNsoSQ.js";import{n as t}from"./FarmWorkApp-DzQtfK0B.js";e(t).mount(`#app`);

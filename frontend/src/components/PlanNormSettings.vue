@@ -5,6 +5,7 @@ import {dismissOnBackdrop} from '../dialogs'
 import SchemaForm from './SchemaForm.vue'
 import HarvestProfileSettings from './HarvestProfileSettings.vue'
 import {Button as UiButton} from './ui/button'
+import WorkspaceTabs from './WorkspaceTabs.vue'
 import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
 import {consoleAPI} from '../api'
@@ -111,13 +112,11 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
   <header class="pn-header">
    <div><p class="pn-eyebrow">THIẾT LẬP VẬN HÀNH</p><h2>Kế hoạch & định mức</h2>
     <p>Thiết lập một lần, kiểm tra lịch và khối lượng trước khi lập kế hoạch tuần/ngày.</p></div>
-   <UiButton variant="outline" type="button" :disabled="loading||!farm" @click="emit('reload')">↻ Làm mới</UiButton>
+   <UiButton variant="outline" type="button" :disabled="loading||!farm" @click="emit('reload')">Làm mới</UiButton>
   </header>
-  <p v-if="!farm" class="pn-notice">Chọn một vườn ở phía trên để xem cấu hình.</p>
+  <p v-if="!farm" class="pn-notice" role="status">Chọn một vườn ở phía trên để xem cấu hình.</p>
   <template v-else>
-   <nav class="pn-tabs" role="tablist" aria-label="Các phần cấu hình">
-    <button v-for="g in groups" :key="g.id" type="button" role="tab" :aria-selected="tab===g.id" :class="{active:tab===g.id}" @click="tab=g.id">{{g.label}}</button>
-   </nav>
+   <WorkspaceTabs v-model="tab" :items="groups" label="Các phần cấu hình"/>
    <p class="pn-description">{{descriptions[tab]}}</p>
    <p v-if="error&&!dialog?.open" class="pn-error" role="alert">{{error}}</p>
    <p v-if="notice" class="pn-success" role="status">{{notice}}</p>
@@ -198,7 +197,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
        <label class="pn-check"><input type="checkbox" v-model="ratoons"/> Hiện vụ chồi tương lai</label>
       </div>
       <p class="pn-hint">20%–60%–20% là kịch bản thử có thể chỉnh tại đây; chưa được lưu thành tỷ lệ kỹ thuật chính thức. Chỉ phân 3 đợt cho số BUỒNG dự kiến chưa có mốc trổ thật.</p>
-      <p v-if="summary?.error" class="pn-error">{{summary.error}}</p>
+      <p v-if="summary?.error" class="pn-error" role="alert">{{summary.error}}</p>
       <template v-else>
        <div class="pn-stats">
         <div><small>Công việc dự kiến</small><strong>{{fmt(summary?.events?.length||0,0)}}</strong></div>

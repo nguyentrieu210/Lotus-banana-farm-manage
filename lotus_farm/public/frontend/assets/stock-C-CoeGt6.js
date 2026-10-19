@@ -1,0 +1,1 @@
+import{s as e}from"./lotus-tokens-Bigd1uwa.js";import"./workspace-experience-BY_znHGA.js";import"./stock-attio-DJOIZSKl.js";/* empty css                              */import"./register-worker-CKMNsoSQ.js";import{n as t}from"./StockApp-CZjBMqAy.js";import"./register-warehouse-worker-ClozO1u8.js";e(t).mount(`#app`);

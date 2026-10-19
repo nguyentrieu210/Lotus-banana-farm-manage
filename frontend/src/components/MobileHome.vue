@@ -3,6 +3,7 @@ import {Button as UiButton} from './ui/button'
 import {computed,ref} from 'vue'
 import {Input as UiInput} from './ui/input'
 import {Card as UiCard} from './ui/card'
+import LotusIcon from './LotusIcon.vue'
 import {mobileGroups} from '../mobile-menu'
 const props=defineProps({session:{type:Object,required:true},farm:{type:String,default:''},online:{type:Boolean,default:true},queued:{type:Number,default:0}})
 const emit=defineEmits(['select','outbox'])
@@ -25,11 +26,11 @@ const farmName=computed(()=>props.session.farms?.find(f=>f.name===props.farm)?.f
     <UiButton variant="outline" v-for="action in group.actions" :key="action.id" class="mobile-action" type="button" @click="emit('select',action)">
      <span class="mobile-action-icon" aria-hidden="true">{{action.symbol}}</span>
      <span class="mobile-action-text"><strong>{{action.label}}</strong><small>{{action.detail}}</small></span>
-     <span aria-hidden="true" class="mobile-action-chevron">›</span>
+     <LotusIcon name="chevron" class="mobile-action-chevron"/>
     </UiButton>
    </div>
   </section>
-  <p v-if="!groups.length" class="notice">Tài khoản chưa có quyền sử dụng nghiệp vụ Lotus. Nhờ quản trị viên kiểm tra quyền và vườn.</p>
+  <p v-if="!groups.length" class="notice" role="status">Tài khoản chưa có quyền sử dụng nghiệp vụ Lotus. Nhờ quản trị viên kiểm tra quyền và vườn.</p>
   <p v-if="groups.length&&!filteredGroups.length" class="empty" role="status">Không tìm thấy chức năng phù hợp.</p>
  </section>
 </template>

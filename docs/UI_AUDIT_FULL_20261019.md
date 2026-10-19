@@ -35,13 +35,17 @@ Mức độ: **Cao** = thấy rõ/ảnh hưởng nhận diện hoặc khả năn
 | 11 | PWA | 4 kiểu trạng thái trống khác nhau | TB | `.buy-empty`, `.mobile-empty`, `<p>` trơn | `.mobile-empty` chung | Đã xử lý (GĐ1) |
 | 12 | PWA Nhân sự | Trạng thái ứng viên hiện mã tiếng Anh (New, Interview…) | TB | `HrMobile.vue` | Từ điển trạng thái | Đã xử lý (GĐ1) |
 | 13 | Desktop | Chữ lẫn Anh–Việt: "Lưu offline", "Tạo staging", "Mapping…", "Hash…", "Sheet nguồn", "UI hiện trường" | TB | `App.vue`, `labels.js`, `www/lotus.py` | Việt hóa | Đã xử lý (GĐ1) |
-| 14 | Desktop | 4 kiểu hộp thoại: `WorkspaceModal`, `<dialog class="stock-dialog">`, div `.modal-backdrop`, `window.confirm` | Cao | StockApp, TimekeepingApp, WarehouseBuyingLite, WarehousePlanning, FarmWorkApp, App.vue, HrOperations | Chuẩn `WorkspaceModal` + `useConfirm` | GĐ2 |
-| 15 | Desktop | Không có hệ thông báo chung (`.notice`, `.hr-ops-notice`, `.error`, `.stock-error`) | TB | nhiều file | `WorkspaceNotice` | GĐ2 |
-| 16 | Desktop | Nút/select/ngày native song song shadcn | TB | PlanNormSettings, Vip126RollingForecast, FarmWorkApp, ExcelHeader, ForecastPlanner | `UiButton`, `UiSelect`, `UiInput` | GĐ2 |
-| 17 | Desktop | Bảng HTML thô song song AG Grid | TB | HrApp, HrOperations, PlanNormSettings, FarmWorkApp, ForecastWorkspace | `DataTable` hoặc class bảng chung | GĐ2 |
-| 18 | Toàn hệ thống | Icon là ký tự chữ (↗ ↻ ◌ › ⟳ ☀ ×) trộn với icon | Thấp | WarehouseMobile, BuyingMobile, MobileLiveSearch, CccdQrScanner, sidebar | Bộ icon thống nhất | GĐ2 |
-| 19 | PWA | Logic `openSetup/confirmLeave/logout/swipe` chép 3–4 lần | TB | Buying, Warehouse, Work, Hr | composable dùng chung | GĐ2 |
-| 20 | Desktop | Liên kết cuối sidebar giãn cách bất thường | Thấp | sidebar `App.vue` | Gom nhóm liên kết | GĐ2 |
+| 14 | Desktop | 4 kiểu hộp thoại: `WorkspaceModal`, `<dialog class="stock-dialog">`, div `.modal-backdrop`, `window.confirm` | Cao | StockApp, TimekeepingApp, WarehouseBuyingLite, WarehousePlanning, FarmWorkApp, App.vue, HrOperations | Một giao diện hộp thoại chung (nền mờ, bo góc, bóng, tiêu đề); `WorkspaceConfirm` thay `window.confirm/alert` ở HrApp, HrOperations; hộp thoại div trong App.vue có `role=dialog` và đóng bằng Esc. Giữ dialog native sẵn có thay vì viết lại | Đã xử lý (GĐ2) |
+| 15 | Desktop | Không có hệ thông báo chung (`.notice`, `.hr-ops-notice`, `.error`, `.stock-error`) | TB | nhiều file | Một kiểu thông báo theo 4 sắc thái (lỗi/thành công/thông tin/cảnh báo) từ token; bổ sung `role=alert/status` cho 18 thông báo | Đã xử lý (GĐ2) |
+| 16 | Desktop | Nút/select/ngày native song song shadcn | TB | PlanNormSettings, Vip126RollingForecast, FarmWorkApp, ExcelHeader, ForecastPlanner | Nút thao tác thật sang `UiButton`; tab tự viết sang `WorkspaceTabs` (PlanNorm, Dự thu); ô tìm lô sang `UiInput`. Nút dạng tab/ô lịch/dòng danh sách giữ native có chủ đích | Đã xử lý (GĐ2) |
+| 17 | Desktop | Bảng HTML thô song song AG Grid | TB | HrApp, HrOperations, PlanNormSettings, FarmWorkApp, ForecastWorkspace | Một kiểu bảng nhỏ chung (tiêu đề, kẻ dòng, đệm, hover) cho farm/hr/pn/forecast; AG Grid giữ theme riêng | Đã xử lý (GĐ2) |
+| 18 | Toàn hệ thống | Icon là ký tự chữ (↗ ↻ ◌ › ⟳ ☀ ×) trộn với icon | Thấp | WarehouseMobile, BuyingMobile, MobileLiveSearch, CccdQrScanner, sidebar | PWA dùng Vant `Icon`; màn máy tính dùng `LotusIcon` (SVG, thêm scan/sun/moon/camera/đèn). Test chặn ký tự icon | Đã xử lý (GĐ2) |
+| 19 | PWA | Logic `openSetup/confirmLeave/logout/swipe` chép 3–4 lần | TB | Buying, Warehouse, Work, Hr | `logoutPwa` và `createTabSwipe` dùng chung | Đã xử lý (GĐ2) |
+| 20 | Desktop | Liên kết cuối sidebar giãn cách bất thường | Thấp | sidebar `App.vue` | Chỉ liên kết đầu tiên đẩy xuống đáy | Đã xử lý (GĐ2) |
+| 27 | PWA Nhân sự | Đăng xuất bằng liên kết `/logout`, không thu hồi đăng ký thông báo đẩy trên máy dùng chung | Cao | `HrMobile.vue` | `logoutPwa` | Đã xử lý (GĐ2) |
+| 28 | PWA Mua hàng | Đăng xuất không hỏi xác nhận, không dùng POST/CSRF như Kho, Công việc | TB | `BuyingMobile.vue` | `logoutPwa` | Đã xử lý (GĐ2) |
+| 29 | Desktop | 3 màu nền mờ hộp thoại (xanh lá, xanh đen, đen) | TB | `style.css`, `stock.css`, `stock-attio.css` | `--lotus-backdrop` | Đã xử lý (GĐ2) |
+| 30 | Desktop | Token `--lotus-hover` được dùng nhưng chưa định nghĩa (hover tab không hiển thị) | Thấp | `workspace-experience.css` | Định nghĩa token + test | Đã xử lý (GĐ2) |
 | 21 | Mã thừa | 5 entry HTML không URL nào phục vụ (`assign/stock/timekeeping/farm-work/hr.html`) + shell `stock-shell` cũ | TB | `vite.config.js`, `*-main.js`, `stock.css` | Xóa sau xác minh | GĐ3 |
 | 22 | Mã thừa | CSS header/bottom PWA cũ (v1/v2/v3) không còn dùng | Thấp | `warehouse-mobile.css`, `buying-mobile.css` | Xóa | GĐ3 |
 | 23 | Tài liệu | `UI_STACK.md` mô tả theme indigo, không khớp mã | Thấp | `docs/UI_STACK.md` | Cập nhật | GĐ3 |
@@ -67,7 +71,7 @@ Lưu ý: màu "nguy hiểm" (`--lotus-danger` `#b42318`) cùng họ đỏ với 
 ## Lộ trình
 
 1. **GĐ1 — Quick wins** (xong): một nguồn token, màu/chữ thống nhất, dark mode, a11y PWA, Nhân sự PWA theo chuẩn, Việt hóa, test chặn tái phát.
-2. **GĐ2 — Hợp nhất component**: hộp thoại, thông báo, nút/chọn/ngày, bảng, trạng thái trống/tải desktop, icon, logic PWA dùng chung.
+2. **GĐ2 — Hợp nhất component** (xong): hộp thoại, thông báo, nút/tab, bảng, trạng thái trống, icon, đăng xuất và vuốt tab PWA dùng chung.
 3. **GĐ3 — Dọn dẹp**: xóa entry/CSS thừa, cập nhật tài liệu, mở rộng test.
 4. **GĐ4 — Dài hạn (duyệt riêng)**: theme Desk/login, tách `App.vue`, visual regression.
 
@@ -76,3 +80,9 @@ Lưu ý: màu "nguy hiểm" (`--lotus-danger` `#b42318`) cùng họ đỏ với 
 - `npm test`: 241/241 đạt (thêm `design-tokens.test.js`: một màu chính, token nạp đầu tiên, không định nghĩa lại token, không mã hex mới, một font, PWA không dùng alert/confirm). Test đã được thử bằng cách chèn màu lạ: báo lỗi đúng.
 - `npm run build` thành công.
 - Ảnh trước/sau (bản build, dữ liệu giả lập) Hôm nay, Kho, Nhân sự, Công việc @1440/1024 sáng/tối; bốn PWA @320/390: bố cục không đổi, không tràn ngang, màu chính đồng nhất.
+
+## Kiểm tra GĐ2
+
+- `npm test`: 245/245 đạt. `design-tokens.test.js` thêm: mọi `var(--lotus-*)` phải được định nghĩa, không `window.alert/confirm` ở bất kỳ màn nào, không dùng ký tự làm icon. Thêm test hành vi `createTabSwipe`; test đăng xuất kiểm tra cả bốn PWA dùng `logoutPwa`.
+- `tools/verify_mobile_purchase_dom.mjs` (happy-dom 21.0.1): 24/24 đạt, giống bản gốc.
+- Ảnh bản build: Nhân sự (bảng, hộp thoại tạo hồ sơ sáng/tối), Cấu hình kế hoạch (thông báo), Công việc PWA (biểu tượng, trạng thái trống); thanh bên không còn giãn cách.

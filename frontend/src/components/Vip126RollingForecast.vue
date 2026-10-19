@@ -1,6 +1,7 @@
 <script setup>
 import {computed,defineAsyncComponent,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
+import {Button as UiButton} from './ui/button'
 const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
 const ZonePlantingSchedule=defineAsyncComponent(()=>import('./ZonePlantingSchedule.vue'))
 const props=defineProps({farm:{type:String,default:''},block:{type:String,default:''}})
@@ -62,7 +63,7 @@ function clearTrial(){appliedTrial.value=null;load()}
    <h2>{{mode==='trial'?'Thử nghiệm trọn vòng sản xuất':'Dự phóng từ dữ liệu đang có'}}</h2>
    <p>Chọn khu và kịch bản để xem lịch thu. Có thể thử thay một mốc sinh trưởng để toàn bộ các vụ tiếp theo tính lại.</p>
   </div>
-  <button type="button" class="vip126-timeline__reload" :disabled="loading" @click="load">↻ Làm mới</button>
+  <UiButton type="button" variant="outline" size="sm" :disabled="loading" @click="load">Làm mới</UiButton>
  </header>
  <div class="vip126-timeline__segments">
   <button type="button" :class="{selected:mode==='trial'}" :aria-pressed="mode==='trial'" @click="mode='trial'">Chạy thử đủ 64 lô</button>
@@ -104,8 +105,8 @@ function clearTrial(){appliedTrial.value=null;load()}
   <label>Mốc mới<select v-model="trialStage"><option v-for="s in stageChoices" :key="s.value" :value="s.value">{{s.name}}</option></select></label>
   <label>Ngày<input v-model="trialDate" type="date" /></label>
   <label>Số cây/buồng (tùy chọn)<input v-model="trialQty" type="number" min="1" placeholder="Lấy theo lô" /></label>
-  <button type="button" class="vip126-timeline__reload" :disabled="loading||!trialBlock||!trialDate" @click="runTrial">Tính lại 36 tháng</button>
-  <button v-if="appliedTrial" type="button" class="vip126-timeline__reload" @click="clearTrial">Bỏ mốc thử</button>
+  <UiButton type="button" size="sm" :disabled="loading||!trialBlock||!trialDate" @click="runTrial">Tính lại 36 tháng</UiButton>
+  <UiButton v-if="appliedTrial" type="button" variant="outline" size="sm" @click="clearTrial">Bỏ mốc thử</UiButton>
  </div>
  <p v-if="loading" class="vip126-timeline__info">Đang tính lại 36 tháng…</p>
  <p v-if="error" role="alert" class="vip126-timeline__error">{{error}}</p>

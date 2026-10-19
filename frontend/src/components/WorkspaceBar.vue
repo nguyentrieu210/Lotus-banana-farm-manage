@@ -1,5 +1,6 @@
 <script setup>
 import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
+import LotusIcon from './LotusIcon.vue'
 import {Button as UiButton} from './ui/button'
 import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
@@ -32,7 +33,7 @@ onUnmounted(()=>{window.removeEventListener('keydown',shortcut);document.removeE
   <a v-else class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus" title="Trang chủ Lotus Agritech">⌂</a>
   <details ref="menu" class="workspace-nav"><summary>{{title}} <span aria-hidden="true">⌄</span></summary><div class="workspace-menu"><UiButton v-for="action in allActions.filter(a=>a.navigation)" :key="action.id" variant="ghost" @click="choose(action)">{{action.label}}</UiButton></div></details></div>
   <UiButton class="workspace-search" variant="outline" @click="open"><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
-  <div class="workspace-right"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" :title="dark?'Giao diện sáng':'Giao diện tối'" @click="toggleTheme">{{dark?'☀':'☾'}}</UiButton>
+  <div class="workspace-right"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" :title="dark?'Giao diện sáng':'Giao diện tối'" @click="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/></UiButton>
   <details ref="userMenu" class="workspace-user"><summary :aria-label="'Tài khoản '+user"><span class="workspace-avatar">{{initials}}</span><span class="workspace-username">{{user||'Đang kết nối…'}}</span></summary><div class="workspace-menu"><small>Tài khoản đang đăng nhập</small><strong>{{user||'Đang kết nối…'}}</strong><UiButton variant="ghost" @click="open">Tìm nhanh · Ctrl K</UiButton><UiButton variant="ghost" @click="toggleTheme">{{dark?'Giao diện sáng':'Giao diện tối'}}</UiButton><UiButton variant="ghost" :disabled="loggingOut" @click="logout">{{loggingOut?'Đang đăng xuất…':'Đăng xuất'}}</UiButton><p v-if="logoutError" role="alert">{{logoutError}}</p></div></details></div>
  </div>
  <dialog ref="palette" class="command-dialog" aria-label="Tìm nhanh" @click="dismissOnBackdrop($event)">

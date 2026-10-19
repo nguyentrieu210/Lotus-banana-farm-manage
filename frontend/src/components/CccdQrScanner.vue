@@ -1,6 +1,7 @@
 <script setup>
 import {nextTick,onMounted,onBeforeUnmount,ref,watch} from 'vue'
 import {parseCccdQr} from '../cccd-qr.js'
+import LotusIcon from './LotusIcon.vue'
 
 const emit = defineEmits(['close','confirmed'])
 const scannerDialog = ref(null)
@@ -322,14 +323,14 @@ watch(enabled,accepted=>{ if (accepted && !nativeBridge.value) void openCamera()
    <div class="cccd-view">
     <div v-show="!parsed" :id="targetId" class="cccd-camera" :class="{active:scanning}"></div>
     <div v-if="!parsed&&!scanning&&!pending" class="cccd-placeholder">
-     <span class="cccd-symbol">▣</span><span>{{enabled?'Sẵn sàng quét QR':'Đánh dấu đồng ý để mở camera'}}</span>
+     <LotusIcon name="scan" class="cccd-symbol"/><span>{{enabled?'Sẵn sàng quét QR':'Đánh dấu đồng ý để mở camera'}}</span>
     </div>
     <div v-if="pending" class="cccd-loading">Đang xử lý…</div>
     <div v-if="scanning" class="cccd-aim" aria-hidden="true"><span></span></div>
     <div v-if="scanning" class="cccd-camera-actions">
-     <button v-if="cameraList.length>1" type="button" aria-label="Đổi camera" title="Đổi camera" :disabled="pending" @click="openCamera(true)">⟳</button>
+     <button v-if="cameraList.length>1" type="button" aria-label="Đổi camera" title="Đổi camera" :disabled="pending" @click="openCamera(true)"><LotusIcon name="switch-camera"/></button>
      <button v-if="zoomSupported" type="button" :aria-label="zoomLevel>1.2?'Thu nhỏ':'Phóng to'" :disabled="pending" @click="toggleZoom" class="cccd-zoom">{{zoomLevel>1.2?'1×':'1.7×'}}</button>
-     <button v-if="torchAvailable" type="button" :aria-label="torchOn?'Tắt đèn':'Bật đèn'" :disabled="pending" @click="toggleTorch">{{torchOn?'☀':'☼'}}</button>
+     <button v-if="torchAvailable" type="button" :aria-label="torchOn?'Tắt đèn':'Bật đèn'" :disabled="pending" @click="toggleTorch"><LotusIcon :name="torchOn?'flashlight-off':'flashlight'"/></button>
     </div>
    </div>
    <p v-if="error" role="alert" class="cccd-error">{{error}}</p>

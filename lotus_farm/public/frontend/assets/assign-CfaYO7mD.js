@@ -1,1 +1,0 @@
-import{s as e}from"./lotus-tokens-C1GIxtLF.js";import"./workspace-experience-B-bbmxRW.js";import"./register-worker-CKMNsoSQ.js";import{t}from"./AssignApp-CK7rwgbc.js";e(t).mount(`#app`);
