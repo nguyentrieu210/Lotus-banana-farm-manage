@@ -8,6 +8,11 @@ import android.os.Bundle;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
@@ -28,7 +33,8 @@ public class MainActivity extends ComponentActivity {
     private static final String ORIGIN = "https://lotus.gpcds.site";
     private static final String START_URL = ORIGIN + "/hr-mobile";
     private WebView webView;
-    private boolean nativeBridgeEnabled;
+    private ValueCallback<Uri[]> fileCallback;
+    private ActivityResultLauncher<Intent> filePicker;
     private ActivityResultLauncher<Intent> scannerLauncher;
 
     private boolean trustedUrl(String url) {
@@ -41,6 +47,13 @@ public class MainActivity extends ComponentActivity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        filePicker = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),result->{
+            if (fileCallback == null) return;
+            Uri[] uris = WebChromeClient.FileChooserParams.parseResult(
+                result.getResultCode(),result.getData());
+            fileCallback.onReceiveValue(uris);
+            fileCallback = null;
+        });
         scannerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (webView == null || !trustedUrl(webView.getUrl())) return;
@@ -67,7 +80,27 @@ public class MainActivity extends ComponentActivity {
         webView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView,false);
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+                FileChooserParams params) {
+                if (!trustedUrl(view.getUrl())) return false;
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                try { filePicker.launch(params.createIntent()); }
+                catch (Exception e) { fileCallback.onReceiveValue(null); fileCallback=null; }
+                return true;
+            }
+            @Override public void onPermissionRequest(PermissionRequest request) {
+                runOnUiThread(()-> {
+                    if (!ORIGIN.equals(request.getOrigin().toString()) ||
+                        ContextCompat.checkSelfPermission(MainActivity.this,Manifest.permission.CAMERA)
+                        !=PackageManager.PERMISSION_GRANTED) { request.deny(); return; }
+                    for (String res:request.getResources())
+                        if (!PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res)) { request.deny(); return; }
+                    request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                });
+            }
+        });
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -87,7 +120,6 @@ public class MainActivity extends ComponentActivity {
                         || !trustedUrl(view.getUrl()) || !"scan".equals(message.getData())) return;
                     runOnUiThread(()-> scannerLauncher.launch(new Intent(this,ScannerActivity.class)));
                 });
-            nativeBridgeEnabled = true;
         } else {
             Toast.makeText(this,"Cập nhật Android System WebView để dùng quét nhanh",Toast.LENGTH_LONG).show();
         }

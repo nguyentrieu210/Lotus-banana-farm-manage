@@ -6,6 +6,10 @@ on:
     paths:
       - 'android/hr-scanner/**'
       - '.github/workflows/hr-android-apk.yml'
+  pull_request:
+    paths:
+      - 'android/hr-scanner/**'
+      - '.github/workflows/hr-android-apk.yml'
   workflow_dispatch:
 
 permissions:
