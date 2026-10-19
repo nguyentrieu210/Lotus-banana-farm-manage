@@ -58,8 +58,14 @@ jobs:
       - run: npm ci --prefix frontend --no-audit --no-fund
       - run: npm run --prefix frontend test
       - run: npm run --prefix frontend build
-      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npm install --no-save --package-lock=false playwright@1.62.1 happy-dom@21.0.3
+      - name: Mobile PWA form, touch and navigation regression (mock data only)
+        run: node tools/verify_mobile_purchase_dom.mjs
       - run: npx playwright install --with-deps chromium
+      - name: Real Chromium responsive smoke — Kho, Mua hàng, Công việc
+        run: node tests/browser/mobile_pwa_ui.cjs
+        env:
+          LOTUS_BROWSER_ARTIFACTS: /tmp/lotus-console-browser
       - run: node tests/browser/offline_queue.cjs
       - run: node tests/browser/quick_assign.cjs
         env:

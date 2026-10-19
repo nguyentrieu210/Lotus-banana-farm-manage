@@ -1,0 +1,7 @@
+# Forecast board rollout. Inherit the running image to keep all mobile PWA and HR changes.
+FROM lotus-work-review:v1-20261017
+USER root
+COPY --chown=frappe:frappe lotus_farm/console.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/console.py
+COPY --chown=frappe:frappe lotus_farm/forecast_workspace.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/forecast_workspace.py
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+USER frappe

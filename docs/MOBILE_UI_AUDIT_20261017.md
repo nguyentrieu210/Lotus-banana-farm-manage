@@ -4,7 +4,7 @@ Phạm vi: Kho (/warehouse), Mua hàng (/buying), Công việc (/work). Yêu c�
 
 | Hạng mục | Chuẩn chung / xử lý |
 | --- | --- |
-| Khung 3 app | LotusMobileShell, Header, BottomNav, mobile-ui.css và theme; header đỏ, logo 96×40px, safe-area, bottom ẩn khi bàn phím mở |
+| Khung 3 app | LotusMobileShell, Header, BottomNav, mobile-ui.css và theme; header đỏ, logo lớn rõ chữ, safe-area, bottom ẩn khi bàn phím mở |
 | Trang chủ | LotusMobileAction; hai cột, thao tác chính toàn hàng; trạng thái disabled giữ quyền từng app |
 | Link dữ liệu | MobileLinkField; tên vật tư/NCC/đề nghị luôn tìm/chọn, gõ chưa làm mất lựa chọn; IME, phím và kéo cuộn giữ nguyên |
 | Lựa chọn ngắn | LotusMobileSelect/native: kho, công ty, đơn vị, cách mua; searchable=false khai báo rõ |
@@ -33,6 +33,6 @@ Phạm vi: Kho (/warehouse), Mua hàng (/buying), Công việc (/work). Yêu c�
 - Frontend: 125/125 unit/static checks.
 - Happy DOM: 24/24 luồng, gồm nhập/xuất/chuyển/nhận, popup/IME/cuộn/bàn phím, xác nhận, hai host cùng DOM form/validation, thêm NCC và giữ dòng (API giả, không ghi chứng từ thật).
 - Vite production build đạt. Cảnh báo kích thước chunk desktop và class Tailwind có từ trước.
-- Kiểm tra trình duyệt thực tế được ghi sau khi triển khai.
+- Trình duyệt thực tế: 3 PWA × 3 kích thước (320×740, 390×844, 844×390); không tràn ngang, không có input co về 0px, header 54px và 4 tab. Popup NCC nằm dưới header; nhập số lượng và đi/quay lại form NCC giữ số lượng. Các trường/validation của hai form mua dùng chung, cùng chiều rộng; nút chọn file native có thể lệch 1px theo CSS font của host. Không có lỗi console trong phiên kiểm tra.
 
 Không tạo/ghi sổ chứng từ thật trong QA. Các phép thử ghi của supplier/purchase dùng fixture; quyền backend và quy trình chứng từ tiếp tục do API hiện có quyết định.

@@ -53,6 +53,7 @@ def bootstrap():
         'capture':can_capture() or has_role('Lotus Integration User'),
         'preview_close':has_role('Lotus Farm Manager','Lotus Auditor'),
         'sales':has_role('Lotus Sales Planner'),
+        'forecast_release':has_role('Lotus Farm Manager'),
         'imports':has_role('Lotus Integration User'),
         'repack':has_role('Lotus Packing Supervisor','Lotus Stock Reviewer'),
         'reconcile':has_role('Lotus Packing Supervisor','Lotus Sales Planner','Lotus Auditor'),
