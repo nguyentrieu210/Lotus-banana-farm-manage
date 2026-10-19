@@ -87,7 +87,7 @@ def signature_image_bytes(user):
     if not frappe.get_meta("User").has_field(IMAGE_FIELD):
         return None
     file = _current_file(user)
-    return file.get_content() if file else None
+    return file.get_content(encodings=[]) if file else None
 
 
 @frappe.whitelist()
@@ -95,7 +95,7 @@ def my_signature_profile():
     user = _user()
     configured = bool(frappe.get_meta("User").has_field(IMAGE_FIELD))
     signature = _current_file(user) if configured else None
-    content = signature.get_content() if signature else None
+    content = signature.get_content(encodings=[]) if signature else None
     updated_at = frappe.db.get_value("User", user, DATE_FIELD) if configured else None
     return {
         "user": user,
@@ -247,7 +247,7 @@ def download_purchase_pdf(name):
         )
         if not rows:
             frappe.throw("PDF đã duyệt bị thiếu; không được tự thay bằng bản chưa ký.")
-        content = frappe.get_doc("File", rows[0]).get_content()
+        content = frappe.get_doc("File", rows[0]).get_content(encodings=[])
     else:
         content = frappe.get_print("Purchase Order", doc.name,
                                    print_format="Standard", as_pdf=True)
