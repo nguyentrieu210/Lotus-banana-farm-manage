@@ -2,7 +2,7 @@
 {% block navbar %}{% endblock %}
 {% block head_include %}
 {{ super() }}
-{% for css in lotus_login_css %}<link rel="stylesheet" href="/assets/lotus_farm/frontend/{{ css }}">{% endfor %}
+{% for css in lotus_login_css %}<link rel="stylesheet" href="{{ css }}">{% endfor %}
 {% endblock %}
 {% block page_content %}
 <main class="lotus-login">
