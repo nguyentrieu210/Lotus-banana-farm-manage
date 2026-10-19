@@ -1,5 +1,6 @@
 <script setup>
 import {computed,nextTick,onMounted,ref,watch} from 'vue'
+import WorkspaceModal from './WorkspaceModal.vue'
 import {call,upload} from '../api'
 import {unitLabel,stockItemUomOptions} from '../units'
 import {updateColumnFilter} from '../stock-filter-state'
@@ -238,7 +239,7 @@ defineExpose({refresh:()=>load(true),startReceiving,createOrder:async()=>{await 
     <div><UiButton variant="outline" :disabled="!start||busy" @click="start-=50;load()">← Trước</UiButton><UiButton variant="outline" :disabled="!hasMore||busy" @click="start+=50;load()">Sau →</UiButton></div>
    </footer>
   </section>
-  <dialog ref="formDialog" class="stock-dialog stock-buying-dialog" @click="dismissOnBackdrop($event,saving)">
+  <WorkspaceModal bare title="Đơn mua" :busy="saving" ref="formDialog" class="stock-dialog stock-buying-dialog">
    <form v-if="draft" @submit.prevent="saveOrder">
     <header><h2>{{draft.name?'Sửa đơn mua '+draft.name:'Tạo đơn mua'}}</h2><UiButton type="button" variant="outline" @click="formDialog.close()">Đóng</UiButton></header>
     <p v-if="formError" class="stock-error" role="alert">{{formError}}</p>
@@ -267,8 +268,8 @@ defineExpose({refresh:()=>load(true),startReceiving,createOrder:async()=>{await 
     <div class="stock-buying-total"><UiButton type="button" variant="outline" @click="newLine">+ Thêm dòng</UiButton><span>Tạm tính: <strong>{{money(lineMoney)}}</strong></span></div>
     <footer><UiButton type="button" variant="outline" @click="formDialog.close()">Hủy</UiButton><UiButton type="submit" :disabled="saving||!draft.supplier||!draft.items.length">{{saving?'Đang lưu…':'Lưu đơn mua nháp'}}</UiButton></footer>
    </form>
-  </dialog>
-  <dialog ref="detailDialog" class="stock-dialog stock-buying-dialog" @click="dismissOnBackdrop($event,saving)">
+  </WorkspaceModal>
+  <WorkspaceModal bare title="Chi tiết đơn mua" :busy="saving" ref="detailDialog" class="stock-dialog stock-buying-dialog">
    <section v-if="current" class="stock-buying-detail">
     <header><h2>Đơn mua {{current.name}}</h2><UiButton variant="outline" @click="detailDialog.close()">Đóng</UiButton></header>
     <p v-if="detailError" class="stock-error" role="alert">{{detailError}}</p>
@@ -301,6 +302,6 @@ defineExpose({refresh:()=>load(true),startReceiving,createOrder:async()=>{await 
      <UiButton v-if="current.can_write&&confirmDelete" variant="outline" :disabled="saving" @click="deleteDraft">Xóa đơn nháp</UiButton>
     </footer>
    </section>
-  </dialog>
+  </WorkspaceModal>
  </section>
 </template>

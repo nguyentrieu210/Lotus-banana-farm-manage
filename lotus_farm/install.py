@@ -22,8 +22,16 @@ def create_roles():
             )
 
 
+def set_brand():
+    """Show the Lotus logo on /login and the Desk navbar. Frappe uses the first app_logo_url hook (Frappe's own)
+    when several apps are installed, so set Navbar Settings once; an administrator's own logo is kept."""
+    if not frappe.db.get_single_value("Navbar Settings", "app_logo"):
+        frappe.db.set_single_value("Navbar Settings", "app_logo", "/assets/lotus_farm/images/lotus-agritech.jpg")
+
+
 def setup():
     create_roles()
+    set_brand()
     from frappe.permissions import add_permission, update_permission_property
     for _dt in ("Farm", "Farm Block", "Work Team", "Work Type"):
         for _role in ("Lotus Team Leader", "Lotus Field Supervisor"):

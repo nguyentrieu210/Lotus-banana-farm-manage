@@ -1,5 +1,6 @@
 <script setup>
 import {computed,nextTick,ref,watch} from 'vue'
+import WorkspaceModal from './WorkspaceModal.vue'
 import {unitLabel} from '../units'
 import {dismissOnBackdrop} from '../dialogs'
 import SchemaForm from './SchemaForm.vue'
@@ -234,7 +235,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     </div>
    </template>
   </template>
-  <Teleport to="body"><dialog ref="dialog" class="pn-dialog" :aria-label="modalTitle" @click="dismissOnBackdrop($event,saving)" @cancel="saving&&$event.preventDefault()">
+  <Teleport to="body"><WorkspaceModal bare :title="modalTitle" :busy="saving" ref="dialog" class="pn-dialog" :aria-label="modalTitle" @cancel="saving&&$event.preventDefault()">
     <form v-if="editor&&schema" @submit.prevent="save">
       <header><div><h2>{{modalTitle}}</h2><small>{{editor.name?'Xem hoặc cập nhật bản ghi':'Tạo cấu hình mới'}} · {{farm}}</small></div>
        <UiButton type="button" variant="outline" :disabled="saving" @click="dialog.close()">Đóng ✕</UiButton></header>
@@ -245,6 +246,6 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
       <footer><UiButton v-if="isApproved&&perm(editor.doctype).create" variant="outline" type="button" @click="newVersion">Tạo phiên bản mới</UiButton>
        <UiButton v-if="canWrite" type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu cấu hình'}}</UiButton></footer>
     </form>
-   </dialog></Teleport>
+   </WorkspaceModal></Teleport>
  </section>
 </template>

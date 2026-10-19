@@ -80,7 +80,7 @@ test('Company scope filters hidden when user has only one authorized company',()
   assert.match(src,/v-if="\(session\?\.companies\?\.length\|\|0\)>1">Công ty/)
  }
  const app=readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
- assert.match(app,/v-if="companies.length>1">Công ty/)
+ assert.match(readFileSync(new URL("../src/components/WorkspaceScopeBar.vue",import.meta.url),"utf8"),/v-if="companies.length>1">Công ty/)
  assert.match(app,/if\(companies.value.length===1\)scope.company=companies.value\[0\]/)
 })
 

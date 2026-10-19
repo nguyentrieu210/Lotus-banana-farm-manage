@@ -15,6 +15,8 @@
 - Màn máy tính dùng primitive trong frontend/src/components/ui (shadcn-vue trên reka-ui): Button, Input/Select/Textarea bọc trong FormField (label, gợi ý, lỗi theo trường), Combobox (mọi ô chọn có tìm; SearchSelect/LinkPicker chỉ là lớp bọc), DatePicker/DateRangePicker (gõ được dd/mm/yyyy hoặc chọn lịch), DropdownMenu, Tooltip cho nút chỉ có icon, Popover, Sheet, Pagination, Skeleton, Toast (use-toast: thông báo thành công; lỗi chặn vẫn hiển thị cạnh biểu mẫu).
 - Không tự viết lại popover/combobox/menu/date picker. Nội dung nổi trong hộp thoại modal phải render trong chính <dialog> (ui/portal-target.js).
 - Xác nhận dùng useWorkspaceConfirm (máy tính) / useMobileConfirm (PWA), cùng lõi use-confirm-core.js. Bảng dùng DataTable (OpsList là lớp bọc). Icon dùng LotusIcon, không dùng ký tự.
+- Hộp thoại máy tính chỉ dùng WorkspaceModal: v-model + title cho hộp thoại mới; `bare` + ref (showModal/close/open) cho form có markup riêng. Không thêm <dialog> thô (trừ quét camera).
+- Component có hành vi (mở/đóng, lọc, chọn) cần test mount qua tests/support/mount.mjs (happy-dom), không chỉ kiểm tra regex mã nguồn.
 - Xem trước toàn bộ component: `npm run dev` rồi mở /assets/lotus_farm/frontend/showcase.html (không build ra production).
 
 ## Chuẩn PWA điện thoại (yêu cầu người dùng 17/10/2026)

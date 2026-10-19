@@ -50,8 +50,8 @@ Hướng chuẩn hóa đã chọn: **shadcn-vue trên reka-ui** cho máy tính (
 |---|---|---|
 | B — Quick wins | AG Grid chỉ nạp module cần (`grid-modules.js`) + tải trễ bảng; bỏ CSS frappe-ui; Toast + Hoàn tác (`use-toast.js`, reka Toast, F8 để tới thông báo); Skeleton cho bảng và màn đang mở; trạng thái trống có hành động + nút “Xóa bộ lọc” khi lọc cột ẩn hết dòng; `FormField` desktop, SchemaForm viết lại nhiều dòng; bảng nhớ độ rộng cột; skip link, `WorkspaceTabs` đúng tablist; `format.js` thay 3 bản định dạng ngày | Xong |
 | C — Component v2 | DropdownMenu (menu phân hệ, tài khoản), Tooltip, Popover, Combobox gộp (SearchSelect + LinkPicker thành lớp bọc), DatePicker/DateRangePicker `vi-VN` có khoảng nhanh (thanh lọc khung `/lotus`), Sheet, Pagination (2 nơi trong App), OpsList thành lớp bọc DataTable, lõi confirm chung, danh mục component `showcase.html` | Xong (xem ghi chú) |
-| D — UX nâng cao | Ctrl‑K tìm bản ghi, saved views, thao tác hàng loạt, chặn rời form desktop, PWA dark mode, kéo để làm mới, tự lưu nháp | Đề xuất |
-| E — Dài hạn | Tách `App.vue` theo route, TypeScript cho `components/ui`, test mount, theme `/login` & Desk | Cần duyệt riêng |
+| D — UX nâng cao | Ctrl‑K tìm bản ghi, saved views, thao tác hàng loạt, chặn rời form desktop, PWA dark mode, kéo để làm mới, tự lưu nháp | Xong, trừ thao tác hàng loạt (xem dưới) |
+| E — Dài hạn | Tách `App.vue` theo route, TypeScript cho `components/ui`, test mount, theme `/login` & Desk | Test mount, theme `/login` & Desk, hộp thoại thống nhất, tách khung App: xong. Tách route & TypeScript: để sau |
 
 ## Kết quả giai đoạn B
 
@@ -79,9 +79,24 @@ Hướng chuẩn hóa đã chọn: **shadcn-vue trên reka-ui** cho máy tính (
 
 Ghi chú lệch kế hoạch:
 - Trang tài liệu là `frontend/showcase.html` chạy bằng `npm run dev` thay cho route `/lotus/admin/ui`: không thêm mục vào menu/phân quyền, không phát hành ra production.
-- 20 `<dialog>` thô chưa chuyển cấu trúc sang WorkspaceModal (giao diện đã thống nhất bằng CSS ở đợt trước); chuyển dần khi sửa từng màn vì các form này gọi `showModal()` trực tiếp và nằm trong tệp lớn.
+- ~~20 `<dialog>` thô chưa chuyển sang WorkspaceModal~~ → đã chuyển ở giai đoạn E (xem dưới).
 - MobileLinkField (PWA) giữ cách lọc hiện tại; `option-search.js` mới áp dụng cho desktop.
 
-## Phát hiện thêm (chưa xử lý)
-- Ở bề rộng ≤ 900px, khung `/lotus` dùng thanh trên màu xám đậm thay vì Đỏ Lotus và nhãn thanh điều hướng dưới bị cắt (“Trang…”, “Xem…”).
-- Ở 1024px, tên phân hệ trên thanh trên bị ẩn và thanh lọc phải cuộn ngang.
+## Phát hiện thêm
+- ~~≤ 900px: thanh trên xám đậm, nhãn điều hướng dưới bị cắt~~ → đã sửa (commit `756ddc6`): thanh Đỏ Lotus mọi bề rộng, điều hướng dưới dùng icon `LotusIcon` + nhãn đủ.
+- ~~1024px: ẩn tên phân hệ, thanh lọc cuộn ngang~~ → đã sửa: 901–1160px giữ nút phân hệ, thanh lọc xếp nhãn trên ô.
+
+## Kết quả giai đoạn D (commit `c914c84`, `d6346e5`)
+- **Chặn mất dữ liệu**: form bản ghi trong `/lotus` so ảnh chụp lúc mở; đóng khi đã sửa hỏi xác nhận, rời trang cảnh báo (`beforeunload`).
+- **Tự lưu nháp** (`form-drafts.js`, localStorage theo người dùng + loại chứng từ): mở lại form có toast “Khôi phục”.
+- **Ctrl‑K tìm bản ghi**: ngoài màn hình, tìm chứng từ qua `link_options` (đã kiểm quyền phía máy chủ) trên các loại người dùng được xem.
+- **Chế độ xem bảng**: `DataTableViews` lưu bộ lọc + sắp xếp thành chip đặt tên, áp lại một chạm.
+- **PWA**: kéo để tải lại (4 app), chế độ tối theo hệ điều hành qua token ngữ nghĩa (chế độ sáng 0,000% khác biệt), bộ icon v4 Đỏ Lotus.
+- **Không làm thao tác hàng loạt**: các bảng chủ yếu là chứng từ ERPNext (nhập/xuất kho, đơn mua, chấm công) có quy trình duyệt/hủy riêng; chọn nhiều rồi gửi/hủy hàng loạt cần quyết định nghiệp vụ và API phía máy chủ có kiểm quyền từng chứng từ. Đề xuất làm riêng khi có yêu cầu cụ thể (ví dụ “duyệt nhiều bảng công”).
+
+## Kết quả giai đoạn E
+- **Hộp thoại thống nhất**: 17 `<dialog>` thô (Kho 3, Chấm công 3, Kế hoạch kho 4, Mua hàng 2, Công việc vườn 2, Vật tư công việc 2, Định mức 1) chuyển sang `<WorkspaceModal bare>`: giữ nguyên markup/class/ref (`showModal()`, `close()`, `.open`), dùng chung Esc/nhấn nền bị khóa khi đang lưu, tự đóng khi màn bị KeepAlive ẩn, luôn có tên truy cập (`aria-label`). Hộp quét mã (camera) giữ `<dialog>` gốc.
+- **Test mount thật**: `tests/support/mount.mjs` (happy-dom 21.0.1 + biên dịch SFC, một bản Vue dùng chung với reka-ui) — test hành vi WorkspaceModal, Combobox (mở, lọc không dấu, chọn), Toaster (hành động chạy một lần). `npm test` 262/262.
+- **Theme `/login` & Desk**: `lotus_farm/public/css/lotus-brand.css` (qua `web_include_css`/`app_include_css`) — nút chính Đỏ Lotus ở trang đăng nhập và Desk (sáng/tối), logo đăng nhập 64px; `install.set_brand()` đặt logo Navbar nếu đang trống (không ghi đè cấu hình sẵn có). Chữ “Sign In” sẽ thành tiếng Việt khi đặt ngôn ngữ hệ thống `vi` (System Settings) — để quản trị quyết định, không đổi dữ liệu site.
+- **Tách khung App.vue**: thanh bên → `WorkspaceSidebar.vue`, thanh phạm vi → `WorkspaceScopeBar.vue` (so ảnh 20 màn: 0,000% khác biệt).
+- **Để sau, có lý do**: tách `App.vue` thành route component đầy đủ (danh sách/chi tiết/editor dùng chung ~40 biến trạng thái và offline queue — cần tách store trước, rủi ro hồi quy cao khi chưa có test mount cho App); TypeScript cho `components/ui` (thêm `vue-tsc` + cấu hình build, lợi ích chính chỉ có khi các màn lớn cũng chuyển). Bước tiếp theo đề xuất: tách store `editor`/`list` khỏi App.vue rồi viết test mount cho luồng mở–sửa–lưu.

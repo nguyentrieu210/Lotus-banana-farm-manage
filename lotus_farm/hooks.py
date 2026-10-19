@@ -5,6 +5,10 @@ app_publisher = "Nguyen Trieu"
 app_description = "Banana farm operations, harvest forecast and availability-to-promise for Lotus"
 app_license = "MIT"
 
+# Lotus red on Frappe pages too: Desk (/app) and website pages such as /login.
+app_include_css = "/assets/lotus_farm/css/lotus-brand.css"
+web_include_css = "/assets/lotus_farm/css/lotus-brand.css"
+
 required_apps = ["erpnext"]
 
 

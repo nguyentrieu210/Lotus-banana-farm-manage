@@ -1,0 +1,17 @@
+/* Lotus brand on Frappe's own pages: /login and other website pages (web_include_css) and Desk /app
+   (app_include_css). Same red as frontend/src/lotus-tokens.css (--lotus-primary-600/700/800). Only brand
+   accents change; Frappe/ERPNext layouts and their danger/warning colours are left alone. */
+:root{--lotus-brand:#c43224;--lotus-brand-hover:#a3291d;--lotus-brand-active:#7f2218;--lotus-brand-soft:#fef3f1}
+
+/* Login, forgot password, signup */
+body[data-path="login"] .es-button[data-variant=solid],
+body[data-path="update-password"] .es-button[data-variant=solid]{--bt-solid-bg:var(--lotus-brand);--bt-solid-bg-hover:var(--lotus-brand-hover);--bt-solid-bg-active:var(--lotus-brand-active);--bt-solid-fg:#fff}
+body[data-path="login"] .app-logo{width:auto;height:64px;max-width:200px;object-fit:contain;border-radius:8px}
+body[data-path="login"] a:not(.es-button){color:var(--lotus-brand)}
+body[data-path="login"] :is(input,select):focus{border-color:var(--lotus-brand)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--lotus-brand) 25%,transparent)!important}
+
+/* Desk: primary actions and links in brand red, in light and dark themes */
+:root,[data-theme=light]{--btn-primary:var(--lotus-brand)}
+[data-theme=dark]{--btn-primary:#d23b2c}
+body .btn-primary:not(:disabled):hover{background-color:var(--lotus-brand-hover);border-color:var(--lotus-brand-hover)}
+body .navbar .navbar-brand .app-logo{max-height:28px;width:auto;object-fit:contain}
