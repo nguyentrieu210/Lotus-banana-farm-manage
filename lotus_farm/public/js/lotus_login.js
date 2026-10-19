@@ -12,8 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
  const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.id='lotus-remember-account'
  checkbox.checked=true
  try{const preference=localStorage.getItem(key);if(preference!==null){checkbox.checked=preference!=='';if(preference&&!username.value)username.value=preference}}catch{}
- label.append(checkbox,document.createTextNode('Ghi nhớ tài khoản trên thiết bị này'))
- password.closest('.form-group')?.after(label)
+ label.append(checkbox,document.createTextNode('Ghi nhớ tài khoản'))
+ const options=document.createElement('div');options.className='lotus-login-options'
+ options.append(label)
+ const forgot=form.querySelector('a[href="#forgot"]'),oldParent=forgot?.parentElement
+ if(forgot)options.append(forgot)
+ password.closest('.form-group')?.after(options)
+ if(oldParent?.tagName==='P'&&!oldParent.textContent.trim())oldParent.remove()
  checkbox.addEventListener('change',()=>{if(!checkbox.checked)try{localStorage.setItem(key,'')}catch{}})
  form.addEventListener('submit',()=>{try{localStorage.setItem(key,checkbox.checked?username.value.trim():'')}catch{}},true)
 })

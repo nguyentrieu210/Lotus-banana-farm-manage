@@ -5,19 +5,21 @@ import union from 'polygon-clipping'
 import 'leaflet/dist/leaflet.css'
 import {alignedTiles} from '../map-imagery'
 import {imagery} from '../map-imagery-config'
+import {zoneColor,zoneCenter} from '../map-zones'
 import {Button as UiButton} from './ui/button'
 import LotusIcon from './LotusIcon.vue'
 import {distance,area,crosses,measureLabel,feature} from '../map-measure'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 const props=defineProps({collection:Object,farm:String,user:String})
-const emit=defineEmits(['open'])
+const emit=defineEmits(['open','reset'])
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask:confirm,finish:finishConfirm}=useWorkspaceConfirm()
 const canvas=ref(null),error=ref(''),count=ref(0),drafts=ref(false)
 const mode=ref(''),points=ref([]),saved=ref([]),drawingError=ref('')
 const measurement=computed(()=>points.value.length?measureLabel(mode.value,points.value):'Chọn các điểm trên bản đồ')
 const canFinish=computed(()=>points.value.length>=(mode.value==='area'?3:2))
-let map,blocks,zones,flycam,observer,sketches,preview
+let map,blocks,zones,zoneLabels,zoneHalo,perimeter,openEdges,flycam,observer,sketches,preview
+const shownZones=computed(()=>[...new Set([...features(),...(props.collection?.open_features||[])].map(f=>f.properties.zone).filter(Boolean))].sort())
 const storageKey=()=>`lotus-map-sketch|${props.user}|${props.farm}`
 function persist(){if(!props.user||!props.farm)return;try{localStorage.setItem(storageKey(),JSON.stringify(saved.value))}catch{drawingError.value='Không lưu được nét vẽ trên máy. Hãy xuất GeoJSON để giữ lại.'}}
 function restore(){cancel();saved.value=[];if(props.user&&props.farm)try{const rows=JSON.parse(localStorage.getItem(storageKey())||'[]');saved.value=rows.filter(f=>['LineString','Polygon'].includes(f.geometry?.type)).slice(0,500)}catch{};renderSketches()}
@@ -49,21 +51,26 @@ const features=()=>props.collection?.features||[]
 function content(f){const el=document.createElement('span');el.textContent=`${f.properties.code} · ${Number(f.properties.area_ha||0).toLocaleString('vi-VN')} ha`;return el}
 function draw(){
  if(!map)return
- if(blocks)blocks.remove();if(zones)zones.remove()
- const rows=features();count.value=rows.length;drafts.value=rows.some(f=>f.properties.approval_state==='Draft');error.value=''
- blocks=L.geoJSON({type:'FeatureCollection',features:rows},{style:{color:'var(--lotus-primary-300)',weight:1.5,fillOpacity:0},onEachFeature(f,layer){layer.bindTooltip(content(f),{permanent:map.getZoom()>=16.5,direction:'center',className:'care-map-label'});layer.on('click',event=>{if(mode.value)addPoint(event);else emit('open',f.properties.block)})}}).addTo(map)
+ if(blocks)blocks.remove();if(zones)zones.remove();zoneLabels?.remove();zoneHalo?.remove();perimeter?.remove();openEdges?.remove()
+ const rows=features();count.value=rows.length+(props.collection?.open_features?.length||0);drafts.value=[...rows,...(props.collection?.open_features||[])].some(f=>f.properties.approval_state==='Draft');error.value=''
+ if(props.collection?.perimeter)perimeter=L.geoJSON(props.collection.perimeter,{interactive:false,style:{color:'var(--lotus-neutral-0)',weight:5,fillOpacity:0}}).addTo(map)
+ blocks=L.geoJSON({type:'FeatureCollection',features:rows},{style:f=>({color:zoneColor(f.properties.zone),weight:1.5,fillColor:zoneColor(f.properties.zone),fillOpacity:.12}),onEachFeature(f,layer){layer.bindTooltip(content(f),{permanent:map.getZoom()>=16.5,direction:'center',className:'care-map-label'});layer.on('click',event=>{if(mode.value)addPoint(event);else emit('open',f.properties.block)})}}).addTo(map)
+ if(props.collection?.open_features?.length)openEdges=L.geoJSON({type:'FeatureCollection',features:props.collection.open_features},{style:f=>({color:zoneColor(f.properties.zone),weight:3,dashArray:'6 5'}),onEachFeature(f,layer){layer.bindTooltip(label(`${f.properties.code} · Ranh chưa khép kín`))}}).addTo(map)
  try{
   const byZone=new Map()
   for(const f of rows){const z=f.properties.zone;if(!z)continue;const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;byZone.set(z,[...(byZone.get(z)||[]),...polygons])}
   const shapes=[...byZone].map(([zone,polygons])=>({type:'Feature',properties:{zone},geometry:{type:'MultiPolygon',coordinates:union.union(...polygons.map(p=>[p]))}}))
-  zones=L.geoJSON({type:'FeatureCollection',features:shapes},{interactive:false,style:{color:'var(--lotus-warning-300)',weight:3,fillOpacity:0,dashArray:'8 4'},onEachFeature(f,layer){const label=document.createElement('strong');label.textContent='Khu '+f.properties.zone;layer.bindTooltip(label,{permanent:true,direction:'center',className:'care-map-zone'})}}).addTo(map)
+  zoneHalo=L.geoJSON({type:'FeatureCollection',features:shapes},{interactive:false,style:{color:'var(--lotus-neutral-950)',weight:7,opacity:.65,fillOpacity:0}}).addTo(map)
+  zones=L.geoJSON({type:'FeatureCollection',features:shapes},{interactive:false,style:f=>({color:zoneColor(f.properties.zone),weight:4,opacity:1,fillOpacity:0})}).addTo(map)
+  zoneLabels=L.layerGroup().addTo(map)
+  for(const f of shapes){const text=document.createElement('strong');text.textContent='Khu '+f.properties.zone;text.style.borderColor=zoneColor(f.properties.zone);L.tooltip({permanent:true,direction:'center',className:'care-map-zone',opacity:1}).setLatLng(zoneCenter(f.geometry)).setContent(text).addTo(zoneLabels)}
  }catch{error.value='Không dựng được ranh khu. Ranh từng lô vẫn được hiển thị.'}
  fit()
 }
-function fit(){if(blocks?.getBounds().isValid())map.fitBounds(blocks.getBounds(),{paddingTopLeft:[32,100],paddingBottomRight:[32,125],maxZoom:18})}
+function fit(){const target=[blocks,openEdges,perimeter].find(layer=>layer?.getBounds().isValid());if(target)map.fitBounds(target.getBounds(),{paddingTopLeft:[32,100],paddingBottomRight:[32,125],maxZoom:18})}
 function background(){
  if(flycam){flycam.remove();flycam=null}
- if(props.farm==='LOTUS-222')flycam=alignedTiles(L,'https://map.gpcds.site/v2/tiles/farm222/{z}/{x}/{y}.webp?v=20261016-116292',{minZoom:12,maxZoom:22,maxNativeZoom:22,bounds:imagery.bounds,noWrap:true,keepBuffer:2,updateWhenIdle:true,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',attribution:'Ảnh flycam Lotus Farm 222'},imagery.displayAlignment).addTo(map)
+ if(['LOTUS-222','LOTUS-180'].includes(props.farm))flycam=alignedTiles(L,'https://map.gpcds.site/v2/tiles/farm222/{z}/{x}/{y}.webp?v=20261016-116292',{minZoom:12,maxZoom:22,maxNativeZoom:22,bounds:imagery.bounds,noWrap:true,keepBuffer:2,updateWhenIdle:true,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',attribution:'Ảnh flycam Lotus Farm 222'},imagery.displayAlignment).addTo(map)
 }
 onMounted(()=>{
  map=L.map(canvas.value,{minZoom:12,maxZoom:22,zoomControl:false}).setView([11.602,106.79],15)
@@ -84,7 +91,7 @@ onBeforeUnmount(()=>{observer?.disconnect();map?.remove();map=null})
  <div ref="canvas" class="care-map-canvas" role="region" aria-label="Bản đồ flycam, ranh khu và lô chăm sóc"/>
  <div class="care-map-filters"><slot name="filters"/></div>
  <div class="care-map-tools" role="toolbar" aria-label="Đo vẽ bản đồ">
-  <UiButton size="sm" variant="outline" @click="fit"><LotusIcon name="target"/>Toàn vườn</UiButton>
+  <UiButton size="sm" variant="outline" @click="emit('reset');fit()"><LotusIcon name="target"/>Toàn vườn</UiButton>
   <UiButton size="sm" :variant="mode==='line'?'default':'outline'" :disabled="!farm" :aria-pressed="mode==='line'" @click="start('line')"><LotusIcon name="ruler"/>Đo đường</UiButton>
   <UiButton size="sm" :variant="mode==='area'?'default':'outline'" :disabled="!farm" :aria-pressed="mode==='area'" @click="start('area')"><LotusIcon name="map"/>Đo vùng</UiButton>
   <UiButton size="sm" variant="outline" :disabled="selected<0" @click="removeSelected"><LotusIcon name="trash"/>Xoá nét chọn</UiButton>
@@ -93,7 +100,7 @@ onBeforeUnmount(()=>{observer?.disconnect();map?.remove();map=null})
  </div>
  <div class="care-map-status" aria-live="polite">
   <template v-if="mode"><strong>{{mode==='area'?'Vẽ vùng / đo diện tích':'Vẽ đường / đo khoảng cách'}}</strong><span>{{measurement}} · {{points.length}} điểm</span><div class="actions"><UiButton size="sm" :disabled="!canFinish" @click="finish">Hoàn tất</UiButton><UiButton size="sm" variant="outline" :disabled="!points.length" @click="undo">Lùi điểm</UiButton><UiButton size="sm" variant="outline" @click="cancel">Huỷ</UiButton></div><small>Số đo ước tính. Nét vẽ lưu trên máy theo tài khoản và vườn.</small></template>
-  <template v-else><span>{{count}} lô chăm sóc · {{saved.length}} nét vẽ<span v-if="drafts"> · Ranh nhập từ Lotus Map, chưa duyệt</span></span><small v-if="!count">{{farm?'Chưa có ranh lô trong phạm vi đã chọn.':'Chọn vườn để xem bản đồ.'}}</small></template>
+  <template v-else><span>{{count}} lô chăm sóc · {{saved.length}} nét vẽ<span v-if="drafts"> · Ranh nhập từ Lotus Map, chưa duyệt</span></span><div class="care-map-legend"><span v-for="z in shownZones" :key="z"><i :style="{background:zoneColor(z)}"/>Khu {{z}}</span></div><small v-if="collection?.open_features?.length">C-13: ranh nguồn chưa khép kín, hiển thị nét đứt.</small><small v-if="!count">{{farm?'Chưa có ranh lô trong phạm vi đã chọn.':'Chọn vườn để xem bản đồ.'}}</small></template>
   <p v-if="error||drawingError" role="alert" class="error">{{drawingError||error}}</p>
  </div>
  <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" @answer="finishConfirm"/>

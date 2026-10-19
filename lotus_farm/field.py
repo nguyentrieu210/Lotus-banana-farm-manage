@@ -62,7 +62,7 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
             continue
         if row.farm_block not in latest or row.version > latest[row.farm_block].version:
             latest[row.farm_block] = row
-    return dict(type='FeatureCollection',
+    result = dict(type='FeatureCollection',
                 features=[dict(type='Feature', geometry=json.loads(row.geojson),
                                properties=dict(block=row.farm_block,
                                                code=blocks[row.farm_block].block_code,
@@ -70,6 +70,19 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
                                                area_ha=blocks[row.farm_block].area_ha,
                                                approval_state=row.approval_state, version=row.version,
                                                document=row.name)) for row in latest.values()])
+    if farm == 'LOTUS-180' and 'Draft' in states:
+        from pathlib import Path
+        root = Path(frappe.get_app_path('lotus_farm')).parent / 'data'
+        result['perimeter'] = json.loads((root / 'farm180-perimeter.geojson').read_text(encoding='utf8'))
+        source = json.loads((root / 'farm180-care-boundaries.geojson').read_text(encoding='utf8'))
+        by_code = {b.block_code: b for b in selected}
+        result['open_features'] = [dict(type='Feature', geometry=f['geometry'],
+            properties=dict(code=f['properties']['id'], zone=f['properties']['zone'],
+                block=by_code[f['properties']['id']].name, approval_state='Draft'))
+            for f in source['features'] if f['geometry']['type'] not in ('Polygon', 'MultiPolygon')
+            and f['properties']['id'] in by_code]
+        result['source_label'] = 'HTT 170 ha · ranh bao gốc, chia lô dự thảo'
+    return result
 
 
 @frappe.whitelist(methods=['POST'])

@@ -30,6 +30,9 @@
   /* Chart series in fixed order (validated: dataviz validate_palette, light surface). Charts use at most 3 series;
      slot 4 only with legend + table view (contrast 2.99:1). */
   --lotus-chart-1:var(--lotus-primary-600);--lotus-chart-2:var(--lotus-info-600);--lotus-chart-3:var(--lotus-success-600);--lotus-chart-4:var(--lotus-warning-500);
+  /* Distinct geographic categories, fixed across farms, zoom levels and themes. */
+  --lotus-map-zone-a:#f46963;--lotus-map-zone-b:#43d99a;--lotus-map-zone-c:#ffd166;
+  --lotus-map-zone-d:#65baff;--lotus-map-zone-e:#c89cff;--lotus-map-zone-f:#ff9d57;
   --lotus-focus:0 0 0 3px color-mix(in srgb,var(--lotus-primary) 28%,transparent);
 
   /* Type */
