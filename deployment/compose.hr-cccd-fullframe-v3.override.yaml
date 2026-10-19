@@ -1,0 +1,5 @@
+services:
+  backend:
+    image: lotus-hr-cccd-fullframe:v3-20261019
+  frontend:
+    image: lotus-hr-cccd-fullframe:v3-20261019

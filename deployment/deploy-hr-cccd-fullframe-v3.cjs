@@ -1,0 +1,16 @@
+const {execFileSync}=require('node:child_process');
+const path=require('node:path');
+const current=JSON.parse(execFileSync('docker',['inspect','lotus-frontend-1'],{encoding:'utf8'}))[0];
+const labels=current.Config.Labels;
+const files=labels['com.docker.compose.project.config_files'].split(',');
+const expectedImage='lotus-ui-experience-audit:v8-20261019';
+if(current.Config.Image!==expectedImage) throw Error('A newer Lotus image is already live. Refuse stale deployment.');
+const overlay=path.resolve(__dirname,'compose.hr-cccd-fullframe-v3.override.yaml');
+const cwd=labels['com.docker.compose.project.working_dir'];
+const flags=['compose','-p','lotus',...files.flatMap(f=>['-f',f]),'-f',overlay];
+const conf=JSON.parse(execFileSync('docker',[...flags,'config','--format','json'],{cwd,encoding:'utf8',maxBuffer:32*1024*1024}));
+const target='lotus-hr-cccd-fullframe:v3-20261019';
+if(conf.services.frontend.image!==target || conf.services.backend.image!==target) throw Error('Mismatch in deployment image');
+console.log('Confirmed only backend/frontend will be recreated on '+target);
+const result=execFileSync('docker',[...flags,'up','-d','--no-deps','backend','frontend'],{cwd,encoding:'utf8',maxBuffer:1024*1024*5});
+console.log(result);
