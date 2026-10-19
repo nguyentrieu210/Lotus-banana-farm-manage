@@ -14,8 +14,9 @@ from frappe.utils.file_manager import save_file
 
 IMAGE_FIELD = "lotus_signature_image"
 DATE_FIELD = "lotus_signature_updated_at"
-MAX_UPLOAD_BYTES = 1_500_000
-MAX_IMAGE_PIXELS = 5_000_000
+MAX_UPLOAD_BYTES = 10_000_000  # Allow original phone-camera photos up to 10 MB.
+MAX_IMAGE_PIXELS = 60_000_000  # Accept standard 12/48 MP photos; reject decompression bombs.
+MAX_STORED_BYTES = 1_500_000  # Keep embedded PDF signatures lightweight.
 
 
 def install_fields():
@@ -110,7 +111,7 @@ def my_signature_profile():
 def _normalize_image(data):
     from PIL import Image, ImageOps, UnidentifiedImageError
     if not isinstance(data, str) or len(data) > MAX_UPLOAD_BYTES * 2:
-        frappe.throw("Ảnh chữ ký quá lớn. Chọn ảnh dưới 1,5 MB.")
+        frappe.throw("Ảnh chữ ký quá lớn. Chọn ảnh dưới 10 MB.")
     if data.startswith("data:"):
         data = data.partition(",")[2]
     try:
@@ -118,7 +119,7 @@ def _normalize_image(data):
     except (binascii.Error, ValueError):
         frappe.throw("Dữ liệu ảnh không hợp lệ.")
     if len(raw) > MAX_UPLOAD_BYTES:
-        frappe.throw("Ảnh chữ ký vượt quá 1,5 MB.")
+        frappe.throw("Ảnh chữ ký vượt quá 10 MB.")
     try:
         with Image.open(BytesIO(raw)) as image:
             if image.format not in ("PNG", "JPEG"):
@@ -127,13 +128,22 @@ def _normalize_image(data):
                 frappe.throw("Ảnh chữ ký quá lớn về kích thước.")
             output_image = ImageOps.exif_transpose(image).convert("RGBA")
             output_image.thumbnail((1200, 700))
-            result = BytesIO()
-            output_image.save(result, format="PNG", optimize=True)
+            # Never embed the full-resolution photo in PDFs. Shrink until the
+            # transparent PNG is small enough, regardless of input JPEG size.
+            for _ in range(10):
+                result = BytesIO()
+                output_image.save(result, format="PNG", optimize=True)
+                if result.tell() <= MAX_STORED_BYTES:
+                    break
+                output_image.thumbnail((
+                    max(1, int(output_image.width * 0.8)),
+                    max(1, int(output_image.height * 0.8)),
+                ))
     except (UnidentifiedImageError, OSError, ValueError):
         frappe.throw("Không đọc được ảnh. Hãy chọn PNG hoặc JPG rõ nét.")
     normalized = result.getvalue()
-    if len(normalized) > MAX_UPLOAD_BYTES:
-        frappe.throw("Ảnh sau xử lý vẫn quá lớn. Hãy cắt gọn vùng chữ ký.")
+    if len(normalized) > MAX_STORED_BYTES:
+        frappe.throw("Ảnh xử lý vẫn quá lớn. Hãy cắt gọn vùng chữ ký.")
     return normalized
 
 

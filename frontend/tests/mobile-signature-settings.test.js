@@ -57,3 +57,12 @@ test('signature upload uses a real full-size native file input with a direct tou
  assert.match(css,/input\[type=file\]\{position:absolute;inset:0;display:block;width:100%;height:100%/)
  assert.match(css,/pointer-events:auto/)
 })
+test('10 MB phone photos are accepted and resized before being stored',()=>{
+ assert.match(backend,/MAX_UPLOAD_BYTES = 10_000_000/)
+ assert.match(backend,/MAX_IMAGE_PIXELS = 60_000_000/)
+ assert.match(backend,/MAX_STORED_BYTES = 1_500_000/)
+ assert.match(backend,/output_image\.thumbnail\(\(1200, 700\)\)/)
+ assert.match(backend,/if result\.tell\(\) <= MAX_STORED_BYTES/)
+ assert.match(widget,/file\.size>10000000/)
+ assert.match(widget,/10 MB/)
+})

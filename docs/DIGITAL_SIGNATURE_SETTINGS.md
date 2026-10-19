@@ -2,7 +2,7 @@
 
 ## Mục Tôi
 - Một thành phần chung cho Kho, Mua hàng, Nhân sự, Công việc ngoài vườn.
-- Chọn ảnh chữ ký PNG/JPG (tối đa 1,5 MB), xem trước, thay ảnh và xóa ảnh.
+- Chọn ảnh chữ ký PNG/JPG (tối đa 10 MB), xem trước, thay ảnh và xóa ảnh.
 - Ảnh được kiểm tra định dạng thật, bỏ metadata, chuyển PNG và lưu private theo User đang đăng nhập.
 - Người dùng không thể đặt chữ ký hay thay chữ ký hộ tài khoản khác qua API.
 - Cột cấu hình nhà cung cấp chữ ký số cũ vẫn giữ trong dữ liệu để tránh làm hỏng schema, nhưng giao diện không sử dụng.
