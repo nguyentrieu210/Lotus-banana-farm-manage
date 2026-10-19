@@ -1,3 +1,20 @@
+# Triển khai bản phát hành (từ 19/10/2026)
+
+Chỉ deploy bằng `compose.release.yaml` và một image `lotus-release:<sha>` build từ một commit
+(`Dockerfile.release`, xem hướng dẫn ở đầu file). Không dùng lại chuỗi `compose.*.override.yaml`
+hay `lotus-runtime/compose.yaml`: chúng cho mỗi dịch vụ một image khác nhau, mở cổng ra LAN và
+chứa mật khẩu mặc định.
+
+```sh
+docker compose -p lotus --env-file <file .env riêng> -f deployment/compose.release.yaml up -d
+docker exec lotus-backend-1 bench --site frontend migrate
+```
+
+File env (không commit) cần `LOTUS_IMAGE`, `DB_ROOT_PASSWORD`, `LOTUS_ADMIN_PASSWORD`. Cổng 8080
+chỉ bind `127.0.0.1`; truy cập công khai đi qua tunnel cloudflared `lotus.gpcds.site`.
+Trước khi migrate, so DocField trong DB với JSON của commit: field có trong DB mà thiếu trong
+code sẽ bị migrate gỡ khỏi DocType.
+
 # Triển khai có HRMS
 
 `Dockerfile` build từ ERPNext v16.50.0 và HRMS tag v16.50.0 (commit HRMS 7c037698ce57d1492f05a8b4a586a7578f722879). HRMS này yêu cầu Frappe >=16.50 và ERPNext >=16.0. Dùng tag đã kiểm tra, không lấy nhánh thay đổi tùy ý khi triển khai lại.
