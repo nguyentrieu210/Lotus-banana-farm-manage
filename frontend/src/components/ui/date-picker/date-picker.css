@@ -1,0 +1,41 @@
+.lotus-date{min-width:0}
+.lotus-date__field{display:flex;align-items:center;gap:1px;min-height:var(--lotus-control-height);padding:0 4px 0 10px;border:1px solid var(--lotus-border-strong);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font-size:var(--lotus-text-md);font-weight:400;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lotus-date__field:focus-within{border-color:var(--lotus-primary);box-shadow:var(--lotus-focus)}
+.lotus-date__field[aria-invalid=true]{border-color:var(--lotus-danger)}
+.lotus-date__field[data-disabled]{opacity:.55}
+.lotus-date__segment{padding:1px 2px;border-radius:4px;outline:none;caret-color:transparent}
+.lotus-date__segment:focus{background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
+.lotus-date__segment[data-placeholder]{color:var(--lotus-neutral-400)}
+.lotus-date__literal{color:var(--lotus-neutral-400);padding:0 1px}
+.lotus-date__dash{padding:0 6px;color:var(--lotus-muted)}
+.lotus-date__trigger{display:grid;place-items:center;width:28px;height:28px;margin-left:auto;border:0;border-radius:var(--lotus-radius-sm);background:transparent;color:var(--lotus-muted);cursor:pointer}
+.lotus-date__trigger:hover{background:var(--lotus-hover)}
+.lotus-date__trigger .lotus-icon{width:16px;height:16px}
+.lotus-date__content{z-index:2147482000;padding:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);color:var(--lotus-text);box-shadow:var(--lotus-shadow-lg);font-family:var(--lotus-font);font-size:var(--lotus-text-md)}
+.lotus-date__content--range{display:flex;gap:12px;max-width:calc(100vw - 16px)}
+.lotus-date__presets{display:flex;flex-direction:column;gap:2px;min-width:120px;padding-right:12px;border-right:1px solid var(--lotus-border)}
+.lotus-date__presets button{min-height:32px;padding:4px 8px;border:0;border-radius:var(--lotus-radius-md);background:transparent;color:var(--lotus-text);font:inherit;text-align:left;cursor:pointer}
+.lotus-date__presets button:hover{background:var(--lotus-hover)}
+.lotus-calendar__header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.lotus-calendar__heading{font-weight:600;text-transform:capitalize}
+.lotus-calendar__nav{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);cursor:pointer}
+.lotus-calendar__nav .lotus-icon{width:16px;height:16px}
+.lotus-calendar__months{display:flex;gap:16px}
+.lotus-calendar__grid{border-collapse:collapse}
+.lotus-calendar__weekday{width:36px;padding-bottom:4px;font-size:var(--lotus-text-xs);font-weight:500;color:var(--lotus-muted)}
+.lotus-calendar__day{display:grid;place-items:center;width:36px;height:34px;border-radius:var(--lotus-radius-md);cursor:pointer;outline:none;font-variant-numeric:tabular-nums}
+.lotus-calendar__day:hover{background:var(--lotus-hover)}
+.lotus-calendar__day:focus-visible{box-shadow:var(--lotus-focus)}
+.lotus-calendar__day[data-today]{font-weight:700;color:var(--lotus-primary-text)}
+.lotus-calendar__day[data-outside-view]{color:var(--lotus-neutral-400)}
+.lotus-calendar__day[data-disabled],.lotus-calendar__day[data-unavailable]{opacity:.35;cursor:default}
+.lotus-calendar__day[data-highlighted],.lotus-calendar__day[data-selection-start],.lotus-calendar__day[data-selection-end]{background:var(--lotus-primary-subtle)}
+.lotus-calendar__day[data-selected]{background:var(--lotus-primary);color:var(--lotus-on-primary);font-weight:600}
+.lotus-calendar__day[data-selected]:not([data-selection-start]):not([data-selection-end]){background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
+.lotus-calendar__footer{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--lotus-border)}
+.lotus-calendar__footer button{min-height:30px;padding:4px 10px;border:0;border-radius:var(--lotus-radius-md);background:transparent;color:var(--lotus-primary-text);font:inherit;font-weight:600;cursor:pointer}
+.lotus-calendar__footer button:hover{background:var(--lotus-hover)}
+@media (max-width:640px){.lotus-date__content--range{flex-direction:column}.lotus-date__presets{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--lotus-border);padding:0 0 8px}.lotus-calendar__months{flex-direction:column}}
+/* Calendar grids are <table>s: shield them from the app-wide table styles. */
+:root:root :is(.lotus-calendar__grid) :is(th,td){padding:1px 0;border:0;background:none;text-align:center}
+:root:root .lotus-calendar__grid{width:auto;margin:0}

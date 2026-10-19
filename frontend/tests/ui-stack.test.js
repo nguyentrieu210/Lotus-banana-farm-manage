@@ -66,13 +66,17 @@ test('shared form inputs preserve number and text model types',()=>{
 })
 
 test('shared grid keeps open-row event and mobile record view',()=>{
-  const source=read('src/components/OpsList.vue')
+  // OpsList is a thin wrapper: one grid implementation (DataTable) for every list
+  const ops=read('src/components/OpsList.vue')
+  const source=read('src/components/DataTable.vue')
+  assert.match(ops,/<DataTable [^>]*interactive[^>]*@open="emit\('open',\$event\)"/)
+  assert.doesNotMatch(ops,/ag-grid/)
   assert.match(source,/from 'ag-grid-vue3'/)
   // Only the AG Grid modules Lotus uses are registered, once, in grid-modules.js
   assert.match(source,/import '\.\.\/grid-modules\.js'/)
   assert.match(read('src/grid-modules.js'),/ClientSideRowModelModule/)
   assert.doesNotMatch(read('src/grid-modules.js'),/import \{[^}]*AllCommunityModule/)
-  assert.match(source,/@row-clicked="onRowClicked"/)
+  assert.match(source,/@row-clicked="open"/)
   assert.match(source,/emit\('open',event\.data\)/)
   assert.match(source,/lotus-mobile-records/)
 })

@@ -88,7 +88,7 @@
  .lotus-ui .hr-headline{gap:10px}
  .lotus-ui .hr-headline>div{padding:14px 16px;border-radius:10px}
  .lotus-ui .hr-headline strong{font-size:24px}
- .lotus-ui .workspace-nav{max-width:340px}
+ .lotus-ui .workspace-nav-trigger{max-width:340px}
  .lotus-ui main>section{animation:lotus-content-enter 180ms var(--lotus-ease)}
 }
 @media(min-width:901px) and (max-width:1150px){.lotus-ui .mobile-home .mobile-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -185,3 +185,15 @@
 .lotus-skip-link{position:fixed;left:12px;top:-60px;z-index:2147483001;padding:10px 14px;border-radius:var(--lotus-radius-md);background:var(--lotus-primary);color:var(--lotus-on-primary);font-weight:600;text-decoration:none;box-shadow:var(--lotus-shadow-md)}
 .lotus-skip-link:focus{top:12px;outline:2px solid var(--lotus-on-primary);outline-offset:2px}
 #lotus-main:focus{outline:none}
+
+/* Topbar menu triggers (DropdownMenu). Colour follows the bar so they stay readable on the Lotus red bar. */
+.workspace-nav-trigger,.workspace-user-trigger{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 8px;border:0;border-radius:var(--lotus-radius-md);background:transparent;color:inherit;font:inherit;cursor:pointer}
+.workspace-nav-trigger:hover,.workspace-user-trigger:hover,.workspace-nav-trigger[data-state=open],.workspace-user-trigger[data-state=open]{background:color-mix(in srgb,currentColor 12%,transparent)}
+.workspace-nav-trigger .lotus-icon{width:16px;height:16px}
+.workspace-home{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:var(--lotus-radius-md);color:inherit}
+.workspace-home .lotus-icon,.workspace-left .lotus-icon{width:18px;height:18px}
+.lotus-menu__user{font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text);padding-top:0}
+.lotus-menu__kbd{margin-left:auto;font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+/* Triggers keep their label: do not shrink to nothing inside the flex bar; long module names ellipsize. */
+:root:root :is(.workspace-nav-trigger,.workspace-user-trigger){flex-shrink:0;min-width:auto;max-width:none;overflow:visible}
+:root:root .workspace-nav-title{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

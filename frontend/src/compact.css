@@ -14,20 +14,20 @@ body{background:var(--lotus-page);color:var(--lotus-text)}
 .workspace-right{justify-content:flex-end}
 .workspace-left>button{flex-shrink:0}
 .workspace-bar button{min-height:30px;height:30px;padding:4px 9px;font-size:12px}
-.workspace-bar button[aria-expanded]{width:30px;flex-shrink:0}
+.workspace-bar .workspace-sidebar-toggle{width:30px;flex-shrink:0}
 .workspace-home{display:grid;place-items:center;width:26px;flex-shrink:0;font-size:21px;color:var(--lotus-muted)}
-.workspace-nav,.workspace-user{position:relative;min-width:0}
-.workspace-nav{max-width:240px}
-.workspace-nav summary,.workspace-user summary{cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;font-size:12px;min-height:30px}
-.workspace-nav summary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-.workspace-nav summary::-webkit-details-marker,.workspace-user summary::-webkit-details-marker{display:none}
+.workspace-nav-trigger,.workspace-user-trigger{position:relative;min-width:0}
+.workspace-nav-trigger{max-width:240px}
+.workspace-nav-trigger,.workspace-user-trigger{cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;font-size:12px;min-height:30px}
+.workspace-nav-trigger{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.workspace-nav-trigger::-webkit-inner-spin-button,.workspace-user-trigger::-webkit-inner-spin-button{display:none}
 .workspace-search{margin:0;min-width:0;width:100%;justify-content:space-between!important;color:var(--lotus-muted)}
 kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--lotus-border);border-radius:4px;background:var(--lotus-soft);white-space:nowrap}
 .workspace-avatar{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:var(--lotus-soft);color:var(--lotus-accent);font-size:10px;flex-shrink:0}
 .workspace-username{display:block;max-width:170px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
-.workspace-user{flex:0 1 auto}
+.workspace-user-trigger{flex:0 1 auto}
 .workspace-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:230px;max-width:min(340px,90vw);max-height:65dvh;overflow:auto;background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:8px;padding:6px;box-shadow:0 10px 30px #0003;display:grid;gap:2px;z-index:40}
-.workspace-nav .workspace-menu{left:0;right:auto}
+.workspace-nav-trigger .workspace-menu{left:0;right:auto}
 .workspace-menu button{height:auto;min-height:32px;text-align:left;justify-content:flex-start;white-space:normal}
 .workspace-menu small,.workspace-menu strong{padding:6px;font-size:11px;overflow-wrap:anywhere;color:var(--lotus-muted)}
 .command-dialog{padding:0;width:min(560px,calc(100vw - 24px));max-height:80dvh;margin:auto;background:var(--lotus-surface);color:var(--lotus-text);border:1px solid var(--lotus-border);border-radius:10px;box-shadow:0 24px 90px #0005}
@@ -228,13 +228,13 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .stock-shell .stock-main,.stock-shell.sidebar-collapsed .stock-main{margin:0;width:100%;padding:0 12px 10px}
  .app-shell main{padding:0 12px calc(84px + env(safe-area-inset-bottom))}
  .workspace-bar{grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);gap:5px;min-height:50px;margin:0 -12px 10px;width:calc(100% + 24px);padding:6px 12px}
- .workspace-left>button[aria-expanded]{display:none}
+ .workspace-left>.workspace-sidebar-toggle{display:none}
  .workspace-search{min-width:30px;width:38px;margin:0;padding:0!important}
  .workspace-search>span,.workspace-search kbd,.workspace-username{display:none}
  .workspace-search:before{content:'⌕';font-size:22px}
- .workspace-nav{max-width:calc(100vw - 180px)}
+ .workspace-nav-trigger{max-width:calc(100vw - 180px)}
  .workspace-menu{min-width:200px}
- .workspace-nav .workspace-menu{left:-35px}
+ .workspace-nav-trigger .workspace-menu{left:-35px}
  .workspace-bar button{min-height:38px;height:38px}
  .stock-shell .stock-scope label{flex:1 1 130px;min-width:120px}
  .stock-shell .stock-scope .stock-search{flex-basis:100%}

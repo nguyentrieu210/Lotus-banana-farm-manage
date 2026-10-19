@@ -49,7 +49,7 @@ Hướng chuẩn hóa đã chọn: **shadcn-vue trên reka-ui** cho máy tính (
 | Giai đoạn | Nội dung | Trạng thái |
 |---|---|---|
 | B — Quick wins | AG Grid chỉ nạp module cần (`grid-modules.js`) + tải trễ bảng; bỏ CSS frappe-ui; Toast + Hoàn tác (`use-toast.js`, reka Toast, F8 để tới thông báo); Skeleton cho bảng và màn đang mở; trạng thái trống có hành động + nút “Xóa bộ lọc” khi lọc cột ẩn hết dòng; `FormField` desktop, SchemaForm viết lại nhiều dòng; bảng nhớ độ rộng cột; skip link, `WorkspaceTabs` đúng tablist; `format.js` thay 3 bản định dạng ngày | Xong |
-| C — Component v2 | DropdownMenu, Popover, Tooltip, Combobox gộp (thay SearchSelect + LinkPicker), DatePicker/DateRangePicker `vi-VN`, Tabs, Sheet, Pagination; gộp OpsList vào DataTable, lõi confirm chung, chuyển dialog thô sang WorkspaceModal; trang tài liệu component `/lotus/admin/ui` | Kế hoạch |
+| C — Component v2 | DropdownMenu (menu phân hệ, tài khoản), Tooltip, Popover, Combobox gộp (SearchSelect + LinkPicker thành lớp bọc), DatePicker/DateRangePicker `vi-VN` có khoảng nhanh (thanh lọc khung `/lotus`), Sheet, Pagination (2 nơi trong App), OpsList thành lớp bọc DataTable, lõi confirm chung, danh mục component `showcase.html` | Xong (xem ghi chú) |
 | D — UX nâng cao | Ctrl‑K tìm bản ghi, saved views, thao tác hàng loạt, chặn rời form desktop, PWA dark mode, kéo để làm mới, tự lưu nháp | Đề xuất |
 | E — Dài hạn | Tách `App.vue` theo route, TypeScript cho `components/ui`, test mount, theme `/login` & Desk | Cần duyệt riêng |
 
@@ -66,3 +66,20 @@ Hướng chuẩn hóa đã chọn: **shadcn-vue trên reka-ui** cho máy tính (
 - Phát hiện kèm: khi lọc cột ẩn toàn bộ dòng, bảng biến mất cùng tiêu đề lọc nên người dùng không bỏ lọc được — nay có nút “Xóa bộ lọc”.
 - `npm test` 249/249; DOM 24/24.
 - Chưa làm: đưa bộ lọc cột Kho vào URL (để giai đoạn D cùng saved views).
+
+## Kết quả giai đoạn C
+
+- Primitive mới trong `components/ui/`: dropdown-menu, tooltip, popover, combobox, date-picker (DatePicker, DateRangePicker), sheet, pagination, form-field, toast. Không thêm thư viện: chỉ khai báo trực tiếp `@internationalized/date` (đã có sẵn qua reka-ui, cùng phiên bản 3.12.4).
+- Combobox: tìm không dấu, bỏ qua khoảng trắng/gạch (`option-search.js`), nhóm + mô tả, tải từ máy chủ, giữ chữ gõ cho trường Link; danh sách render trong hộp thoại đang mở nên chọn được trong form Kho.
+- DatePicker gõ được từng phần dd/mm/yyyy hoặc chọn lịch (thứ Hai đầu tuần, “Hôm nay”, “Xóa”); DateRangePicker 2 tháng + khoảng nhanh thay hai ô “Từ ngày/Đến ngày”. Khoảng ngày chỉ áp dụng khi chọn đủ hai đầu (trước đây có thể để trống một đầu).
+- Thanh trên: menu phân hệ và tài khoản bằng DropdownMenu (phím mũi tên, Esc trả focus), tooltip cho nút icon, icon thay ký tự ☰ ⌂ ⌄. Sửa kèm: quy tắc CSS `button[aria-expanded]` cũ làm co nút menu và sẽ ẩn menu phân hệ trên điện thoại.
+- Kiểm tra: `npm test` 251/251 (thêm test toast, định dạng ngày, độ rộng cột, tìm không dấu, lõi confirm, vuốt tab); DOM 24/24; luồng thật trên showcase: tìm “binh duong”, tải “bao”, chọn trong hộp thoại, khoảng “Tháng này”, không lỗi console.
+
+Ghi chú lệch kế hoạch:
+- Trang tài liệu là `frontend/showcase.html` chạy bằng `npm run dev` thay cho route `/lotus/admin/ui`: không thêm mục vào menu/phân quyền, không phát hành ra production.
+- 20 `<dialog>` thô chưa chuyển cấu trúc sang WorkspaceModal (giao diện đã thống nhất bằng CSS ở đợt trước); chuyển dần khi sửa từng màn vì các form này gọi `showModal()` trực tiếp và nằm trong tệp lớn.
+- MobileLinkField (PWA) giữ cách lọc hiện tại; `option-search.js` mới áp dụng cho desktop.
+
+## Phát hiện thêm (chưa xử lý)
+- Ở bề rộng ≤ 900px, khung `/lotus` dùng thanh trên màu xám đậm thay vì Đỏ Lotus và nhãn thanh điều hướng dưới bị cắt (“Trang…”, “Xem…”).
+- Ở 1024px, tên phân hệ trên thanh trên bị ẩn và thanh lọc phải cuộn ngang.

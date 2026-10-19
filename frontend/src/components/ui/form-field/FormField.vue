@@ -17,7 +17,7 @@ const field=computed(()=>({id:fieldId.value,required:props.required||undefined,'
 </template>
 <style>
 .lotus-field{display:grid;gap:6px;min-width:0}
-.lotus-field__label{font-size:var(--lotus-text-sm);font-weight:550;color:var(--lotus-text)}
+:root:root .lotus-field__label{display:block;font-size:var(--lotus-text-sm);font-weight:550;color:var(--lotus-text)}
 .lotus-field__required{margin-left:2px;color:var(--lotus-danger)}
 .lotus-field__hint,.lotus-field__error{margin:0;font-size:var(--lotus-text-sm);line-height:1.45}
 .lotus-field__hint{color:var(--lotus-muted)}

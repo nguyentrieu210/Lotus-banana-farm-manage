@@ -14,9 +14,9 @@
   grid-template-columns:minmax(155px,1fr) minmax(165px,300px) minmax(150px,1fr);
   gap:12px;
  }
- .lotus-ui.app-shell main>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button),
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button),
- .lotus-ui.assignment-workspace>.workspace-bar :is(.workspace-nav summary,.workspace-home,.workspace-user summary,.workspace-right button,.workspace-left button){
+ .lotus-ui.app-shell main>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button),
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button),
+ .lotus-ui.assignment-workspace>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button){
   color:#fff;
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-search,
@@ -54,8 +54,8 @@
 @media(min-width:901px) and (max-width:1160px){
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{grid-template-columns:minmax(125px,1fr) minmax(145px,210px) minmax(125px,1fr);padding-inline:14px}
- .lotus-ui.app-shell main>.workspace-bar .workspace-nav,
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-nav{display:none}
+ .lotus-ui.app-shell main>.workspace-bar .workspace-nav-trigger,
+ .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-nav-trigger{display:none}
  .lotus-ui.app-shell main{padding-inline:14px}
  .lotus-ui.app-shell main>.workspace-bar{margin-left:-14px;margin-right:-14px;width:calc(100% + 28px)}
 }

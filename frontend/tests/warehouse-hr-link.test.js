@@ -20,8 +20,11 @@ test('warehouse code is derived from entered name and company abbreviation',()=>
 })
 
 test('selected link shows display label instead of stored identifier',()=>{
- assert.match(picker,/chosenLabel\.value=\{value:row\.value,label:row\.label/)
- assert.match(picker,/:value="isOpen\?query:shownValue"/)
+ // LinkPicker wraps the shared Combobox, which remembers the chosen row and shows its label
+ const combobox=readFileSync(new URL('../src/components/ui/combobox/Combobox.vue',import.meta.url),'utf8')
+ assert.match(picker,/<Combobox /)
+ assert.match(combobox,/chosen\.value=row/)
+ assert.match(combobox,/const shown=\(\)=>props\.displayValue\|\|current\.value\?\.label/)
  assert.match(stock,/:display-value="row\.item_name/)
 })
 

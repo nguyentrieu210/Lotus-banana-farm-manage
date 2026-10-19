@@ -10,6 +10,13 @@
 
 - Màu chính duy nhất cho máy tính và PWA: Đỏ Lotus #c43224. Mọi màu, font, cỡ chữ, spacing, bo góc, bóng lấy từ frontend/src/lotus-tokens.css; không ghi mã màu hex trong CSS/`<style>` khác (trừ trắng/đen và bóng trong suốt). tests/design-tokens.test.js kiểm tra quy tắc này.
 
+## Bộ component máy tính (từ 19/10/2026)
+
+- Màn máy tính dùng primitive trong frontend/src/components/ui (shadcn-vue trên reka-ui): Button, Input/Select/Textarea bọc trong FormField (label, gợi ý, lỗi theo trường), Combobox (mọi ô chọn có tìm; SearchSelect/LinkPicker chỉ là lớp bọc), DatePicker/DateRangePicker (gõ được dd/mm/yyyy hoặc chọn lịch), DropdownMenu, Tooltip cho nút chỉ có icon, Popover, Sheet, Pagination, Skeleton, Toast (use-toast: thông báo thành công; lỗi chặn vẫn hiển thị cạnh biểu mẫu).
+- Không tự viết lại popover/combobox/menu/date picker. Nội dung nổi trong hộp thoại modal phải render trong chính <dialog> (ui/portal-target.js).
+- Xác nhận dùng useWorkspaceConfirm (máy tính) / useMobileConfirm (PWA), cùng lõi use-confirm-core.js. Bảng dùng DataTable (OpsList là lớp bọc). Icon dùng LotusIcon, không dùng ký tự.
+- Xem trước toàn bộ component: `npm run dev` rồi mở /assets/lotus_farm/frontend/showcase.html (không build ra production).
+
 ## Chuẩn PWA điện thoại (yêu cầu người dùng 17/10/2026)
 
 - Toàn bộ PWA điện thoại dùng Vue 3 và Vant 4. Dùng chung LotusMobileShell, LotusMobileHeader và LotusMobileBottomNav; không tạo header/bottom hoặc bộ component riêng cho từng app.
