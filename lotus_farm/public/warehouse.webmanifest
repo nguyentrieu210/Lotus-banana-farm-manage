@@ -6,8 +6,8 @@
   "start_url": "/warehouse",
   "scope": "/warehouse",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#f3653c",
+  "background_color": "#f7f7f8",
+  "theme_color": "#c43224",
   "lang": "vi",
   "icons": [
     {
