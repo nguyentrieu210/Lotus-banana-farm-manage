@@ -75,6 +75,8 @@ Hướng chuẩn hóa đã chọn: **shadcn-vue trên reka-ui** cho máy tính (
 - Thanh trên: menu phân hệ và tài khoản bằng DropdownMenu (phím mũi tên, Esc trả focus), tooltip cho nút icon, icon thay ký tự ☰ ⌂ ⌄. Sửa kèm: quy tắc CSS `button[aria-expanded]` cũ làm co nút menu và sẽ ẩn menu phân hệ trên điện thoại.
 - Kiểm tra: `npm test` 251/251 (thêm test toast, định dạng ngày, độ rộng cột, tìm không dấu, lõi confirm, vuốt tab); DOM 24/24; luồng thật trên showcase: tìm “binh duong”, tải “bao”, chọn trong hộp thoại, khoảng “Tháng này”, không lỗi console.
 
+- Kích thước sau GĐ C: JS chính 384 KB (DatePicker/Combobox nằm trên thanh lọc nên nạp ngay; vẫn giảm 74% so với 1.472 KB ban đầu), CSS 223 KB.
+
 Ghi chú lệch kế hoạch:
 - Trang tài liệu là `frontend/showcase.html` chạy bằng `npm run dev` thay cho route `/lotus/admin/ui`: không thêm mục vào menu/phân quyền, không phát hành ra production.
 - 20 `<dialog>` thô chưa chuyển cấu trúc sang WorkspaceModal (giao diện đã thống nhất bằng CSS ở đợt trước); chuyển dần khi sửa từng màn vì các form này gọi `showModal()` trực tiếp và nằm trong tệp lớn.
