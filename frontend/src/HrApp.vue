@@ -1,7 +1,6 @@
 <script setup>
 const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,onMounted,reactive,ref} from 'vue'
-import WorkspaceBar from './components/WorkspaceBar.vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
@@ -136,14 +135,9 @@ onMounted(init)
 
 <template>
 <div class="stock-shell hr-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
-  <aside v-if="!embedded" class="stock-sidebar">
-    <a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech"></a>
-    <p class="stock-nav-label">NHÂN SỰ LOTUS</p>
-    <nav aria-label="Module nhân sự"><UiButton v-for="item in tabs" :key="item.id" variant="outline" :class="{selected:tab===item.id}" @click="chooseTab(item.id)">{{item.label}}</UiButton></nav>
-    <div class="stock-sidebar-bottom"><a href="/lotus/cham-cong">Chấm công ↗</a><a href="/desk/hr-setup">Quản trị HRMS ↗</a></div>
-  </aside>
+  
   <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/>
-    <WorkspaceBar v-if="!embedded" :user="session?.user" :title="tabs.find(x=>x.id===tab)?.label||'Nhân sự'" :actions="actions"/>
+    
     <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
     <WorkspaceSummaryStrip v-if="['employees','onboarding','candidates'].includes(tab)" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
     <WorkspaceListToolbar v-model="search" :searchable="['employees','onboarding','candidates'].includes(tab)" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="tab==='payroll'?loadPayroll():refresh()">

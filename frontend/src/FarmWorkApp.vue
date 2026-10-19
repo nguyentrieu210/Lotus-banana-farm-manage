@@ -3,7 +3,6 @@ const props=defineProps({embedded:Boolean,navigationKey:String})
 const emit=defineEmits(['navigation-consumed'])
 import {unitLabel} from './units'
 import {computed,nextTick,onActivated,onMounted,ref,watch} from 'vue'
-import WorkspaceBar from './components/WorkspaceBar.vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import SearchSelect from './components/SearchSelect.vue'
 import SchemaForm from './components/SchemaForm.vue'
@@ -135,8 +134,8 @@ onActivated(()=>{if(farm.value&&!busy.value&&new URL(location.href).searchParams
 </script>
 <template>
  <div class="stock-shell farm-work-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
-  <aside v-if="!embedded" class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech"></a><p class="stock-nav-label">CÔNG VIỆC VƯỜN</p><nav aria-label="Công việc vườn"><UiButton v-for="t in tabs" :key="t.id" variant="outline" :class="{selected:tab===t.id}" @click="choose(t.id)">{{t.icon}} <span>{{t.label}}</span></UiButton></nav><div class="farm-side-links"><a :href="'/lotus/plan-norm'+(farm?'?farm='+encodeURIComponent(farm):'')">Cấu hình kế hoạch & định mức ↗</a><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/cham-cong">Nhân sự & chấm công ↗</a></div></aside>
-  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="choose($event)"/><WorkspaceBar v-if="!embedded" :user="session?.user" title="Công việc vườn" :actions="actions"/>
+  
+  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="choose($event)"/>
    <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <div class="farm-work-scope"><a class="farm-primary-link" href="/work">↗ Mở app công việc điện thoại</a><label>Vườn<SearchSelect v-model="farm" :options="farmOptions" label="Vườn" placeholder="Chọn vườn" :disabled="busy" @change="load"/></label><label v-if="tab!=='setup'">Ngày kế hoạch<UiInput v-model="date" type="date" :disabled="busy" @change="load"/></label><UiButton variant="outline" :disabled="busy" @click="load">{{busy?'Đang tải…':'Làm mới'}}</UiButton><UiButton v-if="tab!=='setup'&&session?.commands?.work" class="farm-primary-link" :disabled="busy||!data" @click="openAssignment">＋ Lập kế hoạch / giao việc</UiButton></div>
    <p v-if="!farm&&!busy" class="farm-empty">Chưa có vườn được phân quyền cho tài khoản này.</p>

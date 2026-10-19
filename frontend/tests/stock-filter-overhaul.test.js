@@ -12,7 +12,9 @@ test('Stock screen contains only compact scope filters and its inventory table',
  assert.match(app,/<section v-if="tab==='stock'" class="stock-panel stock-inventory-table">/)
  assert.match(app,/@filter="filterStock"/)
  assert.match(app,/v-if="\['stock','history','movements'\]\.includes\(tab\)&&activeTabFilters"/)
- assert.match(app,/<WorkspaceBar .*:actions="workspaceActions"/)
+ // One topbar for every module: the /lotus shell owns it, Stock renders none of its own.
+ assert.match(readFileSync(new URL('../src/App.vue',import.meta.url),'utf8'),/<WorkspaceBar [^>]*:actions="workspaceActions"/)
+ assert.equal(app.includes('<WorkspaceBar'),false)
  for(const obsolete of ['stock-overview-metrics','stock-filter-panel','stock-filter-period','stock-welcome','Kỳ nhu cầu dự kiến','Dưới tồn tối thiểu']){
   assert.equal(app.includes(obsolete),false,'Redundant screen element '+obsolete)
  }

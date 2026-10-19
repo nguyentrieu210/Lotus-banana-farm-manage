@@ -50,7 +50,7 @@ Frappe hiện có. Không mở thêm quyền vai trò hay quyền Farm.
 - Kiểm tra trình duyệt: Tổng quan, cấu hình năng suất, lọc và tạo vụ theo thửa,
   Kế hoạch/Tiến độ chưa có phiếu thì hiện trạng thái rỗng.
 
-Entry `farm-work.html` được đăng ký trong Vite, router website và service worker.
+Công việc vườn chạy trong khung `/lotus` (`/lotus/cong-viec`, entry `index.html`); entry riêng `farm-work.html` đã bỏ từ 19/10/2026.
 Không cache API hoặc tài liệu riêng tư. Cần mạng để đọc/lưu cấu hình mới.
 
 ## Lập kế hoạch / giao việc bằng modal

@@ -46,9 +46,9 @@ Mức độ: **Cao** = thấy rõ/ảnh hưởng nhận diện hoặc khả năn
 | 28 | PWA Mua hàng | Đăng xuất không hỏi xác nhận, không dùng POST/CSRF như Kho, Công việc | TB | `BuyingMobile.vue` | `logoutPwa` | Đã xử lý (GĐ2) |
 | 29 | Desktop | 3 màu nền mờ hộp thoại (xanh lá, xanh đen, đen) | TB | `style.css`, `stock.css`, `stock-attio.css` | `--lotus-backdrop` | Đã xử lý (GĐ2) |
 | 30 | Desktop | Token `--lotus-hover` được dùng nhưng chưa định nghĩa (hover tab không hiển thị) | Thấp | `workspace-experience.css` | Định nghĩa token + test | Đã xử lý (GĐ2) |
-| 21 | Mã thừa | 5 entry HTML không URL nào phục vụ (`assign/stock/timekeeping/farm-work/hr.html`) + shell `stock-shell` cũ | TB | `vite.config.js`, `*-main.js`, `stock.css` | Xóa sau xác minh | GĐ3 |
-| 22 | Mã thừa | CSS header/bottom PWA cũ (v1/v2/v3) không còn dùng | Thấp | `warehouse-mobile.css`, `buying-mobile.css` | Xóa | GĐ3 |
-| 23 | Tài liệu | `UI_STACK.md` mô tả theme indigo, không khớp mã | Thấp | `docs/UI_STACK.md` | Cập nhật | GĐ3 |
+| 21 | Mã thừa | 5 entry HTML không URL nào phục vụ (`assign/stock/timekeeping/farm-work/hr.html`) + shell `stock-shell` cũ | TB | `vite.config.js`, `*-main.js`, `stock.css` | Đã xóa 5 entry + 5 `*-main.js`, 5 file CSS không còn nơi nạp, nhánh thanh bên/thanh đầu trang độc lập trong StockApp, HrApp, TimekeepingApp, FarmWorkApp; cập nhật `deployment/verify_stock_8080.ps1` sang entry `index.html`. Giữ CSS `.stock-shell` vì phân hệ nhúng vẫn dùng | Đã xử lý (GĐ3) |
+| 22 | Mã thừa | CSS header/bottom PWA cũ (v1/v2/v3) không còn dùng | Thấp | `warehouse-mobile.css`, `buying-mobile.css` | Gỡ 149 selector chết (`.stock-sidebar`, `.stock-brand`, `.buy-head/bottom`, `.mobile-head/bottom`, `.lotus-desktop`); mọi file CSS kiểm tra parse bằng postcss | Đã xử lý (GĐ3) |
+| 23 | Tài liệu | `UI_STACK.md` mô tả theme indigo, không khớp mã | Thấp | `docs/UI_STACK.md` | Cập nhật UI_STACK, LOTUS_DESKTOP_UI_STANDARD, FARM_WORKSPACE, MOBILE_QUICK_ASSIGN | Đã xử lý (GĐ3) |
 | 24 | Toàn hệ thống | Trang `/login` và Desk `/app` là giao diện Frappe gốc tiếng Anh, logo Frappe, nút đen | Cao | `hooks.py` | Theme Desk/login theo token | GĐ4 (cần duyệt riêng) |
 | 25 | Desktop | `App.vue` 72 KB chứa mọi trang bằng `v-if` | TB | `App.vue`, `router.js` | Tách component theo route | GĐ4 (cần duyệt riêng) |
 | 26 | Kiểm thử | Test chủ yếu đọc mã nguồn bằng regex, chưa mount component | TB | `frontend/tests` | Playwright visual regression | GĐ4 |
@@ -72,7 +72,7 @@ Lưu ý: màu "nguy hiểm" (`--lotus-danger` `#b42318`) cùng họ đỏ với 
 
 1. **GĐ1 — Quick wins** (xong): một nguồn token, màu/chữ thống nhất, dark mode, a11y PWA, Nhân sự PWA theo chuẩn, Việt hóa, test chặn tái phát.
 2. **GĐ2 — Hợp nhất component** (xong): hộp thoại, thông báo, nút/tab, bảng, trạng thái trống, icon, đăng xuất và vuốt tab PWA dùng chung.
-3. **GĐ3 — Dọn dẹp**: xóa entry/CSS thừa, cập nhật tài liệu, mở rộng test.
+3. **GĐ3 — Dọn dẹp** (xong): xóa entry/CSS thừa, cập nhật tài liệu và test. Giữ shadcn Separator/Skeleton vì `ui-stack.test.js` yêu cầu sẵn có trong registry (không vào bundle khi không dùng).
 4. **GĐ4 — Dài hạn (duyệt riêng)**: theme Desk/login, tách `App.vue`, visual regression.
 
 ## Kiểm tra GĐ1
@@ -86,3 +86,8 @@ Lưu ý: màu "nguy hiểm" (`--lotus-danger` `#b42318`) cùng họ đỏ với 
 - `npm test`: 245/245 đạt. `design-tokens.test.js` thêm: mọi `var(--lotus-*)` phải được định nghĩa, không `window.alert/confirm` ở bất kỳ màn nào, không dùng ký tự làm icon. Thêm test hành vi `createTabSwipe`; test đăng xuất kiểm tra cả bốn PWA dùng `logoutPwa`.
 - `tools/verify_mobile_purchase_dom.mjs` (happy-dom 21.0.1): 24/24 đạt, giống bản gốc.
 - Ảnh bản build: Nhân sự (bảng, hộp thoại tạo hồ sơ sáng/tối), Cấu hình kế hoạch (thông báo), Công việc PWA (biểu tượng, trạng thái trống); thanh bên không còn giãn cách.
+
+## Kiểm tra GĐ3
+
+- `npm test` 245/245; build chỉ còn 5 entry (`index`, `warehouse`, `buying`, `work-mobile`, `hr-mobile`); DOM 24/24.
+- Ảnh bản build Hôm nay, Kho, Nhân sự, Chấm công, Công việc @1440/1024 sáng/tối và bốn PWA @320/390: không tràn ngang. Bản xem trước dùng dữ liệu giả lập nên nội dung một số phân hệ trống; cần xem lại trên 8080 bằng tài khoản thật.

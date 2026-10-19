@@ -11,7 +11,8 @@
 - `frontend/src/desktop-system.css`: màu, trạng thái sáng/tối, ô nhập, bảng, hộp thoại, menu trái, lề trang, focus.
 - `frontend/src/desktop-components.css`: khối tiêu đề, thẻ số liệu, trống dữ liệu, biểu đồ, màn Dự thu.
 - `frontend/src/desktop-shell.css`: thanh đầu trang màu đất nung lấy Kho làm chuẩn.
-- Các nguồn `main.js`, `stock-main.js`, `assign-main.js`, `farm-work-main.js`, `hr-main.js`, `timekeeping-main.js` nạp chung ba tệp, không nạp trong Vant PWA.
+- `main.js` (khung `/lotus`, mọi phân hệ máy tính) nạp `lotus-tokens.css` đầu tiên rồi ba tệp trên; không nạp trong Vant PWA. Các entry riêng của Kho/Nhân sự/Chấm công/Công việc/Giao việc đã bỏ từ 19/10/2026.
+- Màu, chữ, khoảng cách, bo góc, bóng chỉ định nghĩa trong `lotus-tokens.css`; hộp thoại xác nhận dùng `WorkspaceConfirm`, icon dùng `LotusIcon`.
 - Các ứng dụng máy tính thêm class `lotus-ui` vào phần tử gốc để cách ly kiểu trình bày.
 - `components/DesktopPageHeading.vue`, `DesktopMetricCard.vue`, `DesktopEmptyState.vue`, `DesktopForecastChart.vue` là khối tái sử dụng.
 

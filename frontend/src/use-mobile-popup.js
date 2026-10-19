@@ -10,7 +10,7 @@ export function useMobilePopup(root,input,opened,onClose){
   if(!opened.value||!root.value)return
   const box=root.value.getBoundingClientRect(),vv=window.visualViewport
   const header=document.querySelector('.lotus-pwa-header,.mobile-head')?.getBoundingClientRect().bottom||0
-  const nav=document.querySelector('.lotus-pwa-bottom .van-tabbar,.mobile-bottom')?.getBoundingClientRect()
+  const nav=document.querySelector('.lotus-pwa-bottom .van-tabbar')?.getBoundingClientRect()
   const bottom=(vv?.offsetTop||0)+(vv?.height||window.innerHeight)
   const footer=nav&&nav.height>0&&nav.top<bottom?Math.max(0,bottom-nav.top):0
   if(box.bottom<header||box.top>bottom){close();return}

@@ -44,7 +44,8 @@ test('link dropdown supports keyboard, pop-up above screen bottom and larger tap
  assert.match(link,/mobile-link-up/)
  assert.match(link,/if\(props\.disabled\|\|open\.value\)return/)
  assert.match(css,/\.mobile-link-options\.mobile-link-up/)
- assert.match(css,/\.mobile-head \.mobile-back/)
+ // Back now lives in the shared PWA header with a 44px tap target.
+ assert.match(readFileSync(new URL('../src/mobile-ui.css',import.meta.url),'utf8'),/\.lotus-pwa-back\{width:44px;min-width:44px/)
 })
 test('quick search opens suggestions immediately and never needs Enter or a Tìm button',()=>{
  const picker=readFileSync(new URL('../src/components/MobileLiveSearch.vue',import.meta.url),'utf8')

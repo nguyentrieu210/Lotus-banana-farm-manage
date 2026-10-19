@@ -53,7 +53,7 @@ Lệnh `seed` gọi lại trên một nông trường mẫu đã tồn tại s�
 
 - `python -m unittest discover -s tests -v` (chia khối lượng theo diện tích và bảo toàn tổng).
 - `npm run --prefix frontend test` (form nhập theo lô hoặc thửa).
-- `npm run --prefix frontend build` (có cả `index.html` và `assign.html` trong manifest).
+- `npm run --prefix frontend build` (`/lotus/giao-viec` dùng entry `index.html`; entry `assign.html` đã bỏ từ 19/10/2026).
 - `bench --site lotus.test run-tests --module lotus_farm.tests.test_brd` (site test seed, tạo kế hoạch thực, chặn trùng và chặn thửa sai farm).
 
 ## Giới hạn còn lại

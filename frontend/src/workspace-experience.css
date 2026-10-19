@@ -36,13 +36,6 @@
 .lotus-ui .mobile-home{max-width:none;margin:0 auto 24px}
 .workspace-module-host{min-width:0}
 .workspace-module-host .embedded-workspace{display:block;min-height:0;background:transparent;width:100%}
-.workspace-module-host .embedded-workspace>.stock-sidebar{position:static!important;inset:auto!important;width:100%!important;height:auto!important;min-height:0!important;padding:0!important;margin:0 0 14px!important;background:transparent!important;border:0!important;overflow:visible!important}
-.workspace-module-host .embedded-workspace>.stock-sidebar>:not(nav){display:none!important}
-.workspace-module-host .embedded-workspace>.stock-sidebar nav{display:flex!important;flex-direction:row!important;flex-wrap:nowrap;align-items:center;gap:4px!important;overflow-x:auto;padding:0 0 9px;margin:0;border-bottom:1px solid var(--lotus-border);scrollbar-width:thin}
-.workspace-module-host .embedded-workspace>.stock-sidebar nav button{display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 auto;min-height:34px!important;height:auto;padding:7px 12px!important;border-radius:7px;white-space:nowrap;font-size:12px;color:var(--lotus-muted);background:transparent;border:1px solid transparent}
-.workspace-module-host .embedded-workspace>.stock-sidebar nav button span{display:inline!important}
-.workspace-module-host .embedded-workspace>.stock-sidebar nav button svg{width:16px;height:16px}
-.workspace-module-host .embedded-workspace>.stock-sidebar nav button.selected{color:var(--lotus-accent);background:var(--lotus-accent-soft);border-color:var(--lotus-border)}
 .workspace-module-host .embedded-workspace>.stock-main{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important}
 .workspace-module-host .embedded-workspace .farm-heading{display:none}
 .workspace-module-host .embedded-workspace .farm-work-scope{padding-top:0}
@@ -67,12 +60,8 @@
  .workspace-shell>.sidebar{height:100dvh;flex-shrink:0}
  .lotus-ui.app-shell .sidebar nav{gap:2px}
  .lotus-ui.app-shell .sidebar nav button{min-height:34px;font-size:12px}
- .lotus-ui :is(.sidebar,.stock-sidebar) .lotus-brand-image{width:184px;height:auto;max-height:64px;object-fit:contain;object-position:left center}
  .workspace-shell>.sidebar>.brand{min-height:72px}
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar nav button{min-height:36px;font-size:12px;padding:7px 11px}
- .lotus-ui.stock-shell.sidebar-collapsed:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar{width:64px;padding:14px 8px}
  .lotus-ui.stock-shell.sidebar-collapsed:not(.warehouse-pwa):not(.lotus-desktop) .stock-main{margin-left:64px;width:calc(100% - 64px)}
- .lotus-ui.stock-shell.sidebar-collapsed:not(.warehouse-pwa):not(.lotus-desktop) .stock-sidebar .lotus-brand-image{width:46px}
  .lotus-ui.app-shell.sidebar-collapsed .sidebar{width:64px;padding:14px 8px}
  .lotus-ui.app-shell.sidebar-collapsed .sidebar .brand{padding:4px 0}
  .lotus-ui.app-shell.sidebar-collapsed .lotus-brand-image{width:46px;height:32px;object-fit:cover;object-position:left center}

@@ -6,7 +6,7 @@ export default {
   presets:[preset],
   // App toggles .dark on <html> (src/workspace.js); the frappe-ui preset defaults to [data-theme=dark].
   darkMode:['selector','.dark'],
-  content:[...content,'./index.html','./assign.html','./src/**/*.{vue,js,ts}'],
+  content:[...content,'./index.html','./src/**/*.{vue,js,ts}'],
   theme:{
     extend:{
       borderRadius:{lg:'var(--radius)',md:'calc(var(--radius) - 2px)',sm:'calc(var(--radius) - 4px)'},

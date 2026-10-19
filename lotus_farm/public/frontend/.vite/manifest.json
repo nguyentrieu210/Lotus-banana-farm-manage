@@ -1,30 +1,10 @@
 {
-  "_AssignApp-CEmrzfrj.css": {
-    "file": "assets/AssignApp-CEmrzfrj.css",
-    "src": "_AssignApp-CEmrzfrj.css"
-  },
-  "_AssignApp-CogIhyJ_.js": {
-    "file": "assets/AssignApp-CogIhyJ_.js",
-    "name": "AssignApp",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_units-DwW3lwNS.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js"
-    ],
-    "css": [
-      "assets/AssignApp-CEmrzfrj.css"
-    ]
-  },
-  "_CccdQrScanner-rJvAHOm4.js": {
-    "file": "assets/CccdQrScanner-rJvAHOm4.js",
+  "_CccdQrScanner-BGhGE7kg.js": {
+    "file": "assets/CccdQrScanner-BGhGE7kg.js",
     "name": "CccdQrScanner",
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js",
-      "_preload-helper-BB2FBftw.js"
+      "_preload-helper-DrJwqBsx.js"
     ],
     "dynamicImports": [
       "node_modules/html5-qrcode/esm/index.js"
@@ -37,160 +17,31 @@
     "file": "assets/CccdQrScanner-xbhzaMDS.css",
     "src": "_CccdQrScanner-xbhzaMDS.css"
   },
-  "_DataTable-BRze8wnL.js": {
-    "file": "assets/DataTable-BRze8wnL.js",
-    "name": "DataTable",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_labels-iFzkhxh0.js"
-    ]
-  },
-  "_FarmWorkApp-CJighIKT.js": {
-    "file": "assets/FarmWorkApp-CJighIKT.js",
-    "name": "FarmWorkApp",
-    "imports": [
-      "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-Bigd1uwa.js",
-      "_farm-work-BGlwNqDf.js",
-      "_units-DwW3lwNS.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_labels-iFzkhxh0.js",
-      "_AssignApp-CogIhyJ_.js"
-    ]
-  },
-  "_HrApp-UeIj9itX.js": {
-    "file": "assets/HrApp-UeIj9itX.js",
-    "name": "HrApp",
-    "imports": [
-      "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-Bigd1uwa.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_labels-iFzkhxh0.js",
-      "_WorkspaceModal-DUBQVqOL.js",
-      "_CccdQrScanner-rJvAHOm4.js"
-    ],
-    "css": [
-      "assets/HrApp-_gKUJLMO.css"
-    ]
-  },
-  "_HrApp-_gKUJLMO.css": {
-    "file": "assets/HrApp-_gKUJLMO.css",
-    "src": "_HrApp-_gKUJLMO.css"
-  },
-  "_LinkPicker-DmngfJwI.js": {
-    "file": "assets/LinkPicker-DmngfJwI.js",
-    "name": "LinkPicker",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js"
-    ]
-  },
-  "_LotusIcon-DQ0iNG8g.js": {
-    "file": "assets/LotusIcon-DQ0iNG8g.js",
-    "name": "LotusIcon",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js"
-    ]
-  },
-  "_LotusMobileAction-ChBEKgsC.js": {
-    "file": "assets/LotusMobileAction-ChBEKgsC.js",
+  "_LotusMobileAction-B1Pm-4ua.js": {
+    "file": "assets/LotusMobileAction-B1Pm-4ua.js",
     "name": "LotusMobileAction",
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
       "_mobile-ui-Dv5Icn5T.js"
     ]
   },
-  "_MobileSupplierForm-BlNGEwq3.js": {
-    "file": "assets/MobileSupplierForm-BlNGEwq3.js",
+  "_MobileSupplierForm-CJ03uiEU.js": {
+    "file": "assets/MobileSupplierForm-CJ03uiEU.js",
     "name": "MobileSupplierForm",
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
       "_units-DwW3lwNS.js",
       "_mobile-ui-Dv5Icn5T.js",
-      "_LotusMobileAction-ChBEKgsC.js"
+      "_LotusMobileAction-B1Pm-4ua.js"
     ]
   },
-  "_StockApp-CZjBMqAy.js": {
-    "file": "assets/StockApp-CZjBMqAy.js",
-    "name": "StockApp",
-    "imports": [
-      "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-Bigd1uwa.js",
-      "_units-DwW3lwNS.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_DataTable-BRze8wnL.js",
-      "_LinkPicker-DmngfJwI.js"
-    ]
-  },
-  "_TimekeepingApp-xkbEoagr.js": {
-    "file": "assets/TimekeepingApp-xkbEoagr.js",
-    "name": "TimekeepingApp",
-    "imports": [
-      "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-Bigd1uwa.js",
-      "_units-DwW3lwNS.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_DataTable-BRze8wnL.js"
-    ]
-  },
-  "_WorkspaceBar-CYunIF2f.js": {
-    "file": "assets/WorkspaceBar-CYunIF2f.js",
-    "name": "WorkspaceBar",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "_workspace-experience-BY_znHGA.js"
-    ]
-  },
-  "_WorkspaceModal-DUBQVqOL.js": {
-    "file": "assets/WorkspaceModal-DUBQVqOL.js",
+  "_WorkspaceModal-D9rvu5QQ.js": {
+    "file": "assets/WorkspaceModal-D9rvu5QQ.js",
     "name": "WorkspaceModal",
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js"
+      "index.html"
     ]
-  },
-  "__plugin-vue_export-helper-BDNMzG2s.js": {
-    "file": "assets/_plugin-vue_export-helper-BDNMzG2s.js",
-    "name": "_plugin-vue_export-helper"
-  },
-  "_farm-work-BGlwNqDf.js": {
-    "file": "assets/farm-work-BGlwNqDf.js",
-    "name": "farm-work",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_units-DwW3lwNS.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_labels-iFzkhxh0.js",
-      "_LinkPicker-DmngfJwI.js"
-    ],
-    "css": [
-      "assets/farm-work-mnY__HWn.css"
-    ]
-  },
-  "_farm-work-mnY__HWn.css": {
-    "file": "assets/farm-work-mnY__HWn.css",
-    "src": "_farm-work-mnY__HWn.css"
-  },
-  "_hr-oHkIfM76.css": {
-    "file": "assets/hr-oHkIfM76.css",
-    "src": "_hr-oHkIfM76.css"
-  },
-  "_labels-iFzkhxh0.js": {
-    "file": "assets/labels-iFzkhxh0.js",
-    "name": "labels"
   },
   "_lotus-tokens-Bigd1uwa.js": {
     "file": "assets/lotus-tokens-Bigd1uwa.js",
@@ -203,13 +54,13 @@
     "file": "assets/lotus-tokens-CjN7Itu9.css",
     "src": "_lotus-tokens-CjN7Itu9.css"
   },
-  "_mobile-swipe-C91lZCqo.js": {
-    "file": "assets/mobile-swipe-C91lZCqo.js",
+  "_mobile-swipe-B1bJyGo6.js": {
+    "file": "assets/mobile-swipe-B1bJyGo6.js",
     "name": "mobile-swipe",
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
       "_mobile-ui-Dv5Icn5T.js",
-      "_LotusMobileAction-ChBEKgsC.js"
+      "_LotusMobileAction-B1Pm-4ua.js"
     ]
   },
   "_mobile-ui-Dd1SbAX9.css": {
@@ -230,84 +81,27 @@
       "assets/Inter-Italic.var-BGHziHgI.woff2"
     ]
   },
-  "_offline-DcIimw0s.js": {
-    "file": "assets/offline-DcIimw0s.js",
+  "_offline-CjpQNWMy.js": {
+    "file": "assets/offline-CjpQNWMy.js",
     "name": "offline"
   },
-  "_preload-helper-BB2FBftw.js": {
-    "file": "assets/preload-helper-BB2FBftw.js",
-    "name": "preload-helper"
-  },
-  "_register-warehouse-worker-ClozO1u8.js": {
-    "file": "assets/register-warehouse-worker-ClozO1u8.js",
-    "name": "register-warehouse-worker"
-  },
-  "_register-worker-CKMNsoSQ.js": {
-    "file": "assets/register-worker-CKMNsoSQ.js",
-    "name": "register-worker"
+  "_preload-helper-DrJwqBsx.js": {
+    "file": "assets/preload-helper-DrJwqBsx.js",
+    "name": "preload-helper",
+    "imports": [
+      "_lotus-tokens-Bigd1uwa.js"
+    ]
   },
   "_rolldown-runtime-hePW80VL.js": {
     "file": "assets/rolldown-runtime-hePW80VL.js",
     "name": "rolldown-runtime"
   },
-  "_stock-attio-CmWOkqT6.css": {
-    "file": "assets/stock-attio-CmWOkqT6.css",
-    "src": "_stock-attio-CmWOkqT6.css"
-  },
-  "_stock-attio-DJOIZSKl.js": {
-    "file": "assets/stock-attio-DJOIZSKl.js",
-    "name": "stock-attio",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js"
-    ],
-    "css": [
-      "assets/stock-attio-CmWOkqT6.css"
-    ]
-  },
-  "_timekeeping-bKYRSKjL.css": {
-    "file": "assets/timekeeping-bKYRSKjL.css",
-    "src": "_timekeeping-bKYRSKjL.css"
-  },
   "_units-DwW3lwNS.js": {
     "file": "assets/units-DwW3lwNS.js",
     "name": "units"
   },
-  "_warehouse-buying-lite-CSmB3IsW.css": {
-    "file": "assets/warehouse-buying-lite-CSmB3IsW.css",
-    "src": "_warehouse-buying-lite-CSmB3IsW.css"
-  },
-  "_workspace-experience-BY_znHGA.js": {
-    "file": "assets/workspace-experience-BY_znHGA.js",
-    "name": "workspace-experience",
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js"
-    ],
-    "css": [
-      "assets/workspace-experience-BnHoTtmY.css"
-    ]
-  },
-  "_workspace-experience-BnHoTtmY.css": {
-    "file": "assets/workspace-experience-BnHoTtmY.css",
-    "src": "_workspace-experience-BnHoTtmY.css"
-  },
-  "assign.html": {
-    "file": "assets/assign-4a6MLi4v.js",
-    "name": "assign",
-    "src": "assign.html",
-    "isEntry": true,
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_register-worker-CKMNsoSQ.js",
-      "_AssignApp-CogIhyJ_.js"
-    ],
-    "css": [
-      "assets/assign-bkHgk9iJ.css"
-    ]
-  },
   "buying.html": {
-    "file": "assets/buying-DSVBXEIa.js",
+    "file": "assets/buying-D2AwprdY.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
@@ -315,91 +109,50 @@
       "_lotus-tokens-Bigd1uwa.js",
       "_units-DwW3lwNS.js",
       "_mobile-ui-Dv5Icn5T.js",
-      "_LotusMobileAction-ChBEKgsC.js",
-      "_MobileSupplierForm-BlNGEwq3.js"
+      "_LotusMobileAction-B1Pm-4ua.js",
+      "_MobileSupplierForm-CJ03uiEU.js"
     ],
     "css": [
-      "assets/buying-CDmsX8T1.css"
-    ]
-  },
-  "farm-work.html": {
-    "file": "assets/farm-work-B-UHwjIC.js",
-    "name": "farm-work",
-    "src": "farm-work.html",
-    "isEntry": true,
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_farm-work-BGlwNqDf.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_register-worker-CKMNsoSQ.js",
-      "_FarmWorkApp-CJighIKT.js"
+      "assets/buying-3zEC_oBi.css"
     ]
   },
   "hr-mobile.html": {
-    "file": "assets/hr-mobile-CaSmblYl.js",
+    "file": "assets/hr-mobile-BZF7w-f5.js",
     "name": "hr-mobile",
     "src": "hr-mobile.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_CccdQrScanner-rJvAHOm4.js",
-      "_mobile-ui-Dv5Icn5T.js"
+      "_mobile-ui-Dv5Icn5T.js",
+      "_CccdQrScanner-BGhGE7kg.js"
     ],
     "css": [
       "assets/hr-mobile-CynSgjcJ.css"
     ]
   },
-  "hr.html": {
-    "file": "assets/hr-BybQLVqV.js",
-    "name": "hr",
-    "src": "hr.html",
-    "isEntry": true,
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_HrApp-UeIj9itX.js"
-    ],
-    "css": [
-      "assets/hr-oHkIfM76.css"
-    ]
-  },
   "index.html": {
-    "file": "assets/index-DT3oKzyj.js",
+    "file": "assets/index-Ln4de6wx.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_farm-work-BGlwNqDf.js",
       "_units-DwW3lwNS.js",
-      "_LotusIcon-DQ0iNG8g.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_WorkspaceBar-CYunIF2f.js",
-      "_stock-attio-DJOIZSKl.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js",
-      "_labels-iFzkhxh0.js",
-      "_DataTable-BRze8wnL.js",
-      "_preload-helper-BB2FBftw.js",
-      "_offline-DcIimw0s.js",
-      "_register-worker-CKMNsoSQ.js"
+      "_preload-helper-DrJwqBsx.js",
+      "_offline-CjpQNWMy.js"
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
       "src/components/LotusImportPreview.vue",
       "src/components/Vip126RollingForecast.vue",
       "src/UserAdminApp.vue",
-      "_HrApp-UeIj9itX.js",
-      "_TimekeepingApp-xkbEoagr.js",
-      "_StockApp-CZjBMqAy.js",
-      "_FarmWorkApp-CJighIKT.js"
+      "src/HrApp.vue",
+      "src/TimekeepingApp.vue",
+      "src/StockApp.vue",
+      "src/FarmWorkApp.vue"
     ],
     "css": [
-      "assets/index-B5wjwLfI.css",
-      "assets/timekeeping-bKYRSKjL.css",
-      "assets/hr-oHkIfM76.css",
-      "assets/warehouse-buying-lite-CSmB3IsW.css"
+      "assets/index-Bk04H_mo.css"
     ],
     "assets": [
       "assets/Inter.var-C9xDBOS3.woff2",
@@ -423,16 +176,71 @@
       "_rolldown-runtime-hePW80VL.js"
     ]
   },
+  "src/FarmWorkApp.vue": {
+    "file": "assets/FarmWorkApp-DtL3dUhN.js",
+    "name": "FarmWorkApp",
+    "src": "src/FarmWorkApp.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_lotus-tokens-Bigd1uwa.js",
+      "_units-DwW3lwNS.js",
+      "_preload-helper-DrJwqBsx.js",
+      "_offline-CjpQNWMy.js",
+      "index.html"
+    ],
+    "css": [
+      "assets/FarmWorkApp-CEmrzfrj.css"
+    ]
+  },
+  "src/HrApp.vue": {
+    "file": "assets/HrApp-CZTPyjUM.js",
+    "name": "HrApp",
+    "src": "src/HrApp.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_lotus-tokens-Bigd1uwa.js",
+      "_preload-helper-DrJwqBsx.js",
+      "_offline-CjpQNWMy.js",
+      "index.html",
+      "_CccdQrScanner-BGhGE7kg.js",
+      "_WorkspaceModal-D9rvu5QQ.js"
+    ],
+    "css": [
+      "assets/HrApp-_gKUJLMO.css"
+    ]
+  },
+  "src/StockApp.vue": {
+    "file": "assets/StockApp-CX3nhcMS.js",
+    "name": "StockApp",
+    "src": "src/StockApp.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_lotus-tokens-Bigd1uwa.js",
+      "_units-DwW3lwNS.js",
+      "_preload-helper-DrJwqBsx.js",
+      "index.html"
+    ]
+  },
+  "src/TimekeepingApp.vue": {
+    "file": "assets/TimekeepingApp-BgsxGHva.js",
+    "name": "TimekeepingApp",
+    "src": "src/TimekeepingApp.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_lotus-tokens-Bigd1uwa.js",
+      "_units-DwW3lwNS.js",
+      "index.html"
+    ]
+  },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-BRHEAxRR.js",
+    "file": "assets/UserAdminApp-CZuNGL-X.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_WorkspaceModal-DUBQVqOL.js"
+      "index.html",
+      "_WorkspaceModal-D9rvu5QQ.js"
     ]
   },
   "src/components/DesktopForecastChart.vue": {
@@ -446,28 +254,27 @@
     ]
   },
   "src/components/LotusImportPreview.vue": {
-    "file": "assets/LotusImportPreview-C-8noK-a.js",
+    "file": "assets/LotusImportPreview-x_h1IQUR.js",
     "name": "LotusImportPreview",
     "src": "src/components/LotusImportPreview.vue",
     "isDynamicEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js"
+      "_preload-helper-DrJwqBsx.js"
     ],
     "css": [
       "assets/LotusImportPreview-BfZqz8X1.css"
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-B8ItSE9F.js",
+    "file": "assets/Vip126RollingForecast-CLDaWjvw.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js",
-      "_preload-helper-BB2FBftw.js"
+      "_preload-helper-DrJwqBsx.js",
+      "index.html"
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
@@ -478,86 +285,50 @@
     ]
   },
   "src/components/ZonePlantingSchedule.vue": {
-    "file": "assets/ZonePlantingSchedule-7NtDv9Ai.js",
+    "file": "assets/ZonePlantingSchedule-IWZjfIx3.js",
     "name": "ZonePlantingSchedule",
     "src": "src/components/ZonePlantingSchedule.vue",
     "isDynamicEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js"
+      "_preload-helper-DrJwqBsx.js"
     ],
     "css": [
       "assets/ZonePlantingSchedule-UGvQyIQH.css"
     ]
   },
-  "stock.html": {
-    "file": "assets/stock-C-CoeGt6.js",
-    "name": "stock",
-    "src": "stock.html",
-    "isEntry": true,
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_register-worker-CKMNsoSQ.js",
-      "_StockApp-CZjBMqAy.js",
-      "_register-warehouse-worker-ClozO1u8.js"
-    ],
-    "css": [
-      "assets/stock-tS31uC2p.css",
-      "assets/warehouse-buying-lite-CSmB3IsW.css"
-    ]
-  },
-  "timekeeping.html": {
-    "file": "assets/timekeeping-BL15Kk0p.js",
-    "name": "timekeeping",
-    "src": "timekeeping.html",
-    "isEntry": true,
-    "imports": [
-      "_lotus-tokens-Bigd1uwa.js",
-      "_workspace-experience-BY_znHGA.js",
-      "_stock-attio-DJOIZSKl.js",
-      "_register-worker-CKMNsoSQ.js",
-      "_TimekeepingApp-xkbEoagr.js"
-    ],
-    "css": [
-      "assets/timekeeping-bKYRSKjL.css"
-    ]
-  },
   "warehouse.html": {
-    "file": "assets/warehouse-z_PnwvAC.js",
+    "file": "assets/warehouse-BSNKCYsV.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
       "_units-DwW3lwNS.js",
-      "_register-warehouse-worker-ClozO1u8.js",
       "_mobile-ui-Dv5Icn5T.js",
-      "_LotusMobileAction-ChBEKgsC.js",
-      "_MobileSupplierForm-BlNGEwq3.js",
-      "_mobile-swipe-C91lZCqo.js"
+      "_LotusMobileAction-B1Pm-4ua.js",
+      "_MobileSupplierForm-CJ03uiEU.js",
+      "_mobile-swipe-B1bJyGo6.js"
     ],
     "css": [
-      "assets/warehouse-BqgAl_KF.css"
+      "assets/warehouse-Cp6fkWjt.css"
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-DjuXSfHV.js",
+    "file": "assets/work-mobile-DZSGh7-K.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-Bigd1uwa.js",
       "_units-DwW3lwNS.js",
-      "_labels-iFzkhxh0.js",
-      "_offline-DcIimw0s.js",
+      "_offline-CjpQNWMy.js",
       "_mobile-ui-Dv5Icn5T.js",
-      "_LotusMobileAction-ChBEKgsC.js",
-      "_mobile-swipe-C91lZCqo.js"
+      "_LotusMobileAction-B1Pm-4ua.js",
+      "_mobile-swipe-B1bJyGo6.js"
     ],
     "css": [
-      "assets/work-mobile-BNy6N7O-.css"
+      "assets/work-mobile-sXG4V4oX.css"
     ]
   }
 }

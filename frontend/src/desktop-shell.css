@@ -44,8 +44,6 @@
  .lotus-ui.app-shell .sidebar .field-link {color:var(--lotus-muted);font-size:11px;line-height:1.5;white-space:normal}
  .lotus-ui.app-shell .sidebar .field-link:hover {color:var(--lotus-accent)}
  .lotus-ui.app-shell .sidebar>small {font-size:11px;color:var(--lotus-muted);overflow-wrap:anywhere}
- .lotus-ui :is(.sidebar,.stock-sidebar) nav button {transition:background-color .12s,color .12s}
- .lotus-ui :is(.sidebar,.stock-sidebar) nav button:focus-visible {outline:2px solid var(--lotus-accent);outline-offset:-2px}
  .lotus-ui :is(.stock-panel,.panel,.calendar-panel) {min-width:0}
  .lotus-ui :is(.stock-panel,.panel,.calendar-panel) :is(table,.lotus-ag-grid-shell) {max-width:100%}
  .lotus-ui :is(.stock-panel,.panel,.calendar-panel) :is(table) {font-variant-numeric:tabular-nums}

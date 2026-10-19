@@ -50,8 +50,6 @@
 .lotus-work .work-preview-line span,.lotus-work .work-preview-line small{font-size:14px;color:var(--lotus-neutral-600)}
 .lotus-work .work-preview-material{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--lotus-neutral-200)}
 .lotus-work .work-alert{color:var(--lotus-primary-600)!important}
-.lotus-work .mobile-bottom svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.lotus-work .mobile-bottom button.active{color:var(--lotus-primary-600);background:var(--lotus-primary-50)}
 .lotus-work .mobile-profile-row{display:flex;justify-content:space-between;gap:9px;font-size:15px;line-height:1.35}
 .lotus-work .mobile-profile-row span{color:var(--lotus-neutral-600)}
 .lotus-work .mobile-profile-row strong{text-align:right;overflow-wrap:anywhere}

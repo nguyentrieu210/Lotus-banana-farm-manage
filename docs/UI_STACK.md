@@ -1,7 +1,9 @@
-# Lotus Manage UI: shadcn-vue + Attio-inspired CSS + AG Grid
+# Lotus Manage UI: shadcn-vue + token Lotus + AG Grid
+
+> Cập nhật 19/10/2026: màu, chữ, khoảng cách lấy từ `frontend/src/lotus-tokens.css` (màu chính Đỏ Lotus `#c43224`); theme indigo kiểu Attio cũ đã bỏ. Desktop chỉ còn entry `index.html` (khung `/lotus`), PWA dùng `warehouse/buying/work-mobile/hr-mobile.html`. Xem `docs/UI_AUDIT_FULL_20261019.md`.
 
 ## Thành phần
-- Kho `/lotus/kho` cũng dùng theme chung và Button, Input, Textarea, Card, Badge; các bộ chọn dùng một component Select chung giữ hành vi bàn phím của trình duyệt. Bảng tồn, lịch sử và chi tiết phiếu dùng AG Grid trên máy tính, danh sách trên điện thoại. Ma trận QC và lịch sử thay đổi cũng dùng bảng chung.
+- Kho `/lotus/kho` cũng dùng theme chung và Button, Input, Textarea; các bộ chọn dùng một component Select chung giữ hành vi bàn phím của trình duyệt. Bảng tồn, lịch sử và chi tiết phiếu dùng AG Grid trên máy tính, danh sách trên điện thoại. Ma trận QC và lịch sử thay đổi cũng dùng bảng chung.
 - Trang Frappe phải đọc CSS của cả các `imports` trong Vite manifest, không chỉ CSS của entry. CSS bố cục cũ đặt trong layer `lotus-legacy` để không ghi đè theme và component mới khi Vite tách chunk dùng chung.
 - Vue 3 + Frappe/ERPNext: giữ nguyên API, quyền, CSRF, và nghiệp vụ.
 - **shadcn-vue (cấu hình Tailwind v3)**: đã thêm `frontend/components.json`, `jsconfig.json`, alias `@/`, `src/shadcn.css`, `src/lib/utils.js`, các dependency và phiên bản khóa trong npm.

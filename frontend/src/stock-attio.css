@@ -1,14 +1,8 @@
 /* Stock shares the same tokens and components as the other Lotus entry points. */
 .stock-shell{background:var(--lotus-page);color:var(--lotus-text)}
-.stock-sidebar{width:244px;padding:24px 16px;background:var(--lotus-sidebar);color:var(--lotus-muted);border-right:1px solid var(--lotus-border)}
-.stock-brand{color:var(--lotus-text);font-size:19px;letter-spacing:1px}
-.stock-brand small,.stock-nav-label,.stock-sidebar-bottom small{color:var(--lotus-muted)}
+.stock-nav-label{color:var(--lotus-muted)}
 .stock-logo{background:var(--lotus-primary-50);color:var(--lotus-accent);font:700 23px Inter,system-ui,sans-serif;width:36px;height:36px;border:1px solid var(--lotus-neutral-200);border-radius:9px}
 .stock-nav-label{margin-top:32px;font-size:10px;letter-spacing:1px}
-.stock-sidebar nav button{justify-content:flex-start;height:40px;padding:10px 12px;color:var(--lotus-neutral-600);background:transparent;border:0;border-radius:6px;font-size:13px}
-.stock-sidebar nav button:hover{background:var(--lotus-neutral-100)}
-.stock-sidebar nav button.selected{background:var(--lotus-primary-50);color:var(--lotus-primary-600)}
-.stock-sidebar-bottom a{color:var(--lotus-neutral-600)}.stock-sidebar-bottom small{border-color:var(--lotus-border);overflow-wrap:anywhere}
 .stock-main{margin-left:244px;width:calc(100% - 244px);padding:30px 36px;max-width:none}
 .stock-header{padding-bottom:22px;border-bottom:1px solid var(--lotus-border);margin-bottom:20px}
 .stock-main h1{font-size:26px;letter-spacing:-.7px;font-weight:650;color:var(--lotus-text)}
@@ -53,5 +47,5 @@
 .stock-setup p,.stock-line small{color:var(--lotus-muted)}
 .stock-confirm input{height:18px;width:18px;accent-color:var(--lotus-accent)}
 .lotus-data-table .lotus-mobile-record{height:auto;white-space:normal;justify-content:stretch;align-items:stretch}
-@media(max-width:1100px){.stock-sidebar{width:200px}.stock-main{margin-left:200px;width:calc(100% - 200px);padding:24px}.stock-metrics>div{display:grid;gap:10px}}
-@media(max-width:700px){.stock-sidebar{position:static;width:100%;padding:16px;border-right:0;border-bottom:1px solid var(--lotus-border)}.stock-main{margin:0;width:100%;padding:20px 14px}.stock-sidebar nav button{justify-content:center;font-size:11px;padding:8px}.stock-header{gap:8px}.stock-main h1{font-size:23px}.stock-metrics>div{padding:12px}.stock-issue-tabs{flex-direction:column}.stock-actions button{padding:12px}.stock-panel-head{padding:16px}.stock-search input{width:100%}.stock-search{width:100%}.stock-panel>.lotus-data-table{padding:0 10px 8px}.stock-scope select{width:100%;min-width:0}}
+@media(max-width:1100px){.stock-main{margin-left:200px;width:calc(100% - 200px);padding:24px}.stock-metrics>div{display:grid;gap:10px}}
+@media(max-width:700px){.stock-main{margin:0;width:100%;padding:20px 14px}.stock-header{gap:8px}.stock-main h1{font-size:23px}.stock-metrics>div{padding:12px}.stock-issue-tabs{flex-direction:column}.stock-actions button{padding:12px}.stock-panel-head{padding:16px}.stock-search input{width:100%}.stock-search{width:100%}.stock-panel>.lotus-data-table{padding:0 10px 8px}.stock-scope select{width:100%;min-width:0}}

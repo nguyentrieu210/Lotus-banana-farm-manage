@@ -50,7 +50,6 @@ test('main pages use shadcn-vue Button and still keep Frappe API provider',()=>{
   }
   assert.match(main,/<FrappeUIProvider>/)
   assert.match(read('src/main.js'),/import '\.\/shadcn\.css'/)
-  assert.match(read('src/assign-main.js'),/import '\.\/shadcn\.css'/)
 })
 test('shared form inputs preserve number and text model types',()=>{
   assert.equal(normalizeInputValue('125.5',true),125.5)

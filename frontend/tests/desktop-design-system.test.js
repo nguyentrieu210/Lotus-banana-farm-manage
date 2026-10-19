@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const root=new URL('../../',import.meta.url)
 const read=p=>readFileSync(new URL(p,root),'utf8')
+// Every desktop module renders inside the single /lotus shell (main.js); module apps are embedded components.
 const entries=[
- ['main.js','App.vue'],['stock-main.js','StockApp.vue'],['assign-main.js','AssignApp.vue'],
- ['farm-work-main.js','FarmWorkApp.vue'],['hr-main.js','HrApp.vue'],['timekeeping-main.js','TimekeepingApp.vue']
+ ['main.js','App.vue'],['main.js','StockApp.vue'],['main.js','AssignApp.vue'],
+ ['main.js','FarmWorkApp.vue'],['main.js','HrApp.vue'],['main.js','TimekeepingApp.vue']
 ]
 test('mọi ứng dụng máy tính nạp đúng chuẩn Lotus, không tác động mobile Vant',()=>{
  for(const [main,app] of entries){

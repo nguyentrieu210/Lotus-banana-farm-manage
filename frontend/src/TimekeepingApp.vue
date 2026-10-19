@@ -1,9 +1,7 @@
 <script setup>
 const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,nextTick,onMounted,reactive,ref} from 'vue'
-import WorkspaceBar from './components/WorkspaceBar.vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
-import LotusIcon from './components/LotusIcon.vue'
 import DataTable from './components/DataTable.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -76,8 +74,8 @@ onMounted(init)
 </script>
 
 <template><div class="stock-shell attendance-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
- <aside v-if="!embedded" class="stock-sidebar"><a class="stock-brand" href="/lotus/mobile"><img class="lotus-brand-image" :src="'/assets/lotus_farm/images/lotus-agritech-header-v2.png'" alt="Lotus Agritech" width="641" height="213"></a><p class="stock-nav-label">CHẤM CÔNG & NHÂN SỰ</p><nav aria-label="Chấm công"><UiButton v-for="item in tabs" :key="item.id" variant="outline" :class="{selected:tab===item.id}" @click="chooseTab(item.id)"><LotusIcon :name="{staff:'people',crew:'leaf',month:'list',setup:'settings'}[item.id]"/> <span>{{item.label}}</span></UiButton></nav><div class="stock-sidebar-bottom"><a href="/lotus/kho">Quản lý kho ↗</a><a href="/lotus/nhan-su">Hồ sơ nhân sự Lotus ↗</a><a href="/desk/hr-setup">Frappe HRMS ↗</a></div></aside>
- <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/><WorkspaceBar v-if="!embedded" :user="session?.user" :title="tabs.find(t=>t.id===tab)?.label||'Chấm công'" :actions="actions"/>
+ 
+ <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" @update:model-value="chooseTab($event)"/>
   <p v-if="error" class="stock-error" role="alert">{{error}}</p><p v-if="notice" class="stock-success" role="status">{{notice}}</p>
   <div class="stock-scope"><label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" :disabled="busy||saving||dirty" @change="changeCompany"><option v-for="c in session?.companies" :key="c.name">{{c.name}}</option></UiSelect></label><label v-if="tab!=='month'">Ngày công<UiInput v-model="date" type="date" :max="session?.today" :disabled="busy||saving||dirty" @change="load"/></label><label v-else>Tháng<UiInput v-model="month" type="month" :disabled="busy||saving" @change="load"/></label><label v-if="tab==='staff'">Ca làm việc<UiSelect v-model="shift" :disabled="busy||saving||dirty" @change="load"><option value="">Không phân ca</option><option v-for="s in catalog.shifts" :key="s.name">{{s.name}}</option></UiSelect></label><label v-if="['crew','month','setup'].includes(tab)">Vườn<UiSelect v-model="farm" :disabled="busy||saving" @change="load"><option value="">Tất cả được phân quyền</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label><UiButton variant="outline" :disabled="busy||saving||dirty" @click="load">{{busy?'Đang tải…':'Làm mới'}}</UiButton></div>
   <template v-if="tab==='staff'">

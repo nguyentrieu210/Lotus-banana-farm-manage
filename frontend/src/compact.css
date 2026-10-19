@@ -3,12 +3,11 @@ body{background:var(--lotus-page);color:var(--lotus-text)}
 .excel-header .excel-sort,.excel-header .excel-trigger{color:var(--lotus-table-heading)}
 .app-shell th,.stock-shell th,.assignment-workspace th{background:var(--lotus-table-header);color:var(--lotus-table-heading)}
 .app-shell main,.stock-shell .stock-main{padding:0 10px 8px;max-width:none}
-.app-shell .sidebar,.stock-shell .stock-sidebar{width:208px;padding:16px 10px;gap:12px}
+.app-shell .sidebar{width:208px;padding:16px 10px;gap:12px}
 .stock-shell .stock-main{margin-left:208px;width:calc(100% - 208px)}
-.sidebar .brand,.stock-sidebar .stock-brand{font-size:18px}
-.sidebar nav button,.stock-sidebar nav button{min-height:32px;height:auto;padding:6px 10px;font-size:12px}
-.stock-sidebar .stock-nav-label{margin:24px 0 10px}
-.sidebar>small,.stock-sidebar-bottom>small{display:none}
+.sidebar .brand{font-size:18px}
+.sidebar nav button{min-height:32px;height:auto;padding:6px 10px;font-size:12px}
+.sidebar>small{display:none}
 .nav-short{display:none}
 .workspace-bar{display:grid;grid-template-columns:minmax(0,1fr) 261px minmax(0,1fr);align-items:center;gap:6px;position:sticky;top:0;z-index:35;min-height:50px;margin:0 -10px 8px;width:calc(100% + 20px);border-bottom:1px solid var(--lotus-border);background:var(--lotus-page);color:var(--lotus-text)}
 .workspace-left,.workspace-right{display:flex;align-items:center;gap:6px;min-width:0}
@@ -70,14 +69,14 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .stock-master-fields{border:0;padding:0;min-width:0}
 .delete-confirm{padding:10px;background:var(--lotus-accent-soft);color:var(--lotus-accent);border:1px solid var(--lotus-accent);border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px}
 .delete-confirm p{width:100%;margin:0}
-.app-shell .sidebar,.stock-shell .stock-sidebar{background:var(--lotus-neutral-900);border-right:1px solid var(--lotus-neutral-700);color:var(--lotus-neutral-300)}
-.app-shell .sidebar .brand,.stock-shell .stock-brand{color:#fff;font-weight:750}
-.app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:14px;border-bottom:1px solid var(--lotus-neutral-700);width:100%}
-.app-shell .sidebar .brand small,.stock-shell .stock-brand small,.stock-shell .stock-nav-label{color:var(--lotus-neutral-400)}
-.app-shell .sidebar nav button,.stock-shell .stock-sidebar nav button{color:var(--lotus-neutral-300);font-weight:500}
-.app-shell .sidebar nav button.active,.stock-shell .stock-sidebar nav button.selected{background:var(--lotus-primary-900);color:var(--lotus-primary-200);box-shadow:inset 3px 0 0 var(--lotus-primary-600)}
-.app-shell .sidebar nav button:hover,.stock-shell .stock-sidebar nav button:hover{background:var(--lotus-neutral-800);color:#fff}
-.app-shell .sidebar .field-link,.stock-shell .stock-sidebar-bottom a{color:var(--lotus-neutral-400)}
+.app-shell .sidebar{background:var(--lotus-neutral-900);border-right:1px solid var(--lotus-neutral-700);color:var(--lotus-neutral-300)}
+.app-shell .sidebar .brand{color:#fff;font-weight:750}
+.app-shell .sidebar .brand{padding-bottom:14px;border-bottom:1px solid var(--lotus-neutral-700);width:100%}
+.app-shell .sidebar .brand small,.stock-shell .stock-nav-label{color:var(--lotus-neutral-400)}
+.app-shell .sidebar nav button{color:var(--lotus-neutral-300);font-weight:500}
+.app-shell .sidebar nav button.active{background:var(--lotus-primary-900);color:var(--lotus-primary-200);box-shadow:inset 3px 0 0 var(--lotus-primary-600)}
+.app-shell .sidebar nav button:hover{background:var(--lotus-neutral-800);color:#fff}
+.app-shell .sidebar .field-link{color:var(--lotus-neutral-400)}
 .stock-shell .stock-logo{background:var(--lotus-primary-900);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
 .workspace-bar{--lotus-text:var(--lotus-neutral-100);--lotus-muted:var(--lotus-neutral-300);--lotus-border:var(--lotus-neutral-700);--lotus-soft:var(--lotus-neutral-800);background:var(--lotus-neutral-900);color:var(--lotus-neutral-100);border-radius:0;padding:9px 12px;border-color:var(--lotus-neutral-700)}
 .workspace-bar button{background:transparent;color:var(--lotus-neutral-100)}
@@ -196,11 +195,11 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .dark .stock-button,.dark .stock-issue-tabs button,.dark .stock-actions button,.dark .mobile-action,.dark .bar,.dark .top a{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .stock-button.primary,.dark .bar .primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
 .dark .stock-line,.dark .stock-issue-picker,.dark .stock-line input[readonly],.dark .child-row,.dark .work-card,.dark .stock-welcome,.dark .note,.dark .tabs button{background:var(--lotus-soft);color:var(--lotus-text);border-color:var(--lotus-border)}
-.dark .stock-brand,.dark .sidebar .brand,.dark .panel-title{color:var(--lotus-text)}
+.dark .sidebar .brand,.dark .panel-title{color:var(--lotus-text)}
 .dark .stock-muted,.dark .hint,.dark .muted,.dark .stock-line small{color:var(--lotus-muted)}
 .dark .notice,.dark .stock-success{background:var(--lotus-neutral-800);color:var(--lotus-success-200);border-color:var(--lotus-success-700)}
 .dark .stock-error,.dark .error{background:var(--lotus-neutral-800);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
-.dark .stock-issue-tabs button.active,.dark .tabs .active,.dark .sidebar nav button.active,.dark .stock-sidebar nav button.selected{background:var(--lotus-soft);color:var(--lotus-accent)}
+.dark .stock-issue-tabs button.active,.dark .tabs .active,.dark .sidebar nav button.active{background:var(--lotus-soft);color:var(--lotus-accent)}
 .dark .app-shell .kpi{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .app-shell .kpi strong{color:var(--lotus-text)}
 .dark .app-shell .kpi span,.dark .app-shell .kpi small{color:var(--lotus-muted)}
@@ -215,15 +214,15 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .stock-shell .stock-actions{margin-bottom:6px;align-items:center}
  .stock-shell .stock-summary{margin:0 0 0 auto;gap:10px}
  .stock-shell .stock-main:has(.stock-actions) .stock-panel .lotus-ag-grid-shell--scroll{height:max(300px,calc(100dvh - 166px))}
- .sidebar-collapsed .sidebar,.sidebar-collapsed .stock-sidebar{width:64px;padding:14px 8px}
+ .sidebar-collapsed .sidebar{width:64px;padding:14px 8px}
  .stock-shell.sidebar-collapsed .stock-main{margin-left:64px;width:calc(100% - 64px)}
- .sidebar-collapsed .sidebar .brand>span,.sidebar-collapsed .stock-brand>span:last-child,.sidebar-collapsed .nav-label,.sidebar-collapsed .stock-sidebar nav button span,.sidebar-collapsed .stock-nav-label,.sidebar-collapsed .stock-sidebar-bottom,.sidebar-collapsed .sidebar>.field-link{display:none}
- .sidebar-collapsed .sidebar .brand,.sidebar-collapsed .stock-brand{justify-content:center}
+ .sidebar-collapsed .sidebar .brand>span,.sidebar-collapsed .nav-label,.sidebar-collapsed .stock-nav-label,.sidebar-collapsed .sidebar>.field-link{display:none}
+ .sidebar-collapsed .sidebar .brand{justify-content:center}
  .sidebar-collapsed .nav-short{display:inline}
- .sidebar-collapsed .sidebar nav button,.sidebar-collapsed .stock-sidebar nav button{justify-content:center;padding:7px;min-height:34px}
+ .sidebar-collapsed .sidebar nav button{justify-content:center;padding:7px;min-height:34px}
 }
 @media(max-width:700px){
- .app-shell .sidebar,.stock-shell .stock-sidebar{width:100%;position:relative;height:auto;padding:10px 12px}
+ .app-shell .sidebar{width:100%;position:relative;height:auto;padding:10px 12px}
  .app-shell .sidebar nav,.app-shell .sidebar>.field-link,.app-shell .sidebar>small{display:none}
  .app-shell{display:block}
  .stock-shell .stock-main,.stock-shell.sidebar-collapsed .stock-main{margin:0;width:100%;padding:0 12px 10px}
@@ -258,14 +257,14 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .master-list-grid{grid-template-columns:1fr}
 }
 /* Original Lotus Agritech artwork stays readable in both themes. */
-.app-shell .sidebar .brand,.stock-shell .stock-brand{justify-content:center;letter-spacing:0}
+.app-shell .sidebar .brand{justify-content:center;letter-spacing:0}
 .lotus-brand-image{display:block;object-fit:contain;background:#fff;border-radius:5px;max-width:100%;flex-shrink:0}
-.sidebar .brand>.lotus-brand-image,.stock-brand>.lotus-brand-image{width:140px;height:48px;object-fit:cover;object-position:center 42%}
+.sidebar .brand>.lotus-brand-image{width:140px;height:48px;object-fit:cover;object-position:center 42%}
 .workspace-home{width:28px;flex:0 0 28px}
-@media(min-width:901px){.sidebar-collapsed .sidebar .brand>.lotus-brand-image,.sidebar-collapsed .stock-brand>.lotus-brand-image{display:block;width:40px;height:28px}}
+@media(min-width:901px){.sidebar-collapsed .sidebar .brand>.lotus-brand-image{display:block;width:40px;height:28px}}
 
 
-.app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:9px}
+.app-shell .sidebar .brand{padding-bottom:9px}
 .lotus-coverage-state{font-weight:750}.lotus-coverage-state.is-covered{color:var(--lotus-success-700)}.lotus-coverage-state.is-incoming{color:var(--lotus-primary-600)}.lotus-coverage-state.is-short{color:var(--lotus-primary-600)}.dark .lotus-coverage-state.is-covered{color:var(--lotus-success-300)}.dark .lotus-coverage-state.is-incoming{color:var(--lotus-warning-300)}.dark .lotus-coverage-state.is-short{color:var(--lotus-primary-300)}
 
 

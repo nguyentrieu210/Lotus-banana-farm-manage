@@ -8,9 +8,9 @@ function Get-StockManifest([string]$Container) {
 }
 $api = Get-StockManifest 'lotus-backend-1'
 $ui = Get-StockManifest 'lotus-frontend-1'
-$backendEntry = $api.'stock.html'
-$frontendEntry = $ui.'stock.html'
-if (!$backendEntry -or !$frontendEntry) { throw 'stock.html entry missing' }
+$backendEntry = $api.'index.html'
+$frontendEntry = $ui.'index.html'
+if (!$backendEntry -or !$frontendEntry) { throw 'index.html entry missing (serves every /lotus route, including /lotus/kho)' }
 if ($backendEntry.file -ne $frontendEntry.file) {
   throw "Stale build! Backend uses $($backendEntry.file), frontend uses $($frontendEntry.file)"
 }
