@@ -1,5 +1,6 @@
 import {createApp} from 'vue'
 import FarmWorkApp from './FarmWorkApp.vue'
+import './lotus-tokens.css'
 import './stock.css'
 import './shadcn.css'
 import './attio.css'

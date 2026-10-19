@@ -6,10 +6,14 @@
 - Áp dụng quy ước này cho các bảng mới và những bảng đang được chỉnh sửa; không tự thêm lại mô tả trong các lần cải tiến giao diện sau.
 - Thanh lọc trên máy tính phải nằm trên một hàng: kho, từ ngày, đến ngày, làm mới và tìm kiếm. Không xếp hai trường ngày thành cột hoặc cho thanh lọc xuống nhiều hàng; màn hẹp được cuộn trong chính thanh lọc khi cần.
 
+## Hệ màu chung (yêu cầu người dùng 19/10/2026)
+
+- Màu chính duy nhất cho máy tính và PWA: Đỏ Lotus #c43224. Mọi màu, font, cỡ chữ, spacing, bo góc, bóng lấy từ frontend/src/lotus-tokens.css; không ghi mã màu hex trong CSS/`<style>` khác (trừ trắng/đen và bóng trong suốt). tests/design-tokens.test.js kiểm tra quy tắc này.
+
 ## Chuẩn PWA điện thoại (yêu cầu người dùng 17/10/2026)
 
 - Toàn bộ PWA điện thoại dùng Vue 3 và Vant 4. Dùng chung LotusMobileShell, LotusMobileHeader và LotusMobileBottomNav; không tạo header/bottom hoặc bộ component riêng cho từng app.
-- Component chung ở frontend/src/components/LotusMobile*.vue. Token, spacing, safe-area và bố cục chỉ định nghĩa ở frontend/src/mobile-ui.css và mobile-ui-theme.js. Kho, Mua hàng, Công việc và các PWA mới cùng dùng chuẩn này.
+- Component chung ở frontend/src/components/LotusMobile*.vue. Màu, chữ, spacing gốc ở frontend/src/lotus-tokens.css (chung với máy tính); safe-area và bố cục PWA ở mobile-ui.css; mobile-ui-theme.js chỉ trỏ tới token. Kho, Mua hàng, Công việc và các PWA mới cùng dùng chuẩn này.
 - Nút, trường nhập, lựa chọn, hộp thoại, thao tác trang chủ dùng wrapper Vant chung. Input native cần thiết cho ngày, số, file, bàn phím và validation HTML được giữ bên trong component chung.
 - Header một hàng; điều hướng dưới dùng biểu tượng gọn, có tên truy cập đầy đủ, ẩn khi bàn phím mở. Không lặp tiêu đề lớn/mô tả trang trí. Không tràn ngang ở 320px; popup và nội dung không bị header/bottom che.
 - Chuẩn hóa giao diện không đổi API, phân quyền, trạng thái chứng từ, chống gửi trùng, xác nhận rời form hoặc cách tách service worker giữa các PWA.

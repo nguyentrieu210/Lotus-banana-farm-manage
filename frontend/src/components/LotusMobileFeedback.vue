@@ -1,7 +1,8 @@
 <script setup>
 import {NoticeBar,Loading} from 'vant'
 const props=defineProps({kind:{type:String,default:'info'}})
-const tones={error:['#9c2e2e','#fff0ed'],warning:['#875c20','#fff6e8'],success:['#246c47','#edf8f1'],info:['#48675b','#edf3ef']}
+// Tones follow lotus-tokens.css so feedback matches desktop.
+const tones={error:['var(--lotus-danger)','var(--lotus-danger-soft)'],warning:['var(--lotus-warning-700)','var(--lotus-warning-soft)'],success:['var(--lotus-success-700)','var(--lotus-success-soft)'],info:['var(--lotus-info-700)','var(--lotus-info-soft)']}
 </script>
 <template><div class="lotus-pwa-feedback mobile-message" :class="{danger:kind==='error',success:kind==='success'}" :role="kind==='error'?'alert':'status'">
  <Loading v-if="kind==='loading'" size="18px"><slot/></Loading>

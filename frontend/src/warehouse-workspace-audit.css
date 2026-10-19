@@ -17,12 +17,12 @@
 .stock-shell .stock-dialog{padding:0;overflow:auto;max-height:min(88dvh,920px);max-width:calc(100vw - 20px)}
 .stock-shell .stock-dialog>form{padding:16px 22px}
 .stock-shell .stock-dialog>form>header{position:sticky;top:0;background:var(--lotus-surface,#fff);padding:10px 0 13px;margin:0 0 8px;border-bottom:1px solid var(--lotus-border);z-index:2}
-.stock-shell .stock-dialog form>.stock-form-help{margin:6px 0 15px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:6px;background:var(--lotus-soft,#f7f9fc);font-size:12px;color:var(--lotus-muted)}
+.stock-shell .stock-dialog form>.stock-form-help{margin:6px 0 15px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:6px;background:var(--lotus-soft,var(--lotus-neutral-50));font-size:12px;color:var(--lotus-muted)}
 .stock-shell .stock-dialog .stock-form-grid{margin:12px 0 18px;grid-template-columns:repeat(3,minmax(0,1fr))}
 .stock-shell .stock-dialog .stock-form-section-title{display:flex;justify-content:space-between;align-items:center;margin:18px 0 9px;border-bottom:1px solid var(--lotus-border);padding-bottom:7px}
 .stock-shell .stock-dialog .stock-form-section-title h3{font-size:13px;font-weight:700;margin:0}
 .stock-shell .stock-dialog .stock-form-section-title>span{font-size:11px;color:var(--lotus-muted)}
-.stock-shell .stock-dialog .stock-line{background:var(--lotus-soft,#f7f9fc);border:1px solid var(--lotus-border);padding:12px;border-radius:7px}
+.stock-shell .stock-dialog .stock-line{background:var(--lotus-soft,var(--lotus-neutral-50));border:1px solid var(--lotus-border);padding:12px;border-radius:7px}
 .stock-shell .stock-dialog .stock-line label{min-width:110px}
 .stock-shell .stock-dialog footer{flex-wrap:wrap}
 @media(max-width:1120px){.stock-shell .stock-setup-grids{grid-template-columns:minmax(0,1fr)}}

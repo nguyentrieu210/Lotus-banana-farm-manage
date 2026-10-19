@@ -3,11 +3,11 @@
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar,
  .lotus-ui.assignment-workspace>.workspace-bar{
-  --lotus-text:#fff;--lotus-muted:#fff5ed;--lotus-soft:#ffffff24;--lotus-border:#ffffff55;
-  background:linear-gradient(110deg,#b73c19,#d85024 65%,#e66b32);
-  color:white;border:none;border-bottom:1px solid #d95c2e;
+  --lotus-text:#fff;--lotus-muted:var(--lotus-primary-50);--lotus-soft:#ffffff24;--lotus-border:#ffffff55;
+  background:var(--lotus-primary-600);
+  color:white;border:none;border-bottom:1px solid var(--lotus-primary-600);
   min-height:60px;padding:10px 22px;z-index:40;
-  box-shadow:0 2px 10px #833b1814;
+  box-shadow:0 2px 10px color-mix(in srgb,var(--lotus-primary-700) 8%,transparent);
  }
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{
@@ -22,22 +22,22 @@
  .lotus-ui.app-shell main>.workspace-bar .workspace-search,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-search{
-  background:#fff;border:1px solid #fff;color:#77665e;min-height:36px;border-radius:9px;
+  background:#fff;border:1px solid #fff;color:var(--lotus-neutral-600);min-height:36px;border-radius:9px;
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-search kbd,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search kbd,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-search kbd {
-  background:#f8f1ec;color:#736157;border:1px solid #eee1d8;
+  background:var(--lotus-neutral-100);color:var(--lotus-neutral-600);border:1px solid var(--lotus-neutral-200);
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-menu,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu {
-  --lotus-text:#2c3036;--lotus-muted:#686e79;--lotus-border:#e8e5e1;
-  color:#2c3036;background:#fff;border:1px solid #e8e5e1;box-shadow:0 12px 32px #29252122;
+  --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-border:var(--lotus-neutral-200);
+  color:var(--lotus-neutral-800);background:#fff;border:1px solid var(--lotus-neutral-200);box-shadow:0 12px 32px #29252122;
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-menu button,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu button,
- .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu button{color:#2c3036}
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu button{color:var(--lotus-neutral-800)}
  .lotus-ui.app-shell main>.workspace-bar .workspace-avatar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-avatar,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-avatar{background:#ffffff24;color:white;border:1px solid #ffffff3b}

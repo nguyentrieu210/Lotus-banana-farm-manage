@@ -1,0 +1,2 @@
+/* Inter for phone PWAs (desktop already gets it from frappe-ui/style.css). Same woff2 asset, cached once. */
+@import '../node_modules/frappe-ui/src/fonts/Inter/inter.css';

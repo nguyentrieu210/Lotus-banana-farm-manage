@@ -14,7 +14,7 @@ def get_context(context):
         frappe.local.flags.redirect_location = '/login?redirect-to=' + quote(target, safe='/')
         raise frappe.Redirect
     manifest=Path(frappe.get_app_path('lotus_farm','public','frontend','.vite','manifest.json'))
-    if not manifest.exists():frappe.throw('Build the Lotus frontend before opening this application.')
+    if not manifest.exists():frappe.throw('Cần build giao diện Lotus trên máy tính.')
     entries=json.loads(manifest.read_text())
     # Standalone mobile shell, using the existing authenticated Frappe site.
     request_path=frappe.request.path.rstrip('/')

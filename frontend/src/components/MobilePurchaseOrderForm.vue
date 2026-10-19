@@ -50,7 +50,7 @@ function chooseItem(index,code){linePatch(index,{item:code,uom:props.items.find(
    </section>
    <LotusMobileButton class="mobile-add" @click="patch({items:[...order.items,newPurchaseLine()]})">+ Thêm mặt hàng</LotusMobileButton>
    <div class="lotus-purchase-total"><span>Tổng tiền tạm tính</span><strong>{{total}}</strong></div>
-   <div class="mobile-field"><label>Tệp báo giá (tùy chọn)</label><LotusMobileFile accept=".pdf,image/jpeg,image/png,image/webp" :disabled="saving" @change="emit('update:quote',$event.target.files?.[0]||null)"/><small v-if="quote">{{quote.name}}</small></div>
+   <div class="mobile-field"><label>Tệp báo giá (tùy chọn)</label><LotusMobileFile aria-label="Tệp báo giá (tùy chọn)" accept=".pdf,image/jpeg,image/png,image/webp" :disabled="saving" @change="emit('update:quote',$event.target.files?.[0]||null)"/><small v-if="quote">{{quote.name}}</small></div>
    <LotusMobileInput label="Ghi chú giao hàng" :model-value="order.notes" type="textarea" :rows="3" maxlength="500" @update:modelValue="patch({notes:$event})"/>
    <LotusMobileButton type="submit" class="mobile-submit" :loading="saving" :disabled="saving||!online">Lưu đơn nháp</LotusMobileButton>
   </fieldset>

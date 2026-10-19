@@ -9,7 +9,7 @@ const props=defineProps({
  modelValue:{type:String,default:''},
  options:{type:Array,default:()=>[]},
  placeholder:{type:String,default:'Chạm để chọn hoặc gõ tìm…'},
- disabled:Boolean,required:Boolean,label:String,
+ disabled:Boolean,required:Boolean,label:String,ariaLabel:String,
  searchable:{default:'auto'}
 })
 const emit=defineEmits(['update:modelValue'])
@@ -55,11 +55,11 @@ watch(filtered,()=>{active.value=-1;schedule()})
 <template>
  <div ref="root" class="mobile-link-field" :class="{'lotus-labeled-link':!!label}">
   <div v-if="!searchEnabled" class="mobile-link-native-box">
-   <LotusMobileSelect :label="label" :model-value="modelValue" :options="options" :placeholder="placeholder" :disabled="disabled" :required="required" @update:modelValue="emit('update:modelValue',$event)"/>
+   <LotusMobileSelect :label="label" :aria-label="ariaLabel||label||placeholder" :model-value="modelValue" :options="options" :placeholder="placeholder" :disabled="disabled" :required="required" @update:modelValue="emit('update:modelValue',$event)"/>
   </div>
   <Field v-else class="mobile-link-box lotus-pwa-field" :id="listId+'-input'" :label="label" label-align="top" :required="required" :disabled="disabled" :border="false"><template #input>
    <input ref="input" :id="listId+'-input'" type="search" :value="shown" :placeholder="placeholder" :required="required"
-    :disabled="disabled" :aria-label="label||placeholder" autocomplete="off" autocorrect="off" :spellcheck="false" enterkeyhint="done" role="combobox" aria-autocomplete="list"
+    :disabled="disabled" :aria-label="ariaLabel||label||placeholder" autocomplete="off" autocorrect="off" :spellcheck="false" enterkeyhint="done" role="combobox" aria-autocomplete="list"
     :aria-expanded="open" :aria-controls="listId" :aria-activedescendant="open&&active>=0?listId+'-option-'+active:undefined" @focus="reveal" @click="reveal" @input="changed" @keydown="keydown"/>
    </template><template #button><LotusMobileButton type="button" aria-label="Chọn trong danh sách" :disabled="disabled" @click="open?close():reveal()"><Icon name="arrow-down"/></LotusMobileButton></template>
   </Field>

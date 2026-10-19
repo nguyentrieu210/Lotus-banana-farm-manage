@@ -40,7 +40,8 @@ test('header and touch controls remain usable at 320 px and avoid clipping brand
  assert.match(css,/\.lotus-pwa-logo\{[^}]*object-fit:contain/)
  assert.match(css,/\.lotus-pwa-logo-frame\{width:94px;flex-basis:94px;height:36px\}/)
  assert.match(css,/\.lotus-pwa-back\{width:44px;min-width:44px/)
- assert.match(css,/--lotus-pwa-touch:44px/)
+ assert.match(css,/--lotus-pwa-touch:var\(--lotus-touch\)/)
+ assert.match(read('../src/lotus-tokens.css'),/--lotus-touch:44px/)
 })
 test('Work PWA consumes a legacy mobile compatibility layer, not Warehouse page stylesheet',()=>{
  const work=read('../src/work-mobile-main.js')

@@ -267,7 +267,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
 
   <template v-if="!view&&tab==='home'">
    <div v-if="session?.companies?.length>1" class="buy-field"><label>Công ty</label>
-    <MobileLinkField :model-value="company" :searchable="false" :options="session.companies.map(r=>({value:r.name,label:r.name}))" @update:modelValue="switchCompany"/></div>
+    <MobileLinkField aria-label="Công ty" :model-value="company" :searchable="false" :options="session.companies.map(r=>({value:r.name,label:r.name}))" @update:modelValue="switchCompany"/></div>
    <div class="buy-summary">
     <LotusMobileButton @click="status='Chờ duyệt';changeTab('orders')"><b>{{counts.pending}}</b><small>Chờ duyệt</small></LotusMobileButton>
     <LotusMobileButton @click="status='Tất cả';changeTab('orders')"><b>{{counts.shipping}}</b><small>Chờ giao</small></LotusMobileButton>
@@ -281,7 +281,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    </div>
    <h2>Đơn gần đây</h2>
    <BuyingOrderCard v-for="r in orders.slice(0,5)" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" @select="openOrder"/>
-   <p v-if="!orders.length&&!busy" class="buy-empty">Chưa có đơn mua.</p>
+   <p v-if="!orders.length&&!busy" class="mobile-empty">Chưa có đơn mua.</p>
   </template>
 
   <template v-if="!view&&tab==='orders'">
@@ -289,7 +289,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <LotusMobileSelect v-model="status" aria-label="Lọc đơn mua"><option>Tất cả</option><option>Nháp</option><option>Chờ duyệt</option><option>Đã duyệt</option><option>Từ chối</option><option>Đã đóng</option><option>Đã hủy</option><option>Quá hẹn</option><option>Về một phần</option><option>Đã nhận đủ</option></LotusMobileSelect></div>
    <LotusMobileButton v-if="canCreate" class="buy-primary" @click="newOrder()">+ Tạo đơn mua</LotusMobileButton>
    <BuyingOrderCard v-for="r in visibleOrders" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" show-date @select="openOrder"/>
-   <p v-if="!visibleOrders.length&&!busy" class="buy-empty">Không tìm thấy đơn phù hợp.</p>
+   <p v-if="!visibleOrders.length&&!busy" class="mobile-empty">Không tìm thấy đơn phù hợp.</p>
   </template>
 
   <template v-if="!view&&tab==='suppliers'">
@@ -317,7 +317,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <p v-for="(line,i) in r.items.slice(0,5)" :key="i" class="buy-request-line">{{line.item_name}} · {{number(line.qty)}} {{unitLabel(line.uom)}}</p>
     <LotusMobileButton class="buy-outline" :disabled="!canCreate" @click="newOrder(true);useRequest(r.name)">Lập đơn mua từ đề nghị này</LotusMobileButton>
    </div>
-   <p v-if="!requests.length&&!busy" class="buy-empty">Chưa có đề nghị mua còn thiếu hàng.</p>
+   <p v-if="!requests.length&&!busy" class="mobile-empty">Chưa có đề nghị mua còn thiếu hàng.</p>
   </template>
 
   <template v-if="view==='form'&&draft">

@@ -1,5 +1,6 @@
 import {createApp} from 'vue'
 import AssignApp from './AssignApp.vue'
+import './lotus-tokens.css'
 import './assign.css'
 import './shadcn.css'
 import './attio.css'

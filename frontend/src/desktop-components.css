@@ -39,8 +39,8 @@
 .calendar-board .lotus-page-heading h1{margin:0;font-size:20px}
 .calendar-board .lotus-page-heading__description{font-size:12px;color:var(--lotus-muted)}
 .calendar-board .lotus-page-heading__actions{display:flex;gap:8px}
-.calendar-board .lotus-metric-card{padding:12px;background:var(--lotus-surface,#fff);border:1px solid var(--lotus-border,#e5e7eb);border-radius:8px}
-.calendar-board .lotus-metric-card__label,.calendar-board .lotus-metric-card__description{display:block;color:var(--lotus-muted,#697487);font-size:11px}
+.calendar-board .lotus-metric-card{padding:12px;background:var(--lotus-surface,#fff);border:1px solid var(--lotus-border,var(--lotus-neutral-200));border-radius:8px}
+.calendar-board .lotus-metric-card__label,.calendar-board .lotus-metric-card__description{display:block;color:var(--lotus-muted,var(--lotus-neutral-600));font-size:11px}
 .calendar-board .lotus-metric-card__number{display:block;font-size:19px}
 .calendar-board .lotus-metric-card__number span{font-size:11px}
 .calendar-board .lotus-forecast-chart__canvas{height:230px;width:100%}

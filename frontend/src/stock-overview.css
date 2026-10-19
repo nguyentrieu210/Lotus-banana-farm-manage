@@ -20,24 +20,24 @@
 
 /* Clearly separate columns while preserving AG Grid horizontal scrolling. */
 .stock-shell .lotus-ag-grid .ag-header-cell{
-  border-right:1px solid #bfcbd9 !important;
-  border-bottom:1px solid #bfcbd9 !important;
-  background:var(--lotus-table-header,#f6f8fb);
+  border-right:1px solid var(--lotus-neutral-300) !important;
+  border-bottom:1px solid var(--lotus-neutral-300) !important;
+  background:var(--lotus-table-header,var(--lotus-neutral-50));
 }
 .stock-shell .lotus-ag-grid .ag-cell{
-  border-right:1px solid #d3dbe7 !important;
+  border-right:1px solid var(--lotus-neutral-300) !important;
 }
 .stock-shell .lotus-ag-grid .ag-row{
-  border-bottom:1px solid #e3e8f1 !important;
+  border-bottom:1px solid var(--lotus-neutral-200) !important;
 }
-.stock-shell .lotus-ag-grid .ag-header-cell:hover{background:#eaf0f8}
+.stock-shell .lotus-ag-grid .ag-header-cell:hover{background:var(--lotus-neutral-100)}
 .stock-shell .lotus-ag-grid .excel-trigger{
   display:inline-flex;justify-content:center;align-items:center;
-  color:#4c5a71;border:1px solid #ccd5e1;border-radius:4px;
+  color:var(--lotus-neutral-700);border:1px solid var(--lotus-neutral-300);border-radius:4px;
   background:#fff;min-width:22px;min-height:25px;font-size:13px;
 }
 .stock-shell .lotus-ag-grid .excel-trigger.active{
-  background:var(--lotus-accent-soft,#e9edff);border-color:var(--lotus-accent,#4c63b6);
+  background:var(--lotus-accent-soft,var(--lotus-primary-100));border-color:var(--lotus-accent,var(--lotus-primary-600));
 }
 .stock-shell .stock-scope > label:first-child{
   flex:0 0 208px;
@@ -94,11 +94,11 @@
  white-space:nowrap;box-shadow:none;
 }
 .stock-shell .stock-quick-actions .stock-quick-action:hover:not(:disabled){
- background:var(--lotus-soft,#f3f6fc);border-color:var(--lotus-accent,#4c63b6);
+ background:var(--lotus-soft,var(--lotus-neutral-50));border-color:var(--lotus-accent,var(--lotus-primary-600));
 }
 .stock-shell .stock-quick-actions .stock-quick-action:disabled{opacity:.45;cursor:not-allowed}
 .stock-shell .stock-quick-actions .stock-quick-action-icon{
- font-size:16px;line-height:1;color:var(--lotus-accent,#4c63b6);
+ font-size:16px;line-height:1;color:var(--lotus-accent,var(--lotus-primary-600));
 }
 @media(max-width:550px){
  .stock-shell .stock-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}

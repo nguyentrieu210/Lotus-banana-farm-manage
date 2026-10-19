@@ -4,6 +4,8 @@ import animate from 'tailwindcss-animate'
 // Keep the ERPNext/Frappe UI preset and add shadcn-vue (Tailwind v3) tokens.
 export default {
   presets:[preset],
+  // App toggles .dark on <html> (src/workspace.js); the frappe-ui preset defaults to [data-theme=dark].
+  darkMode:['selector','.dark'],
   content:[...content,'./index.html','./assign.html','./src/**/*.{vue,js,ts}'],
   theme:{
     extend:{

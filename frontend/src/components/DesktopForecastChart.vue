@@ -14,12 +14,14 @@ const format=n=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(
 function render(){
  if(!target.value)return
  if(!chart)chart=initChart(target.value,undefined,{renderer:'canvas'})
- const foreground=props.dark?'#e8edf6':'#556374'
- const grid=props.dark?'#343d4d':'#e9edf2'
+ // Canvas needs concrete colours: read the theme tokens at render time (props.dark re-triggers render).
+ const css=getComputedStyle(target.value),token=(name,fallback)=>css.getPropertyValue(name).trim()||fallback
+ const foreground=token('--lotus-muted','#656b76')
+ const grid=token('--lotus-border','#e8e5e1')
  chart.setOption({
    animationDuration:240,
    backgroundColor:'transparent',
-   color:['#b8401b','#278871','#6e93ad'],
+   color:[token('--lotus-primary','#c43224'),token('--lotus-success','#21835b'),token('--lotus-info','#2f5c9f')],
    tooltip:{trigger:'axis',valueFormatter:v=>format(v)+' tấn'},
    legend:{top:0,right:0,textStyle:{color:foreground,fontSize:11},data:['Dự thu buồng','Thành phẩm','Đã thu thực tế']},
    grid:{top:40,right:12,left:18,bottom:48,containLabel:true},

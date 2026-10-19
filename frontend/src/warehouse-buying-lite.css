@@ -3,12 +3,12 @@
 .stock-shell .stock-buying-tabs{display:flex;align-items:center;gap:6px}
 .stock-shell .stock-buying-toolbar .stock-buying-search{margin-left:auto;width:185px;max-width:185px;min-width:140px;height:35px}
 .stock-shell .stock-buying-toolbar button{min-height:35px;padding:6px 12px;font-size:12px}
-.stock-shell .stock-buying-tabs .active{background:var(--lotus-accent-soft,#e9edff);border-color:var(--lotus-accent,#4c63b6);color:var(--lotus-accent,#4c63b6)}
+.stock-shell .stock-buying-tabs .active{background:var(--lotus-accent-soft,var(--lotus-primary-100));border-color:var(--lotus-accent,var(--lotus-primary-600));color:var(--lotus-accent,var(--lotus-primary-600))}
 .stock-shell .stock-buying-dialog{width:min(1000px,calc(100vw - 20px))}
 .stock-shell .stock-buying-dialog .stock-form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .stock-shell .stock-buying-supplier{display:flex;align-items:center;gap:8px;margin:8px 0 14px}
 .stock-shell .stock-buying-supplier input{max-width:330px}
-.stock-shell .stock-buying-line{display:grid;grid-template-columns:minmax(175px,2fr) minmax(75px,.7fr) minmax(110px,1fr) minmax(120px,1fr) auto;gap:8px;align-items:end;background:var(--lotus-soft,#f7f9fc);border:1px solid var(--lotus-border);border-radius:7px;padding:12px;margin:7px 0}
+.stock-shell .stock-buying-line{display:grid;grid-template-columns:minmax(175px,2fr) minmax(75px,.7fr) minmax(110px,1fr) minmax(120px,1fr) auto;gap:8px;align-items:end;background:var(--lotus-soft,var(--lotus-neutral-50));border:1px solid var(--lotus-border);border-radius:7px;padding:12px;margin:7px 0}
 .stock-shell .stock-buying-line label{display:flex;flex-direction:column;gap:5px;font-size:11px;min-width:0}
 .stock-shell .stock-buying-line select,.stock-shell .stock-buying-line input{width:100%}
 .stock-shell .stock-buying-total{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:13px 0 20px}
@@ -20,7 +20,7 @@
 .stock-shell .stock-buying-fields strong{font-size:11px;color:var(--lotus-muted)}
 .stock-shell .stock-buying-detail-table{border-collapse:collapse;width:100%;font-size:12px;margin:10px 0 17px}
 .stock-shell .stock-buying-detail-table th,.stock-shell .stock-buying-detail-table td{border:1px solid var(--lotus-border);padding:9px;text-align:left}
-.stock-shell .stock-buying-detail-table th{background:var(--lotus-soft,#f7f9fc);font-weight:650}
+.stock-shell .stock-buying-detail-table th{background:var(--lotus-soft,var(--lotus-neutral-50));font-weight:650}
 .stock-shell .stock-buying-quotes,.stock-shell .stock-buying-receive{border-top:1px solid var(--lotus-border);padding:14px 0;margin:12px 0}
 .stock-shell .stock-buying-quotes h3,.stock-shell .stock-buying-receive h3{margin:0 0 9px;font-size:13px}
 .stock-shell .stock-buying-receive-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0}

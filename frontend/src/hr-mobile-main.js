@@ -1,4 +1,6 @@
 import 'vant/lib/index.css'
+import './lotus-fonts.css'
+import './lotus-tokens.css'
 import {createApp} from 'vue'
 import HrMobile from './HrMobile.vue'
 import './hr-mobile.css'

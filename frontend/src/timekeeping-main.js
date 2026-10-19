@@ -1,5 +1,6 @@
 import {createApp} from 'vue'
 import TimekeepingApp from './TimekeepingApp.vue'
+import './lotus-tokens.css'
 import './stock.css'
 import './shadcn.css'
 import './attio.css'

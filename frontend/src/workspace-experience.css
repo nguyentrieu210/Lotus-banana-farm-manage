@@ -1,5 +1,5 @@
 /* Shared experience for the Lotus workspace entrypoints. Vant PWAs retain their shared mobile theme. */
-.lotus-ui{--lotus-motion:160ms;--lotus-ease:cubic-bezier(.2,.7,.2,1);--lotus-line:var(--lotus-border)}
+.lotus-ui{--lotus-line:var(--lotus-border)}
 .lotus-ui :is(button,a,input,select,textarea,summary){transition:background-color var(--lotus-motion) var(--lotus-ease),border-color var(--lotus-motion) var(--lotus-ease),color var(--lotus-motion) var(--lotus-ease),box-shadow var(--lotus-motion) var(--lotus-ease)}
 .lotus-ui :is(button,a,summary):focus-visible,.pn-dialog :is(button,input,select,textarea):focus-visible{outline:2px solid var(--lotus-accent);outline-offset:3px}
 .lotus-ui :is(button,[role=button]):not(:disabled):active{filter:brightness(.96)}
@@ -7,7 +7,7 @@
 .lotus-ui :is(input,select,textarea),.pn-dialog :is(input,select,textarea){color:var(--lotus-text);border-color:var(--lotus-border)}
 .lotus-ui input:is([type=checkbox],[type=radio]),.pn-dialog input:is([type=checkbox],[type=radio]){appearance:auto;width:16px;height:16px;min-height:0;padding:0;flex-shrink:0;box-shadow:none;background-image:none;accent-color:var(--lotus-accent)}
 .lotus-ui input[type=radio]{border-radius:50%}
-:is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment){background:var(--lotus-surface,#fff);color:var(--lotus-text,#263042);border-color:var(--lotus-border,#e6e8ef);border-radius:12px;box-shadow:0 20px 70px #17233d30}
+:is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment){background:var(--lotus-surface,#fff);color:var(--lotus-text,var(--lotus-neutral-800));border-color:var(--lotus-border,var(--lotus-neutral-200));border-radius:12px;box-shadow:0 20px 70px #17233d30}
 :is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment)::backdrop{background:#151c2c66;backdrop-filter:blur(2px)}
 :is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment)[open],.lotus-ui .modal-backdrop>:is(.document-dialog,.small-dialog){animation:lotus-dialog-enter 180ms var(--lotus-ease,ease-out)}
 .lotus-ui .modal-backdrop{z-index:80;background:#151c2c66;backdrop-filter:blur(2px)}
@@ -61,10 +61,6 @@
 .workspace-modal :is(input,select,textarea):not([type=checkbox]):not([type=radio]){width:100%;min-width:0}
 .workspace-modal .attendance-legend{margin:0 0 12px;color:var(--lotus-muted);font-size:12px;line-height:1.6}
 @media(min-width:901px){
- :root{--lotus-page:#f7f7f8;--lotus-surface:#fff;--lotus-text:#2c3036;--lotus-muted:#686e79;--lotus-border:#e8e5e1;--lotus-soft:#faf6f2;--lotus-accent:#b8401b;--lotus-accent-soft:#fff0e6}
- :root.dark{--lotus-page:#171b22;--lotus-surface:#20262f;--lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-border:#3b414b;--lotus-soft:#2d2c2d;--lotus-accent:#ffb690;--lotus-accent-soft:#423028}
- :root{--background:0 0% 100%;--foreground:216 10% 19%;--primary:14 74% 41%;--primary-foreground:0 0% 100%;--secondary:30 30% 96%;--secondary-foreground:216 10% 19%;--muted:30 30% 96%;--muted-foreground:224 5% 43%;--accent:26 100% 95%;--accent-foreground:14 74% 35%;--border:34 13% 90%;--input:34 13% 87%;--ring:14 74% 41%}
- :root.dark{--background:216 19% 15%;--foreground:220 19% 94%;--primary:21 100% 78%;--primary-foreground:216 19% 15%;--secondary:216 13% 21%;--secondary-foreground:220 19% 94%;--muted:216 13% 21%;--muted-foreground:218 11% 72%;--accent:24 24% 21%;--accent-foreground:21 100% 78%;--border:218 12% 26%;--input:218 12% 30%;--ring:21 100% 78%}
  .lotus-ui.app-shell .sidebar{height:100dvh;overflow:auto;overscroll-behavior:contain}
  .workspace-shell{height:100dvh;overflow:hidden}
  .workspace-shell>main{height:100dvh;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
@@ -121,7 +117,7 @@
 .workspace-tabs{display:flex;align-items:center;gap:4px;overflow-x:auto;flex-wrap:nowrap;border-bottom:1px solid var(--lotus-border);padding:0 0 8px;margin:0 0 12px;scrollbar-width:thin}
 .workspace-tabs button{flex:none;border:0;border-radius:6px;background:transparent;color:var(--lotus-muted);padding:9px 13px;font:inherit;font-size:13px;white-space:nowrap;cursor:pointer}
 .workspace-tabs button:hover{background:var(--lotus-hover)}
-.workspace-tabs button.selected{background:var(--lotus-accent-soft,#fff0e8);color:var(--lotus-primary,#bd3d18);font-weight:600;box-shadow:inset 0 -2px currentColor}
+.workspace-tabs button.selected{background:var(--lotus-accent-soft,var(--lotus-primary-50));color:var(--lotus-primary,var(--lotus-primary-600));font-weight:600;box-shadow:inset 0 -2px currentColor}
 .workspace-summary-strip{display:flex;align-items:center;gap:0;margin:0 0 12px;padding:0;flex-wrap:wrap}
 .workspace-summary-strip>div{display:flex;align-items:baseline;gap:9px;padding:2px 20px;border-right:1px solid var(--lotus-border)}
 .workspace-summary-strip>div:first-child{padding-left:0}.workspace-summary-strip>div:last-child{border:0}
@@ -136,10 +132,10 @@
 .workspace-list-refresh{flex:0 0 auto;min-width:88px}
 .workspace-list-actions{display:flex;gap:10px;align-items:center;margin-left:auto;flex:0 0 auto}.workspace-list-actions>*{white-space:nowrap}
 .workspace-secondary-link{font-size:12px;padding:7px 8px;color:var(--lotus-muted);white-space:nowrap}
-.workspace-status{display:inline-flex;align-items:center;gap:5px;border-radius:4px;font-size:12px;padding:2px 6px;background:var(--lotus-accent-soft,#fff0e8);color:var(--lotus-primary,#bd3d18)}
-.workspace-status.is-ready{color:#157044;background:#e9f6ee}
+.workspace-status{display:inline-flex;align-items:center;gap:5px;border-radius:4px;font-size:12px;padding:2px 6px;background:var(--lotus-accent-soft,var(--lotus-primary-50));color:var(--lotus-primary,var(--lotus-primary-600))}
+.workspace-status.is-ready{color:var(--lotus-success-700);background:var(--lotus-neutral-100)}
 .workspace-module-host .hr-table{border:1px solid var(--lotus-border);border-radius:8px;box-shadow:none;margin:0;overflow-x:auto}
-.workspace-module-host .hr-table th{font-weight:600;color:var(--lotus-muted);font-size:12px;background:var(--lotus-surface-muted,#faf9f7)}
+.workspace-module-host .hr-table th{font-weight:600;color:var(--lotus-muted);font-size:12px;background:var(--lotus-surface-muted,var(--lotus-neutral-50))}
 .workspace-module-host .hr-table td,.workspace-module-host .hr-table th{padding:10px 12px;vertical-align:middle}.workspace-module-host .hr-table tbody tr:hover{background:var(--lotus-hover)}
 .workspace-module-host .hr-table td small{display:block;margin-top:3px;color:var(--lotus-muted);font-size:11px}
 @media(max-width:620px){.workspace-summary-strip>div{padding:2px 10px}.workspace-summary-strip dt{font-size:11px}.workspace-summary-strip dd{font-size:16px}.workspace-modal__body{padding:14px}}
@@ -147,7 +143,7 @@
 .user-fields{padding:0;margin:0;border:0;min-width:0}.user-check{display:flex!important;align-items:center;gap:8px;grid-column:1/-1}.user-hint{font-size:12px;color:var(--lotus-muted);line-height:1.6;grid-column:1/-1;margin:10px 0}.user-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;max-height:360px;overflow-y:auto}.user-choice{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--lotus-border);border-radius:6px;padding:10px;cursor:pointer;font-size:13px}.user-choice input{margin-top:2px}.user-choice small{display:block;color:var(--lotus-muted);font-size:11px;margin-top:3px}.user-choice:has(input:checked){border-color:var(--lotus-accent);background:var(--lotus-accent-soft)}.user-scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.user-scope-grid h3{font-size:13px;margin:0 0 10px}.user-choice-list{display:grid;gap:6px;max-height:300px;overflow-y:auto;margin-top:10px}.user-form-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;border-top:1px solid var(--lotus-border);padding-top:14px;margin-top:18px}.user-form-footer a{margin-right:auto}
 @media(max-width:620px){.user-admin{padding:12px}.user-choice-grid,.user-scope-grid{grid-template-columns:1fr}.user-form-footer{flex-wrap:wrap}}
 .workspace-modal .attendance-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:12px 0}.workspace-modal .hr-form-grid label{color:var(--lotus-text)}
-:root.dark .workspace-status.is-ready{background:#193c2b;color:#a5e3bb}
+:root.dark .workspace-status.is-ready{background:var(--lotus-success-900);color:var(--lotus-success-200)}
 .workspace-module-host .user-admin{padding:0}.workspace-module-host .workspace-tabs button:hover{background:var(--lotus-soft)}
 .workspace-modal .user-choice{flex-direction:row!important}.workspace-module-host .hr-table td:last-child{display:table-cell}.workspace-modal .user-choice-list .stock-empty{min-height:0;padding:16px 0}
 

@@ -1,8 +1,5 @@
-:root{--lotus-control:32px;--lotus-row:36px;--lotus-space:12px;--lotus-accent:#c43224;--lotus-accent-soft:#fff0ed;--primary:6 70% 45%;--primary-foreground:0 0% 100%}
-.dark{--lotus-page:#151922;--lotus-surface:#1c222e;--lotus-sidebar:#191f2a;--lotus-text:#e2e7f0;--lotus-muted:#a1adbf;--lotus-border:#343d4d;--lotus-accent:#a3b2ff;--lotus-soft:#252e40;--background:222 23% 11%;--foreground:220 32% 92%;--card:222 24% 15%;--card-foreground:220 32% 92%;--popover:222 24% 15%;--popover-foreground:220 32% 92%;--primary:230 80% 80%;--primary-foreground:222 23% 11%;--secondary:222 24% 20%;--secondary-foreground:220 32% 92%;--muted:222 24% 20%;--muted-foreground:218 20% 72%;--accent:224 30% 22%;--accent-foreground:230 80% 85%;--border:220 20% 26%;--input:220 20% 30%;--ring:230 80% 80%}
+
 body{background:var(--lotus-page);color:var(--lotus-text)}
-:root{--lotus-table-header:#fde4df;--lotus-table-heading:#8f2c20}
-.dark{--lotus-table-header:#432a2c;--lotus-table-heading:#ffd4cd}
 .excel-header .excel-sort,.excel-header .excel-trigger{color:var(--lotus-table-heading)}
 .app-shell th,.stock-shell th,.assignment-workspace th{background:var(--lotus-table-header);color:var(--lotus-table-heading)}
 .app-shell main,.stock-shell .stock-main{padding:0 10px 8px;max-width:none}
@@ -65,7 +62,7 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .excel-popup>strong{font-size:12px}
 .excel-popup input:not([type=checkbox]){min-height:30px;height:30px;font-size:12px}
 .excel-popup label{display:flex;flex-direction:row;align-items:center;gap:8px;white-space:normal;font-size:12px;color:var(--lotus-text);padding:3px}
-.excel-popup input[type=checkbox]{width:15px;height:15px;min-height:0;flex-shrink:0;accent-color:#687bdd}
+.excel-popup input[type=checkbox]{width:15px;height:15px;min-height:0;flex-shrink:0;accent-color:var(--lotus-primary-600)}
 .excel-values{overflow:auto;min-height:40px;max-height:240px}
 .excel-popup footer{display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--lotus-border);padding-top:8px}
 .excel-popup footer button{border:1px solid var(--lotus-border);border-radius:5px;padding:5px 10px;background:var(--lotus-soft);color:var(--lotus-text);font-size:12px}
@@ -73,27 +70,26 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .stock-master-fields{border:0;padding:0;min-width:0}
 .delete-confirm{padding:10px;background:var(--lotus-accent-soft);color:var(--lotus-accent);border:1px solid var(--lotus-accent);border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px}
 .delete-confirm p{width:100%;margin:0}
-.dark{--lotus-accent:#ffaba0;--lotus-accent-soft:#44292b;--primary:7 75% 72%;--primary-foreground:222 23% 11%}
-.app-shell .sidebar,.stock-shell .stock-sidebar{background:#1f2937;border-right:1px solid #455064;color:#bec8d8}
+.app-shell .sidebar,.stock-shell .stock-sidebar{background:var(--lotus-neutral-900);border-right:1px solid var(--lotus-neutral-700);color:var(--lotus-neutral-300)}
 .app-shell .sidebar .brand,.stock-shell .stock-brand{color:#fff;font-weight:750}
-.app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:14px;border-bottom:1px solid #455064;width:100%}
-.app-shell .sidebar .brand small,.stock-shell .stock-brand small,.stock-shell .stock-nav-label{color:#96a4ba}
-.app-shell .sidebar nav button,.stock-shell .stock-sidebar nav button{color:#c1ccdb;font-weight:500}
-.app-shell .sidebar nav button.active,.stock-shell .stock-sidebar nav button.selected{background:#4b2b30;color:#ffb7ac;box-shadow:inset 3px 0 0 #f36a59}
-.app-shell .sidebar nav button:hover,.stock-shell .stock-sidebar nav button:hover{background:#303a4b;color:#fff}
-.app-shell .sidebar .field-link,.stock-shell .stock-sidebar-bottom a{color:#a6b3c8}
-.stock-shell .stock-logo{background:#4b2b30;color:#ffb7ac;border-color:#71423f}
-.workspace-bar{--lotus-text:#edf1f8;--lotus-muted:#bac5d6;--lotus-border:#455064;--lotus-soft:#303b4d;background:#1f2937;color:#edf1f8;border-radius:0;padding:9px 12px;border-color:#455064}
-.workspace-bar button{background:transparent;color:#edf1f8}
-.workspace-bar .workspace-search{background:#2b3546;border-color:#536074;color:#e6ebf4;font-size:12px}
-.workspace-bar .workspace-search:hover{background:#364157;border-color:#f36a59}
-.workspace-bar .workspace-home{color:#ffb7ac}
-.workspace-bar .workspace-avatar{background:#4b2b30;color:#ffb7ac}
-.workspace-bar .workspace-menu{background:#202938;color:#edf1f8}
-.workspace-bar .workspace-menu button:hover{background:#344157}
-.stock-shell .stock-actions>button:first-child,.stock-shell .stock-button.primary{background:#c43224;color:#fff;border-color:#c43224;font-weight:650}
-.stock-shell .stock-actions>button:first-child:hover,.stock-shell .stock-button.primary:hover{background:#a9271b;border-color:#a9271b}
-.dark .stock-shell .stock-actions>button:first-child,.dark .stock-shell .stock-button.primary{background:#be3f32;color:#fff;border-color:#df695c}
+.app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:14px;border-bottom:1px solid var(--lotus-neutral-700);width:100%}
+.app-shell .sidebar .brand small,.stock-shell .stock-brand small,.stock-shell .stock-nav-label{color:var(--lotus-neutral-400)}
+.app-shell .sidebar nav button,.stock-shell .stock-sidebar nav button{color:var(--lotus-neutral-300);font-weight:500}
+.app-shell .sidebar nav button.active,.stock-shell .stock-sidebar nav button.selected{background:var(--lotus-primary-900);color:var(--lotus-primary-200);box-shadow:inset 3px 0 0 var(--lotus-primary-600)}
+.app-shell .sidebar nav button:hover,.stock-shell .stock-sidebar nav button:hover{background:var(--lotus-neutral-800);color:#fff}
+.app-shell .sidebar .field-link,.stock-shell .stock-sidebar-bottom a{color:var(--lotus-neutral-400)}
+.stock-shell .stock-logo{background:var(--lotus-primary-900);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
+.workspace-bar{--lotus-text:var(--lotus-neutral-100);--lotus-muted:var(--lotus-neutral-300);--lotus-border:var(--lotus-neutral-700);--lotus-soft:var(--lotus-neutral-800);background:var(--lotus-neutral-900);color:var(--lotus-neutral-100);border-radius:0;padding:9px 12px;border-color:var(--lotus-neutral-700)}
+.workspace-bar button{background:transparent;color:var(--lotus-neutral-100)}
+.workspace-bar .workspace-search{background:var(--lotus-neutral-800);border-color:var(--lotus-neutral-600);color:var(--lotus-neutral-200);font-size:12px}
+.workspace-bar .workspace-search:hover{background:var(--lotus-neutral-700);border-color:var(--lotus-primary-600)}
+.workspace-bar .workspace-home{color:var(--lotus-primary-200)}
+.workspace-bar .workspace-avatar{background:var(--lotus-primary-900);color:var(--lotus-primary-200)}
+.workspace-bar .workspace-menu{background:var(--lotus-neutral-900);color:var(--lotus-neutral-100)}
+.workspace-bar .workspace-menu button:hover{background:var(--lotus-neutral-700)}
+.stock-shell .stock-actions>button:first-child,.stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600);font-weight:650}
+.stock-shell .stock-actions>button:first-child:hover,.stock-shell .stock-button.primary:hover{background:var(--lotus-primary-700);border-color:var(--lotus-primary-700)}
+.dark .stock-shell .stock-actions>button:first-child,.dark .stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
 .app-shell .kpi{border-top:2px solid var(--lotus-accent);box-shadow:0 2px 5px #18223808}
 .app-shell .kpi strong,.dark .app-shell .kpi strong{font-size:25px;font-weight:750;letter-spacing:-.5px;color:var(--lotus-accent)}
 .app-shell .kpi>span{font-size:12px;font-weight:600;color:var(--lotus-text)}
@@ -118,7 +114,7 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-shortage-row{background:var(--lotus-accent-soft)!important;color:var(--lotus-accent)!important}
 .lotus-item-cell .name{font-weight:600}
 .excel-trigger.active{background:var(--lotus-accent-soft);color:var(--lotus-accent)}
-.excel-popup footer button:last-child{background:#c43224;color:white;border-color:#c43224}
+.excel-popup footer button:last-child{background:var(--lotus-primary-600);color:white;border-color:var(--lotus-primary-600)}
 .excel-popup[popover]{margin:0;inset:auto}
 .excel-popup[popover]:not(:popover-open){display:none}
 .app-shell .scope-picker{gap:8px;padding:0 0 10px;margin-bottom:8px}
@@ -198,12 +194,12 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .dark h1,.dark h2,.dark h3,.dark label,.dark .stock-main h2,.dark .stock-dialog h2{color:var(--lotus-text)}
 .dark input,.dark select,.dark textarea,.dark .stock-dialog,.dark .document-dialog,.dark .small-dialog{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .stock-button,.dark .stock-issue-tabs button,.dark .stock-actions button,.dark .mobile-action,.dark .bar,.dark .top a{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
-.dark .stock-button.primary,.dark .bar .primary{background:#687bdd;color:#fff;border-color:#687bdd}
+.dark .stock-button.primary,.dark .bar .primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
 .dark .stock-line,.dark .stock-issue-picker,.dark .stock-line input[readonly],.dark .child-row,.dark .work-card,.dark .stock-welcome,.dark .note,.dark .tabs button{background:var(--lotus-soft);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .stock-brand,.dark .sidebar .brand,.dark .panel-title{color:var(--lotus-text)}
 .dark .stock-muted,.dark .hint,.dark .muted,.dark .stock-line small{color:var(--lotus-muted)}
-.dark .notice,.dark .stock-success{background:#233c35;color:#b2e9cf;border-color:#385d50}
-.dark .stock-error,.dark .error{background:#442b2f;color:#ffc5c8;border-color:#6f4147}
+.dark .notice,.dark .stock-success{background:var(--lotus-neutral-800);color:var(--lotus-success-200);border-color:var(--lotus-success-700)}
+.dark .stock-error,.dark .error{background:var(--lotus-neutral-800);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
 .dark .stock-issue-tabs button.active,.dark .tabs .active,.dark .sidebar nav button.active,.dark .stock-sidebar nav button.selected{background:var(--lotus-soft);color:var(--lotus-accent)}
 .dark .app-shell .kpi{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .app-shell .kpi strong{color:var(--lotus-text)}
@@ -270,30 +266,30 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 
 
 .app-shell .sidebar .brand,.stock-shell .stock-brand{padding-bottom:9px}
-.lotus-coverage-state{font-weight:750}.lotus-coverage-state.is-covered{color:#167348}.lotus-coverage-state.is-incoming{color:#a56208}.lotus-coverage-state.is-short{color:#bf3124}.dark .lotus-coverage-state.is-covered{color:#7addac}.dark .lotus-coverage-state.is-incoming{color:#f1c56b}.dark .lotus-coverage-state.is-short{color:#ff9b8f}
+.lotus-coverage-state{font-weight:750}.lotus-coverage-state.is-covered{color:var(--lotus-success-700)}.lotus-coverage-state.is-incoming{color:var(--lotus-primary-600)}.lotus-coverage-state.is-short{color:var(--lotus-primary-600)}.dark .lotus-coverage-state.is-covered{color:var(--lotus-success-300)}.dark .lotus-coverage-state.is-incoming{color:var(--lotus-warning-300)}.dark .lotus-coverage-state.is-short{color:var(--lotus-primary-300)}
 
 
 /* Excel filter menus live in a body Teleport so the table cannot clip them. */
 .lotus-excel-popup{
   position:fixed;z-index:2147483000;max-height:min(440px,calc(100dvh - 16px));
   display:flex;flex-direction:column;padding:12px;gap:9px;
-  background:var(--lotus-surface,#fff);color:var(--lotus-text,#243148);
-  border:1px solid #c6d1df;border-radius:9px;box-shadow:0 18px 48px #15223b36;
+  background:var(--lotus-surface,#fff);color:var(--lotus-text,var(--lotus-neutral-800));
+  border:1px solid var(--lotus-neutral-300);border-radius:9px;box-shadow:0 18px 48px #15223b36;
 }
 .lotus-excel-popup>strong{font-size:12px;font-weight:700;flex-shrink:0}
 .lotus-excel-popup input[type=search]{
   width:100%;flex-shrink:0;height:33px;min-height:33px;
-  padding:6px 10px;border:1px solid #cdd6e3;border-radius:5px;
+  padding:6px 10px;border:1px solid var(--lotus-neutral-300);border-radius:5px;
   font-size:12px;outline-offset:2px;
 }
 .lotus-excel-popup .excel-select-all{
-  border-bottom:1px solid #e2e7ef;font-weight:650;padding-bottom:7px;
+  border-bottom:1px solid var(--lotus-neutral-200);font-weight:650;padding-bottom:7px;
 }
 .lotus-excel-popup .excel-values{overflow:auto;min-height:45px;max-height:230px;flex:1}
 .lotus-excel-popup .excel-values label{display:flex;align-items:center;gap:8px;padding:6px 3px;border-radius:4px;cursor:pointer}
-.lotus-excel-popup .excel-values label:hover{background:#f1f4fa}
-.lotus-excel-popup input[type=checkbox]{height:16px;width:16px;accent-color:var(--lotus-accent,#4c63b6)}
-.lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,#667085)}
-.lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid #e2e7ef}
-.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid #cbd4e0;border-radius:5px;background:#fff;color:#364258;font-size:12px}
-.lotus-excel-popup footer .excel-apply{background:var(--lotus-accent,#4c63b6);color:#fff;border-color:var(--lotus-accent,#4c63b6)}
+.lotus-excel-popup .excel-values label:hover{background:var(--lotus-neutral-50)}
+.lotus-excel-popup input[type=checkbox]{height:16px;width:16px;accent-color:var(--lotus-accent,var(--lotus-primary-600))}
+.lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
+.lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--lotus-neutral-200)}
+.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:#fff;color:var(--lotus-neutral-700);font-size:12px}
+.lotus-excel-popup footer .excel-apply{background:var(--lotus-accent,var(--lotus-primary-600));color:#fff;border-color:var(--lotus-accent,var(--lotus-primary-600))}

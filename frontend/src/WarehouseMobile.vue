@@ -571,7 +571,7 @@ onUnmounted(()=>{
    <template v-if="screen==='stock-form'&&form">
     <p v-if="kind==='receipt'" class="mobile-subtle">Chỉ dùng khi hàng về không có đơn mua. Hàng đặt mua hãy dùng Nhập theo đơn.</p>
     <form @submit.prevent="saveStock"><fieldset class="mobile-form-fields" :disabled="saving">
-     <div class="mobile-field"><label>Ngày</label><LotusMobileInput type="date" v-model="form.posting_date" required/></div>
+     <div class="mobile-field"><label>Ngày</label><LotusMobileInput aria-label="Ngày" type="date" v-model="form.posting_date" required/></div>
      <div v-if="kind!=='receipt'" class="mobile-field"><label>Kho xuất</label><MobileLinkField v-model="form.source" :options="storeOptions" :searchable="false" placeholder="Chọn kho xuất…" required/></div>
      <div v-if="kind!=='issue'" class="mobile-field"><label>{{kind==='transfer'?'Kho nhận':'Kho nhập'}}</label><MobileLinkField v-model="form.target" :options="storeOptions" :searchable="false" placeholder="Chọn kho nhận…" required/></div>
      <div v-if="kind==='issue'" class="mobile-field"><label>Người nhận hàng</label><MobileLinkField v-model="form.receiver_employee" :options="employeeOptions" placeholder="Gõ tên người nhận…" required/></div>
@@ -579,8 +579,8 @@ onUnmounted(()=>{
      <div class="mobile-line" v-for="(r,i) in form.lines" :key="r._key">
       <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="form.lines.length>1" type="button" @click="form.lines.splice(i,1)">Xóa</LotusMobileButton></div>
       <div class="mobile-field"><label>Tên hàng</label><MobileLinkField :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/></div>
-      <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/></label><label class="mobile-field">Đơn vị<LotusMobileSelect v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
-      <div v-if="kind==='receipt'" class="mobile-field"><label>Đơn giá (nếu có)</label><LotusMobileInput v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/></div>
+      <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput aria-label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/></label><label class="mobile-field">Đơn vị<LotusMobileSelect aria-label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
+      <div v-if="kind==='receipt'" class="mobile-field"><label>Đơn giá (nếu có)</label><LotusMobileInput aria-label="Đơn giá (nếu có)" v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/></div>
       <div v-if="kind==='issue'" class="mobile-field"><label>Lô / nơi sử dụng</label><LotusMobileInput v-model="r.area" placeholder="Ví dụ: Lô A01" required/></div>
      </div>
      <LotusMobileButton type="button" class="mobile-add" @click="form.lines.push(blank())">＋ Thêm hàng</LotusMobileButton>
@@ -606,7 +606,7 @@ onUnmounted(()=>{
 
    <template v-if="screen==='receive-form'&&selectedOrder">
     <div class="mobile-summary"><span>Nhà cung cấp <b>{{selectedOrder.supplier_name}}</b></span><span>Đơn <b>{{selectedOrder.name}}</b></span></div>
-    <div class="mobile-field"><label>Ngày hàng về</label><LotusMobileInput v-model="receiveDate" type="date" :disabled="saving" required/></div>
+    <div class="mobile-field"><label>Ngày hàng về</label><LotusMobileInput aria-label="Ngày hàng về" v-model="receiveDate" type="date" :disabled="saving" required/></div>
     <div v-for="r in selectedLines" :key="r.line" class="mobile-line"><strong>{{r.item_name}}</strong><small>Chưa nhận: {{fmt(r.remaining_qty)}} {{unitLabel(r.uom)}}</small><label class="mobile-field">Số lượng thực nhận ({{unitLabel(r.uom)}})<LotusMobileInput v-model="receiveQty[r.line]" :disabled="saving" type="number" inputmode="decimal" min="0" :max="r.remaining_qty" step="any" placeholder="0"/></label></div>
     <p v-if="!receiptCheck.valid" class="mobile-message danger" role="alert">{{receiptCheck.reason}}</p>
     <LotusMobileButton type="button" class="mobile-submit" :disabled="!online||saving||!receiptCheck.valid||!Object.keys(receivedQuantities).length" @click="createReceipt">{{saving?'Đang lưu…':'Lưu hàng đã nhận →'}}</LotusMobileButton>
@@ -621,13 +621,13 @@ onUnmounted(()=>{
 
    <template v-if="screen==='request-form'&&requestForm">
     <form @submit.prevent="saveRequest"><fieldset class="mobile-form-fields" :disabled="saving">
-     <div class="mobile-field"><label>Kho cần hàng</label><MobileLinkField v-model="requestForm.warehouse" :options="storeOptions" :searchable="false" required/></div>
-     <div class="mobile-field"><label>Ngày cần hàng</label><LotusMobileInput type="date" v-model="requestForm.expected_date" required/></div>
+     <div class="mobile-field"><label>Kho cần hàng</label><MobileLinkField aria-label="Kho cần hàng" v-model="requestForm.warehouse" :options="storeOptions" :searchable="false" required/></div>
+     <div class="mobile-field"><label>Ngày cần hàng</label><LotusMobileInput aria-label="Ngày cần hàng" type="date" v-model="requestForm.expected_date" required/></div>
      <div v-for="(r,i) in requestForm.items" :key="r._key" class="mobile-line">
       <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="requestForm.items.length>1" type="button" @click="requestForm.items.splice(i,1)">Xóa</LotusMobileButton></div>
       <div class="mobile-field"><label>Tên hàng</label><MobileLinkField :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hàng…" required @update:modelValue="v=>chooseByCode(r,v)"/></div>
-      <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput v-model="r.qty" type="number" inputmode="decimal" min="0.000001" step="any" required/></label>
-       <label class="mobile-field">Đơn vị<LotusMobileSelect v-model="r.uom"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
+      <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput aria-label="Số lượng" v-model="r.qty" type="number" inputmode="decimal" min="0.000001" step="any" required/></label>
+       <label class="mobile-field">Đơn vị<LotusMobileSelect aria-label="Đơn vị" v-model="r.uom"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
      </div>
      <LotusMobileButton class="mobile-add" type="button" @click="requestForm.items.push(blank())">+ Thêm hàng</LotusMobileButton>
      <div class="mobile-field"><label>Ghi chú</label><LotusMobileInput type="textarea" v-model="requestForm.notes" rows="2" placeholder="Lý do cần mua, thời gian cần…"/></div>
@@ -722,7 +722,7 @@ onUnmounted(()=>{
      <div class="mobile-profile-row"><span>Công ty</span><strong>{{company||'—'}}</strong></div>
      <div class="mobile-profile-row"><span>Kho đang chọn</span><strong>{{wname(warehouse)}}</strong></div>
     </div>
-    <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Đổi công ty</label><MobileLinkField :model-value="company" :options="companyOptions" :searchable="false" @update:modelValue="v=>changeCompany(v)"/></div>
+    <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Đổi công ty</label><MobileLinkField aria-label="Đổi công ty" :model-value="company" :options="companyOptions" :searchable="false" @update:modelValue="v=>changeCompany(v)"/></div>
     <div class="mobile-field"><label>Đổi kho làm việc</label><MobileLinkField :model-value="warehouse" :options="storeOptions" :searchable="false" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/></div>
     
     <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>

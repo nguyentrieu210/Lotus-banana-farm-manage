@@ -72,40 +72,40 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
 </details>
 </template>
 <style scoped>
-.lotus-import{margin:16px 0 20px;border:1px solid var(--lotus-border,#e2e5e9);background:var(--lotus-surface,#fff);border-radius:12px;color:var(--lotus-text,#273140)}
+.lotus-import{margin:16px 0 20px;border:1px solid var(--lotus-border,var(--lotus-neutral-200));background:var(--lotus-surface,#fff);border-radius:12px;color:var(--lotus-text,var(--lotus-neutral-800))}
 .lotus-import>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:15px 18px}
 .lotus-import>summary span:first-child{display:grid;gap:3px}
 .lotus-import>summary strong{font-size:15px}
-.lotus-import>summary small,.lotus-import__info{font-size:12px;color:var(--lotus-muted,#76808a)}
-.lotus-import__tag,.lotus-import__confidence{border-radius:7px;padding:5px 9px;white-space:nowrap;background:#fff0dd;color:#914e18;font-size:11px;font-weight:650}
-.lotus-import__body{border-top:1px solid var(--lotus-border,#e8e8e8);padding:15px 17px;display:grid;gap:14px}
-.lotus-import__source{font-size:12px;color:var(--lotus-muted,#667587);margin:0}
-.lotus-import__source button,.lotus-import__error button{font:inherit;background:transparent;border:0;color:var(--lotus-accent,#bc4a21);cursor:pointer;text-decoration:underline}
+.lotus-import>summary small,.lotus-import__info{font-size:12px;color:var(--lotus-muted,var(--lotus-neutral-500))}
+.lotus-import__tag,.lotus-import__confidence{border-radius:7px;padding:5px 9px;white-space:nowrap;background:var(--lotus-neutral-100);color:var(--lotus-primary-700);font-size:11px;font-weight:650}
+.lotus-import__body{border-top:1px solid var(--lotus-border,var(--lotus-neutral-200));padding:15px 17px;display:grid;gap:14px}
+.lotus-import__source{font-size:12px;color:var(--lotus-muted,var(--lotus-neutral-600));margin:0}
+.lotus-import__source button,.lotus-import__error button{font:inherit;background:transparent;border:0;color:var(--lotus-accent,var(--lotus-primary-600));cursor:pointer;text-decoration:underline}
 .lotus-import__metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
-.lotus-import__metrics article{border:1px solid var(--lotus-border,#e2e7ee);padding:11px 13px;display:grid;gap:6px;border-radius:9px}
-.lotus-import__metrics small{font-size:11px;color:var(--lotus-muted,#647487)}
+.lotus-import__metrics article{border:1px solid var(--lotus-border,var(--lotus-neutral-200));padding:11px 13px;display:grid;gap:6px;border-radius:9px}
+.lotus-import__metrics small{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
 .lotus-import__metrics strong{font-size:21px;font-weight:750;font-variant-numeric:tabular-nums}
-.lotus-import__flower{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;padding:16px;border:1px solid #d6e2da;border-radius:10px;background:#f2f8f3;color:#285342}
+.lotus-import__flower{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;padding:16px;border:1px solid var(--lotus-neutral-200);border-radius:10px;background:var(--lotus-neutral-50);color:var(--lotus-success-800)}
 .lotus-import__flower h3{font-size:17px;margin:5px 0}
 .lotus-import__flower p{margin:4px 0;font-size:13px}
 .lotus-import__flower small{font-size:11px;line-height:1.6;display:block}
-.lotus-import__flower a{color:#225d68;text-decoration:underline}
+.lotus-import__flower a{color:var(--lotus-info-700);text-decoration:underline}
 .lotus-import__eyebrow{font-size:10px;font-weight:750;letter-spacing:.05em}
 .lotus-import__zones{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
-.lotus-import__zones article{display:grid;gap:3px;border:1px solid var(--lotus-border,#e4e7eb);border-radius:9px;padding:10px 12px;font-size:12px}
+.lotus-import__zones article{display:grid;gap:3px;border:1px solid var(--lotus-border,var(--lotus-neutral-200));border-radius:9px;padding:10px 12px;font-size:12px}
 .lotus-import__zones article strong{font-size:15px}
-.lotus-import__zones article span,.lotus-import__zones article small{font-size:11px;color:var(--lotus-muted,#697482)}
+.lotus-import__zones article span,.lotus-import__zones article small{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
 .lotus-import__filters{display:flex;align-items:center;gap:15px;flex-wrap:wrap;font-size:12px}
 .lotus-import__filters label{display:flex;align-items:center;gap:8px}
-.lotus-import__filters input[type=search]{height:34px;min-width:150px;padding:5px 9px;border:1px solid var(--lotus-border,#dce2e8);border-radius:7px}
-.lotus-import__check input{accent-color:#ba4920}
-.lotus-import__scroll{max-height:290px;overflow:auto;border:1px solid var(--lotus-border,#e2e6eb);border-radius:9px}
+.lotus-import__filters input[type=search]{height:34px;min-width:150px;padding:5px 9px;border:1px solid var(--lotus-border,var(--lotus-neutral-200));border-radius:7px}
+.lotus-import__check input{accent-color:var(--lotus-primary-600)}
+.lotus-import__scroll{max-height:290px;overflow:auto;border:1px solid var(--lotus-border,var(--lotus-neutral-200));border-radius:9px}
 .lotus-import table{border-collapse:collapse;width:100%;font-size:12px}
-.lotus-import th{text-align:left;background:var(--lotus-table-header,#f6f8fa);position:sticky;top:0;padding:9px 12px}
-.lotus-import td{padding:9px 12px;border-top:1px solid var(--lotus-border,#ebedf0)}
-.lotus-import__footer{margin:0;font-size:11px;color:var(--lotus-muted,#657488)}
-.lotus-import__error{color:#9c361e;font-size:12px}
-.dark .lotus-import__flower{background:#25392f;color:#d8efe2;border-color:#456651}
+.lotus-import th{text-align:left;background:var(--lotus-table-header,var(--lotus-neutral-50));position:sticky;top:0;padding:9px 12px}
+.lotus-import td{padding:9px 12px;border-top:1px solid var(--lotus-border,var(--lotus-neutral-100))}
+.lotus-import__footer{margin:0;font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
+.lotus-import__error{color:var(--lotus-primary-700);font-size:12px}
+.dark .lotus-import__flower{background:var(--lotus-neutral-800);color:var(--lotus-neutral-200);border-color:var(--lotus-success-700)}
 @media(max-width:850px){.lotus-import__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.lotus-import__zones{grid-template-columns:repeat(3,minmax(0,1fr))}.lotus-import__flower{flex-direction:column}}
 @media(max-width:480px){.lotus-import__zones{grid-template-columns:repeat(2,minmax(0,1fr))}.lotus-import__scroll{overflow-x:auto}.lotus-import table{min-width:520px}}
 </style>

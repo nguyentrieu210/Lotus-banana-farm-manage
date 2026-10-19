@@ -1,15 +1,19 @@
 <script setup>
 import {computed,onMounted,onBeforeUnmount,reactive,ref} from 'vue'
-import {Button as VanButton,Icon as VanIcon,Loading as VanLoading} from 'vant'
+import {Icon} from 'vant'
 import LotusMobileShell from './components/LotusMobileShell.vue'
 import LotusMobileInput from './components/LotusMobileInput.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
+import LotusMobileButton from './components/LotusMobileButton.vue'
+import LotusMobileDialog from './components/LotusMobileDialog.vue'
+import {useMobileConfirm} from './use-mobile-confirm'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {call,setCSRF} from './api'
 import {useMobileViewport} from './use-mobile-viewport'
 const api=(name,args={},post=false)=>call('lotus_farm.hr_workspace.'+name,args,post)
 const {keyboard}=useMobileViewport()
+const {dialog:confirmDialog,message:confirmMessage,ask:askConfirm,finish:finishConfirm}=useMobileConfirm()
 const session=ref(null),company=ref(''),busy=ref(false),saving=ref(false)
 const initialTab=new URLSearchParams(window.location.search).get('tab')
 const error=ref(''),notice=ref(''),screen=ref(['home','employees','onboarding','profile','candidates'].includes(initialTab)?initialTab:'home'),search=ref(''),scanOpen=ref(false)
@@ -38,6 +42,7 @@ const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecewo
 const contractTypes=computed(()=>(catalog.value.employment_types||[]).map(t=>({value:t.name,label:contractTypeNames[t.name]||t.name})))
 const categories=[{value:'Permanent',label:'Dài hạn'},{value:'Fixed-term',label:'Hợp đồng xác định hạn'},{value:'Seasonal',label:'Thời vụ'},{value:'Probation',label:'Thử việc'}]
 const payments=[{value:'Monthly',label:'Lương tháng'},{value:'Daywork',label:'Công nhật'},{value:'Piecework',label:'Khoán sản lượng'},{value:'Mixed',label:'Hỗn hợp'}]
+const candidateStatuses={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offered:'Đã mời nhận việc',Hold:'Tạm giữ',Rejected:'Không đạt',Hired:'Đã tiếp nhận'}
 const when=x=>String(x||'').slice(0,10)
 function msg(e){return String(e?.message||'Không thể kết nối Lotus.')}
 function nav(dest){if(saving.value||screen.value===dest)return;scanOpen.value=false;screen.value=dest;search.value='';error.value='';notice.value='';window.scrollTo({top:0,behavior:'instant'})}
@@ -65,8 +70,8 @@ function updateFarm(value){employee.lotus_farm=value;employee.lotus_work_team=''
 async function useQr(info){
  if(saving.value||!manager.value)return
  const hasDiff=['employee_name','gender','date_of_birth','current_address','lotus_id_issue_on'].some(k=>employee[k]&&String(employee[k]).trim()!==String(info[k]||'').trim())
- if(hireFrom.value && employee.employee_name.trim()!==info.employee_name){window.alert('Tên trên CCCD khác tên ứng viên. Kiểm tra hồ sơ ứng viên trước.');return}
- if(hasDiff&&!window.confirm('Dữ liệu QR khác một số mục đang điền. Thay bằng thông tin trên CCCD?'))return
+ if(hireFrom.value && employee.employee_name.trim()!==info.employee_name){error.value='Tên trên CCCD khác tên ứng viên. Kiểm tra hồ sơ ứng viên trước.';return}
+ if(hasDiff&&!await askConfirm('Dữ liệu QR khác một số mục đang điền. Thay bằng thông tin trên CCCD?'))return
  saving.value=true;error.value=''
  try{
   const found=await api('check_cccd',{company:company.value,cccd:info.cccd,employee:selectedEmployee.value},true)
@@ -107,7 +112,7 @@ async function saveEmployee(){
 }
 async function approve(){
  if(!selectedEmployee.value||!manager.value||saving.value)return
- if(!window.confirm('Đã kiểm tra giấy tờ gốc và các điều kiện tiếp nhận?'))return
+ if(!await askConfirm('Đã kiểm tra giấy tờ gốc và các điều kiện tiếp nhận?'))return
  saving.value=true;error.value=''
  try{
   await api('set_onboarding_ready',{company:company.value,employee:selectedEmployee.value,modified:employee.modified},true)
@@ -156,7 +161,7 @@ onMounted(()=>{void init()})
   <main class="hr-mobile-main">
    <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
    <LotusMobileFeedback v-if="notice" kind="success">{{notice}}</LotusMobileFeedback>
-   <div v-if="busy" class="hr-mobile-loading"><VanLoading size="22px"/> Đang tải dữ liệu…</div>
+   <LotusMobileFeedback v-if="busy" kind="loading">Đang tải dữ liệu…</LotusMobileFeedback>
    <template v-if="screen==='home'">
     <div class="hr-mobile-stats">
      <button type="button" @click="nav('employees')"><strong>{{people.length}}</strong><span>Nhân viên</span></button>
@@ -164,39 +169,39 @@ onMounted(()=>{void init()})
      <button type="button" @click="nav('candidates')"><strong>{{candidates.length}}</strong><span>Ứng viên</span></button>
     </div>
     <div v-if="manager" class="hr-mobile-actions">
-     <VanButton type="primary" block icon="scan" @click="blankEmployee();scanOpen=true">Quét CCCD thêm nhân viên</VanButton>
-     <VanButton plain block icon="plus" @click="blankEmployee">Nhập hồ sơ nhân viên</VanButton>
-     <VanButton plain block icon="friends-o" @click="blankCandidate">Thêm ứng viên</VanButton>
+     <LotusMobileButton variant="primary" block icon="scan" @click="blankEmployee();scanOpen=true">Quét CCCD thêm nhân viên</LotusMobileButton>
+     <LotusMobileButton plain block icon="plus" @click="blankEmployee">Nhập hồ sơ nhân viên</LotusMobileButton>
+     <LotusMobileButton plain block icon="friends-o" @click="blankCandidate">Thêm ứng viên</LotusMobileButton>
     </div>
     <section class="hr-mobile-card">
      <h2>Nhân sự cần xử lý</h2>
-     <p v-if="!missing.length">Không có nhân viên chờ tiếp nhận.</p>
+     <p v-if="!missing.length" class="mobile-empty">Không có nhân viên chờ tiếp nhận.</p>
      <button v-for="person in missing.slice(0,8)" :key="person.name" type="button" class="hr-mobile-row" @click="openEmployee(person)">
-      <span><strong>{{person.employee_name}}</strong><small>{{person.designation||'Chưa có chức danh'}} · {{person.lotus_farm||'Chưa chọn vườn'}}</small></span><VanIcon name="arrow"/>
+      <span><strong>{{person.employee_name}}</strong><small>{{person.designation||'Chưa có chức danh'}} · {{person.lotus_farm||'Chưa chọn vườn'}}</small></span><Icon name="arrow"/>
      </button>
     </section>
    </template>
    <template v-else-if="screen==='employees'||screen==='onboarding'">
     <div class="hr-mobile-top">
      <LotusMobileInput v-model="search" label="Tìm nhân viên" placeholder="Họ tên, mã, chức danh…"/>
-     <VanButton v-if="manager&&screen==='employees'" type="primary" block icon="plus" @click="blankEmployee">Thêm nhân viên</VanButton>
+     <LotusMobileButton v-if="manager&&screen==='employees'" variant="primary" block icon="plus" @click="blankEmployee">Thêm nhân viên</LotusMobileButton>
     </div>
     <section class="hr-mobile-card">
-     <p v-if="!filtered.length">Chưa có nhân viên phù hợp.</p>
+     <p v-if="!filtered.length" class="mobile-empty">Chưa có nhân viên phù hợp.</p>
      <button v-for="person in filtered" :key="person.name" type="button" class="hr-mobile-row" :disabled="!manager" @click="openEmployee(person)">
       <span><strong>{{person.employee_name}}</strong><small>{{person.name}} · {{person.designation||'Chưa có chức danh'}}</small>
        <small>{{person.lotus_farm||'Chưa chọn vườn'}} · {{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}}</small></span>
-      <VanIcon v-if="manager" name="arrow"/>
+      <Icon v-if="manager" name="arrow"/>
      </button>
     </section>
    </template>
    <template v-else-if="screen==='employee'">
     <div class="hr-mobile-title">
      <h2>{{selectedEmployee?'Sửa nhân viên':'Tạo hồ sơ nhân viên'}}</h2>
-     <VanButton plain size="small" @click="nav('employees')">Đóng</VanButton>
+     <LotusMobileButton plain size="small" @click="nav('employees')">Đóng</LotusMobileButton>
     </div>
     <section class="hr-mobile-card">
-     <VanButton type="primary" block icon="scan" :disabled="saving" @click="scanOpen=true">Quét mã QR căn cước</VanButton>
+     <LotusMobileButton variant="primary" block icon="scan" :disabled="saving" @click="scanOpen=true">Quét mã QR căn cước</LotusMobileButton>
      <p class="hr-mobile-caption">Dữ liệu QR chỉ điền vào form. Kiểm tra thẻ gốc trước khi duyệt.</p>
      <p v-if="employee.cccd_recorded" class="hr-mobile-caption">Đã có CCCD kết thúc bằng {{employee.lotus_cccd_last4}}.</p>
     </section>
@@ -237,20 +242,19 @@ onMounted(()=>{void init()})
      <section v-if="selectedEmployee" class="hr-mobile-card">
       <strong>Tiếp nhận: {{employee.lotus_onboarding_state==='Ready'?'Đã duyệt':'Chờ duyệt'}}</strong>
       <p v-if="employee.onboarding_gaps?.length">Thiếu: {{employee.onboarding_gaps.join(', ')}}</p>
-      <VanButton v-if="employee.lotus_onboarding_state!=='Ready'&&!employee.onboarding_gaps?.length"
-       type="default" block native-type="button" :disabled="saving" @click="approve">Duyệt tiếp nhận</VanButton>
+      <LotusMobileButton v-if="employee.lotus_onboarding_state!=='Ready'&&!employee.onboarding_gaps?.length" block type="button" :disabled="saving" @click="approve">Duyệt tiếp nhận</LotusMobileButton>
      </section>
-     <VanButton type="primary" block native-type="submit" :loading="saving" :disabled="!manager||saving">Lưu hồ sơ</VanButton>
+     <LotusMobileButton variant="primary" block type="submit" :loading="saving" :disabled="!manager||saving">Lưu hồ sơ</LotusMobileButton>
     </form>
    </template>
    <template v-else-if="screen==='candidates'">
     <LotusMobileInput v-model="search" label="Tìm ứng viên" placeholder="Họ tên hoặc SĐT"/>
-    <VanButton v-if="manager" type="primary" block icon="plus" @click="blankCandidate">Thêm ứng viên</VanButton>
+    <LotusMobileButton v-if="manager" variant="primary" block icon="plus" @click="blankCandidate">Thêm ứng viên</LotusMobileButton>
     <section class="hr-mobile-card">
-     <p v-if="!shortlist.length">Không có ứng viên.</p>
+     <p v-if="!shortlist.length" class="mobile-empty">Không có ứng viên.</p>
      <button v-for="item in shortlist" :key="item.name" type="button" class="hr-mobile-row" @click="openCandidate(item)">
-      <span><strong>{{item.applicant_name}}</strong><small>{{item.phone}} · {{item.designation}}</small><small>{{item.status}}</small></span>
-      <VanIcon name="arrow"/>
+      <span><strong>{{item.applicant_name}}</strong><small>{{item.phone}} · {{item.designation}}</small><small>{{candidateStatuses[item.status]||item.status}}</small></span>
+      <Icon name="arrow"/>
      </button>
     </section>
    </template>
@@ -269,10 +273,9 @@ onMounted(()=>{void init()})
        :options="[{value:'New',label:'Mới'},{value:'Screening',label:'Sàng lọc'},{value:'Interview',label:'Phỏng vấn'},{value:'Offered',label:'Đã mời nhận việc'},{value:'Hold',label:'Tạm giữ'},{value:'Rejected',label:'Không đạt'}]"/>
       <LotusMobileInput v-model="candidate.notes" label="Ghi chú" type="textarea"/>
      </section>
-     <VanButton type="primary" block native-type="submit" :loading="saving" :disabled="saving||candidate.status==='Hired'">Lưu ứng viên</VanButton>
-     <VanButton v-if="manager&&selectedCandidate&&candidate.status==='Offered'&&!candidate.employee"
-      block plain native-type="button" @click="hireCandidate">Tiếp nhận làm nhân viên</VanButton>
-     <VanButton block plain native-type="button" @click="nav('candidates')">Đóng</VanButton>
+     <LotusMobileButton variant="primary" block type="submit" :loading="saving" :disabled="saving||candidate.status==='Hired'">Lưu ứng viên</LotusMobileButton>
+     <LotusMobileButton v-if="manager&&selectedCandidate&&candidate.status==='Offered'&&!candidate.employee" block plain type="button" @click="hireCandidate">Tiếp nhận làm nhân viên</LotusMobileButton>
+     <LotusMobileButton block plain type="button" @click="nav('candidates')">Đóng</LotusMobileButton>
     </form>
    </template>
    <template v-else-if="screen==='profile'">
@@ -281,10 +284,10 @@ onMounted(()=>{void init()})
      <p>Quyền: {{manager?'Quản lý nhân sự':'Nhân viên nhân sự (chỉ xem hồ sơ)'}}</p>
      <LotusMobileSelect v-if="session?.companies?.length>1" v-model="company" label="Công ty"
       :options="session.companies.map(c=>({value:c.name,label:c.name}))" @update:model-value="reload"/>
-     <VanButton block plain icon="replay" @click="reload">Tải lại</VanButton>
-     <VanButton block plain icon="apps-o" @click="openSetup">Cài đặt / hướng dẫn ban đầu</VanButton>
+     <LotusMobileButton block plain icon="replay" @click="reload">Tải lại</LotusMobileButton>
+     <LotusMobileButton block plain icon="apps-o" @click="openSetup">Cài đặt / hướng dẫn ban đầu</LotusMobileButton>
      <p class="hr-mobile-caption">Để cài PWA, mở bằng Chrome hoặc Safari thay vì trình duyệt bên trong ChatGPT/Zalo.</p>
-     <a href="/lotus/nhan-su">Nhân sự trên máy tính ↗</a>
+     <a href="/lotus/nhan-su">Mở Nhân sự trên máy tính</a>
      <a href="/logout">Đăng xuất</a>
     </section>
     <section class="hr-mobile-card"><h2>Nghiệp vụ nâng cao</h2>
@@ -293,5 +296,8 @@ onMounted(()=>{void init()})
    </template>
   </main>
   <CccdQrScanner v-if="scanOpen" @close="scanOpen=false" @confirmed="useQr"/>
+  <LotusMobileDialog ref="confirmDialog" class="mobile-leave-dialog" @cancel.prevent="finishConfirm(false)">
+   <div class="mobile-leave-content"><h2>Xác nhận</h2><p>{{confirmMessage}}</p><div><LotusMobileButton type="button" autofocus @click="finishConfirm(false)">Hủy</LotusMobileButton><LotusMobileButton type="button" variant="primary" @click="finishConfirm(true)">Đồng ý</LotusMobileButton></div></div>
+  </LotusMobileDialog>
  </LotusMobileShell>
 </template>

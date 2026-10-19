@@ -3,36 +3,9 @@
    Existing business logic, permissions, and values remain untouched. */
 @media (min-width:901px) {
   .lotus-ui {
-    --lotus-page:#f7f7f8; --lotus-surface:#ffffff; --lotus-sidebar:#fff;
-    --lotus-text:#2c3036; --lotus-muted:#686e79; --lotus-border:#e8e5e1;
-    --lotus-soft:#faf6f2; --lotus-accent:#b8401b; --lotus-accent-soft:#fff0e6;
-    --lotus-table-header:#fcfaf7; --lotus-table-heading:#60636b;
-    --lotus-control-height:36px; --lotus-radius:10px;
-    --background:0 0% 100%; --foreground:216 10% 19%;
-    --card:0 0% 100%; --card-foreground:216 10% 19%;
-    --popover:0 0% 100%; --popover-foreground:216 10% 19%;
-    --primary:14 74% 41%; --primary-foreground:0 0% 100%;
-    --secondary:30 30% 96%; --secondary-foreground:216 10% 19%;
-    --muted:30 30% 96%; --muted-foreground:224 5% 43%;
-    --accent:26 100% 95%; --accent-foreground:14 74% 35%;
-    --border:34 13% 90%; --input:34 13% 87%; --ring:14 74% 41%;
     background:var(--lotus-page);color:var(--lotus-text);
-    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-family:var(--lotus-font);
     font-size:13px; line-height:1.5;
-  }
-  .dark .lotus-ui {
-    --lotus-page:#171b22;--lotus-surface:#20262f;--lotus-sidebar:#1c222b;
-    --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-border:#3b414b;
-    --lotus-soft:#2d2c2d;--lotus-accent:#ffb690;--lotus-accent-soft:#423028;
-    --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
-    --background:216 19% 15%;--foreground:220 19% 94%;
-    --card:216 19% 15%;--card-foreground:220 19% 94%;
-    --popover:216 19% 15%;--popover-foreground:220 19% 94%;
-    --primary:21 100% 78%;--primary-foreground:216 19% 15%;
-    --secondary:216 13% 21%;--secondary-foreground:220 19% 94%;
-    --muted:216 13% 21%;--muted-foreground:218 11% 72%;
-    --accent:24 24% 21%;--accent-foreground:21 100% 78%;
-    --border:218 12% 26%;--input:218 12% 30%;--ring:21 100% 78%;
   }
   .lotus-ui button,.lotus-ui input,.lotus-ui select,.lotus-ui textarea {font-family:inherit}
   .lotus-ui button,.lotus-ui a,.lotus-ui input,.lotus-ui select,.lotus-ui textarea {transition:background-color .14s,border-color .14s,color .14s,box-shadow .14s}

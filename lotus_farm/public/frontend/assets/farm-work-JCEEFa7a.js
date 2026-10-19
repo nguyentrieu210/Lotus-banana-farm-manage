@@ -1,1 +1,0 @@
-import{s as e}from"./api-96FY2n7-.js";import"./farm-work-BYI9lydC.js";import"./workspace-experience-cInleM7p.js";import"./stock-attio-DWwMxjc1.js";import"./register-worker-CKMNsoSQ.js";import{n as t}from"./FarmWorkApp-BNrM01io.js";e(t).mount(`#app`);
