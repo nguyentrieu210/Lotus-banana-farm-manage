@@ -1,8 +1,8 @@
 // Authenticated ERPNext Purchase Order PDF; a share-sheet result is not proof a supplier received it.
 export function purchasePdfUrl(name) {
  if(!name || typeof name!=='string') throw Error('Chưa chọn đơn mua.')
- const query=new URLSearchParams({doctype:'Purchase Order',name,format:'Standard',no_letterhead:'0'})
- return '/api/method/frappe.utils.print_format.download_pdf?'+query.toString()
+ const query=new URLSearchParams({name})
+ return '/api/method/lotus_farm.digital_signature.download_purchase_pdf?'+query.toString()
 }
 export async function sharePurchasePdf(name,{fetchPdf=fetch,shareApi=navigator,download}={}) {
  const response=await fetchPdf(purchasePdfUrl(name),{credentials:'same-origin',cache:'no-store'})

@@ -2,30 +2,48 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const read=path=>readFileSync(new URL(path,import.meta.url),'utf8')
+const read=p=>readFileSync(new URL(p,import.meta.url),'utf8')
 const widget=read('../src/components/LotusMobileSignatureSettings.vue')
 const backend=read('../../lotus_farm/digital_signature.py')
 const installation=read('../../lotus_farm/install.py')
-
-test('all four mobile Tôi tabs share the account signature settings',()=>{
- for(const filename of ['WarehouseMobile.vue','BuyingMobile.vue','WorkMobile.vue','HrMobile.vue']){
-  const source=read('../src/'+filename)
-  assert.match(source,/import LotusMobileSignatureSettings from/)
-  assert.match(source,/<LotusMobileSignatureSettings :user="session\?\.user\|\|''"\/>/)
+test('four Lotus PWA user tabs share one electronic signature image setup',()=>{
+ for(const file of ['WarehouseMobile.vue','BuyingMobile.vue','WorkMobile.vue','HrMobile.vue']){
+  const app=read('../src/'+file)
+  assert.match(app,/import LotusMobileSignatureSettings from/)
+  assert.match(app,/<LotusMobileSignatureSettings :user="session\?\.user\|\|''"\/>/)
  }
 })
-test('signature profile always distinguishes provider preference from certificate activation',()=>{
- assert.match(backend,/def my_signature_profile\(\)/)
- assert.match(backend,/"connected": False/)
- assert.match(backend,/"certificate_verified": False/)
- assert.match(backend,/"can_sign_pdf": False/)
+test('user can upload a private, verified, account-bound signature image',()=>{
+ assert.match(backend,/def save_my_signature_image\(image_data\)/)
+ assert.match(backend,/def remove_my_signature_image\(\)/)
+ assert.match(backend,/def signature_image_bytes\(user\)/)
+ assert.match(backend,/MAX_IMAGE_PIXELS/)
+ assert.match(backend,/image\.format not in \("PNG", "JPEG"\)/)
+ assert.match(backend,/save_file\("lotus-chu-ky\.png"/)
+ assert.match(backend,/is_private=1/)
+ assert.match(backend,/"attached_to_name": user/)
+ assert.match(backend,/frappe\.db\.set_value\("User", user/)
  assert.match(backend,/user == "Guest"/)
- assert.match(backend,/provider not in PROVIDERS/)
- assert.match(backend,/frappe\.db\.set_value\("User", user, FIELD, provider\)/)
  assert.match(installation,/install_signature_fields\(\)/)
- assert.match(widget,/lotus_farm\.digital_signature\./)
- assert.match(widget,/set_signature_provider/)
- assert.match(widget,/Chưa kết nối/)
- assert.match(widget,/Bấm Duyệt hiện chưa tự ký số vào PDF/)
- assert.doesNotMatch(widget,/private_key|passphrase|pin_code/)
+ assert.match(widget,/save_my_signature_image/)
+ assert.match(widget,/remove_my_signature_image/)
+ assert.match(widget,/Chữ ký điện tử/)
+ assert.match(widget,/image\/png,image\/jpeg/)
+ assert.match(widget,/signature_preview/)
+ assert.doesNotMatch(widget,/Nhà cung cấp chữ ký số|VNPT SmartCA|private_key/)
+})
+test('approved Purchase Order snapshots the image into a private PDF exactly once',()=>{
+ const purchasing=read('../../lotus_farm/purchasing.py')
+ const document=read('../src/purchase-document.js')
+ assert.match(purchasing,/archive_approved_purchase_pdf\(doc\)/)
+ assert.match(purchasing,/doc\.submit\(\)\r?\n    from lotus_farm\.digital_signature import archive_approved_purchase_pdf/)
+ assert.match(backend,/def archive_approved_purchase_pdf\(doc\)/)
+ assert.match(backend,/signature_image_bytes\(user\)/)
+ assert.match(backend,/frappe\.get_print\("Purchase Order"/)
+ assert.match(backend,/get_pdf\(html/)
+ assert.match(backend,/is_private=1/)
+ assert.match(backend,/lotus_signed_purchase_pdf/)
+ assert.match(backend,/def download_purchase_pdf\(name\)/)
+ assert.match(backend,/doc\.check_permission\("print"\)/)
+ assert.match(document,/lotus_farm\.digital_signature\.download_purchase_pdf/)
 })

@@ -3,30 +3,57 @@ import {ref,watch} from 'vue'
 import {Icon} from 'vant'
 import {call} from '../api'
 import LotusMobileButton from './LotusMobileButton.vue'
-import LotusMobileSelect from './LotusMobileSelect.vue'
+import LotusMobileFile from './LotusMobileFile.vue'
+import LotusMobileDialog from './LotusMobileDialog.vue'
+import {useMobileConfirm} from '../use-mobile-confirm'
 import './lotus-mobile-signature.css'
 
 const props=defineProps({user:{type:String,default:''}})
 const expanded=ref(false),loading=ref(false),saving=ref(false),loaded=ref(false)
-const profile=ref(null),provider=ref(''),error=ref(''),notice=ref('')
+const profile=ref(null),error=ref(''),notice=ref('')
 const endpoint='lotus_farm.digital_signature.'
-watch(()=>props.user,()=>{expanded.value=false;loaded.value=false;profile.value=null;provider.value='';error.value='';notice.value=''})
+const {dialog:deleteDialog,message:deleteMessage,ask:askDelete,finish:finishDelete}=useMobileConfirm()
+watch(()=>props.user,()=>{expanded.value=false;loaded.value=false;profile.value=null;error.value='';notice.value=''})
 async function load(){
  if(!props.user)return
  loading.value=true;error.value=''
- try{profile.value=await call(endpoint+'my_signature_profile');provider.value=profile.value.provider||'';loaded.value=true}
- catch(e){error.value=e.message||'Không tải được thông tin chữ ký số.'}
+ try{profile.value=await call(endpoint+'my_signature_profile');loaded.value=true}
+ catch(e){error.value=e.message||'Không tải được chữ ký.'}
  finally{loading.value=false}
 }
 async function toggle(){expanded.value=!expanded.value;if(expanded.value&&!loaded.value)await load()}
-async function save(){
- if(saving.value||loading.value||!profile.value?.configured)return
+function asBase64(file){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader()
+  reader.onload=()=>resolve(String(reader.result||''))
+  reader.onerror=()=>reject(new Error('Không đọc được ảnh chữ ký.'))
+  reader.readAsDataURL(file)
+ })
+}
+async function chooseFile(event){
+ const input=event.target
+ const file=input.files?.[0]
+ input.value=''
+ if(!file||saving.value)return
+ error.value='';notice.value=''
+ if(!['image/png','image/jpeg'].includes(file.type)){error.value='Chỉ nhận ảnh PNG hoặc JPG.';return}
+ if(file.size>1500000){error.value='Ảnh phải nhỏ hơn 1,5 MB.';return}
+ saving.value=true
+ try{
+  const image_data=await asBase64(file)
+  profile.value=await call(endpoint+'save_my_signature_image',{image_data},true)
+  notice.value='Đã lưu ảnh chữ ký cho tài khoản của bạn.'
+ }catch(e){error.value=e.message||'Không lưu được ảnh chữ ký.'}
+ finally{saving.value=false}
+}
+async function remove(){
+ if(saving.value||!profile.value?.has_signature)return
+ if(!(await askDelete('Xóa ảnh chữ ký đã lưu của tài khoản này?')))return
  saving.value=true;error.value='';notice.value=''
  try{
-  profile.value=await call(endpoint+'set_signature_provider',{provider:provider.value},true)
-  provider.value=profile.value.provider||''
-  notice.value='Đã lưu nhà cung cấp dự kiến. Chữ ký số chưa được kích hoạt.'
- }catch(e){error.value=e.message||'Không lưu được thông tin chữ ký số.'}
+  profile.value=await call(endpoint+'remove_my_signature_image',{},true)
+  notice.value='Đã xóa ảnh chữ ký.'
+ }catch(e){error.value=e.message||'Không xóa được ảnh.'}
  finally{saving.value=false}
 }
 </script>
@@ -34,24 +61,31 @@ async function save(){
 <template>
  <section class="lotus-signature-settings">
   <LotusMobileButton class="lotus-signature-toggle" type="button" :aria-expanded="expanded" @click="toggle">
-   <span class="lotus-signature-heading"><Icon name="shield-o" aria-hidden="true"/><span>Chữ ký số</span></span>
-   <span class="lotus-signature-trailing">Thiết lập <Icon :name="expanded?'arrow-up':'arrow-down'" aria-hidden="true"/></span>
+   <span class="lotus-signature-heading"><Icon name="edit" aria-hidden="true"/><span>Chữ ký điện tử</span></span>
+   <span class="lotus-signature-trailing">{{profile?.has_signature?'Đã thiết lập':'Thiết lập'}} <Icon :name="expanded?'arrow-up':'arrow-down'" aria-hidden="true"/></span>
   </LotusMobileButton>
   <div v-if="expanded" class="lotus-signature-body">
-   <p v-if="loading" role="status">Đang tải thông tin chữ ký số…</p>
+   <p v-if="loading" role="status">Đang tải ảnh chữ ký…</p>
    <p v-if="error" class="lotus-signature-error" role="alert">{{error}}</p>
    <template v-if="profile">
     <div class="lotus-signature-row"><span>Người ký</span><strong>{{profile.full_name}}</strong></div>
-    <div class="lotus-signature-row"><span>Tài khoản</span><strong>{{profile.user}}</strong></div>
-    <div class="lotus-signature-row"><span>Trạng thái</span><strong class="lotus-signature-pending">Chưa kết nối</strong></div>
-    <LotusMobileSelect v-model="provider" label="Nhà cung cấp chữ ký số"
-     :options="profile.providers" :disabled="saving||!profile.configured"/>
-    <p class="lotus-signature-hint">Thông tin này lưu theo tài khoản và dùng chung cho Kho, Mua hàng, Nhân sự và Công việc ngoài vườn.</p>
-    <LotusMobileButton type="button" variant="primary" block :loading="saving"
-     :disabled="saving||!profile.configured||provider===profile.provider" @click="save">Lưu lựa chọn</LotusMobileButton>
+    <div class="lotus-signature-row"><span>Trạng thái</span><strong :class="profile.has_signature?'lotus-signature-ready':'lotus-signature-pending'">{{profile.has_signature?'Đã lưu ảnh chữ ký':'Chưa có chữ ký'}}</strong></div>
+    <div v-if="profile.has_signature" class="lotus-signature-preview">
+     <img :src="profile.signature_preview" alt="Ảnh chữ ký đã lưu của bạn"/>
+     <small v-if="profile.updated_at">Cập nhật: {{profile.updated_at}}</small>
+    </div>
+    <div class="lotus-signature-uploader">
+     <label for="lotus-upload-signature" class="lotus-signature-upload-label">{{profile.has_signature?'Đổi ảnh chữ ký':'Tải ảnh chữ ký lên'}}</label>
+     <LotusMobileFile id="lotus-upload-signature" accept="image/png,image/jpeg" :disabled="saving||!profile.configured" aria-label="Tải ảnh chữ ký PNG hoặc JPG" @change="chooseFile"/>
+     <small>Nên dùng ảnh PNG nền trong suốt hoặc ảnh JPG chụp trên giấy trắng, chỉ chứa chữ ký.</small>
+    </div>
+    <LotusMobileButton v-if="profile.has_signature" type="button" :disabled="saving" @click="remove">Xóa chữ ký</LotusMobileButton>
     <p v-if="notice" class="lotus-signature-notice" role="status">{{notice}}</p>
-    <p class="lotus-signature-warning">Chưa có chứng thư số được xác minh. Bấm Duyệt hiện chưa tự ký số vào PDF. Không tải khóa bí mật, mật khẩu hay mã PIN lên Lotus.</p>
+    <p class="lotus-signature-warning">Ảnh chữ ký chỉ được gắn vào chứng từ sau khi tài khoản có quyền bấm Duyệt. Đây là chữ ký bằng hình ảnh, không phải chữ ký số có chứng thư.</p>
    </template>
   </div>
+  <LotusMobileDialog ref="deleteDialog" class="mobile-leave-dialog" @cancel.prevent="finishDelete(false)">
+   <div class="mobile-leave-content"><h2>Xóa chữ ký?</h2><p>{{deleteMessage}}</p><div><LotusMobileButton type="button" @click="finishDelete(false)">Hủy</LotusMobileButton><LotusMobileButton type="button" variant="danger" @click="finishDelete(true)">Xóa</LotusMobileButton></div></div>
+  </LotusMobileDialog>
  </section>
 </template>

@@ -172,6 +172,8 @@ def approve_order(name, modified):
     doc.lotus_approved_by = frappe.session.user
     doc.lotus_approved_at = now_datetime()
     doc.submit()
+    from lotus_farm.digital_signature import archive_approved_purchase_pdf
+    archive_approved_purchase_pdf(doc)
     return dict(name=doc.name, status=_state(doc), docstatus=doc.docstatus)
 
 
