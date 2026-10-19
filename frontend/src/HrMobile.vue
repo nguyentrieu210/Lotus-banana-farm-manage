@@ -6,6 +6,7 @@ import LotusMobileInput from './components/LotusMobileInput.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
+import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import {logoutPwa} from './mobile-push-session'
@@ -291,7 +292,8 @@ onMounted(()=>{void init()})
      <p>Quyền: {{manager?'Quản lý nhân sự':'Nhân viên nhân sự (chỉ xem hồ sơ)'}}</p>
      <LotusMobileSelect v-if="session?.companies?.length>1" v-model="company" label="Công ty"
       :options="session.companies.map(c=>({value:c.name,label:c.name}))" @update:model-value="reload"/>
-     <LotusMobileButton block plain icon="replay" @click="reload">Tải lại</LotusMobileButton>
+     <LotusMobileSignatureSettings :user="session?.user||''"/>
+      <LotusMobileButton block plain icon="replay" @click="reload">Tải lại</LotusMobileButton>
      <LotusMobileButton block plain icon="apps-o" @click="openSetup">Cài đặt / hướng dẫn ban đầu</LotusMobileButton>
      <p class="hr-mobile-caption">Để cài PWA, mở bằng Chrome hoặc Safari thay vì trình duyệt bên trong ChatGPT/Zalo.</p>
      <a href="/lotus/nhan-su">Mở Nhân sự trên máy tính</a>

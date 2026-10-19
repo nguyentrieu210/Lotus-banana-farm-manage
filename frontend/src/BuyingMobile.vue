@@ -11,6 +11,7 @@ import {useMobileConfirm} from './use-mobile-confirm'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
+import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
 import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
@@ -312,7 +313,8 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
   <template v-if="!view&&tab==='profile'">
    <div class="buy-card"><strong>{{session?.user||'—'}}</strong><small>{{company}}</small>
     <p>Quyền: {{session?.can_approve?'Duyệt đơn mua':'Không có quyền duyệt'}} · {{canCreate?'Lập đơn':'Chỉ xem'}}</p></div>
-   <LotusMobileButton class="buy-outline" type="button" @click="openSetup()">Cài ứng dụng và thông báo</LotusMobileButton>
+   <LotusMobileSignatureSettings :user="session?.user||''"/>
+    <LotusMobileButton class="buy-outline" type="button" @click="openSetup()">Cài ứng dụng và thông báo</LotusMobileButton>
    <LotusMobileButton class="buy-outline" type="button" @click="refresh()">Làm mới</LotusMobileButton>
    <LotusMobileButton class="buy-outline" type="button" @click="logout()">Đăng xuất</LotusMobileButton>
   </template>

@@ -12,6 +12,7 @@ import LotusMobileFile from './components/LotusMobileFile.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
+import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
 import {logoutPwa} from './mobile-push-session'
 import LotusMobileInput from './components/LotusMobileInput.vue'
@@ -705,7 +706,8 @@ onUnmounted(()=>{
     <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Đổi công ty</label><MobileLinkField aria-label="Đổi công ty" :model-value="company" :options="companyOptions" :searchable="false" @update:modelValue="v=>changeCompany(v)"/></div>
     <div class="mobile-field"><label>Đổi kho làm việc</label><MobileLinkField :model-value="warehouse" :options="storeOptions" :searchable="false" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/></div>
     
-    <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
+    <LotusMobileSignatureSettings :user="session?.user||''"/>
+     <LotusMobileButton type="button" @click="openSetup">Cài ứng dụng và thông báo</LotusMobileButton>
     <LotusMobileButton class="mobile-logout" type="button" :disabled="saving" @click="logout">Đăng xuất</LotusMobileButton>
    </template>
 
