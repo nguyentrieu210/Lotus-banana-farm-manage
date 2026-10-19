@@ -1,0 +1,7 @@
+{% from "lotus_farm/templates/emails/lotus_base.html" import card,button %}
+{% call card('Chào mừng đến với Lotus Agritech') %}
+<p>Xin chào {{ first_name|e }},</p>
+<p>Tài khoản {{ user|e }} đã sẵn sàng. Hãy đặt mật khẩu để bắt đầu công việc.</p>
+{{ button(link,'Thiết lập mật khẩu') }}
+<p>Không chia sẻ liên kết này cho người khác.</p>
+{% endcall %}

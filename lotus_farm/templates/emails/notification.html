@@ -1,0 +1,5 @@
+{% from "lotus_farm/templates/emails/lotus_base.html" import card,button %}
+{% call card(title|default('Thông báo',true)) %}
+<p>{{ message|default('Bạn có thông báo mới trên hệ thống Lotus Agritech.',true)|e }}</p>
+{{ button(frappe.utils.get_url('/lotus/reports'),'Mở Lotus') }}
+{% endcall %}

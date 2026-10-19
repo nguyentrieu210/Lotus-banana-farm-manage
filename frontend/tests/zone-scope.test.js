@@ -19,3 +19,10 @@ test('one overview menu replaces home today and reports, with a separate care ma
  assert.equal(new Map(pages).get('reports'),'Tổng quan')
  assert.equal(new Map(pages).get('map'),'Bản đồ chăm sóc')
 })
+test('single permitted company defaults on every route hydration, including routes without company',()=>{
+ const scope=useScope(),farms=[{name:'LOTUS-222',company:'Lotus Agritech'}]
+ scope.fromQuery({farm:'LOTUS-222'},'2026-10-19',farms)
+ assert.equal(scope.company,'Lotus Agritech')
+ scope.fromQuery({company:''},'2026-10-19',farms)
+ assert.equal(scope.company,'Lotus Agritech')
+})

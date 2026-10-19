@@ -31,6 +31,7 @@ const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,
 const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
 const overview=ref({employees:[],candidates:[]})
+const employeeFilters=reactive({farm:'',department:'',team:'',status:'',category:'',stage:''})
 const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null),cccdScanOpen=ref(false),offboardOpen=ref(false)
 const selectedEmployee=ref(null),selectedCandidate=ref(null),ops=ref(null),payroll=ref(null)
 const employeeForm=reactive({}),candidateForm=reactive({}),offboard=reactive({relieving_date:'',reason:''})
@@ -50,10 +51,11 @@ const tabs=computed(()=>routes.filter(r=>!r.manager||isManager.value))
 const listTab=computed(()=>['employees','onboarding','candidates'].includes(tab.value))
 const filteredEmployees=computed(()=>overview.value.employees.filter(e=>{
  if(tab.value==='onboarding'&&e.lotus_onboarding_state==='Ready')return false
+ if(Object.entries({farm:'lotus_farm',department:'department',team:'lotus_work_team',status:'status',category:'lotus_worker_category'}).some(([k,f])=>employeeFilters[k]&&e[f]!==employeeFilters[k]))return false
  const needle=search.value.toLocaleLowerCase('vi-VN')
  return [e.name,e.employee_name,e.designation,e.department,e.lotus_farm].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(needle))
 }))
-const filteredCandidates=computed(()=>overview.value.candidates.filter(c=>
+const filteredCandidates=computed(()=>overview.value.candidates.filter(c=>(!employeeFilters.farm||c.farm===employeeFilters.farm)&&(!employeeFilters.stage||c.status===employeeFilters.stage)&&
  [c.applicant_name,c.phone,c.designation,c.status].some(v=>String(v||'').toLocaleLowerCase('vi-VN').includes(search.value.toLocaleLowerCase('vi-VN')))
 ))
 const teamChoices=computed(()=>catalog.value.teams.filter(t=>t.farm===employeeForm.lotus_farm&&t.lotus_team_type!=='Contractor'))
@@ -141,7 +143,11 @@ useNoticeToast(notice)
   <p v-if="error&&!editEmployee&&!editCandidate&&!offboardOpen" class="stock-error" role="alert">{{error}}</p>
 
   <WorkspaceListToolbar v-if="tab!=='payroll'" v-model="search" :searchable="listTab" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="reload">
-   <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label></template>
+   <template #filters><label v-if="(session?.companies?.length||0)>1">Công ty <UiSelect v-model="company" :disabled="busy||saving" @change="Object.keys(employeeFilters).forEach(k=>employeeFilters[k]='');resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect></label>
+   <template v-if="listTab"><label>Vườn<UiSelect v-model="employeeFilters.farm" @change="employeeFilters.team='' "><option value="">Tất cả vườn</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect></label>
+   <template v-if="tab!=='candidates'"><label>Phòng ban<UiSelect v-model="employeeFilters.department"><option value="">Tất cả phòng ban</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{d.department_name||d.name}}</option></UiSelect></label><label>Tổ/đội<UiSelect v-model="employeeFilters.team"><option value="">Tất cả tổ/đội</option><option v-for="t in catalog.teams.filter(t=>!employeeFilters.farm||t.farm===employeeFilters.farm)" :key="t.name" :value="t.name">{{t.team_name||t.name}}</option></UiSelect></label><label>Loại lao động<UiSelect v-model="employeeFilters.category"><option value="">Tất cả</option><option v-for="(label,key) in cats" :key="key" :value="key">{{label}}</option></UiSelect></label><label>Trạng thái<UiSelect v-model="employeeFilters.status"><option value="">Tất cả</option><option v-for="s in ['Active','Inactive','Suspended','Left']" :key="s" :value="s">{{stateLabel(s)}}</option></UiSelect></label></template>
+   <label v-else>Trạng thái ứng viên<UiSelect v-model="employeeFilters.stage"><option value="">Tất cả</option><option v-for="(label,key) in stages" :key="key" :value="key">{{label}}</option></UiSelect></label></template>
+   </template>
    <template v-if="['employees','onboarding'].includes(tab)"><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/app/employee-transfer">Điều chuyển ↗</a><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee"><LotusIcon name="plus"/>Thêm nhân viên</UiButton></template>
    <template v-if="tab==='candidates'"><a class="workspace-secondary-link" href="/app/job-opening">Tin tuyển dụng ↗</a><UiButton :disabled="saving" @click="emptyCandidate"><LotusIcon name="plus"/>Thêm ứng viên</UiButton></template>
    <template v-if="tab==='organization'&&isManager"><UiButton variant="outline" :disabled="saving" @click="seed">Tạo chức danh Lotus còn thiếu</UiButton></template>

@@ -33,6 +33,19 @@ const tab=(root,label)=>[...root.querySelectorAll('[role=tab]')].find(b=>b.textC
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
 const sub=(root,label)=>[...root.querySelectorAll('.tk-subnav button')].find(b=>b.textContent.trim().startsWith(label))
 
+test('employee list filters by farm and category, without showing a single company picker',async()=>{
+ routes=routesFor(true)
+ routes['lotus_farm.hr_workspace.catalogue'].farms=[{name:'LOTUS-222',farm_name:'Vườn 222'},{name:'LOTUS-126'}]
+ routes['lotus_farm.hr_workspace.overview'].employees=[{...employee,employee_name:'An',lotus_farm:'LOTUS-222',lotus_worker_category:'Seasonal'},{...employee,name:'HR-EMP-2',employee_name:'Bình',lotus_farm:'LOTUS-126',lotus_worker_category:'Permanent'}]
+ const view=mount(HrApp,{embedded:true});await tick();await tick()
+ const farm=[...view.root.querySelectorAll('label')].find(l=>l.textContent.startsWith('Vườn')).querySelector('select')
+ farm.value='LOTUS-222';farm.dispatchEvent(new Event('change',{bubbles:true}));await tick()
+ const body=view.root.querySelector('tbody')
+ assert.match(body.textContent,/An/);assert.doesNotMatch(body.textContent,/Bình/)
+ assert.equal([...view.root.querySelectorAll('label')].some(l=>l.textContent.startsWith('Công ty')),false)
+ view.unmount()
+})
+
 test('payroll tab shows last month, blockers keep the close button disabled, sheet and crew payable listed',async()=>{
  calls.length=0;routes=routesFor(true)
  const view=mount(HrApp,{embedded:true});await tick()

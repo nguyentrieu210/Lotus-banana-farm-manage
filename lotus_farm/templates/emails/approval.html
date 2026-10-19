@@ -1,0 +1,5 @@
+{% from "lotus_farm/templates/emails/lotus_base.html" import card,button %}
+{% call card('Chứng từ cần xử lý') %}
+<p>Chứng từ {{ (doc.name if doc is defined else name|default(''))|e }} có cập nhật cần bạn kiểm tra.</p>
+{{ button(frappe.utils.get_url('/lotus/reports'),'Mở hệ thống') }}
+{% endcall %}

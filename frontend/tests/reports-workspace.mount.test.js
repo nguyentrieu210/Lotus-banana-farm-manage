@@ -66,3 +66,18 @@ test('without a usable canvas the chart falls back to its table',async()=>{
  assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-table tbody td')].map(c=>c.textContent),['10','1'])
  view.unmount()
 })
+test('commerce offers independent party/status filters and retains company figures under a land scope',async()=>{
+ const changes=[],tabs=[]
+ const view=mount(ReportsWorkspace,{charts:{...charts,
+  buying:{allowed:true,scope_label:'Toàn công ty',count:2,totals:[],statuses:[],options:{buying_status:['To Receive'],supplier:['NCC A']}},
+  sales:{allowed:true,scope_label:'Toàn công ty',count:1,totals:[],statuses:[],options:{sales_status:['To Deliver'],customer:['Khách A']}}},filters:{},onFilters:v=>changes.push(v),onTab:v=>tabs.push(v)})
+ await tick();tab(view.root,'Mua & bán').click();await tick()
+ assert.deepEqual(tabs,['commerce'])
+ assert.match(text(view.root),/Đơn mua · Toàn công ty/)
+ assert.doesNotMatch(text(view.root),/chưa phân bổ/)
+ const labels=[...view.root.querySelectorAll('.report-filters label')]
+ const supplier=labels.find(l=>l.textContent.startsWith('Nhà cung cấp')).querySelector('select')
+ supplier.value='NCC A';supplier.dispatchEvent(new window.Event('change',{bubbles:true}));await tick()
+ assert.deepEqual(changes,[{supplier:'NCC A'}])
+ view.unmount()
+})

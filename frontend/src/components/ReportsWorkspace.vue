@@ -1,13 +1,23 @@
 <script setup>
-import {computed,ref} from 'vue'
+import {computed,ref,watch} from 'vue'
+import UiSelect from './ui/select/Select.vue'
+import {Button as UiButton} from './ui/button'
+import {stateLabel} from '../labels'
 import LotusChart from './LotusChart.vue'
 import OverviewBoard from './OverviewBoard.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import {formatDate,formatMonthShort} from '../format'
 // /lotus/reports: charts per operating area from lotus_farm.reporting.charts; the forecast tab keeps the legacy tables (slot).
-const props=defineProps({charts:{type:Object,default:null},busy:Boolean})
+const props=defineProps({charts:{type:Object,default:null},busy:Boolean,filters:{type:Object,default:()=>({})}})
+const emit=defineEmits(['filters','tab'])
 const tabs=[{id:'overview',label:'Toàn bộ nghiệp vụ'},{id:'land',label:'Vườn & cây'},{id:'work',label:'Công việc'},{id:'harvest',label:'Thu hoạch & đóng gói'},{id:'stock',label:'Kho'},{id:'people',label:'Nhân sự & lương'},{id:'commerce',label:'Mua & bán'},{id:'forecast',label:'Dự thu & hiệu chuẩn'}]
 const tab=ref('overview')
+watch(tab,value=>emit('tab',value))
+const filterFields=computed(()=>{
+ const fields={stock:[['stock_type','Loại phiếu kho']],people:[['department','Phòng ban'],['worker_category','Loại lao động']],commerce:[['buying_status','Trạng thái đơn mua'],['supplier','Nhà cung cấp'],['sales_status','Trạng thái đơn bán'],['customer','Khách hàng']]}
+ return (tab.value==='overview'?Object.values(fields).flat():fields[tab.value]||[]).map(([key,label])=>({key,label,options:Object.values(props.charts||{}).find(s=>s?.options?.[key])?.options[key]||[]}))
+})
+function filter(key,value){emit('filters',{...props.filters,[key]:value})}
 const c=computed(()=>props.charts||{})
 const n=(v,d=0)=>v==null||Number.isNaN(Number(v))?'—':new Intl.NumberFormat('vi-VN',{maximumFractionDigits:d}).format(Number(v))
 const sum=(rows,key)=>(rows||[]).reduce((t,r)=>t+Number(r[key]||0),0)
@@ -34,17 +44,18 @@ const denied=computed(()=>sectionOf[tab.value]&&props.charts&&sectionOf[tab.valu
 <template>
 <section class="lotus-reports">
  <WorkspaceTabs v-model="tab" :items="tabs" label="Nhóm báo cáo"/>
+ <div v-if="charts&&filterFields.length" class="scope-picker report-filters"><label v-for="f in filterFields" :key="f.key">{{f.label}}<UiSelect :model-value="filters[f.key]||''" @update:model-value="filter(f.key,$event)"><option value="">Tất cả</option><option v-for="option in f.options" :key="option" :value="option">{{stateLabel(option)}}</option></UiSelect></label><UiButton v-if="Object.values(filters).some(Boolean)" variant="outline" @click="emit('filters',{})">Xoá lọc báo cáo</UiButton></div>
  <p v-if="charts" class="muted lotus-reports-period">Kỳ báo cáo: {{formatDate(charts.from_date)}} – {{formatDate(charts.to_date)}} · {{charts.farms?.length||0}} vườn được xem</p>
  <p v-else-if="busy" class="muted">Đang đọc số liệu…</p>
  <p v-if="denied" role="alert" class="notice">Bạn không có quyền xem phần báo cáo này.</p>
 
  <OverviewBoard v-else-if="tab==='overview'&&charts" :charts="charts"/>
- <template v-else-if="tab==='people'&&charts">
+ <template v-else-if="tab==='people'&&charts"><p class="muted">Nhân sự & lương · {{c.people?.scope_label}}</p>
   <p v-if="c.people?.allowed===false" class="notice">Bạn không có quyền xem báo cáo nhân sự và lương.</p>
   <p v-else-if="c.people?.note" class="notice">{{c.people.note}}</p>
   <template v-else><div class="lotus-stat-row"><div class="lotus-stat"><span>Đang làm</span><strong>{{n(c.people?.active)}}</strong><small>người</small></div><div class="lotus-stat"><span>Chờ tiếp nhận</span><strong>{{n(c.people?.pending)}}</strong><small>hồ sơ</small></div><div class="lotus-stat"><span>Phiếu lương đã duyệt</span><strong>{{n(c.people?.salary_slips)}}</strong><small>phiếu trong kỳ</small></div><div v-for="p in c.people?.payroll||[]" :key="p.currency" class="lotus-stat"><span>Thực lĩnh</span><strong>{{n(p.net)}}</strong><small>{{p.currency}}</small></div></div><LotusChart title="Chấm công" :categories="(c.people?.attendance||[]).map(r=>r.status)" :series="[{name:'Lượt công',data:(c.people?.attendance||[]).map(r=>r.count)}]" unit="lượt"/></template>
  </template>
- <template v-else-if="tab==='commerce'&&charts"><section v-for="key in ['buying','sales']" :key="key"><p v-if="c[key]?.allowed===false" class="notice">Bạn không có quyền xem {{key==='buying'?'đơn mua':'đơn bán'}}.</p><p v-else-if="c[key]?.note" class="notice">{{c[key].note}}</p><template v-else><div class="lotus-stat-row"><div class="lotus-stat"><span>{{key==='buying'?'Đơn mua':'Đơn bán'}}</span><strong>{{n(c[key]?.count)}}</strong><small>đơn đã duyệt trong kỳ</small></div><div v-for="r in c[key]?.totals||[]" :key="r.currency" class="lotus-stat"><span>Giá trị đơn</span><strong>{{n(r.value)}}</strong><small>{{r.currency}}</small></div></div><LotusChart :title="key==='buying'?'Tình trạng đơn mua':'Tình trạng đơn bán'" :categories="(c[key]?.statuses||[]).map(r=>r.status)" :series="[{name:'Số đơn',data:(c[key]?.statuses||[]).map(r=>r.count)}]" unit="đơn"/></template></section></template>
+ <template v-else-if="tab==='commerce'&&charts"><section v-for="key in ['buying','sales']" :key="key"><p class="muted">{{key==='buying'?'Đơn mua':'Đơn bán'}} · {{c[key]?.scope_label}}</p><p v-if="c[key]?.allowed===false" class="notice">Bạn không có quyền xem {{key==='buying'?'đơn mua':'đơn bán'}}.</p><p v-else-if="c[key]?.note" class="notice">{{c[key].note}}</p><template v-else><div class="lotus-stat-row"><div class="lotus-stat"><span>{{key==='buying'?'Đơn mua':'Đơn bán'}}</span><strong>{{n(c[key]?.count)}}</strong><small>đơn đã duyệt trong kỳ</small></div><div v-for="r in c[key]?.totals||[]" :key="r.currency" class="lotus-stat"><span>Giá trị đơn</span><strong>{{n(r.value)}}</strong><small>{{r.currency}}</small></div></div><LotusChart :title="key==='buying'?'Tình trạng đơn mua':'Tình trạng đơn bán'" :categories="(c[key]?.statuses||[]).map(r=>r.status)" :series="[{name:'Số đơn',data:(c[key]?.statuses||[]).map(r=>r.count)}]" unit="đơn"/></template></section></template>
  <template v-else-if="tab==='land'&&charts">
   <div class="lotus-stat-row">
    <div class="lotus-stat"><span>Diện tích</span><strong>{{n(land.area_ha,1)}}</strong><small>ha · {{n(land.blocks)}} lô</small></div>
@@ -93,7 +104,7 @@ const denied=computed(()=>sectionOf[tab.value]&&props.charts&&sectionOf[tab.valu
   </div>
  </template>
 
- <template v-else-if="tab==='stock'&&charts">
+ <template v-else-if="tab==='stock'&&charts"><p class="muted">Kho · {{stock.scope_label}}</p>
   <p v-if="stock.note" class="notice">{{stock.note}}</p>
   <div class="lotus-chart-grid lotus-chart-grid--single">
    <LotusChart title="Số phiếu kho theo tháng" :categories="(stock.months||[]).map(m=>formatMonthShort(m.month))" :series="[{name:'Nhập',data:(stock.months||[]).map(m=>m.receipt)},{name:'Xuất',data:(stock.months||[]).map(m=>m.issue)},{name:'Chuyển kho',data:(stock.months||[]).map(m=>m.transfer)}]" unit="phiếu" empty="Chưa có phiếu kho đã ghi sổ trong kỳ."/>

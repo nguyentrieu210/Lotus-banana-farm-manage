@@ -302,7 +302,7 @@ def _section(build):
 
 
 @frappe.whitelist()
-def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
+def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None,report_filters=None):
     """Aggregated series for the report charts. Same land scope and permissions as dashboard()."""
     from lotus_farm import report_charts as rc
     start,end=getdate(from_date),getdate(to_date)
@@ -311,6 +311,11 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
     farms=[f.name for f in records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name'])]
     in_farms={'farm':['in',farms or ['__none__']]}
     land_only=bool(zone or block or plot or cycle)
+    report_filters=frappe.parse_json(report_filters or '{}')
+    if not isinstance(report_filters,dict):frappe.throw('Invalid report filters')
+    def choices(rows,field):return sorted({r.get(field) for r in rows if r.get(field)})
+    def matching(rows,fields):
+        return [r for r in rows if all(not report_filters.get(key) or r.get(field)==report_filters[key] for key,field in fields.items())]
 
     def land():
         meta=frappe.get_meta('Farm Block')
@@ -355,18 +360,18 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
 
     def stock():
         filters={'docstatus':1,'posting_date':['between',[start,end]],**({'company':selected['company']} if selected['company'] else {})}
-        if land_only:
-            return dict(months=[],note='Kho ghi nhận theo công ty; chưa phân bổ tồn kho theo khu/lô.')
         if selected['farm'] and not selected['company']:
             filters['company']=frappe.db.get_value('Farm',selected['farm'],'company')
-        return dict(months=rc.stock_by_month(records('Stock Entry',filters,['posting_date','stock_entry_type'])))
+        rows=records('Stock Entry',filters,['posting_date','stock_entry_type'])
+        options=dict(stock_type=choices(rows,'stock_entry_type'))
+        return dict(scope_label='Toàn công ty',options=options,months=rc.stock_by_month(matching(rows,{'stock_type':'stock_entry_type'})))
 
     def people():
-        if land_only:
-            return dict(note='Nhân sự và lương theo vườn/công ty; chưa phân bổ theo khu/lô.')
         companies={frappe.db.get_value('Farm',f,'company') for f in farms}
         employees=records('Employee',{'company':['in',list(companies)],
-            **({'lotus_farm':farm} if farm else {})},['name','status','lotus_onboarding_state','lotus_worker_category'])
+            **({'lotus_farm':farm} if farm else {})},['name','status','lotus_onboarding_state','lotus_worker_category','department'])
+        options=dict(department=choices(employees,'department'),worker_category=choices(employees,'lotus_worker_category'))
+        employees=matching(employees,{'department':'department','worker_category':'lotus_worker_category'})
         names=[e.name for e in employees]
         attendance=records('Attendance',{'employee':['in',names or ['__none__']],
             'docstatus':1,'attendance_date':['between',[start,end]]},['status'])
@@ -375,21 +380,23 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
         payroll={}
         for slip in slips:payroll[slip.currency]=payroll.get(slip.currency,0)+flt(slip.net_pay)
         from collections import Counter
-        return dict(employees=len(employees),active=sum(e.status=='Active' for e in employees),
+        return dict(scope_label='Theo vườn' if farm else 'Toàn công ty',options=options,employees=len(employees),active=sum(e.status=='Active' for e in employees),
             pending=sum(e.lotus_onboarding_state!='Ready' for e in employees),
             attendance=[dict(status=k,count=v) for k,v in Counter(a.status for a in attendance).items()],
             payroll=[dict(currency=k,net=v) for k,v in payroll.items()],salary_slips=len(slips))
 
     def orders(doctype):
-        if land_only:
-            return dict(note='Đơn hàng theo công ty; chưa phân bổ giá trị theo khu/lô.')
         companies={frappe.db.get_value('Farm',f,'company') for f in farms}
+        kind='buying' if doctype=='Purchase Order' else 'sales'
+        party='supplier' if kind=='buying' else 'customer'
         rows=records(doctype,{'company':['in',list(companies)],'docstatus':1,
-            'transaction_date':['between',[start,end]]},['name','status','currency','grand_total'])
+            'transaction_date':['between',[start,end]]},['name','status','currency','grand_total',party])
+        options={kind+'_status':choices(rows,'status'),party:choices(rows,party)}
+        rows=matching(rows,{kind+'_status':'status',party:party})
         from collections import Counter
         totals={}
         for row in rows:totals[row.currency]=totals.get(row.currency,0)+flt(row.grand_total)
-        return dict(count=len(rows),statuses=[dict(status=k,count=v) for k,v in Counter(r.status for r in rows).items()],
+        return dict(scope_label='Toàn công ty',options=options,count=len(rows),statuses=[dict(status=k,count=v) for k,v in Counter(r.status for r in rows).items()],
                     totals=[dict(currency=k,value=v) for k,v in totals.items()])
 
     return dict(from_date=str(start),to_date=str(end),farms=farms,land=_section(land),work=_section(work),

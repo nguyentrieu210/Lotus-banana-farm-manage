@@ -4,6 +4,10 @@
 {{ super() }}
 {% for css in lotus_login_css %}<link rel="stylesheet" href="{{ css }}">{% endfor %}
 {% endblock %}
+{% block script %}
+{{ super() }}
+<script src="/assets/lotus_farm/js/lotus_login.js?v=20261019"></script>
+{% endblock %}
 {% block page_content %}
 <div class="lotus-login">
  <section class="lotus-login-card" aria-label="Đăng nhập tài khoản Lotus">

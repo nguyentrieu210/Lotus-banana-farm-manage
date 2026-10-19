@@ -1,0 +1,5 @@
+{% from "lotus_farm/templates/emails/lotus_base.html" import card,button %}
+{% call card('Nhắc công việc') %}
+<p>Công việc {{ (doc.name if doc is defined else name|default(''))|e }} đang cần bạn kiểm tra và cập nhật tiến độ.</p>
+{{ button(frappe.utils.get_url('/lotus/cong-viec'),'Xem công việc') }}
+{% endcall %}
