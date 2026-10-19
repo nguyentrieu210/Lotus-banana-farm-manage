@@ -15,7 +15,7 @@ const text=root=>root.textContent.replace(/\s+/g,' ')
 const tab=(root,label)=>[...root.querySelectorAll('[role=tab]')].find(b=>b.textContent===label)
 
 test('land tab shows census figures and only counted zones in density',async()=>{
- const view=mount(ReportsWorkspace,{charts});await tick()
+ const view=mount(ReportsWorkspace,{charts});await tick();tab(view.root,'Vườn & cây').click();await tick()
  const stats=[...view.root.querySelectorAll('.lotus-stat strong')].map(n=>n.textContent)
  assert.deepEqual(stats.slice(0,3),['10','15.000','2.500'],'area, trees, density from counted blocks only (15000/6)')
  const titles=[...view.root.querySelectorAll('.lotus-chart-head h3')].map(n=>n.textContent)

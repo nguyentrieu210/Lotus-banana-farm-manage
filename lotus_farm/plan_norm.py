@@ -73,11 +73,11 @@ def _list(doctype, fields, filters=None, limit=2000):
 
 
 @frappe.whitelist()
-def board(farm=None, block=None):
+def board(farm=None, block=None,zone=None):
     """Settings and 36-month simulator inputs; no write side effects."""
     if not farm:
         frappe.throw("Chọn một vườn trước khi xem cấu hình.")
-    scope = land_scope(farm=farm, block=block)
+    scope = land_scope(farm=farm, block=block, zone=zone)
     if not frappe.has_permission("Farm", "read") or not frappe.has_permission("Farm Block", "read"):
         frappe.throw("Không có quyền xem vườn hoặc lô.", frappe.PermissionError)
     # All Farm-linked queries are bounded by this permission-checked Farm.

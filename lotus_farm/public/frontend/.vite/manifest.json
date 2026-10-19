@@ -1,98 +1,151 @@
 {
-  "_CccdQrScanner-B8SEKwI_.css": {
-    "file": "assets/CccdQrScanner-B8SEKwI_.css",
-    "src": "_CccdQrScanner-B8SEKwI_.css"
+  "_CccdQrScanner-C0Od8mi2.css": {
+    "file": "assets/CccdQrScanner-C0Od8mi2.css",
+    "src": "_CccdQrScanner-C0Od8mi2.css"
   },
-  "_CccdQrScanner-s9OHg95h.js": {
-    "file": "assets/CccdQrScanner-s9OHg95h.js",
+  "_CccdQrScanner-pi_Af5d9.js": {
+    "file": "assets/CccdQrScanner-pi_Af5d9.js",
     "name": "CccdQrScanner",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
     ],
     "dynamicImports": [
       "node_modules/html5-qrcode/esm/index.js"
     ],
     "css": [
-      "assets/CccdQrScanner-B8SEKwI_.css"
+      "assets/CccdQrScanner-C0Od8mi2.css"
     ]
   },
-  "_LotusMobileAction-B6ys85uH.js": {
-    "file": "assets/LotusMobileAction-B6ys85uH.js",
+  "_LinkPicker-C9pyt3uQ.js": {
+    "file": "assets/LinkPicker-C9pyt3uQ.js",
+    "name": "LinkPicker",
+    "imports": [
+      "_use-confirm-core-ssdOmJuu.js",
+      "_PopoverTrigger-D3kfjENh.js",
+      "_option-search-qod-pepI.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_dropdown-menu-BMdR9g98.js",
+      "_Textarea-D3jOhAdB.js"
+    ],
+    "css": [
+      "assets/LinkPicker-DQwgxrK6.css"
+    ]
+  },
+  "_LinkPicker-DQwgxrK6.css": {
+    "file": "assets/LinkPicker-DQwgxrK6.css",
+    "src": "_LinkPicker-DQwgxrK6.css"
+  },
+  "_LotusMobileAction-N0BwbU6F.js": {
+    "file": "assets/LotusMobileAction-N0BwbU6F.js",
     "name": "LotusMobileAction",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_mobile-ui-BIg9rrGl.js"
+      "_mobile-ui-v9MfE49r.js"
     ]
   },
-  "_MobileSupplierForm-D2LJLa-V.js": {
-    "file": "assets/MobileSupplierForm-D2LJLa-V.js",
+  "_MobileSupplierForm-94tFyBsP.js": {
+    "file": "assets/MobileSupplierForm-94tFyBsP.js",
     "name": "MobileSupplierForm",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_LotusMobileAction-B6ys85uH.js"
+      "_mobile-ui-v9MfE49r.js",
+      "_LotusMobileAction-N0BwbU6F.js"
     ]
   },
-  "_MonthPicker-CRGnDie3.js": {
-    "file": "assets/MonthPicker-CRGnDie3.js",
+  "_MonthPicker-BHqCchdd.js": {
+    "file": "assets/MonthPicker-BHqCchdd.js",
     "name": "MonthPicker",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "index.html"
     ]
   },
-  "_PopperContent-BiAiGORl.js": {
-    "file": "assets/PopperContent-BiAiGORl.js",
-    "name": "PopperContent",
+  "_PopoverTrigger-D3kfjENh.js": {
+    "file": "assets/PopoverTrigger-D3kfjENh.js",
+    "name": "PopoverTrigger",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-DvjCNhc0.js",
-      "_button-CbZHcV_1.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
     ]
   },
-  "_WorkspaceSummaryStrip-63iVrFtr.js": {
-    "file": "assets/WorkspaceSummaryStrip-63iVrFtr.js",
+  "_Textarea-D3jOhAdB.js": {
+    "file": "assets/Textarea-D3jOhAdB.js",
+    "name": "Textarea",
+    "imports": [
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
+    ]
+  },
+  "_WorkspaceSummaryStrip-ChbFyHHn.js": {
+    "file": "assets/WorkspaceSummaryStrip-ChbFyHHn.js",
     "name": "WorkspaceSummaryStrip",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "_button-CbZHcV_1.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
       "index.html"
     ]
   },
-  "__plugin-vue_export-helper-2V_tNDJ0.js": {
-    "file": "assets/_plugin-vue_export-helper-2V_tNDJ0.js",
+  "__plugin-vue_export-helper-DtgFoaMA.js": {
+    "file": "assets/_plugin-vue_export-helper-DtgFoaMA.js",
     "name": "_plugin-vue_export-helper",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js"
+      "_use-confirm-core-ssdOmJuu.js"
     ]
   },
-  "_button-CbZHcV_1.js": {
-    "file": "assets/button-CbZHcV_1.js",
-    "name": "button",
+  "_dropdown-menu-BMdR9g98.js": {
+    "file": "assets/dropdown-menu-BMdR9g98.js",
+    "name": "dropdown-menu",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "_PopoverTrigger-D3kfjENh.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
+    ],
+    "css": [
+      "assets/dropdown-menu-DOl_U29d.css"
     ]
+  },
+  "_dropdown-menu-DOl_U29d.css": {
+    "file": "assets/dropdown-menu-DOl_U29d.css",
+    "src": "_dropdown-menu-DOl_U29d.css"
+  },
+  "_form-field-6BSnycN3.js": {
+    "file": "assets/form-field-6BSnycN3.js",
+    "name": "form-field",
+    "imports": [
+      "_use-confirm-core-ssdOmJuu.js",
+      "_PopoverTrigger-D3kfjENh.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_Textarea-D3jOhAdB.js"
+    ],
+    "css": [
+      "assets/form-field-DBDmeNWS.css"
+    ]
+  },
+  "_form-field-DBDmeNWS.css": {
+    "file": "assets/form-field-DBDmeNWS.css",
+    "src": "_form-field-DBDmeNWS.css"
   },
   "_format-B_EEKp98.js": {
     "file": "assets/format-B_EEKp98.js",
     "name": "format"
   },
-  "_grid-modules-hrmuK-MZ.js": {
-    "file": "assets/grid-modules-hrmuK-MZ.js",
+  "_grid-modules-BXwenEpP.js": {
+    "file": "assets/grid-modules-BXwenEpP.js",
     "name": "grid-modules",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js"
+      "_use-confirm-core-ssdOmJuu.js"
     ]
   },
   "_lotus-tokens-CZ5qs7LR.css": {
     "file": "assets/lotus-tokens-CZ5qs7LR.css",
     "src": "_lotus-tokens-CZ5qs7LR.css"
   },
-  "_lotus-tokens-DvjCNhc0.js": {
-    "file": "assets/lotus-tokens-DvjCNhc0.js",
+  "_lotus-tokens-D5_4oyDC.js": {
+    "file": "assets/lotus-tokens-D5_4oyDC.js",
     "name": "lotus-tokens",
     "css": [
       "assets/lotus-tokens-CZ5qs7LR.css"
@@ -102,29 +155,29 @@
       "assets/Inter-Italic.var-BGHziHgI.woff2"
     ]
   },
-  "_mobile-swipe-BVVT5D2k.js": {
-    "file": "assets/mobile-swipe-BVVT5D2k.js",
+  "_mobile-swipe-D8MYiyLN.js": {
+    "file": "assets/mobile-swipe-D8MYiyLN.js",
     "name": "mobile-swipe",
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_LotusMobileAction-B6ys85uH.js"
-    ]
-  },
-  "_mobile-ui-BIg9rrGl.js": {
-    "file": "assets/mobile-ui-BIg9rrGl.js",
-    "name": "mobile-ui",
-    "imports": [
-      "_lotus-tokens-DvjCNhc0.js"
-    ],
-    "css": [
-      "assets/mobile-ui-t40XSlF0.css"
+      "_mobile-ui-v9MfE49r.js",
+      "_LotusMobileAction-N0BwbU6F.js"
     ]
   },
   "_mobile-ui-t40XSlF0.css": {
     "file": "assets/mobile-ui-t40XSlF0.css",
     "src": "_mobile-ui-t40XSlF0.css"
+  },
+  "_mobile-ui-v9MfE49r.js": {
+    "file": "assets/mobile-ui-v9MfE49r.js",
+    "name": "mobile-ui",
+    "imports": [
+      "_use-confirm-core-ssdOmJuu.js"
+    ],
+    "css": [
+      "assets/mobile-ui-t40XSlF0.css"
+    ]
   },
   "_offline-BtzgQR5q.js": {
     "file": "assets/offline-BtzgQR5q.js",
@@ -138,50 +191,60 @@
     "file": "assets/rolldown-runtime-hePW80VL.js",
     "name": "rolldown-runtime"
   },
+  "_use-confirm-core-ssdOmJuu.js": {
+    "file": "assets/use-confirm-core-ssdOmJuu.js",
+    "name": "use-confirm-core"
+  },
   "buying.html": {
-    "file": "assets/buying-DwGPdxCC.js",
+    "file": "assets/buying-DCyouxRM.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_lotus-tokens-D5_4oyDC.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_LotusMobileAction-B6ys85uH.js",
-      "_MobileSupplierForm-D2LJLa-V.js"
+      "_mobile-ui-v9MfE49r.js",
+      "_LotusMobileAction-N0BwbU6F.js",
+      "_MobileSupplierForm-94tFyBsP.js"
     ],
     "css": [
       "assets/buying-9l86hFmi.css"
     ]
   },
   "hr-mobile.html": {
-    "file": "assets/hr-mobile-CDpsn73f.js",
+    "file": "assets/hr-mobile-UhXvokJ7.js",
     "name": "hr-mobile",
     "src": "hr-mobile.html",
     "isEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_CccdQrScanner-s9OHg95h.js"
+      "_lotus-tokens-D5_4oyDC.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "_mobile-ui-v9MfE49r.js",
+      "_CccdQrScanner-pi_Af5d9.js"
     ],
     "css": [
       "assets/hr-mobile-Dj7EqWMS.css"
     ]
   },
   "index.html": {
-    "file": "assets/index-CJT36aeH.js",
+    "file": "assets/index-C-hKVhr5.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
-      "_lotus-tokens-DvjCNhc0.js",
-      "_PopperContent-BiAiGORl.js",
+      "_lotus-tokens-D5_4oyDC.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "_PopoverTrigger-D3kfjENh.js",
       "_option-search-qod-pepI.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js",
-      "_format-B_EEKp98.js",
-      "_offline-BtzgQR5q.js"
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_LinkPicker-C9pyt3uQ.js",
+      "_form-field-6BSnycN3.js",
+      "_dropdown-menu-BMdR9g98.js",
+      "_Textarea-D3jOhAdB.js",
+      "_offline-BtzgQR5q.js",
+      "_format-B_EEKp98.js"
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
@@ -197,8 +260,12 @@
       "src/FarmWorkApp.vue"
     ],
     "css": [
-      "assets/index-DLMHSUWX.css"
+      "assets/index-DhxZyPmb.css"
     ]
+  },
+  "login.html": {
+    "file": "assets/login-VDqHoRq_.css",
+    "src": "login.html"
   },
   "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
     "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
@@ -218,144 +285,151 @@
     ]
   },
   "src/FarmWorkApp.vue": {
-    "file": "assets/FarmWorkApp-CYOIQtgs.js",
+    "file": "assets/FarmWorkApp-BzTCA3de.js",
     "name": "FarmWorkApp",
     "src": "src/FarmWorkApp.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_button-CbZHcV_1.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_LinkPicker-C9pyt3uQ.js",
+      "_Textarea-D3jOhAdB.js",
       "_offline-BtzgQR5q.js",
       "index.html"
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-BjYA9eFY.js",
+    "file": "assets/HrApp-CfRbC9oe.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js",
-      "_format-B_EEKp98.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_form-field-6BSnycN3.js",
+      "_Textarea-D3jOhAdB.js",
       "_offline-BtzgQR5q.js",
+      "_format-B_EEKp98.js",
       "index.html",
-      "_CccdQrScanner-s9OHg95h.js",
-      "_WorkspaceSummaryStrip-63iVrFtr.js",
-      "_MonthPicker-CRGnDie3.js"
+      "_CccdQrScanner-pi_Af5d9.js",
+      "_WorkspaceSummaryStrip-ChbFyHHn.js",
+      "_MonthPicker-BHqCchdd.js"
     ],
     "css": [
       "assets/HrApp-_gKUJLMO.css"
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-BmSAz3Ex.js",
+    "file": "assets/StockApp-CHtsCGFC.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_LinkPicker-C9pyt3uQ.js",
+      "_Textarea-D3jOhAdB.js",
       "_format-B_EEKp98.js",
       "index.html",
       "src/components/DataTable.vue"
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-CM5vQgZ_.js",
+    "file": "assets/TimekeepingApp-D7C0qwxz.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_form-field-6BSnycN3.js",
+      "_dropdown-menu-BMdR9g98.js",
+      "_Textarea-D3jOhAdB.js",
       "_format-B_EEKp98.js",
       "index.html",
-      "_MonthPicker-CRGnDie3.js",
+      "_MonthPicker-BHqCchdd.js",
       "src/components/DataTable.vue"
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-BFagxS0x.js",
+    "file": "assets/UserAdminApp-DtjsRsPb.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "_button-CbZHcV_1.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
       "index.html",
-      "_WorkspaceSummaryStrip-63iVrFtr.js"
+      "_WorkspaceSummaryStrip-ChbFyHHn.js"
     ]
   },
   "src/components/DataTable.vue": {
-    "file": "assets/DataTable-Bu4RLqAi.js",
+    "file": "assets/DataTable-Q6inuMop.js",
     "name": "DataTable",
     "src": "src/components/DataTable.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "_PopoverTrigger-D3kfjENh.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
+      "_dropdown-menu-BMdR9g98.js",
       "_offline-BtzgQR5q.js",
       "index.html",
-      "_grid-modules-hrmuK-MZ.js"
+      "_grid-modules-BXwenEpP.js"
     ],
     "css": [
       "assets/DataTable-DCqG6o30.css"
     ]
   },
   "src/components/DesktopForecastChart.vue": {
-    "file": "assets/DesktopForecastChart-DKFBr_xL.js",
+    "file": "assets/DesktopForecastChart-3xErExpM.js",
     "name": "DesktopForecastChart",
     "src": "src/components/DesktopForecastChart.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_format-B_EEKp98.js",
       "index.html"
     ]
   },
   "src/components/ForecastWorkspace.vue": {
-    "file": "assets/ForecastWorkspace-IlfxMzqn.js",
+    "file": "assets/ForecastWorkspace-BWL9ZvpP.js",
     "name": "ForecastWorkspace",
     "src": "src/components/ForecastWorkspace.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "_button-CbZHcV_1.js",
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js",
       "index.html",
-      "_grid-modules-hrmuK-MZ.js"
+      "_grid-modules-BXwenEpP.js"
     ],
     "css": [
       "assets/ForecastWorkspace-DXKEuqC_.css"
     ]
   },
   "src/components/LotusImportPreview.vue": {
-    "file": "assets/LotusImportPreview-5BCmOqdZ.js",
+    "file": "assets/LotusImportPreview-D5akFqLT.js",
     "name": "LotusImportPreview",
     "src": "src/components/LotusImportPreview.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
     ],
     "css": [
       "assets/LotusImportPreview-BfZqz8X1.css"
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-DpyA7nxR.js",
+    "file": "assets/OpsList-C_8NAOOO.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
       "_offline-BtzgQR5q.js",
       "index.html",
@@ -363,14 +437,13 @@
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-9v0skPOb.js",
+    "file": "assets/Vip126RollingForecast-BEPdPeVY.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js",
-      "_button-CbZHcV_1.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
     ],
     "dynamicImports": [
       "src/components/DesktopForecastChart.vue",
@@ -381,49 +454,51 @@
     ]
   },
   "src/components/ZonePlantingSchedule.vue": {
-    "file": "assets/ZonePlantingSchedule-BMxTPuo3.js",
+    "file": "assets/ZonePlantingSchedule-Bo8QIZ40.js",
     "name": "ZonePlantingSchedule",
     "src": "src/components/ZonePlantingSchedule.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
-      "__plugin-vue_export-helper-2V_tNDJ0.js"
+      "_use-confirm-core-ssdOmJuu.js",
+      "__plugin-vue_export-helper-DtgFoaMA.js"
     ],
     "css": [
       "assets/ZonePlantingSchedule-UGvQyIQH.css"
     ]
   },
   "warehouse.html": {
-    "file": "assets/warehouse-BlzpFt-n.js",
+    "file": "assets/warehouse-DXMF_E00.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_lotus-tokens-D5_4oyDC.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
       "_format-B_EEKp98.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_LotusMobileAction-B6ys85uH.js",
-      "_MobileSupplierForm-D2LJLa-V.js",
-      "_mobile-swipe-BVVT5D2k.js"
+      "_mobile-ui-v9MfE49r.js",
+      "_LotusMobileAction-N0BwbU6F.js",
+      "_MobileSupplierForm-94tFyBsP.js",
+      "_mobile-swipe-D8MYiyLN.js"
     ],
     "css": [
       "assets/warehouse-aAFuAqJN.css"
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-CFES0FsH.js",
+    "file": "assets/work-mobile-DvoX8p2k.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
     "imports": [
-      "_lotus-tokens-DvjCNhc0.js",
+      "_lotus-tokens-D5_4oyDC.js",
+      "_use-confirm-core-ssdOmJuu.js",
       "_option-search-qod-pepI.js",
-      "_format-B_EEKp98.js",
       "_offline-BtzgQR5q.js",
-      "_mobile-ui-BIg9rrGl.js",
-      "_LotusMobileAction-B6ys85uH.js",
-      "_mobile-swipe-BVVT5D2k.js"
+      "_format-B_EEKp98.js",
+      "_mobile-ui-v9MfE49r.js",
+      "_LotusMobileAction-N0BwbU6F.js",
+      "_mobile-swipe-D8MYiyLN.js"
     ],
     "css": [
       "assets/work-mobile-BWMiDuhq.css"

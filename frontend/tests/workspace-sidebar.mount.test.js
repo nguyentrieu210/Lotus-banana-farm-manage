@@ -21,13 +21,13 @@ test('every page sits in exactly one sidebar group with a real icon',()=>{
 
 test('sidebar shows only permitted pages, grouped, without the duplicate stock link',async()=>{
  const session=useSession();Object.assign(session,{user:'lead@lotus',capabilities:{stock:true},commands:{},modules:{}})
- const nav=pages.filter(([path])=>['mobile','today','kho','materials'].includes(path))
+ const nav=pages.filter(([path])=>['reports','kho','materials'].includes(path))
  const view=mount(WorkspaceSidebar,{nav,page:'kho'});await tick()
  const titles=[...view.root.querySelectorAll('.nav-group-title')].map(node=>node.textContent)
  assert.deepEqual(titles,['Tổng quan','Công việc hằng ngày','Kho & mua hàng'],'groups without permitted pages are hidden')
  const labels=[...view.root.querySelectorAll('nav button .nav-label')].map(node=>node.textContent)
- assert.deepEqual(labels,['Trang chủ','Hôm nay','Vật tư theo việc','Quản lý kho'])
- assert.equal(view.root.querySelectorAll('nav button svg.lotus-icon').length,4,'each item has an icon, not a letter')
+ assert.deepEqual(labels,['Tổng quan','Vật tư theo việc','Quản lý kho'])
+ assert.equal(view.root.querySelectorAll('nav button svg.lotus-icon').length,3,'each item has an icon, not a letter')
  assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Quản lý kho')
  assert.equal(view.root.querySelector('nav button.active').getAttribute('aria-current'),'page')
  assert.equal([...view.root.querySelectorAll('.field-link')].some(link=>link.textContent.includes('Quản lý kho')),false)

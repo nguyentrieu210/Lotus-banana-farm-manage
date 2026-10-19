@@ -82,12 +82,12 @@ def schema(doctype):
 
 
 @frappe.whitelist()
-def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,status=None,date=None,from_date=None,to_date=None,search=None,start=0,length=50,sort='modified desc',column_filters=None,include_filter_values=False):
+def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,status=None,date=None,from_date=None,to_date=None,search=None,start=0,length=50,sort='modified desc',column_filters=None,include_filter_values=False,zone=None):
     meta=allowed(doctype)
-    selected=land_scope(company,farm,block,plot,cycle)
+    selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     filters=land_filters(meta,selected)
     # Source-linked xưởng records have no direct Plot/Cycle field.
-    if doctype not in ('Farm','Farm Block') and (plot or cycle or block) and meta.has_field('farm') and not any(meta.has_field(f) for f in ('farm_plot','farm_block','crop_cycle')):
+    if doctype not in ('Farm','Farm Block') and (zone or plot or cycle or block) and meta.has_field('farm') and not any(meta.has_field(f) for f in ('farm_plot','farm_block','crop_cycle')):
         names=_source_scope_names(doctype,selected)
         if names is None:frappe.throw('This document supports Farm scope only; clear Block/Plot/Cycle filters.')
         filters['name']=['in',names or ['__no_matching_source__']]
@@ -127,7 +127,7 @@ def _source_scope_names(doctype,selected):
         names=[]
         for row in records(doctype,{'farm':selected['farm'],'docstatus':['<',2]},['name']):
             doc=frappe.get_doc(doctype,row.name)
-            if any(all(not selected[k] or line.get(f)==selected[k] for k,f in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')]) for line in doc.lines):names.append(row.name)
+            if any((not selected.get('zone_blocks') or line.farm_block in selected['zone_blocks']) and all(not selected[k] or line.get(f)==selected[k] for k,f in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')]) for line in doc.lines):names.append(row.name)
         return names
     if doctype not in ('Harvest Lot','Incoming Quality Inspection','Packout Run','Packhouse Shift'):return None
     actuals=records('Harvest Actual',{**land_filters(frappe.get_meta('Harvest Actual'),selected),'docstatus':1},['name'])
@@ -144,14 +144,15 @@ def _source_scope_names(doctype,selected):
 
 
 @frappe.whitelist()
-def scope_options(company=None,farm=None,block=None,plot=None,cycle=None):
-    selected=land_scope(company,farm,block,plot,cycle)
+def scope_options(company=None,farm=None,block=None,plot=None,cycle=None,zone=None):
+    selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     from lotus_farm.reporting import records
-    result={'scope':selected,'blocks':[],'plots':[],'cycles':[]}
+    result={'scope':{k:v for k,v in selected.items() if k!='zone_blocks'},'zones':[],'blocks':[],'plots':[],'cycles':[]}
     if selected['farm']:
-        result['blocks']=records('Farm Block',{'farm':selected['farm']},['name','block_name']) if frappe.has_permission('Farm Block','read') else []
+        result['zones']=sorted({b.farm_zone for b in records('Farm Block',{'farm':selected['farm']},['farm_zone']) if b.farm_zone}) if frappe.has_permission('Farm Block','read') else []
+        result['blocks']=records('Farm Block',{'farm':selected['farm'],**({'farm_zone':zone} if zone else {})},['name','block_name','block_code','farm_zone']) if frappe.has_permission('Farm Block','read') else []
         result['plots']=records('Farm Plot',{'farm':selected['farm'],**({'farm_block':selected['block']} if selected['block'] else {})},['name','plot_name','farm_block']) if frappe.has_permission('Farm Plot','read') else []
-        result['cycles']=records('Crop Cycle',{'farm':selected['farm'],**({'farm_plot':selected['plot']} if selected['plot'] else {}),**({'farm_block':selected['block']} if selected['block'] else {})},['name','cycle_no','farm_plot']) if frappe.has_permission('Crop Cycle','read') else []
+        result['cycles']=records('Crop Cycle',land_filters(frappe.get_meta('Crop Cycle'),selected),['name','cycle_no','farm_plot']) if frappe.has_permission('Crop Cycle','read') else []
     return result
 
 
@@ -324,10 +325,10 @@ def work_state_guard(doc,method=None):
 
 
 @frappe.whitelist()
-def material_status(farm,posting_date,block=None,plot=None,cycle=None):
+def material_status(farm,posting_date,block=None,plot=None,cycle=None,zone=None):
     from lotus_farm.reporting import records
     from lotus_farm.warehouse_planning import snapshot
-    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle)
+    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle,zone=zone)
     result=snapshot(frappe.db.get_value('Farm',farm,'company'),from_date=posting_date,to_date=posting_date,farm=farm)
     usage=[]
     for req in records('Material Requirement',{**land_filters(frappe.get_meta('Material Requirement'),selected),'posting_date':posting_date,'docstatus':1},['name','work_plan_line']):
@@ -359,10 +360,10 @@ def material_status(farm,posting_date,block=None,plot=None,cycle=None):
 
 
 @frappe.whitelist()
-def quality_matrix(farm,posting_date,block=None,plot=None,cycle=None):
+def quality_matrix(farm,posting_date,block=None,plot=None,cycle=None,zone=None):
     from lotus_farm.reporting import records,scope,trace_lot
-    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle);lots=[];defects={};cells=[]
-    linked={'name':['in',_source_scope_names('Incoming Quality Inspection',selected) or ['__none__']]} if block or plot or cycle else {}
+    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle,zone=zone);lots=[];defects={};cells=[]
+    linked={'name':['in',_source_scope_names('Incoming Quality Inspection',selected) or ['__none__']]} if zone or block or plot or cycle else {}
     for q in records('Incoming Quality Inspection',{'farm':farm,'posting_date':posting_date,'docstatus':1,**linked},['name','harvest_lot','received_kg','rejected_kg']):
         doc=frappe.get_doc('Incoming Quality Inspection',q.name)
         lots.append(dict(name=q.harvest_lot,inspection=q.name,received_kg=q.received_kg,rejected_kg=q.rejected_kg))
@@ -393,10 +394,10 @@ def evidence(doctype,name):
 
 
 @frappe.whitelist()
-def loss_analysis(farm=None,from_date=None,to_date=None,company=None,block=None,plot=None,cycle=None):
+def loss_analysis(farm=None,from_date=None,to_date=None,company=None,block=None,plot=None,cycle=None,zone=None):
     from lotus_farm.reporting import records
     filters={'docstatus':1,'posting_date':['between',[from_date or nowdate(),to_date or nowdate()]]}
-    filters.update(land_filters(frappe.get_meta('Bunch Cancellation'),land_scope(company,farm,block,plot,cycle)))
+    filters.update(land_filters(frappe.get_meta('Bunch Cancellation'),land_scope(company,farm,block,plot,cycle,zone=zone)))
     rows=records('Bunch Cancellation',filters,['name','farm','farm_block','farm_plot','crop_cycle','posting_date','reason','bunch_qty'])
     groups={}
     for row in rows:

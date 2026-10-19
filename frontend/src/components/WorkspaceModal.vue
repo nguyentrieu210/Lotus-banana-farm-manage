@@ -26,7 +26,7 @@ function closed(event){emit('close',event);if(!inactive&&controlled()&&props.mod
 defineExpose({showModal(){if(!dialog.value?.open)dialog.value?.showModal()},close(){dialog.value?.close()},get open(){return !!dialog.value?.open},get el(){return dialog.value}})
 </script>
 <template>
- <dialog v-if="bare" ref="dialog" v-bind="$attrs" :aria-label="$attrs['aria-label']||title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)"><slot/></dialog>
+ <dialog v-if="bare" ref="dialog" v-bind="$attrs" class="workspace-modal workspace-modal--bare lotus-ui" :aria-label="$attrs['aria-label']||title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)"><slot/></dialog>
  <Teleport v-else to="body"><dialog ref="dialog" v-bind="$attrs" class="workspace-modal lotus-ui" :style="{width:'min('+width+', calc(100vw - 24px))'}" :aria-label="title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)">
   <header class="workspace-modal__header"><h2>{{title}}</h2><UiButton type="button" variant="outline" :disabled="busy" :aria-label="'Đóng '+title" @click="requestClose"><LotusIcon name="x"/>Đóng</UiButton></header>
   <div class="workspace-modal__body" :aria-busy="busy"><fieldset :disabled="busy"><slot/></fieldset></div>

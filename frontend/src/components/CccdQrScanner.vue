@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceModal from './WorkspaceModal.vue'
 import {nextTick,onMounted,onBeforeUnmount,ref,watch} from 'vue'
 import {parseCccdQr} from '../cccd-qr.js'
 import LotusIcon from './LotusIcon.vue'
@@ -310,7 +311,7 @@ watch(enabled,accepted=>{ if (accepted && !nativeBridge.value) void openCamera()
 
 <template>
  <Teleport to="body">
-  <dialog ref="scannerDialog" class="cccd-dialog" aria-label="Quét QR căn cước" @cancel.prevent="close">
+  <WorkspaceModal bare ref="scannerDialog" title="Quét QR căn cước" class="cccd-dialog" aria-label="Quét QR căn cước" @cancel.prevent="close" @close="close">
    <header class="cccd-heading">
     <strong>Quét căn cước</strong>
     <button type="button" aria-label="Đóng" class="cccd-x" @click="close">×</button>
@@ -362,7 +363,7 @@ watch(enabled,accepted=>{ if (accepted && !nativeBridge.value) void openCamera()
     </div>
    </template>
    <p class="cccd-foot">Chỉ dùng thông tin sau khi xác nhận. Không lưu ảnh QR.</p>
-  </dialog>
+  </WorkspaceModal>
  </Teleport>
 </template>
 

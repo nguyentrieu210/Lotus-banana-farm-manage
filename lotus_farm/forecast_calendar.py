@@ -65,13 +65,13 @@ def _confidence(source):
 
 
 @frappe.whitelist()
-def calendar(company=None, farm=None, block=None, cycle=None, from_date=None):
+def calendar(company=None, farm=None, block=None, cycle=None, from_date=None,zone=None):
     """A rolling, permission-scoped 36-month draft outlook. Never commits stock."""
     if not frappe.has_permission("Harvest Forecast", "read"):
         frappe.throw("Không có quyền xem dự thu.", frappe.PermissionError)
     start = getdate(from_date or nowdate()).replace(day=1)
     end = getdate(add_months(start, 36)) - timedelta(days=1)
-    selected = land_scope(company=company, farm=farm, block=block, cycle=cycle)
+    selected = land_scope(company=company, farm=farm, block=block, cycle=cycle, zone=zone)
     blocks = records("Farm Block", land_filters(frappe.get_meta("Farm Block"), selected),
                      ["name", "farm", "block_name", "area_ha", "planting_density", "planting_date", "variety"])
     block_index = {b.name: b for b in blocks}

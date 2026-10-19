@@ -4,7 +4,7 @@ from frappe.utils import getdate, flt
 
 
 @frappe.whitelist()
-def load(farm, posting_date=None):
+def load(farm, posting_date=None, zone=None):
     record=frappe.get_doc('Farm',farm)
     record.check_permission('read')
     date=getdate(posting_date)
@@ -13,7 +13,10 @@ def load(farm, posting_date=None):
             return []
         return frappe.get_list(dt,filters=filters or {},fields=fields,
             limit_page_length=20000,order_by='name asc')
-    blocks=rows('Farm Block',['name','block_code','block_name','area_ha','active'],{'farm':farm})
+    all_blocks=rows('Farm Block',['name','block_code','block_name','farm_zone','area_ha','active'],{'farm':farm})
+    from lotus_farm.scoping import land_scope
+    selected=land_scope(farm=farm,zone=zone)
+    blocks=[b for b in all_blocks if not zone or b.farm_zone==zone]
     plots=rows('Farm Plot',['name','plot_code','plot_name','farm_block','area_ha','active'],{'farm':farm})
     teams=rows('Work Team',['name','team_code','team_name','active'],{'farm':farm})
     categories=rows('Work Category',['name','category_code','category_name','active'])
@@ -21,8 +24,13 @@ def load(farm, posting_date=None):
     norms=rows('Material Norm Profile',['name','profile_name','version','work_type','valid_from','valid_to','approval_state'],{'farm':farm})
     bases=rows('Norm Basis',['name','basis_code','basis_name','uom','active'])
     cycles=rows('Crop Cycle',['name','farm_block','farm_plot','cycle_no','variety','planting_date','status'],{'farm':farm})
+    cycles=[c for c in cycles if c.farm_block in {b.name for b in blocks}]
     varieties=rows('Banana Variety',['name','variety_code','variety_name','active'])
     plans=rows('Daily Work Plan',['name','posting_date','docstatus','modified','owner','rate_approval_state','rate_requested_by','rate_approved_by','rate_approval_note'],{'farm':farm,'posting_date':date})
+    if zone:
+        from lotus_farm.console import _source_scope_names
+        allowed=set(_source_scope_names('Daily Work Plan',selected))
+        plans=[p for p in plans if p.name in allowed]
     category_names={c.name:c.category_name for c in categories}
     work_names={w.name:w.work_name for w in works}
     for p in plans:
@@ -38,12 +46,12 @@ def load(farm, posting_date=None):
     active_cycles={}
     for c in cycles:
         if c.status in ('Active','Harvesting'):
-            active_cycles.setdefault(c.farm_plot,[]).append(c.name)
-    missing=[p.name for p in plots if p.active and not active_cycles.get(p.name)]
+            active_cycles.setdefault(c.farm_block,[]).append(c.name)
+    missing=[p.name for p in blocks if p.active and not active_cycles.get(p.name)]
     ambiguous=[p.name for p in plots if p.active and len(active_cycles.get(p.name,[]))>1]
     pending=[w.name for w in works if w.active and (flt(w.productivity_per_workday)<=0 or (w.allow_piecework and flt(w.piecework_rate)<=0))]
     return dict(farm=record.name,farm_name=record.farm_name,company=record.company,
-        posting_date=str(date),blocks=blocks,plots=plots,teams=teams,categories=categories,
+        posting_date=str(date),zones=sorted({b.farm_zone for b in all_blocks if b.farm_zone}),blocks=blocks,plots=plots,teams=teams,categories=categories,
         works=works,cycles=cycles,varieties=varieties,plans=plans,norms=norms,bases=bases,
         readiness=dict(missing_productivity=pending,missing_active_cycles=missing,
             ambiguous_active_cycles=ambiguous,

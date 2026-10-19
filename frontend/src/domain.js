@@ -1,17 +1,18 @@
-export const pages=[['mobile','Trang chủ'],['nguoi-dung','Người dùng & phân quyền'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc vườn'],['today','Hôm nay'],['alerts','Cảnh báo'],['farms','Vườn'],['plans','Kế hoạch'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['work','Công việc'],['labor','Bố trí nhân công'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ thửa'],['reports','Báo cáo'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
+export const pages=[['nguoi-dung','Người dùng & phân quyền'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc vườn'],['alerts','Cảnh báo'],['farms','Vườn'],['plans','Kế hoạch'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['work','Công việc'],['labor','Bố trí nhân công'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ chăm sóc'],['reports','Tổng quan'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
  // Ordered by the operating flow: land & cycle → daily work → plant & bunch → harvest → forecast.
- {label:'Tổng quan',items:[['mobile','home'],['today','calendar'],['alerts','alert'],['reports','chart']]},
- {label:'Vườn & vụ',items:[['farms','sprout'],['map','map']]},
+ {label:'Tổng quan',items:[['reports','chart']]},
+ {label:'Bản đồ',items:[['map','map','Bản đồ chăm sóc']]},
+ {label:'Vườn & vụ',items:[['farms','sprout']]},
  {label:'Công việc hằng ngày',items:[['cong-viec','check'],['plans','clipboard'],['work','list','Tiến độ công việc'],['labor','people'],['materials','boxes','Vật tư theo việc'],['daily-close','lock']]},
  {label:'Cây & buồng',items:[['measurements','ruler'],['losses','trash'],['cycle-close','flag']]},
  {label:'Thu hoạch & đóng gói',items:[['harvest','basket'],['incoming-qc','shield'],['packhouse','package'],['trace','route']]},
  {label:'Dự thu',items:[['forecast','trending']]},
  {label:'Kho & mua hàng',items:[['kho','warehouse']]},
  {label:'Nhân sự',items:[['nhan-su','id-card'],['cham-cong','clock']]},
- {label:'Thiết lập',items:[['admin/masters','database'],['plan-norm','sliders','Cấu hình KH & định mức'],['admin/imports','upload'],['admin/settings','settings'],['nguoi-dung','user-cog']]},
+ {label:'Thiết lập',items:[['alerts','alert'],['admin/masters','database'],['plan-norm','sliders','Cấu hình KH & định mức'],['admin/imports','upload'],['admin/settings','settings'],['nguoi-dung','user-cog']]},
 ]
 export const moduleKey=p=>p==='plan-norm'?'plans':p.replace('admin/','')
 // A permission module can contain several pages; router names must remain unique.

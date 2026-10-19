@@ -1,0 +1,19 @@
+{% extends "frappe/www/login.html" %}
+{% block navbar %}{% endblock %}
+{% block head_include %}
+{{ super() }}
+{% for css in lotus_login_css %}<link rel="stylesheet" href="/assets/lotus_farm/frontend/{{ css }}">{% endfor %}
+{% endblock %}
+{% block page_content %}
+<main class="lotus-login">
+ <aside class="lotus-login-brand">
+  <img src="{{ logo }}" alt="Lotus Agritech" width="641" height="213">
+  <div><p class="lotus-login-eyebrow">LOTUS AGRITECH</p><h1>Quản lý nông trường,<br>kết nối mọi công việc.</h1><p class="lotus-login-description">Vườn · Nhân sự · Công việc · Kho · Sản lượng</p></div>
+  <span class="lotus-login-brand-footer">Hệ thống quản lý Lotus</span>
+ </aside>
+ <section class="lotus-login-form" aria-label="Đăng nhập tài khoản Lotus">
+  <div class="lotus-login-native">{{ super() }}</div>
+  <p class="lotus-login-help">Sử dụng tài khoản được cấp bởi quản trị viên Lotus.</p>
+ </section>
+</main>
+{% endblock %}

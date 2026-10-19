@@ -18,7 +18,7 @@ test('HR mobile is a separate Vant 4 entry with the shared Lotus shell',()=>{
 test('CCCD camera requests HD focus, handles large photos and keeps the mobile dialog compact',()=>{
  const code=src('../src/components/CccdQrScanner.vue')
  assert.match(code,/<Teleport to="body">/)
- assert.match(code,/<dialog ref="scannerDialog"/)
+ assert.match(code,/<WorkspaceModal bare ref="scannerDialog"/)
  assert.match(code,/fps:15/)
  assert.doesNotMatch(code,/qrbox:/)
  assert.match(code,/Let Android choose the default back camera/)

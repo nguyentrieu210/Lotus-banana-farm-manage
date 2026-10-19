@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceModal from './WorkspaceModal.vue'
 import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
 import LotusIcon from './LotusIcon.vue'
 import {Button as UiButton} from './ui/button'
@@ -65,9 +66,9 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
    <p v-if="logoutError" class="error" role="alert">{{logoutError}}</p>
   </div>
  </div>
- <dialog ref="palette" class="command-dialog" aria-label="Tìm nhanh" @click="dismissOnBackdrop($event)">
+ <WorkspaceModal bare ref="palette" title="Tìm nhanh" class="command-dialog" aria-label="Tìm nhanh">
   <div class="command-input"><input ref="input" v-model="query" aria-label="Tìm màn hình, thao tác hoặc bản ghi" placeholder="Tìm màn hình, thao tác hoặc mã/tên bản ghi…" role="combobox" aria-autocomplete="list" :aria-expanded="true" aria-controls="lotus-command-results" :aria-activedescendant="results[selected]?'lotus-command-'+selected:undefined" @keydown="keys"><UiButton variant="ghost" size="sm" aria-label="Đóng tìm nhanh" @click="palette.close()">Esc</UiButton></div>
   <div id="lotus-command-results" role="listbox" class="command-results"><UiButton v-for="(action,index) in results" :id="'lotus-command-'+index" :key="action.id" variant="ghost" role="option" :aria-selected="index===selected" :class="{selected:index===selected}" @click="choose(action)">{{action.label}} <small>{{action.record?action.kind:action.navigation?'Đi đến':'Thao tác'}}</small></UiButton><p v-if="searching" role="status">Đang tìm bản ghi…</p><p v-else-if="!results.length" role="status">Không tìm thấy kết quả.</p></div>
   <footer>↑ ↓ chọn · Enter mở · Esc đóng</footer>
- </dialog>
+ </WorkspaceModal>
 </template>

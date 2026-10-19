@@ -7,11 +7,12 @@ import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
 import {Textarea as UiTextarea} from './ui/textarea'
 import {FormField} from './ui/form-field'
+import {DatePicker} from './ui/date-picker'
 import {consoleAPI} from '../api'
 import {label,stateLabel,uiFarmLabel} from '../labels'
 const props=defineProps({schema:Object,model:Object,readonly:Boolean,scope:Object,child:Boolean,linkTitles:Object,linkOptions:Function})
 
-const fields=computed(()=>props.schema.fields.filter(f=>!['Section Break','Column Break','Tab Break','HTML','Button','Password'].includes(f.fieldtype)))
+const fields=computed(()=>props.schema.fields.filter(f=>f.fieldname!=='farm_plot'&&!['Section Break','Column Break','Tab Break','HTML','Button','Password'].includes(f.fieldtype)))
 async function options(field,search=''){if(field.options==='UOM'){const rows=await consoleAPI('link_options',{doctype:'UOM',search:'',farm:props.scope?.farm,company:props.scope?.company});return unitOptions(rows,search)}return props.linkOptions?await props.linkOptions(field,search):await consoleAPI('link_options',{doctype:field.options,search,farm:props.scope?.farm,company:props.scope?.company})}
 function add(field){const row={};for(const c of props.schema.tables[field.options])if(c.default!=null)row[c.fieldname]=c.default;(props.model[field.fieldname]??=[]).push(row)}
 const fieldCaption=f=>uiFarmLabel(f.display_label||label(f.fieldname,f.label))
@@ -40,6 +41,7 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
     <input v-else-if="field.fieldtype==='Check'" v-bind="attrs" :checked="model[field.fieldname]===true||Number(model[field.fieldname])===1" type="checkbox" @change="model[field.fieldname]=$event.target.checked?1:0"/>
     <UiInput v-else-if="['Int','Float','Currency','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
     <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)"/>
+    <DatePicker v-else-if="field.fieldtype==='Date'" v-bind="attrs" v-model="model[field.fieldname]" :label="fieldCaption(field)"/>
     <UiInput v-else v-bind="attrs" v-model="model[field.fieldname]" :type="inputType(field)"/>
    </FormField>
   </template>

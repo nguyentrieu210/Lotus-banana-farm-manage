@@ -13,10 +13,10 @@ from lotus_farm.scoping import land_scope, land_filters
 
 
 @frappe.whitelist()
-def planting_template(company=None, farm=None, block=None):
+def planting_template(company=None, farm=None, block=None,zone=None):
     if not frappe.has_permission("Harvest Forecast", "read") or not frappe.has_permission("Farm Block", "read"):
         frappe.throw("Không có quyền tải dữ liệu lô dự thu.", frappe.PermissionError)
-    selected = land_scope(company=company, farm=farm, block=block)
+    selected = land_scope(company=company, farm=farm, block=block, zone=zone)
     fields = ["name", "farm", "block_code", "block_name", "area_ha", "planting_date", "planting_density"]
     lots = records("Farm Block", land_filters(frappe.get_meta("Farm Block"), selected), fields)
     file = io.StringIO(newline="")

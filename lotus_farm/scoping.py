@@ -2,7 +2,7 @@
 import frappe
 
 
-def land_scope(company=None, farm=None, block=None, plot=None, cycle=None):
+def land_scope(company=None, farm=None, block=None, plot=None, cycle=None, zone=None):
     values = dict(company=company or None, farm=farm or None, block=block or None, plot=plot or None, cycle=cycle or None)
     for key, doctype in [('cycle', 'Crop Cycle'), ('plot', 'Farm Plot'), ('block', 'Farm Block'), ('farm', 'Farm')]:
         if not values[key]:
@@ -15,6 +15,18 @@ def land_scope(company=None, farm=None, block=None, plot=None, cycle=None):
             if values[parent] and values[parent] != name:
                 frappe.throw('Selected ' + key + ' does not belong to the selected ' + parent + '.')
             values[parent] = name
+    if zone:
+        zone = str(zone).strip()
+        if not values['farm']:
+            frappe.throw('Chọn vườn trước khi chọn khu.')
+        blocks = frappe.get_list('Farm Block', filters={'farm': values['farm'], 'farm_zone': zone},
+                                 pluck='name', limit_page_length=10000)
+        if not blocks:
+            frappe.throw('Khu không thuộc vườn đã chọn hoặc không có quyền xem.')
+        if values['block'] and values['block'] not in blocks:
+            frappe.throw('Lô không thuộc khu đã chọn.')
+        values['zone'] = zone
+        values['zone_blocks'] = blocks
     return values
 
 
@@ -30,4 +42,9 @@ def land_filters(meta, scope):
         result['farm']=['in',farms or ['__no_permitted_farm__']]
     if own and scope.get(own):
         result['name'] = scope[own]
+    if scope.get('zone_blocks') and not scope.get('block'):
+        if meta.name == 'Farm Block':
+            result['name'] = ['in', scope['zone_blocks']]
+        elif meta.has_field('farm_block'):
+            result['farm_block'] = ['in', scope['zone_blocks']]
     return result

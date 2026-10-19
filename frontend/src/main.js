@@ -26,3 +26,5 @@ import './desktop-components.css'
 import './desktop-shell.css'
 import './register-worker'
 import './workspace-experience.css'
+
+import './care-map.css'

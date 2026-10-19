@@ -87,7 +87,7 @@ def plot_history(farm_plot,from_date=None,to_date=None,crop_cycle=None):
 
 
 def _matches_land(source,selected):
-    return all(not selected[key] or source.get(field)==selected[key] for key,field in [('farm','farm'),('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])
+    return (not selected.get('zone_blocks') or source.get('farm_block') in selected['zone_blocks']) and all(not selected[key] or source.get(field)==selected[key] for key,field in [('farm','farm'),('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])
 
 
 def _lot_fraction(name,selected):
@@ -102,10 +102,10 @@ def _lot_fraction(name,selected):
 
 
 @frappe.whitelist()
-def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
+def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>93:frappe.throw('Select a reporting period of at most 94 days.')
-    selected=land_scope(company,farm,block,plot,cycle)
+    selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     farm=selected['farm'];company=selected['company']
     farms=records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name','company','farm_name'])
     summaries=[]
@@ -114,7 +114,7 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
         from lotus_farm.daily_api import daily_overview
         tasks=[];unclosed_dates=[];day=start
         while day<=end:
-            overview=daily_overview(f.name,day,block=block,plot=plot,cycle=cycle);tasks.extend(overview['tasks'])
+            overview=daily_overview(f.name,day,block=block,plot=plot,cycle=cycle,zone=zone);tasks.extend(overview['tasks'])
             if not overview['closed']:unclosed_dates.append(str(day))
             day=getdate(add_days(day,1))
         filters={**land_filters(frappe.get_meta('Bunch Cancellation'),{**selected,'farm':f.name}),'docstatus':1,'posting_date':['between',[start,end]]}
@@ -122,20 +122,20 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
         disease=records('Disease Observation',filters,['name','affected_plants'])
         actuals=records('Harvest Actual',{**land_filters(frappe.get_meta('Harvest Actual'),{**selected,'farm':f.name}),'docstatus':1,'harvest_date':['between',[start,end]]},['name','gross_weight_kg','saleable_weight_kg','harvested_bunch_qty'])
         linked={}
-        if block or plot or cycle:
+        if zone or block or plot or cycle:
             from lotus_farm.console import _source_scope_names
             linked={'name':['in',_source_scope_names('Incoming Quality Inspection',{**selected,'farm':f.name}) or ['__none__']]}
         qc=records('Incoming Quality Inspection',{'farm':f.name,'docstatus':1,'posting_date':['between',[start,end]],**linked},['name','harvest_lot','received_kg','accepted_kg'])
-        runs=records('Packout Run',{'farm':f.name,'docstatus':1,'packing_date':['between',[start,end]],**({'name':['in',_source_scope_names('Packout Run',{**selected,'farm':f.name}) or ['__none__']]} if block or plot or cycle else {})},['name','input_kg','reject_kg','other_loss_kg'])
+        runs=records('Packout Run',{'farm':f.name,'docstatus':1,'packing_date':['between',[start,end]],**({'name':['in',_source_scope_names('Packout Run',{**selected,'farm':f.name}) or ['__none__']]} if zone or block or plot or cycle else {})},['name','input_kg','reject_kg','other_loss_kg'])
         finished=secondary=0;fractions={}
         for r in runs:
             run=frappe.get_doc('Packout Run',r.name)
-            fraction=sum(s['fraction'] for s in packout_lineage(run) if _matches_land(s,selected)) if block or plot or cycle else 1
+            fraction=sum(s['fraction'] for s in packout_lineage(run) if _matches_land(s,selected)) if zone or block or plot or cycle else 1
             fractions[r.name]=fraction
             finished+=fraction*sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Finished')
             secondary+=fraction*sum(flt(o.net_kg) for o in run.outputs if o.output_type=='Secondary')
         gross=sum(flt(r.gross_weight_kg) for r in actuals);bunches=sum(flt(r.harvested_bunch_qty) for r in actuals)
-        qc_fractions={r.name:_lot_fraction(r.harvest_lot,selected) if block or plot or cycle else 1 for r in qc}
+        qc_fractions={r.name:_lot_fraction(r.harvest_lot,selected) if zone or block or plot or cycle else 1 for r in qc}
         incoming=sum(qc_fractions[r.name]*flt(r.received_kg) for r in qc);accepted=sum(qc_fractions[r.name]*flt(r.accepted_kg) for r in qc)
         raw=sum(fractions[r.name]*flt(r.input_kg) for r in runs)
         shortages=[]
@@ -168,16 +168,16 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
             outstanding_material=shortages,cancellations=cancels,tasks=tasks,alerts=alerts))
     from lotus_farm.api import availability
     supply=availability(str(start),str(getdate(add_days(end,56))),farm)
-    supply=[s for s in supply if any(f.name==s['farm'] for f in farms) and all(not selected[k] or s.get(field)==selected[k] for k,field in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])]
+    supply=[s for s in supply if (not selected.get('zone_blocks') or s.get('farm_block') in selected['zone_blocks']) and any(f.name==s['farm'] for f in farms) and all(not selected[k] or s.get(field)==selected[k] for k,field in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])]
     return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Work completion is averaged per task. Outstanding material is unconsumed requirement, not stock shortage. Scoped QC/packout weights are attributed by explicit source contributions.')
 
 
 @frappe.whitelist()
-def forecast_vintages(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
+def forecast_vintages(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>366:frappe.throw('Select at most one year.')
     filters={'period_start_date':['>=',start],'period_end_date':['<=',end],'supply_state':['!=','Draft']}
-    selected=land_scope(company,farm,block,plot,cycle)
+    selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     filters.update(land_filters(frappe.get_meta('Harvest Forecast'),selected))
     snapshots=records('Harvest Forecast',filters,['name','farm','farm_plot','crop_cycle','sucker_selection_batch','period_start_date','period_end_date','released_at','revision_no','packed_forecast_kg','snapshot_hash'])
     groups=defaultdict(list)
@@ -235,9 +235,9 @@ def _actual_fully_processed(name):
 
 
 @frappe.whitelist()
-def dataset(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
+def dataset(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     """Authenticated JSON dataset for Power BI; permission checks are the same as Desk."""
-    return dashboard(from_date,to_date,farm=farm,company=company,block=block,plot=plot,cycle=cycle)
+    return dashboard(from_date,to_date,farm=farm,company=company,block=block,plot=plot,cycle=cycle,zone=zone)
 
 
 @frappe.whitelist()
@@ -302,15 +302,15 @@ def _section(build):
 
 
 @frappe.whitelist()
-def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None):
+def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     """Aggregated series for the report charts. Same land scope and permissions as dashboard()."""
     from lotus_farm import report_charts as rc
     start,end=getdate(from_date),getdate(to_date)
     if start>end or (end-start).days>365:frappe.throw('Select a reporting period of at most 366 days.')
-    selected=land_scope(company,farm,block,plot,cycle)
+    selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     farms=[f.name for f in records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name'])]
     in_farms={'farm':['in',farms or ['__none__']]}
-    land_only=bool(block or plot or cycle)
+    land_only=bool(zone or block or plot or cycle)
 
     def land():
         meta=frappe.get_meta('Farm Block')
@@ -327,7 +327,7 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
         days,all_tasks=[],[]
         day=start
         while day<=end:
-            tasks=[t for f in farms for t in daily_overview(f,day,block=block,plot=plot,cycle=cycle)['tasks']]
+            tasks=[t for f in farms for t in daily_overview(f,day,block=block,plot=plot,cycle=cycle,zone=zone)['tasks']]
             days.append((day,tasks));all_tasks.extend(tasks)
             day=getdate(add_days(day,1))
         return dict(days=rc.work_by_day(days),types=rc.work_by_type(all_tasks))
@@ -355,7 +355,43 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
 
     def stock():
         filters={'docstatus':1,'posting_date':['between',[start,end]],**({'company':selected['company']} if selected['company'] else {})}
+        if land_only:
+            return dict(months=[],note='Kho ghi nhận theo công ty; chưa phân bổ tồn kho theo khu/lô.')
+        if selected['farm'] and not selected['company']:
+            filters['company']=frappe.db.get_value('Farm',selected['farm'],'company')
         return dict(months=rc.stock_by_month(records('Stock Entry',filters,['posting_date','stock_entry_type'])))
 
+    def people():
+        if land_only:
+            return dict(note='Nhân sự và lương theo vườn/công ty; chưa phân bổ theo khu/lô.')
+        companies={frappe.db.get_value('Farm',f,'company') for f in farms}
+        employees=records('Employee',{'company':['in',list(companies)],
+            **({'lotus_farm':farm} if farm else {})},['name','status','lotus_onboarding_state','lotus_worker_category'])
+        names=[e.name for e in employees]
+        attendance=records('Attendance',{'employee':['in',names or ['__none__']],
+            'docstatus':1,'attendance_date':['between',[start,end]]},['status'])
+        slips=records('Salary Slip',{'employee':['in',names or ['__none__']],
+            'docstatus':1,'start_date':['<=',end],'end_date':['>=',start]},['currency','net_pay'])
+        payroll={}
+        for slip in slips:payroll[slip.currency]=payroll.get(slip.currency,0)+flt(slip.net_pay)
+        from collections import Counter
+        return dict(employees=len(employees),active=sum(e.status=='Active' for e in employees),
+            pending=sum(e.lotus_onboarding_state!='Ready' for e in employees),
+            attendance=[dict(status=k,count=v) for k,v in Counter(a.status for a in attendance).items()],
+            payroll=[dict(currency=k,net=v) for k,v in payroll.items()],salary_slips=len(slips))
+
+    def orders(doctype):
+        if land_only:
+            return dict(note='Đơn hàng theo công ty; chưa phân bổ giá trị theo khu/lô.')
+        companies={frappe.db.get_value('Farm',f,'company') for f in farms}
+        rows=records(doctype,{'company':['in',list(companies)],'docstatus':1,
+            'transaction_date':['between',[start,end]]},['name','status','currency','grand_total'])
+        from collections import Counter
+        totals={}
+        for row in rows:totals[row.currency]=totals.get(row.currency,0)+flt(row.grand_total)
+        return dict(count=len(rows),statuses=[dict(status=k,count=v) for k,v in Counter(r.status for r in rows).items()],
+                    totals=[dict(currency=k,value=v) for k,v in totals.items()])
+
     return dict(from_date=str(start),to_date=str(end),farms=farms,land=_section(land),work=_section(work),
-        harvest=_section(harvest),losses=_section(losses),stock=_section(stock))
+        harvest=_section(harvest),losses=_section(losses),stock=_section(stock),people=_section(people),
+        buying=_section(lambda:orders('Purchase Order')),sales=_section(lambda:orders('Sales Order')))

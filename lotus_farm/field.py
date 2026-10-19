@@ -41,16 +41,21 @@ def map_data(farm,block=None,plot=None,status=None):
 
 
 @frappe.whitelist()
-def map_block_data(farm, block=None):
-    """Return only APPROVED Lotus care-block boundaries for the map UI."""
+def map_block_data(farm, block=None, zone=None, include_draft=False):
+    """Care boundaries, with explicit draft visibility for imported KML sources."""
     from lotus_farm.reporting import records, scope
+    from lotus_farm.scoping import land_scope, land_filters
     scope(farm)
+    selected_scope = land_scope(farm=farm, block=block, zone=zone)
     selected = records('Farm Block',
-                       {'farm': farm, **({'name': block} if block else {})}, ['name'])
+                       land_filters(frappe.get_meta('Farm Block'), selected_scope),
+                       ['name', 'block_code', 'block_name', 'farm_zone', 'area_ha'])
     allowed = {b.name for b in selected}
+    blocks = {b.name: b for b in selected}
+    states = ['Draft', 'Approved'] if include_draft in (True, 1, '1', 'true') else ['Approved']
     versions = records('Farm Block Geometry',
-                       {'farm': farm, 'approval_state': 'Approved'},
-                       ['name', 'farm_block', 'version', 'geojson'])
+                       {'farm': farm, 'approval_state': ['in', states]},
+                       ['name', 'farm_block', 'version', 'geojson', 'approval_state'])
     latest = {}
     for row in versions:
         if row.farm_block not in allowed:
@@ -59,7 +64,11 @@ def map_block_data(farm, block=None):
             latest[row.farm_block] = row
     return dict(type='FeatureCollection',
                 features=[dict(type='Feature', geometry=json.loads(row.geojson),
-                               properties=dict(block=row.farm_block, version=row.version,
+                               properties=dict(block=row.farm_block,
+                                               code=blocks[row.farm_block].block_code,
+                                               zone=blocks[row.farm_block].farm_zone,
+                                               area_ha=blocks[row.farm_block].area_ha,
+                                               approval_state=row.approval_state, version=row.version,
                                                document=row.name)) for row in latest.values()])
 
 

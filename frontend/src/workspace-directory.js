@@ -1,6 +1,6 @@
 // One permission-checked directory for all Lotus desktop entrypoints.
 export function workspaceDirectory(session){
- const links=[{id:'global-home',label:'Trang chủ',href:'/lotus/mobile'}]
+ const links=[{id:'global-home',label:'Tổng quan',href:'/lotus/reports'}]
  if(session?.capabilities?.user_admin)links.push({id:'global-users',label:'Người dùng & phân quyền',href:'/lotus/nguoi-dung'})
  if(session?.capabilities?.hr)links.push({id:'global-hr',label:'Hồ sơ nhân sự',href:'/lotus/nhan-su'})
  if(session?.capabilities?.attendance)links.push({id:'global-attendance',label:'Chấm công',href:'/lotus/cham-cong'})

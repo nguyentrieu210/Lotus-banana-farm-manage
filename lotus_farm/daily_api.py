@@ -6,16 +6,17 @@ from lotus_farm.daily_operations import close_checks
 
 
 @frappe.whitelist()
-def daily_overview(farm, posting_date, block=None, plot=None, cycle=None, status=None, view=None):
+def daily_overview(farm, posting_date, block=None, plot=None, cycle=None, status=None, view=None,zone=None):
     record=frappe.get_doc('Farm',farm)
     record.check_permission('read')
     from lotus_farm.scoping import land_scope
-    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle)
+    selected=land_scope(farm=farm,block=block,plot=plot,cycle=cycle,zone=zone)
     date=getdate(posting_date)
     tasks=[]
     for name in frappe.get_list('Daily Work Plan',filters={'farm':farm,'posting_date':date,'docstatus':1},pluck='name',limit_page_length=10000):
         plan=frappe.get_doc('Daily Work Plan',name)
         for line in plan.lines:
+            if selected.get('zone_blocks') and line.farm_block not in selected['zone_blocks']:continue
             if any(selected[k] and line.get(f)!=selected[k] for k,f in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')]):continue
             results=frappe.get_list('Daily Work Result',filters={'work_plan_line':line.name,'docstatus':1},fields=['name','completed_qty','actual_workdays','unfinished_reason'])
             from lotus_farm.reporting import records
@@ -114,7 +115,7 @@ def create_material_request(requirement, warehouse, schedule_date):
 
 
 @frappe.whitelist()
-def preview_close(farm, posting_date):
+def preview_close(farm, posting_date,zone=None):
     require_role('Lotus Farm Manager','Lotus Auditor')
     record=frappe.get_doc('Farm',farm);record.check_permission('read')
     return close_checks(farm,getdate(posting_date))

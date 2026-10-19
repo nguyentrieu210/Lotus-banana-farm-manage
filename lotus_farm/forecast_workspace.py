@@ -36,7 +36,7 @@ def _fields():
 
 
 @frappe.whitelist()
-def board(company=None, farm=None, block=None, cycle=None, from_date=None, to_date=None):
+def board(company=None, farm=None, block=None, cycle=None, from_date=None, to_date=None,zone=None):
     """Return the complete scoped planning window; never sum draft/replaced supply."""
     if not frappe.has_permission("Harvest Forecast", "read"):
         frappe.throw("Không có quyền xem dự thu.", frappe.PermissionError)
@@ -47,7 +47,7 @@ def board(company=None, farm=None, block=None, cycle=None, from_date=None, to_da
     if (end - start).days > 366:
         frappe.throw("Chỉ xem tối đa 366 ngày; hãy thu hẹp khoảng thời gian.")
 
-    selected = land_scope(company=company, farm=farm, block=block, cycle=cycle)
+    selected = land_scope(company=company, farm=farm, block=block, cycle=cycle, zone=zone)
     filters = {
         "period_start_date": ["<=", end],
         "period_end_date": [">=", start],
