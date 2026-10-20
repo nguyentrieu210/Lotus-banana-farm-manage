@@ -35,7 +35,8 @@ const actualCols=[farmCol,col('farm_block','Lô'),col('selection_date','Ngày ch
 const colorCols=[farmCol,col('color_code','Mã màu'),col('color_label','Màu dây',{minWidth:180}),col('injection_from','Chích từ'),col('injection_to','Chích đến'),col('valid_from','Cắt bắp từ'),col('valid_to','Cắt bắp đến'),col('harvest_from','Dự thu từ'),col('harvest_to','Dự thu đến')]
 const parameterCols=[col('enterprise','Đơn vị nguồn'),col('source_farm','Vườn nguồn'),col('year_band','Năm vụ'),qty('density','Cây/ha'),col('cut_rate','CB/cây',{valueFormatter:({value})=>fmt(value*100)+'%'}),col('harvest_rate','TH/CB',{valueFormatter:({value})=>fmt(value*100)+'%'}),col('processed_rate','SC/TH',{valueFormatter:({value})=>fmt(value*100)+'%'}),qty('gross_bunch_kg','Kg nguyên buồng'),qty('processed_bunch_kg','Kg sơ chế/buồng')]
 const adoptionCols=[farmCol,qty('version','Bản'),col('approval_state','Trạng thái',{valueFormatter:({value})=>value==='Approved'?'Đã duyệt':'Nháp'}),col('source_label','Bộ nguồn',{minWidth:260}),col('condition_class','Đánh giá'),col('valid_from','Từ'),col('valid_to','Đến')]
-const forecastCols=[farmCol,zoneCol,col('month','Tháng'),qty('cut_bunches','Buồng cắt bắp'),qty('harvest_bunches','Buồng thu'),qty('gross_kg','Kg nguyên buồng'),qty('processed_kg','Kg sơ chế'),...['A456','A789','B456','B789','CL','CP','CNB13','CNB18'].map(g=>qty('grade_'+g+'_kg',g+' (kg)'))]
+const sourceNames={'Observed Cut':'Cắt bắp thực tế','Observed Selection':'Chồi thực tế','Projected Ratoon':'Vụ sau dự phóng','Plan Cohort':'Đợt kế hoạch','Handover Simulation':'Mô phỏng bàn giao'}
+const forecastCols=[farmCol,zoneCol,col('month','Tháng'),col('source_kinds','Mốc tính',{minWidth:180,valueFormatter:({value})=>(value||[]).map(v=>sourceNames[v]||v).join(', ')}),qty('cut_bunches','Buồng cắt bắp'),qty('harvest_bunches','Buồng thu'),qty('gross_kg','Kg nguyên buồng'),qty('processed_kg','Kg sơ chế'),...['A456','A789','B456','B789','CL','CP','CNB13','CNB18'].map(g=>qty('grade_'+g+'_kg',g+' (kg)'))]
 const filter=rows=>(rows||[]).filter(row=>!search.value||Object.values(row).join(' ').toLocaleLowerCase('vi').includes(search.value.toLocaleLowerCase('vi')))
 const totals=computed(()=>{
  const result=new Map()
@@ -120,6 +121,8 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
    <p v-if="!adopted.length" class="notice">Chưa có bộ hệ số đã duyệt cho phạm vi này. Áp dụng phiên bản tại Thông số trước khi tính.</p>
    <p v-for="issue in forecast?.issues||[]" :key="issue.farm+issue.message" class="notice">{{issue.farm}}: {{issue.message}}</p>
    <DataTable :rows="filter(forecast?.rows)" :columns="forecastCols" :loading="busy" empty="Chưa có đợt chọn chồi thực tế đủ dữ liệu để dự phóng"/>
+   <template v-if="forecast?.plan_rows?.length"><p class="notice">Đợt kế hoạch được xem riêng, chưa cộng vào các đợt thực tế.</p><DataTable :rows="filter(forecast.plan_rows)" :columns="forecastCols"/></template>
+   <p v-if="forecast?.rows?.length" class="notice">{{forecast.window_distribution}}</p>
    <template v-if="scenario"><p class="notice">{{forecast?.handover_assumption}}</p><DataTable :rows="filter(forecast?.handover_scenario)" :columns="forecastCols" :loading="busy" empty="Chưa có mô phỏng bàn giao đủ dữ liệu"/></template>
   </template>
   <template v-else-if="tab==='sources'">

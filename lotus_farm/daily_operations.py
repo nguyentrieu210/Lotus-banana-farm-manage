@@ -445,7 +445,8 @@ class CancellationRecord(DailyDocument):
             if getdate(self.posting_date) < getdate(operation.operation_date) or (operation.expected_harvest_date and getdate(self.expected_harvest_date) != getdate(operation.expected_harvest_date)):
                 frappe.throw('Cancellation date/expected harvest must match the source operation.')
             used = sum(flt(x) for x in frappe.get_all(self.doctype, filters={'source_operation': self.source_operation,'docstatus':1,'name':['!=',self.name]}, pluck='bunch_qty'))
-            if used+self.bunch_qty > operation.net_bunch_qty:
+            harvested = sum(flt(x) for x in frappe.get_all('Harvest Actual',filters={'source_cut_operation':self.source_operation,'docstatus':['<',2]},pluck='harvested_bunch_qty')) if operation.operation_type=='Cut Bud' else 0
+            if used+self.bunch_qty+harvested > operation.net_bunch_qty:
                 frappe.throw('Cancelled bunches exceed the source operation net bunches.')
 
     def on_submit(self):

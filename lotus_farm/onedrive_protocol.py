@@ -170,6 +170,27 @@ def scheduled_work_due(anchor, on_date, *, offset_days=0, offset_months=0, repea
     return ((on_date-first).days % int(repeat_days)==0) if repeat_days else on_date==first
 
 
+def window_months(start, end):
+    """Planning allocation within a known window; uniform days is explicit."""
+    start,end=as_date(start),as_date(end)
+    if end<start or (end-start).days>366:
+        raise ValueError("Cửa sổ dự thu không hợp lệ.")
+    total=(end-start).days+1
+    buckets=defaultdict(int)
+    for n in range(total):buckets[(start+timedelta(days=n)).strftime('%Y-%m')]+=1
+    return [dict(month=month,share=days/total) for month,days in sorted(buckets.items())]
+
+
+def source_balance(expected_cut, observed_gross_cut, observed_net_cut, harvested=0, cancelled=0):
+    values=[float(v) for v in (expected_cut,observed_gross_cut,observed_net_cut,harvested,cancelled)]
+    if any(not math.isfinite(v) or v<0 for v in values):
+        raise ValueError("Số buồng đối soát không hợp lệ.")
+    expected,gross,net,harvested,cancelled=values
+    if net>gross or harvested+cancelled>net:
+        raise ValueError("Số buồng thu/hủy vượt đợt nguồn.")
+    return dict(unobserved_cut=max(expected-gross,0),remaining_observed_cut=net-harvested-cancelled)
+
+
 def parse_handover_workbook(content):
     """Read daily Chinese handover history; ignore monthly subtotal rows.
 

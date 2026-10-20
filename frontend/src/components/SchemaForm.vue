@@ -13,7 +13,9 @@ import {label,stateLabel,uiFarmLabel} from '../labels'
 const props=defineProps({schema:Object,model:Object,readonly:Boolean,scope:Object,child:Boolean,linkTitles:Object,linkOptions:Function})
 
 const fields=computed(()=>props.schema.fields.filter(f=>f.fieldname!=='farm_plot'&&!['Section Break','Column Break','Tab Break','HTML','Button','Password'].includes(f.fieldtype)))
-async function options(field,search=''){if(field.options==='UOM'){const rows=await consoleAPI('link_options',{doctype:'UOM',search:'',farm:props.scope?.farm,company:props.scope?.company});return unitOptions(rows,search)}return props.linkOptions?await props.linkOptions(field,search):await consoleAPI('link_options',{doctype:field.options,search,farm:props.scope?.farm,company:props.scope?.company})}
+async function options(field,search=''){if(field.options==='UOM'){const rows=await consoleAPI('link_options',{doctype:'UOM',search:'',farm:props.scope?.farm,company:props.scope?.company});return unitOptions(rows,search)}return props.linkOptions?await props.linkOptions(field,search):await consoleAPI('link_options',{doctype:field.options,search,farm:props.model.farm||props.scope?.farm,company:props.scope?.company,
+ context_field:field.fieldname,block:props.model.farm_block||null,cycle:props.model.crop_cycle||null,on_date:props.model.operation_date||props.model.harvest_date||props.model.posting_date||null,operation_type:props.model.operation_type||null})}
+function selectLink(field,row){if(field.fieldname!=='source_cut_operation'||!row?.context)return;for(const key of ['farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch'])props.model[key]=row.context[key]||'';props.model[props.schema.doctype==='Bunch Operation'?'bunch_tag':'ribbon_color']=row.context.tag||''}
 function add(field){const row={};for(const c of props.schema.tables[field.options])if(c.default!=null)row[c.fieldname]=c.default;(props.model[field.fieldname]??=[]).push(row)}
 const fieldCaption=f=>uiFarmLabel(f.display_label||label(f.fieldname,f.label))
 const fieldValue=f=>f.options==='UOM'?unitLabel(props.model[f.fieldname]):f.fieldtype==='Select'?stateLabel(props.model[f.fieldname]??'—'):f.fieldtype==='Check'?(Number(props.model[f.fieldname])?'Có':'Không'):(props.model[f.fieldname]??'—')
@@ -40,7 +42,7 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
     </UiSelect>
     <input v-else-if="field.fieldtype==='Check'" v-bind="attrs" :checked="model[field.fieldname]===true||Number(model[field.fieldname])===1" type="checkbox" @change="model[field.fieldname]=$event.target.checked?1:0"/>
     <UiInput v-else-if="['Int','Float','Currency','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
-    <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)"/>
+    <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)" @select="selectLink(field,$event)"/>
     <DatePicker v-else-if="field.fieldtype==='Date'" v-bind="attrs" v-model="model[field.fieldname]" :label="fieldCaption(field)"/>
     <UiInput v-else v-bind="attrs" v-model="model[field.fieldname]" :type="inputType(field)"/>
    </FormField>

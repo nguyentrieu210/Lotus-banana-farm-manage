@@ -48,3 +48,11 @@ test('most specific approved profile wins',()=>{
  const scoped={...profile,name:'specific',farm_block:'A1',version:1};
  assert.equal(pickProfile([profile,scoped],wave,{variety:''},'2026-01-01').name,'specific');
 });
+
+test('calendar-month work rules preserve the original month-end date',()=>{
+ const tree={...wave,anchor_date:'2026-03-31',quantity_basis:'Trees'};
+ const rule={...board.rules[0],anchor:'Planting',quantity_basis:'Trees',offset_days:0,offset_months:6,repeat_months:6};
+ const result=simulate({...board,cohorts:[tree],profiles:[{...profile,planting_to_harvest_days:2000}],rules:[rule]},
+  {from:'2026-03-01',months:18,repeatRatoons:false});
+ assert.deepEqual(result.events.map(e=>e.date),['2026-09-30','2027-03-31']);
+});

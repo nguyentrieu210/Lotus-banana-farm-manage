@@ -172,11 +172,27 @@ def detail(doctype,name):
 
 
 @frappe.whitelist()
-def link_options(doctype,search='',farm=None,company=None):
+def link_options(doctype,search='',farm=None,company=None,context_field=None,block=None,cycle=None,on_date=None,operation_type=None):
     if not frappe.has_permission(doctype,'read'):frappe.throw('Link read permission required.',frappe.PermissionError)
     meta=frappe.get_meta(doctype);filters={}
     if farm and meta.has_field('farm'):filters['farm']=farm
     if company and meta.has_field('company'):filters['company']=company
+    if doctype=='Bunch Operation' and context_field=='source_cut_operation':
+        selected=land_scope(company=company,farm=farm,block=block,cycle=cycle)
+        filters.update(land_filters(meta,selected));filters.update(operation_type='Cut Bud',docstatus=1)
+        rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%']} if search else None,
+            fields=['name','farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch','operation_date','bunch_tag','net_bunch_qty'],limit_page_length=30,order_by='operation_date desc, name desc')
+        result=[]
+        for r in rows:
+            tag_title=frappe.db.get_value('Bunch Tag',r.bunch_tag,'display_name') if r.bunch_tag and frappe.has_permission('Bunch Tag','read') else r.bunch_tag
+            result.append(dict(value=r.name,label=f"{r.name} · {r.operation_date} · {r.net_bunch_qty} buồng",subtitle=tag_title,
+                context={**{key:r.get(key) for key in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')},'tag':r.bunch_tag,'tag_title':tag_title}))
+        return result
+    if doctype=='Bunch Tag':
+        filters['enabled']=1
+        if on_date and operation_type in ('Cut Bud','Bud Injection'):
+            day=getdate(add_days(on_date,14 if operation_type=='Bud Injection' else 0))
+            filters.update(valid_from=['<=',day],valid_to=['>=',day])
     title=meta.title_field or 'name'
     rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%'],title:['like','%'+search[:80]+'%']} if search else None,fields=list(dict.fromkeys(['name',title])),limit_page_length=500 if doctype=='UOM' else 30,order_by='name')
     return [dict(value=r.name,label=r.get(title) or r.name) for r in rows]

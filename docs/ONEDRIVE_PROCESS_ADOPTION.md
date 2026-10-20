@@ -71,6 +71,16 @@ không cộng vào dự thu từ chồi đã kiểm đếm, không phát hành b
 Hệ số tham chiếu phải được hiệu chuẩn từ số liệu Lotus qua các vụ, không gọi là năng
 suất đã đo tại Lotus.
 
+Khi có cắt bắp thực tế, phần buồng đó thay thế dự báo từ số chồi, trừ số đã thu/hủy;
+không cộng hai lần. Đợt có màu dùng đúng cửa sổ E+55/F+70. Khi chưa có đo trái, lượng
+trong cửa sổ được phân bổ đều theo ngày để tổng hợp tháng; đây là giả định phân bổ,
+không phải đường cong theo ngày đã đo trong OneDrive. Các đợt Plan Cohort xem riêng,
+không tự gộp với đợt chọn chồi thực tế chưa có ánh xạ chắc chắn.
+
+Vườn đã áp dụng quy trình phải ghi mã màu theo phiên bản khi chích/cắt bắp và chọn
+đợt cắt bắp gốc khi chăm sóc, đo trái, thu hoạch. Ô chọn đợt gốc chỉ đưa chứng từ cắt
+bắp đã xác nhận, tự điền cùng vườn/lô/thửa/vụ/chồi và màu dây.
+
 ## Luồng ERP sử dụng
 
 | Dữ liệu/công đoạn OneDrive | Lotus ERPNext |

@@ -19,6 +19,7 @@ from lotus_farm.scoping import land_scope, land_filters
 from lotus_farm.onedrive_protocol import (
     PROCESS_STEPS, SELECTION_SOURCE, color_periods, forecast_quantities,
     harvest_curve, parse_handover_workbook, selection_schedule,
+    window_months, source_balance,
 )
 
 PARAMETERS = ("density", "cut_rate", "harvest_rate", "processed_rate", "gross_bunch_kg", "processed_bunch_kg")
@@ -94,6 +95,10 @@ class ProcessAdoption(Document):
             if any(before.get(f.fieldname) != self.get(f.fieldname) for f in self.meta.fields
                    if not (f.fieldname == 'valid_to' and command_allowed(self,'retire_process'))):
                 frappe.throw("Phiên bản đã duyệt được giữ nguyên. Tạo phiên bản mới.")
+            if self.valid_to and getdate(self.valid_to)<getdate(self.valid_from):
+                frappe.throw('Hiệu lực kết thúc trước ngày bắt đầu.')
+            # Never recalculate an approved version from a newer source library.
+            return
         if cint(self.version) < 1:
             frappe.throw("Phiên bản phải dương.")
         if frappe.db.exists(self.doctype, {"farm": self.farm, "version": self.version, "name": ["!=", self.name]}):
@@ -352,7 +357,34 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
         frappe.throw("Không có quyền xem dự thu.",frappe.PermissionError)
     payload=board(company,farm,zone,block,cycle,from_date)
     start,end=payload['from_date'],payload['to_date']
-    output=[];simulation=[];issues=[]
+    output=[];simulation=[];planned=[];issues=[]
+    source_scope=land_scope(company=company,farm=farm,zone=zone,block=block,cycle=cycle)
+    permitted_blocks={b.name:b for b in payload['blocks']}
+    operation_filters=land_filters(frappe.get_meta('Bunch Operation'),source_scope)
+    operation_filters.update(docstatus=1,operation_type='Cut Bud',farm_block=['in',list(permitted_blocks) or ['__none__']])
+    cuts=_rows('Bunch Operation',['name','farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch','operation_date','bunch_qty','net_bunch_qty',
+        'expected_harvest_from','expected_harvest_to','expected_harvest_date','bunch_tag'],operation_filters)
+    claims=defaultdict(float)
+    for cut in cuts:
+        claims[(cut.crop_cycle,cut.sucker_selection_batch or '')]+=float(cut.bunch_qty or 0)
+        harvested=sum(float(r.harvested_bunch_qty or 0) for r in _rows('Harvest Actual',['harvested_bunch_qty'],{'source_cut_operation':cut.name,'docstatus':1}))
+        cancelled=sum(float(r.bunch_qty or 0) for r in _rows('Bunch Cancellation',['bunch_qty'],{'source_operation':cut.name,'docstatus':1}))
+        balance=source_balance(0,cut.bunch_qty,cut.net_bunch_qty,harvested,cancelled)
+        if not balance['remaining_observed_cut']:continue
+        window_start=cut.expected_harvest_from or cut.expected_harvest_date
+        window_end=cut.expected_harvest_to or window_start
+        if not window_start:
+            issues.append(dict(farm=cut.farm,source=cut.name,message='Đợt cắt bắp thiếu cửa sổ dự thu hoặc ngày dự thu.'));continue
+        for part in window_months(window_start,window_end):
+            when=part['month']+'-01'
+            if not start<=when<=end:continue
+            adoption=_active(payload['adoptions'],cut.farm,when)
+            if not adoption:
+                issues.append(dict(farm=cut.farm,source=cut.name,message='Thiếu phiên bản hệ số đã duyệt trong kỳ thu.'));continue
+            params={**adoption,'cut_rate':1}
+            output.append(dict(farm=cut.farm,farm_zone=permitted_blocks[cut.farm_block].farm_zone,farm_block=cut.farm_block,source=cut.name,
+                source_kind='Observed Cut',month=part['month'],process_adoption=adoption.name,
+                **forecast_quantities(balance['remaining_observed_cut'],params,part['share'])))
     for row in payload['observed_selections']:
         for part in harvest_curve(row.selection_date,basis='Selection',cycles=1 if row.status=='Closed' else 6):
             when=part['month']+'-01'
@@ -360,8 +392,38 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
             adoption=_active(payload['adoptions'],row.farm,when)
             if not adoption:
                 issues.append(dict(farm=row.farm,source=row.name,message='Thiếu phiên bản hệ số đã duyệt trong kỳ thu.'));continue
-            output.append(dict(farm=row.farm,farm_block=row.farm_block,source=row.name,source_kind='Observed Selection' if not part['cycle_offset'] else 'Projected Ratoon',
-                month=part['month'],process_adoption=adoption.name,**forecast_quantities(row.selected_sucker_qty,adoption,part['share'])))
+            quantity=float(row.selected_sucker_qty)
+            if not part['cycle_offset']:
+                balance=source_balance(quantity*adoption.cut_rate,claims[(row.crop_cycle,row.name)],0)
+                quantity=balance['unobserved_cut']/adoption.cut_rate if adoption.cut_rate else 0
+            if quantity:
+                output.append(dict(farm=row.farm,farm_zone=permitted_blocks[row.farm_block].farm_zone,farm_block=row.farm_block,source=row.name,
+                    source_kind='Observed Selection' if not part['cycle_offset'] else 'Projected Ratoon',
+                    month=part['month'],process_adoption=adoption.name,**forecast_quantities(quantity,adoption,part['share'])))
+    # Approved lot plans stay separate from observed cohorts: no implicit match to
+    # a later actual selection, which could be a different partial cohort.
+    plan_filters=land_filters(frappe.get_meta('Plan Cohort'),source_scope)
+    plan_filters.update(approval_state='Approved',farm_block=['in',list(permitted_blocks) or ['__none__']])
+    versions={}
+    for row in _rows('Plan Cohort',['name','farm','farm_block','cohort_code','anchor','anchor_date','quantity_basis','planned_qty','version'],plan_filters):
+        key=(row.farm,row.farm_block,row.cohort_code)
+        if key not in versions or row.version>versions[key].version:versions[key]=row
+    for row in versions.values():
+        if row.anchor in ('Planting','Selection'):
+            periods=harvest_curve(row.anchor_date,basis=row.anchor,cycles=1)
+        elif row.anchor=='Cut Bud':
+            periods=window_months(getdate(row.anchor_date)+timedelta(days=55),getdate(row.anchor_date)+timedelta(days=70))
+        else:
+            issues.append(dict(farm=row.farm,source=row.name,message='Kế hoạch từ trổ cần cửa sổ thu đã hiệu chuẩn.'));continue
+        for part in periods:
+            when=part['month']+'-01'
+            if not start<=when<=end:continue
+            adoption=_active(payload['adoptions'],row.farm,when)
+            if not adoption:continue
+            params=dict(adoption)
+            if row.quantity_basis=='Bunches':params['cut_rate']=1
+            planned.append(dict(farm=row.farm,farm_zone=permitted_blocks[row.farm_block].farm_zone,source=row.name,source_kind='Plan Cohort',month=part['month'],
+                process_adoption=adoption.name,**forecast_quantities(row.planned_qty,params,part['share'])))
     if cint(include_handover):
         for row in payload['handovers']:
             for part in harvest_curve(row.source_event_date,basis='First Cut Equivalent',cycles=6):
@@ -375,16 +437,19 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
                     month=part['month'],process_adoption=adoption.name,**forecast_quantities(row.source_cut_qty,adoption,part['share'])))
     def aggregate(rows):
         totals=defaultdict(lambda:defaultdict(float))
+        bases=defaultdict(set)
         for r in rows:
             adoption=next(a for a in payload['adoptions'] if a.name==r['process_adoption'])
             r.update(_grade_quantities(adoption,r['month'],r['processed_kg']))
+            bases[(r['farm'],r.get('farm_zone',''),r['month'])].add(r['source_kind'])
             for key in ('cut_bunches','harvest_bunches','processed_bunches','gross_kg','processed_kg'):
                 totals[(r['farm'],r.get('farm_zone',''),r['month'])][key]+=r[key]
             for key,value in r.items():
                 if key.startswith('grade_'):totals[(r['farm'],r.get('farm_zone',''),r['month'])][key]+=value
-        return [dict(farm=k[0],farm_zone=k[1],month=k[2],**{f:round(v,3) for f,v in values.items()}) for k,values in sorted(totals.items())]
-    return dict(rows=aggregate(output),handover_scenario=aggregate(simulation),issues=list({(r['farm'],r['message']):r for r in issues}.values()),
+        return [dict(farm=k[0],farm_zone=k[1],month=k[2],source_kinds=sorted(bases[k]),**{f:round(v,3) for f,v in values.items()}) for k,values in sorted(totals.items())]
+    return dict(rows=aggregate(output),plan_rows=aggregate(planned),handover_scenario=aggregate(simulation),issues=list({(r['farm'],r['message']):r for r in issues}.values()),
         from_date=start,to_date=end,planning_only=True,
+        window_distribution='Đợt cắt bắp ưu tiên thực tế, trừ đã thu/hủy; phân bổ đều ngày trong cửa sổ khi chưa có đo trái.',
         handover_assumption='Mô phỏng riêng: một cây cũ đã chặt tương ứng một chồi giả định. Chưa có kiểm đếm chồi; không cộng vào dự thu thực tế.')
 
 
@@ -401,6 +466,16 @@ def validate_tag_master(doc,method=None):
 def tag_lineage(doc,method=None):
     tag_name=doc.get('bunch_tag') or doc.get('ribbon_color')
     source_name=doc.get('source_cut_operation')
+    active=False
+    when=doc.get('operation_date') or doc.get('harvest_date') or doc.get('posting_date')
+    if when:
+        active=frappe.get_all('Lotus Process Adoption',filters={'farm':doc.farm,'approval_state':'Approved','valid_from':['<=',when]},fields=['valid_to'])
+        active=any(not a.valid_to or getdate(a.valid_to)>=getdate(when) for a in active)
+        if active and ((doc.doctype=='Bunch Operation' and doc.operation_type!='Shooting') or doc.doctype in ('Fruit Measurement','Harvest Actual')):
+            if doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection'):
+                if not tag_name:frappe.throw('Vườn đã áp dụng OneDrive: đợt chích/cắt bắp phải chọn mã màu dây.')
+            elif not source_name:
+                frappe.throw('Vườn đã áp dụng OneDrive: chọn đợt cắt bắp gốc để truy xuất công đoạn.')
     if source_name:
         if doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection','Shooting'):
             frappe.throw('Chỉ công đoạn sau cắt bắp được liên kết đợt cắt bắp gốc.')
@@ -419,10 +494,13 @@ def tag_lineage(doc,method=None):
             # Serialize cumulative harvests against the same cut cohort.
             lock('Bunch Operation',source.name)
             other=frappe.get_all('Harvest Actual',filters={'source_cut_operation':source.name,'docstatus':['<',2],'name':['!=',doc.name]},fields=['harvested_bunch_qty'])
-            if sum(cint(r.harvested_bunch_qty) for r in other)+cint(qty)>cint(source.net_bunch_qty):frappe.throw('Tổng thu hoạch vượt số buồng cắt bắp của đợt.')
+            cancelled=sum(cint(r.bunch_qty) for r in frappe.get_all('Bunch Cancellation',filters={'source_operation':source.name,'docstatus':1},fields=['bunch_qty']))
+            if sum(cint(r.harvested_bunch_qty) for r in other)+cint(qty)+cancelled>cint(source.net_bunch_qty):frappe.throw('Tổng thu hoạch và hủy vượt số buồng cắt bắp của đợt.')
     if not tag_name:return
     tag=frappe.get_doc('Bunch Tag',tag_name);tag.check_permission('read')
     if tag.get('farm') and tag.farm!=doc.farm:frappe.throw('Màu dây thuộc vườn khác.')
+    if active and doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection') and not tag.get('process_adoption'):
+        frappe.throw('Chọn mã màu có phiên bản quy trình OneDrive cho đợt mới.')
     if not tag.get('process_adoption'):return  # Legacy guard still handles unversioned operation tags.
     if not tag.enabled:frappe.throw('Màu dây đã ngừng sử dụng.')
     operation=doc.get('operation_type')
@@ -436,6 +514,13 @@ def tag_lineage(doc,method=None):
         if operation=='Cut Bud':
             doc.expected_harvest_from=str(getdate(tag.valid_from)+timedelta(days=55))
             doc.expected_harvest_to=str(getdate(tag.valid_to)+timedelta(days=70))
+            if doc.sucker_selection_batch:
+                lock('Sucker Selection Batch',doc.sucker_selection_batch)
+                selected=cint(frappe.db.get_value('Sucker Selection Batch',doc.sucker_selection_batch,'selected_sucker_qty'))
+                others=frappe.get_all('Bunch Operation',filters={'sucker_selection_batch':doc.sucker_selection_batch,'operation_type':'Cut Bud','docstatus':['<',2],
+                    'name':['!=',doc.name]},fields=['bunch_qty'])
+                if sum(cint(r.bunch_qty) for r in others)+cint(doc.bunch_qty)>selected:
+                    frappe.throw('Tổng số buồng cắt bắp vượt số chồi đã kiểm đếm trong đợt.')
     elif not source_name:
         frappe.throw('Chọn đợt cắt bắp gốc để giữ màu dây khi chăm sóc, đo trái hoặc thu hoạch.')
 

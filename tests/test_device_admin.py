@@ -10,6 +10,7 @@ except ImportError:
     for name in ('get_datetime', 'get_url', 'getdate', 'now_datetime', 'nowdate'):
         setattr(utils, name, lambda *a: None)
     sys.modules['frappe'], sys.modules['frappe.utils'] = types.ModuleType('frappe'), utils
+    sys.modules['frappe'].whitelist = lambda *args, **kwargs: lambda fn: fn
     try:
         from lotus_farm import device_admin
     finally:

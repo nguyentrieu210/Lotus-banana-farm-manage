@@ -3,7 +3,7 @@ from datetime import date
 from pathlib import Path
 import json
 
-from lotus_farm.onedrive_protocol import edate, selection_schedule, harvest_curve, forecast_quantities, color_periods, scheduled_work_due
+from lotus_farm.onedrive_protocol import edate, selection_schedule, harvest_curve, forecast_quantities, color_periods, scheduled_work_due, source_balance, window_months
 
 
 class OneDriveProtocolTests(unittest.TestCase):
@@ -52,6 +52,16 @@ class OneDriveProtocolTests(unittest.TestCase):
         self.assertFalse(scheduled_work_due('2026-03-31','2027-03-30',offset_months=6,repeat_months=6))
         self.assertTrue(scheduled_work_due('2026-03-31','2026-04-07',offset_days=7,repeat_days=7))
         with self.assertRaises(ValueError):scheduled_work_due('2026-03-31','2026-09-30',repeat_days=180,repeat_months=6)
+
+    def test_cut_actuals_replace_that_portion_of_sucker_projection(self):
+        result=source_balance(82,30,28,20,2)
+        self.assertEqual(result,dict(unobserved_cut=52,remaining_observed_cut=6))
+        self.assertEqual(sum(result.values()),58)
+        with self.assertRaises(ValueError):source_balance(82,30,28,27,2)
+        rows=window_months('2026-12-25','2027-01-09')
+        self.assertEqual([r['month'] for r in rows],['2026-12','2027-01'])
+        self.assertAlmostEqual(rows[0]['share'],7/16)
+        self.assertAlmostEqual(sum(r['share'] for r in rows),1)
 
     def test_extracted_presets_and_all_source_curves_reconcile(self):
         data=json.loads((Path(__file__).resolve().parents[1]/'lotus_farm/data/onedrive_protocol_v1.json').read_text(encoding='utf8'))
