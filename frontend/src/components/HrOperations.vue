@@ -128,6 +128,17 @@ async function sync(){
   selected.value=[];await refresh()
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
+// Punches that will never be attendance (unknown ID, test swipe) are set aside so the month can close.
+const ignoreOpen=ref(false),ignoreReason=ref('')
+const openPunches=computed(()=>(hardware.value?.punches||[]).filter(p=>!['Synced','Ignored'].includes(p.state)))
+const allOpen=computed(()=>openPunches.value.length>0&&openPunches.value.every(p=>selected.value.includes(p.name)))
+function toggleOpen(){selected.value=allOpen.value?[]:openPunches.value.map(p=>p.name)}
+async function ignore(){
+ busy.value=true;error.value=''
+ try{const r=await call('lotus_farm.attendance_day.ignore_punches',{company:props.company,names:selectedPunches.value,reason:ignoreReason.value},true)
+  notice.value='Đã bỏ qua '+r.ignored+' log. Các log này không tính công và không chặn khóa kỳ.';ignoreOpen.value=false;ignoreReason.value='';selected.value=[];await refresh()}
+ catch(e){error.value=e.message}finally{busy.value=false}
+}
 const syncFrom=ref(''),syncTo=ref('')
 async function syncRange(){
  if(!props.manager||!syncFrom.value||!syncTo.value)return
@@ -228,17 +239,22 @@ async function syncRange(){
   <section class="hr-ops-panel">
    <h3>Lượt chấm công</h3>
    <div class="hr-ops-actions"><a href="/app/employee-checkin">Xem log HRMS ↗</a><a href="/app/shift-assignment">Xem lịch ca ↗</a><a href="/app/attendance">Chấm công đã duyệt ↗</a></div>
-   <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span></div>
-   <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
-   <div v-if="manager" class="hr-ops-actions"><label>Từ ngày<DatePicker v-model="syncFrom" :disabled="busy" aria-label="Chuyển log từ ngày"/></label><label>Đến ngày<DatePicker v-model="syncTo" :min="syncFrom" :disabled="busy" aria-label="Chuyển log đến ngày"/></label><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hằng đêm hệ thống tự chuyển log của ngày hôm trước.</span></div>
-   <div class="hr-ops-scroll"><table><thead><tr><th>Chọn</th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>Vào / Ra</th><th>Trạng thái</th></tr></thead>
+   <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span><span>Đã bỏ qua: <strong>{{hardware?.counts?.Ignored||0}}</strong></span></div>
+   <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><UiButton v-if="manager" type="button" variant="outline" :disabled="busy||!selectedPunches.length" @click="ignoreReason='';ignoreOpen=true">Bỏ qua {{selectedPunches.length}} log…</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
+   <div v-if="manager" class="hr-ops-actions"><label>Từ ngày<DatePicker v-model="syncFrom" :disabled="busy" aria-label="Chuyển log từ ngày"/></label><label>Đến ngày<DatePicker v-model="syncTo" :min="syncFrom" :disabled="busy" aria-label="Chuyển log đến ngày"/></label><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hệ thống tự chuyển log hôm nay và hôm qua mỗi 10 phút; mở Chấm công cũng cập nhật ngày đang xem.</span></div>
+   <div class="hr-ops-scroll"><table><thead><tr><th><input v-if="manager&&openPunches.length" type="checkbox" :checked="allOpen" aria-label="Chọn mọi log chưa xử lý" @change="toggleOpen"/></th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>Vào / Ra</th><th>Trạng thái</th></tr></thead>
     <tbody><tr v-for="p in hardware?.punches||[]" :key="p.name">
-     <td><input v-if="manager&&p.state!=='Synced'" type="checkbox" :value="p.name" v-model="selected"/></td>
+     <td><input v-if="manager&&!['Synced','Ignored'].includes(p.state)" type="checkbox" :value="p.name" v-model="selected" :aria-label="'Chọn log '+p.punched_at"/></td>
      <td>{{p.punched_at}}</td><td>{{p.device}}</td><td>{{p.device_user_id}}</td><td>{{p.employee||'Chưa ghép'}}</td><td>{{stateLabel(p.log_type||'Unknown')}}</td><td>{{stateLabel(p.state)}}</td>
     </tr></tbody></table></div>
    <p class="hr-ops-tip">Nếu chưa có log, vào tab Nhập Excel → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>
  </template>
+ <WorkspaceModal v-model="ignoreOpen" title="Bỏ qua log máy chấm công" :busy="busy" width="560px">
+  <form class="hr-ops-form" @submit.prevent="ignore"><p>{{selectedPunches.length}} log đã chọn sẽ không tính công và không chặn khóa kỳ. Log gốc vẫn được lưu để đối soát.</p>
+   <label>Lý do<UiInput v-model="ignoreReason" required minlength="5" maxlength="300" placeholder="VD: thẻ thử máy, mã không thuộc nhân viên nào"/></label>
+   <div class="hr-ops-actions"><UiButton type="button" variant="outline" :disabled="busy" @click="ignoreOpen=false">Quay lại</UiButton><UiButton type="submit" :disabled="busy||ignoreReason.trim().length<5">Bỏ qua log</UiButton></div></form>
+ </WorkspaceModal>
  <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
 </div>
 </template>
