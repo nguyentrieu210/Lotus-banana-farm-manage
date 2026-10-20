@@ -13,6 +13,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSelect from './components/LotusMobileSelect.vue'
 import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
+import LotusSignatureTimeline from './components/LotusSignatureTimeline.vue'
 import LotusMobileShell from './components/LotusMobileShell.vue'
 import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
@@ -72,6 +73,7 @@ const counts=computed(()=>({
 }))
 const visibleOrders=computed(()=>orders.value.filter(r=>(status.value==='Tất cả'||status.value===r.approval_status||status.value===r.status)&&
   (!filter.value||(r.name+' '+r.supplier_name+' '+r.status).toLocaleLowerCase().includes(filter.value.toLocaleLowerCase()))))
+const purchaseSignCurrent=computed(()=>((detail.value?.signing?.steps)||[]).findIndex(s=>s.state!=='Đã ký'&&s.state!=='Trả lại'))
 const visibleSuppliers=computed(()=>suppliers.value.filter(r=>!supplierSearch.value||
  (r.supplier_name+' '+(r.lotus_supplier_phone||'')).toLocaleLowerCase().includes(supplierSearch.value.toLocaleLowerCase())))
 const blank=()=>({id:Math.random().toString(36).slice(2),item:'',qty:1,uom:'',rate:'',warehouse:'',material_request:'',material_request_item:''})
@@ -373,6 +375,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
 
   <template v-if="view==='detail'&&detail">
    <MobilePurchaseOrderDetail :order="detail" :currency="catalog?.currency||'VND'" :warehouses="warehouses"/>
+   <LotusSignatureTimeline v-if="detail.signing?.steps?.length" :steps="detail.signing.steps" :current="detail.approval_status==='Từ chối'?-1:purchaseSignCurrent" title="Chữ ký trên đơn mua"/>
    <div v-if="detail.can_write&&['Nháp','Từ chối'].includes(detail.approval_status)">
     <LotusMobileButton class="buy-outline" @click="editOrder()">Sửa đơn</LotusMobileButton></div>
    <template v-if="detail.can_request_approval">

@@ -64,7 +64,15 @@ def bootstrap():
     session['today']=nowdate()
     session.setdefault('capabilities',{})['user_admin']=has_role('System Manager') and bool(frappe.has_permission('User','read'))
     session.setdefault('capabilities',{})['hr']=has_role('HR Manager','HR User')
+    from lotus_farm.hr_workspace import _is_hr_manager
+    session['capabilities']['hr_manage']=session['capabilities']['hr'] and _is_hr_manager()
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
+    from lotus_farm.work_journal import capabilities as journal_capabilities
+    session['capabilities'].update(journal_capabilities())
+    if session['capabilities']['work_journal.read']:
+        from lotus_farm.work_journal import farm_names
+        existing = {f['name'] for f in session['farms']}
+        session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in farm_names() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
     return session
 
 

@@ -1,4 +1,4 @@
-export const pages=[['nguoi-dung','Người dùng & phân quyền'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc vườn'],['alerts','Cảnh báo'],['farms','Vườn'],['plans','Kế hoạch'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['work','Công việc'],['labor','Bố trí nhân công'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ chăm sóc'],['reports','Tổng quan'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
+export const pages=[['nguoi-dung','Người dùng & phân quyền'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc vườn'],['nhat-ky-cong-viec','Nhật ký công việc'],['alerts','Cảnh báo'],['farms','Vườn'],['plans','Kế hoạch'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['work','Công việc'],['labor','Bố trí nhân công'],['materials','Vật tư'],['losses','Hủy & tổn thất'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['daily-close','Chốt ngày'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ chăm sóc'],['reports','Tổng quan'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
@@ -6,12 +6,12 @@ export const navGroups=[
  {label:'Bản đồ',icon:'map',items:[['map','map','Bản đồ']]},
  {label:'Quản lý vườn',icon:'sprout',items:[['farms','sprout','Vườn & lô'],['measurements','ruler','Đo trái'],['losses','trash','Hủy & tổn thất'],['cycle-close','flag','Kết vụ']]},
  {label:'Kế hoạch sản xuất',icon:'clipboard',items:[['plans','clipboard','Kế hoạch sản xuất']]},
- {label:'Điều hành công việc',icon:'check',items:[['cong-viec','check','Công việc ngoài vườn'],['work','list','Tiến độ & kết quả'],['labor','people','Bố trí nhân công'],['materials','boxes','Vật tư theo việc'],['daily-close','lock','Chốt ngày']]},
+ {label:'Điều hành công việc',icon:'check',items:[['cong-viec','check','Công việc ngoài vườn'],['nhat-ky-cong-viec','clipboard','Nhật ký công việc'],['work','list','Tiến độ & kết quả'],['labor','people','Bố trí nhân công'],['materials','boxes','Vật tư theo việc'],['daily-close','lock','Chốt ngày']]},
  {label:'Dự thu',icon:'trending',items:[['forecast','trending','Dự thu']]},
  {label:'Thu hoạch & đóng gói',icon:'basket',items:[['harvest','basket','Thu hoạch'],['incoming-qc','shield','QC đầu vào'],['packhouse','package','Đóng gói'],['trace','route','Truy xuất']]},
  // The purchasing PWA is a standalone, real application; do not invent a /lotus route.
  {label:'Kho & mua hàng',icon:'warehouse',items:[['kho','warehouse','Quản lý kho']],links:[{href:'/buying',label:'Mua hàng',icon:'cart',capability:'stock'}]},
- {label:'Nhân sự',icon:'people',items:[['nhan-su','id-card','Hồ sơ nhân sự'],['cham-cong','clock','Chấm công']]},
+ {label:'Nhân sự',icon:'people',kind:'hr',items:[['nhan-su','id-card','Hồ sơ nhân viên'],['cham-cong','clock','Chấm công']]},
  {label:'Thiết lập',icon:'settings',items:[['admin/masters','database','Danh mục'],['plan-norm','sliders','Định mức & chu kỳ'],['admin/imports','upload','Nhập dữ liệu'],['admin/settings','settings','Cấu hình'],['nguoi-dung','user-cog','Người dùng & phân quyền']]},
 ]
 export const moduleKey=p=>p==='plan-norm'?'plans':p.replace('admin/','')

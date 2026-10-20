@@ -30,9 +30,9 @@ test('the todo list shows proposals waiting for my signature and opens the four-
  assert.equal(calls[0].args.view,'todo','opens on what waits for me')
  assert.match(text(view.root),/MAT-MR-1.*Chờ phụ trách bộ phận/)
  button(view.root,'MAT-MR-1').click();await tick()
- const steps=[...view.root.querySelectorAll('.pp-steps li')]
+ const steps=[...view.root.querySelectorAll('.lotus-signature-timeline__list li')]
  assert.equal(steps.length,4)
- assert.ok(steps[0].classList.contains('done')&&steps[1].classList.contains('current'))
+ assert.ok(steps[0].classList.contains('is-signed')&&steps[1].classList.contains('is-active'))
  assert.ok(button(view.root,'Ký xác nhận: Phụ trách bộ phận'))
  assert.ok(button(view.root,'Trả lại người đề xuất').disabled,'a return needs a reason')
  assert.equal(view.root.querySelector('a.pp-print').getAttribute('href'),'/lotus/in-de-xuat?name=MAT-MR-1')

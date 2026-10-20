@@ -82,20 +82,52 @@ def candidates(chain, company=None, step=None):
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
     config = rules.chain(chain)
+    company = company or frappe.defaults.get_user_default('Company')
+    if not company:
+        frappe.throw('Chọn công ty trước khi chọn người ký.')
+    frappe.get_doc('Company', company).check_permission('read')
     filters = {'status': 'Active', 'user_id': ['is', 'set']}
     if company:
         filters['company'] = company
     people = frappe.get_all('Employee', filters=filters, fields=['name', 'employee_name', 'user_id', 'designation', 'department'], order_by='employee_name')
     enabled = set(frappe.get_all('User', filters={'enabled': 1, 'name': ['in', [p.user_id for p in people] or ['']]}, pluck='name'))
-    result = {}
+    from lotus_farm.localization import ROLE_LABELS, catalog_label
+    role_map = {user: _roles(user) for user in enabled}
+    current = frappe.db.get_value('Employee', {'user_id': frappe.session.user, 'status': 'Active', 'company': company}, 'reports_to')
+    result, diagnostics, suggested = {}, {}, {}
     for item in config['steps'][1:]:
         if step and item['key'] != step:
             continue
-        result[item['key']] = [dict(user=p.user_id, employee=p.name, name=p.employee_name, designation=p.designation or '', department=p.department or '')
-                               for p in people if p.user_id in enabled and rules.eligible(item, _roles(p.user_id))]
+        result[item['key']] = [dict(user=p.user_id, employee=p.name, name=p.employee_name, designation=catalog_label(p.designation) or '', department=catalog_label(p.department) or '',
+                                    recommended=bool(item['key'] == 'DEPARTMENT' and p.name == current))
+                               for p in people if p.user_id in enabled and rules.eligible(item, role_map[p.user_id])]
+        active = frappe.db.count('Employee', {'status': 'Active', 'company': company})
+        required = [ROLE_LABELS.get(r, r) for r in item['roles']]
+        if not active:
+            message = 'Công ty chưa có nhân sự đang làm việc. Thêm nhân sự tại mục Nhân sự.'
+        elif not people:
+            message = 'Nhân sự trong công ty chưa được gắn tài khoản đăng nhập. Gắn tài khoản tại Hồ sơ & quyền hoặc mục Nhân sự.'
+        elif not enabled:
+            message = 'Các tài khoản đã gắn nhân sự đang bị khóa. Kiểm tra trạng thái tài khoản tại mục Người dùng.'
+        else:
+            message = 'Chưa có nhân sự có tài khoản hoạt động và role phù hợp. Cấp một trong các role: ' + ' / '.join(required) + '.'
+        diagnostics[item['key']] = dict(message=message, required_roles=required, active_employees=active, linked_employees=len(people), enabled_logins=len(enabled))
+        recommended = next((p['user'] for p in result[item['key']] if p['recommended']), None)
+        if recommended:
+            suggested[item['key']] = recommended
     remembered = frappe.defaults.get_user_default('lotus_signers_' + chain)
     return dict(steps=[dict(key=s['key'], title=s['title']) for s in config['steps']], candidates=result,
-                remembered=json.loads(remembered) if remembered else {})
+                remembered=json.loads(remembered) if remembered else {}, diagnostics=diagnostics, suggested=suggested)
+
+
+def _validate_person(user, step, company):
+    """Recheck on send, reassign and sign; stale picker choices cannot bypass current eligibility."""
+    if not frappe.db.get_value('User', user, 'enabled'):
+        frappe.throw(step['title'] + ': tài khoản người ký đang bị khóa.', frappe.PermissionError)
+    if not rules.eligible(step, _roles(user)):
+        frappe.throw(step['title'] + ': người được chọn không có quyền ký bước này.', frappe.PermissionError)
+    if not frappe.db.exists('Employee', {'user_id': user, 'status': 'Active', 'company': company}):
+        frappe.throw(step['title'] + ': người ký phải là nhân sự đang làm việc thuộc công ty của chứng từ.')
 
 
 def status(doc, key=None, with_images=False):
@@ -200,8 +232,7 @@ def start(doc, signers, details=None, require_image=False):
         frappe.throw('Chứng từ đang trong lượt ký. Chờ ký xong hoặc trả lại trước.')
     for step in config['steps'][1:]:
         user = signers[step['key']]
-        if not frappe.db.get_value('Employee', {'user_id': user, 'status': 'Active'}):
-            frappe.throw(step['title'] + ': người ký phải là nhân sự đang làm việc có tài khoản.')
+        _validate_person(user, step, _company(doc))
     created = []
     for index, step in enumerate(config['steps']):
         user = frappe.session.user if index == 0 else signers[step['key']]
@@ -226,10 +257,17 @@ def sign(doc, details=None, require_image=False, record=True):
     index = rules.current(rows) if rows else None
     if not rows or any(r.state == rules.RETURNED for r in rows) or not rules.may_act(rows, index, frappe.session.user, _admin()):
         frappe.throw('Chưa đến lượt bạn ký chứng từ này.', frappe.PermissionError)
+    if not _admin() and index:
+        _validate_person(frappe.session.user, rules.chain(key)['steps'][index], _company(doc))
     if record:
         _record(doc, rows[index], details, require_image)
     else:
-        frappe.db.set_value(REQUEST, rows[index].name, dict(state=rules.SIGNED, signed_at=now_datetime(), content_hash=fingerprint(doc)),
+        # Purchase approval writes its own audit event and archived PDF, but the signer image
+        # must still be snapshotted for the same timeline shown in every Lotus app.
+        signature_file = _snapshot(doc, rows[index].step_key)
+        frappe.db.set_value(REQUEST, rows[index].name,
+                            dict(state=rules.SIGNED, signed_at=now_datetime(),
+                                 signature_file=signature_file, content_hash=fingerprint(doc)),
                             update_modified=False)
     _states, done = rules.after_sign(rows, index)
     if not done:
@@ -271,8 +309,7 @@ def reassign(doctype, name, step, user):
     if not (_admin() or frappe.session.user in (rows[0].assignee, rows[waiting].assignee if waiting is not None else None)):
         frappe.throw('Chỉ người lập, người đang đến lượt ký hoặc quản trị được đổi người ký.', frappe.PermissionError)
     config_step = next(s for s in rules.chain(key)['steps'] if s['key'] == step)
-    if not rules.eligible(config_step, _roles(user)) or not frappe.db.get_value('Employee', {'user_id': user, 'status': 'Active'}):
-        frappe.throw('Người được chọn không có quyền ký bước này.')
+    _validate_person(user, config_step, _company(doc))
     frappe.db.set_value(REQUEST, target.name, dict(assignee=user, employee=frappe.db.get_value('Employee', {'user_id': user, 'status': 'Active'}),
                                                    note=('Chuyển từ ' + _person(target.assignee) + ' bởi ' + _person(frappe.session.user))[:500]),
                         update_modified=False)

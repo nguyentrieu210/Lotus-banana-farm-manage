@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from "./hr-catalog-labels"
 const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,nextTick,onMounted,reactive,ref} from 'vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
@@ -249,7 +250,7 @@ useNoticeToast(notice)
     <FormField label="Ngày sinh" required v-slot="f"><DatePicker v-bind="f" v-model="master.date_of_birth" :max="session?.today" aria-label="Ngày sinh"/></FormField>
     <FormField label="Ngày vào làm" required v-slot="f"><DatePicker v-bind="f" v-model="master.date_of_joining" aria-label="Ngày vào làm"/></FormField>
     <FormField label="Chức vụ" v-slot="f"><UiInput v-bind="f" v-model="master.designation" maxlength="140" placeholder="VD: Quản lý vườn, kế toán…"/></FormField>
-    <FormField label="Bộ phận" v-slot="f"><UiSelect v-bind="f" v-model="master.department"><option value="">Chưa phân bộ phận</option><option v-for="department in catalog.departments" :key="department.name" :value="department.name">{{department.department_name}}</option></UiSelect></FormField>
+    <FormField label="Bộ phận" v-slot="f"><UiSelect v-bind="f" v-model="master.department"><option value="">Chưa phân bộ phận</option><option v-for="department in catalog.departments" :key="department.name" :value="department.name">{{hrCatalogLabel(department.department_name)}}</option></UiSelect></FormField>
    </template>
    <template v-else-if="masterKind==='team'">
     <FormField label="Vườn" required v-slot="f"><UiSelect v-bind="f" v-model="master.farm"><option value="">Chọn vườn</option><option v-for="f2 in catalog.farms" :key="f2.name" :value="f2.name">{{f2.farm_name}}</option></UiSelect></FormField>

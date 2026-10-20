@@ -1,6 +1,7 @@
 import frappe
 
 ROLES = (
+    "Lotus Work Journal Clerk",
     "Lotus Farm Manager",
     "Lotus Sales Planner",
     "Lotus QC Manager",
@@ -30,6 +31,10 @@ def set_brand():
 
 
 def setup():
+    from lotus_farm.work_journal import install as install_journal
+    install_journal()
+    from lotus_farm.localization import install_translations
+    install_translations()
     create_roles()
     set_brand()
     from frappe.permissions import add_permission, update_permission_property

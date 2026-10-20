@@ -11,6 +11,8 @@ const window=new Window({url:'http://localhost:8080/warehouse',width:390,height:
 const viewport=new window.EventTarget();Object.assign(viewport,{width:390,height:844,offsetTop:0,offsetLeft:0});Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true})
 for(const name of ['window','document','navigator','location','Element','HTMLElement','SVGElement','Node','Event','CustomEvent','KeyboardEvent','MouseEvent','ResizeObserver','getComputedStyle','requestAnimationFrame','cancelAnimationFrame'])Object.defineProperty(globalThis,name,{value:typeof window[name]==='function'&&['getComputedStyle','requestAnimationFrame','cancelAnimationFrame'].includes(name)?window[name].bind(window):window[name],configurable:true})
 window.HTMLElement.prototype.scrollIntoView=function(){}
+// Cropper registers its custom elements when the shared signature settings are imported.
+Object.defineProperty(globalThis,'customElements',{value:window.customElements,configurable:true})
 const {parse,compileScript}=await import(pathToFileURL(project+'/node_modules/@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js'))
 const {createApp,nextTick}=await import(pathToFileURL(project+'/node_modules/vue/dist/vue.runtime.esm-bundler.js'))
 const generated=new Map()

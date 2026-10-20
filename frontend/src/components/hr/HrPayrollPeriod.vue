@@ -5,6 +5,7 @@ import MonthPicker from '../MonthPicker.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import WorkspaceConfirm from '../WorkspaceConfirm.vue'
 import SignerPicker from '../SignerPicker.vue'
+import LotusSignatureTimeline from '../LotusSignatureTimeline.vue'
 import {Button as UiButton} from '../ui/button'
 import {Textarea as UiTextarea} from '../ui/textarea'
 import {FormField} from '../ui/form-field'
@@ -79,7 +80,9 @@ async function reopen(){saving.value=true
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 onMounted(load)
 watch(()=>props.company,load)
-defineExpose({load})
+const hasUnsavedChanges=computed(()=>sendOpen.value||(reopenOpen.value&&!!reopenReason.value.trim()))
+function discardChanges(){sendOpen.value=false;reopenOpen.value=false;reopenReason.value='';signers.value={}}
+defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
 </script>
 <template>
 <div class="hr-pay">
@@ -115,6 +118,9 @@ defineExpose({load})
    </div>
   </li>
  </ol>
+
+ <LotusSignatureTimeline v-if="period?.signing?.round" :steps="period.signing.steps"
+  :current="period.signing.returned?-1:(period.signing.current??-1)" title="Chữ ký duyệt bảng công"/>
 
  <section v-if="!closed&&period?.blockers?.length" class="tk-card hr-pay__blockers" aria-label="Việc cần xử lý trước khi khóa">
   <header class="tk-card__head"><h3>Cần xử lý trước khi khóa kỳ</h3></header>
