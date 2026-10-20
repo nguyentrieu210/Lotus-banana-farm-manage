@@ -8,3 +8,6 @@ __pycache__/
 node_modules/
 frontend/.vite/
 .env*
+
+# Local build/test output
+/*.log
