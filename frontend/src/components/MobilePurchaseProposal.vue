@@ -172,7 +172,7 @@ defineExpose({back,newProposal,open})
   <SignerPicker v-if="detail.needs_signers&&detail.can_sign" v-model="signers" :options="signerOptions" :disabled="saving"/>
   <LotusMobileButton v-if="detail.can_sign" class="buy-primary" :disabled="saving||!online||detail.needs_signers&&signersMissing.length>0" @click="act('sign')">{{detail.step===0?'Ký và gửi phụ trách bộ phận':detail.step===3?'Ký phê duyệt (Giám đốc)':'Ký xác nhận: '+detail.step_title}}</LotusMobileButton>
   <div v-if="detail.can_reassign&&reassignOptions.length" class="buy-card">
-   <div class="buy-field"><label>Chuyển bước “{{detail.step_title}}” cho người khác</label><MobileLinkField :model-value="reassignTo" :options="reassignOptions" :searchable="reassignOptions.length>6" placeholder="Chọn người ký thay…" aria-label="Người ký thay" @update:modelValue="reassignTo=$event"/></div>
+   <div class="buy-field"><label>Chuyển bước “{{detail.step_title}}” cho người khác</label><MobileLinkField :model-value="reassignTo" :options="reassignOptions" :searchable="true" placeholder="Chọn người ký thay…" aria-label="Người ký thay" @update:modelValue="reassignTo=$event"/></div>
    <LotusMobileButton class="buy-outline" :disabled="saving||!online||!reassignTo" @click="act('reassign')">Chuyển người ký</LotusMobileButton>
   </div>
   <div v-if="detail.can_return" class="buy-card">

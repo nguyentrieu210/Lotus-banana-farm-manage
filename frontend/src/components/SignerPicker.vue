@@ -34,7 +34,7 @@ defineExpose({missing})
  <p class="signer-picker__hint">Mỗi người được báo trên ứng dụng và e-mail khi đến lượt ký.</p>
  <div v-for="(s,i) in steps" :key="s.key" class="signer-picker__row">
   <label :for="'signer-'+s.key"><span class="signer-picker__no">{{i+2}}</span>{{s.title}}</label>
-  <MobileLinkField :id="'signer-'+s.key" :model-value="modelValue?.[s.key]||''" :options="choices(s.key)" searchable
+  <MobileLinkField :id="'signer-'+s.key" :model-value="modelValue?.[s.key]||''" :options="choices(s.key)" :searchable="true"
    placeholder="Chọn người ký…" :aria-label="'Người ký: '+s.title" required :disabled="disabled||!choices(s.key).length" @update:modelValue="set(s.key,$event)"/>
   <small v-if="!choices(s.key).length" class="signer-picker__empty">{{options?.diagnostics?.[s.key]?.message||('Chưa có nhân sự nào có quyền ký bước này. '+accountsHint)}}</small>
  </div>

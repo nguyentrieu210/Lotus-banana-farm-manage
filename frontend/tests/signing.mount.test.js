@@ -28,6 +28,7 @@ test('signer picker explains a missing role and suggests only the eligible direc
   suggested:{DEPARTMENT:'manager@lotus',APPROVE:'forged@lotus'},diagnostics:{APPROVE:{message:'Cấp role Người duyệt mua hàng Lotus trong mục Người dùng.'}}}
  const view=mount(Picker,{options,modelValue:{},'onUpdate:modelValue':v=>selected=v});await tick()
  assert.deepEqual(selected,{DEPARTMENT:'manager@lotus'})
+ assert.equal(view.root.querySelectorAll('input[role=combobox]').length,2,'named signers remain searchable for short or empty lists')
  assert.match(text(view.root),/Cấp role Người duyệt mua hàng Lotus/)
  view.unmount()
 })
