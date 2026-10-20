@@ -193,6 +193,12 @@ def link_options(doctype,search='',farm=None,company=None,context_field=None,blo
         if on_date and operation_type in ('Cut Bud','Bud Injection'):
             day=getdate(add_days(on_date,14 if operation_type=='Bud Injection' else 0))
             filters.update(valid_from=['<=',day],valid_to=['>=',day])
+            if frappe.has_permission('Lotus Process Adoption','read'):
+                adoption_filters={'approval_state':'Approved','valid_from':['<=',day]}
+                if farm:adoption_filters['farm']=farm
+                active=frappe.get_list('Lotus Process Adoption',filters=adoption_filters,fields=['name','valid_to'],limit_page_length=1000)
+                active=[a.name for a in active if not a.valid_to or getdate(a.valid_to)>=day]
+                if active:filters['process_adoption']=['in',active]
     title=meta.title_field or 'name'
     rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%'],title:['like','%'+search[:80]+'%']} if search else None,fields=list(dict.fromkeys(['name',title])),limit_page_length=500 if doctype=='UOM' else 30,order_by='name')
     return [dict(value=r.name,label=r.get(title) or r.name) for r in rows]
