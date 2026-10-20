@@ -207,3 +207,6 @@ for _event in ('validate', 'before_submit', 'before_cancel'):
 
 # Device punches reach HRMS every 10 minutes for today and yesterday (lotus_farm.attendance_day).
 scheduler_events.setdefault('cron', {}).setdefault('*/10 * * * *', []).append('lotus_farm.attendance_day.sync_recent')
+
+# ZKTeco / Ronald Jack / Wise Eye clocks push punches to /iclock/* (lotus_farm.adms).
+page_renderer = [*globals().get('page_renderer', []), 'lotus_farm.adms.ADMSRenderer']

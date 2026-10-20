@@ -62,7 +62,14 @@
     {
       "fieldname": "last_event_at",
       "label": "Giờ quẹt cuối",
-      "fieldtype": "Datetime"
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_seen_at",
+      "label": "Liên lạc gần nhất",
+      "fieldtype": "Datetime",
+      "read_only": 1
     },
     {
       "fieldname": "notes",
@@ -81,6 +88,7 @@
     "timezone",
     "active",
     "last_event_at",
+    "last_seen_at",
     "notes"
   ],
   "permissions": [

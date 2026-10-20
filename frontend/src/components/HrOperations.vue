@@ -10,6 +10,7 @@ import {DatePicker} from './ui/date-picker'
 import '../hr-operations.css'
 import WorkspaceModal from './WorkspaceModal.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
+import HrDevicePanel from './hr/HrDevicePanel.vue'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,finish:finishConfirm}=useWorkspaceConfirm()
@@ -29,11 +30,10 @@ const columns={
  'Checkin CSV':['device','device_user_id','punched_at','log_type','source_event_id']
 }
 const api=(method,args={},post=false)=>call('lotus_farm.hr_operations.'+method,args,post)
-const editAssignment=ref(false),editDevice=ref(false)
+const editAssignment=ref(false)
 const active=ref(props.view||'organization'),farm=ref(''),busy=ref(false),error=ref(''),notice=ref('')
 const org=ref(null),hardware=ref(null),kind=ref('Designation'),uploadName=ref('')
 const uploadData=ref([]),preview=ref(null),selected=ref([])
-const machine=reactive({device_code:'',device_name:'',model:'',serial_number:'',connection_mode:'File CSV',timezone:'Asia/Ho_Chi_Minh',active:1,farm:'',notes:''})
 const assignment=reactive({employee:'',farm:'',department:'',designation:'',work_team:'',role_title:'',valid_from:'',valid_to:'',approver:'',notes:''})
 const farmChoices=computed(()=>org.value?.farms||[])
 const visibleTeams=computed(()=>(org.value?.teams||[]).filter(t=>!assignment.farm||t.farm===assignment.farm))
@@ -48,7 +48,6 @@ async function refresh(){
   org.value=o;hardware.value=d
   const options=o.farms||[]
   if(!options.some(f=>f.name===farm.value))farm.value=options[0]?.name||''
-  if(!machine.farm)machine.farm=farm.value
   if(!assignment.farm)assignment.farm=farm.value
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
@@ -102,16 +101,6 @@ async function seed(){
  try{
   const r=await call('lotus_farm.hr_setup.seed_organization',{company:props.company,farm:farm.value},true)
   notice.value='Đã tạo '+r.departments+' bộ phận, '+r.teams+' đội/tổ; bỏ qua '+r.skipped+' dòng đã tồn tại. '+r.warning
-  await refresh()
- }catch(e){error.value=e.message}finally{busy.value=false}
-}
-async function saveDevice(){
- if(!props.manager)return
- busy.value=true;error.value=''
- try{
-  const r=await api('save_device',{company:props.company,values:{...machine}},true)
-  editDevice.value=false;notice.value='Đã lưu máy '+r.name+' (chưa bật kết nối thiết bị nếu chưa cấu hình giao thức).'
-  Object.assign(machine,{device_code:'',device_name:'',model:'',serial_number:'',connection_mode:'File CSV',timezone:'Asia/Ho_Chi_Minh',active:1,farm:farm.value,notes:''})
   await refresh()
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
@@ -225,22 +214,7 @@ async function syncRange(){
   </section>
  </template>
  <template v-else-if="active==='devices'">
-  <section class="hr-ops-panel"><h3>Máy chấm công</h3>
-   <div class="hr-ops-scroll"><table><thead><tr><th>Mã máy</th><th>Tên</th><th>Vườn</th><th>Dòng máy</th><th>Kiểu kết nối</th><th>Trạng thái</th></tr></thead>
-     <tbody><tr v-for="m in hardware?.machines||[]" :key="m.name"><td>{{m.device_code}}</td><td>{{m.device_name}}</td><td>{{m.farm}}</td><td>{{m.model||'Chưa rõ'}}</td><td>{{m.connection_mode}}</td><td>{{m.active?'Đang dùng':'Tắt'}}</td></tr></tbody></table></div>
-   <UiButton v-if="manager" type="button" variant="outline" @click="editDevice=true">＋ Khai báo máy</UiButton>
-   <WorkspaceModal v-if="manager" v-model="editDevice" title="Khai báo máy chấm công" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveDevice">
-    <label>Vườn<UiSelect v-model="machine.farm" required><option value="">Chọn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
-    <label>Mã máy<UiInput v-model="machine.device_code" required placeholder="VD: ATT-A-01"/></label>
-    <label>Tên máy<UiInput v-model="machine.device_name" required placeholder="VD: Cổng đội khu A"/></label>
-    <label>Dòng máy / hãng<UiInput v-model="machine.model" placeholder="Mã chính xác trên tem máy"/></label>
-    <label>Serial máy<UiInput v-model="machine.serial_number"/></label>
-    <label>Cách kết nối<UiSelect v-model="machine.connection_mode"><option v-for="mode in ['File CSV','ADMS','LAN SDK','Vendor Cloud']" :key="mode">{{mode}}</option></UiSelect></label>
-    <label>Múi giờ<UiInput v-model="machine.timezone" readonly/></label>
-    <UiButton type="submit" :disabled="busy">Lưu máy</UiButton>
-   </form></WorkspaceModal>
-   <p class="hr-ops-tip">ADMS, LAN SDK hoặc Cloud là loại giao thức khai báo, chưa phải kết nối đang hoạt động. Không tự mở cổng mạng hoặc tải dữ liệu sinh trắc học.</p>
-  </section>
+  <HrDevicePanel :company="company" :farms="farmChoices" @changed="refresh" @notice="notice=$event" @error="error=$event"/>
  </template>
  <template v-if="active==='logs'||view==='devices'">
   <section class="hr-ops-panel">

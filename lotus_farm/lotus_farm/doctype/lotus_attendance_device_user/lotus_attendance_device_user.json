@@ -1,0 +1,81 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Attendance Device User",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device",
+      "label": "Máy chấm công",
+      "fieldtype": "Link",
+      "options": "Lotus Attendance Device",
+      "reqd": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "device_user_id",
+      "label": "Mã trên máy",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "name_on_device",
+      "label": "Tên trên máy",
+      "fieldtype": "Data",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "privilege",
+      "label": "Quyền trên máy",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "card",
+      "label": "Số thẻ",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "last_seen_at",
+      "label": "Máy báo lần cuối",
+      "fieldtype": "Datetime"
+    }
+  ],
+  "field_order": [
+    "company",
+    "device",
+    "device_user_id",
+    "name_on_device",
+    "privilege",
+    "card",
+    "last_seen_at"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1
+    }
+  ]
+}

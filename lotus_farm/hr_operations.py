@@ -134,6 +134,13 @@ class LotusAttendanceDevice(Document):
             "device_code": self.device_code, "name": ["!=", self.name or ""]})
         if existing:
             frappe.throw("Mã máy đã tồn tại.")
+        # ADMS clocks are recognised by the serial number they report; it must be set and unique.
+        self.serial_number = str(self.serial_number or "").strip() or None
+        if self.connection_mode == "ADMS" and not self.serial_number:
+            frappe.throw("Máy ADMS cần số serial (SN) đúng như trên máy: Menu › Thông tin hệ thống.")
+        if self.serial_number and frappe.db.exists("Lotus Attendance Device", {
+                "serial_number": self.serial_number, "name": ["!=", self.name or ""]}):
+            frappe.throw("Số serial đã gắn với máy khác.")
     def on_trash(self):
         if frappe.db.exists("Lotus Attendance Punch", {"device":self.name}):
             frappe.throw("Không xóa máy đã có nhật ký quẹt; hãy tắt Đang sử dụng.")
@@ -550,11 +557,12 @@ def ingest_device_events(company,device,events):
     roles = frappe.get_roles()
     if frappe.session.user == 'Guest' or not (
         frappe.session.user == 'Administrator'
-        or 'HR Manager' in roles
-        or 'Lotus Integration User' in roles
+        or {'HR Manager', 'System Manager', 'Lotus Integration User'} & set(roles)
     ):
         frappe.throw('Không có quyền nhận dữ liệu máy.', frappe.PermissionError)
-    _company(company)
+    # A bridge account has no HR role: check the company and device it may read, not HR access.
+    if not company or not frappe.db.exists('Company', company):
+        frappe.throw('Chọn công ty.')
     machine = _device(company,device)
     if not machine.active:
         frappe.throw('Máy chấm công đã tắt.')
@@ -563,23 +571,39 @@ def ingest_device_events(company,device,events):
     batch = _parse_rows(events,maximum=500)
     from lotus_farm.controls import lock
     lock('Company',company)
-    result = {'created':0,'duplicate':0}
+    result = _ingest(machine, batch, 'CSV' if machine.connection_mode=='File CSV' else machine.connection_mode)
+    return {**result,'warning':'Log chỉ được lưu làm bằng chứng; chưa tự duyệt công hay tính lương.'}
+
+
+def _ingest(machine, batch, source):
+    """Store one device's punches. A punch already stored (same device, ID and second) is skipped; a bad
+    row is counted, never fails the batch; a punch is mapped to its employee at once when exactly one
+    device-ID mapping covers its time (state Ready), else kept Unmapped for the device screen."""
+    result = {'created':0,'duplicate':0,'invalid':0,'mapped':0}
     for line in batch:
-        item = _checkin_normalize(dict(line,device=device))
-        digest = _signature(device,item)
-        if frappe.db.exists('Lotus Attendance Punch',{'event_hash':digest}):
+        try:
+            item = _checkin_normalize(dict(line,device=machine.name))
+        except (ValueError, frappe.ValidationError):
+            frappe.clear_messages()
+            result['invalid']+=1
+            continue
+        digest = _signature(machine.name,item)
+        if frappe.db.exists('Lotus Attendance Punch',{'event_hash':digest}) or frappe.db.exists('Lotus Attendance Punch',
+                {'device':machine.name,'device_user_id':item['device_user_id'],'punched_at':item['punched_at']}):
             result['duplicate']+=1
             continue
+        employee = _mapping(machine.company,machine.name,item['device_user_id'],str(item['punched_at']))
         doc=frappe.get_doc(dict(doctype='Lotus Attendance Punch',
-            company=company,farm=machine.farm,device=device,
+            company=machine.company,farm=machine.farm,device=machine.name,
             **{k:v for k,v in item.items() if k!='device'},
-            event_hash=digest,state='Unmapped',source=(
-                'CSV' if machine.connection_mode=='File CSV'
-                else machine.connection_mode),
+            event_hash=digest,state='Ready' if employee else 'Unmapped',employee=employee,source=source,
             received_at=now_datetime()))
         doc.insert()
         result['created']+=1
-    return {**result,'warning':'Log chỉ được lưu làm bằng chứng; chưa tự duyệt công hay tính lương.'}
+        result['mapped']+=bool(employee)
+    if result['created']:
+        frappe.db.set_value('Lotus Attendance Device',machine.name,'last_event_at',now_datetime(),update_modified=False)
+    return result
 
 
 @frappe.whitelist(methods=["POST"])
