@@ -1,0 +1,28 @@
+/* Nhân sự PWA › Chấm công (HrMobileAttendance): big numbers, 44px+ targets, device times in tabular figures. */
+.hr-att{display:flex;flex-direction:column;gap:10px;min-width:0}
+.hr-att__date{display:grid;grid-template-columns:48px 1fr 48px;gap:6px;align-items:center}
+.hr-att__date .van-button{min-height:44px}
+.hr-att__stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.hr-att__stats button{display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-height:64px;padding:10px 8px;border:1px solid var(--lotus-border);border-radius:14px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit;text-align:left}
+.hr-att__stats button.on{border-color:var(--lotus-primary);box-shadow:0 0 0 1px var(--lotus-primary)}
+.hr-att__stats strong{font-size:22px;line-height:1}
+.hr-att__stats span{font-size:12px;color:var(--lotus-muted)}
+.hr-att__hint{margin:0;color:var(--lotus-muted);font-size:13px}
+.hr-att__group{display:flex;flex-direction:column;gap:6px}
+.hr-att__group h3{margin:6px 0 0;font-size:15px}
+.hr-att__group h3 small{font-weight:normal;color:var(--lotus-muted)}
+.hr-att__row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:56px;padding:9px 12px;border:1px solid var(--lotus-border);border-left-width:4px;border-radius:12px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit;text-align:left}
+.hr-att__row.is-matching{border-left-color:var(--lotus-success-600)}
+.hr-att__row.is-review{border-left-color:var(--lotus-warning-600,var(--lotus-primary))}
+.hr-att__row.is-absent{border-left-color:var(--lotus-danger)}
+.hr-att__row.is-approved{border-left-color:var(--lotus-border-strong);opacity:.85}
+.hr-att__who,.hr-att__clock{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hr-att__who small,.hr-att__clock small{font-size:12px;color:var(--lotus-muted)}
+.hr-att__clock{align-items:flex-end;text-align:right}
+.hr-att__clock b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hr-att__sheet{display:flex;flex-direction:column;gap:8px;padding:16px;max-height:80vh;overflow:auto}
+.hr-att__sheet h2{margin:0;font-size:18px}
+.hr-att__modes{display:flex;gap:6px}
+.hr-att__modes button{flex:1;min-height:44px;border:1px solid var(--lotus-border);border-radius:10px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit}
+.hr-att__modes button.on{border-color:var(--lotus-primary);color:var(--lotus-primary-text,var(--lotus-primary));font-weight:600}
+.hr-att__actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
