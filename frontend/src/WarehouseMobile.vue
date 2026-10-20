@@ -266,7 +266,8 @@ async function saveRequest(){
  try{
   const result=await call('lotus_farm.purchasing.create_request',{company:company.value,warehouse:f.warehouse,
    expected_date:f.expected_date,notes:f.notes,items:f.items.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom}))},true)
-  requestForm.value=null;screen.value='home';message.value='Đã gửi đề nghị mua '+result.name+'. Bộ phận mua hàng sẽ nhận được.'
+  lastPostedDocument.value={doctype:'Material Request',name:result.name}
+  requestForm.value=null;screen.value='done';message.value='Đã gửi đề xuất mua '+result.name+'. Có thể in phiếu theo mẫu mới ngay bên dưới.'
  }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function startBuying(){
@@ -716,7 +717,7 @@ onUnmounted(()=>{
      <div class="mobile-done-icon">✓</div>
      
      <p role="status">{{message}}</p>
-      <a v-if="lastPostedDocument" class="lotus-pwa-print-link" :href="stockPrintURL(lastPostedDocument.doctype,lastPostedDocument.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho vừa ghi sổ">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
+      <a v-if="lastPostedDocument" class="lotus-pwa-print-link" :href="stockPrintURL(lastPostedDocument.doctype,lastPostedDocument.name)" target="_blank" rel="noopener noreferrer" :aria-label="lastPostedDocument.doctype==='Material Request'?'In phiếu đề xuất mua vật tư':'In phiếu kho vừa ghi sổ'">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
      <LotusMobileButton v-if="failedQuote" type="button" class="mobile-submit" :disabled="saving||!online" icon="replay" @click="retryQuote">{{saving?'Đang tải báo giá…':'Tải lại báo giá'}}</LotusMobileButton>
      <LotusMobileButton type="button" class="mobile-submit" @click="again">＋ Làm phiếu tiếp</LotusMobileButton>
      <LotusMobileButton type="button" class="mobile-add" @click="home">Về trang chủ</LotusMobileButton>

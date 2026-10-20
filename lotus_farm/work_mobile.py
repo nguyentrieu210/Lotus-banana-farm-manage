@@ -107,9 +107,9 @@ def _apply_ready_hints(tasks):
     workdays = {}
     for item in allocations:
         workdays[item.work_plan_line] = workdays.get(item.work_plan_line, 0) + flt(item.allocated_workdays)
-    requirements = set(frappe.get_all(
+    requirements = {r.work_plan_line: r.name for r in frappe.get_all(
         "Material Requirement", filters={"work_plan_line": ["in", lines], "docstatus": 1},
-        pluck="work_plan_line", limit_page_length=10000))
+        fields=["name", "work_plan_line"], limit_page_length=10000)}
     norms = {row.name: bool(row.norm_profile) for row in frappe.get_all(
         "Daily Work Plan Line", filters={"name": ["in", lines]},
         fields=["name", "norm_profile"], limit_page_length=10000)}
@@ -118,6 +118,7 @@ def _apply_ready_hints(tasks):
         task["allocated_workdays"] = round(workdays.get(line, 0), 6)
         task["has_material_norm"] = norms.get(line, False)
         task["material_requirement_ready"] = (not norms.get(line, False) or line in requirements)
+        task["material_requirement"] = requirements.get(line) or ""
 
 
 @frappe.whitelist()

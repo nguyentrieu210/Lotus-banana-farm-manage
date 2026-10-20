@@ -579,6 +579,7 @@ onBeforeUnmount(()=>{
       <strong>Điều kiện chuẩn bị công việc</strong>
       <div class="mobile-inline"><span>Đã phân / Cần phân</span><b>{{fmt(selected.allocated_workdays)}} / {{fmt(selected.required_workdays)}} công</b></div>
       <p v-if="selected.has_material_norm" class="work-muted">Phiếu nhu cầu vật tư: {{selected.material_requirement_ready?'Đã có':'Chưa có'}}</p>
+      <a v-if="canPrepare&&selected.material_requirement" class="work-outline" style="display:inline-flex;padding:10px 12px;text-decoration:none;margin:6px 0;color:inherit;border:1px solid currentColor;border-radius:8px" :href="'/lotus_material_proposal_print?doctype=Material%20Requirement&name='+encodeURIComponent(selected.material_requirement)" target="_blank" rel="noopener noreferrer">In phiếu đề xuất cấp vật tư / PDF ↗</a>
       <p v-else class="work-muted">Việc này chưa có định mức vật tư hoặc không cần vật tư theo kế hoạch.</p>
       <LotusMobileButton v-if="canPrepare" type="button" class="work-outline" :disabled="saving||!online" @click="prepareSelected">Chuẩn bị tổng công và phiếu vật tư</LotusMobileButton>
       <small class="work-muted">Chuẩn bị không phải là xuất kho hay chấm công thực tế. Nếu có vật tư, cần kiểm tra cấp phát trên app Kho.</small>

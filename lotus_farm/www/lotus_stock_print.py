@@ -7,6 +7,11 @@ no_cache=1
 
 def get_context(context,doctype=None,name=None):
     dt=doctype or frappe.form_dict.get('doctype');name=name or frappe.form_dict.get('name')
+    if dt in ('Material Request', 'Material Requirement'):
+        from lotus_farm.www.lotus_material_proposal_print import get_context as proposal_context
+        proposal_context(context, name=name, doctype=dt)
+        context.is_material_proposal = True
+        return
     if dt in ('Stock Entry','Stock Reconciliation'):
         from lotus_farm.warehouse import document
         info=document(dt,name)
@@ -40,6 +45,9 @@ def get_context(context,doctype=None,name=None):
 
 @frappe.whitelist()
 def download_pdf(doctype,name):
+    if doctype in ('Material Request', 'Material Requirement'):
+        from lotus_farm.www.lotus_material_proposal_print import download_pdf as proposal_pdf
+        return proposal_pdf(name, doctype=doctype)
     from frappe.utils.pdf import get_pdf
     from re import sub
     context=frappe._dict();get_context(context,doctype,name)

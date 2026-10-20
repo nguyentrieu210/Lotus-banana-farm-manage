@@ -345,6 +345,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <div class="buy-line"><strong>{{r.name}}</strong><span class="buy-pill">{{r.items.length}} mặt hàng</span></div>
     <small>Ngày cần {{r.expected_date}} · Người gửi {{r.owner}}</small>
     <p v-for="(line,i) in r.items.slice(0,5)" :key="i" class="buy-request-line">{{line.item_name}} · {{number(line.qty)}} {{unitLabel(line.uom)}}</p>
+    <a :href="'/lotus_material_proposal_print?name='+encodeURIComponent(r.name)" target="_blank" rel="noopener noreferrer" class="buy-request-print">Xem / in phiếu đề xuất mua vật tư (PDF) ↗</a>
     <LotusMobileButton class="buy-outline" :disabled="!canCreate" @click="newOrder(true);useRequest(r.name)">Lập đơn mua từ đề nghị này</LotusMobileButton>
    </div>
    <p v-if="!requests.length&&!busy" class="mobile-empty">Chưa có đề nghị mua còn thiếu hàng.</p>
