@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from "../hr-catalog-labels"
 import {computed,onMounted,reactive,ref,watch} from 'vue'
 import {call} from '../api'
 import {stateLabel} from '../labels'
@@ -172,8 +173,8 @@ async function syncRange(){
    <UiButton v-if="manager" type="button" variant="outline" @click="editAssignment=true">＋ Thêm phân công</UiButton><WorkspaceModal v-if="manager" v-model="editAssignment" title="Phân công nhân viên" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveAssignment">
     <label>Nhân viên<UiSelect v-model="assignment.employee" required><option value="">Chọn nhân viên</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
     <label>Vườn<UiSelect v-model="assignment.farm" required><option value="">Chọn vườn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
-    <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{d.department_name}}</option></UiSelect></label>
-    <label>Chức danh<UiSelect v-model="assignment.designation"><option value="">Chọn</option><option v-for="d in org?.designations||[]" :key="d.name" :value="d.name">{{d.designation_name}}</option></UiSelect></label>
+    <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name)}}</option></UiSelect></label>
+    <label>Chức danh<UiSelect v-model="assignment.designation"><option value="">Chọn</option><option v-for="d in org?.designations||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.designation_name)}}</option></UiSelect></label>
     <label>Tổ/đội<UiSelect v-model="assignment.work_team"><option value="">Chọn</option><option v-for="t in visibleTeams" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect></label>
     <label>Chức vụ thực tế<UiInput v-model="assignment.role_title" placeholder="VD: Đội trưởng, tổ trưởng"/></label>
     <label>Ngày bắt đầu<DatePicker v-model="assignment.valid_from" required aria-label="Ngày bắt đầu"/></label>

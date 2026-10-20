@@ -40,8 +40,10 @@ test('HRMS grade is hidden and contract categories have Vietnamese labels',()=>{
 test('Role filter only changes the list, leadership department is reusable',()=>{
  const role=read('../../lotus_farm/public/js/role_list.js')
  const org=read('../../lotus_farm/hr_setup.py')
- assert.match(role,/frappe.listview_settings\["Role"\]/)
+ assert.match(role,/frappe.listview_settings\[['"]Role['"]\]/)
  assert.match(role,/Lotus %/)
+ assert.doesNotMatch(role,/filters\s*:/,'all roles are visible by default')
+ assert.match(role,/filter_area.remove/,'remove the former hidden Lotus-only restriction')
  assert.doesNotMatch(role,/frappe.db.delete|frappe.client.delete/)
  assert.match(org,/def ensure_leadership_department/)
  assert.match(org,/Ban lãnh đạo/)

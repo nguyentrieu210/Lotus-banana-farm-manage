@@ -30,6 +30,8 @@ def set_brand():
 
 
 def setup():
+    from lotus_farm.localization import install_translations
+    install_translations()
     create_roles()
     set_brand()
     from frappe.permissions import add_permission, update_permission_property
