@@ -61,7 +61,7 @@ def bootstrap():
     return dict(user=frappe.session.user,today=nowdate(),csrf_token=get_csrf_token(),hrms_installed=installed,companies=frappe.get_list('Company',fields=['name','default_currency'],limit_page_length=0),
         capabilities={dt:{action:bool(frappe.has_permission(dt,action)) for action in ('read','create','write','submit','cancel','delete','export','print')} for dt in ('Employee','Attendance','Work Team','Lotus Crew Attendance') if frappe.db.exists('DocType',dt)},
         can_create_farm=frappe.session.user=='Administrator' or ('System Manager' in frappe.get_roles() and frappe.has_permission('Farm','create')),
-        is_hr_manager=frappe.session.user=='Administrator' or bool({'HR Manager','System Manager'}&set(frappe.get_roles())),
+        is_hr_manager=frappe.session.user=='Administrator' or bool({'HR Manager','System Manager'}&set(frappe.get_roles())),can_manage_shifts=__import__('lotus_farm.shift_admin',fromlist=['can_manage']).can_manage(),
         can_read_checkins=bool(frappe.db.exists('DocType','Employee Checkin') and frappe.has_permission('Employee Checkin','read')))
 
 
@@ -73,7 +73,7 @@ def catalogue(company):
     farms=rows('Farm',{'company':company,'active':1},['name','farm_name'])
     return dict(farms=farms,teams=rows('Work Team',{'active':1,'lotus_team_type':'Contractor','farm':['in',[f.name for f in farms]]},['name','team_name','farm','lotus_foreman','lotus_foreman_phone']),
         works=rows('Work Type',{'active':1,'allow_piecework':1},['name','work_name','uom','piecework_rate']),
-        shifts=rows('Shift Type',{},['name','start_time','end_time','late_entry_grace_period','early_exit_grace_period','working_hours_threshold_for_half_day','working_hours_threshold_for_absent']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
+        shifts=rows('Shift Type',{},['name','start_time','end_time','late_entry_grace_period','early_exit_grace_period','working_hours_threshold_for_half_day','working_hours_threshold_for_absent','begin_check_in_before_shift_start_time','allow_check_out_after_shift_end_time','lotus_color']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
 
 
 @frappe.whitelist()
@@ -236,6 +236,9 @@ def save_staff(company,date,rows,client_event_id,shift=None):
             if frappe.db.exists('Attendance',{'employee':employee.name,'attendance_date':date,'docstatus':['<',2],'shift':row_shift or ['is','not set']}):frappe.throw('Nhân viên đã được chấm công. Tải lại bảng để sửa phiếu nháp.')
             doc=frappe.new_doc('Attendance')
         doc.company=company;doc.employee=employee.name;doc.attendance_date=date;doc.status=status;doc.shift=row_shift or None;doc.working_hours=hours;doc.lotus_overtime_hours=overtime;doc.in_time=clock.get('in_time');doc.out_time=clock.get('out_time');doc.late_entry=payload['late'];doc.early_exit=payload['early'];doc.lotus_note=payload['note'];doc.lotus_client_key=key;doc.lotus_payload_hash=digest
+        # Keep the shift times the day was worked under; editing the shift later never changes this pay.
+        from lotus_farm.shift_admin import shift_times
+        doc.lotus_shift_start,doc.lotus_shift_end=shift_times(row_shift)
         doc.save();saved.append(doc.name)
     return dict(names=saved)
 
@@ -262,11 +265,18 @@ def staff_action(company,rows,action,reason=None):
 def monthly(company,month):
     _company(company)
     begin=getdate(str(month)+'-01');end=begin.replace(day=calendar.monthrange(begin.year,begin.month)[1])
-    people=frappe.get_list('Employee',filters={'company':company},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
-    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration','lotus_overtime_hours'],limit_page_length=0)
+    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration','lotus_overtime_hours','in_time','out_time','late_entry','early_exit','shift','modified'],limit_page_length=0)
+    # Employees working in the month: active and joined by its end, or with attendance in it (left later).
+    people=[p for p in frappe.get_list('Employee',filters={'company':company,'status':['!=','Inactive']},fields=['name','employee_name','department','designation','status','date_of_joining','relieving_date'],order_by='employee_name',limit_page_length=0)
+            if (not p.date_of_joining or getdate(p.date_of_joining)<=end) and (not p.relieving_date or getdate(p.relieving_date)>=begin)]
+    known={p.name for p in people}
+    worked={r.employee for r in records}-known
+    if worked:people+=frappe.get_list('Employee',filters={'name':['in',list(worked)]},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
+    by_employee={}
+    for record in records:by_employee.setdefault(record.employee,[]).append(record)
     rows=[]
     for employee in people:
-        entries=[r for r in records if r.employee==employee.name];approved=[r for r in entries if r.docstatus==1]
+        entries=by_employee.get(employee.name,[]);approved=[r for r in entries if r.docstatus==1]
         days={}
         for entry in entries:days.setdefault(str(getdate(entry.attendance_date).day),[]).append(dict(entry))
         # A person can have multiple non-overlapping shifts. Never count more than one workday per calendar day.

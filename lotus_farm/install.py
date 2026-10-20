@@ -59,6 +59,8 @@ def setup():
     install_proposal_fields()
     from lotus_farm.hr_payroll import install_fields as install_payroll_fields
     install_payroll_fields()
+    from lotus_farm.shift_admin import install_fields as install_shift_fields
+    install_shift_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

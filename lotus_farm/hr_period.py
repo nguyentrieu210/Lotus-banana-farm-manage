@@ -368,10 +368,16 @@ def month_hours(company, begin, end, people):
     records = frappe.get_all('Attendance', filters={'company': company, 'employee': ['in', names],
                                                     'attendance_date': ['between', [begin, end]], 'docstatus': 1},
                              fields=['employee', 'attendance_date', 'status', 'leave_type', 'working_hours', 'shift',
-                                     'in_time', 'out_time', 'lotus_overtime_hours as overtime_hours'],
+                                     'in_time', 'out_time', 'lotus_overtime_hours as overtime_hours', 'lotus_shift_start', 'lotus_shift_end'],
                              limit_page_length=0)
     shifts = {s.name: s for s in frappe.get_all('Shift Type', filters={'name': ['in', list({r.shift for r in records if r.shift}) or ['']]},
                                                 fields=['name', 'start_time', 'end_time'])}
+    # Days recorded with the shift times they were worked under use those, not the shift as edited later.
+    for row in records:
+        if row.get('lotus_shift_start') is not None and row.get('lotus_shift_end') is not None:
+            key = 'worked:%s-%s' % (row.lotus_shift_start, row.lotus_shift_end)
+            shifts.setdefault(key, frappe._dict(name=key, start_time=row.lotus_shift_start, end_time=row.lotus_shift_end))
+            row.shift = key
     employment = {p.name: (max(begin, getdate(p.date_of_joining)) if p.date_of_joining else begin,
                            min(end, getdate(p.relieving_date)) if p.relieving_date else end) for p in people}
     unpaid = frappe.get_all('Leave Type', filters={'is_lwp': 1}, pluck='name')

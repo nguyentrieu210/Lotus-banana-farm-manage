@@ -8,14 +8,16 @@ import UiSelect from '../ui/select/Select.vue'
 import {DatePicker} from '../ui/date-picker'
 import {FormField} from '../ui/form-field'
 import {call} from '../../api'
-import {formatDate} from '../../format'
-// /lotus/cham-cong › Thiết lập: shift schedule, shift types, holiday calendar, crews and masters.
+import TkRoster from './TkRoster.vue'
+import TkShiftForm from './TkShiftForm.vue'
+// /lotus/cham-cong › Thiết lập: roster grid, shift types, holiday calendar, crews and masters.
+// Shifts and rosters are changed by Administrator, System Manager and HR Manager (session.can_manage_shifts).
 const props=defineProps({company:String,session:Object,catalog:{type:Object,default:()=>({})},cap:{type:Object,default:()=>({})},month:String})
 const emit=defineEmits(['open-master','changed','notice','error'])
 const api=(name,args={},write=false)=>call('lotus_farm.timekeeping.'+name,args,write)
 const periodApi=(name,args={},write=false)=>call('lotus_farm.hr_period.'+name,args,write)
 const sections=computed(()=>[
- {id:'schedule',label:'Lịch ca',icon:'calendar',allowed:props.cap.Attendance?.create},
+ {id:'schedule',label:'Lịch ca',icon:'calendar',allowed:props.session?.can_manage_shifts||props.cap.Attendance?.read},
  {id:'shifts',label:'Ca làm việc',icon:'clock',allowed:true},
  {id:'calendar',label:'Lịch nghỉ năm',icon:'flag',allowed:props.session?.is_hr_manager},
  {id:'crews',label:'Đội khoán & danh mục',icon:'people',allowed:true},
@@ -26,24 +28,12 @@ const busy=ref(false),saving=ref(false)
 const fail=e=>emit('error',e.message||String(e))
 const hhmm=v=>String(v||'').slice(0,5)
 
-// Shift schedule ------------------------------------------------------------------------------
-const schedule=ref([]),plan=reactive({shift:'',start_date:'',end_date:'',employees:[]}),who=ref('')
-const people=computed(()=>(props.catalog.employees||[]).filter(e=>!who.value||(e.employee_name+' '+e.name).toLocaleLowerCase('vi-VN').includes(who.value.toLocaleLowerCase('vi-VN'))))
-const allShown=computed(()=>people.value.length>0&&people.value.every(e=>plan.employees.includes(e.name)))
-function toggleAll(){const names=people.value.map(e=>e.name);plan.employees=allShown.value?plan.employees.filter(n=>!names.includes(n)):[...new Set([...plan.employees,...names])]}
-async function loadSchedule(){if(!props.cap.Attendance?.create)return;schedule.value=(await api('shift_schedule',{company:props.company,month:props.month})).rows}
-async function saveSchedule(){
- if(!plan.shift||!plan.start_date||!plan.employees.length)return emit('error','Chọn ca, ngày bắt đầu và ít nhất một nhân viên.')
- saving.value=true
- try{const r=await api('assign_shift',{company:props.company,shift:plan.shift,employees:plan.employees,start_date:plan.start_date,end_date:plan.end_date||null},true);emit('notice','Đã xếp '+plan.shift+' cho '+r.names.length+' nhân viên.');plan.employees=[];await loadSchedule()}
- catch(e){fail(e)}finally{saving.value=false}
-}
-const scheduleColumns=[{field:'employee_name',headerName:'Nhân viên',minWidth:200},{field:'shift_type',headerName:'Ca',minWidth:140},{field:'start_date',headerName:'Từ ngày',minWidth:120,valueFormatter:p=>formatDate(p.value)},{field:'end_date',headerName:'Đến ngày',minWidth:120,valueFormatter:p=>p.value?formatDate(p.value):'Không thời hạn'}]
-
 // Shift types ---------------------------------------------------------------------------------
-const shiftColumns=[{field:'name',headerName:'Ca',minWidth:160},{field:'start_time',headerName:'Giờ vào',minWidth:90,valueFormatter:p=>hhmm(p.value)},{field:'end_time',headerName:'Giờ ra',minWidth:90,valueFormatter:p=>hhmm(p.value)},
- {field:'late_entry_grace_period',headerName:'Cho phép muộn',minWidth:120,valueFormatter:p=>(p.value||0)+' phút'},{field:'early_exit_grace_period',headerName:'Cho phép về sớm',minWidth:130,valueFormatter:p=>(p.value||0)+' phút'},
- {field:'working_hours_threshold_for_half_day',headerName:'Dưới giờ này = nửa ngày',minWidth:170,valueFormatter:p=>p.value?p.value+' giờ':'—'},{field:'working_hours_threshold_for_absent',headerName:'Dưới giờ này = vắng',minWidth:150,valueFormatter:p=>p.value?p.value+' giờ':'—'}]
+const shiftRows=ref([]),shiftOpen=ref(false),editingShift=ref(null)
+async function loadShifts(){shiftRows.value=(await call('lotus_farm.shift_admin.shifts')).rows}
+function openShift(row=null){editingShift.value=row;shiftOpen.value=true}
+function shiftSaved(row){emit('notice',(editingShift.value?'Đã lưu ca ':'Đã tạo ca ')+row.name+(row.open_drafts?'. '+row.open_drafts+' phiếu nháp theo ca này nên lấy lại công từ máy.':'.'));emit('changed');loadShifts()}
+const overnight=r=>String(r.end_time)<=String(r.start_time)
 
 // Holiday calendar ----------------------------------------------------------------------------
 const year=ref(Number((props.session?.today||new Date().toISOString()).slice(0,4)))
@@ -69,7 +59,7 @@ async function saveCalendar(){
 const farmName=name=>(props.catalog.farms||[]).find(f=>f.name===name)?.farm_name||name
 const teamColumns=[{field:'team_name',headerName:'Đội khoán',minWidth:190},{field:'lotus_foreman',headerName:'Đầu câu',minWidth:150},{field:'lotus_foreman_phone',headerName:'Điện thoại',minWidth:140},{field:'farm',headerName:'Vườn',minWidth:160,valueFormatter:p=>farmName(p.value)}]
 
-async function load(){if(!props.company)return;busy.value=true;try{if(section.value==='schedule')await loadSchedule();if(section.value==='calendar')await loadCalendar()}catch(e){fail(e)}finally{busy.value=false}}
+async function load(){if(!props.company)return;busy.value=true;try{if(section.value==='shifts')await loadShifts();if(section.value==='calendar')await loadCalendar()}catch(e){fail(e)}finally{busy.value=false}}
 watch(()=>[section.value,props.company,props.month],load,{immediate:true})
 defineExpose({load})
 </script>
@@ -77,25 +67,21 @@ defineExpose({load})
 <div class="tk-setup">
  <nav class="tk-subnav" aria-label="Thiết lập chấm công"><button v-for="s in sections" :key="s.id" type="button" :aria-current="section===s.id?'page':undefined" :class="{active:section===s.id}" @click="section=s.id"><LotusIcon :name="s.icon"/>{{s.label}}</button></nav>
 
- <section v-if="section==='schedule'" class="tk-card" aria-label="Lịch ca">
-  <header class="tk-card__head"><h3>Xếp ca theo khoảng ngày</h3></header>
-  <div class="tk-form-row">
-   <FormField label="Ca" required v-slot="f"><UiSelect v-bind="f" v-model="plan.shift" :disabled="saving"><option value="">Chọn ca</option><option v-for="s in catalog.shifts" :key="s.name" :value="s.name">{{s.name}} · {{hhmm(s.start_time)}}–{{hhmm(s.end_time)}}</option></UiSelect></FormField>
-   <FormField label="Từ ngày" required v-slot="f"><DatePicker v-bind="f" v-model="plan.start_date" :disabled="saving" aria-label="Xếp ca từ ngày"/></FormField>
-   <FormField label="Đến ngày" hint="Bỏ trống nếu không thời hạn" v-slot="f"><DatePicker v-bind="f" v-model="plan.end_date" :min="plan.start_date" :disabled="saving" aria-label="Xếp ca đến ngày"/></FormField>
-  </div>
-  <div class="tk-picker">
-   <div class="tk-picker__bar"><UiInput v-model="who" type="search" placeholder="Tìm nhân viên…" aria-label="Tìm nhân viên để xếp ca"/><UiButton variant="outline" size="sm" :disabled="!people.length" @click="toggleAll">{{allShown?'Bỏ chọn':'Chọn tất cả'}}</UiButton><span>Đã chọn <strong>{{plan.employees.length}}</strong></span></div>
-   <div class="tk-picker__list"><label v-for="e in people" :key="e.name" :class="{checked:plan.employees.includes(e.name)}"><input v-model="plan.employees" type="checkbox" :value="e.name" :disabled="saving"><span>{{e.employee_name}}</span><small>{{e.name}}</small></label><p v-if="!people.length" class="tk-empty">Không có nhân viên phù hợp.</p></div>
-  </div>
-  <footer class="tk-card__foot"><UiButton :disabled="saving||busy||!plan.shift||!plan.start_date||!plan.employees.length" @click="saveSchedule">{{saving?'Đang xếp ca…':'Xếp ca cho '+plan.employees.length+' người'}}</UiButton></footer>
-  <h4 class="tk-card__sub">Lịch ca trong tháng</h4>
-  <DataTable :rows="schedule" :columns="scheduleColumns" :loading="busy" empty="Chưa xếp ca trong tháng này."/>
- </section>
+ <TkRoster v-if="section==='schedule'" :company="company" :today="session?.today" :shifts="catalog.shifts||[]" :departments="catalog.departments||[]" @notice="emit('notice',$event)" @error="emit('error',$event)"/>
 
  <section v-if="section==='shifts'" class="tk-card" aria-label="Ca làm việc">
-  <header class="tk-card__head"><h3>Ca làm việc</h3><UiButton v-if="cap.Attendance?.create" variant="outline" @click="emit('open-master','shift')"><LotusIcon name="plus"/>Thêm ca</UiButton></header>
-  <DataTable :rows="catalog.shifts||[]" :columns="shiftColumns" empty="Chưa có ca làm việc. Thêm 3 ca, ví dụ 06:00–14:00, 14:00–22:00, 22:00–06:00."/>
+  <header class="tk-card__head"><h3>Ca làm việc</h3><span class="tk-actions__spacer"></span><UiButton v-if="session?.can_manage_shifts" variant="outline" @click="openShift()"><LotusIcon name="plus"/>Thêm ca</UiButton></header>
+  <div v-if="shiftRows.length" class="tk-shiftlist">
+   <article v-for="r in shiftRows" :key="r.name" class="tk-shiftcard" :style="{'--shift':r.color||'#4b5563'}">
+    <header><b>{{r.name}}</b><span class="tk-shiftcard__time">{{hhmm(r.start_time)}} – {{hhmm(r.end_time)}}<small v-if="overnight(r)"> +1 ngày</small></span></header>
+    <dl><div><dt>Cho phép muộn / về sớm</dt><dd>{{r.late_grace}}′ / {{r.early_grace}}′</dd></div><div><dt>Nhận lượt chấm</dt><dd>trước {{r.check_in_before}}′ · sau {{r.check_out_after}}′</dd></div>
+     <div><dt>Nửa ngày / vắng nếu dưới</dt><dd>{{r.half_day_hours||'—'}} giờ / {{r.absent_hours||'—'}} giờ</dd></div><div><dt>Đang xếp</dt><dd>{{r.assigned}} lượt lịch</dd></div></dl>
+    <UiButton v-if="session?.can_manage_shifts" variant="outline" size="sm" :aria-label="'Sửa '+r.name" @click="openShift(r)"><LotusIcon name="edit"/>Sửa ca</UiButton>
+   </article>
+  </div>
+  <p v-else-if="!busy" class="tk-empty">Chưa có ca làm việc. Thêm 3 ca, ví dụ 06:00–14:00, 14:00–22:00, 22:00–06:00.</p>
+  <p v-if="!session?.can_manage_shifts" class="tk-hint">Quản trị viên hoặc Quản lý nhân sự thêm và sửa ca.</p>
+  <TkShiftForm v-model="shiftOpen" :company="company" :shift="editingShift" @saved="shiftSaved"/>
  </section>
 
  <section v-if="section==='calendar'" class="tk-card" aria-label="Lịch nghỉ năm">

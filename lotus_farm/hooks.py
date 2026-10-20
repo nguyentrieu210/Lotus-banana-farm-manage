@@ -194,3 +194,11 @@ for _event, _method in (('before_validate', 'lotus_farm.hr_payroll.fill_slip_hou
     if isinstance(_value, str):
         _value = [_value]
     _slip[_event] = [*_value, _method]
+
+# Rosters of closed timekeeping months stay as they were paid (lotus_farm.shift_admin).
+_assignment = doc_events.setdefault('Shift Assignment', {})
+for _event in ('validate', 'before_submit', 'before_cancel'):
+    _value = _assignment.get(_event, [])
+    if isinstance(_value, str):
+        _value = [_value]
+    _assignment[_event] = [*_value, 'lotus_farm.shift_admin.assignment_guard']

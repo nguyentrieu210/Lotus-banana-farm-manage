@@ -8,6 +8,7 @@ import LotusIcon from './components/LotusIcon.vue'
 import MonthPicker from './components/MonthPicker.vue'
 import TkMonthSheet from './components/timekeeping/TkMonthSheet.vue'
 import TkSetup from './components/timekeeping/TkSetup.vue'
+import TkCorrection from './components/timekeeping/TkCorrection.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
@@ -31,6 +32,10 @@ const staff=ref([]),crews=ref([]),availableTeams=ref([]),monthData=ref(null),cre
 const dayInfo=ref({holiday:null,has_calendar:true,period_closed:false})
 const crewDialog=ref(null),masterDialog=ref(null),confirmDialog=ref(null),setup=ref(null)
 const masterKind=ref('employee'),confirmation=ref(null),reason=ref('')
+const correcting=ref(null),correctionOpen=ref(false)
+const canCorrect=computed(()=>!!session.value?.can_manage_shifts&&!locked.value)
+function openCorrection(row){correcting.value=row;correctionOpen.value=true}
+async function corrected(r){notice.value='Đã sửa công ('+r.amended_from+' → '+r.name+').';await load()}
 const crew=reactive({}),master=reactive({}),crewBaseline=ref('')
 const crewSnapshot=()=>JSON.stringify(Object.fromEntries(['work_type','headcount','present','workdays','completed_qty','uom','unit_rate','rate_override_reason','notes'].map(f=>[f,crew[f]])))
 
@@ -125,13 +130,13 @@ async function openCrew(row=null){error.value='';Object.assign(crew,{name:null,m
 function setTeam(){const team=catalog.value.teams.find(t=>t.name===crew.work_team);if(team)crew.farm=team.farm}
 function setWork(){const work=(catalog.value.works||[]).find(w=>w.name===crew.work_type);if(work){crew.uom=work.uom;crew.listed_piecework_rate=Number(work.piecework_rate||0);crew.unit_rate=crew.listed_piecework_rate;crew.rate_override_reason=''}}
 async function saveCrew(){saving.value=true;error.value='';try{const {client_event_id,...values}=crew;await api('save_crew',{company:company.value,values,client_event_id},true);crewDialog.value.close();notice.value='Đã lưu phiếu công đội khoán nháp.';await load()}catch(e){error.value=e.message}finally{saving.value=false}}
-const masterTitle={employee:'Thêm nhân sự chính thức',team:'Đội khoán / đầu câu',farm:'Thêm vườn',shift:'Thêm ca làm việc'}
+const masterTitle={employee:'Thêm nhân sự chính thức',team:'Đội khoán / đầu câu',farm:'Thêm vườn'}
 async function openMaster(kind){error.value='';masterKind.value=kind;for(const key of Object.keys(master))delete master[key]
- Object.assign(master,kind==='employee'?{employee_name:'',gender:'',date_of_birth:'',date_of_joining:date.value,designation:'',department:''}:kind==='team'?{farm:farm.value||catalog.value.farms[0]?.name||'',name:'',code:'',foreman:'',phone:''}:kind==='shift'?{name:'',start_time:'06:00',end_time:'14:00',late_grace:10,early_grace:10,half_day_hours:6,absent_hours:2}:{code:'',name:''})
+ Object.assign(master,kind==='employee'?{employee_name:'',gender:'',date_of_birth:'',date_of_joining:date.value,designation:'',department:''}:kind==='team'?{farm:farm.value||catalog.value.farms[0]?.name||'',name:'',code:'',foreman:'',phone:''}:{code:'',name:''})
  await nextTick();masterDialog.value.showModal()}
 async function saveMaster(){saving.value=true;error.value=''
- try{if(masterKind.value==='farm')await api('create_farm',{company:company.value,...master},true);else if(masterKind.value==='shift')await api('create_shift',{...master,company:company.value},true);else await api(masterKind.value==='employee'?'create_employee':'create_team',{company:company.value,values:{...master}},true)
-  masterDialog.value.close();notice.value='Đã tạo '+({employee:'nhân viên',team:'đội khoán',farm:'vườn',shift:'ca làm việc'})[masterKind.value]+'.';await loadCatalog();await load()}
+ try{if(masterKind.value==='farm')await api('create_farm',{company:company.value,...master},true);else await api(masterKind.value==='employee'?'create_employee':'create_team',{company:company.value,values:{...master}},true)
+  masterDialog.value.close();notice.value='Đã tạo '+({employee:'nhân viên',team:'đội khoán',farm:'vườn'})[masterKind.value]+'.';await loadCatalog();await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
 
 const crewColumns=[{field:'work_team',headerName:'Đội khoán',minWidth:190,valueFormatter:p=>teamName(p.value)},{field:'work_type',headerName:'Công việc',minWidth:170,valueFormatter:p=>(catalog.value.works||[]).find(w=>w.name===p.value)?.work_name||p.value||'Cũ'},{field:'foreman',headerName:'Đầu câu',minWidth:140},{field:'headcount',headerName:'Tổng người',minWidth:100},{field:'present',headerName:'Có mặt',minWidth:85},{field:'workdays',headerName:'Tổng công',minWidth:100,valueFormatter:p=>fmt(p.value)},{field:'amount',headerName:'Giá trị khoán',minWidth:140,valueFormatter:p=>cash(p.value)},{field:'docstatus',headerName:'Trạng thái',minWidth:110,valueFormatter:p=>docState(p.value)}]
@@ -187,7 +192,7 @@ useNoticeToast(notice)
       <td class="tk-col-num" data-label="Giờ làm"><UiInput v-model.number="row.working_hours" type="number" min="0" max="24" step="0.25" :aria-label="'Giờ làm '+row.employee_name" :disabled="saving||row.docstatus===1||row.status==='On Leave'||!canEditStaff" @input="edit(row)"/></td>
       <td class="tk-col-num" data-label="Tăng ca"><UiInput v-model.number="row.overtime_hours" type="number" min="0" max="16" step="0.25" :aria-label="'Giờ tăng ca '+row.employee_name" :disabled="saving||row.docstatus===1||['On Leave','Absent'].includes(row.status)||!canEditStaff" @input="edit(row)"/></td>
       <td class="tk-col-note" data-label="Ghi chú"><UiInput v-model="row.note" :aria-label="'Ghi chú '+row.employee_name" :disabled="saving||row.docstatus===1||!canEditStaff" @input="edit(row)"/></td>
-      <td class="tk-col-state" data-label="Phiếu"><span class="tk-pill" :class="'is-'+rowState(row)">{{stateLabel[rowState(row)]}}</span><small v-if="row.edited" class="tk-flag is-warn">Chưa lưu</small></td>
+      <td class="tk-col-state" data-label="Phiếu"><span class="tk-pill" :class="'is-'+rowState(row)">{{stateLabel[rowState(row)]}}</span><small v-if="row.edited" class="tk-flag is-warn">Chưa lưu</small><UiButton v-if="canCorrect&&row.docstatus===1" variant="link" size="sm" class="tk-correct" :aria-label="'Sửa công đã duyệt của '+row.employee_name" @click="openCorrection(row)">Sửa công</UiButton></td>
      </tr></tbody></table>
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
@@ -253,14 +258,6 @@ useNoticeToast(notice)
     <FormField label="Đầu câu / người phụ trách" required v-slot="f"><UiInput v-bind="f" v-model="master.foreman" maxlength="140"/></FormField>
     <FormField label="Điện thoại" v-slot="f"><UiInput v-bind="f" v-model="master.phone" maxlength="40"/></FormField>
    </template>
-   <template v-else-if="masterKind==='shift'">
-    <FormField label="Tên ca" required v-slot="f"><UiInput v-bind="f" v-model="master.name" maxlength="140" placeholder="VD: Ca 1"/></FormField>
-    <div class="tk-pair"><FormField label="Giờ vào" required v-slot="f"><UiInput v-bind="f" v-model="master.start_time" type="time"/></FormField><FormField label="Giờ ra" required v-slot="f"><UiInput v-bind="f" v-model="master.end_time" type="time"/></FormField></div>
-    <FormField label="Cho phép đi muộn (phút)" v-slot="f"><UiInput v-bind="f" v-model.number="master.late_grace" type="number" min="0" max="240" step="1"/></FormField>
-    <FormField label="Cho phép về sớm (phút)" v-slot="f"><UiInput v-bind="f" v-model.number="master.early_grace" type="number" min="0" max="240" step="1"/></FormField>
-    <FormField label="Dưới số giờ này tính nửa ngày" v-slot="f"><UiInput v-bind="f" v-model.number="master.half_day_hours" type="number" min="0" max="24" step="0.5"/></FormField>
-    <FormField label="Dưới số giờ này tính vắng" v-slot="f"><UiInput v-bind="f" v-model.number="master.absent_hours" type="number" min="0" max="24" step="0.5"/></FormField>
-   </template>
    <template v-else>
     <FormField label="Mã vườn" required v-slot="f"><UiInput v-bind="f" v-model="master.code" maxlength="140" placeholder="FARM-222"/></FormField>
     <FormField label="Tên vườn" required v-slot="f"><UiInput v-bind="f" v-model="master.name" maxlength="140" placeholder="Vườn 222 Thuận Phú"/></FormField>
@@ -269,6 +266,7 @@ useNoticeToast(notice)
   <footer><UiButton type="button" variant="outline" :disabled="saving" @click="masterDialog.close()">Hủy</UiButton><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Tạo mới'}}</UiButton></footer>
  </form></WorkspaceModal>
 
+ <TkCorrection v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
  <WorkspaceModal bare title="Xác nhận bảng công" :busy="saving" ref="confirmDialog" class="stock-dialog"><form @submit.prevent="act"><header><h2>{{confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'}}</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng xác nhận công" @click="confirmDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
   <p v-if="confirmation?.type==='staff'">{{confirmation.rows.length}} phiếu công đã chọn.</p>
   <FormField v-if="confirmation?.action==='cancel'" label="Lý do hủy" required v-slot="f"><UiTextarea v-bind="f" v-model="reason" maxlength="2000"/></FormField>

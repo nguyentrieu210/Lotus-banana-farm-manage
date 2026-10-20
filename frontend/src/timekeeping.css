@@ -169,3 +169,62 @@
  .tk-holidays__row>:nth-child(2){grid-column:1}
  .tk-actions__spacer{display:none}
 }
+
+/* Lịch ca (TkRoster): employees x days; a shift tints its cell with the shift colour. */
+.tk-rosterplan .tk-card__head{flex-wrap:wrap;gap:8px}
+.tk-weeknav{display:flex;align-items:center;gap:6px}
+.tk-weeknav strong{min-width:150px;text-align:center;font-variant-numeric:tabular-nums}
+.tk-span{width:auto}.tk-search{max-width:220px}
+.tk-legend--shifts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.tk-shiftchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--lotus-text-sm)}
+.tk-shiftchip b{display:inline-grid;place-items:center;min-width:30px;height:22px;padding:0 4px;border-radius:6px;font-size:var(--lotus-text-xs);color:#fff;background:var(--shift,var(--lotus-muted))}
+.tk-shiftchip.is-none b{color:var(--lotus-muted);background:transparent;border:1px dashed var(--lotus-border-strong)}
+.tk-rostergrid{overflow:auto;max-height:68vh;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);touch-action:pan-x pan-y;user-select:none}
+.tk-rostergrid.busy{opacity:.6}
+.tk-rostergrid table{border-collapse:separate;border-spacing:0;min-width:100%}
+.tk-rostergrid th,.tk-rostergrid td{padding:3px;border-bottom:1px solid var(--lotus-border);text-align:center;background:var(--lotus-surface)}
+.tk-rostergrid thead th{position:sticky;top:0;z-index:2;font-size:var(--lotus-text-xs)}
+.tk-rostergrid thead th button{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;min-height:40px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.tk-rostergrid thead th button:disabled{cursor:default}
+.tk-rostergrid thead small{color:var(--lotus-muted)}
+.tk-rostergrid .tk-rostergrid__who{position:sticky;left:0;z-index:1;min-width:190px;text-align:left;border-right:1px solid var(--lotus-border)}
+.tk-rostergrid thead .tk-rostergrid__who{z-index:3;padding-left:10px}
+.tk-rostergrid__who button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:4px 8px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tk-rostergrid__who small{color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:normal}
+.tk-rostergrid .is-off{background:var(--lotus-soft)}
+.tk-rostergrid .is-closed{background:repeating-linear-gradient(135deg,var(--lotus-soft) 0 6px,var(--lotus-surface) 6px 12px)}
+.tk-cell{position:relative;width:100%;min-width:44px;height:40px;border:1.5px solid transparent;border-radius:8px;font:inherit;font-weight:700;font-size:var(--lotus-text-sm);cursor:pointer;
+ color:var(--shift);background:color-mix(in srgb,var(--shift) 14%,var(--lotus-surface))}
+.tk-cell.empty{color:var(--lotus-muted);background:transparent;border:1px dashed var(--lotus-border)}
+.tk-cell.picked{border-color:var(--lotus-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--lotus-primary) 35%,transparent)}
+.tk-cell:disabled{cursor:not-allowed;opacity:.75}
+.tk-cell:focus-visible{outline:2px solid var(--lotus-primary);outline-offset:1px}
+.tk-cell__done{position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--lotus-success-600)}
+.tk-rosterbar{position:sticky;bottom:8px;z-index:4;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);box-shadow:0 6px 24px rgba(15,23,42,.14)}
+.tk-rosterbar>span{margin-right:auto}
+.tk-rosterbar__shift{color:#fff!important;background:var(--shift)!important;border-color:var(--shift)!important}
+.tk-pattern{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tk-pattern select{width:auto}
+.tk-check{display:flex;align-items:center;gap:8px;min-height:44px;font-size:var(--lotus-text-sm)}
+.tk-check input{width:20px;height:20px}
+/* Shift cards and forms */
+.tk-shift-form{display:flex;flex-direction:column;gap:10px}
+.tk-swatches{display:flex;gap:8px}
+.tk-swatches button{width:32px;height:32px;border-radius:50%;border:2px solid var(--lotus-surface);background:var(--swatch);box-shadow:0 0 0 1px var(--lotus-border);cursor:pointer}
+.tk-swatches button.on{box-shadow:0 0 0 2px var(--lotus-text)}
+.tk-shiftlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.tk-shiftcard{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--lotus-border);border-left:5px solid var(--shift);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.tk-shiftcard header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tk-shiftcard__time{font-size:var(--lotus-text-lg,1.1rem);font-weight:700;font-variant-numeric:tabular-nums}
+.tk-shiftcard__time small{font-size:var(--lotus-text-xs);color:var(--lotus-muted);font-weight:normal}
+.tk-shiftcard dl{margin:0;display:grid;gap:4px}
+.tk-shiftcard dl div{display:flex;justify-content:space-between;gap:8px;font-size:var(--lotus-text-sm)}
+.tk-shiftcard dt{color:var(--lotus-muted)}.tk-shiftcard dd{margin:0}
+.tk-shiftcard>button{align-self:flex-start}
+.tk-correct{display:block;padding:0;height:auto;min-height:0}
+@media(max-width:720px){
+ .tk-rostergrid .tk-rostergrid__who{min-width:132px}
+ .tk-weeknav strong{min-width:0}
+ .tk-search{max-width:none;flex:1 1 100%}
+ .tk-rosterbar{bottom:0}
+}

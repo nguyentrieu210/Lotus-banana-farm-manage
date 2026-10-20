@@ -83,3 +83,63 @@ def close_blockers(draft_attendance=0,draft_crew=0,open_punches=0,missing=None,h
     if open_punches:rows.append(dict(code='open_punches',label='Lượt chấm máy chưa đối chiếu',count=open_punches))
     if missing:rows.append(dict(code='missing_attendance',label='Nhân viên thiếu công ngày làm việc',count=sum(len(v) for v in missing.values()),employees=sorted(missing)))
     return rows
+
+
+# Shift administration ---------------------------------------------------------------------------
+SHIFT_MANAGER_ROLES = ('System Manager', 'HR Manager')
+
+
+def can_manage_shifts(roles, user):
+    """Administrator, System Manager and HR Manager define shifts, change rosters and correct approved days."""
+    return user == 'Administrator' or bool(set(SHIFT_MANAGER_ROLES) & set(roles or ()))
+
+
+def plan_roster(existing, begin, end, shift):
+    """Put one employee on `shift` (None = no shift) for [begin, end] (end None = open-ended).
+
+    existing: active submitted assignments [dict(name, shift_type, start_date, end_date|None)].
+    Returns dict(end=[(name, new_end)], cancel=[name], create=[(shift, start, end|None)]): submitted
+    assignments cannot move their start, so an overlap starting inside the range is cancelled and
+    whatever lies outside the range is recreated.
+    """
+    from datetime import timedelta
+    if end is not None and end < begin:
+        raise ValueError('Ngày kết thúc phải sau ngày bắt đầu.')
+    plan = dict(end=[], cancel=[], create=[])
+    far = None
+    for row in sorted(existing, key=lambda r: r['start_date']):
+        start, stop = row['start_date'], row.get('end_date')
+        if (end is not None and start > end) or (stop is not None and stop < begin):
+            continue
+        if row['shift_type'] == shift and start <= begin and (stop is None or (end is not None and stop >= end)):
+            return dict(end=[], cancel=[], create=[])  # already on that shift for the whole range
+        tail = None
+        if end is not None and (stop is None or stop > end):
+            tail = (row['shift_type'], end + timedelta(days=1), stop)
+        if start < begin:
+            plan['end'].append((row['name'], begin - timedelta(days=1)))
+            if tail:
+                plan['create'].append(tail)
+        else:
+            plan['cancel'].append(row['name'])
+            if tail:
+                plan['create'].append(tail)
+    if shift:
+        plan['create'].append((shift, begin, end))
+    return plan
+
+
+def rotation(start, weeks, pattern):
+    """Weekly rotation blocks: pattern ['Ca 1','Ca 2','Ca 3'] from `start` -> [(shift, from, to)] per week."""
+    from datetime import timedelta
+    if not pattern or not 1 <= int(weeks) <= 26:
+        raise ValueError('Chọn mẫu ca và 1–26 tuần.')
+    return [(pattern[i % len(pattern)], start + timedelta(days=7 * i), start + timedelta(days=7 * i + 6)) for i in range(int(weeks))]
+
+
+def overtime_suggestion(minutes_after_end, minimum=30, step=15):
+    """Overtime proposed from the last punch: nothing below `minimum` minutes, rounded down to `step`."""
+    minutes = max(0, int(minutes_after_end or 0))
+    if minutes < minimum:
+        return 0
+    return round((minutes // step) * step / 60, 2)
