@@ -12,6 +12,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import {logoutPwa} from './mobile-push-session'
 import CccdQrScanner from './components/CccdQrScanner.vue'
+import HrMobileAttendance from './components/hr/HrMobileAttendance.vue'
 import {call,setCSRF} from './api'
 import {DEFAULT_CCCD_ISSUER} from './cccd-issuer'
 import {useMobileViewport} from './use-mobile-viewport'
@@ -20,14 +21,15 @@ const {keyboard}=useMobileViewport()
 const {dialog:confirmDialog,message:confirmMessage,ask:askConfirm,finish:finishConfirm}=useMobileConfirm()
 const session=ref(null),company=ref(''),busy=ref(false),saving=ref(false)
 const initialTab=new URLSearchParams(window.location.search).get('tab')
-const error=ref(''),notice=ref(''),screen=ref(['home','employees','onboarding','profile','candidates'].includes(initialTab)?initialTab:'home'),search=ref(''),scanOpen=ref(false)
+const error=ref(''),notice=ref(''),screen=ref(['home','attendance','employees','onboarding','profile','candidates'].includes(initialTab)?initialTab:'home'),search=ref(''),scanOpen=ref(false)
 const people=ref([]),candidates=ref([]),catalog=ref({farms:[],teams:[],departments:[],designations:[],genders:[],employment_types:[],grades:[],worker_categories:[],payment_bases:[]})
 const employee=reactive({}),candidate=reactive({})
 const selectedEmployee=ref(null),selectedCandidate=ref(null),hireFrom=ref(null)
 const revealedCccd=ref('')
-const roots=['home','employees','onboarding','profile']
-const tabs=[{name:'home',label:'Trang chủ',icon:'wap-home-o'},{name:'employees',label:'Nhân viên',icon:'friends-o'},{name:'onboarding',label:'Tiếp nhận',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
-const title=computed(()=>({home:'Nhân sự Lotus',employees:'Hồ sơ nhân viên',onboarding:'Tiếp nhận',profile:'Tài khoản',employee:'Hồ sơ nhân viên',candidates:'Tuyển dụng',candidate:'Hồ sơ ứng viên'})[screen.value]||'Nhân sự Lotus')
+const roots=['home','attendance','employees','onboarding','profile']
+const attendance=ref(null)
+const tabs=[{name:'home',label:'Trang chủ',icon:'wap-home-o'},{name:'attendance',label:'Chấm công',icon:'clock-o'},{name:'employees',label:'Nhân viên',icon:'friends-o'},{name:'onboarding',label:'Tiếp nhận',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
+const title=computed(()=>({home:'Nhân sự Lotus',attendance:'Chấm công hôm nay',employees:'Hồ sơ nhân viên',onboarding:'Tiếp nhận',profile:'Tài khoản',employee:'Hồ sơ nhân viên',candidates:'Tuyển dụng',candidate:'Hồ sơ ứng viên'})[screen.value]||'Nhân sự Lotus')
 const rootTab=computed(()=>roots.includes(screen.value)?screen.value:screen.value==='candidate'?'home':'employees')
 const manager=computed(()=>!!session.value?.is_hr_manager)
 const missing=computed(()=>people.value.filter(p=>p.lotus_onboarding_state!=='Ready'))
@@ -94,6 +96,7 @@ async function useQr(info){
 }
 async function reload(){
  if(!company.value)return
+ if(screen.value==='attendance')attendance.value?.load()
  busy.value=true;error.value=''
  try{
   const [list,cat]=await Promise.all([api('overview',{company:company.value}),api('catalogue',{company:company.value})])
@@ -298,6 +301,7 @@ onMounted(()=>{void init()})
      <LotusMobileButton block plain type="button" @click="nav('candidates')">Đóng</LotusMobileButton>
     </form>
    </template>
+   <template v-else-if="screen==='attendance'"><HrMobileAttendance ref="attendance" :company="company" :today="session?.today" @notice="notice=$event" @error="error=$event"/></template>
    <template v-else-if="screen==='profile'">
     <section class="hr-mobile-card">
      <h2>Tài khoản</h2><p>{{session?.user||'Chưa đăng nhập'}}</p>

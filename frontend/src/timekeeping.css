@@ -174,8 +174,11 @@
 .tk-rosterplan .tk-card__head{flex-wrap:wrap;gap:8px}
 .tk-weeknav{display:flex;align-items:center;gap:6px}
 .tk-weeknav strong{min-width:150px;text-align:center;font-variant-numeric:tabular-nums}
-.tk-span{width:auto}.tk-search{max-width:220px}
-.tk-legend--shifts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.tk-rosterplan .tk-card__head .tk-narrow{flex:0 0 auto;width:auto;min-width:140px;max-width:220px}
+.tk-rosterplan .tk-card__head .tk-search{flex:0 1 220px;max-width:220px}
+.tk-rosterplan .tk-card__head>button:last-child{margin-left:auto}
+.tk-shiftlegend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 10px;font-size:var(--lotus-text-sm)}
+.tk-shiftlegend .tk-hint{flex:1 1 260px;text-align:right}
 .tk-shiftchip{display:inline-flex;align-items:center;gap:6px;font-size:var(--lotus-text-sm)}
 .tk-shiftchip b{display:inline-grid;place-items:center;min-width:30px;height:22px;padding:0 4px;border-radius:6px;font-size:var(--lotus-text-xs);color:#fff;background:var(--shift,var(--lotus-muted))}
 .tk-shiftchip.is-none b{color:var(--lotus-muted);background:transparent;border:1px dashed var(--lotus-border-strong)}
@@ -189,7 +192,7 @@
 .tk-rostergrid thead small{color:var(--lotus-muted)}
 .tk-rostergrid .tk-rostergrid__who{position:sticky;left:0;z-index:1;min-width:190px;text-align:left;border-right:1px solid var(--lotus-border)}
 .tk-rostergrid thead .tk-rostergrid__who{z-index:3;padding-left:10px}
-.tk-rostergrid__who button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:4px 8px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tk-rostergrid__who button{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:44px;padding:4px 8px;border:0;background:transparent;color:inherit;font:inherit;font-size:var(--lotus-text-sm);text-align:left;cursor:pointer}
 .tk-rostergrid__who small{color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:normal}
 .tk-rostergrid .is-off{background:var(--lotus-soft)}
 .tk-rostergrid .is-closed{background:repeating-linear-gradient(135deg,var(--lotus-soft) 0 6px,var(--lotus-surface) 6px 12px)}
