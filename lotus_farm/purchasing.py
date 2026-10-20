@@ -29,8 +29,6 @@ def _approver():
 
 def can_approve(doc):
     return bool(doc.docstatus == 0 and doc.get("lotus_approval_status") == PENDING
-                and doc.owner != frappe.session.user
-                and doc.get("lotus_requested_by") != frappe.session.user
                 and _approver()
                 and doc.has_permission("submit"))
 
@@ -46,8 +44,6 @@ def check_submission(doc, method=None):
     if saved_state or doc.get("lotus_approval_status") or doc.get("lotus_purchase_mode"):
         if saved_state != PENDING or doc.get("lotus_approval_status") != PENDING:
             frappe.throw("Đơn mua phải được gửi duyệt trước khi xác nhận.")
-        if doc.owner == frappe.session.user or doc.get("lotus_requested_by") == frappe.session.user:
-            frappe.throw("Người lập hoặc trình đơn không được tự duyệt.", frappe.PermissionError)
         if not _approver():
             frappe.throw("Chỉ người có quyền duyệt mua mới được xác nhận.", frappe.PermissionError)
 
@@ -168,7 +164,7 @@ def approve_order(name, modified, sign_token=None):
     doc.reload()
     _ensure_version(doc, modified)
     if not can_approve(doc):
-        frappe.throw("Không được duyệt đơn này. Kiểm tra quyền và người lập đơn.", frappe.PermissionError)
+        frappe.throw("Không được duyệt đơn này. Kiểm tra quyền và trạng thái phiếu.", frappe.PermissionError)
     from lotus_farm.digital_signature import _assert_signer_qr
     challenge = _assert_signer_qr(sign_token, name, modified)
     if challenge:

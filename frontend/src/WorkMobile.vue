@@ -54,7 +54,7 @@ const canFinalize=computed(()=>!!session.value?.abilities?.['work.result.approve
 const reviewNote=ref('')
 const canApprove=computed(()=>!!session.value?.abilities?.['work.rate.approve'])
 const tasks=computed(()=>day.value?.tasks||[])
-const needingReview=computed(()=>tasks.value.filter(t=>(t.result_state==='Pending'&&canVerify.value&&t.result_owner!==session.value?.user)||(t.result_state==='Verified'&&canFinalize.value&&t.result_owner!==session.value?.user&&t.verified_by!==session.value?.user)))
+const needingReview=computed(()=>tasks.value.filter(t=>(t.result_state==='Pending'&&canVerify.value)||(t.result_state==='Verified'&&canFinalize.value)))
 const planRows=computed(()=>day.value?.plans||[])
 const done=computed(()=>tasks.value.filter(t=>t.status==='Completed').length)
 const blocked=computed(()=>tasks.value.filter(t=>t.status==='Blocked').length)
@@ -375,7 +375,7 @@ async function createAssign(){
  finally{saving.value=false}
 }
 async function approve(p,decision){
- if(!canApprove.value||p.owner===session.value?.user||saving.value||!online.value)return
+ if(!canApprove.value||saving.value||!online.value)return
  if(decision==='Reject'&&!rejectReason.value.trim()){error.value='Nhập lý do từ chối.';return}
  saving.value=true;clear()
  try{
@@ -590,14 +590,14 @@ onBeforeUnmount(()=>{
       <LotusMobileButton v-if="canCapture&&(!selected.result||canRevise(selected))&&!pendingLines.has(selected.line)" type="button" class="mobile-submit" :disabled="saving" @click="openResult">{{canRevise(selected)?'Sửa và gửi lại kết quả →':'Gửi báo cáo kết quả →'}}</LotusMobileButton>
       <p v-if="selected.result" class="mobile-message" :class="selected.result_state==='Approved'?'success':'work-warning'">Phiếu {{selected.result}} · {{labelState(selected.status)}}.</p>
       <p v-if="selected.review_note" class="mobile-message work-warning">Nhận xét: {{selected.review_note}}</p>
-      <div v-if="canVerify&&selected.result_state==='Pending'&&selected.result_owner!==session.user">
+      <div v-if="canVerify&&selected.result_state==='Pending'">
        <div class="mobile-field"><label>Nhận xét kiểm tra (nếu có)</label><LotusMobileInput aria-label="Nhận xét kiểm tra (nếu có)" type="textarea" v-model="reviewNote" rows="2"/></div>
        <LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Verify')">Kiểm tra đạt → Chờ quản lý duyệt</LotusMobileButton>
        <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu tổ trưởng sửa</LotusMobileButton>
       </div>
-      <div v-if="canVerify&&selected.result_state==='Verified'&&selected.result_owner!==session.user">
+      <div v-if="canVerify&&selected.result_state==='Verified'">
        <div class="mobile-field"><label>Nhận xét duyệt (nếu có)</label><LotusMobileInput aria-label="Nhận xét duyệt (nếu có)" type="textarea" v-model="reviewNote" rows="2"/></div>
-       <LotusMobileButton v-if="canFinalize&&selected.verified_by!==session.user" type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Approve')">Duyệt kết quả chính thức</LotusMobileButton>
+       <LotusMobileButton v-if="canFinalize" type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Approve')">Duyệt kết quả chính thức</LotusMobileButton>
        <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu kiểm tra lại</LotusMobileButton>
       </div>
      </div>
@@ -688,9 +688,9 @@ onBeforeUnmount(()=>{
      <div class="mobile-done"><div class="mobile-done-icon">✓</div><h1>Hoàn tất!</h1><p>{{message}}</p><LotusMobileButton class="mobile-submit" @click="go('home')">Về trang chủ</LotusMobileButton></div>
     </template>
 
-    <section v-if="screen==='home'&&canApprove&&planRows.some(p=>p.rate_approval_state==='Pending'&&p.owner!==session.user)">
+    <section v-if="screen==='home'&&canApprove&&planRows.some(p=>p.rate_approval_state==='Pending')">
      <div class="work-section"><h2>Cần duyệt đơn giá</h2></div>
-     <div v-for="p in planRows.filter(p=>p.rate_approval_state==='Pending'&&p.owner!==session.user)" :key="p.name" class="mobile-list-card">
+     <div v-for="p in planRows.filter(p=>p.rate_approval_state==='Pending')" :key="p.name" class="mobile-list-card">
       <strong>{{p.name}}</strong><small>{{shortDate(p.posting_date)}} · {{p.owner}}</small>
       <div class="work-queue-actions"><LotusMobileButton :disabled="saving||!online" @click="approve(p,'Approve')">Duyệt và giao</LotusMobileButton><LotusMobileButton @click="rejection=rejection===p.name?'':p.name">Từ chối</LotusMobileButton></div>
       <div v-if="rejection===p.name" class="mobile-field"><label>Lý do từ chối</label><LotusMobileInput aria-label="Lý do từ chối" type="textarea" v-model="rejectReason" rows="2"/><LotusMobileButton class="work-outline" @click="approve(p,'Reject')">Xác nhận</LotusMobileButton></div>

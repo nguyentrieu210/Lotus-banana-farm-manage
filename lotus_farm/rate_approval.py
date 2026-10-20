@@ -73,7 +73,6 @@ def validate_plan(doc):
                 doc.rate_approved_by and doc.rate_approved_at
                 and doc.rate_approval_signature
                 and hmac.compare_digest(str(doc.rate_approval_signature), expected)
-                and doc.rate_approved_by != doc.owner
             ):
                 frappe.throw("Duyệt giá không hợp lệ hoặc nội dung đã đổi. Phải tạo phiếu duyệt mới.")
         elif state not in ("Pending", "Rejected"):
@@ -117,8 +116,6 @@ def decide(plan, decision, reason=None):
     doc.check_permission("read")
     if doc.docstatus != 0 or doc.rate_approval_state != "Pending" or not needs_approval(doc):
         frappe.throw("Phiếu này không còn ở trạng thái chờ duyệt.")
-    if doc.owner == frappe.session.user:
-        frappe.throw("Người lập phiếu không được tự duyệt.")
     if decision == "Reject" and not (reason or "").strip():
         frappe.throw("Cần ghi lý do từ chối.")
     doc.rate_approval_note = (reason or "").strip()[:500]

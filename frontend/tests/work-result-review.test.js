@@ -13,15 +13,16 @@ test('mobile work result is a review draft; imported events retain immediate sub
  assert.match(draft,/assert_new_result\(values\)/)
  assert.match(draft,/revision_of/)
 })
-test('independent verify and approve are checked by the server',()=>{
+test('role-gated verify and approve can share a user but require both stages',()=>{
  const api=source('lotus_farm/work_review.py')
  const model=source('lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.py')
- assert.match(api,/if doc\.owner == frappe\.session\.user/)
+ assert.doesNotMatch(api,/if doc\.owner == frappe\.session\.user/)
  assert.match(api,/if state != "Verified"/)
- assert.match(api,/if doc\.verified_by == frappe\.session\.user/)
+ assert.doesNotMatch(api,/if doc\.verified_by == frappe\.session\.user/)
  assert.match(api,/require_farm\(doc\.farm\)/)
  assert.match(api,/team not in allowed_teams/)
- assert.match(model,/len\(\{self\.owner, self\.verified_by, self\.reviewed_by\}\) != 3/)
+ assert.match(model,/not self\.verified_by or not self\.reviewed_by/)
+ assert.doesNotMatch(model,/len\(\{self\.owner/)
 })
 test('pending reports remain invisible to submitted-result accounting',()=>{
  const mobile=source('lotus_farm/work_mobile.py')
@@ -71,7 +72,8 @@ test('work review submit cannot bypass guarded action via DocType API',()=>{
  const result=source('lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.py')
  assert.match(review,/command\(doc, "review_result"\)/)
  assert.match(result,/command_allowed\(self, "review_result"\)/)
- assert.match(review,/doc\.verified_by == frappe\.session\.user/)
+ assert.match(review,/if not can_approve\(\)/)
+ assert.match(review,/if state != "Verified"/)
  assert.match(review,/doc\.actual_workdays/)
 })
 test('existing offline retries keep their original idempotent payload hash',()=>{

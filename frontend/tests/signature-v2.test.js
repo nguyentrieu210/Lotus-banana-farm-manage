@@ -22,7 +22,8 @@ test('signature and initials saved independently with a server-controlled signin
 })
 test('initials, approval and signature QR enforce permissions and audit separately',()=>{
  assert.match(signing,/def initial_purchase_order\(name, modified\)/)
- assert.match(signing,/actor in \(doc.owner, doc.get\("lotus_requested_by"\)\)/)
+ assert.doesNotMatch(signing,/actor in \(doc.owner, doc.get\("lotus_requested_by"\)\)/)
+ assert.match(signing,/_approver\(\)/)
  assert.match(signing,/Lotus Purchase Reviewer/)
  assert.match(signing,/_event\(doc, "INITIAL"/)
  assert.match(signing,/_event\(doc, "APPROVE"/)

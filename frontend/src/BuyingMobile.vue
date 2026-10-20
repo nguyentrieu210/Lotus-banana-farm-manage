@@ -372,7 +372,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <div class="buy-field"><label>Lý do từ chối</label><LotusMobileInput type="textarea" v-model="rejectReason" rows="2" placeholder="Nêu lý do để người lập sửa lại…"/></div>
     <LotusMobileButton class="buy-danger" :disabled="saving||!online||rejectReason.trim().length<3" @click="applyAction('reject_order')">Trả lại đơn</LotusMobileButton>
    </div>
-   <p v-if="detail.approval_status==='Chờ duyệt'&&!detail.can_approve" class="buy-muted">Đơn đang chờ người khác có quyền duyệt. Người lập đơn không được tự duyệt.</p>
+   <p v-if="detail.approval_status==='Chờ duyệt'&&!detail.can_approve" class="buy-muted">Đơn đang chờ tài khoản có quyền duyệt hoặc chưa đủ điều kiện để duyệt.</p>
    <section v-if="detail.docstatus===1" class="buy-order-actions">
     <LotusMobileButton v-if="detail.can_print" class="buy-outline" :disabled="saving" @click="openPurchasePdf()">Xem / in đơn PDF</LotusMobileButton>
     <LotusMobileButton v-if="detail.can_print" class="buy-outline" :disabled="saving||!online" @click="sharePdf()">Chia sẻ PDF qua Zalo / ứng dụng khác</LotusMobileButton>

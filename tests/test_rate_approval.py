@@ -68,14 +68,13 @@ class RateApprovalTests(unittest.TestCase):
             with self.assertRaises(frappe.ValidationError):
                 validate_plan(doc)
 
-    def test_self_approval_rejected(self):
+    def test_self_approval_allowed_for_authorized_signer(self):
         with patch("lotus_farm.rate_approval.frappe.conf", {"encryption_key": "test-key"}):
             doc = sample("Approved", 1)
             doc.rate_approved_by = doc.owner
             doc.rate_approved_at = "2026-10-15 09:00:00"
             doc.rate_approval_signature = _signature(doc)
-            with self.assertRaises(frappe.ValidationError):
-                validate_plan(doc)
+            validate_plan(doc)
 
 
 if __name__ == "__main__":

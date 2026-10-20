@@ -327,7 +327,6 @@ def initial_purchase_order(name, modified):
     doc.check_permission("read")
     if (str(doc.modified) != str(modified) or doc.docstatus != 0
         or doc.get("lotus_approval_status") != PENDING
-        or actor in (doc.owner, doc.get("lotus_requested_by"))
         or not (_approver() or "Lotus Purchase Reviewer" in frappe.get_roles(actor))):
         frappe.throw("Bạn không có quyền ký nháy hoặc đơn đã thay đổi.", frappe.PermissionError)
     image = _current_file(actor, INITIAL_FIELD)

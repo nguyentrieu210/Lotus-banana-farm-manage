@@ -102,8 +102,6 @@ def decide(result, decision, reason=None):
     doc = _load(result)
     note = str(reason or "").strip()
     state = doc.review_state or "Pending"
-    if doc.owner == frappe.session.user:
-        frappe.throw("Người báo kết quả không được tự kiểm tra hoặc tự duyệt.", frappe.PermissionError)
 
     if decision == "Verify":
         if state != "Pending":
@@ -117,8 +115,6 @@ def decide(result, decision, reason=None):
             frappe.throw("Chỉ quản lý vườn được duyệt kết quả cuối.", frappe.PermissionError)
         if state != "Verified":
             frappe.throw("Báo cáo phải được đội trưởng kiểm tra trước khi duyệt.")
-        if doc.verified_by == frappe.session.user:
-            frappe.throw("Người đã kiểm tra không được tự duyệt lần hai.", frappe.PermissionError)
         # The day cannot close correctly if actual team labor exceeds allocation.
         allocated = sum(frappe.utils.flt(x) for x in frappe.get_all(
             "Labor Allocation",

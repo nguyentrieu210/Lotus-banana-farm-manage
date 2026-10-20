@@ -15,13 +15,14 @@ test('Purchasing PWA has distinct route, manifest, worker and UI entrypoint',()=
   assert.match(read('lotus_farm/public/buying-worker.js'),/startsWith\('\/api\/\'\)/)
   assert.match(read('frontend/src/register-buying-worker.js'),/scope:'\/buying'/)
 })
-test('ERP documents enforce an independent approver at server layer',()=>{
+test('ERP documents enforce approval role and pending state including self approval',()=>{
   const py=read('lotus_farm/purchasing.py')
   const hooks=read('lotus_farm/hooks.py')
   assert.match(hooks,/Purchase Order'\]=\{'before_submit':'lotus_farm.purchasing.check_submission'/)
-  assert.match(py,/doc\.owner != frappe\.session\.user/)
-  assert.match(py,/doc\.owner == frappe\.session\.user/)
   assert.match(py,/saved_state != PENDING/)
+  assert.match(py,/_approver\(\)/)
+  assert.match(py,/doc\.has_permission\("submit"\)/)
+  assert.doesNotMatch(py,/doc\.owner != frappe\.session\.user/)
   assert.match(py,/doc\.submit\(\)/)
   assert.match(py,/def reject_order/)
   assert.match(py,/def request_approval/)
