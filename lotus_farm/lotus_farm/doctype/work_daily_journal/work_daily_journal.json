@@ -16,7 +16,8 @@
       "fieldtype": "Link",
       "label": "Company",
       "options": "Company",
-      "read_only": 1
+      "read_only": 1,
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "farm",

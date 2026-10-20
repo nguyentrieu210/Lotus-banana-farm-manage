@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 import re
+import unicodedata
 from contextvars import ContextVar
 from io import BytesIO
 
@@ -180,7 +181,7 @@ def save(farm, date, rows, request_id, expected_modified=None, correction_reason
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     request_name = hashlib.sha256((frappe.session.user + ":" + request_id).encode()).hexdigest()
     lock("Farm", farm)
-    if frappe.db.exists("Work Journal Request", request_name):
+    if frappe.db.get_value("Work Journal Request", request_name, "name", for_update=True):
         saved = frappe.get_doc("Work Journal Request", request_name, for_update=True)
         if saved.owner != frappe.session.user or saved.payload_hash != digest:
             frappe.throw("Mã yêu cầu đã dùng cho nội dung khác.")
@@ -225,14 +226,23 @@ def _filters(farm, from_date, to_date):
 
 
 @frappe.whitelist()
-def journal_list(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None):
+def journal_list(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None, search=None):
     parents = frappe.get_all("Work Daily Journal", filters=_filters(farm, from_date, to_date),
                              fields=["name", "posting_date", "owner", "modified", "modified_by"], order_by="posting_date desc", limit_page_length=0)
     result = []
+    def fold(value):
+        return ''.join(c for c in unicodedata.normalize('NFD',str(value or '').lower()) if not unicodedata.combining(c)).replace('đ','d')
+    needle=fold(search)
+    labels={}
+    if needle:
+        for kind,field in (("teams","team_name"),("blocks","block_code"),("works","work_name")):
+            labels.update({r.name: r.get(field) or r.name for r in catalogue(farm)[kind]})
     for parent in parents:
         doc = frappe.get_doc("Work Daily Journal", parent.name)
         for row in _view(doc)["rows"]:
             if any(value and row[field] != value for field, value in (("work_team", work_team), ("farm_block", farm_block), ("work_type", work_type))):
+                continue
+            if needle and needle not in fold(' '.join([row['notes'],*(str(row[k])+' '+labels.get(row[k],'') for k in ('work_team','farm_block','work_type'))])):
                 continue
             result.append({**parent, "date": str(parent.posting_date), **row})
     return result
@@ -242,8 +252,8 @@ list = journal_list
 
 
 @frappe.whitelist()
-def summary(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None):
-    rows = journal_list(farm, from_date, to_date, work_team, farm_block, work_type)
+def summary(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None, search=None):
+    rows = journal_list(farm, from_date, to_date, work_team, farm_block, work_type, search)
     groups = {}
     for row in rows:
         key = (row["work_type"], row["uom"])
@@ -265,9 +275,9 @@ def history(farm, date):
 
 
 @frappe.whitelist()
-def export(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None):
+def export(farm, from_date, to_date, work_team=None, farm_block=None, work_type=None, search=None):
     from openpyxl import Workbook
-    data = summary(farm, from_date, to_date, work_team, farm_block, work_type)
+    data = summary(farm, from_date, to_date, work_team, farm_block, work_type, search)
     names = catalogue(farm)
     maps = {key: {r.name: r.get(label) or r.name for r in names[key]} for key, label in (("teams", "team_name"), ("blocks", "block_code"), ("works", "work_name"))}
     book = Workbook(); sheet = book.active; sheet.title = "Nhật ký theo dõi"

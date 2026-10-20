@@ -27,28 +27,32 @@
       "fieldtype": "Link",
       "label": "Tổ/đội",
       "options": "Work Team",
-      "reqd": 1
+      "reqd": 1,
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "farm_block",
       "fieldtype": "Link",
       "label": "Lô lớn",
       "options": "Farm Block",
-      "reqd": 1
+      "reqd": 1,
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "work_type",
       "fieldtype": "Link",
       "label": "Công việc",
       "options": "Work Type",
-      "reqd": 1
+      "reqd": 1,
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "uom",
       "fieldtype": "Link",
       "label": "Đơn vị",
       "options": "UOM",
-      "read_only": 1
+      "read_only": 1,
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "has_quantity",
