@@ -1,7 +1,7 @@
 import unittest
 from lotus_farm.hr_rules import (
     normalize_cccd, normalized_phone, transition_allowed,
-    onboarding_gaps, WORKER_CATEGORIES, PAYMENT_BASES
+    onboarding_gaps, dossier_gaps, WORKER_CATEGORIES, PAYMENT_BASES
 )
 
 class HRRulesTest(unittest.TestCase):
@@ -30,9 +30,14 @@ class HRRulesTest(unittest.TestCase):
         self.assertFalse(transition_allowed("Hired", "New"))
 
     def test_onboarding_missing(self):
-        self.assertIn("CCCD", onboarding_gaps({}))
-        full = {k: "ok" for k in ("lotus_cccd_hash", "lotus_id_issue_on", "lotus_id_issue_at", "cell_number", "current_address", "lotus_emergency_name", "lotus_emergency_phone", "designation", "lotus_worker_category", "lotus_payment_basis")}
-        self.assertEqual(onboarding_gaps(full), [])
+        basic = {k: "ok" for k in ("employee_name", "gender", "date_of_birth", "date_of_joining", "cell_number", "designation", "lotus_worker_category", "lotus_payment_basis")}
+        self.assertEqual(onboarding_gaps(basic), [])
+        self.assertIn("CCCD", dossier_gaps(basic))
+        self.assertIn("Người liên hệ khẩn cấp", dossier_gaps(basic))
+        for field in basic:
+            incomplete = {k: v for k, v in basic.items() if k != field}
+            self.assertEqual(len(onboarding_gaps(incomplete)), 1, field)
+        self.assertNotIn("CCCD", onboarding_gaps({}))
 
     def test_contractors_not_labeled_employees(self):
         self.assertIn("Seasonal", WORKER_CATEGORIES)

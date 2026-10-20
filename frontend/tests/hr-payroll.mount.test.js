@@ -91,3 +91,32 @@ test('HRMS payroll steps follow the period and slip state',async()=>{
  assert.match(text(closed.root),/Sal Slip\/1.*An.*Nháp/)
  closed.unmount()
 })
+
+test('candidate intake shows basic fields first and approves in a single request',async()=>{
+ calls.length=0;routes=routesFor(true)
+ const candidate={name:'C-1',applicant_name:'Ứng viên thử',phone:'0912345678',designation:'Worker',status:'Offered',modified:'2026-10-20'}
+ routes['lotus_farm.hr_workspace.overview']={employees:[],candidates:[candidate]}
+ routes['lotus_farm.hr_workspace.catalogue'].designations=[{name:'Worker'}]
+ routes['lotus_farm.hr_workspace.hire_candidate']={name:'E-new',onboarding_state:'Ready'}
+ const view=mount(HrApp,{hrView:'candidates'});await tick();await tick()
+ try{
+  button(view.root,'Tiếp nhận').click();await tick()
+  const dialog=document.querySelector('dialog[open]')
+  assert.ok(dialog)
+  assert.match(dialog.textContent,/Có thể bổ sung sau|có thể bổ sung sau/)
+  assert.equal([...dialog.querySelectorAll('label')].some(l=>l.textContent.startsWith('CCCD')),false)
+  const name=[...dialog.querySelectorAll('label')].find(l=>l.textContent.startsWith('Họ tên'))
+  assert.equal(document.getElementById(name.htmlFor).value,candidate.applicant_name)
+  button(dialog,'Bổ sung giấy tờ và thông tin khác').click();await tick()
+  assert.ok([...dialog.querySelectorAll('label')].some(l=>l.textContent.startsWith('CCCD')))
+  button(dialog,'Ẩn thông tin bổ sung').click();await tick()
+  // Backend integration exercises required-field validation; mount checks the single action payload.
+  dialog.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
+  const hires=calls.filter(c=>c.method.endsWith('.hire_candidate'))
+  assert.equal(hires.length,1)
+  assert.equal(hires[0].args.approve_basic,true)
+  assert.equal(hires[0].args.candidate,candidate.name)
+  assert.equal(calls.some(c=>c.method.endsWith('.set_onboarding_ready')),false)
+  assert.equal(dialog.open,false)
+ }finally{view.unmount()}
+})

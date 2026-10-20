@@ -8,11 +8,11 @@ import hashlib
 import hmac
 
 import frappe
-from frappe.utils import getdate, nowdate
+from frappe.utils import cint, getdate, nowdate
 
 from lotus_farm.hr_rules import (
     PAYMENT_BASES, WORKER_CATEGORIES, normalize_cccd,
-    normalized_phone, onboarding_gaps, transition_allowed,
+    normalized_phone, onboarding_gaps, dossier_gaps, transition_allowed,
 )
 
 DESIGNATION_GROUPS = {
@@ -326,6 +326,7 @@ def employee_detail(company, employee):
     return {k: doc.get(k) for k in fields} | {
         "cccd_recorded": bool(doc.get("lotus_cccd_hash")),
         "onboarding_gaps": onboarding_gaps(doc),
+        "dossier_gaps": dossier_gaps(doc),
         "modified": str(doc.modified),
     }
 
@@ -463,13 +464,19 @@ def set_onboarding_ready(company, employee, modified):
     doc.check_permission("write")
     if str(doc.modified) != str(modified):
         frappe.throw("Hồ sơ đã thay đổi. Tải lại trước khi duyệt tiếp nhận.")
+    return _approve_onboarding(doc)
+
+
+def _approve_onboarding(doc):
+    """Shared atomic approval for saved employees and the candidate intake action."""
+    doc.check_permission("write")
     if doc.lotus_onboarding_state == "Ready":
         frappe.throw("Nhân viên đã hoàn tất tiếp nhận.")
     if doc.status not in ("Inactive", "Active"):
         frappe.throw("Không thể duyệt tiếp nhận nhân viên đã nghỉ hoặc bị đình chỉ.")
     gaps = onboarding_gaps(doc)
     if gaps:
-        frappe.throw("Chưa đủ hồ sơ tiếp nhận: " + ", ".join(gaps))
+        frappe.throw("Chưa đủ thông tin tiếp nhận cơ bản: " + ", ".join(gaps))
     doc.lotus_onboarding_state = "Ready"
     doc.status = "Active"
     doc.save()
@@ -497,7 +504,8 @@ def set_onboarding_ready(company, employee, modified):
         "actor": actor,
         "signed_at": signed_at,
         "signature_type": "IMAGE" if snapshot else "NO_IMAGE",
-        "details": json.dumps({"signature_file": snapshot.name if snapshot else None}),
+        "details": json.dumps({"signature_file": snapshot.name if snapshot else None,
+                               "intake_level": "BASIC", "supplementary_missing": dossier_gaps(doc)}),
     }).insert(ignore_permissions=True)
     return dict(name=doc.name, status=doc.status)
 
@@ -535,7 +543,7 @@ def save_candidate(company, values, name=None, modified=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def hire_candidate(company, candidate, values, modified):
+def hire_candidate(company, candidate, values, modified, approve_basic=False):
     _manager()
     _company(company)
     lead = _choose("Lotus Candidate", candidate, company)
@@ -557,10 +565,12 @@ def hire_candidate(company, candidate, values, modified):
               "cell_number": values.get("cell_number") or lead.phone}
     _apply_employee(doc, values, company, True)
     doc.insert()
+    if cint(approve_basic):
+        _approve_onboarding(doc)
     lead.employee = doc.name
     lead.status = "Hired"
     lead.save()
-    return dict(name=doc.name, candidate=lead.name)
+    return dict(name=doc.name, candidate=lead.name, onboarding_state=doc.lotus_onboarding_state)
 
 
 @frappe.whitelist(methods=["POST"])
