@@ -109,6 +109,9 @@ def setup():
         "Sucker Selection Batch",
         "Banana Variety",
         "Defect Reason",
+        "Bunch Tag",
+        "Lotus Handover Cohort",
+        "Lotus Process Adoption",
     ):
         for role in ROLES:
             add_permission(doctype, role)
@@ -116,6 +119,9 @@ def setup():
             if role == "Lotus Farm Manager":
                 for action in ("create", "write"):
                     update_permission_property(doctype, role, 0, action, 1)
+    frappe.db.add_unique('Lotus Process Adoption', ['farm', 'version'])
+    for action in ('create',):
+        update_permission_property('Lotus Handover Cohort', 'Lotus Integration User', 0, action, 1)
 
 
 def validate_reference_company(doc, method=None):

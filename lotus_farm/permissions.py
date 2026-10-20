@@ -186,3 +186,16 @@ def packhouse_shift(user=None):
 
 def lotus_alert(user=None):
     return query_condition('Lotus Alert',user)
+
+
+def lotus_handover_cohort(user=None):
+    return query_condition('Lotus Handover Cohort', user)
+
+
+def lotus_process_adoption(user=None):
+    return query_condition('Lotus Process Adoption', user)
+
+
+def bunch_tag(user=None):
+    condition = query_condition('Bunch Tag', user)
+    return f"(COALESCE(`tabBunch Tag`.`farm`, '') = '' OR ({condition}))" if condition else ''

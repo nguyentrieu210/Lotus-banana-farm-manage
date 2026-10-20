@@ -29,7 +29,8 @@
     "started_at",
     "ended_at",
     "receiving_packhouse",
-    "scale_reading"
+    "scale_reading",
+    "source_cut_operation"
   ],
   "fields": [
     {
@@ -185,6 +186,12 @@
       "label": "Scale Reading",
       "fieldtype": "Link",
       "options": "Scale Reading"
+    },
+    {
+      "fieldname": "source_cut_operation",
+      "label": "Đợt cắt bắp gốc",
+      "fieldtype": "Link",
+      "options": "Bunch Operation"
     }
   ],
   "permissions": [

@@ -1,0 +1,3144 @@
+{
+  "garden-care": {
+    "Link": [],
+    "Budget": [],
+    "Fertilization Report": [
+      {
+        "cell": "A2",
+        "label": "THEO DÕI BÓN PHÂN/MONITOR FERTILIZATION"
+      },
+      {
+        "cell": "D2",
+        "label": "Cập nhập/Update:"
+      }
+    ],
+    "1. Chọn chồi_Tagging": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Chồi vụ thứ"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuần tuổi"
+      },
+      {
+        "cell": "S2",
+        "label": "Tháng tuổi"
+      },
+      {
+        "cell": "T2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "U2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "V2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "W2",
+        "label": "Số công"
+      },
+      {
+        "cell": "X2",
+        "label": "Mật độ chồi"
+      },
+      {
+        "cell": "Y2",
+        "label": "SỐ CÂY CHỌN"
+      },
+      {
+        "cell": "Z2",
+        "label": "L1"
+      },
+      {
+        "cell": "AA2",
+        "label": "L2"
+      },
+      {
+        "cell": "AB2",
+        "label": "L3"
+      },
+      {
+        "cell": "AC2",
+        "label": "L4"
+      },
+      {
+        "cell": "AD2",
+        "label": "L5"
+      },
+      {
+        "cell": "AE2",
+        "label": "L6"
+      },
+      {
+        "cell": "AF2",
+        "label": "L7"
+      },
+      {
+        "cell": "AG2",
+        "label": "L8"
+      },
+      {
+        "cell": "AH2",
+        "label": "L9"
+      },
+      {
+        "cell": "AI2",
+        "label": "L10"
+      },
+      {
+        "cell": "AJ2",
+        "label": "L11"
+      },
+      {
+        "cell": "AK2",
+        "label": "L12"
+      },
+      {
+        "cell": "AL2",
+        "label": "L13"
+      },
+      {
+        "cell": "AM2",
+        "label": "L14"
+      },
+      {
+        "cell": "AN2",
+        "label": "L15"
+      },
+      {
+        "cell": "AO2",
+        "label": "L16"
+      },
+      {
+        "cell": "AP2",
+        "label": "L17"
+      },
+      {
+        "cell": "AQ2",
+        "label": "L18"
+      },
+      {
+        "cell": "AR2",
+        "label": "L19"
+      },
+      {
+        "cell": "AS2",
+        "label": "L20"
+      },
+      {
+        "cell": "AT2",
+        "label": "L21"
+      },
+      {
+        "cell": "AU2",
+        "label": "L22"
+      },
+      {
+        "cell": "AV2",
+        "label": "L23"
+      },
+      {
+        "cell": "AW2",
+        "label": "L24"
+      },
+      {
+        "cell": "AX2",
+        "label": "L25"
+      },
+      {
+        "cell": "AY2",
+        "label": "L26"
+      },
+      {
+        "cell": "AZ2",
+        "label": "L27"
+      },
+      {
+        "cell": "BA2",
+        "label": "L28"
+      },
+      {
+        "cell": "BB2",
+        "label": "L29"
+      },
+      {
+        "cell": "BC2",
+        "label": "L30"
+      },
+      {
+        "cell": "BD2",
+        "label": "L31"
+      },
+      {
+        "cell": "BE2",
+        "label": "L32"
+      },
+      {
+        "cell": "BF2",
+        "label": "L33"
+      },
+      {
+        "cell": "BG2",
+        "label": "L34"
+      },
+      {
+        "cell": "BH2",
+        "label": "L35"
+      },
+      {
+        "cell": "BI2",
+        "label": "L36"
+      },
+      {
+        "cell": "BJ2",
+        "label": "L37"
+      },
+      {
+        "cell": "BK2",
+        "label": "L38"
+      },
+      {
+        "cell": "BL2",
+        "label": "L39"
+      },
+      {
+        "cell": "BM2",
+        "label": "L40"
+      },
+      {
+        "cell": "BN2",
+        "label": "L41"
+      },
+      {
+        "cell": "BO2",
+        "label": "L42"
+      },
+      {
+        "cell": "BP2",
+        "label": "L43"
+      },
+      {
+        "cell": "BQ2",
+        "label": "L44"
+      },
+      {
+        "cell": "BR2",
+        "label": "L45"
+      },
+      {
+        "cell": "BS2",
+        "label": "L46"
+      },
+      {
+        "cell": "BT2",
+        "label": "L47"
+      },
+      {
+        "cell": "BU2",
+        "label": "L48"
+      },
+      {
+        "cell": "BV2",
+        "label": "L49"
+      },
+      {
+        "cell": "BW2",
+        "label": "L50"
+      },
+      {
+        "cell": "BX2",
+        "label": "L51"
+      },
+      {
+        "cell": "BY2",
+        "label": "L52"
+      },
+      {
+        "cell": "BZ2",
+        "label": "L53"
+      },
+      {
+        "cell": "CA2",
+        "label": "L54"
+      },
+      {
+        "cell": "CB2",
+        "label": "L55"
+      },
+      {
+        "cell": "CC2",
+        "label": "L56"
+      },
+      {
+        "cell": "CD2",
+        "label": "L57"
+      },
+      {
+        "cell": "CE2",
+        "label": "L58"
+      },
+      {
+        "cell": "CF2",
+        "label": "L59"
+      },
+      {
+        "cell": "CG2",
+        "label": "L60"
+      },
+      {
+        "cell": "CH2",
+        "label": "L61"
+      },
+      {
+        "cell": "CI2",
+        "label": "L62"
+      },
+      {
+        "cell": "CJ2",
+        "label": "L63"
+      },
+      {
+        "cell": "CK2",
+        "label": "L64"
+      },
+      {
+        "cell": "CL2",
+        "label": "L65"
+      },
+      {
+        "cell": "CM2",
+        "label": "L66"
+      },
+      {
+        "cell": "CN2",
+        "label": "L67"
+      },
+      {
+        "cell": "CO2",
+        "label": "L68"
+      },
+      {
+        "cell": "CP2",
+        "label": "L69"
+      },
+      {
+        "cell": "CQ2",
+        "label": "L70"
+      },
+      {
+        "cell": "CR2",
+        "label": "L71"
+      },
+      {
+        "cell": "CS2",
+        "label": "L72"
+      },
+      {
+        "cell": "CT2",
+        "label": "L73"
+      },
+      {
+        "cell": "CU2",
+        "label": "L74"
+      },
+      {
+        "cell": "CV2",
+        "label": "L75"
+      },
+      {
+        "cell": "CW2",
+        "label": "L76"
+      },
+      {
+        "cell": "CX2",
+        "label": "L77"
+      },
+      {
+        "cell": "CY2",
+        "label": "L78"
+      },
+      {
+        "cell": "CZ2",
+        "label": "L79"
+      },
+      {
+        "cell": "DA2",
+        "label": "L80"
+      },
+      {
+        "cell": "DB2",
+        "label": "L81"
+      },
+      {
+        "cell": "DC2",
+        "label": "L82"
+      },
+      {
+        "cell": "DD2",
+        "label": "L83"
+      },
+      {
+        "cell": "DE2",
+        "label": "L84"
+      },
+      {
+        "cell": "DF2",
+        "label": "L85"
+      },
+      {
+        "cell": "DG2",
+        "label": "L86"
+      },
+      {
+        "cell": "DH2",
+        "label": "L87"
+      },
+      {
+        "cell": "DI2",
+        "label": "L88"
+      },
+      {
+        "cell": "DJ2",
+        "label": "L89"
+      },
+      {
+        "cell": "DK2",
+        "label": "L90"
+      },
+      {
+        "cell": "DL2",
+        "label": "L91"
+      },
+      {
+        "cell": "DM2",
+        "label": "L92"
+      },
+      {
+        "cell": "DN2",
+        "label": "L93"
+      },
+      {
+        "cell": "DO2",
+        "label": "L94"
+      },
+      {
+        "cell": "DP2",
+        "label": "L95"
+      },
+      {
+        "cell": "DQ2",
+        "label": "L96"
+      },
+      {
+        "cell": "DR2",
+        "label": "L97"
+      },
+      {
+        "cell": "DS2",
+        "label": "L98"
+      },
+      {
+        "cell": "DT2",
+        "label": "L99"
+      },
+      {
+        "cell": "DU2",
+        "label": "L100"
+      },
+      {
+        "cell": "DV2",
+        "label": "L101"
+      },
+      {
+        "cell": "DW2",
+        "label": "L102"
+      },
+      {
+        "cell": "DX2",
+        "label": "L103"
+      },
+      {
+        "cell": "DY2",
+        "label": "L104"
+      },
+      {
+        "cell": "DZ2",
+        "label": "L105"
+      },
+      {
+        "cell": "EA2",
+        "label": "L106"
+      },
+      {
+        "cell": "EB2",
+        "label": "L107"
+      },
+      {
+        "cell": "EC2",
+        "label": "L108"
+      },
+      {
+        "cell": "ED2",
+        "label": "L109"
+      },
+      {
+        "cell": "EE2",
+        "label": "L110"
+      },
+      {
+        "cell": "EF2",
+        "label": "L111"
+      },
+      {
+        "cell": "EG2",
+        "label": "L112"
+      },
+      {
+        "cell": "EH2",
+        "label": "L113"
+      },
+      {
+        "cell": "EI2",
+        "label": "L114"
+      },
+      {
+        "cell": "EJ2",
+        "label": "L115"
+      },
+      {
+        "cell": "EK2",
+        "label": "L116"
+      },
+      {
+        "cell": "EL2",
+        "label": "L117"
+      },
+      {
+        "cell": "EM2",
+        "label": "L118"
+      },
+      {
+        "cell": "EN2",
+        "label": "L119"
+      },
+      {
+        "cell": "EO2",
+        "label": "L120"
+      },
+      {
+        "cell": "EP2",
+        "label": "L121"
+      },
+      {
+        "cell": "EQ2",
+        "label": "L122"
+      },
+      {
+        "cell": "ER2",
+        "label": "L123"
+      },
+      {
+        "cell": "ES2",
+        "label": "L124"
+      },
+      {
+        "cell": "ET2",
+        "label": "L125"
+      },
+      {
+        "cell": "EU2",
+        "label": "L126"
+      },
+      {
+        "cell": "EV2",
+        "label": "L127"
+      },
+      {
+        "cell": "EW2",
+        "label": "L128"
+      },
+      {
+        "cell": "EX2",
+        "label": "L129"
+      },
+      {
+        "cell": "EY2",
+        "label": "L130"
+      },
+      {
+        "cell": "EZ2",
+        "label": "L131"
+      },
+      {
+        "cell": "FA2",
+        "label": "L132"
+      },
+      {
+        "cell": "FB2",
+        "label": "L133"
+      },
+      {
+        "cell": "FC2",
+        "label": "L134"
+      },
+      {
+        "cell": "FD2",
+        "label": "L135"
+      },
+      {
+        "cell": "FE2",
+        "label": "L136"
+      },
+      {
+        "cell": "FF2",
+        "label": "L137"
+      },
+      {
+        "cell": "FG2",
+        "label": "L138"
+      },
+      {
+        "cell": "FH2",
+        "label": "L139"
+      },
+      {
+        "cell": "FI2",
+        "label": "L140"
+      },
+      {
+        "cell": "FJ2",
+        "label": "L141"
+      },
+      {
+        "cell": "FK2",
+        "label": "L142"
+      },
+      {
+        "cell": "FL2",
+        "label": "L143"
+      },
+      {
+        "cell": "FM2",
+        "label": "L144"
+      },
+      {
+        "cell": "FN2",
+        "label": "L145"
+      },
+      {
+        "cell": "FO2",
+        "label": "L146"
+      },
+      {
+        "cell": "FP2",
+        "label": "L147"
+      },
+      {
+        "cell": "FQ2",
+        "label": "L148"
+      },
+      {
+        "cell": "FR2",
+        "label": "L149"
+      },
+      {
+        "cell": "FS2",
+        "label": "L150"
+      },
+      {
+        "cell": "FT2",
+        "label": "L151"
+      },
+      {
+        "cell": "FU2",
+        "label": "L152"
+      },
+      {
+        "cell": "FV2",
+        "label": "L153"
+      },
+      {
+        "cell": "FW2",
+        "label": "L154"
+      },
+      {
+        "cell": "FX2",
+        "label": "L155"
+      },
+      {
+        "cell": "FY2",
+        "label": "L156"
+      },
+      {
+        "cell": "FZ2",
+        "label": "L157"
+      },
+      {
+        "cell": "GA2",
+        "label": "L158"
+      },
+      {
+        "cell": "GB2",
+        "label": "L159"
+      },
+      {
+        "cell": "GC2",
+        "label": "L160"
+      },
+      {
+        "cell": "GD2",
+        "label": "DT Chọn chồi"
+      }
+    ],
+    "2. Cắt chồi_Sucker Prunning": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuần tuổi"
+      },
+      {
+        "cell": "S2",
+        "label": "Tháng tuổi"
+      },
+      {
+        "cell": "T2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "U2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "V2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "W2",
+        "label": "Số gốc cắt chồi"
+      },
+      {
+        "cell": "X2",
+        "label": "Số công nhân LĐ"
+      },
+      {
+        "cell": "Y2",
+        "label": "Ghi chú"
+      },
+      {
+        "cell": "Z2",
+        "label": "Column1"
+      },
+      {
+        "cell": "AA2",
+        "label": "DT Cắt chồi"
+      }
+    ],
+    "3. Bón phân_Fertilizer": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuần tuổi"
+      },
+      {
+        "cell": "S2",
+        "label": "Tháng tuổi"
+      },
+      {
+        "cell": "T2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "U2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "V2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "W2",
+        "label": "MỤC ĐÍCH"
+      },
+      {
+        "cell": "X2",
+        "label": "KHỐI LƯỢNG CV (Cây)"
+      },
+      {
+        "cell": "Y2",
+        "label": "DAP"
+      },
+      {
+        "cell": "Z2",
+        "label": "LÂN"
+      },
+      {
+        "cell": "AA2",
+        "label": "URE"
+      },
+      {
+        "cell": "AB2",
+        "label": "KALI CLORUA"
+      },
+      {
+        "cell": "AC2",
+        "label": "NPK"
+      },
+      {
+        "cell": "AD2",
+        "label": "MAGIE"
+      },
+      {
+        "cell": "AE2",
+        "label": "KẼM"
+      },
+      {
+        "cell": "AF2",
+        "label": "FERTIBOR"
+      },
+      {
+        "cell": "AG2",
+        "label": "VÔI"
+      },
+      {
+        "cell": "AH2",
+        "label": "CHẾ PHẨM SINH HỌC PCT"
+      },
+      {
+        "cell": "AI2",
+        "label": "BIOFERT MX2 HÒA TAN (Kg)"
+      },
+      {
+        "cell": "AJ2",
+        "label": "TRICHODERMA"
+      },
+      {
+        "cell": "AK2",
+        "label": "HUMIC (LÍT)"
+      },
+      {
+        "cell": "AL2",
+        "label": "MAP"
+      },
+      {
+        "cell": "AM2",
+        "label": "PHÂN BÒ"
+      },
+      {
+        "cell": "AN2",
+        "label": "KALI SULPHATE"
+      },
+      {
+        "cell": "AO2",
+        "label": "SỐ CÔNG"
+      },
+      {
+        "cell": "AP2",
+        "label": "GHI CHÚ"
+      },
+      {
+        "cell": "AQ2",
+        "label": "Số công nhân LĐ"
+      },
+      {
+        "cell": "AR2",
+        "label": "Ghi chú2"
+      },
+      {
+        "cell": "AS2",
+        "label": "NPK (grams)"
+      },
+      {
+        "cell": "AT2",
+        "label": "Urea (grams)"
+      },
+      {
+        "cell": "AU2",
+        "label": "KCL (grams)"
+      },
+      {
+        "cell": "AV2",
+        "label": "K2S04 (grams)"
+      },
+      {
+        "cell": "AW2",
+        "label": "Phosphate\n(grams)"
+      },
+      {
+        "cell": "AX2",
+        "label": "MgSO4\n(grams)"
+      },
+      {
+        "cell": "AY2",
+        "label": "ZnSO4\n(grams)"
+      },
+      {
+        "cell": "AZ2",
+        "label": "Fertibor\n(grams)"
+      },
+      {
+        "cell": "BA2",
+        "label": "Cow Dung\n(Kg)"
+      },
+      {
+        "cell": "BB2",
+        "label": "Lime (Kg) "
+      },
+      {
+        "cell": "BC2",
+        "label": "DAP (grams)"
+      }
+    ],
+    "4. Cắt lá_Leaf Pruning": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "S2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "T2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "U2",
+        "label": "Công việc"
+      },
+      {
+        "cell": "V2",
+        "label": "Khối lượng TH (cây)"
+      },
+      {
+        "cell": "W2",
+        "label": "Số công nhân LĐ"
+      },
+      {
+        "cell": "X2",
+        "label": "Tháng tuổi"
+      },
+      {
+        "cell": "Y2",
+        "label": "DT Cắt lá"
+      }
+    ],
+    "5. Làm cỏ_Manual Weeding ": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "S2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "T2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "U2",
+        "label": "Công việc"
+      },
+      {
+        "cell": "V2",
+        "label": "Khối lượng TH (gốc)"
+      },
+      {
+        "cell": "W2",
+        "label": "SỐ Công nhân LĐ"
+      },
+      {
+        "cell": "X2",
+        "label": "Tháng tuổi"
+      },
+      {
+        "cell": "Y2",
+        "label": "DT Làm cỏ"
+      }
+    ],
+    "6. Phát cỏ_Grass Cutting": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày TH"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Diện tích (Ha)"
+      },
+      {
+        "cell": "S2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "T2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "U2",
+        "label": "Công việc"
+      },
+      {
+        "cell": "V2",
+        "label": "Khối lượng TH (ha)"
+      },
+      {
+        "cell": "W2",
+        "label": "Số công nhân LĐ"
+      },
+      {
+        "cell": "X2",
+        "label": "Tháng tuổi"
+      }
+    ],
+    "bc kiểm soát cỏ dại": [
+      {
+        "cell": "I2",
+        "label": "Đvt: ha"
+      }
+    ],
+    "bc chọn chồi": [
+      {
+        "cell": "B2",
+        "label": "XÍ NGHIỆP"
+      },
+      {
+        "cell": "C2",
+        "label": "NÔNG TRƯỜNG"
+      },
+      {
+        "cell": "D2",
+        "label": "LÔ"
+      },
+      {
+        "cell": "O2",
+        "label": "TỔNG TUẦN"
+      }
+    ]
+  },
+  "cycle-close": {
+    "Sheet1": [
+      {
+        "cell": "A1",
+        "label": "TT"
+      },
+      {
+        "cell": "B1",
+        "label": "NỘI DUNG"
+      },
+      {
+        "cell": "E1",
+        "label": "ĐVT"
+      },
+      {
+        "cell": "F1",
+        "label": "NTR "
+      },
+      {
+        "cell": "G1",
+        "label": "NTR"
+      },
+      {
+        "cell": "H1",
+        "label": "NTR"
+      },
+      {
+        "cell": "I1",
+        "label": "XN"
+      }
+    ]
+  },
+  "packing-form": {
+    "BC": []
+  },
+  "fruit-measurement": {
+    "ĐoTrai": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "S2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "T2",
+        "label": "Người đo"
+      },
+      {
+        "cell": "U2",
+        "label": "Số lượng đo trái"
+      },
+      {
+        "cell": "V2",
+        "label": "L1"
+      },
+      {
+        "cell": "W2",
+        "label": "L2"
+      },
+      {
+        "cell": "X2",
+        "label": "L3"
+      },
+      {
+        "cell": "Y2",
+        "label": "L4"
+      },
+      {
+        "cell": "Z2",
+        "label": "L5"
+      },
+      {
+        "cell": "AA2",
+        "label": "L6"
+      },
+      {
+        "cell": "AB2",
+        "label": "L7"
+      },
+      {
+        "cell": "AC2",
+        "label": "L8"
+      },
+      {
+        "cell": "AD2",
+        "label": "L9"
+      },
+      {
+        "cell": "AE2",
+        "label": "L10"
+      },
+      {
+        "cell": "AF2",
+        "label": "L11"
+      },
+      {
+        "cell": "AG2",
+        "label": "L12"
+      },
+      {
+        "cell": "AH2",
+        "label": "L13"
+      },
+      {
+        "cell": "AI2",
+        "label": "L14"
+      },
+      {
+        "cell": "AJ2",
+        "label": "L15"
+      },
+      {
+        "cell": "AK2",
+        "label": "L16"
+      },
+      {
+        "cell": "AL2",
+        "label": "L17"
+      },
+      {
+        "cell": "AM2",
+        "label": "L18"
+      },
+      {
+        "cell": "AN2",
+        "label": "L19"
+      },
+      {
+        "cell": "AO2",
+        "label": "L20"
+      },
+      {
+        "cell": "AP2",
+        "label": "L21"
+      },
+      {
+        "cell": "AQ2",
+        "label": "L22"
+      },
+      {
+        "cell": "AR2",
+        "label": "L23"
+      },
+      {
+        "cell": "AS2",
+        "label": "L24"
+      },
+      {
+        "cell": "AT2",
+        "label": "L25"
+      },
+      {
+        "cell": "AU2",
+        "label": "L26"
+      },
+      {
+        "cell": "AV2",
+        "label": "L27"
+      },
+      {
+        "cell": "AW2",
+        "label": "L28"
+      },
+      {
+        "cell": "AX2",
+        "label": "L29"
+      },
+      {
+        "cell": "AY2",
+        "label": "L30"
+      },
+      {
+        "cell": "AZ2",
+        "label": "L31"
+      },
+      {
+        "cell": "BA2",
+        "label": "L32"
+      },
+      {
+        "cell": "BB2",
+        "label": "L33"
+      },
+      {
+        "cell": "BC2",
+        "label": "L34"
+      },
+      {
+        "cell": "BD2",
+        "label": "L35"
+      },
+      {
+        "cell": "BE2",
+        "label": "L36"
+      },
+      {
+        "cell": "BF2",
+        "label": "L37"
+      },
+      {
+        "cell": "BG2",
+        "label": "L38"
+      },
+      {
+        "cell": "BH2",
+        "label": "L39"
+      },
+      {
+        "cell": "BI2",
+        "label": "L40"
+      },
+      {
+        "cell": "BJ2",
+        "label": "L41"
+      },
+      {
+        "cell": "BK2",
+        "label": "L42"
+      },
+      {
+        "cell": "BL2",
+        "label": "L43"
+      },
+      {
+        "cell": "BM2",
+        "label": "L44"
+      },
+      {
+        "cell": "BN2",
+        "label": "L45"
+      },
+      {
+        "cell": "BO2",
+        "label": "L46"
+      },
+      {
+        "cell": "BP2",
+        "label": "L47"
+      },
+      {
+        "cell": "BQ2",
+        "label": "L48"
+      },
+      {
+        "cell": "BR2",
+        "label": "L49"
+      },
+      {
+        "cell": "BS2",
+        "label": "L50"
+      },
+      {
+        "cell": "BT2",
+        "label": "L51"
+      },
+      {
+        "cell": "BU2",
+        "label": "L52"
+      },
+      {
+        "cell": "BV2",
+        "label": "L53"
+      },
+      {
+        "cell": "BW2",
+        "label": "L54"
+      },
+      {
+        "cell": "BX2",
+        "label": "L55"
+      },
+      {
+        "cell": "BY2",
+        "label": "L56"
+      },
+      {
+        "cell": "BZ2",
+        "label": "L57"
+      },
+      {
+        "cell": "CA2",
+        "label": "L58"
+      },
+      {
+        "cell": "CB2",
+        "label": "L59"
+      },
+      {
+        "cell": "CC2",
+        "label": "L60"
+      },
+      {
+        "cell": "CD2",
+        "label": "L61"
+      },
+      {
+        "cell": "CE2",
+        "label": "L62"
+      },
+      {
+        "cell": "CF2",
+        "label": "L63"
+      },
+      {
+        "cell": "CG2",
+        "label": "L64"
+      },
+      {
+        "cell": "CH2",
+        "label": "L65"
+      },
+      {
+        "cell": "CI2",
+        "label": "L66"
+      },
+      {
+        "cell": "CJ2",
+        "label": "L67"
+      },
+      {
+        "cell": "CK2",
+        "label": "L68"
+      },
+      {
+        "cell": "CL2",
+        "label": "L69"
+      },
+      {
+        "cell": "CM2",
+        "label": "L70"
+      },
+      {
+        "cell": "CN2",
+        "label": "L71"
+      },
+      {
+        "cell": "CO2",
+        "label": "L72"
+      },
+      {
+        "cell": "CP2",
+        "label": "L73"
+      },
+      {
+        "cell": "CQ2",
+        "label": "L74"
+      },
+      {
+        "cell": "CR2",
+        "label": "L75"
+      },
+      {
+        "cell": "CS2",
+        "label": "L76"
+      },
+      {
+        "cell": "CT2",
+        "label": "L77"
+      },
+      {
+        "cell": "CU2",
+        "label": "L78"
+      },
+      {
+        "cell": "CV2",
+        "label": "L79"
+      },
+      {
+        "cell": "CW2",
+        "label": "L80"
+      },
+      {
+        "cell": "CX2",
+        "label": "L81"
+      },
+      {
+        "cell": "CY2",
+        "label": "L82"
+      },
+      {
+        "cell": "CZ2",
+        "label": "L83"
+      },
+      {
+        "cell": "DA2",
+        "label": "L84"
+      },
+      {
+        "cell": "DB2",
+        "label": "L85"
+      },
+      {
+        "cell": "DC2",
+        "label": "L86"
+      },
+      {
+        "cell": "DD2",
+        "label": "L87"
+      },
+      {
+        "cell": "DE2",
+        "label": "L88"
+      },
+      {
+        "cell": "DF2",
+        "label": "L89"
+      },
+      {
+        "cell": "DG2",
+        "label": "L90"
+      },
+      {
+        "cell": "DH2",
+        "label": "L91"
+      },
+      {
+        "cell": "DI2",
+        "label": "L92"
+      },
+      {
+        "cell": "DJ2",
+        "label": "L93"
+      },
+      {
+        "cell": "DK2",
+        "label": "L94"
+      },
+      {
+        "cell": "DL2",
+        "label": "L95"
+      },
+      {
+        "cell": "DM2",
+        "label": "L96"
+      },
+      {
+        "cell": "DN2",
+        "label": "L97"
+      },
+      {
+        "cell": "DO2",
+        "label": "L98"
+      },
+      {
+        "cell": "DP2",
+        "label": "L99"
+      },
+      {
+        "cell": "DQ2",
+        "label": "L100"
+      },
+      {
+        "cell": "DR2",
+        "label": "L101"
+      },
+      {
+        "cell": "DS2",
+        "label": "L102"
+      },
+      {
+        "cell": "DT2",
+        "label": "L103"
+      },
+      {
+        "cell": "DU2",
+        "label": "L104"
+      },
+      {
+        "cell": "DV2",
+        "label": "L105"
+      },
+      {
+        "cell": "DW2",
+        "label": "L106"
+      },
+      {
+        "cell": "DX2",
+        "label": "L107"
+      },
+      {
+        "cell": "DY2",
+        "label": "L108"
+      },
+      {
+        "cell": "DZ2",
+        "label": "L109"
+      },
+      {
+        "cell": "EA2",
+        "label": "L110"
+      },
+      {
+        "cell": "EB2",
+        "label": "L111"
+      },
+      {
+        "cell": "EC2",
+        "label": "L112"
+      },
+      {
+        "cell": "ED2",
+        "label": "L113"
+      },
+      {
+        "cell": "EE2",
+        "label": "L114"
+      },
+      {
+        "cell": "EF2",
+        "label": "L115"
+      },
+      {
+        "cell": "EG2",
+        "label": "L116"
+      },
+      {
+        "cell": "EH2",
+        "label": "L117"
+      },
+      {
+        "cell": "EI2",
+        "label": "L118"
+      },
+      {
+        "cell": "EJ2",
+        "label": "L119"
+      },
+      {
+        "cell": "EK2",
+        "label": "L120"
+      },
+      {
+        "cell": "EL2",
+        "label": "L121"
+      },
+      {
+        "cell": "EM2",
+        "label": "L122"
+      },
+      {
+        "cell": "EN2",
+        "label": "L123"
+      },
+      {
+        "cell": "EO2",
+        "label": "L124"
+      },
+      {
+        "cell": "EP2",
+        "label": "L125"
+      },
+      {
+        "cell": "EQ2",
+        "label": "L126"
+      },
+      {
+        "cell": "ER2",
+        "label": "L127"
+      },
+      {
+        "cell": "ES2",
+        "label": "L128"
+      },
+      {
+        "cell": "ET2",
+        "label": "L129"
+      },
+      {
+        "cell": "EU2",
+        "label": "L130"
+      },
+      {
+        "cell": "EV2",
+        "label": "L131"
+      },
+      {
+        "cell": "EW2",
+        "label": "L132"
+      },
+      {
+        "cell": "EX2",
+        "label": "L133"
+      },
+      {
+        "cell": "EY2",
+        "label": "L134"
+      },
+      {
+        "cell": "EZ2",
+        "label": "L135"
+      },
+      {
+        "cell": "FA2",
+        "label": "L136"
+      },
+      {
+        "cell": "FB2",
+        "label": "L137"
+      },
+      {
+        "cell": "FC2",
+        "label": "L138"
+      },
+      {
+        "cell": "FD2",
+        "label": "L139"
+      },
+      {
+        "cell": "FE2",
+        "label": "L140"
+      }
+    ],
+    "BC ĐoTrai": [
+      {
+        "cell": "A2",
+        "label": "XÍ NGHIỆP"
+      },
+      {
+        "cell": "B2",
+        "label": "NÔNG TRƯỜNG"
+      },
+      {
+        "cell": "C2",
+        "label": "LÔ"
+      },
+      {
+        "cell": "D2",
+        "label": "THỬA"
+      },
+      {
+        "cell": "E2",
+        "label": "Tuần…."
+      }
+    ],
+    "BC KLH": [
+      {
+        "cell": "A2",
+        "label": "XÍ NGHIỆP"
+      },
+      {
+        "cell": "B2",
+        "label": "NÔNG TRƯỜNG"
+      },
+      {
+        "cell": "C2",
+        "label": "LÔ"
+      },
+      {
+        "cell": "D2",
+        "label": "Mã Màu"
+      }
+    ]
+  },
+  "bunch-care": {
+    "DataloXN": [
+      {
+        "cell": "A2",
+        "label": "BP3333.145443"
+      },
+      {
+        "cell": "B2",
+        "label": "BP"
+      },
+      {
+        "cell": "C2",
+        "label": "XNC-BP1"
+      },
+      {
+        "cell": "D2",
+        "label": "BP1.1.1"
+      },
+      {
+        "cell": "E2",
+        "label": "Đội 1"
+      },
+      {
+        "cell": "I2",
+        "label": "33.1"
+      },
+      {
+        "cell": "J2",
+        "label": "Đã trồng"
+      },
+      {
+        "cell": "Y2",
+        "label": "Bắc - Nam"
+      },
+      {
+        "cell": "Z2",
+        "label": "VIP 126"
+      },
+      {
+        "cell": "AB2",
+        "label": "Đã CSB"
+      },
+      {
+        "cell": "AC2",
+        "label": "BP1.1.1"
+      },
+      {
+        "cell": "AD2",
+        "label": "XSX BP1.1"
+      }
+    ],
+    "dm_xsx": [
+      {
+        "cell": "C2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "D2",
+        "label": "Xưởng"
+      }
+    ],
+    "DmMauDay": [
+      {
+        "cell": "A1",
+        "label": "Stt"
+      },
+      {
+        "cell": "B1",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "C1",
+        "label": "Mã màu QĐ"
+      },
+      {
+        "cell": "D1",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "E1",
+        "label": "Ngày bắt đầu CB"
+      },
+      {
+        "cell": "F1",
+        "label": "Ngày kết thúc CB"
+      },
+      {
+        "cell": "G1",
+        "label": "Ngày bđ chích bắp"
+      },
+      {
+        "cell": "H1",
+        "label": "Ngày kt chích bắp"
+      },
+      {
+        "cell": "I1",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "J1",
+        "label": "Tháng/Năm"
+      },
+      {
+        "cell": "K1",
+        "label": "Tháng/năm CB"
+      },
+      {
+        "cell": "L1",
+        "label": "Màu dây CB ngày"
+      },
+      {
+        "cell": "M1",
+        "label": "Màu dây chích bắp ngày"
+      },
+      {
+        "cell": "N1",
+        "label": "Ngày bđ thu hoạch"
+      },
+      {
+        "cell": "O1",
+        "label": "Ngày kt thu hoạch"
+      },
+      {
+        "cell": "P1",
+        "label": "Ngày dự thu "
+      },
+      {
+        "cell": "Q1",
+        "label": "Màu dây ngày2"
+      }
+    ],
+    "ChichBap": [
+      {
+        "cell": "A2",
+        "label": "ID"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuổi vườn"
+      },
+      {
+        "cell": "S2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "T2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "U2",
+        "label": "Loại thuốc SD"
+      },
+      {
+        "cell": "V2",
+        "label": "Loại thuốc SD 1"
+      },
+      {
+        "cell": "W2",
+        "label": "Định mức thuốc/búp 1"
+      },
+      {
+        "cell": "X2",
+        "label": "Lượng thuốc SD1"
+      },
+      {
+        "cell": "Y2",
+        "label": "Tỷ lệ chích bắp"
+      },
+      {
+        "cell": "Z2",
+        "label": "Số công"
+      },
+      {
+        "cell": "AA2",
+        "label": "Số lượng chích bắp"
+      },
+      {
+        "cell": "AB2",
+        "label": "Ngày cắt bắp dự tính"
+      },
+      {
+        "cell": "AC2",
+        "label": "Màu dây cắt bắp dự tính"
+      },
+      {
+        "cell": "AD2",
+        "label": "Mã màu cắt bắp dự tính "
+      }
+    ],
+    "CatBap": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuổi vườn"
+      },
+      {
+        "cell": "S2",
+        "label": "Số Cây"
+      },
+      {
+        "cell": "T2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "U2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "V2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "W2",
+        "label": "Tỷ lệ cắt bắp"
+      },
+      {
+        "cell": "X2",
+        "label": "Số công"
+      },
+      {
+        "cell": "Y2",
+        "label": "Số lượng cắt bắp"
+      },
+      {
+        "cell": "Z2",
+        "label": "Xưởng đóng gói"
+      },
+      {
+        "cell": "AA2",
+        "label": "Ngày BĐ CB"
+      },
+      {
+        "cell": "AB2",
+        "label": "Ngày KT CB"
+      },
+      {
+        "cell": "AC2",
+        "label": "SB Chích bắp theo CB"
+      }
+    ],
+    "PhunBuong": [
+      {
+        "cell": "A2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "B2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "C2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "D2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "E2",
+        "label": "Năm"
+      },
+      {
+        "cell": "F2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "G2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "H2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "I2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "J2",
+        "label": "Lô cũ"
+      },
+      {
+        "cell": "K2",
+        "label": "Thửa cũ"
+      },
+      {
+        "cell": "L2",
+        "label": "Lô"
+      },
+      {
+        "cell": "M2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "N2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "O2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "P2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Tuổi vườn"
+      },
+      {
+        "cell": "R2",
+        "label": "Số cây"
+      },
+      {
+        "cell": "S2",
+        "label": "Loại giống"
+      },
+      {
+        "cell": "T2",
+        "label": "Tình trạng phun"
+      },
+      {
+        "cell": "U2",
+        "label": "Loại thuốc 1"
+      },
+      {
+        "cell": "V2",
+        "label": "Định mức 1"
+      },
+      {
+        "cell": "W2",
+        "label": "Lượng thuốc SD 1"
+      },
+      {
+        "cell": "X2",
+        "label": "Loại thuốc 2"
+      },
+      {
+        "cell": "Y2",
+        "label": "Định mức 2"
+      },
+      {
+        "cell": "Z2",
+        "label": "Lượng thuốc SD 2"
+      },
+      {
+        "cell": "AA2",
+        "label": "Loại thuốc 3"
+      },
+      {
+        "cell": "AB2",
+        "label": "Định mức 3"
+      },
+      {
+        "cell": "AC2",
+        "label": "Lượng thuốc SD 3"
+      },
+      {
+        "cell": "AD2",
+        "label": "Số công"
+      },
+      {
+        "cell": "AE2",
+        "label": "Số buồng phun"
+      },
+      {
+        "cell": "AF2",
+        "label": "Code"
+      }
+    ],
+    "BaoBuong": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "S2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "T2",
+        "label": "Số lượng"
+      }
+    ],
+    "ChongDoNga": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "S2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "T2",
+        "label": "Số lượng"
+      }
+    ],
+    "ThuHoach": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội sản xuất"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Tuổi vườn"
+      },
+      {
+        "cell": "S2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "T2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "U2",
+        "label": "Tên XSX nhận"
+      },
+      {
+        "cell": "V2",
+        "label": "Số lượng thu hoạch"
+      },
+      {
+        "cell": "W2",
+        "label": "Số lượng hủy XĐG"
+      },
+      {
+        "cell": "X2",
+        "label": "SL sơ chế"
+      },
+      {
+        "cell": "Y2",
+        "label": "NS sơ chế"
+      },
+      {
+        "cell": "Z2",
+        "label": "SL tấn"
+      },
+      {
+        "cell": "AA2",
+        "label": "NS TH"
+      },
+      {
+        "cell": "AB2",
+        "label": "Tổng SL"
+      },
+      {
+        "cell": "AC2",
+        "label": "SL A456"
+      },
+      {
+        "cell": "AD2",
+        "label": "SL A789"
+      },
+      {
+        "cell": "AE2",
+        "label": "SL B456"
+      },
+      {
+        "cell": "AF2",
+        "label": "SL B789"
+      },
+      {
+        "cell": "AG2",
+        "label": "SL CL"
+      },
+      {
+        "cell": "AH2",
+        "label": "SL CP"
+      },
+      {
+        "cell": "AI2",
+        "label": "SL CNB"
+      },
+      {
+        "cell": "AJ2",
+        "label": "SL NB13"
+      },
+      {
+        "cell": "AK2",
+        "label": "SL NB18"
+      },
+      {
+        "cell": "AL2",
+        "label": "SL chuối A"
+      },
+      {
+        "cell": "AM2",
+        "label": "SL chuối B"
+      },
+      {
+        "cell": "AN2",
+        "label": "SL chuối C"
+      },
+      {
+        "cell": "AO2",
+        "label": "SL chuối bò"
+      }
+    ],
+    "HuyChuoi": [
+      {
+        "cell": "A2",
+        "label": "Id"
+      },
+      {
+        "cell": "B2",
+        "label": "Vụ số"
+      },
+      {
+        "cell": "C2",
+        "label": "Ngày"
+      },
+      {
+        "cell": "D2",
+        "label": "Tuần"
+      },
+      {
+        "cell": "E2",
+        "label": "Tháng"
+      },
+      {
+        "cell": "F2",
+        "label": "Năm"
+      },
+      {
+        "cell": "G2",
+        "label": "Công ty"
+      },
+      {
+        "cell": "H2",
+        "label": "Xí nghiệp"
+      },
+      {
+        "cell": "I2",
+        "label": "Nông trường"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội"
+      },
+      {
+        "cell": "K2",
+        "label": "Lô"
+      },
+      {
+        "cell": "L2",
+        "label": "Thửa"
+      },
+      {
+        "cell": "M2",
+        "label": "Lô QH mới"
+      },
+      {
+        "cell": "N2",
+        "label": "Thửa QH mới"
+      },
+      {
+        "cell": "O2",
+        "label": "Thứ tự trồng"
+      },
+      {
+        "cell": "P2",
+        "label": "Tình trạng"
+      },
+      {
+        "cell": "Q2",
+        "label": "Ngày trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "Mã màu"
+      },
+      {
+        "cell": "S2",
+        "label": "Màu dây"
+      },
+      {
+        "cell": "T2",
+        "label": "Số lượng hủy"
+      },
+      {
+        "cell": "U2",
+        "label": "Nguyên nhân hủy"
+      },
+      {
+        "cell": "V2",
+        "label": "Nguyên nhân đã sửa"
+      },
+      {
+        "cell": "W2",
+        "label": "Nhóm lỗi"
+      }
+    ],
+    "Sheet2": [
+      {
+        "cell": "B2",
+        "label": "Nguyên nhân hủy XN"
+      },
+      {
+        "cell": "C2",
+        "label": "Nguyên nhân hủy"
+      },
+      {
+        "cell": "D2",
+        "label": "Nhóm"
+      },
+      {
+        "cell": "F2",
+        "label": "Lỗi"
+      },
+      {
+        "cell": "G2",
+        "label": "Nguyên nhân"
+      }
+    ],
+    "DoTrai": [
+      {
+        "cell": "A2",
+        "label": "BP2828.445036"
+      },
+      {
+        "cell": "G2",
+        "label": "BP"
+      },
+      {
+        "cell": "H2",
+        "label": "XNC-BP1"
+      },
+      {
+        "cell": "I2",
+        "label": "BP1.2.2"
+      },
+      {
+        "cell": "J2",
+        "label": "Đội 1"
+      },
+      {
+        "cell": "N2",
+        "label": "28.4"
+      },
+      {
+        "cell": "P2",
+        "label": "Đã trồng"
+      },
+      {
+        "cell": "R2",
+        "label": "23.03.25_M08"
+      },
+      {
+        "cell": "S2",
+        "label": "Đen - Xanh dương"
+      }
+    ],
+    "Sheet1": [],
+    "XSXKLH": [
+      {
+        "cell": "E2",
+        "label": "BP"
+      },
+      {
+        "cell": "F2",
+        "label": "XNC-BP2"
+      },
+      {
+        "cell": "H2",
+        "label": "ER1.2"
+      }
+    ]
+  }
+}

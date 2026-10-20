@@ -95,7 +95,7 @@ def board(farm=None, block=None,zone=None):
         farm_scope) if frappe.db.exists("DocType","Plan Cohort") else []
     cohorts = [c for c in cohorts if c.farm_block in permitted]
     rules = _list("Work Schedule Rule", ["name","farm","rule_name","work_type",
-        "anchor","offset_days","repeat_days","quantity_basis","norm_profile",
+        "anchor","offset_days","repeat_days","offset_months","repeat_months","quantity_basis","norm_profile",
         "valid_from","valid_to","version","approval_state","modified"], farm_scope)
     norms = _list("Material Norm Profile", ["name","farm","profile_name",
         "work_type","valid_from","valid_to","version","approval_state","modified"], farm_scope)

@@ -14,7 +14,9 @@ class TestSchema(unittest.TestCase):
                 fields = [f["fieldname"] for f in doc["fields"]]
                 self.assertEqual(len(fields), len(set(fields)))
                 self.assertEqual(set(doc["field_order"]), set(fields))
-                self.assertTrue(doc.get("istable") or doc.get("permissions"))
+                # Journal request keys are an internal API idempotency ledger.
+                # Deliberately no direct Desk/REST role access to that ledger.
+                self.assertTrue(doc.get("istable") or doc.get("permissions") or doc['name'] == 'Work Journal Request')
                 for f in doc["fields"]:
                     if f["fieldtype"] == "Select":
                         self.assertNotIn("\\n", f.get("options", ""))

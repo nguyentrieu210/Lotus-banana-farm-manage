@@ -17,7 +17,7 @@ IMPORT_FIELDS={
  'Disease Observation':SCOPE+('disease','affected_plants','severity','action_taken'),
  'Fruit Measurement':SCOPE+('row_code','sample_count','average_length','average_diameter','uom','notes','ribbon_color','measurer','samples'),
  'Bunch Cancellation':SCOPE+('expected_harvest_date','bunch_qty','reason','source_operation','notes'),
- 'Bunch Operation':('farm_block','crop_cycle','sucker_selection_batch','operation_date','operation_type','bunch_qty','rejected_qty','harvest_profile','notes'),
+ 'Bunch Operation':('farm_block','crop_cycle','sucker_selection_batch','operation_date','operation_type','bunch_qty','rejected_qty','harvest_profile','notes','bunch_tag','source_cut_operation'),
  'Harvest Actual':('farm_block','crop_cycle','sucker_selection_batch','harvest_date','harvested_bunch_qty','gross_weight_kg','rejected_weight_kg','forecast','notes','ribbon_color','harvest_team','started_at','ended_at','receiving_packhouse','scale_reading'),
  'Daily Labor Summary':('posting_date','work_category','work_area','headcount','present','absent','staffing_target','area_ha','actual_workdays'),
  'Daily Work Plan':('posting_date','lines'),

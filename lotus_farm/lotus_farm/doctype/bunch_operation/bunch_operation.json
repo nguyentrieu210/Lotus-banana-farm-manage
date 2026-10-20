@@ -28,7 +28,10 @@
     "amendment_reason",
     "source_import_batch",
     "legacy_source_key",
-    "bunch_tag"
+    "bunch_tag",
+    "source_cut_operation",
+    "expected_harvest_from",
+    "expected_harvest_to"
   ],
   "fields": [
     {
@@ -68,7 +71,7 @@
       "fieldname": "operation_type",
       "fieldtype": "Select",
       "label": "Operation Type",
-      "options": "Shooting\nCut Bud\nSpray\nBag\nCare\nInspection",
+      "options": "Shooting\nBud Injection\nCut Bud\nSpray\nBag\nCare\nInspection",
       "reqd": 1
     },
     {
@@ -181,6 +184,24 @@
       "label": "Bunch Tag",
       "fieldtype": "Link",
       "options": "Bunch Tag"
+    },
+    {
+      "fieldname": "source_cut_operation",
+      "label": "Đợt cắt bắp gốc",
+      "fieldtype": "Link",
+      "options": "Bunch Operation"
+    },
+    {
+      "fieldname": "expected_harvest_from",
+      "label": "Bắt đầu cửa sổ dự thu",
+      "fieldtype": "Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "expected_harvest_to",
+      "label": "Kết thúc cửa sổ dự thu",
+      "fieldtype": "Date",
+      "read_only": 1
     }
   ],
   "permissions": [

@@ -1,0 +1,141 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Handover Cohort",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_zone",
+      "label": "Khu",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cohort_key",
+      "label": "Mã đợt nguồn",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_family",
+      "label": "Nhóm nhật ký",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_event_date",
+      "label": "Ngày chặt cây cũ",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "equivalent_selection_date",
+      "label": "Ngày chọn chồi tương đương",
+      "fieldtype": "Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_cut_qty",
+      "label": "Số cây cũ đã chặt",
+      "fieldtype": "Int",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_attachment",
+      "label": "Nhật ký gốc",
+      "fieldtype": "Attach",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_sha256",
+      "label": "SHA-256 nguồn",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_cells",
+      "label": "Dòng, ô nguồn",
+      "fieldtype": "Code",
+      "options": "JSON",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "farm_zone",
+    "cohort_key",
+    "source_family",
+    "source_event_date",
+    "equivalent_selection_date",
+    "source_cut_qty",
+    "source_attachment",
+    "source_sha256",
+    "source_cells",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus QC Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    }
+  ],
+  "title_field": "farm_zone"
+}

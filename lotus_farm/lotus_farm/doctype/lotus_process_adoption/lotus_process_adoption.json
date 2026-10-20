@@ -1,0 +1,202 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Process Adoption",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Phiên bản",
+      "fieldtype": "Int",
+      "default": "1",
+      "reqd": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "default": "Draft",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Hiệu lực từ",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Hiệu lực đến",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "source_version",
+      "label": "Phiên bản thư viện",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_hash",
+      "label": "SHA-256 thư viện",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "preset_key",
+      "label": "Bộ hệ số nguồn",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_label",
+      "label": "Phạm vi nguồn",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "condition_class",
+      "label": "Đánh giá vườn",
+      "fieldtype": "Select",
+      "options": "\nTốt\nTrung bình\nXấu"
+    },
+    {
+      "fieldname": "density",
+      "label": "Mật độ nguồn (cây/ha)",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cut_rate",
+      "label": "Tỷ lệ cắt bắp / cây",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "harvest_rate",
+      "label": "Tỷ lệ thu / cắt bắp",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "processed_rate",
+      "label": "Tỷ lệ sơ chế / thu",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "gross_bunch_kg",
+      "label": "Kg nguyên buồng thu hoạch",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "processed_bunch_kg",
+      "label": "Kg sơ chế / buồng",
+      "fieldtype": "Float",
+      "read_only": 1
+    },
+    {
+      "fieldname": "color_anchor",
+      "label": "Ngày đầu đợt màu gốc",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "color_anchor_code",
+      "label": "Mã màu tại mốc",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "color_period_days",
+      "label": "Số ngày mỗi đợt màu",
+      "fieldtype": "Int",
+      "default": "5",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú áp dụng",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "version",
+    "approval_state",
+    "valid_from",
+    "valid_to",
+    "source_version",
+    "source_hash",
+    "preset_key",
+    "source_label",
+    "condition_class",
+    "density",
+    "cut_rate",
+    "harvest_rate",
+    "processed_rate",
+    "gross_bunch_kg",
+    "processed_bunch_kg",
+    "color_anchor",
+    "color_anchor_code",
+    "color_period_days",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Packing Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus QC Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

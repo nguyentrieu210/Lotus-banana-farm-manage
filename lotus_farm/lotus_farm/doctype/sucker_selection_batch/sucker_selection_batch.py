@@ -1,11 +1,13 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint
+from frappe.utils import cint, getdate, nowdate
 
 
 class SuckerSelectionBatch(Document):
     def validate(self):
         self._validate_scope()
+        if getdate(self.selection_date) > getdate(nowdate()):
+            frappe.throw("Đợt chọn chồi thực tế không được ở tương lai; dùng Đợt cây kế hoạch cho ngày dự kiến.")
         selected = cint(self.selected_sucker_qty)
         expected = cint(self.expected_productive_qty)
 
