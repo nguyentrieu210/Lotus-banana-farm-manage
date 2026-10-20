@@ -67,7 +67,7 @@
       "fieldname": "state",
       "label": "Trạng thái xử lý",
       "fieldtype": "Select",
-      "options": "Unmapped\nReady\nSynced\nNeeds Review"
+      "options": "Unmapped\nReady\nSynced\nNeeds Review\nIgnored"
     },
     {
       "fieldname": "employee_checkin",

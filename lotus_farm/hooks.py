@@ -204,3 +204,6 @@ for _event in ('validate', 'before_submit', 'before_cancel'):
     if isinstance(_value, str):
         _value = [_value]
     _assignment[_event] = [*_value, 'lotus_farm.shift_admin.assignment_guard']
+
+# Device punches reach HRMS every 10 minutes for today and yesterday (lotus_farm.attendance_day).
+scheduler_events.setdefault('cron', {}).setdefault('*/10 * * * *', []).append('lotus_farm.attendance_day.sync_recent')

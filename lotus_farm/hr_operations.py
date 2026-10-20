@@ -268,7 +268,7 @@ def devices(company, farm=None):
         ["name","device","device_user_id","punched_at","employee",
          "log_type","state","source","employee_checkin"],limit=300)
     return dict(machines=machines,mappings=identities,punches=recent,
-                counts={state:sum(p.state==state for p in recent) for state in ("Unmapped","Ready","Synced","Needs Review")},
+                counts={state:sum(p.state==state for p in recent) for state in ("Unmapped","Ready","Synced","Needs Review","Ignored")},
                 note="Máy kết nối LAN/ADMS/Cloud chỉ được bật khi đã có model, giao thức và xác minh bảo mật. CSV hoạt động ngay.")
 
 
@@ -636,8 +636,8 @@ def _promote(company,row):
     if person.status!="Active":
         row.state="Needs Review";row.flags.lotus_promotion=True;row.save()
         return "needs_review"
-    existing=frappe.db.exists("Employee Checkin",{
-        "employee":emp,"time":row.punched_at,"log_type":row.log_type or ["is","not set"]})
+    # HRMS refuses two check-ins of one employee at the same second, whatever their log type.
+    existing=frappe.db.exists("Employee Checkin",{"employee":emp,"time":row.punched_at})
     if existing:
         row.employee=emp;row.employee_checkin=existing;row.state="Synced";row.flags.lotus_promotion=True;row.save()
         return "skipped"
@@ -650,12 +650,24 @@ def _promote(company,row):
 
 
 def _sync_range(company,from_date,to_date,limit=2000):
-    names=frappe.get_all("Lotus Attendance Punch",filters={"company":company,"state":["!=","Synced"],
+    names=frappe.get_all("Lotus Attendance Punch",filters={"company":company,"state":["not in",["Synced","Ignored"]],
         "punched_at":["between",[str(from_date)+" 00:00:00",str(to_date)+" 23:59:59"]]},
         pluck="name",order_by="punched_at",limit_page_length=limit+1)
-    result={"synced":0,"skipped":0,"needs_review":0,"more":len(names)>limit}
-    for name in names[:limit]:
-        result[_promote(company,frappe.get_doc("Lotus Attendance Punch",name))]+=1
+    result={"synced":0,"skipped":0,"needs_review":0,"failed":0,"more":len(names)>limit}
+    for index,name in enumerate(names[:limit]):
+        # One bad punch never undoes the batch: it is set aside for review with the reason.
+        frappe.db.savepoint("lotus_punch_"+str(index))
+        try:
+            result[_promote(company,frappe.get_doc("Lotus Attendance Punch",name))]+=1
+        except Exception as exc:
+            frappe.db.rollback(save_point="lotus_punch_"+str(index))
+            frappe.clear_messages()
+            message=(str(exc) or exc.__class__.__name__)[:300]
+            row=frappe.get_doc("Lotus Attendance Punch",name)
+            if row.state!="Needs Review":
+                row.state="Needs Review";row.notes=((row.notes or "")+"\nKhông chuyển được sang HRMS: "+message).strip()[:2000]
+                row.flags.lotus_promotion=True;row.save()
+            result["failed"]+=1
     return result
 
 

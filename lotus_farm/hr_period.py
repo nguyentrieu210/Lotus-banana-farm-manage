@@ -153,7 +153,7 @@ def blockers(company, begin, end):
     count = lambda dt, filters: frappe.db.count(dt, filters)
     drafts = count('Attendance', {'company': company, 'attendance_date': ['between', [begin, end]], 'docstatus': 0})
     crew = count('Lotus Crew Attendance', {'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 0})
-    punches = count('Lotus Attendance Punch', {'company': company, 'state': ['!=', 'Synced'],
+    punches = count('Lotus Attendance Punch', {'company': company, 'state': ['not in', ['Synced', 'Ignored']],
                                                'punched_at': ['between', [str(begin) + ' 00:00:00', str(end) + ' 23:59:59']]})
     people = [p for p in _people(company, begin, end) if p.lotus_payment_basis != 'Piecework']
     records = frappe.get_all('Attendance', filters={'company': company, 'attendance_date': ['between', [begin, end]],

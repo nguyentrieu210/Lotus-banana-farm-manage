@@ -228,3 +228,9 @@
  .tk-search{max-width:none;flex:1 1 100%}
  .tk-rosterbar{bottom:0}
 }
+
+/* Daily board: device reading next to each row */
+.tk-punch{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tk-synced{flex:0 1 auto}
+.tk-views .is-matching strong{background:var(--lotus-success-soft);color:var(--lotus-success-700)}
+.tk-pill.is-matching{background:var(--lotus-success-soft);color:var(--lotus-success-700);border-color:var(--lotus-success-200)}

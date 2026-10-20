@@ -27,10 +27,10 @@ import {formatDate} from './format'
 // the month sheet and setup. Drafts are reviewed and submitted here; a closed month is read-only.
 const api=(name,args={},write=false)=>call('lotus_farm.timekeeping.'+name,args,write)
 const session=ref(null),company=ref(''),date=ref(''),month=ref(''),shift=ref(''),farm=ref(''),tab=ref('staff'),search=ref(''),view=ref('all')
-const busy=ref(false),saving=ref(false),machineBusy=ref(false),error=ref(''),notice=ref('')
+const busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],teams:[],shifts:[],employees:[],works:[],genders:[],departments:[],uoms:[]})
 const staff=ref([]),crews=ref([]),availableTeams=ref([]),monthData=ref(null),crewMonth=ref(null),eventId=ref(crypto.randomUUID())
-const dayInfo=ref({holiday:null,has_calendar:true,period_closed:false})
+const dayInfo=ref({holiday:null,has_calendar:true,period_closed:false,counts:{matching:0,review:0,manual:0},synced:null})
 const crewDialog=ref(null),masterDialog=ref(null),confirmDialog=ref(null),setup=ref(null)
 const masterKind=ref('employee'),confirmation=ref(null),reason=ref('')
 const correcting=ref(null),correctionOpen=ref(false)
@@ -47,11 +47,13 @@ const canEditStaff=computed(()=>!locked.value&&!!(cap.value.Attendance?.create||
 const selected=computed(()=>staff.value.filter(r=>r.selected))
 const statuses={'Present':'Có mặt','Half Day':'Nửa ngày','Absent':'Vắng','Work From Home':'Làm từ xa','On Leave':'Nghỉ phép'}
 const editableStatuses=Object.entries(statuses).filter(([key])=>key!=='On Leave')
-const rowState=r=>r.machine?.needs_review?'review':!r.name?'empty':r.docstatus===1?'approved':'draft'
-const stateLabel={empty:'Chưa chấm',draft:'Nháp',approved:'Đã duyệt',review:'Cần kiểm tra'}
-const counts=computed(()=>{const c={all:staff.value.length,empty:0,draft:0,approved:0,review:0};for(const r of staff.value)c[rowState(r)]++;return c})
-const views=computed(()=>[['all','Tất cả'],['empty','Chưa chấm'],['draft','Nháp'],['approved','Đã duyệt'],...(counts.value.review?[['review','Cần kiểm tra']]:[])])
-const shown=computed(()=>view.value==='all'?staff.value:staff.value.filter(r=>rowState(r)===view.value))
+const rowState=r=>r.docstatus===1?'approved':r.machine?.needs_review?'review':r.matches?'matching':!r.name?'empty':'draft'
+const stateLabel={empty:'Chưa chấm',draft:'Nháp',approved:'Đã duyệt',review:'Cần kiểm tra',matching:'Khớp máy'}
+const counts=computed(()=>{const c={all:staff.value.length,empty:0,draft:0,approved:0,review:0,matching:0};for(const r of staff.value)c[rowState(r)]++;return c})
+const views=computed(()=>[['all','Tất cả'],...(counts.value.matching?[['matching','Khớp máy']]:[]),...(counts.value.review?[['review','Cần kiểm tra']]:[]),['empty','Chưa chấm'],['draft','Nháp'],['approved','Đã duyệt']])
+// Rows needing a decision come first: device problems, then hand-edited drafts, then the rest.
+const rank=r=>r.machine?.needs_review&&r.docstatus===0?0:r.manual?1:r.matches?2:r.docstatus===1?4:3
+const shown=computed(()=>(view.value==='all'?staff.value:staff.value.filter(r=>rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
 const allChecked=computed(()=>shown.value.length>0&&shown.value.every(r=>r.selected))
 
 const genderLabel=name=>({Male:'Nam',Female:'Nữ',Other:'Khác',Transgender:'Chuyển giới',Genderqueer:'Phi nhị nguyên',"Prefer not to say":'Không khai báo'})[name]||name
@@ -61,14 +63,16 @@ const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:cur
 const teamName=name=>catalog.value.teams.find(t=>t.name===name)?.team_name||name
 const docState=n=>['Nháp','Đã duyệt','Đã hủy'][n]||'Chưa chấm'
 const clock=v=>v?String(v).slice(11,16):''
+const nextDay=(row,v)=>v&&String(v).slice(0,10)>date.value
 const monthLabel=value=>value?'Tháng '+value.slice(5,7)+'/'+value.slice(0,4):''
 function punchText(row){
  const p=row.machine
  if(p&&!p.checkins)return p.reason||''
- const span=p?clock(p.in_time)+'–'+(clock(p.out_time)||'?'):row.in_time?clock(row.in_time)+'–'+(clock(row.out_time)||'?'):''
+ const span=p?clock(p.in_time)+' → '+(clock(p.out_time)||'?')+(nextDay(row,p.out_time)?' (+1)':''):row.in_time?clock(row.in_time)+' → '+(clock(row.out_time)||'?')+(nextDay(row,row.out_time)?' (+1)':''):''
  return span
 }
-const punchFlags=row=>{const p=row.machine||row;return [p.late_entry?'Muộn':'',p.early_exit?'Về sớm':'',row.machine?.reason&&row.machine.checkins?row.machine.reason:''].filter(Boolean)}
+const punchFlags=row=>{const p=row.machine;if(!p)return [row.late_entry?'Muộn':'',row.early_exit?'Về sớm':''].filter(Boolean)
+ return [p.late_minutes>0&&p.late_entry?'Muộn '+p.late_minutes+'′':'',p.early_minutes>0&&p.early_exit?'Về sớm '+p.early_minutes+'′':'',p.after_minutes>=30?'Dư '+p.after_minutes+'′ → đề xuất TC '+p.suggested_overtime+' giờ':'',p.reason&&p.checkins?p.reason:''].filter(Boolean)}
 
 const tabs=computed(()=>[
  {id:'staff',label:'Nhân sự chính thức',allowed:cap.value.Attendance?.read&&cap.value.Employee?.read},
@@ -82,8 +86,10 @@ async function loadCatalog(){catalog.value={...catalog.value,...await api('catal
 async function load(){if(!company.value)return;const id=++version;busy.value=true;error.value=''
  try{
   if(tab.value==='staff'){
-   const result=await api('staff_day',{company:company.value,date:date.value,shift:shift.value,search:search.value})
-   if(id===version){staff.value=result.rows.map(r=>({...r,selected:false,edited:false,machine:null}));dayInfo.value={holiday:result.holiday,has_calendar:result.has_calendar,period_closed:result.period_closed};eventId.value=crypto.randomUUID();view.value='all'}
+   // The board syncs the day's device punches first and returns each row with its device reading.
+   const keep=new Set(staff.value.filter(r=>r.selected&&r.date===date.value).map(r=>r.employee))
+   const result=await call('lotus_farm.attendance_day.board',{company:company.value,date:date.value,shift:shift.value,search:search.value})
+   if(id===version){staff.value=result.rows.map(r=>({...r,date:result.date,selected:keep.has(r.employee),edited:false}));dayInfo.value={holiday:result.holiday,has_calendar:result.has_calendar,period_closed:result.period_closed,counts:result.counts,synced:result.synced};eventId.value=crypto.randomUUID()}
   }
   if(tab.value==='crew'){const result=await api('crew_day',{company:company.value,date:date.value,farm:farm.value});if(id===version){crews.value=result.rows;availableTeams.value=result.teams}}
   if(tab.value==='month'){
@@ -103,15 +109,10 @@ function edit(row){row.selected=true;row.edited=true}
 function chooseStatus(row){row.working_hours=row.status==='Half Day'?4:row.status==='Absent'?0:8;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
 function markPresent(){for(const row of staff.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.status){row.status='Present';chooseStatus(row)}}
 function toggleAll(){const value=!allChecked.value;for(const r of shown.value)r.selected=value}
-// Fills unsaved rows from device check-ins; the manager still reviews, saves and submits.
-async function fromMachine(){machineBusy.value=true;error.value=''
- try{
-  const result=await api('propose_from_checkins',{company:company.value,date:date.value,shift:shift.value});const proposals=new Map(result.rows.map(r=>[r.employee,r]));let applied=0,review=0
-  for(const row of staff.value){const p=proposals.get(row.employee);if(!p||row.docstatus!==0||row.status==='On Leave')continue
-   row.machine=p;if(p.needs_review){review++;continue}if(!p.status)continue
-   Object.assign(row,{shift:p.shift||row.shift,status:p.status,working_hours:p.working_hours,overtime_hours:p.overtime_hours,in_time:p.in_time,out_time:p.out_time,late_entry:p.late_entry,early_exit:p.early_exit});edit(row);applied++}
-  notice.value='Đã điền '+applied+' dòng từ '+result.checkins+' lượt chấm'+(review?'; '+review+' dòng thiếu lượt chấm cần kiểm tra':'')+'. Kiểm tra rồi bấm Lưu nháp.'
- }catch(e){error.value=e.message}finally{machineBusy.value=false}}
+// Copies the device reading into one row (never silently over a hand-edited value).
+function useMachine(row){const p=row.machine;if(!p?.status||row.docstatus!==0)return
+ Object.assign(row,{shift:p.shift||row.shift,status:p.status,working_hours:p.working_hours,overtime_hours:p.suggested_overtime,in_time:p.in_time,out_time:p.out_time,late_entry:p.late_entry,early_exit:p.early_exit});edit(row)}
+async function askMatching(){if(!dayInfo.value.counts.matching)return;confirmation.value={type:'matching',action:'submit',count:dayInfo.value.counts.matching};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function saveStaff(){
  const rows=selected.value.filter(r=>r.docstatus===0&&r.status&&r.status!=='On Leave')
  if(!rows.length){error.value='Chọn nhân viên và trạng thái để lưu nháp.';return}
@@ -124,6 +125,10 @@ async function askStaff(action){
  confirmation.value={type:'staff',action,rows:rows.map(r=>({name:r.name,modified:r.modified}))};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function askCrew(row,action){if(action==='submit'&&crewSnapshot()!==crewBaseline.value){error.value='Lưu thay đổi trước khi duyệt phiếu công.';return}confirmation.value={type:'crew',action,name:row.name,modified:row.modified};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function act(){saving.value=true;error.value=''
+ if(confirmation.value?.type==='matching'){
+  try{const r=await call('lotus_farm.attendance_day.approve_matching',{company:company.value,date:date.value,shift:shift.value,client_event_id:eventId.value},true);confirmDialog.value.close();notice.value='Đã lưu và duyệt '+r.approved+' dòng khớp máy chấm.';await load()}
+  catch(e){error.value=e.message}finally{saving.value=false}
+  return}
  try{const item=confirmation.value;await api(item.type==='staff'?'staff_action':'crew_action',{company:company.value,...item,reason:reason.value},true);confirmDialog.value.close();if(item.type==='crew')crewDialog.value.close();notice.value=item.action==='submit'?'Đã duyệt bảng công.':item.action==='cancel'?'Đã hủy phiếu công.':'Đã xóa phiếu nháp.';await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
 
@@ -167,11 +172,12 @@ useNoticeToast(notice)
    <p v-else-if="!dayInfo.has_calendar" class="tk-banner is-info" role="status"><LotusIcon name="calendar"/>Chưa có lịch nghỉ năm nay. Tạo ở tab Thiết lập › Lịch nghỉ năm để tính lễ và khóa kỳ.</p>
    <div class="tk-views" role="tablist" aria-label="Lọc theo trạng thái công"><button v-for="[id,label] in views" :key="id" type="button" role="tab" :aria-selected="view===id?'true':'false'" :class="['is-'+id,{active:view===id}]" @click="view=id">{{label}}<strong>{{counts[id]}}</strong></button></div>
    <div class="attendance-toolbar tk-actions">
-    <UiButton v-if="cap.Attendance?.create&&session?.can_read_checkins&&!locked" variant="outline" :disabled="machineBusy||saving||busy" @click="fromMachine"><LotusIcon name="clock"/>{{machineBusy?'Đang đọc máy…':'Lấy công từ máy chấm'}}</UiButton>
+    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" :disabled="saving||busy" @click="askMatching"><LotusIcon name="tick"/>Duyệt {{dayInfo.counts.matching}} dòng khớp máy</UiButton>
+    <span v-if="dayInfo.synced" class="tk-hint tk-synced">Máy chấm: đã cập nhật {{dayInfo.synced.synced}} lượt mới{{dayInfo.synced.needs_review?', '+dayInfo.synced.needs_review+' lượt chưa ghép được':''}}</span>
     <span class="tk-actions__spacer"></span>
     <span v-if="selected.length" class="tk-actions__count">Đã chọn {{selected.length}}</span>
     <UiButton v-if="canEditStaff" :disabled="saving||busy||!dirty" @click="saveStaff">Lưu nháp</UiButton>
-    <UiButton v-if="cap.Attendance?.submit&&!locked" variant="outline" :disabled="saving||!selected.length" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
+    <UiButton v-if="cap.Attendance?.submit&&!locked" variant="outline" :disabled="saving||!selected.length||dirty" :title="dirty?'Lưu nháp trước khi duyệt':''" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
     <DropdownMenu v-if="!locked&&(cap.Attendance?.create||cap.Attendance?.cancel||cap.Attendance?.delete||dirty)">
      <DropdownMenuTrigger as-child><UiButton variant="outline" aria-label="Thao tác khác"><LotusIcon name="more"/></UiButton></DropdownMenuTrigger>
      <DropdownMenuContent align="end">
@@ -189,7 +195,7 @@ useNoticeToast(notice)
       <td class="tk-col-person"><strong>{{row.employee_name}}</strong><small>{{row.employee}}<template v-if="row.designation||row.department"> · {{row.designation||row.department}}</template></small></td>
       <td class="tk-col-shift" data-label="Ca">{{row.shift||'—'}}</td>
       <td class="tk-col-status" data-label="Trạng thái"><UiSelect v-model="row.status" :aria-label="'Trạng thái '+row.employee_name" :disabled="saving||row.docstatus===1||row.status==='On Leave'||!canEditStaff" @change="chooseStatus(row)"><option value="">Chưa chấm</option><option v-if="row.status==='On Leave'" value="On Leave">Nghỉ phép (HRMS)</option><option v-for="[value,label] in editableStatuses" :key="value" :value="value">{{label}}</option></UiSelect></td>
-      <td class="tk-col-punch" data-label="Máy chấm"><span>{{punchText(row)||'—'}}</span><small v-for="flag in punchFlags(row)" :key="flag" class="tk-flag">{{flag}}</small><small v-if="row.machine?.needs_review" class="tk-flag is-warn">Cần kiểm tra</small></td>
+      <td class="tk-col-punch" data-label="Máy chấm"><span class="tk-punch">{{punchText(row)||'—'}}</span><small v-for="flag in punchFlags(row)" :key="flag" class="tk-flag">{{flag}}</small><small v-if="row.machine?.needs_review" class="tk-flag is-warn">Cần kiểm tra</small><small v-if="row.manual" class="tk-flag is-warn">Đã chỉnh tay, khác máy</small><UiButton v-if="canEditStaff&&row.docstatus===0&&row.machine?.status&&(row.manual||!row.matches)" variant="link" size="sm" class="tk-correct" @click="useMachine(row)">Dùng số máy</UiButton></td>
       <td class="tk-col-num" data-label="Giờ làm"><UiInput v-model.number="row.working_hours" type="number" min="0" max="24" step="0.25" :aria-label="'Giờ làm '+row.employee_name" :disabled="saving||row.docstatus===1||row.status==='On Leave'||!canEditStaff" @input="edit(row)"/></td>
       <td class="tk-col-num" data-label="Tăng ca"><UiInput v-model.number="row.overtime_hours" type="number" min="0" max="16" step="0.25" :aria-label="'Giờ tăng ca '+row.employee_name" :disabled="saving||row.docstatus===1||['On Leave','Absent'].includes(row.status)||!canEditStaff" @input="edit(row)"/></td>
       <td class="tk-col-note" data-label="Ghi chú"><UiInput v-model="row.note" :aria-label="'Ghi chú '+row.employee_name" :disabled="saving||row.docstatus===1||!canEditStaff" @input="edit(row)"/></td>
@@ -268,8 +274,9 @@ useNoticeToast(notice)
  </form></WorkspaceModal>
 
  <TkCorrection v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
- <WorkspaceModal bare title="Xác nhận bảng công" :busy="saving" ref="confirmDialog" class="stock-dialog"><form @submit.prevent="act"><header><h2>{{confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'}}</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng xác nhận công" @click="confirmDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
+ <WorkspaceModal bare title="Xác nhận bảng công" :busy="saving" ref="confirmDialog" class="stock-dialog"><form @submit.prevent="act"><header><h2>{{confirmation?.type==='matching'?'Duyệt công khớp máy chấm':confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'}}</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng xác nhận công" @click="confirmDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
   <p v-if="confirmation?.type==='staff'">{{confirmation.rows.length}} phiếu công đã chọn.</p>
+  <p v-if="confirmation?.type==='matching'">Lưu và duyệt {{confirmation.count}} người có đủ giờ vào/ra trên máy, chưa bị chỉnh tay. Tăng ca lấy theo đề xuất (ra quá ca từ 30 phút, làm tròn 15 phút). Các dòng cần kiểm tra hoặc đã chỉnh tay giữ nguyên để bạn xem.</p>
   <FormField v-if="confirmation?.action==='cancel'" label="Lý do hủy" required v-slot="f"><UiTextarea v-bind="f" v-model="reason" maxlength="2000"/></FormField>
   <footer><UiButton type="button" variant="outline" :disabled="saving" @click="confirmDialog.close()">Quay lại</UiButton><UiButton type="submit" :variant="confirmation?.action==='submit'?'default':'destructive'" :disabled="saving">Xác nhận</UiButton></footer>
  </form></WorkspaceModal>
