@@ -262,7 +262,12 @@ def sign(doc, details=None, require_image=False, record=True):
     if record:
         _record(doc, rows[index], details, require_image)
     else:
-        frappe.db.set_value(REQUEST, rows[index].name, dict(state=rules.SIGNED, signed_at=now_datetime(), content_hash=fingerprint(doc)),
+        # Purchase approval writes its own audit event and archived PDF, but the signer image
+        # must still be snapshotted for the same timeline shown in every Lotus app.
+        signature_file = _snapshot(doc, rows[index].step_key)
+        frappe.db.set_value(REQUEST, rows[index].name,
+                            dict(state=rules.SIGNED, signed_at=now_datetime(),
+                                 signature_file=signature_file, content_hash=fingerprint(doc)),
                             update_modified=False)
     _states, done = rules.after_sign(rows, index)
     if not done:

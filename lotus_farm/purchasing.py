@@ -283,10 +283,10 @@ def detail(name):
 
 def _signing_summary(doc):
     from lotus_farm import signing
-    info = signing.status(doc, "purchase_order")
+    info = signing.status(doc, "purchase_order", with_images=True)
     if not info["round"]:
         return None
-    return dict(steps=[dict(key=s["key"], title=s["title"], name=s["name"], state=s["state"], signed_at=s["signed_at"]) for s in info["steps"]],
+    return dict(steps=[dict(key=s["key"], title=s["title"], name=s["name"], state=s["state"], signed_at=s["signed_at"], image=s["image"]) for s in info["steps"]],
                 waiting_for=info["steps"][info["current"]]["name"] if info["current"] is not None and not info["returned"] else "",
                 approver=info["steps"][-1]["assignee"])
 

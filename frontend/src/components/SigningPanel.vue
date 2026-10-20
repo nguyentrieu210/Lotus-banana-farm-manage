@@ -3,6 +3,7 @@
 // each one is notified on their turn and signs here; the print shows every signature (lotus_farm.signing).
 import {computed,onMounted,ref,watch} from 'vue'
 import SignerPicker from './SignerPicker.vue'
+import LotusSignatureTimeline from './LotusSignatureTimeline.vue'
 import {call} from '../api'
 import '../signer-picker.css'
 
@@ -11,8 +12,6 @@ const emit=defineEmits(['notice','error','changed'])
 const info=ref(null),options=ref(null),signers=ref({}),busy=ref(false),reason=ref(''),returning=ref(false)
 const api=(method,args,write=false)=>call('lotus_farm.signing.'+method,args,write)
 const missing=computed(()=>(options.value?.steps||[]).slice(1).filter(s=>!signers.value[s.key]))
-const when=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+' '+String(v).slice(11,16):''
-const label=(s,i)=>s.state==='Đã ký'?(s.name+' · '+when(s.signed_at)):s.state==='Trả lại'?(s.name+' trả lại: '+s.note):info.value?.current===i?(s.name+' · đang chờ ký'):(s.name||'Chưa chọn')
 
 async function load(){
  busy.value=true
@@ -40,12 +39,7 @@ onMounted(load)
 <template>
 <section v-if="info" class="signing-panel" aria-label="Chữ ký trên phiếu">
  <h3>Chữ ký · {{info.label}}</h3>
- <ol v-if="info.round" class="signing-panel__steps">
-  <li v-for="(s,i) in info.steps" :key="s.key" :class="{done:s.state==='Đã ký',current:info.current===i&&!info.returned,returned:s.state==='Trả lại'}">
-   <b>{{s.title}}</b><small>{{label(s,i)}}</small>
-   <img v-if="s.image" :src="s.image" :alt="'Chữ ký '+s.name">
-  </li>
- </ol>
+ <LotusSignatureTimeline v-if="info.round" :steps="info.steps" :current="info.returned?-1:(info.current??-1)" title=""/>
  <p v-else class="signing-panel__hint">Chưa gửi ký. Chọn người ký để mỗi người được báo khi đến lượt.</p>
  <template v-if="info.can_start">
   <SignerPicker v-model="signers" :options="options" :disabled="busy"/>
