@@ -299,9 +299,13 @@ def create_adoption(farm, preset_key, condition_class=None, valid_from=None, val
         for previous in frappe.get_all('Lotus Process Adoption',filters={'farm':farm,'approval_state':'Approved'},fields=['name','valid_from','valid_to']):
             if getdate(previous.valid_from)<effective and (not previous.valid_to or getdate(previous.valid_to)>=effective):
                 if effective<getdate(nowdate()):frappe.throw('Không thay đổi hồi tố hiệu lực quy trình đã duyệt.')
-                # Keep already issued tags and observed records attached to the old version.
-                if frappe.db.exists('Bunch Tag',{'process_adoption':previous.name,'valid_to':['>=',effective]}):
-                    frappe.throw('Phiên bản cũ đã phát hành lịch màu trong kỳ mới. Chọn hiệu lực sau lịch đã phát hành.')
+                # Future yield settings may change while the color cadence stays identical.
+                # Issued tags retain their original provenance; new cuts must use the
+                # adoption effective on the actual cut day, checked by tag_lineage.
+                tags=frappe.get_all('Bunch Tag',filters={'process_adoption':previous.name},pluck='name')
+                if tags and frappe.db.exists('Bunch Operation',{'bunch_tag':['in',tags],'operation_type':'Cut Bud',
+                        'operation_date':['>=',effective],'docstatus':['<',2]}):
+                    frappe.throw('Phiên bản cũ đã có đợt cắt bắp trong kỳ mới. Chọn hiệu lực sau các chứng từ đó.')
                 old=frappe.get_doc('Lotus Process Adoption',previous.name)
                 old.valid_to=str(effective-timedelta(days=1))
                 with command(old,'retire_process'):old.save()
@@ -397,6 +401,8 @@ def tag_lineage(doc,method=None):
     tag_name=doc.get('bunch_tag') or doc.get('ribbon_color')
     source_name=doc.get('source_cut_operation')
     if source_name:
+        if doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection','Shooting'):
+            frappe.throw('Chỉ công đoạn sau cắt bắp được liên kết đợt cắt bắp gốc.')
         source=frappe.get_doc('Bunch Operation',source_name);source.check_permission('read')
         if source.docstatus!=1 or source.operation_type!='Cut Bud':frappe.throw('Đợt cắt bắp gốc phải là chứng từ đã xác nhận.')
         for key in ('farm','farm_block','crop_cycle','sucker_selection_batch','farm_plot'):
@@ -423,6 +429,9 @@ def tag_lineage(doc,method=None):
         offset=14 if operation=='Bud Injection' else 0
         when=getdate(doc.operation_date)+timedelta(days=offset)
         if not getdate(tag.valid_from)<=when<=getdate(tag.valid_to):frappe.throw('Ngày công đoạn ngoài kỳ màu dây cắt bắp (chích bắp sớm 14 ngày).')
+        adoption=frappe.get_doc('Lotus Process Adoption',tag.process_adoption)
+        if when<getdate(adoption.valid_from) or (adoption.valid_to and when>getdate(adoption.valid_to)):
+            frappe.throw('Phiên bản màu dây đã ngoài hiệu lực cho đợt mới; chọn phiên bản đang áp dụng.')
         if operation=='Cut Bud':
             doc.expected_harvest_from=str(getdate(tag.valid_from)+timedelta(days=55))
             doc.expected_harvest_to=str(getdate(tag.valid_to)+timedelta(days=70))

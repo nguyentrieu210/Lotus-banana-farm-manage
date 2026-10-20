@@ -64,7 +64,8 @@ gốc; đợt cắt bắp đã được dùng không sửa/cancel mất truy xu�
   Không nhân thêm lần nữa tỷ lệ đóng gói đã nằm trong kg sơ chế nguồn.
 
 Mỗi vườn chọn bộ tham số có tên nguồn và hiệu lực rõ ràng. Bản duyệt bất biến; bản mới
-chỉ thay thế tương lai, không lấn lịch màu đã phát hành. Số liệu từ cây cũ là một
+chỉ thay thế tương lai, không lấn đợt cắt bắp đã ghi. Lịch màu đã phát hành giữ phiên bản
+gốc; đợt cắt bắp mới phải dùng phiên bản đang có hiệu lực. Số liệu từ cây cũ là một
 **mô phỏng riêng có giả định 1 cây cũ : 1 chồi**, bật bằng thao tác người dùng;
 không cộng vào dự thu từ chồi đã kiểm đếm, không phát hành bán, không tạo tồn kho.
 Hệ số tham chiếu phải được hiệu chuẩn từ số liệu Lotus qua các vụ, không gọi là năng
