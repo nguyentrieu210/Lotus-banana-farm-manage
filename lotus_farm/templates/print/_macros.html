@@ -11,12 +11,12 @@
 {% if rows %}<table class="lp-info"><tbody>{% for chunk in rows|batch(columns, None) %}<tr>{% for row in chunk %}<td{% if row and row.span %} colspan="{{ row.span }}"{% endif %}>{% if row %}<small>{{ row.label }}</small><b>{{ row.value or '—' }}</b>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table>{% endif %}
 {%- endmacro %}
 
-{% macro signatures(items, place_date='') -%}
+{% macro signatures(items, place_date='', verify=None) -%}
 {% if items %}{% if place_date %}<p class="lp-place">{{ place_date }}</p>{% endif %}
 <div class="lp-sign">{% for s in items %}<div><b>{{ s.title }}</b><small>{{ s.hint }}</small>
  <div class="lp-sign__space">{% if s.image %}<img src="{{ s.image }}" alt="Chữ ký {{ s.name }}">{% else %}&nbsp;{% endif %}</div>
  {% if s.name %}<div class="lp-sign__name">{{ s.name }}</div>{% endif %}{% if s.signed_at %}<small>Ký lúc {{ s.signed_at }}</small>{% endif %}
-</div>{% endfor %}</div>{% endif %}
+</div>{% endfor %}{% if verify %}<div class="lp-sign__qr"><b>Đối chiếu</b><small>Quét QR</small><img src="{{ verify.qr }}" alt="QR đối chiếu chứng từ trên Lotus"><small>Kiểm tra chữ ký và nội dung trên Lotus</small></div>{% endif %}</div>{% endif %}
 {%- endmacro %}
 
 {% macro footer(p) -%}

@@ -4,7 +4,7 @@ self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=
 self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url)
  if(event.request.method!=='GET'||url.origin!==location.origin)return
- if(event.request.mode==='navigate'&&(url.pathname==='/lotus'||url.pathname.startsWith('/lotus/'))&&!['/lotus/in-phieu','/lotus/in-cong','/lotus/in-de-xuat'].includes(url.pathname.replace(/\/$/,''))){
+ if(event.request.mode==='navigate'&&(url.pathname==='/lotus'||url.pathname.startsWith('/lotus/'))&&!['/lotus/in-phieu','/lotus/in-cong','/lotus/in-de-xuat','/lotus/in-luong'].includes(url.pathname.replace(/\/$/,''))){
   event.respondWith(fetch(event.request).catch(()=>caches.open(CACHE).then(cache=>cache.match('/assets/lotus_farm/frontend/index.html'))))
  }else if(FILES.includes(url.pathname)){
   event.respondWith(caches.open(CACHE).then(async cache=>(await cache.match(url.pathname))||fetch(event.request)))

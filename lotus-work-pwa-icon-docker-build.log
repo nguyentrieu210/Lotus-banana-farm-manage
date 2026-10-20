@@ -1,0 +1,89 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.work-mobile
+#1 transferring dockerfile: 2.49kB 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/lotus-print-costs:v3-20261016
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 92B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 ...
+
+#5 [ 1/18] FROM docker.io/library/lotus-print-costs:v3-20261016@sha256:b6e7a59f23c7ac2d55a3f778b1747ca1805888f740bbbb1e512d084342ca0ebb
+#5 resolve docker.io/library/lotus-print-costs:v3-20261016@sha256:b6e7a59f23c7ac2d55a3f778b1747ca1805888f740bbbb1e512d084342ca0ebb 0.1s done
+#5 DONE 0.1s
+
+#4 [internal] load build context
+#4 transferring context: 3.48MB 0.5s done
+#4 DONE 0.5s
+
+#6 [ 2/18] COPY --chown=frappe:frappe lotus_farm/work_mobile.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/work_mobile.py
+#6 CACHED
+
+#7 [ 3/18] COPY --chown=frappe:frappe lotus_farm/web.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/web.py
+#7 DONE 0.1s
+
+#8 [ 4/18] COPY --chown=frappe:frappe lotus_farm/www/work.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/work.py
+#8 DONE 0.2s
+
+#9 [ 5/18] COPY --chown=frappe:frappe lotus_farm/www/work.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/www/work.html
+#9 DONE 0.1s
+
+#10 [ 6/18] COPY --chown=frappe:frappe lotus_farm/public/work.webmanifest /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work.webmanifest
+#10 DONE 0.2s
+
+#11 [ 7/18] COPY --chown=frappe:frappe lotus_farm/public/work-offline.html /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work-offline.html
+#11 DONE 0.1s
+
+#12 [ 8/18] COPY --chown=frappe:frappe lotus_farm/public/work-worker.js /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/work-worker.js
+#12 DONE 0.1s
+
+#13 [ 9/18] COPY --chown=frappe:frappe lotus_farm/public/images/work-icon-v2-192.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/work-icon-v2-192.png
+#13 DONE 0.1s
+
+#14 [10/18] COPY --chown=frappe:frappe lotus_farm/public/images/work-icon-v2-512.png /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/images/work-icon-v2-512.png
+#14 DONE 0.1s
+
+#15 [11/18] COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+#15 DONE 0.1s
+
+#16 [12/18] COPY --chown=frappe:frappe lotus_farm/garden_setup.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/garden_setup.py
+#16 DONE 0.1s
+
+#17 [13/18] COPY --chown=frappe:frappe lotus_farm/mobile_assignment.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/mobile_assignment.py
+#17 DONE 0.1s
+
+#18 [14/18] COPY --chown=frappe:frappe lotus_farm/daily_operations.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/daily_operations.py
+#18 DONE 0.1s
+
+#19 [15/18] COPY --chown=frappe:frappe lotus_farm/daily_api.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/daily_api.py
+#19 DONE 0.1s
+
+#20 [16/18] COPY --chown=frappe:frappe lotus_farm/rate_approval.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/rate_approval.py
+#20 DONE 0.1s
+
+#21 [17/18] COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/daily_work_plan_line/daily_work_plan_line.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/daily_work_plan_line/daily_work_plan_line.json
+#21 DONE 0.1s
+
+#22 [18/18] COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.json /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/daily_work_result/daily_work_result.json
+#22 DONE 0.2s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 1.3s done
+#23 exporting manifest sha256:f758b1197184bc6afe8e3848defec896905b3c7db2b6cd7a0a5e9a484ec26e8a 0.0s done
+#23 exporting config sha256:66b8142b6dcfd757a3347abd5e08a60a42f84ddc5f3b67897c898a3bffd1e968 0.0s done
+#23 exporting attestation manifest sha256:19805311b8a65a5a083e64720d884fee5858a4a9afd45ca1728334408ce90b33 0.0s done
+#23 exporting manifest list sha256:3bbd4dfcf3d300e0724854c2b9ae5caab5b34ebe1745cdbf5a3331ae863d82c5
+#23 exporting manifest list sha256:3bbd4dfcf3d300e0724854c2b9ae5caab5b34ebe1745cdbf5a3331ae863d82c5 0.0s done
+#23 naming to docker.io/library/lotus-work-mobile:v5-20261016 done
+#23 unpacking to docker.io/library/lotus-work-mobile:v5-20261016
+#23 unpacking to docker.io/library/lotus-work-mobile:v5-20261016 0.7s done
+#23 DONE 2.4s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/5r2hibjo8aj8kowmxgi7a34lq

@@ -39,10 +39,13 @@ test('the todo list shows proposals waiting for my signature and opens the four-
  view.unmount()
 })
 
+const signerOptions={steps:[{key:'PROPOSE',title:'Người đề xuất'},{key:'DEPARTMENT',title:'Phụ trách bộ phận'},{key:'PURCHASING',title:'Phòng Kế toán / Mua hàng'},{key:'APPROVE',title:'Giám đốc phê duyệt'}],remembered:{},
+ candidates:{DEPARTMENT:[{user:'binh@lotus',name:'Bình'}],PURCHASING:[{user:'chi@lotus',name:'Chi'}],APPROVE:[{user:'dung@lotus',name:'Dũng'}]}}
+
 test('a new proposal repeats date and purpose on added lines, then saves and signs',async()=>{
  calls.length=0
  routes={[P+'proposals']:[],[P+'form_data']:{proposer:'An',department:'Đội A',warehouses:[{name:'KHO 1',warehouse_name:'KHO 1'}],items:[{name:'UREA',item_name:'Ure',stock_uom:'Tonne'}],conversions:[]},
-  [P+'stock_on_hand']:{qty:4},[P+'save_proposal']:detail({state:'Nháp',step:0,signatures:signatures(0),modified:'m0'}),[P+'sign']:detail()}
+  [P+'stock_on_hand']:{qty:4},[P+'signer_options']:signerOptions,[P+'save_proposal']:detail({state:'Nháp',step:0,signatures:signatures(0),modified:'m0'}),[P+'sign']:detail()}
  const view=mount(Proposal,{company:'Lotus',today:'2026-10-20'});await tick()
  button(view.root,'+ Lập đề xuất mua').click();await tick()
  const lines=()=>view.root.querySelectorAll('.pp-line')
@@ -57,6 +60,7 @@ test('a new proposal repeats date and purpose on added lines, then saves and sig
  button(view.root,'Ký và gửi phụ trách bộ phận').click();await tick();await tick()
  assert.deepEqual(calls.filter(c=>c.method.startsWith(P)&&['save_proposal','sign'].includes(c.method.slice(P.length))).map(c=>c.method.slice(P.length)),['save_proposal','sign'])
  assert.equal(calls.find(c=>c.method===P+'sign').args.modified,'m0','signs the version just saved')
+ assert.deepEqual(calls.find(c=>c.method===P+'sign').args.signers,{DEPARTMENT:'binh@lotus',PURCHASING:'chi@lotus',APPROVE:'dung@lotus'},'the only eligible person of each step is preselected')
  view.unmount()
 })
 

@@ -1,0 +1,20 @@
+{#- Phiếu nhập / xuất / chuyển kho, tồn đầu kỳ, kiểm kê, nhận hàng — data from lotus_farm.warehouse(_planning). -#}
+{% set f = p.fmt %}
+<table class="lp-table">
+ {% if p.show_cost %}<colgroup><col style="width:5%"><col style="width:31%"><col style="width:11%"><col style="width:8%"><col style="width:17%"><col style="width:13%"><col style="width:15%"></colgroup>
+ {% else %}<colgroup><col style="width:5%"><col style="width:35%"><col style="width:12%"><col style="width:9%"><col style="width:22%"><col style="width:17%"></colgroup>{% endif %}
+ <thead><tr><th class="stt">STT</th><th>Tên vật tư, hàng hóa</th><th class="num">{{ 'Thực đếm' if p.counting else 'Số lượng' }}</th><th class="center">ĐVT</th><th>Kho xuất → nhận</th>{% if p.show_cost %}<th class="num">Đơn giá</th><th class="num">Thành tiền</th>{% else %}<th>Lô / nơi sử dụng</th>{% endif %}</tr></thead>
+ <tbody>{% for r in p.rows %}<tr><td class="stt">{{ loop.index }}</td><td>{{ r.item_name }}{% if r.purchase_order %}<small>Đơn mua: {{ r.purchase_order }}</small>{% endif %}</td>
+  <td class="num"><b>{{ f.number(r.qty) }}</b></td><td class="center">{{ f.unit(r.uom) }}</td>
+  <td>{{ r.source or '' }}{% if r.source and (r.target or r.warehouse) %} → {% endif %}{{ r.target or r.warehouse or '' }}</td>
+  {% if p.show_cost %}<td class="num">{{ f.number(r.rate, 0) }}</td><td class="num">{{ f.number(r.amount, 0) }}</td>{% else %}<td>{{ r.area or '' }}</td>{% endif %}</tr>{% endfor %}
+ <tr class="lp-total"><td></td><td>Cộng ({{ p.rows|length }} dòng)</td><td class="num">{{ f.number(p.rows|sum(attribute='qty')) if p.same_unit else '' }}</td><td colspan="3"></td>{% if p.show_cost %}<td class="num">{{ f.number(p.goods_total, 0) }}</td>{% endif %}</tr></tbody>
+</table>
+{% if p.show_cost %}
+<table class="lp-totals"><tbody>
+ <tr><td>Tiền hàng</td><td>{{ f.money(p.goods_total) }}</td></tr>
+ {% if p.extra_costs %}{% for c in p.extra_costs %}<tr class="sub"><td>{{ c.description }}</td><td>{{ f.money(c.amount) }}</td></tr>{% endfor %}{% endif %}
+ <tr class="grand"><td>Tổng giá trị</td><td>{{ f.money(p.grand_total) }}</td></tr>
+</tbody></table>
+<p class="lp-words">Số tiền bằng chữ: <b>{{ f.words(p.grand_total) }}</b></p>
+{% endif %}

@@ -104,11 +104,11 @@ try:
  context=frappe._dict();get_context(context)
  html=frappe.render_template('lotus_farm/www/lotus_stock_print.html',context)
  assert received['name'] in html and '100' in html and 'PHIẾU NHẬP KHO' in html,html[:1000]
- assert 'In phiếu / Lưu PDF' in html
+ assert 'In / Lưu PDF' in html
  for dt,name in [('Purchase Receipt',first['name']),('Material Request',purchase['name']),('Stock Reconciliation',count['name'])]:
   frappe.form_dict=frappe._dict(doctype=dt,name=name);context=frappe._dict();get_context(context)
   rendered=frappe.render_template('lotus_farm/www/lotus_stock_print.html',context)
-  assert name in rendered and 'In phiếu / Lưu PDF' in rendered,(dt,rendered[:500])
+  assert name in rendered and 'In / Lưu PDF' in rendered,(dt,rendered[:500])
  frappe.form_dict=frappe._dict(doctype='User',name='Administrator')
  try:get_context(frappe._dict())
  except frappe.PermissionError:pass

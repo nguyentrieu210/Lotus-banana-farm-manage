@@ -1,9 +1,18 @@
 <!doctype html>
 <html lang="vi"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="referrer" content="no-referrer"/><title>Xác minh chứng từ Lotus</title>
-<style>body{font-family:system-ui,Arial,sans-serif;background:#f6f7f8;color:#24303b;margin:0;padding:28px 16px}main{max-width:540px;margin:0 auto;background:white;border:1px solid #dce1e5;padding:24px;border-radius:16px}h1{font-size:23px}p{line-height:1.5}dl{display:grid;grid-template-columns:135px 1fr;gap:12px;overflow-wrap:anywhere}dt{color:#64748b}dd{margin:0;font-weight:600}.error{color:#aa2222}.valid{color:#237244}small{color:#5b6470}</style>
+<style>body{font-family:system-ui,Arial,sans-serif;background:#f6f7f8;color:#24303b;margin:0;padding:28px 16px}main{max-width:540px;margin:0 auto;background:white;border:1px solid #dce1e5;padding:24px;border-radius:16px}h1{font-size:23px}p{line-height:1.5}dl{display:grid;grid-template-columns:135px 1fr;gap:12px;overflow-wrap:anywhere}dt{color:#64748b}dd{margin:0;font-weight:600}.error{color:#aa2222}.valid{color:#237244}.warn{color:#9a5b00}small{color:#5b6470}ol{padding-left:20px}li{margin:6px 0}li span{color:#5b6470;font-size:14px}
+@media (prefers-color-scheme:dark){body{background:#14181c;color:#e3e7eb}main{background:#1d2328;border-color:#2e363d}dt,small,li span{color:#9aa5b1}.valid{color:#6fd39a}.error{color:#ff9b8f}.warn{color:#f2c46d}}</style>
 </head><body><main>
 <h1>Xác minh chứng từ Lotus</h1>
-{% if result.valid %}
+{% if result.valid and result.steps %}
+<p class="{{ 'valid' if result.ok else 'warn' }}"><strong>{{ result.status | e }}</strong></p>
+<dl><dt>Loại chứng từ</dt><dd>{{ result.document_type | e }}</dd>
+<dt>Số chứng từ</dt><dd>{{ result.document_no | e }}</dd>
+{% if result.date %}<dt>Ngày / kỳ</dt><dd>{{ result.date | e }}</dd>{% endif %}</dl>
+<h2 style="font-size:17px;margin-top:22px">Các chữ ký</h2>
+<ol>{% for s in result.steps %}<li><b>{{ s.title | e }}</b> — {{ s.state | e }}{% if s.signed_at %} <span>· {{ s.signed_at | e }}</span>{% endif %}</li>{% endfor %}</ol>
+<p><small>{{ result.notice | e }} QR này không phải chữ ký số có chứng thư.</small></p>
+{% elif result.valid %}
 <p class="valid"><strong>Đã tìm thấy chứng từ trong hệ thống Lotus.</strong></p>
 <dl><dt>Loại chứng từ</dt><dd>{{ result.document_type | e }}</dd>
 <dt>Số chứng từ</dt><dd>{{ result.document_no | e }}</dd>

@@ -1,0 +1,98 @@
+
+> build
+> vite build
+
+[36mvite v8.3.3 [32mbuilding client environment for production...[36m[39m
+transforming...
+
+[1m[33mwarn[39m[22m - The class `duration-[660ms]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;660ms&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0,1,0.5,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0,1,0.5,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.23,1,0.32,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.23,1,0.32,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.32,0.72,0,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.32,0.72,0,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.65,0,0.35,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.65,0,0.35,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `duration-[660ms]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;660ms&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0,1,0.5,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0,1,0.5,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.23,1,0.32,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.23,1,0.32,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.32,0.72,0,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.32,0.72,0,1)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `ease-[cubic-bezier(0.65,0,0.35,1)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `ease-&lsqb;cubic-bezier(0.65,0,0.35,1)&rsqb;` to silence this warning.
+✓ 1156 modules transformed.
+rendering chunks...
+computing gzip size...
+../lotus_farm/public/frontend/hr.html                                           0.92 kB │ gzip:   0.38 kB
+../lotus_farm/public/frontend/warehouse.html                                    0.98 kB │ gzip:   0.43 kB
+../lotus_farm/public/frontend/work-mobile.html                                  1.23 kB │ gzip:   0.49 kB
+../lotus_farm/public/frontend/assign.html                                       1.26 kB │ gzip:   0.46 kB
+../lotus_farm/public/frontend/timekeeping.html                                  1.45 kB │ gzip:   0.49 kB
+../lotus_farm/public/frontend/index.html                                        1.66 kB │ gzip:   0.54 kB
+../lotus_farm/public/frontend/stock.html                                        1.66 kB │ gzip:   0.51 kB
+../lotus_farm/public/frontend/farm-work.html                                    1.69 kB │ gzip:   0.52 kB
+../lotus_farm/public/frontend/.vite/manifest.json                               6.46 kB │ gzip:   1.06 kB
+../lotus_farm/public/frontend/assets/Inter.var-C9xDBOS3.woff2                 264.23 kB
+../lotus_farm/public/frontend/assets/Inter-Italic.var-BGHziHgI.woff2          297.26 kB
+../lotus_farm/public/frontend/assets/timekeeping-B-_JJByK.css                   1.80 kB │ gzip:   0.64 kB
+../lotus_farm/public/frontend/assets/hr-CKhOdnb1.css                            2.22 kB │ gzip:   0.80 kB
+../lotus_farm/public/frontend/assets/AssignApp-BFkbCXcW.css                     2.57 kB │ gzip:   0.84 kB
+../lotus_farm/public/frontend/assets/assign-C0PKXeDN.css                        4.69 kB │ gzip:   1.58 kB
+../lotus_farm/public/frontend/assets/work-mobile-CUc8NJOR.css                   5.92 kB │ gzip:   1.55 kB
+../lotus_farm/public/frontend/assets/farm-work-CbFLQQ4H.css                     7.69 kB │ gzip:   1.81 kB
+../lotus_farm/public/frontend/assets/stock-attio-DveR0dcA.css                  15.88 kB │ gzip:   3.78 kB
+../lotus_farm/public/frontend/assets/warehouse-mobile-DghTqBoQ.css             28.41 kB │ gzip:   6.33 kB
+../lotus_farm/public/frontend/assets/stock-B4qrlRcF.css                        31.63 kB │ gzip:   5.62 kB
+../lotus_farm/public/frontend/assets/compact-Dy4K0ghk.css                     380.30 kB │ gzip:  35.70 kB
+../lotus_farm/public/frontend/assets/index-DqMPzniJ.css                       428.30 kB │ gzip:  45.55 kB
+../lotus_farm/public/frontend/assets/register-worker-CKMNsoSQ.js                0.13 kB │ gzip:   0.12 kB
+../lotus_farm/public/frontend/assets/assign-DONocO1Z.js                         0.16 kB │ gzip:   0.14 kB
+../lotus_farm/public/frontend/assets/register-warehouse-worker-ClozO1u8.js      0.40 kB │ gzip:   0.31 kB
+../lotus_farm/public/frontend/assets/Select-BijFNTNY.js                         1.37 kB │ gzip:   0.64 kB
+../lotus_farm/public/frontend/assets/offline-DcIimw0s.js                        2.59 kB │ gzip:   1.24 kB
+../lotus_farm/public/frontend/assets/LinkPicker-BDJPhE1p.js                     4.68 kB │ gzip:   2.14 kB
+../lotus_farm/public/frontend/assets/units-DwW3lwNS.js                          5.21 kB │ gzip:   2.57 kB
+../lotus_farm/public/frontend/assets/SchemaForm-DyVgXZNa.js                     6.49 kB │ gzip:   2.61 kB
+../lotus_farm/public/frontend/assets/labels-BkSEv7tt.js                        11.50 kB │ gzip:   4.47 kB
+../lotus_farm/public/frontend/assets/warehouse-mobile-skkx8BUy.js              12.27 kB │ gzip:   4.46 kB
+../lotus_farm/public/frontend/assets/AssignApp-9_mEVjV8.js                     19.86 kB │ gzip:   7.27 kB
+../lotus_farm/public/frontend/assets/hr-DQHL8WxK.js                            28.54 kB │ gzip:   8.14 kB
+../lotus_farm/public/frontend/assets/compact-BUeVrxp_.js                       30.92 kB │ gzip:  11.05 kB
+../lotus_farm/public/frontend/assets/timekeeping-DK06RM-F.js                   32.08 kB │ gzip:   8.64 kB
+../lotus_farm/public/frontend/assets/farm-work-BE3Fx7MA.js                     34.83 kB │ gzip:  10.23 kB
+../lotus_farm/public/frontend/assets/work-mobile-BwAbpxTu.js                   44.32 kB │ gzip:  12.78 kB
+../lotus_farm/public/frontend/assets/warehouse-D9r3x9OY.js                     46.54 kB │ gzip:  12.94 kB
+../lotus_farm/public/frontend/assets/api-CnHiYOxj.js                           77.10 kB │ gzip:  30.40 kB
+../lotus_farm/public/frontend/assets/stock-DNm-JgMr.js                         95.76 kB │ gzip:  25.36 kB
+../lotus_farm/public/frontend/assets/index-vzugjAOu.js                        137.99 kB │ gzip:  43.10 kB
+../lotus_farm/public/frontend/assets/DataTable-DIZL3_tB.js                  1,211.58 kB │ gzip: 336.91 kB
+
+[32m✓ built in 8.43s[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[33m[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 8.0s of this 8.4s build (95%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin vite:vue transform (19%, 1.6s, 265 calls)
+Additional callback time came from the callbacks below and from callbacks under 1s.
+2 callbacks are listed without a time. Their calls overlapped, so the time inside one call includes work from other calls. To find their cost, profile the build with `node --cpu-prof`:
+  - plugin vite:build-html transform (8 calls)
+  - plugin vite:css transform (36 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+[39m

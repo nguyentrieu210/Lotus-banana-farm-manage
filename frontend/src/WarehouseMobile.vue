@@ -22,6 +22,7 @@ import {call,setCSRF,upload} from './api'
 import {unitLabel} from './units'
 import MobileLinkField from './components/MobileLinkField.vue'
 import MobileLiveSearch from './components/MobileLiveSearch.vue'
+import SigningPanel from './components/SigningPanel.vue'
 import {useMobileViewport} from './use-mobile-viewport'
 import {createTabSwipe} from './mobile-swipe'
 import {validateReceiptInputs} from './warehouse-mobile-helpers'
@@ -657,6 +658,7 @@ onUnmounted(()=>{
      <small v-if="historyDetail.doctype==='Purchase Order'">Còn chờ: {{fmt(line.remaining_qty)}} {{unitLabel(line.uom)}}</small>
     </div>
     </template>
+    <SigningPanel v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" :doctype="historyDetail.doctype" :name="historyDetail.name" :company="company" :online="online" @notice="message=$event" @error="error=$event"/>
     <a v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" class="lotus-pwa-print-link" :href="stockPrintURL(historyDetail.doctype,historyDetail.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
      <LotusMobileButton v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.can_receive&&historyDetail.items?.some(r=>Number(r.remaining_qty)>0)" type="button" class="mobile-submit" @click="showOrder(historyDetail.name)">Nhận hàng theo đơn →</LotusMobileButton>
     <p v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.docstatus===0" class="mobile-subtle">Đơn đang là nháp. Cần xác nhận đơn trước khi nhận hàng.</p>

@@ -2,16 +2,18 @@
 
 The form follows the farm's Excel template: proposer, department, reason; per line the item,
 specification, unit, stock on hand, proposed quantity, expected price, needed date, suggested
-supplier and purpose. Four people sign in order (lotus_farm.proposal_rules). Each signature is a
-snapshot of the signer's image stored on the request with a Lotus Signature Event; the director's
-signature submits the request, which then appears in Mua hàng as a request waiting for an order.
+supplier and purpose. Four people sign in order. The proposer picks the three later signers from HR
+(employees with a login and the step's role) when sending; each one is notified when it is their turn
+and only they can sign or return it (lotus_farm.signing). The director's signature submits the
+request, which then appears in Mua hàng as a request waiting for an order.
 """
-import json
-
 import frappe
-from frappe.utils import flt, getdate, now_datetime, nowdate
+from frappe.utils import flt, getdate, nowdate
 
 from lotus_farm import proposal_rules as rules
+from lotus_farm import signing, signing_rules
+
+CHAIN = 'purchase_proposal'
 
 PARENT_FIELDS = [
     dict(fieldname='lotus_proposal_state', label='Lotus · Trạng thái đề xuất', fieldtype='Select',
@@ -41,9 +43,6 @@ def _access():
     if not frappe.has_permission('Material Request', 'read'):
         frappe.throw('Không có quyền xem đề xuất mua.', frappe.PermissionError)
 
-
-def _roles():
-    return set(frappe.get_roles(frappe.session.user))
 
 
 def _admin():
@@ -160,7 +159,8 @@ def save_proposal(company, values, name=None, modified=None):
         _version(doc, modified)
         doc.check_permission('write')
         state = _state(doc)
-        allowed = rules.editable(state, step_roles_match=bool(set(rules.STEPS[2]['roles']) & _roles()) or _admin())
+        chain = _chain(doc)
+        allowed = rules.editable(state, step_roles_match=chain['current'] == 2 and chain['can_sign'])
         if not allowed or doc.docstatus != 0:
             frappe.throw('Phiếu đang chờ ký, không sửa được ở bước này.')
         if allowed == 'all' and doc.owner != frappe.session.user and not _admin():
@@ -185,6 +185,23 @@ def save_proposal(company, values, name=None, modified=None):
 
 
 @frappe.whitelist()
+def signer_options(company):
+    """People who may sign each later step: active employees with a login and the step's role."""
+    _access()
+    from lotus_farm.warehouse import _company
+    _company(company)
+    return signing.candidates(CHAIN, company)
+
+
+def _waiting_for_me():
+    """Proposals whose waiting step is assigned to me (Administrator sees every waiting step)."""
+    filters = {'document_type': 'Material Request', 'chain': CHAIN, 'state': signing_rules.WAITING, 'step_index': ['>', 0]}
+    if not _admin():
+        filters['assignee'] = frappe.session.user
+    return set(frappe.get_all(signing.REQUEST, filters=filters, pluck='document_name', limit_page_length=1000))
+
+
+@frappe.whitelist()
 def proposals(company, view='mine'):
     """view: mine | todo (waiting for my signature) | all."""
     _access()
@@ -194,15 +211,15 @@ def proposals(company, view='mine'):
                                                         'lotus_proposal_state': ['is', 'set']},
                            fields=['name', 'transaction_date', 'schedule_date', 'owner', 'docstatus', 'lotus_proposal_state', 'lotus_department', 'lotus_request_note', 'modified'],
                            order_by='modified desc', limit_page_length=300)
-    roles, admin, me = _roles(), _admin(), frappe.session.user
+    mine, me = _waiting_for_me(), frappe.session.user
     result = []
     for row in rows:
         state = rules.APPROVED if row.docstatus == 1 else row.lotus_proposal_state
         step = rules.current_step(state)
-        can_sign = row.docstatus == 0 and rules.may_sign(step, roles, row.owner == me, admin)
+        can_sign = row.docstatus == 0 and ((step == 0 and row.owner == me) or row.name in mine)
         if view == 'mine' and row.owner != me:
             continue
-        if view == 'todo' and not (can_sign and step and step > 0):
+        if view == 'todo' and row.name not in mine:
             continue
         total = frappe.db.sql('select coalesce(sum(qty*rate),0), count(*) from `tabMaterial Request Item` where parent=%s', row.name)[0]
         result.append(dict(name=row.name, date=str(row.transaction_date), needed=str(row.schedule_date or ''), state=state,
@@ -211,34 +228,14 @@ def proposals(company, view='mine'):
     return result
 
 
-def _signatures(doc):
-    events = frappe.get_all('Lotus Signature Event', filters={'document_type': doc.doctype, 'document_name': doc.name},
-                            fields=['action', 'actor', 'signed_at', 'details'], order_by='signed_at asc, creation asc', limit_page_length=100)
-    # The chain restarts after a return: only signatures after the last RETURN count.
-    last_return = max([i for i, e in enumerate(events) if e.action == 'RETURN'], default=-1)
-    signed = {}
-    for event in events[last_return + 1:]:
-        if event.action in {s['action'] for s in rules.STEPS}:
-            signed[event.action] = event
-    result = []
-    for step in rules.STEPS:
-        event = signed.get(step['action'])
-        image = ''
-        if event:
-            try:
-                file_name = (json.loads(event.details or '{}') or {}).get('signature_file')
-            except (TypeError, ValueError):
-                file_name = None
-            if file_name and frappe.db.exists('File', file_name):
-                file = frappe.get_doc('File', file_name)
-                if file.attached_to_doctype == doc.doctype and file.attached_to_name == doc.name and file.is_private:
-                    from base64 import b64encode
-                    image = 'data:image/png;base64,' + b64encode(file.get_content(encodings=[])).decode('ascii')
-        result.append(dict(action=step['action'], title=step['title'],
-                           name=(frappe.db.get_value('User', event.actor, 'full_name') or event.actor) if event else '',
-                           signed_at=str(event.signed_at) if event else '', image=image))
-    returns = [e for e in events if e.action == 'RETURN']
-    return result, (returns[-1] if returns else None)
+def _chain(doc, with_images=False):
+    return signing.status(doc, CHAIN, with_images=with_images)
+
+
+def _signatures(chain):
+    return [dict(action=s['key'], title=s['title'], assignee=s['assignee'], name=s['name'], state=s['state'],
+                 signed_at=s['signed_at'] if s['state'] == signing_rules.SIGNED else '',
+                 image=s['image'] if s['state'] == signing_rules.SIGNED else '') for s in chain['steps']]
 
 
 @frappe.whitelist()
@@ -247,8 +244,8 @@ def detail(name):
     doc = _doc(name)
     state = _state(doc)
     step = rules.current_step(state)
-    roles, admin, me = _roles(), _admin(), frappe.session.user
-    signatures, returned = _signatures(doc)
+    admin, me = _admin(), frappe.session.user
+    chain = _chain(doc, with_images=True)
     items = []
     for row in doc.items:
         items.append(dict(name=row.name, item_code=row.item_code, item_name=row.item_name, uom=row.uom, qty=flt(row.qty), rate=flt(row.rate),
@@ -256,60 +253,56 @@ def detail(name):
                           stock=_stock(row.item_code, row.warehouse, row.conversion_factor),
                           lotus_specification=row.get('lotus_specification') or '', lotus_supplier_hint=row.get('lotus_supplier_hint') or '',
                           lotus_purpose=row.get('lotus_purpose') or '', lotus_notes=row.get('lotus_notes') or ''))
-    edit = rules.editable(state, step_roles_match=bool(set(rules.STEPS[2]['roles']) & roles) or admin) if doc.docstatus == 0 else None
+    drafting = doc.docstatus == 0 and step == 0
+    purchasing_turn = doc.docstatus == 0 and chain['current'] == 2 and chain['can_sign']
+    edit = rules.editable(state, step_roles_match=purchasing_turn) if doc.docstatus == 0 else None
     if edit == 'all' and doc.owner != me and not admin:
         edit = None
+    returned = next((s for s in chain['steps'] if s['state'] == signing_rules.RETURNED), None)
+    # Signers of the latest round prefill the picker when the proposer sends again.
+    chosen = {s['key']: s['assignee'] for s in chain['steps'][1:] if s['assignee']}
     from urllib.parse import urlencode
     return dict(name=doc.name, company=doc.company, modified=str(doc.modified), docstatus=doc.docstatus, state=state, step=step,
                 step_title=rules.STEPS[step]['title'] if step is not None else '',
+                waiting_for=chain['steps'][chain['current']]['name'] if not drafting and chain['current'] not in (None, 0) else '',
                 proposer=frappe.db.get_value('User', doc.owner, 'full_name') or doc.owner, owner=doc.owner, date=str(doc.transaction_date),
                 department=doc.get('lotus_department') or '', reason=doc.get('lotus_request_note') or '', warehouse=doc.get('set_warehouse') or '',
-                return_reason=doc.get('lotus_return_reason') or '', returned_by=(returned.actor if returned else ''),
-                items=items, total=sum(i['amount'] for i in items), signatures=signatures,
-                can_sign=doc.docstatus == 0 and rules.may_sign(step, roles, doc.owner == me, admin),
-                can_return=doc.docstatus == 0 and step not in (None, 0) and rules.may_sign(step, roles, doc.owner == me, admin),
-                can_delete=doc.docstatus == 0 and step == 0 and doc.owner == me and doc.has_permission('delete'),
+                return_reason=doc.get('lotus_return_reason') or '', returned_by=returned['name'] if returned else '',
+                items=items, total=sum(i['amount'] for i in items), signatures=_signatures(chain), signers=chosen,
+                needs_signers=drafting,
+                can_sign=(drafting and (doc.owner == me or admin)) or (doc.docstatus == 0 and not drafting and chain['can_sign']),
+                can_return=doc.docstatus == 0 and not drafting and chain['can_return'],
+                can_reassign=doc.docstatus == 0 and not drafting and chain['can_reassign'],
+                can_delete=drafting and doc.owner == me and doc.has_permission('delete'),
                 edit=edit, print_url='/lotus/in-de-xuat?' + urlencode({'name': doc.name}))
 
 
-def _snapshot_signature(doc, step):
-    from frappe.utils.file_manager import save_file
-    from lotus_farm.digital_signature import signature_image_bytes
-    image = signature_image_bytes(frappe.session.user)
-    if not image:
-        frappe.throw('Chưa có ảnh chữ ký. Thiết lập chữ ký trong mục Tôi trước khi ký phiếu.')
-    saved = save_file('de-xuat-' + rules.STEPS[step]['action'].lower() + '.png', image, doc.doctype, doc.name, is_private=1)
-    return saved.name
-
-
 @frappe.whitelist(methods=['POST'])
-def sign(name, modified):
-    """Sign the step the proposal is waiting for; the director's signature submits the request."""
+def sign(name, modified, signers=None):
+    """Proposer: send with the chosen signers, signing first. Each signer then signs their own turn;
+    the director's signature submits the request."""
     _access()
     from lotus_farm.controls import lock
-    from lotus_farm.digital_signature import _event
     lock('Material Request', name)
     doc = _doc(name)
     _version(doc, modified)
     if doc.docstatus != 0:
         frappe.throw('Phiếu đã duyệt hoặc đã hủy.')
-    state = _state(doc)
-    step = rules.current_step(state)
-    if not rules.may_sign(step, _roles(), doc.owner == frappe.session.user, _admin()):
-        frappe.throw('Bạn không có quyền ký bước "' + rules.STEPS[step]['title'] + '".', frappe.PermissionError)
+    step = rules.current_step(_state(doc))
     issues = rules.line_issues([dict(item_code=r.item_code, qty=r.qty, schedule_date=r.schedule_date, rate=r.rate) for r in doc.items])
     if not doc.items or issues:
         frappe.throw('; '.join(issues[:6]) or 'Phiếu chưa có vật tư.')
     if not str(doc.get('lotus_request_note') or '').strip():
         frappe.throw('Nhập lý do đề xuất mua trước khi gửi.')
-    file_name = _snapshot_signature(doc, step)
-    when = now_datetime()
-    _event(doc, rules.STEPS[step]['action'], frappe.session.user, when, signature_type='IMAGE',
-           details=json.dumps(dict(signature_file=file_name, step=step + 1)))
-    doc.lotus_proposal_state = rules.state_after(step)
     if step == 0:
+        if doc.owner != frappe.session.user and not _admin():
+            frappe.throw('Chỉ người đề xuất gửi ký phiếu.', frappe.PermissionError)
+        chain = signing.start(doc, signers, require_image=True)
         doc.lotus_return_reason = ''
-    doc.flags.ignore_permissions = True  # role checked above for this exact step
+    else:
+        chain = signing.sign(doc, require_image=True)
+    doc.lotus_proposal_state = rules.APPROVED if chain['done'] else rules.state_after(chain['current'] - 1)
+    doc.flags.ignore_permissions = True  # signing checked the named signer of this step
     doc.save()
     if doc.lotus_proposal_state == rules.APPROVED:
         doc.submit()
@@ -320,24 +313,25 @@ def sign(name, modified):
 def return_proposal(name, modified, reason):
     _access()
     from lotus_farm.controls import lock
-    from lotus_farm.digital_signature import _event
     lock('Material Request', name)
     doc = _doc(name)
     _version(doc, modified)
-    state = _state(doc)
-    step = rules.current_step(state)
-    if doc.docstatus != 0 or step in (None, 0):
+    if doc.docstatus != 0 or rules.current_step(_state(doc)) in (None, 0):
         frappe.throw('Phiếu không ở bước chờ ký.')
-    if not rules.may_sign(step, _roles(), doc.owner == frappe.session.user, _admin()):
-        frappe.throw('Bạn không có quyền xử lý bước này.', frappe.PermissionError)
-    reason = str(reason or '').strip()
-    if len(reason) < 3:
-        frappe.throw('Ghi lý do trả lại.')
-    _event(doc, 'RETURN', frappe.session.user, now_datetime(), details=json.dumps(dict(reason=reason[:500], step=step + 1)))
+    signing.send_back(doc, reason)
     doc.lotus_proposal_state = rules.RETURNED
-    doc.lotus_return_reason = reason[:500]
+    doc.lotus_return_reason = str(reason or '').strip()[:500]
     doc.flags.ignore_permissions = True
     doc.save()
+    return detail(doc.name)
+
+
+@frappe.whitelist(methods=['POST'])
+def reassign_signer(name, modified, step, user):
+    _access()
+    doc = _doc(name)
+    _version(doc, modified)
+    signing.reassign('Material Request', doc.name, step, user)
     return detail(doc.name)
 
 

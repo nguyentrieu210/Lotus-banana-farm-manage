@@ -2,7 +2,7 @@
 
 A Material Request is a proposal, not an approved Purchase Order or a Stock Entry. Only fields stored on
 the request, or live stock visibly marked as such, are shown. Online proposals carry four signatures
-(lotus_farm.purchase_proposal); older requests show only the final approval when one was signed.
+chosen by name (lotus_farm.signing); older requests show only the final approval when one was signed.
 """
 import json
 from base64 import b64encode
@@ -130,11 +130,11 @@ def build(name, doctype='Material Request'):
                       dict(label='Kho nhận' if purchase else 'Lý do', value=warehouse if purchase else reason)])
     p.status = state
     p.watermark = None if state in ('Đã duyệt', 'Đã lập nhu cầu') else ('ĐÃ HỦY' if doc.docstatus == 2 else 'CHƯA DUYỆT')
-    if purchase and doc.get('lotus_proposal_state'):
-        from lotus_farm.purchase_proposal import _signatures
-        signed, _ = _signatures(doc)
-        p.signatures = [pk.signature(s['title'], s['name'] or (proposer if i == 0 else ''), s['image'] or None, s['signed_at'] or None)
-                        for i, s in enumerate(signed)]
+    from lotus_farm import signing
+    named = signing.print_signatures(doc) if doctype == 'Material Request' else []
+    if named:
+        p.signatures = named
+        p.verify = signing.print_verification(doc)
     else:
         titles = BUY_SIGNERS if purchase else ISSUE_SIGNERS
         p.signatures = [pk.signature(t, proposer if i == 0 else '') for i, t in enumerate(titles)]

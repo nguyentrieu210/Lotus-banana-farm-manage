@@ -258,3 +258,4 @@
 .lotus-chart-table table{width:100%;border-collapse:collapse;font-size:var(--lotus-text-sm);font-variant-numeric:tabular-nums}
 .lotus-chart-table :is(th,td){padding:6px 10px;border-bottom:1px solid var(--lotus-border);text-align:right;white-space:nowrap}
 .lotus-chart-table :is(thead th,tbody th){text-align:left;color:var(--lotus-muted);font-weight:600}
+.user-admin .user-wide{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}

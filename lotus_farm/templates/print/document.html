@@ -4,7 +4,7 @@
 <style>{% include "lotus_farm/templates/print/lotus_print.css" %}{% if p.landscape %}@page{size:A4 landscape;margin:10mm 10mm 14mm}{% endif %}</style>
 </head>
 <body class="lp{% if p.landscape %} lp--landscape{% endif %}">
-{% if p.toolbar %}<nav class="lp-toolbar"><button type="button" class="lp-primary" onclick="window.print()">In / Lưu PDF</button>{% if p.pdf_url %}<a href="{{ p.pdf_url }}">Tải PDF</a>{% endif %}{% if p.back_url %}<a href="{{ p.back_url }}">{{ p.back_label or 'Quay lại' }}</a>{% endif %}</nav>{% endif %}
+{% if p.toolbar %}<nav class="lp-toolbar">{% for a in p.actions or [] %}<button type="button" class="lp-action{% if a.primary %} lp-primary{% endif %}" data-method="{{ a.method }}" data-args="{{ a.args|tojson|forceescape }}" data-confirm="{{ a.confirm or '' }}" data-reason="{{ 1 if a.reason else '' }}">{{ a.label }}</button>{% endfor %}<button type="button"{% if not p.actions %} class="lp-primary"{% endif %} onclick="window.print()">In / Lưu PDF</button>{% if p.pdf_url %}<a href="{{ p.pdf_url }}">Tải PDF</a><button type="button" id="lp-share" data-url="{{ p.pdf_url }}" data-name="{{ p.number or p.title }}">Gửi qua Zalo…</button>{% endif %}{% if p.back_url %}<a href="{{ p.back_url }}">{{ p.back_label or 'Quay lại' }}</a>{% endif %}<p class="lp-toolbar__note" id="lp-share-note" role="status" hidden></p></nav>{% endif %}
 {% include "lotus_farm/templates/print/page.html" %}
 {% if p.toolbar %}<script>
 (function(){ // Keep an A4 preview fully visible on phones while printing at true A4 size.
@@ -12,6 +12,38 @@
  function fit(){sheet.style.removeProperty('--lp-zoom');if(!window.matchMedia('(max-width:600px)').matches)return
   var w=sheet.getBoundingClientRect().width,room=Math.max(240,window.innerWidth-12);if(w>0)sheet.style.setProperty('--lp-zoom',String(Math.min(1,room/w)))}
  fit();window.addEventListener('resize',fit);window.addEventListener('orientationchange',fit)
+})();
+(function(){ // Sign / return from the printed page (named signer only; the server checks again).
+ var note=document.getElementById('lp-share-note'),csrf={{ (p.csrf or '')|tojson }}
+ Array.prototype.forEach.call(document.querySelectorAll('.lp-action'),function(button){
+  button.addEventListener('click',function(){
+   var args=JSON.parse(button.dataset.args||'{}')
+   if(button.dataset.reason){var reason=window.prompt('Lý do trả lại (ít nhất 3 ký tự):','');if(!reason||reason.trim().length<3)return;args.reason=reason.trim()}
+   else if(button.dataset.confirm&&!window.confirm(button.dataset.confirm))return
+   button.disabled=true;note.textContent='Đang xử lý…';note.hidden=false
+   fetch('/api/method/'+button.dataset.method,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Frappe-CSRF-Token':csrf,'Accept':'application/json'},body:JSON.stringify(args)})
+    .then(function(r){return r.json().then(function(body){if(!r.ok||body.exc_type){var m=body._server_messages?JSON.parse(JSON.parse(body._server_messages)[0]).message:(body.message||'Không thực hiện được.');throw Error(String(m).replace(/<[^>]+>/g,''))}})})
+    .then(function(){window.location.reload()},function(e){note.textContent=e.message;button.disabled=false})
+  })
+ })
+})();
+(function(){ // Share the PDF file itself: on phones the share sheet lists Zalo; elsewhere the PDF is downloaded.
+ var button=document.getElementById('lp-share'),note=document.getElementById('lp-share-note');if(!button)return
+ function say(text){note.textContent=text;note.hidden=!text}
+ button.addEventListener('click',function(){
+  button.disabled=true;say('Đang tạo PDF…')
+  fetch(button.dataset.url,{credentials:'same-origin',cache:'no-store'}).then(function(r){
+   if(!r.ok)throw Error('Không tải được PDF. Kiểm tra đăng nhập và quyền in.');return r.blob()
+  }).then(function(blob){
+   var name=String(button.dataset.name||'chung-tu').replace(/[^A-Za-z0-9_-]+/g,'_')+'.pdf'
+   var file=new File([blob],name,{type:'application/pdf'})
+   if(navigator.canShare&&navigator.canShare({files:[file]}))
+    return navigator.share({files:[file],title:name}).then(function(){say('')},function(e){say(e&&e.name==='AbortError'?'':'Không mở được chia sẻ: '+e.message)})
+   var url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()
+   setTimeout(function(){URL.revokeObjectURL(url)},60000)
+   say('Đã tải '+name+'. Mở Zalo, chọn cuộc trò chuyện rồi đính kèm tệp này.')
+  }).catch(function(e){say(e.message)}).then(function(){button.disabled=false})
+ })
 })()
 </script>{% endif %}
 </body></html>

@@ -1,59 +1,77 @@
-"""Full, permission-checked stock print. No virtualized grid or Desk redirect."""
+"""Stock documents in the shared Lotus Print layout, permission-checked (route /lotus/in-phieu).
+
+Stock Entry (nhập / xuất / chuyển / tồn đầu), Stock Reconciliation and Purchase Receipt. Material
+Request and Material Requirement are proposals and print through lotus_material_proposal_print.
+Signatures come from the named signers of the document (lotus_farm.signing) with the QR to verify.
+"""
+from urllib.parse import urlencode
+
 import frappe
-from frappe.utils import flt,getdate,strip_html
-import re
-no_cache=1
+from frappe.utils import flt, strip_html
+
+from lotus_farm import print_kit as pk
+
+no_cache = 1
+TITLES = {'Material Receipt': 'PHIẾU NHẬP KHO', 'Material Issue': 'PHIẾU XUẤT KHO', 'Material Transfer': 'PHIẾU CHUYỂN KHO',
+          'Opening Stock': 'PHIẾU TỒN ĐẦU KỲ'}
+PROPOSALS = ('Material Request', 'Material Requirement')
 
 
-def get_context(context,doctype=None,name=None):
-    dt=doctype or frappe.form_dict.get('doctype');name=name or frappe.form_dict.get('name')
-    if dt in ('Material Request', 'Material Requirement'):
-        from lotus_farm.www.lotus_material_proposal_print import get_context as proposal_context
-        proposal_context(context, name=name, doctype=dt)
-        context.is_material_proposal = True
-        return
-    if dt in ('Stock Entry','Stock Reconciliation'):
+def build(doctype, name):
+    if doctype in ('Stock Entry', 'Stock Reconciliation'):
         from lotus_farm.warehouse import document
-        info=document(dt,name)
-        title={'Material Receipt':'PHIẾU NHẬP KHO','Material Issue':'PHIẾU XUẤT KHO','Material Transfer':'PHIẾU CHUYỂN KHO','Opening Stock':'PHIẾU TỒN ĐẦU KỲ'}.get(info['kind'],'PHIẾU KIỂM KÊ')
-    elif dt in ('Purchase Receipt','Material Request'):
-        from lotus_farm.warehouse_planning import purchase_receipt,purchase_request
-        info=(purchase_receipt if dt=='Purchase Receipt' else purchase_request)(name)
-        title='PHIẾU NHẬN HÀNG' if dt=='Purchase Receipt' else 'ĐỀ NGHỊ MUA VẬT TƯ'
-    else:frappe.throw('Loại phiếu không hỗ trợ in.',frappe.PermissionError)
-    doc=frappe.get_doc(dt,name);doc.check_permission('read');doc.check_permission('print')
-    context.farm_label=frappe.get_cached_value('Company',info['company'],'lotus_print_farm') or ''
-    context.company_label=frappe.get_cached_value('Company',info['company'],'company_name') or info['company']
-    # Older Company settings may still say 'DỰ ÁN CHUỐI'; print uses the actual garden name.
-    raw_garden_label=frappe.get_cached_value('Company',info['company'],'lotus_print_project') or ''
-    context.project_label=re.sub(r'^\s*dự\s+án\s+chuối\b', 'VƯỜN CHUỐI', raw_garden_label, flags=re.IGNORECASE)
-    from base64 import b64encode
-    from pathlib import Path
-    context.logo_data='data:image/png;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech-header-v2.png')).read_bytes()).decode('ascii')
-    context.info=info;context.heading=title;context.date=getdate(doc.get('posting_date') or doc.get('transaction_date')).strftime('%d/%m/%Y')
-    context.extra_costs=[dict(description=strip_html(row.get('description') or '').strip() or row.get('expense_account') or 'Chi phí phụ khác',amount=flt(row.get('amount')))
-                         for row in info.get('additional_costs',[]) if flt(row.get('amount'))]
-    context.extra_cost_total=flt(info.get('additional_total')) or sum(row['amount'] for row in context.extra_costs)
-    context.notes=strip_html(doc.get('remarks') or '')
-    context.owner=doc.owner;context.show_cost=dt=='Purchase Receipt' or info.get('kind')=='Material Receipt'
-    context.units={'Kg':'kg','Litre':'Lít','Nos':'Cái','Tonne':'Tấn','Gram':'g','Millilitre':'ml','Box':'Hộp / thùng','Pair':'Đôi','Meter':'Mét','Unit':'Đơn vị'}
-    context.number=lambda value:format(float(value or 0),',.3f').rstrip('0').rstrip('.').replace(',','_').replace('.',',').replace('_','.')
-    context.no_cache=1
-    from urllib.parse import urlencode
-    context.pdf_url='/api/method/lotus_farm.www.lotus_stock_print.download_pdf?'+urlencode({'doctype':dt,'name':name})
+        info = document(doctype, name)
+        title = TITLES.get(info['kind'], 'PHIẾU KIỂM KÊ KHO')
+    elif doctype == 'Purchase Receipt':
+        from lotus_farm.warehouse_planning import purchase_receipt
+        info = purchase_receipt(name)
+        title = 'PHIẾU NHẬN HÀNG'
+    else:
+        frappe.throw('Loại phiếu không hỗ trợ in.', frappe.PermissionError)
+    doc = frappe.get_doc(doctype, name)
+    doc.check_permission('read')
+    doc.check_permission('print')
+    rows = info['items']
+    show_cost = doctype == 'Purchase Receipt' or info.get('kind') in ('Material Receipt', 'Opening Stock')
+    extra = [dict(description=strip_html(r.get('description') or '').strip() or r.get('expense_account') or 'Chi phí phụ khác', amount=flt(r.get('amount')))
+             for r in info.get('additional_costs', []) if flt(r.get('amount'))]
+    goods = flt(info.get('basic_total')) or sum(flt(r.get('amount')) for r in rows)
+    from lotus_farm import signing
+    owner = signing._person(doc.owner)
+    details = [dict(label='Người lập', value=owner)]
+    if info.get('supplier'):
+        details.append(dict(label='Nhà cung cấp', value=frappe.db.get_value('Supplier', info['supplier'], 'supplier_name') or info['supplier']))
+    if info.get('receiver'):
+        details.append(dict(label='Người nhận', value=info['receiver']))
+    warehouses = sorted({w for r in rows for w in (r.get('source'), r.get('target'), r.get('warehouse')) if w})
+    details.append(dict(label='Kho', value=', '.join(warehouses)))
+    p = pk.page(info['company'], title, doc.name, doc.get('posting_date'), doc.docstatus, rows=rows, show_cost=show_cost,
+                counting=doctype == 'Stock Reconciliation', same_unit=len({r.get('uom') for r in rows}) == 1,
+                goods_total=goods, extra_costs=extra, grand_total=flt(info.get('incoming_total')) or goods + sum(c['amount'] for c in extra),
+                info=details, info_columns=len(details), notes=strip_html(doc.get('remarks') or info.get('notes') or '').strip())
+    p.signatures = signing.print_signatures(doc) or [pk.signature(s['title'], owner if i == 0 else '')
+                                                      for i, s in enumerate(signing.rules.chain('stock_document')['steps'])]
+    p.verify = signing.print_verification(doc)
+    p.pdf_url = '/api/method/lotus_farm.www.lotus_stock_print.download_pdf?' + urlencode({'doctype': doctype, 'name': name})
+    p.back_url, p.back_label = '/warehouse', 'Về Kho'
+    return p
+
+
+def get_context(context, doctype=None, name=None):
+    doctype = doctype or frappe.form_dict.get('doctype')
+    name = name or frappe.form_dict.get('name')
+    if doctype in PROPOSALS:
+        from lotus_farm.www.lotus_material_proposal_print import get_context as proposal_context
+        return proposal_context(context, name=name, doctype=doctype)
+    p = build(doctype, name)
+    p.toolbar = True
+    context.html = pk.render('stock.html', p)
+    context.no_cache = 1
 
 
 @frappe.whitelist()
-def download_pdf(doctype,name):
-    if doctype in ('Material Request', 'Material Requirement'):
+def download_pdf(doctype, name):
+    if doctype in PROPOSALS:
         from lotus_farm.www.lotus_material_proposal_print import download_pdf as proposal_pdf
         return proposal_pdf(name, doctype=doctype)
-    from frappe.utils.pdf import get_pdf
-    from re import sub
-    context=frappe._dict();get_context(context,doctype,name)
-    html=frappe.render_template('lotus_farm/www/lotus_stock_print.html',context)
-    content=get_pdf(html,options={'page-size':'A4','print-media-type':None})
-    frappe.local.response.filename=sub(r'[^A-Za-z0-9._-]+','_',name)[:100]+'.pdf'
-    frappe.local.response.filecontent=content
-    frappe.local.response.type='pdf'
-    frappe.local.response.display_content_as='attachment'
+    pk.send_pdf(pk.render('stock.html', build(doctype, name)), name)

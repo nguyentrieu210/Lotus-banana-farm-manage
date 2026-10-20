@@ -24,7 +24,7 @@ const routesFor=manager=>({
  'lotus_farm.hr_workspace.overview':{employees:[employee],candidates:[]},
  'lotus_farm.hr_workspace.employee_detail':{...employee,modified:'2026-10-01 00:00:00',onboarding_gaps:[],lotus_daily_rate:250000,lotus_base_salary:0},
  'lotus_farm.hr_workspace.payroll_readiness':{month:'2026-09',employees:1,employees_without_salary:[],attendance_draft_count:2,crew_pending_count:0,open_punches:0,onboarding_pending:[]},
- 'lotus_farm.hr_period.period_status':{month:'2026-09',status:'Open',future:false,blockers:[{code:'draft_attendance',label:'Phiếu công nhân sự còn nháp',count:2}]},
+ 'lotus_farm.hr_period.period_status':{month:'2026-09',status:'Open',future:false,can_send:true,print_url:'/lotus/in-luong?month=2026-09',blockers:[{code:'draft_attendance',label:'Phiếu công nhân sự còn nháp',count:2}]},
  'lotus_farm.hr_period.payroll_sheet':sheet,
  'lotus_farm.hr_payroll.payroll_run':{month:'2026-09',structure:'Lotus Giờ công - LT',entry:null,slips:[],journal_entries:[],totals:{gross:0,deductions:0,net:0}},
 })
@@ -52,7 +52,7 @@ test('payroll tab shows last month, blockers keep the close button disabled, she
  tab(view.root,'Kỳ công & bảng lương').click();await tick();await tick()
  assert.equal(calls.find(c=>c.method==='lotus_farm.hr_period.payroll_sheet').args.month,'2026-09','defaults to the month just ended')
  assert.match(text(view.root),/Phiếu công nhân sự còn nháp: 2/)
- assert.ok(button(view.root,'Khóa kỳ').disabled,'cannot close while blockers remain')
+ assert.ok(button(view.root,'Gửi duyệt khóa kỳ').disabled,'cannot send for closing while blockers remain')
  assert.match(text(view.root),/Bảng lương Tháng 09\/2026 ?Bản nháp/)
  assert.equal(view.root.querySelectorAll('.hr-steps li').length,4,'the month runs in four steps')
  sub(view.root,'Phải trả đội khoán').click();await tick()

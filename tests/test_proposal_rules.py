@@ -10,15 +10,6 @@ class ProposalRules(unittest.TestCase):
         self.assertEqual([pr.current_step(s) for s in (pr.DRAFT, *pr.WAITING, pr.APPROVED, pr.RETURNED)], [0, 1, 2, 3, None, 0])
         self.assertEqual([pr.state_after(i) for i in range(4)], [*pr.WAITING, pr.APPROVED])
 
-    def test_who_may_sign(self):
-        self.assertTrue(pr.may_sign(0, [], is_owner=True))
-        self.assertFalse(pr.may_sign(0, ['Lotus Purchase Approver'], is_owner=False), 'only the proposer sends')
-        self.assertTrue(pr.may_sign(1, ['Lotus Field Supervisor'], is_owner=False))
-        self.assertFalse(pr.may_sign(2, ['Lotus Field Supervisor'], is_owner=False))
-        self.assertTrue(pr.may_sign(3, ['Lotus Purchase Approver'], is_owner=True), 'role-authorized self approval')
-        self.assertFalse(pr.may_sign(None, ['Lotus Purchase Approver'], is_owner=True), 'nothing left to sign')
-        self.assertTrue(pr.may_sign(2, [], is_owner=False, is_admin=True))
-
     def test_editing_rules(self):
         self.assertEqual(pr.editable(pr.DRAFT), 'all')
         self.assertEqual(pr.editable(pr.RETURNED), 'all')

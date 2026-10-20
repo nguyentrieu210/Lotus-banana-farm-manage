@@ -27,10 +27,27 @@ def _approver():
     return "Lotus Purchase Approver" in roles or frappe.session.user == "Administrator"
 
 
+def _named(doc):
+    """Signing status when the order was sent to a named approver; None for orders sent before that."""
+    from lotus_farm import signing
+    info = signing.status(doc, "purchase_order")
+    return info if info["round"] and not info["returned"] else None
+
+
 def can_approve(doc):
-    return bool(doc.docstatus == 0 and doc.get("lotus_approval_status") == PENDING
-                and _approver()
-                and doc.has_permission("submit"))
+    if not (doc.docstatus == 0 and doc.get("lotus_approval_status") == PENDING and doc.has_permission("submit")):
+        return False
+    named = _named(doc)
+    # Only the approver named when the order was sent may approve or reject it.
+    return bool(named["can_sign"]) if named else _approver()
+
+
+@frappe.whitelist()
+def approver_options(company):
+    access()
+    _company(company)
+    from lotus_farm import signing
+    return signing.candidates("purchase_order", company)
 
 
 def _ensure_version(doc, modified):
@@ -138,7 +155,8 @@ def create_request(company, warehouse, expected_date, items, notes=""):
 
 
 @frappe.whitelist(methods=["POST"])
-def request_approval(name, modified):
+def request_approval(name, modified, approver=None):
+    """Send the order to one named approver, who is notified and is the only one who may approve it."""
     access()
     doc = _po(name)
     doc.check_permission("write")
@@ -147,6 +165,8 @@ def request_approval(name, modified):
         frappe.throw("Đơn đã được gửi duyệt.")
     if not doc.items or any(flt(r.qty) <= 0 or flt(r.rate) <= 0 for r in doc.items):
         frappe.throw("Cần có số lượng và đơn giá hợp lệ trước khi gửi duyệt.")
+    from lotus_farm import signing
+    signing.start(doc, {"APPROVE": approver} if approver else {})
     doc.lotus_approval_status = PENDING
     doc.lotus_requested_by = frappe.session.user
     doc.lotus_requested_at = now_datetime()
@@ -169,6 +189,9 @@ def approve_order(name, modified, sign_token=None):
     challenge = _assert_signer_qr(sign_token, name, modified)
     if challenge:
         challenge.db_set("used_at", now_datetime(), update_modified=False)
+    if _named(doc):
+        from lotus_farm import signing
+        signing.sign(doc, record=False)  # the approval event and signed PDF come from archive_approved_purchase_pdf
     doc.lotus_approved_by = frappe.session.user
     doc.lotus_approved_at = now_datetime()
     doc.submit()
@@ -191,6 +214,9 @@ def reject_order(name, modified, reason):
     if not can_approve(doc):
         frappe.throw("Không được từ chối đơn này.", frappe.PermissionError)
     doc.check_permission("write")
+    if _named(doc):
+        from lotus_farm import signing
+        signing.send_back(doc, reason)
     doc.lotus_approval_status = REJECTED
     doc.lotus_reject_reason = reason
     doc.save()
@@ -248,10 +274,21 @@ def detail(name):
                can_cancel=doc.docstatus == 1 and doc.status not in ("Closed", "Stopped", "Cancelled", "Completed")
                    and _approver() and doc.has_permission("cancel"),
                amount=flt(doc.grand_total), can_approve=can_approve(doc),
+               signing=_signing_summary(doc),
                can_request_approval=doc.docstatus == 0
                 and (doc.get("lotus_approval_status") or DRAFT) in (DRAFT, REJECTED)
                 and doc.has_permission("write"))
     return out
+
+
+def _signing_summary(doc):
+    from lotus_farm import signing
+    info = signing.status(doc, "purchase_order")
+    if not info["round"]:
+        return None
+    return dict(steps=[dict(key=s["key"], title=s["title"], name=s["name"], state=s["state"], signed_at=s["signed_at"]) for s in info["steps"]],
+                waiting_for=info["steps"][info["current"]]["name"] if info["current"] is not None and not info["returned"] else "",
+                approver=info["steps"][-1]["assignee"])
 
 
 @frappe.whitelist()

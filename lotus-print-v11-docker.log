@@ -1,0 +1,44 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.mobile-print-v11
+#1 transferring dockerfile: 235B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/lotus-pwa-print:v10-20261017
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 92B done
+#3 DONE 0.1s
+
+#4 [internal] load build context
+#4 DONE 0.0s
+
+#5 [1/2] FROM docker.io/library/lotus-pwa-print:v10-20261017@sha256:941f7da7b44a5464c456b35c5ba19bfd7b3515a6e77b207d09dd23971955b4f3
+#5 resolve docker.io/library/lotus-pwa-print:v10-20261017@sha256:941f7da7b44a5464c456b35c5ba19bfd7b3515a6e77b207d09dd23971955b4f3 0.1s done
+#5 DONE 0.1s
+
+#4 [internal] load build context
+#4 transferring context: 3.63MB 0.4s done
+#4 DONE 0.6s
+
+#5 [1/2] FROM docker.io/library/lotus-pwa-print:v10-20261017@sha256:941f7da7b44a5464c456b35c5ba19bfd7b3515a6e77b207d09dd23971955b4f3
+#5 DONE 1.3s
+
+#6 [2/2] COPY --chown=frappe:frappe lotus_farm/public/frontend /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend
+#6 DONE 0.1s
+
+#7 exporting to image
+#7 exporting layers
+#7 exporting layers 0.4s done
+#7 exporting manifest sha256:a9484f7d9c60e6f10dbf8a44f64e19a277c17db69dcf72b7fa3e34455c3726c2 0.0s done
+#7 exporting config sha256:368abe8d1958260216efeee93e1c9b2c546401b3e3c18705fb47050b8e35aabd 0.0s done
+#7 exporting attestation manifest sha256:5ac636bbf1e824b1229ef11d6f6f53326e3ffb7c9cbae7d871a9f89c50b4eb63 0.0s done
+#7 exporting manifest list sha256:3cb8552bee72ac60c9e6a7ad5c50ee034e48ba950ae9746fb099f8cf35bd1262
+#7 exporting manifest list sha256:3cb8552bee72ac60c9e6a7ad5c50ee034e48ba950ae9746fb099f8cf35bd1262 0.0s done
+#7 naming to docker.io/library/lotus-pwa-print:v11-20261017 done
+#7 unpacking to docker.io/library/lotus-pwa-print:v11-20261017
+#7 unpacking to docker.io/library/lotus-pwa-print:v11-20261017 0.2s done
+#7 DONE 0.9s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/jas52mgmmi1cmtdrkokepxc57

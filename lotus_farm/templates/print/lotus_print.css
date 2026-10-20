@@ -80,7 +80,7 @@
 
 /* Footer (wkhtmltopdf repeats #footer-html on each page) and watermark */
 .lp-footer{margin-top:14px}
-.lp-watermark{position:absolute;top:62mm;left:10%;width:80%;text-align:center;font-size:64pt;font-weight:bold;letter-spacing:6px;color:rgba(29,36,48,.07);-webkit-transform:rotate(-24deg);transform:rotate(-24deg);pointer-events:none;z-index:0}
+.lp-watermark{position:absolute;top:62mm;left:10%;width:80%;text-align:center;font-size:64pt;font-weight:bold;letter-spacing:6px;color:rgba(29,36,48,.08);-webkit-transform:rotate(-24deg);transform:rotate(-24deg);pointer-events:none;z-index:0}
 .lp-sheet>*{position:relative;z-index:1}
 .lp-sheet>.lp-watermark{z-index:0}
 
@@ -97,3 +97,12 @@
  .lp-toolbar a,.lp-toolbar button{margin:2px;min-height:40px}
  .lp-sheet{zoom:var(--lp-zoom,1)}
 }
+.lp-toolbar__note{margin:8px 0 0;font-size:13px;color:#4a5361}
+.lp-section{margin:14px 0 6px;font-size:10.5pt;font-weight:bold;page-break-after:avoid;break-after:avoid}
+.lp-sign>div.lp-sign__qr{width:26mm;padding:0 0 0 6px;border-left:1px dashed #c3c9d0}
+.lp-sign__qr img{width:22mm;height:22mm;max-width:none;max-height:none;display:block;margin:2px auto}
+.lp-grid th,.lp-grid td{padding:3px 1px;font-size:7pt}
+.lp-grid th small{display:block;font-size:6pt;font-weight:normal}
+.lp-grid .lp-off{background:#e3e6ea!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lp-table .center{text-align:center}
+.lp-banner{margin:0 0 8px;padding:4px 8px;border:1.5px dashed #8a919c;text-align:center;font-weight:bold;font-size:9pt;letter-spacing:1px;color:#4a5361}

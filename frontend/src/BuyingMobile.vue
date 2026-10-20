@@ -20,6 +20,7 @@ import LotusMobileInput from './components/LotusMobileInput.vue'
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {call, setCSRF, upload} from './api'
 import MobileLinkField from './components/MobileLinkField.vue'
+import SignerPicker from './components/SignerPicker.vue'
 import {unitLabel} from './units'
 import {useMobileViewport} from './use-mobile-viewport'
 import './buying-mobile.css'
@@ -159,9 +160,13 @@ function useRequest(name){
  selectedRequest.value=name
  draft.value=purchaseFromRequest(draft.value,requests.value.find(r=>r.name===name))
 }
+// The order goes to one named approver, picked from HR when sending; only they are notified and may approve.
+const approverOptions=ref(null),approverChoice=ref({})
 async function openOrder(name){
  busy.value=true;resetFeedback()
- try{detail.value=await api('detail',{name});rejectReason.value='';newEta.value=detail.value.revised_delivery_date||detail.value.expected_date||'';deliveryReason.value='';closeReason.value='';cancelReason.value='';showReschedule.value=false;openView('detail')}
+ try{detail.value=await api('detail',{name})
+  if(detail.value.can_request_approval){approverOptions.value=await api('approver_options',{company:company.value});approverChoice.value=detail.value.signing?.approver?{APPROVE:detail.value.signing.approver}:{}}
+  rejectReason.value='';newEta.value=detail.value.revised_delivery_date||detail.value.expected_date||'';deliveryReason.value='';closeReason.value='';cancelReason.value='';showReschedule.value=false;openView('detail')}
  catch(e){error.value=e.message}finally{busy.value=false}
 }
 function editOrder(){
@@ -194,13 +199,14 @@ async function applyAction(action){
   const args={name:d.name,modified:d.modified}
   if(action==='approve_order'&&qrSignToken.value)args.sign_token=qrSignToken.value
   if(action==='reject_order')args.reason=rejectReason.value.trim()
+  if(action==='request_approval')args.approver=approverChoice.value.APPROVE
   if(action==='reschedule_order'){args.expected_date=newEta.value;args.reason=deliveryReason.value.trim()}
   if(action==='close_order')args.reason=closeReason.value.trim()
   if(action==='cancel_order')args.reason=cancelReason.value.trim()
   await api(action,args,true)
   await refresh();await openOrder(d.name)
   notice.value={
-   request_approval:'Đã gửi cho người duyệt.',approve_order:'Đã duyệt đơn mua.',reject_order:'Đã trả lại đơn để sửa.',
+   request_approval:'Đã gửi và báo cho người duyệt.',approve_order:'Đã duyệt đơn mua.',reject_order:'Đã trả lại đơn để sửa.',
    mark_order_sent:'Đã ghi nhận gửi đơn cho nhà cung cấp.',confirm_supplier_order:'Đã ghi nhận NCC xác nhận.',
    reschedule_order:'Đã cập nhật ngày giao mới.',close_order:'Đã đóng phần hàng không giao.',
    cancel_order:'Đã hủy đơn mua.'
@@ -369,7 +375,10 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <MobilePurchaseOrderDetail :order="detail" :currency="catalog?.currency||'VND'" :warehouses="warehouses"/>
    <div v-if="detail.can_write&&['Nháp','Từ chối'].includes(detail.approval_status)">
     <LotusMobileButton class="buy-outline" @click="editOrder()">Sửa đơn</LotusMobileButton></div>
-   <LotusMobileButton v-if="detail.can_request_approval" class="buy-primary" :disabled="saving||!online" @click="applyAction('request_approval')">Gửi duyệt đơn mua</LotusMobileButton>
+   <template v-if="detail.can_request_approval">
+    <SignerPicker v-model="approverChoice" :options="approverOptions" :disabled="saving"/>
+    <LotusMobileButton class="buy-primary" :disabled="saving||!online||!approverChoice.APPROVE" @click="applyAction('request_approval')">Gửi duyệt đơn mua</LotusMobileButton>
+   </template>
    <div v-if="detail.can_initial" class="buy-card">
     <p v-if="detail.initials_by" class="buy-muted">Đã ký nháy: {{detail.initials_by}} · {{detail.initials_at}}</p>
     <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="initialPurchaseOrder()">Ký nháy xác nhận đã kiểm tra</LotusMobileButton>
@@ -380,7 +389,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <div class="buy-field"><label>Lý do từ chối</label><LotusMobileInput type="textarea" v-model="rejectReason" rows="2" placeholder="Nêu lý do để người lập sửa lại…"/></div>
     <LotusMobileButton class="buy-danger" :disabled="saving||!online||rejectReason.trim().length<3" @click="applyAction('reject_order')">Trả lại đơn</LotusMobileButton>
    </div>
-   <p v-if="detail.approval_status==='Chờ duyệt'&&!detail.can_approve" class="buy-muted">Đơn đang chờ tài khoản có quyền duyệt hoặc chưa đủ điều kiện để duyệt.</p>
+   <p v-if="detail.approval_status==='Chờ duyệt'&&!detail.can_approve" class="buy-muted">{{detail.signing?.waiting_for?'Đang chờ '+detail.signing.waiting_for+' duyệt.':'Đơn đang chờ tài khoản có quyền duyệt hoặc chưa đủ điều kiện để duyệt.'}}</p>
    <section v-if="detail.docstatus===1" class="buy-order-actions">
     <LotusMobileButton v-if="detail.can_print" class="buy-outline" :disabled="saving" @click="openPurchasePdf()">Xem / in đơn PDF</LotusMobileButton>
     <LotusMobileButton v-if="detail.can_print" class="buy-outline" :disabled="saving||!online" @click="sharePdf()">Chia sẻ PDF qua Zalo / ứng dụng khác</LotusMobileButton>

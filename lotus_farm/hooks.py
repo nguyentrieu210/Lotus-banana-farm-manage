@@ -148,7 +148,7 @@ for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
     _old = doc_events[_name].get('validate',[])
     if isinstance(_old,str):_old=[_old]
     doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
-website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'

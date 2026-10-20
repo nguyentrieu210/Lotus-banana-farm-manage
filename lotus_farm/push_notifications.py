@@ -174,7 +174,8 @@ def mark_read(app, name):
 def _add_alert(user, app, title, body, url, doctype="", docname="", key=""):
     if not user or user == "Guest" or app not in APPS:
         return None
-    if not url.startswith(APPS[app]) or url.startswith("//") or "\n" in url:
+    # A path of that PWA, or a Lotus print page (signing pages open from any app).
+    if not (url.startswith(APPS[app]) or url.startswith("/lotus/in-")) or url.startswith("//") or "\n" in url:
         raise ValueError("Push target must remain in the matching PWA")
     digest = hashlib.sha256(f"{user}|{app}|{key or title + docname}".encode()).hexdigest()
     if frappe.db.exists(ALERT, {"event_key": digest}):
@@ -249,6 +250,8 @@ def _visible_to(user, doc):
 
 def _recipients(doc, event):
     users = set()
+    if doc.doctype == "Purchase Order" and frappe.db.exists("Lotus Sign Request", {"document_type": doc.doctype, "document_name": doc.name}):
+        return []  # sent to a named approver: lotus_farm.signing notifies that person and the requester
     if doc.doctype == "Purchase Order":
         if event == "pending":
             users.update(frappe.get_all("Has Role", filters={"role": "Lotus Purchase Approver"},

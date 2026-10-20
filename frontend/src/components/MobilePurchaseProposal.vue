@@ -1,11 +1,13 @@
 <script setup>
 // Phiếu đề xuất mua vật tư (online) inside the Mua hàng PWA: list, form following the farm's Excel
 // columns, and the four-step signing (proposer → department → accounting/purchasing → director).
+// The proposer names the three later signers when sending; each is notified on their turn.
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusMobileButton from './LotusMobileButton.vue'
 import LotusMobileInput from './LotusMobileInput.vue'
 import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import MobileLinkField from './MobileLinkField.vue'
+import SignerPicker from './SignerPicker.vue'
 import {call} from '../api'
 import {unitLabel} from '../units'
 import '../purchase-proposal-mobile.css'
@@ -14,6 +16,10 @@ const props=defineProps({company:{type:String,default:''},online:{type:Boolean,d
 const emit=defineEmits(['notice','error','title'])
 const api=(name,args={},write=false)=>call('lotus_farm.purchase_proposal.'+name,args,write)
 const mode=ref('list'),scope=ref('todo'),rows=ref([]),form=ref(null),detail=ref(null),busy=ref(false),saving=ref(false),returnReason=ref(''),setup=ref(null)
+const signerOptions=ref(null),signers=ref({}),reassignTo=ref('')
+const signersMissing=computed(()=>(signerOptions.value?.steps||[]).slice(1).filter(s=>!signers.value[s.key]).map(s=>s.title))
+const waitingStep=computed(()=>detail.value&&detail.value.step>0?detail.value.signatures[detail.value.step]:null)
+const reassignOptions=computed(()=>(signerOptions.value?.candidates?.[waitingStep.value?.action]||[]).filter(c=>c.user!==waitingStep.value?.assignee).map(c=>({value:c.user,label:c.name,subtitle:c.designation||c.user})))
 const scopes=[['todo','Chờ tôi ký'],['mine','Của tôi'],['all','Tất cả']]
 const money=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:0})+' đ'
 const number=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
@@ -30,16 +36,22 @@ const fail=e=>{emit('error',e.message||String(e))}
 async function load(){if(!props.company)return;busy.value=true
  try{rows.value=await api('proposals',{company:props.company,view:scope.value})}catch(e){fail(e)}finally{busy.value=false}}
 async function ensureSetup(){if(!setup.value)setup.value=await api('form_data',{company:props.company})}
+async function ensureSigners(chosen){
+ if(!signerOptions.value)signerOptions.value=await api('signer_options',{company:props.company})
+ if(chosen)signers.value={...chosen}
+}
 function blankLine(previous){return {key:Math.random().toString(36).slice(2),item_code:'',uom:'',qty:'',rate:'',stock:null,lotus_specification:'',
  // A new line repeats the needed date and purpose of the line above, as most Excel rows do.
  schedule_date:previous?.schedule_date||props.today,lotus_purpose:previous?.lotus_purpose||'',lotus_supplier_hint:'',lotus_notes:''}}
 async function newProposal(){busy.value=true
- try{await ensureSetup();form.value={name:null,modified:null,edit:'all',reason:'',department:setup.value.department||'',warehouse:setup.value.warehouses?.[0]?.name||'',items:[blankLine()]};mode.value='form';emit('title','Lập đề xuất mua')}
+ try{await ensureSetup();await ensureSigners({});form.value={name:null,modified:null,edit:'all',reason:'',department:setup.value.department||'',warehouse:setup.value.warehouses?.[0]?.name||'',items:[blankLine()]};mode.value='form';emit('title','Lập đề xuất mua')}
  catch(e){fail(e)}finally{busy.value=false}}
 async function open(name){busy.value=true
- try{detail.value=await api('detail',{name});returnReason.value='';mode.value='detail';emit('title',detail.value.name)}catch(e){fail(e)}finally{busy.value=false}}
+ try{detail.value=await api('detail',{name});returnReason.value='';reassignTo.value=''
+  if(detail.value.needs_signers&&detail.value.can_sign||detail.value.can_reassign)await ensureSigners(detail.value.signers)
+  mode.value='detail';emit('title',detail.value.name)}catch(e){fail(e)}finally{busy.value=false}}
 async function edit(){busy.value=true
- try{await ensureSetup();const d=detail.value;form.value={name:d.name,modified:d.modified,edit:d.edit,reason:d.reason,department:d.department,warehouse:d.warehouse||d.items[0]?.warehouse||'',
+ try{await ensureSetup();const d=detail.value;if(d.edit==='all')await ensureSigners(d.signers);form.value={name:d.name,modified:d.modified,edit:d.edit,reason:d.reason,department:d.department,warehouse:d.warehouse||d.items[0]?.warehouse||'',
   items:d.items.map(r=>({key:r.name,...r}))};mode.value='form';emit('title','Sửa '+d.name)}catch(e){fail(e)}finally{busy.value=false}}
 async function refreshStock(line){
  if(!line.item_code||!form.value.warehouse){line.stock=null;return}
@@ -56,16 +68,18 @@ async function save(andSign=false){
  saving.value=true
  try{
   let result=await api('save_proposal',{company:props.company,values:payload(),name:form.value.name,modified:form.value.modified},true)
-  if(andSign)result=await api('sign',{name:result.name,modified:result.modified},true)
+  if(andSign)result=await api('sign',{name:result.name,modified:result.modified,signers:signers.value},true)
   detail.value=result;mode.value='detail';emit('title',result.name)
-  emit('notice',andSign?'Đã ký và gửi '+result.name+' cho '+(result.step_title||'người duyệt')+'.':'Đã lưu nháp '+result.name+'.')
+  emit('notice',andSign?'Đã ký và gửi '+result.name+' cho '+(result.waiting_for||result.step_title||'người duyệt')+'.':'Đã lưu nháp '+result.name+'.')
  }catch(e){fail(e)}finally{saving.value=false}}
 async function act(action){
  if(saving.value)return
  saving.value=true
  try{
   const d=detail.value
-  if(action==='sign'){detail.value=await api('sign',{name:d.name,modified:d.modified},true);emit('notice',detail.value.docstatus===1?'Đã phê duyệt '+d.name+'. Phiếu chuyển sang Mua hàng để lập đơn.':'Đã ký bước '+d.step_title+'.')}
+  if(action==='sign'){detail.value=await api('sign',{name:d.name,modified:d.modified,signers:d.needs_signers?signers.value:undefined},true)
+   emit('notice',detail.value.docstatus===1?'Đã phê duyệt '+d.name+'. Phiếu chuyển sang Mua hàng để lập đơn.':'Đã ký. Đã báo '+(detail.value.waiting_for||detail.value.step_title)+' ký tiếp.')}
+  if(action==='reassign'){detail.value=await api('reassign_signer',{name:d.name,modified:d.modified,step:waitingStep.value.action,user:reassignTo.value},true);reassignTo.value='';emit('notice','Đã chuyển bước '+d.step_title+' cho '+detail.value.waiting_for+'.')}
   if(action==='return'){detail.value=await api('return_proposal',{name:d.name,modified:d.modified,reason:returnReason.value},true);emit('notice','Đã trả lại '+d.name+' cho người đề xuất.')}
   if(action==='delete'){await api('delete_proposal',{name:d.name,modified:d.modified},true);emit('notice','Đã xóa nháp '+d.name+'.');back();return}
  }catch(e){fail(e)}finally{saving.value=false}}
@@ -124,8 +138,10 @@ defineExpose({back,newProposal,open})
   </div>
   <LotusMobileButton v-if="!pricesOnly" class="buy-outline" @click="addLine">+ Thêm vật tư</LotusMobileButton>
   <div class="buy-card pp-total"><span>Cộng {{form.items.length}} dòng</span><b>{{total?money(total):'Chưa có giá dự kiến'}}</b></div>
+  <SignerPicker v-if="!pricesOnly" v-model="signers" :options="signerOptions" :disabled="saving"/>
   <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="save(false)">{{saving?'Đang lưu…':'Lưu nháp'}}</LotusMobileButton>
-  <LotusMobileButton v-if="!pricesOnly" class="buy-primary" :disabled="saving||!online" @click="save(true)">Ký và gửi phụ trách bộ phận</LotusMobileButton>
+  <LotusMobileButton v-if="!pricesOnly" class="buy-primary" :disabled="saving||!online||signersMissing.length>0" @click="save(true)">Ký và gửi phụ trách bộ phận</LotusMobileButton>
+  <p v-if="!pricesOnly&&signersMissing.length" class="buy-muted">Chọn người ký: {{signersMissing.join(', ')}} để gửi.</p>
  </template>
 
  <template v-if="mode==='detail'&&detail">
@@ -139,7 +155,7 @@ defineExpose({back,newProposal,open})
   <ol class="pp-steps" aria-label="Các bước ký">
    <li v-for="(s,i) in detail.signatures" :key="s.action" :class="{done:!!s.signed_at,current:detail.step===i&&!s.signed_at}">
     <span class="pp-steps__mark" aria-hidden="true">{{s.signed_at?'✓':i+1}}</span>
-    <div><b>{{s.title}}</b><small>{{s.signed_at?s.name+' · '+vnDate(s.signed_at)+' '+String(s.signed_at).slice(11,16):(detail.step===i?'Đang chờ ký':'Chưa đến lượt')}}</small></div>
+    <div><b>{{s.title}}</b><small>{{s.signed_at?s.name+' · '+vnDate(s.signed_at)+' '+String(s.signed_at).slice(11,16):detail.needs_signers?'Chọn người ký khi gửi':(s.name||'Chưa chọn')+' · '+(detail.step===i?'đang chờ ký':'chưa đến lượt')}}</small></div>
     <img v-if="s.image" :src="s.image" :alt="'Chữ ký '+s.name" class="pp-steps__sign">
    </li>
   </ol>
@@ -153,13 +169,18 @@ defineExpose({back,newProposal,open})
   <div class="buy-card pp-total"><span>Cộng {{detail.items.length}} dòng</span><b>{{detail.total?money(detail.total):'Chưa có giá dự kiến'}}</b></div>
   <a class="buy-outline pp-print" :href="detail.print_url" target="_blank" rel="noopener">Xem / in phiếu đề xuất (PDF)</a>
   <LotusMobileButton v-if="detail.edit" class="buy-outline" :disabled="saving" @click="edit">{{detail.edit==='prices'?'Cập nhật đơn giá / nhà cung cấp':'Sửa phiếu'}}</LotusMobileButton>
-  <LotusMobileButton v-if="detail.can_sign" class="buy-primary" :disabled="saving||!online" @click="act('sign')">{{detail.step===0?'Ký và gửi phụ trách bộ phận':detail.step===3?'Ký phê duyệt (Giám đốc)':'Ký xác nhận: '+detail.step_title}}</LotusMobileButton>
+  <SignerPicker v-if="detail.needs_signers&&detail.can_sign" v-model="signers" :options="signerOptions" :disabled="saving"/>
+  <LotusMobileButton v-if="detail.can_sign" class="buy-primary" :disabled="saving||!online||detail.needs_signers&&signersMissing.length>0" @click="act('sign')">{{detail.step===0?'Ký và gửi phụ trách bộ phận':detail.step===3?'Ký phê duyệt (Giám đốc)':'Ký xác nhận: '+detail.step_title}}</LotusMobileButton>
+  <div v-if="detail.can_reassign&&reassignOptions.length" class="buy-card">
+   <div class="buy-field"><label>Chuyển bước “{{detail.step_title}}” cho người khác</label><MobileLinkField :model-value="reassignTo" :options="reassignOptions" :searchable="reassignOptions.length>6" placeholder="Chọn người ký thay…" aria-label="Người ký thay" @update:modelValue="reassignTo=$event"/></div>
+   <LotusMobileButton class="buy-outline" :disabled="saving||!online||!reassignTo" @click="act('reassign')">Chuyển người ký</LotusMobileButton>
+  </div>
   <div v-if="detail.can_return" class="buy-card">
    <LotusMobileInput v-model="returnReason" label="Lý do trả lại" type="textarea" :rows="2" maxlength="500" placeholder="Nêu rõ cần sửa gì…"/>
    <LotusMobileButton class="buy-danger" :disabled="saving||!online||returnReason.trim().length<3" @click="act('return')">Trả lại người đề xuất</LotusMobileButton>
   </div>
   <LotusMobileButton v-if="detail.can_delete" class="buy-danger" :disabled="saving" @click="act('delete')">Xóa phiếu nháp</LotusMobileButton>
-  <p v-if="!detail.can_sign&&detail.docstatus===0&&detail.step!==null" class="buy-muted">Đang chờ {{detail.step_title}} ký.</p>
+  <p v-if="!detail.can_sign&&detail.docstatus===0&&detail.step" class="buy-muted">Đang chờ {{detail.waiting_for||detail.step_title}} ({{detail.step_title}}) ký.</p>
  </template>
 </section>
 </template>

@@ -1,33 +1,54 @@
-import frappe
-from base64 import b64encode
-from pathlib import Path
+"""Bảng công tháng in Lotus Print, landscape (route /lotus/in-cong). kind: staff | crew.
+
+Signatures are those of the month's timekeeping period (Người lập, Phụ trách nhân sự, Giám đốc) once it
+is sent for approval (lotus_farm.hr_period.send_period), with the QR to verify the paper copy.
+"""
 from urllib.parse import urlencode
-import re
-no_cache=1
+
+import frappe
+
+from lotus_farm import print_kit as pk
+
+no_cache = 1
+CODES = {'Present': 'X', 'Absent': 'V', 'Half Day': '½', 'Work From Home': 'TX', 'On Leave': 'P'}
 
 
-def get_context(context,company=None,month=None,kind=None,farm=None):
-    from lotus_farm.timekeeping import monthly,crew_monthly,_company
-    args=frappe.form_dict
-    company=company or args.get('company');month=month or args.get('month');kind=kind or args.get('kind') or 'staff';farm=farm or args.get('farm')
-    if kind not in ('staff','crew'):frappe.throw('Loại bảng công không hợp lệ.')
-    dt='Attendance' if kind=='staff' else 'Lotus Crew Attendance'
-    if not frappe.has_permission(dt,'print'):frappe.throw('Chưa có quyền in bảng công.',frappe.PermissionError)
-    doc=_company(company)
-    context.data=monthly(company,month) if kind=='staff' else crew_monthly(company,month,farm)
-    context.info=frappe._dict(company=company);context.project_label=re.sub(r'^\s*dự\s+án\s+chuối\b','VƯỜN CHUỐI',doc.get('lotus_print_project') or '',flags=re.IGNORECASE);context.farm_label=doc.get('lotus_print_farm') or ''
-    context.logo_data='data:image/jpeg;base64,'+b64encode(Path(frappe.get_app_path('lotus_farm','public','images','lotus-agritech.jpg')).read_bytes()).decode('ascii')
-    context.kind=kind;context.month_label=str(month)[5:7]+'/'+str(month)[:4]
-    context.label='Nhân sự chính thức' if kind=='staff' else 'Đội khoán'
-    context.codes={'Present':'X','Absent':'V','Half Day':'½','Work From Home':'TX','On Leave':'P'}
-    context.number=lambda v:format(float(v or 0),',.3f').rstrip('0').rstrip('.').replace(',','_').replace('.',',').replace('_','.')
-    context.pdf_url='/api/method/lotus_farm.www.lotus_timekeeping_print.download_pdf?'+urlencode(dict(company=company,month=month,kind=kind,**({'farm':farm} if farm else {})))
-    context.no_cache=1
+def build(company, month, kind='staff', farm=None):
+    from lotus_farm.timekeeping import _company, crew_monthly, monthly
+    if kind not in ('staff', 'crew'):
+        frappe.throw('Loại bảng công không hợp lệ.')
+    if not frappe.has_permission('Attendance' if kind == 'staff' else 'Lotus Crew Attendance', 'print'):
+        frappe.throw('Chưa có quyền in bảng công.', frappe.PermissionError)
+    _company(company)
+    data = monthly(company, month) if kind == 'staff' else crew_monthly(company, month, farm)
+    holidays = data.get('holidays') or {}
+    days = [dict(day=d, off=('CN' if holidays.get(str(d)) else 'L') if str(d) in holidays else '') for d in range(1, data['days'] + 1)]
+    year, number = str(month).split('-')
+    title = 'BẢNG CÔNG THÁNG ' + number + '/' + year
+    p = pk.page(company, title, ('BC-' if kind == 'staff' else 'BCK-') + month, None, landscape=True, staff=kind == 'staff',
+                rows=data['rows'], day_list=days, codes=CODES, info_columns=3,
+                info=[dict(label='Kỳ công', value=number + '/' + year), dict(label='Phạm vi', value='Nhân sự chính thức' if kind == 'staff' else 'Đội khoán'),
+                      dict(label='Trạng thái kỳ', value='Đã khóa' if data.get('period_closed') else 'Đang mở')])
+    p.status = 'Đã khóa kỳ' if data.get('period_closed') else 'Kỳ đang mở'
+    p.watermark = None if data.get('period_closed') else 'BẢN NHÁP'
+    from lotus_farm import hr_period, signing
+    period = hr_period._period(company, month)
+    titles = [s['title'] for s in signing.rules.chain('timekeeping_period')['steps']]
+    p.signatures = (signing.print_signatures(period) if period else []) or [pk.signature(t) for t in titles]
+    p.verify = signing.print_verification(period) if period else None
+    p.pdf_url = '/api/method/lotus_farm.www.lotus_timekeeping_print.download_pdf?' + urlencode(dict(company=company, month=month, kind=kind, **({'farm': farm} if farm else {})))
+    p.back_url, p.back_label = '/lotus/cham-cong', 'Về chấm công'
+    return p
+
+
+def get_context(context, company=None, month=None, kind=None, farm=None):
+    args = frappe.form_dict
+    p = build(company or args.get('company'), month or args.get('month'), kind or args.get('kind') or 'staff', farm or args.get('farm'))
+    p.toolbar = True
+    context.html = pk.render('timesheet.html', p)
+    context.no_cache = 1
 
 
 @frappe.whitelist()
-def download_pdf(company,month,kind='staff',farm=None):
-    from frappe.utils.pdf import get_pdf
-    context=frappe._dict();get_context(context,company,month,kind,farm)
-    content=get_pdf(frappe.render_template('lotus_farm/www/lotus_timekeeping_print.html',context),options={'page-size':'A4','orientation':'Landscape','print-media-type':None})
-    frappe.local.response.filename='bang-cong-'+kind+'-'+str(month)+'.pdf';frappe.local.response.filecontent=content;frappe.local.response.type='pdf';frappe.local.response.display_content_as='attachment'
+def download_pdf(company, month, kind='staff', farm=None):
+    pk.send_pdf(pk.render('timesheet.html', build(company, month, kind, farm)), 'bang-cong-' + kind + '-' + str(month), landscape=True)

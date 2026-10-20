@@ -3,12 +3,10 @@
 Four signatures in order, as on the farm's Excel form: proposer, head of department,
 accounting / purchasing, director. The director's signature approves the request.
 """
-STEPS = (
-    dict(action='PROPOSE', title='Người đề xuất', roles=()),
-    dict(action='DEPARTMENT', title='Phụ trách bộ phận', roles=('Lotus Farm Manager', 'Lotus Field Supervisor', 'Lotus Warehouse Manager')),
-    dict(action='PURCHASING', title='Phòng Kế toán / Mua hàng', roles=('Lotus Purchasing Buyer', 'Purchase Manager', 'Accounts User', 'Accounts Manager')),
-    dict(action='APPROVE', title='Giám đốc phê duyệt', roles=('Lotus Purchase Approver',)),
-)
+from lotus_farm.signing_rules import chain as _chain
+
+# Who signs each step is picked by name when sending (lotus_farm.signing).
+STEPS = tuple(dict(action=s['key'], title=s['title'], roles=s['roles']) for s in _chain('purchase_proposal')['steps'])
 DRAFT = 'Nháp'
 RETURNED = 'Trả lại'
 APPROVED = 'Đã duyệt'
@@ -27,16 +25,6 @@ def current_step(state):
 
 def state_after(step):
     return WAITING[step] if step < len(WAITING) else APPROVED
-
-
-def may_sign(step, roles, is_owner, is_admin=False):
-    if step is None:
-        return False
-    if is_admin:
-        return True
-    if step == 0:
-        return is_owner
-    return bool(set(STEPS[step]['roles']) & set(roles))
 
 
 def editable(state, step_roles_match=False):

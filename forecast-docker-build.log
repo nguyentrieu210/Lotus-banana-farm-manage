@@ -1,0 +1,52 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.forecast-desktop-v1
+#1 transferring dockerfile: 580B 0.0s done
+#1 DONE 0.2s
+
+#2 [internal] load metadata for docker.io/library/lotus-work-review:v1-20261017
+#2 DONE 0.4s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 92B 0.0s done
+#3 DONE 0.2s
+
+#4 [1/4] FROM docker.io/library/lotus-work-review:v1-20261017@sha256:94b1d61b277bef9a5b72296aa7a9ec7b064c1d8c4b429a719e29edca812f2af5
+#4 resolve docker.io/library/lotus-work-review:v1-20261017@sha256:94b1d61b277bef9a5b72296aa7a9ec7b064c1d8c4b429a719e29edca812f2af5
+#4 resolve docker.io/library/lotus-work-review:v1-20261017@sha256:94b1d61b277bef9a5b72296aa7a9ec7b064c1d8c4b429a719e29edca812f2af5 0.9s done
+#4 ...
+
+#5 [internal] load build context
+#5 transferring context: 3.72MB 0.9s done
+#5 DONE 1.1s
+
+#4 [1/4] FROM docker.io/library/lotus-work-review:v1-20261017@sha256:94b1d61b277bef9a5b72296aa7a9ec7b064c1d8c4b429a719e29edca812f2af5
+#4 DONE 16.3s
+
+#6 [2/4] COPY --chown=frappe:frappe lotus_farm/console.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/console.py
+#6 DONE 1.2s
+
+#7 [3/4] COPY --chown=frappe:frappe lotus_farm/forecast_workspace.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/forecast_workspace.py
+#7 DONE 1.3s
+
+#8 [4/4] COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+#8 DONE 1.2s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 2.5s done
+#9 exporting manifest sha256:454459bf4b2cbcc662672a3cef914a4f1db23a105e0b67cb591c26430f2d6d00
+#9 exporting manifest sha256:454459bf4b2cbcc662672a3cef914a4f1db23a105e0b67cb591c26430f2d6d00 0.4s done
+#9 exporting config sha256:0d0f5650a267746816e3164e83313a4c519a622ddb4d4278eaa834f8626cd34d
+#9 exporting config sha256:0d0f5650a267746816e3164e83313a4c519a622ddb4d4278eaa834f8626cd34d 0.2s done
+#9 exporting attestation manifest sha256:8a47b2fe97d9909e720ae972e21f0d58a063fe7e10e8308d85dc572aaa90a772
+#9 exporting attestation manifest sha256:8a47b2fe97d9909e720ae972e21f0d58a063fe7e10e8308d85dc572aaa90a772 0.3s done
+#9 exporting manifest list sha256:0b8336b63b3c30101227f8af3e2431d586ed3e39d3c83c0fc763c29f324fc99a
+#9 exporting manifest list sha256:0b8336b63b3c30101227f8af3e2431d586ed3e39d3c83c0fc763c29f324fc99a 0.3s done
+#9 naming to docker.io/library/lotus-forecast-desktop:v1-20261017
+#9 naming to docker.io/library/lotus-forecast-desktop:v1-20261017 0.1s done
+#9 unpacking to docker.io/library/lotus-forecast-desktop:v1-20261017
+#9 unpacking to docker.io/library/lotus-forecast-desktop:v1-20261017 1.1s done
+#9 DONE 5.5s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/sb614dj9n4lrxtr9jmewz3ga8

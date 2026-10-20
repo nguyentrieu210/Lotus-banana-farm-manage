@@ -8,7 +8,6 @@ import hashlib
 import hmac
 import secrets
 from datetime import timedelta
-from html import escape
 from io import BytesIO
 
 import frappe
@@ -420,59 +419,18 @@ def archive_approved_purchase_pdf(doc):
         _event(doc, "APPROVE", actor, doc.get("lotus_approved_at") or frappe.utils.now_datetime(),
                signature_type="NO_IMAGE", details="Duyệt trên hệ thống, chưa cấu hình ảnh chữ ký")
         return None  # Keep the existing approval workflow for users without an image.
-    from frappe.utils.pdf import get_pdf
     required = ("lotus_signed_purchase_pdf", "lotus_signature_verify_hash", "lotus_signature_pdf_sha256")
     if any(not frappe.get_meta("Purchase Order").has_field(field) for field in required):
         frappe.throw("Cần chạy migrate để bật lưu PDF chữ ký và QR xác minh.")
-    full_name = frappe.db.get_value("User", actor, "full_name") or actor
     when = doc.get("lotus_approved_at") or frappe.utils.now_datetime()
-    date_label = _display_date(when, actor)
-    source = frappe.get_print("Purchase Order", doc.name, print_format="Standard", as_pdf=False)
-    signature_data = "data:image/png;base64," + base64.b64encode(signature).decode("ascii")
-    initials_html = ""
-    initial_user = doc.get("lotus_initials_by")
-    initial_url = doc.get("lotus_initials_snapshot")
-    if initial_user and initial_url:
-        matched = frappe.get_all("File", filters={
-            "attached_to_doctype": "Purchase Order", "attached_to_name": doc.name,
-            "attached_to_field": "lotus_initials_snapshot",
-            "file_url": initial_url, "is_private": 1,
-        }, pluck="name", limit_page_length=1)
-        if not matched:
-            frappe.throw("Không tìm thấy ảnh ký nháy đã lưu của người kiểm tra.")
-        pixels = frappe.get_doc("File", matched[0]).get_content(encodings=[])
-        initial_image = "data:image/png;base64," + base64.b64encode(pixels).decode("ascii")
-        initial_name = frappe.db.get_value("User", initial_user, "full_name") or initial_user
-        initials_html = (
-            '<div style="display:inline-block;width:45%;vertical-align:top;text-align:center">'
-            '<strong>NGƯỜI KIỂM TRA (KÝ NHÁY)</strong><br>'
-            '<img src="' + initial_image + '" alt="Ký nháy" '
-            'style="max-width:125px;max-height:55px"><br>'
-            + escape(initial_name) + '<br><small>'
-            + escape(str(doc.get("lotus_initials_at") or "")) + '</small></div>'
-        )
     verify_token = secrets.token_urlsafe(32)
-    qr_image = "data:image/png;base64," + base64.b64encode(
-        _qr_png(_verification_url(verify_token))
-    ).decode("ascii")
-    approval = (
-        '<section style="page-break-inside:avoid;margin:22px 0;'
-        'border-top:1px solid #ccc;padding:12px 8px;text-align:center;font-size:12px">'
-        + initials_html +
-        '<div style="display:inline-block;width:50%;vertical-align:top;text-align:center">'
-        '<strong>NGƯỜI DUYỆT</strong><br>'
-        '<img alt="Chữ ký người duyệt" src="' + signature_data + '" '
-        'style="max-width:160px;max-height:85px"><br>'
-        + escape(full_name) + '<br><small>Ngày ký: '
-        + escape(date_label) + ' · ' + escape(str(when))
-        + '</small></div>'
-        '<div style="text-align:center;margin-top:12px">'
-        '<img src="' + qr_image + '" alt="QR xác minh Lotus" style="width:86px;height:86px">'
-        '<br><small>Quét QR để xác minh chứng từ Lotus — Không phải chữ ký số có chứng thư</small>'
-        '</div></section>'
-    )
-    html = source.replace("</body>", approval + "</body>", 1) if "</body>" in source else source + approval
-    pdf = get_pdf(html, options={"page-size": "A4", "print-media-type": None})
+    verify_url = _verification_url(verify_token)
+    from lotus_farm import print_kit
+    from lotus_farm.www import lotus_purchase_order_print as printer
+    # Vietnamese Lotus Print with the approver's image and the archive QR (checks this PDF's SHA-256).
+    html = printer.html(doc, approver=actor, approver_image="data:image/png;base64," + base64.b64encode(signature).decode("ascii"),
+                        approved_at=when, verify=dict(url=verify_url, qr="data:image/png;base64," + base64.b64encode(_qr_png(verify_url)).decode("ascii")))
+    pdf = print_kit.pdf(str(html))
     if not pdf or not pdf.startswith(b"%PDF"):
         frappe.throw("Không tạo được PDF có chữ ký. Đơn vẫn chưa được duyệt.")
     digest = hashlib.sha256(pdf).hexdigest()
@@ -512,8 +470,9 @@ def download_purchase_pdf(name):
             frappe.throw("PDF đã duyệt bị thiếu; không được tự thay bằng bản chưa ký.")
         content = frappe.get_doc("File", rows[0]).get_content(encodings=[])
     else:
-        content = frappe.get_print("Purchase Order", doc.name,
-                                   print_format="Standard", as_pdf=True)
+        from lotus_farm import print_kit
+        from lotus_farm.www import lotus_purchase_order_print as printer
+        content = print_kit.pdf(str(printer.html(doc)))
     from re import sub
     frappe.local.response.filename = sub(r"[^A-Za-z0-9._-]+", "_", doc.name)[:100] + ".pdf"
     frappe.local.response.filecontent = content

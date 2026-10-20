@@ -175,16 +175,23 @@ def period_status(company, month):
     begin, end = _month(month)
     doc = frappe.db.get_value(PERIOD, {'company': company, 'month': month},
                               ['name', 'status', 'closed_by', 'closed_at', 'reopen_reason'], as_dict=True)
+    period = frappe.get_doc(PERIOD, doc.name) if doc else None
+    signing_info = approval(period)
+    from urllib.parse import urlencode
     return dict(month=month, status=doc.status if doc else 'Open', closed_by=doc.closed_by if doc else None,
                 closed_at=str(doc.closed_at) if doc and doc.closed_at else None,
-                reopen_reason=doc.reopen_reason if doc else None,
+                reopen_reason=doc.reopen_reason if doc else None, signing=signing_info,
+                can_send=not (doc and doc.status == 'Closed') and (not signing_info or signing_info['returned'] or signing_info['done']),
+                print_url='/lotus/in-luong?' + urlencode(dict(company=company, month=month)),
                 blockers=[] if doc and doc.status == 'Closed' else blockers(company, begin, end),
                 future=end >= getdate(nowdate()))
 
 
 @frappe.whitelist(methods=['POST'])
 def close_period(company, month):
-    _hr_manager()
+    """Close without signatures: Administrator only (recovery). Normally send_period → sign_period closes."""
+    if frappe.session.user != 'Administrator':
+        frappe.throw('Kỳ công được khóa khi Giám đốc ký duyệt. Dùng Gửi duyệt khóa kỳ.', frappe.PermissionError)
     _company(company)
     begin, end = _month(month)
     if end >= getdate(nowdate()):
@@ -231,6 +238,124 @@ def reopen_period(company, month, reason):
     doc.flags.lotus_period_action = True
     doc.save()
     return dict(name=doc.name, status=doc.status)
+
+
+# Approval: the preparer sends the finished month to HR and the director by name. The sheet is frozen
+# in a snapshot when sent; the director's signature closes the period if the data still matches it.
+
+def _period(company, month):
+    name = frappe.db.get_value(PERIOD, {'company': company, 'month': month})
+    return frappe.get_doc(PERIOD, name) if name else None
+
+
+def _frozen(company, month, begin, end):
+    snapshot = json.dumps(_sheet(company, month, begin, end), sort_keys=True, default=str, ensure_ascii=False)
+    return snapshot, hashlib.sha256(snapshot.encode()).hexdigest()
+
+
+def is_signer(doc, user=None):
+    """Named signer of the current round (any step); they may view the sheet they are asked to sign."""
+    from lotus_farm import signing
+    user = user or frappe.session.user
+    rows, round_ = signing._rows(doc)
+    return bool(round_) and any(r.assignee == user for r in rows)
+
+
+def _signer_or_hr(doc):
+    if frappe.session.user == 'Guest':
+        frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
+    hr = frappe.session.user == 'Administrator' or {'HR Manager', 'System Manager'} & set(frappe.get_roles())
+    if not (hr or (doc and is_signer(doc))):
+        frappe.throw('Chỉ nhân sự hoặc người được chọn ký mới xem được bảng lương này.', frappe.PermissionError)
+
+
+@frappe.whitelist()
+def period_signers(company):
+    _hr_manager()
+    _company(company)
+    from lotus_farm import signing
+    return signing.candidates('timekeeping_period', company)
+
+
+def approval(doc):
+    from lotus_farm import signing
+    if not doc:
+        return None
+    info = signing.status(doc, 'timekeeping_period')
+    return info if info['round'] else None
+
+
+@frappe.whitelist(methods=['POST'])
+def send_period(company, month, signers):
+    """Freeze the month's sheet and send it to the chosen HR person and director, signing as preparer."""
+    _hr_manager()
+    _company(company)
+    begin, end = _month(month)
+    if end >= getdate(nowdate()):
+        frappe.throw('Chỉ gửi duyệt khi tháng đã kết thúc.')
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    found = blockers(company, begin, end)
+    if found:
+        frappe.throw('Chưa gửi duyệt được: ' + '; '.join(r['label'] + ' (' + str(r['count']) + ')' for r in found))
+    doc = _period(company, month) or frappe.new_doc(PERIOD)
+    if doc.status == 'Closed':
+        frappe.throw('Kỳ đã khóa.')
+    snapshot, digest = _frozen(company, month, begin, end)
+    doc.update(dict(company=company, month=month, status='Open', snapshot=snapshot, snapshot_hash=digest))
+    doc.flags.lotus_period_action = True
+    doc.save()
+    from lotus_farm import signing
+    signing.start(doc, signers)
+    return period_status(company, month)
+
+
+@frappe.whitelist(methods=['POST'])
+def sign_period(company, month):
+    """The named signer signs; the last signature closes the period with the snapshot that was sent."""
+    _company(company)
+    begin, end = _month(month)
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    doc = _period(company, month)
+    if not doc or doc.status == 'Closed' or not approval(doc):
+        frappe.throw('Kỳ này không có bảng công đang chờ ký.')
+    if _frozen(company, month, begin, end)[1] != doc.snapshot_hash:
+        frappe.throw('Chấm công hoặc bảng lương đã thay đổi sau khi gửi duyệt. Trả lại để người lập gửi duyệt lại.')
+    from lotus_farm import signing
+    info = signing.sign(doc)
+    if info['done']:
+        doc.reload()
+        doc.update(dict(status='Closed', closed_by=frappe.session.user, closed_at=now_datetime()))
+        doc.flags.lotus_period_action = True
+        doc.flags.ignore_permissions = True  # the director signs as the named last signer, not as HR
+        doc.save()
+    return signing.status(doc, 'timekeeping_period')
+
+
+@frappe.whitelist(methods=['POST'])
+def return_period(company, month, reason):
+    _company(company)
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    doc = _period(company, month)
+    if not doc or doc.status == 'Closed' or not approval(doc):
+        frappe.throw('Kỳ này không có bảng công đang chờ ký.')
+    from lotus_farm import signing
+    return signing.send_back(doc, reason)
+
+
+def signed_sheet(company, month):
+    """Sheet for the print / sign page: HR, or a named signer of the period. Frozen snapshot while signing."""
+    _company(company)
+    begin, end = _month(month)
+    doc = _period(company, month)
+    _signer_or_hr(doc)
+    if doc and doc.snapshot and (doc.status == 'Closed' or approval(doc)):
+        if hashlib.sha256(doc.snapshot.encode()).hexdigest() != doc.snapshot_hash:
+            frappe.throw('Dữ liệu kỳ không khớp mã kiểm tra. Mở lại và gửi duyệt lại kỳ.')
+        return doc, dict(json.loads(doc.snapshot), draft=doc.status != 'Closed', closed_at=str(doc.closed_at or '') or None)
+    return doc, dict(_sheet(company, month, begin, end), draft=True, closed_at=None)
 
 
 # Payroll sheet ----------------------------------------------------------------------------------

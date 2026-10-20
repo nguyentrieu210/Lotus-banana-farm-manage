@@ -4,13 +4,15 @@ import LotusIcon from '../LotusIcon.vue'
 import MonthPicker from '../MonthPicker.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import WorkspaceConfirm from '../WorkspaceConfirm.vue'
+import SignerPicker from '../SignerPicker.vue'
 import {Button as UiButton} from '../ui/button'
 import {Textarea as UiTextarea} from '../ui/textarea'
 import {FormField} from '../ui/form-field'
 import {useWorkspaceConfirm} from '../../use-workspace-confirm'
 import {call} from '../../api'
-// /lotus/nhan-su › Kỳ công & bảng lương: the month runs in four steps — complete attendance, close the period,
-// HRMS salary slips from the hourly structure, then submit and post to ERPNext accounting.
+// /lotus/nhan-su › Kỳ công & bảng lương: the month runs in four steps — complete attendance, send the frozen
+// sheet to the named HR person and director (the director's signature closes the period), HRMS salary slips
+// from the hourly structure, then submit and post to ERPNext accounting.
 const props=defineProps({company:String,today:String})
 const emit=defineEmits(['notice','error'])
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,finish:finishConfirm}=useWorkspaceConfirm()
@@ -20,6 +22,10 @@ const payrollApi=(name,args,write=false)=>call('lotus_farm.hr_payroll.'+name,arg
 const lastMonth=()=>{const d=new Date((props.today||new Date().toISOString().slice(0,10))+'T00:00:00');d.setDate(1);d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 const month=ref(lastMonth()),busy=ref(false),saving=ref(false),view=ref('sheet')
 const readiness=ref(null),period=ref(null),sheet=ref(null),run=ref(null),reopenOpen=ref(false),reopenReason=ref('')
+const sendOpen=ref(false),signerOptions=ref(null),signers=ref({})
+const signing=computed(()=>period.value?.signing&&!period.value.signing.returned&&!period.value.signing.done?period.value.signing:null)
+const signedCount=computed(()=>(period.value?.signing?.steps||[]).filter(s=>s.state==='Đã ký').length)
+const signersMissing=computed(()=>(signerOptions.value?.steps||[]).slice(1).filter(s=>!signers.value[s.key]).length)
 const bases={Monthly:'Lương tháng',Daywork:'Công nhật',Piecework:'Khoán sản lượng',Mixed:'Hỗn hợp'}
 const money=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:sheet.value?.currency||'VND'})
 const num=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:2})
@@ -34,7 +40,7 @@ const steps=computed(()=>{
  const attendanceDone=closed.value||!blockers.length
  return [
   {id:'attendance',title:'Chấm công đủ',state:attendanceDone?'done':'current',text:closed.value?'Đã khóa cùng kỳ':blockers.length?blockers.length+' việc cần xử lý':'Không còn vướng mắc'},
-  {id:'close',title:'Khóa kỳ công',state:closed.value?'done':attendanceDone?'current':'todo',text:closed.value?'Khóa lúc '+String(period.value?.closed_at||'').slice(0,16):period.value?.future?'Chờ hết tháng':'Chưa khóa'},
+  {id:'close',title:'Ký duyệt & khóa kỳ',state:closed.value?'done':attendanceDone?'current':'todo',text:closed.value?'Khóa lúc '+String(period.value?.closed_at||'').slice(0,16):period.value?.future?'Chờ hết tháng':signing.value?'Chờ '+(signing.value.steps[signing.value.current]?.name||'')+' ký ('+signedCount.value+'/'+signing.value.steps.length+')':period.value?.signing?.returned?'Bị trả lại: '+(period.value.signing.steps.find(s=>s.state==='Trả lại')?.note||''):'Chưa gửi duyệt'},
   {id:'slips',title:'Phiếu lương HRMS',state:run.value?.entry?'done':closed.value?'current':'todo',text:!run.value?.structure?'Chưa cài đặt cấu trúc lương':run.value?.entry?(run.value.slips.length+' phiếu · '+run.value.entry.name):'Chưa tạo'},
   {id:'post',title:'Duyệt & hạch toán',state:posted.value?'done':run.value?.entry?'current':'todo',text:posted.value?'Đã hạch toán '+run.value.journal_entries.join(', '):drafts.value?drafts.value+' phiếu nháp':'Chưa hạch toán'},
  ]
@@ -45,17 +51,28 @@ async function load(){if(!props.company)return;const id=++version;busy.value=tru
  try{const args={company:props.company,month:month.value};const [r,p,s,h]=await Promise.all([hrApi('payroll_readiness',args),periodApi('period_status',args),periodApi('payroll_sheet',args),payrollApi('payroll_run',args)])
   if(id===version){readiness.value=r;period.value=p;sheet.value=s;run.value=h}}
  catch(e){emit('error',e.message)}finally{if(id===version)busy.value=false}}
-const asks={close_period:m=>'Khóa kỳ công '+label(m)+'? Chấm công, phiếu khoán và phân công lao động của tháng sẽ không sửa được; bảng lương được chốt.',
- setup_payroll:()=>'Tạo thành phần lương, tài khoản và cấu trúc lương giờ công trong HRMS?',
+const asks={setup_payroll:()=>'Tạo thành phần lương, tài khoản và cấu trúc lương giờ công trong HRMS?',
  create_payroll:m=>'Tạo bảng lương HRMS và phiếu lương nháp cho '+label(m)+'?',
  post_payroll:m=>'Duyệt toàn bộ phiếu lương '+label(m)+' và hạch toán? Bút toán: Nợ chi phí lương / Có phải trả người lao động, bảo hiểm phải nộp.'}
 async function step(action){
  if(!await askConfirm(asks[action](month.value)))return
  saving.value=true
- try{const api=action==='close_period'?periodApi:payrollApi;const r=await api(action,action==='setup_payroll'?{company:props.company}:{company:props.company,month:month.value},true)
-  emit('notice',{close_period:'Đã khóa kỳ '+label(month.value)+'.',setup_payroll:'Đã cài đặt cấu trúc '+r.structure+'.',create_payroll:'Đã tạo bảng lương '+r.name+' ('+r.employees+' nhân viên).',post_payroll:'Đã duyệt phiếu lương và hạch toán '+(r.journal_entries||[]).join(', ')+'.'}[action])
+ try{const r=await payrollApi(action,action==='setup_payroll'?{company:props.company}:{company:props.company,month:month.value},true)
+  emit('notice',{setup_payroll:'Đã cài đặt cấu trúc '+r.structure+'.',create_payroll:'Đã tạo bảng lương '+r.name+' ('+r.employees+' nhân viên).',post_payroll:'Đã duyệt phiếu lương và hạch toán '+(r.journal_entries||[]).join(', ')+'.'}[action])
   if(action==='create_payroll')view.value='slips'
   await load()}
+ catch(e){emit('error',e.message)}finally{saving.value=false}}
+async function openSend(){saving.value=true
+ try{signerOptions.value=await periodApi('period_signers',{company:props.company});signers.value=Object.fromEntries((period.value?.signing?.steps||[]).slice(1).filter(s=>s.assignee).map(s=>[s.key,s.assignee]));sendOpen.value=true}
+ catch(e){emit('error',e.message)}finally{saving.value=false}}
+async function send(){saving.value=true
+ try{await periodApi('send_period',{company:props.company,month:month.value,signers:signers.value},true);sendOpen.value=false;emit('notice','Đã ký người lập và gửi duyệt '+label(month.value)+'. Người ký tiếp theo đã được báo.');await load()}
+ catch(e){emit('error',e.message)}finally{saving.value=false}}
+async function signHere(){
+ const last=signing.value.current===signing.value.steps.length-1
+ if(!await askConfirm('Ký '+signing.value.steps[signing.value.current].title+' cho bảng công '+label(month.value)+'?'+(last?' Chữ ký này khóa kỳ công.':'')))return
+ saving.value=true
+ try{await periodApi('sign_period',{company:props.company,month:month.value},true);emit('notice','Đã ký bảng công '+label(month.value)+'.');await load()}
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 async function reopen(){saving.value=true
  try{await periodApi('reopen_period',{company:props.company,month:month.value,reason:reopenReason.value},true);reopenOpen.value=false;reopenReason.value='';emit('notice','Đã mở lại kỳ '+label(month.value)+'.');await load()}
@@ -70,6 +87,7 @@ defineExpose({load})
   <label>Tháng<MonthPicker v-model="month" :max="today?.slice(0,7)" label="Tháng công" :disabled="busy||saving" @change="load"/></label>
   <UiButton variant="outline" :disabled="busy||saving" @click="load"><LotusIcon name="refresh"/>{{busy?'Đang tải…':'Làm mới'}}</UiButton>
   <span class="tk-actions__spacer"></span>
+  <a v-if="period" class="stock-button" :href="period.print_url" target="_blank" rel="noopener"><LotusIcon name="printer"/>In bảng lương</a>
   <a class="stock-button hr-pay__export" :href="exportLink"><LotusIcon name="download"/>Xuất bảng lương Excel</a>
  </div>
 
@@ -79,8 +97,10 @@ defineExpose({load})
    <div class="hr-steps__body"><strong>{{s.title}}</strong><small>{{s.text}}</small>
     <div class="hr-steps__actions">
      <template v-if="s.id==='close'">
-      <UiButton v-if="!closed" size="sm" :disabled="saving||busy||period?.future||(period?.blockers||[]).length>0" @click="step('close_period')"><LotusIcon name="lock"/>Khóa kỳ</UiButton>
-      <UiButton v-else size="sm" variant="outline" :disabled="saving||busy" @click="reopenReason='';reopenOpen=true">Mở lại kỳ</UiButton>
+      <UiButton v-if="!closed&&period?.can_send" size="sm" :disabled="saving||busy||period?.future||(period?.blockers||[]).length>0" @click="openSend"><LotusIcon name="lock"/>Gửi duyệt khóa kỳ</UiButton>
+      <UiButton v-if="signing?.can_sign" size="sm" :disabled="saving||busy" @click="signHere">Ký: {{signing.steps[signing.current].title}}</UiButton>
+      <a v-if="period?.signing" class="hr-steps__link" :href="period.print_url" target="_blank" rel="noopener">Xem bảng lương ký duyệt ↗</a>
+      <UiButton v-if="closed" size="sm" variant="outline" :disabled="saving||busy" @click="reopenReason='';reopenOpen=true">Mở lại kỳ</UiButton>
      </template>
      <template v-if="s.id==='slips'">
       <UiButton v-if="run&&!run.structure" size="sm" :disabled="saving||busy" @click="step('setup_payroll')"><LotusIcon name="settings"/>Cài đặt lương HRMS</UiButton>
@@ -140,6 +160,11 @@ defineExpose({load})
    <p v-else class="tk-empty">Không có vấn đề cần kiểm tra.</p></div>
  </section>
 
+ <WorkspaceModal v-model="sendOpen" :title="'Gửi duyệt khóa kỳ '+label(month)" :busy="saving">
+  <form @submit.prevent="send"><p class="tk-hint">Bảng công và bảng lương được chốt tại thời điểm gửi. Bạn ký người lập; Phụ trách nhân sự rồi Giám đốc ký trên trang bảng lương. Chữ ký Giám đốc khóa kỳ công.</p>
+   <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
+   <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="sendOpen=false">Quay lại</UiButton><UiButton type="submit" :disabled="saving||signersMissing>0">Ký và gửi duyệt</UiButton></div></form>
+ </WorkspaceModal>
  <WorkspaceModal v-model="reopenOpen" :title="'Mở lại kỳ công '+label(month)" :busy="saving">
   <form @submit.prevent="reopen"><FormField label="Lý do mở lại" required hint="Lý do được lưu trong lịch sử kỳ công." v-slot="f"><UiTextarea v-bind="f" v-model="reopenReason" minlength="5" maxlength="500"/></FormField>
    <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="reopenOpen=false">Quay lại</UiButton><UiButton type="submit" :disabled="saving">Mở lại kỳ</UiButton></div></form>

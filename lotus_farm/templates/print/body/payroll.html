@@ -1,0 +1,30 @@
+{#- Bảng lương tháng — from lotus_farm.hr_period (hourly model: base ÷ 208 per hour, night +30%, OT 150/200/300%). -#}
+{% set f = p.fmt %}
+<table class="lp-table lp-table--compact">
+ <colgroup><col style="width:3%"><col style="width:13%"><col style="width:9%"><col style="width:7%"><col style="width:4%"><col style="width:5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:7%"><col style="width:6%"><col style="width:5.5%"><col style="width:6%"><col style="width:7.5%"><col style="width:6%"><col style="width:7.5%"><col style="width:5%"></colgroup>
+ <thead><tr><th class="stt">TT</th><th>Họ và tên</th><th>Bộ phận / Tổ</th><th class="num">Lương CB (26 công)</th><th class="num">Công</th><th class="num">Giờ thường</th><th class="num">Giờ đêm</th><th class="num">Giờ tăng ca</th><th class="num">Lương giờ công</th><th class="num">Lễ, phép</th><th class="num">PC ca đêm</th><th class="num">Tiền tăng ca</th><th class="num">Tổng thu nhập</th><th class="num">BH người LĐ</th><th class="num">Thực lĩnh</th><th class="center">Ký nhận</th></tr></thead>
+ <tbody>{% for e in p.rows %}<tr>
+  <td class="stt">{{ loop.index }}</td><td><b>{{ e.employee_name }}</b><small>{{ e.employee }}{% if e.via_crew %} · trả qua đội khoán{% endif %}</small></td>
+  <td>{{ e.department or '' }}{% if e.work_team %}<small>{{ e.work_team }}</small>{% endif %}</td>
+  <td class="num">{{ f.number(e.base, 0) if e.base else '' }}</td><td class="num">{{ f.number(e.workdays, 2) }}</td>
+  <td class="num">{{ f.number(e.regular_hours, 1) }}</td><td class="num">{{ f.number(e.night_hours, 1) if e.night_hours else '' }}</td>
+  <td class="num">{{ f.number(e.ot_regular + e.ot_weekly_off + e.ot_holiday, 1) if (e.ot_regular + e.ot_weekly_off + e.ot_holiday) else '' }}</td>
+  <td class="num">{{ f.number(e.regular_pay, 0) }}</td><td class="num">{{ f.number(e.paid_pay, 0) if e.paid_pay else '' }}</td>
+  <td class="num">{{ f.number(e.night_pay, 0) if e.night_pay else '' }}</td><td class="num">{{ f.number(e.overtime_pay, 0) if e.overtime_pay else '' }}</td>
+  <td class="num"><b>{{ f.number(e.gross, 0) }}</b></td><td class="num">{{ f.number(e.employee_insurance, 0) if e.employee_insurance else '' }}</td>
+  <td class="num"><b>{{ f.number(e.net, 0) }}</b></td><td></td></tr>{% endfor %}
+ <tr class="lp-total"><td></td><td colspan="3">Cộng {{ p.totals.employees }} người</td><td class="num">{{ f.number(p.totals.workdays, 2) }}</td><td colspan="7"></td><td class="num">{{ f.number(p.totals.gross, 0) }}</td><td class="num">{{ f.number(p.totals.employee_insurance, 0) }}</td><td class="num">{{ f.number(p.totals.net, 0) }}</td><td></td></tr></tbody>
+</table>
+<p class="lp-words">Tổng thực lĩnh bằng chữ: <b>{{ f.words(p.totals.net) }}</b></p>
+{% if p.crews %}
+<h2 class="lp-section">Đội khoán — trả cho đầu câu / đội</h2>
+<table class="lp-table lp-table--compact">
+ <colgroup><col style="width:3%"><col style="width:17%"><col style="width:15%"><col style="width:20%"><col style="width:9%"><col style="width:8%"><col style="width:10%"><col style="width:11%"><col style="width:7%"></colgroup>
+ <thead><tr><th class="stt">TT</th><th>Đội</th><th>Đầu câu</th><th>Công việc</th><th class="num">Khối lượng</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th><th class="num">Người-ngày</th><th class="center">Ký nhận</th></tr></thead>
+ <tbody>{% for c in p.crews %}<tr><td class="stt">{{ loop.index }}</td><td>{{ c.team_name }}</td><td>{{ c.foreman or '' }}{% if c.foreman_phone %}<small>{{ c.foreman_phone }}</small>{% endif %}</td>
+  <td>{{ c.work_name }}</td><td class="num">{{ f.number(c.completed_qty) }} {{ f.unit(c.uom) if c.uom else '' }}</td><td class="num">{{ f.number(c.unit_rate, 0) }}</td>
+  <td class="num"><b>{{ f.number(c.amount, 0) }}</b></td><td class="num">{{ c.person_days }}</td><td></td></tr>{% endfor %}
+ <tr class="lp-total"><td></td><td colspan="5">Cộng đội khoán</td><td class="num">{{ f.number(p.totals.crew_amount, 0) }}</td><td colspan="2"></td></tr></tbody>
+</table>
+{% endif %}
+<p class="lp-legend">Lương cơ bản tính cho {{ p.standard_days }} công × 8 giờ; đơn giá giờ = lương CB ÷ {{ p.hours_base }}. Ca đêm (22h–6h) +30%; tăng ca 150% ngày thường, 200% ngày nghỉ tuần, 300% ngày lễ. Số tiền trước thuế TNCN. BH doanh nghiệp đóng: {{ f.number(p.totals.employer_insurance, 0) }} đồng.</p>
