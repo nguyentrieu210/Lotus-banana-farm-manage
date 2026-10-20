@@ -167,6 +167,19 @@ def validate_document(doc):
 
 @frappe.whitelist(methods=["POST"])
 def save(farm, date, rows, request_id, expected_modified=None, correction_reason=None, expected_user=None):
+    # MariaDB 11.8 snapshot isolation may roll back a waiter with error 1020
+    # when another request commits the journal/request row. Retry the entire
+    # tracking-only transaction with the same idempotency key and a fresh view.
+    for retry in range(3):
+        try:
+            return _save(farm,date,rows,request_id,expected_modified,correction_reason,expected_user)
+        except frappe.QueryDeadlockError:
+            frappe.db.rollback()
+            if retry == 2:
+                raise
+
+
+def _save(farm, date, rows, request_id, expected_modified=None, correction_reason=None, expected_user=None):
     if expected_user != frappe.session.user:
         frappe.throw("Tài khoản đã thay đổi. Đăng nhập lại trước khi lưu.", frappe.PermissionError)
     require(farm)
