@@ -3,7 +3,7 @@
 // then blur) so shadows and tinted light are not mistaken for ink; opacity follows how much darker a
 // pixel is than the paper around it.
 export const DEFAULT_STRENGTH=50
-const TRANSPARENT_SHARE=0.02
+const TRANSPARENT_SHARE=0.25
 const PAD=0.04
 
 export function thresholds(strength=DEFAULT_STRENGTH){

@@ -49,6 +49,14 @@ class SignatureBackground(unittest.TestCase):
         self.assertLess(result.height, 60)
         self.assertEqual(result.getchannel('A').getpixel((result.width // 2, result.height // 2)), 255)
 
+    def test_old_editor_output_with_a_few_transparent_pixels_is_still_cleaned(self):
+        image = phone_photo().convert('RGBA')
+        alpha = image.getchannel('A').point(lambda v: v)
+        alpha.paste(0, (0, 0, 600, 12))  # about 4% transparent, the rest an opaque white box
+        image.putalpha(alpha)
+        result = si.remove_background(image)
+        self.assertEqual(result.getchannel('A').getpixel((result.width - 3, result.height - 3)), 0)
+
     def test_blank_photo_is_rejected(self):
         with self.assertRaises(ValueError):
             si.remove_background(Image.new('RGB', (300, 200), (220, 218, 210)))

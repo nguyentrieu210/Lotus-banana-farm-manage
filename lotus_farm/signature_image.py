@@ -9,7 +9,7 @@ so the preview matches the stored image.
 from PIL import Image, ImageChops, ImageFilter, ImageMath
 
 DEFAULT_STRENGTH = 50
-TRANSPARENT_SHARE = 0.02  # an image already this transparent was cleaned (drawn or edited): only trim it
+TRANSPARENT_SHARE = 0.25  # drawn signatures are mostly transparent; the old editor left only a few percent
 PAD = 0.04
 
 
