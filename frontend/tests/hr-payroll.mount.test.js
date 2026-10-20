@@ -48,8 +48,7 @@ test('employee list filters by farm and category, without showing a single compa
 
 test('payroll tab shows last month, blockers keep the close button disabled, sheet and crew payable listed',async()=>{
  calls.length=0;routes=routesFor(true)
- const view=mount(HrApp,{embedded:true});await tick()
- tab(view.root,'Kỳ công & bảng lương').click();await tick();await tick()
+ const view=mount(HrApp,{embedded:true,hrView:'payroll'});await tick();await tick();await tick()
  assert.equal(calls.find(c=>c.method==='lotus_farm.hr_period.payroll_sheet').args.month,'2026-09','defaults to the month just ended')
  assert.match(text(view.root),/Phiếu công nhân sự còn nháp: 2/)
  assert.ok(button(view.root,'Gửi duyệt khóa kỳ').disabled,'cannot send for closing while blockers remain')
@@ -79,15 +78,13 @@ test('pay rate inputs follow the payment basis and only managers see payroll',as
 
 test('HRMS payroll steps follow the period and slip state',async()=>{
  routes=routesFor(true)
- const view=mount(HrApp,{embedded:true});await tick()
- tab(view.root,'Kỳ công & bảng lương').click();await tick();await tick()
+ const view=mount(HrApp,{embedded:true,hrView:'payroll'});await tick();await tick();await tick()
  assert.ok(button(view.root,'Tạo phiếu lương HRMS').disabled,'an open period cannot create salary slips')
  view.unmount()
  routes={...routesFor(true),'lotus_farm.hr_period.period_status':{month:'2026-09',status:'Closed',closed_by:'hr@lotus',closed_at:'2026-10-02 08:00:00',future:false,blockers:[]},
   'lotus_farm.hr_payroll.payroll_run':{month:'2026-09',structure:'Lotus Giờ công - LT',entry:{name:'HR-PRUN-1',status:'Submitted',docstatus:1},journal_entries:[],totals:{gross:5250000,deductions:0,net:5250000},
    slips:[{name:'Sal Slip/1',employee:'HR-EMP-1',employee_name:'An',gross_pay:5250000,total_deduction:0,net_pay:5250000,docstatus:0,difference:0}]}}
- const closed=mount(HrApp,{embedded:true});await tick()
- tab(closed.root,'Kỳ công & bảng lương').click();await tick();await tick()
+ const closed=mount(HrApp,{embedded:true,hrView:'payroll'});await tick();await tick();await tick()
  assert.ok(button(closed.root,'Duyệt & hạch toán'),'draft slips can be posted')
  assert.ok(!button(closed.root,'Tạo phiếu lương HRMS'),'slips already exist')
  sub(closed.root,'Phiếu lương HRMS').click();await tick()

@@ -80,7 +80,9 @@ async function reopen(){saving.value=true
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 onMounted(load)
 watch(()=>props.company,load)
-defineExpose({load})
+const hasUnsavedChanges=computed(()=>sendOpen.value||(reopenOpen.value&&!!reopenReason.value.trim()))
+function discardChanges(){sendOpen.value=false;reopenOpen.value=false;reopenReason.value='';signers.value={}}
+defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
 </script>
 <template>
 <div class="hr-pay">

@@ -1,7 +1,8 @@
 <script setup>
-const props=defineProps({embedded:Boolean,navigationKey:String})
-import {computed,onMounted,reactive,ref} from 'vue'
-import WorkspaceTabs from './components/WorkspaceTabs.vue'
+const props=defineProps({embedded:Boolean,navigationKey:String,hrView:{type:String,default:'employees'}})
+import {computed,onMounted,onBeforeUnmount,onDeactivated,nextTick,reactive,ref,watch} from 'vue'
+import {useRouter} from 'vue-router'
+import {normalizeHrView} from './hr-navigation.js'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
@@ -29,7 +30,8 @@ const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:conf
 // /lotus/nhan-su: employee records, recruitment, onboarding, organisation, imports, attendance devices and the
 // monthly period / payroll (HR Manager). Native HRMS stays the source of truth for Employee and payroll.
 const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,write)
-const session=ref(null),company=ref(''),tab=ref('employees'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
+const session=ref(null),company=ref(''),tab=ref(normalizeHrView(props.hrView)),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
+const router=props.embedded?useRouter():null
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
 const overview=ref({employees:[],candidates:[]})
 const employeeFilters=reactive({farm:'',department:'',team:'',status:'',category:'',stage:''})
@@ -44,12 +46,6 @@ const stages={New:'Mới',Screening:'Sàng lọc',Interview:'Phỏng vấn',Offe
 const stageTone={New:'is-muted',Screening:'is-draft',Interview:'is-draft',Offered:'is-review',Hold:'is-muted',Rejected:'is-muted',Hired:'is-approved'}
 const genderName={Male:'Nam',Female:'Nữ',Other:'Khác'}
 const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
-const routes=[
- {id:'employees',label:'Hồ sơ nhân viên'},{id:'candidates',label:'Tuyển dụng'},{id:'onboarding',label:'Tiếp nhận'},
- {id:'organization',label:'Cơ cấu & chức danh'},{id:'import',label:'Nhập dữ liệu'},{id:'devices',label:'Máy chấm công'},
- {id:'payroll',label:'Kỳ công & bảng lương',manager:true},
-]
-const tabs=computed(()=>routes.filter(r=>!r.manager||isManager.value))
 const listTab=computed(()=>['employees','onboarding','candidates'].includes(tab.value))
 const filteredEmployees=computed(()=>overview.value.employees.filter(e=>{
  if(tab.value==='onboarding'&&e.lotus_onboarding_state==='Ready')return false
@@ -67,13 +63,35 @@ const today=computed(()=>session.value?.today||'')
 const contractDue=e=>e.contract_end_date&&e.contract_end_date<=today.value
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}
 function resetPanels(){revealedCccd.value='';cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
-function chooseTab(t){resetPanels();search.value='';tab.value=t}
+function applyView(t){resetPanels();offboardOpen.value=false;search.value='';tab.value=normalizeHrView(t)}
+const formSnapshots=reactive({employee:'',candidate:'',offboard:''})
+for(const [key,open,form] of [['employee',editEmployee,employeeForm],['candidate',editCandidate,candidateForm],['offboard',offboardOpen,offboard]]){
+ watch(open,value=>{if(value)formSnapshots[key]=JSON.stringify(form)},{flush:'post'})
+}
+const dirty=computed(()=>!!(
+ (editEmployee.value&&formSnapshots.employee!==JSON.stringify(employeeForm))||
+ (editCandidate.value&&formSnapshots.candidate!==JSON.stringify(candidateForm))||
+ (offboardOpen.value&&formSnapshots.offboard!==JSON.stringify(offboard))||ops.value?.hasUnsavedChanges||payroll.value?.hasUnsavedChanges))
+async function allowNavigation(){
+ if(saving.value||ops.value?.isSaving||payroll.value?.isSaving){await tell('Đang lưu dữ liệu. Vui lòng chờ hoàn tất.');return false}
+ return !dirty.value||await askConfirm('Có thay đổi chưa lưu. Rời mục này và bỏ các thay đổi đang nhập?','Rời nghiệp vụ nhân sự')
+}
+watch(()=>props.hrView,view=>{if(normalizeHrView(view)!==tab.value){ops.value?.discardChanges?.();payroll.value?.discardChanges?.();applyView(view)}})
+let removeNavigationGuard
+onMounted(()=>{
+ if(router)removeNavigationGuard=router.beforeEach((to,from)=>{
+  if(from.path!=='/nhan-su'||(to.path===from.path&&normalizeHrView(to.query.hr_view)===normalizeHrView(from.query.hr_view)))return true
+  return allowNavigation()
+ })
+})
+onBeforeUnmount(()=>removeNavigationGuard?.())
+onDeactivated(()=>{resetPanels();offboardOpen.value=false;ops.value?.discardChanges?.();payroll.value?.discardChanges?.()})
 async function refresh(){if(!company.value)return;busy.value=true;error.value=''
  try{const [c,data]=await Promise.all([api('catalogue',{company:company.value}),api('overview',{company:company.value})]);catalog.value=c;overview.value=data}
  catch(e){error.value=e.message}finally{busy.value=false}}
 function reload(){if(['organization','import','devices'].includes(tab.value))ops.value?.refresh();refresh()}
 async function init(){busy.value=true
- try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=session.value.companies[0]?.name||'';await refresh()}
+ try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);if(tab.value==='payroll'&&!isManager.value){if(router)await router.replace('/denied');else error.value='Không có quyền xem kỳ công & bảng lương.';return}company.value=session.value.companies[0]?.name||'';await refresh()}
  catch(e){error.value=e.message}finally{busy.value=false}}
 
 function emptyEmployee(){
@@ -137,7 +155,11 @@ async function openCandidate(item){busy.value=true;error.value=''
 async function saveCandidate(){saving.value=true;error.value=''
  try{const result=await api('save_candidate',{company:company.value,name:selectedCandidate.value,modified:candidateForm.modified,values:{...candidateForm}},true);notice.value='Đã lưu ứng viên '+result.name;resetPanels();await refresh()}
  catch(e){error.value=e.message}finally{saving.value=false}}
-function startHire(item){emptyEmployee();candidateHire.value=item;employeeForm.employee_name=item.applicant_name;employeeForm.designation=item.designation;employeeForm.lotus_farm=item.farm||'';employeeForm.cell_number=item.phone;tab.value='onboarding'}
+async function startHire(item){
+ if(router){const query={...router.currentRoute.value.query,hr_view:'onboarding'};const failure=await router.push({path:'/nhan-su',query});if(failure)return;await nextTick()}
+ else applyView('onboarding')
+ emptyEmployee();candidateHire.value=item;employeeForm.employee_name=item.applicant_name;employeeForm.designation=item.designation;employeeForm.lotus_farm=item.farm||'';employeeForm.cell_number=item.phone
+}
 function chooseOpening(){const opening=catalog.value.openings.find(x=>x.name===candidateForm.job_opening);if(opening)candidateForm.designation=opening.designation}
 async function seed(){if(!await askConfirm('Tạo các chức danh Lotus chưa có trong HRMS? Hành động không xóa hoặc sửa chức danh hiện hữu.'))return
  saving.value=true;error.value=''
@@ -150,7 +172,7 @@ useNoticeToast(notice)
 
 <template>
 <div class="stock-shell hr-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
- <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" label="Hồ sơ nhân sự" @update:model-value="chooseTab($event)"/>
+ <component :is="embedded?'section':'main'" class="stock-main">
   <p v-if="error&&!editEmployee&&!editCandidate&&!offboardOpen" class="stock-error" role="alert">{{error}}</p>
 
   <WorkspaceListToolbar v-if="tab!=='payroll'" v-model="search" :searchable="listTab" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="reload">
@@ -287,6 +309,6 @@ useNoticeToast(notice)
    </div><div class="hr-form-footer"><span class="tk-actions__spacer"></span><UiButton type="button" variant="outline" :disabled="saving" @click="offboardOpen=false">Quay lại</UiButton><UiButton type="submit" variant="destructive" :disabled="saving">{{saving?'Đang lưu…':'Xác nhận nghỉ việc'}}</UiButton></div></form>
   </WorkspaceModal>
  </component>
- <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
+ <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" :cancel-label="confirmTitle==='Rời nghiệp vụ nhân sự'?'Ở lại':'Hủy'" :confirm-label="confirmTitle==='Rời nghiệp vụ nhân sự'?'Rời đi':'Đồng ý'" @answer="finishConfirm"/>
 </div>
 </template>

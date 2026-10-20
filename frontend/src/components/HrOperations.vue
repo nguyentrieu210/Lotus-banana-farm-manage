@@ -53,7 +53,13 @@ async function refresh(){
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
 onMounted(refresh)
-defineExpose({refresh})
+const formSnapshots=reactive({machine:'',assignment:''})
+watch(editDevice,value=>{if(value)formSnapshots.machine=JSON.stringify(machine)},{flush:'post'})
+watch(editAssignment,value=>{if(value)formSnapshots.assignment=JSON.stringify(assignment)},{flush:'post'})
+const hasUnsavedChanges=computed(()=>!!(uploadData.value.length||(editDevice.value&&formSnapshots.machine!==JSON.stringify(machine))||(editAssignment.value&&formSnapshots.assignment!==JSON.stringify(assignment))))
+const isSaving=computed(()=>busy.value&&(editDevice.value||editAssignment.value||!!preview.value))
+function discardChanges(){editDevice.value=false;editAssignment.value=false;preview.value=null;uploadData.value=[]}
+defineExpose({refresh,hasUnsavedChanges,isSaving,discardChanges})
 watch(()=>props.company,()=>{org.value=null;hardware.value=null;preview.value=null;uploadData.value=[];farm.value='';refresh()})
 function choose(id){active.value=id;notice.value='';error.value=''}
 function template(){

@@ -262,3 +262,4 @@
 .workspace-modal .user-check{flex-direction:row!important;align-items:center;justify-content:flex-start}
 .workspace-modal .user-choice-grid{max-height:min(360px,40dvh)}
 .workspace-modal .user-choice,.workspace-modal .user-choice span{min-width:0;overflow-wrap:anywhere}
+.nav-subsection{display:block;margin:var(--lotus-space-3) 0 var(--lotus-space-1);padding:0 var(--lotus-space-3);color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:600}
