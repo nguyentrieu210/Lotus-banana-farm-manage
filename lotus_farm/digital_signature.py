@@ -145,6 +145,13 @@ def _normalize_image(data):
                 frappe.throw("Ảnh chữ ký quá lớn về kích thước.")
             output_image = ImageOps.exif_transpose(image).convert("RGBA")
             output_image.thumbnail((1200, 700))
+            # Paper never reaches the PDF: photos lose their background here even when the
+            # phone editor was skipped; already transparent drawings are only trimmed.
+            from lotus_farm.signature_image import remove_background
+            try:
+                output_image = remove_background(output_image)
+            except ValueError as exc:
+                frappe.throw(str(exc))
             # Never embed the full-resolution photo in PDFs. Shrink until the
             # transparent PNG is small enough, regardless of input JPEG size.
             for _ in range(10):

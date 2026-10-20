@@ -1,13 +1,14 @@
 <script setup>
 import {ref,watch,nextTick,onBeforeUnmount} from 'vue'
-import {Popup,Slider,Switch,Icon} from 'vant'
+import {Popup,Slider,Icon} from 'vant'
 import Cropper from 'cropperjs'
 import './lotus-signature-editor.css'
+import {DEFAULT_STRENGTH,removeBackground} from '../signature-background'
 
 const props=defineProps({show:Boolean,source:{type:String,default:''},typeLabel:{type:String,default:'chữ ký'}})
 const emit=defineEmits(['cancel','save'])
 const host=ref(null),image=ref(null),preview=ref('')
-const screen=ref('crop'),removeBackground=ref(true),strength=ref(38),busy=ref(false),message=ref('')
+const screen=ref('crop'),strength=ref(DEFAULT_STRENGTH),busy=ref(false),message=ref('')
 let cropper=null
 
 function teardown(){
@@ -44,23 +45,16 @@ function processCanvas(source){
  const context=canvas.getContext('2d',{willReadFrequently:true})
  if(!context)throw Error('Thiết bị không hỗ trợ chỉnh ảnh này.')
  context.drawImage(source,0,0,canvas.width,canvas.height)
- if(removeBackground.value){
-  const pixels=context.getImageData(0,0,canvas.width,canvas.height)
-  const data=pixels.data
-  const low=172+(100-strength.value)*0.53 // Default near-white background removal
-  for(let index=0;index<data.length;index+=4){
-   const r=data[index],g=data[index+1],b=data[index+2]
-   const minimum=Math.min(r,g,b)
-   // Preserve blue ink and dark strokes; transparent only near-neutral, light paper.
-   const spread=Math.max(r,g,b)-minimum
-   if(spread<32&&minimum>low){
-    const alpha=Math.max(0,Math.min(255,(245-minimum)*13))
-    data[index+3]=Math.min(data[index+3],alpha)
-   }
-  }
-  context.putImageData(pixels,0,0)
- }
- return canvas.toDataURL('image/png')
+ // Paper is always removed (the server does the same), measured against the local paper level so
+ // shadows and warm light do not stay behind as a grey box.
+ const pixels=context.getImageData(0,0,canvas.width,canvas.height)
+ const box=removeBackground(pixels,strength.value)
+ if(!box)throw Error('Không thấy nét chữ ký. Chụp gần hơn, đủ sáng hoặc giảm độ mạnh xóa nền.')
+ context.putImageData(pixels,0,0)
+ const out=document.createElement('canvas')
+ out.width=box.width;out.height=box.height
+ out.getContext('2d').drawImage(canvas,box.x,box.y,box.width,box.height,0,0,box.width,box.height)
+ return out.toDataURL('image/png')
 }
 async function seePreview(){
  if(busy.value)return
@@ -100,17 +94,13 @@ function cancel(){emit('cancel')}
      <button type="button" @click="transformImage('zoom',0.12)"><Icon name="plus"/> Phóng to</button>
      <button type="button" @click="transformImage('zoom',-0.12)"><Icon name="minus"/> Thu nhỏ</button>
     </div>
-    <div class="lotus-signature-editor-background">
-     <span>Xóa nền giấy</span>
-     <Switch v-model="removeBackground" size="22px" aria-label="Xóa nền trắng tự động"/>
-    </div>
-    <label v-if="removeBackground" class="lotus-signature-editor-strength">
-     <span>Độ mạnh xóa nền: {{strength}}%</span>
+    <label class="lotus-signature-editor-strength">
+     <span>Xóa nền giấy · độ mạnh {{strength}}%</span>
      <Slider v-model="strength" :min="0" :max="100" :step="5" aria-label="Độ mạnh xóa nền"/>
     </label>
    </div>
    <div v-if="screen==='preview'" class="lotus-signature-editor-preview">
-    <p>Ảnh sau cắt và xử lý nền:</p>
+    <p>Ảnh sau cắt và xóa nền (ô caro là phần trong suốt):</p>
     <div class="lotus-signature-editor-paper"><img :src="preview" alt="Ảnh đã cắt xem trước"/></div>
     <p class="lotus-signature-editor-help">Đây là mẫu {{typeLabel}} sẽ dùng trên phiếu PDF. Chỉ lưu khi đã đúng.</p>
    </div>
