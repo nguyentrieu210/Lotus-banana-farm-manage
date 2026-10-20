@@ -24,3 +24,12 @@ test('a response from the preceding farm cannot reappear after scope changes',as
  farm.value='NEW';await tick();resolveOld();await tick();await tick()
  try{assert.doesNotMatch(root.textContent,/999/)}finally{app.unmount();root.remove()}
 })
+test('source color history remains inspectable alongside the extended Lotus program',async()=>{
+ const source={valid_from:'2023-06-05',valid_to:'2023-06-11',color_code:'M01',color_label:'Xanh dương'}
+ const view=mount(Process,{payload:{...payload,library:{...payload.library,color_history:[source]}},farm:'F'})
+ try{
+  button(view.root,'Màu dây').click();await tick();button(view.root,'Xem lịch màu nguồn').click();await tick()
+  assert.match(view.root.textContent,/2023-06-05/);assert.match(view.root.textContent,/2023-05-22/)
+  button(view.root,'Lịch áp dụng tại Lotus').click();await tick();assert.doesNotMatch(view.root.textContent,/2023-06-05/)
+ }finally{view.unmount()}
+})

@@ -10,12 +10,15 @@ import {Input as UiInput} from './ui/input'
 import {FormField} from './ui/form-field'
 import {DatePicker} from './ui/date-picker'
 import {Pagination} from './ui/pagination'
+import {day} from '../plan-norm-engine'
 
 const props=defineProps({payload:{type:Object,default:()=>({})},farm:{type:String,default:''},zone:{type:String,default:''},block:{type:String,default:''},cycle:{type:String,default:''},company:{type:String,default:''},fromDate:String,loading:Boolean,forecastOnly:Boolean})
 const emit=defineEmits(['reload','edit','navigate'])
 const tab=ref(props.forecastOnly?'forecast':'workflow'),search=ref(''),busy=ref(false),error=ref(''),notice=ref(''),preview=ref(null),fileUrl=ref(''),configOpen=ref(false),detail=ref(null),forecast=ref(null),scenario=ref(false)
 const preset=ref(''),condition=ref(''),effective=ref(''),until=ref(''),colorFrom=ref(''),colorTo=ref(''),adoption=ref('')
 const selectionDetail=ref(null)
+const showColorHistory=ref(false)
+const sourceColors=computed(()=>(props.payload.library?.color_history||[]).map(r=>({...r,injection_from:day(r.valid_from,-14),injection_to:day(r.valid_to,-14),harvest_from:day(r.valid_from,55),harvest_to:day(r.valid_to,70)})))
 const reference=ref(''),referenceSearch=ref(''),referenceRows=ref(null),referenceStart=ref(0)
 const referenceLabels={tsSXKD:'Hệ số gốc',tsSXKD6:'Hệ số đánh giá vườn',tsRaHoa:'Phân bổ cắt bắp / thu hoạch',tsKHTH_R:'Thông số riêng theo thửa nguồn',tsKHTH_C:'Thông số chung theo tuổi cây',tsPC_C:'Phẩm cấp theo tháng',tsPC_R:'Phẩm cấp riêng',dmKHTH_C:'Tuổi và số vụ',ts_NMSoi:'Định mức phụ phẩm sợi'}
 const referenceOptions=computed(()=>(props.payload.library?.references||[]).map(r=>({value:r.table,label:`${referenceLabels[r.table]||r.table} · ${fmt(r.row_count,0)} dòng`})))
@@ -81,6 +84,7 @@ async function loadForecast(){const request=++forecastRequest;await run(async()=
 async function loadReference(start=0){referenceStart.value=start;await run(async()=>{referenceRows.value=await call('lotus_farm.onedrive_workspace.reference_table',{table:reference.value,start,length:100,search:referenceSearch.value||null})})}
 onMounted(()=>{if(props.forecastOnly)loadForecast()})
 function workflowOpen(row){if(!row.can_read)return;if(['handover','selection','forecast'].includes(row.key)){tab.value=row.key;return}emit('navigate',row.route,{doctype:row.doctype})}
+function openSource(row){if(row.url)window.open(row.url,'_blank','noopener')}
 function newSelection(){emit('edit','Sucker Selection Batch',null,{farm:props.farm,farm_block:props.block||'',crop_cycle:props.cycle||'',selection_date:props.fromDate||''})}
 function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:props.block||'',anchor:'Selection',anchor_date:props.fromDate||'',quantity_basis:'Selected Suckers',version:1,approval_state:'Draft'})}
 </script>
@@ -105,9 +109,10 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
    <DataTable :rows="filter(payload.observed_selections)" :columns="actualCols" interactive @open="emit('edit','Sucker Selection Batch',$event.name)"/>
   </template>
   <template v-else-if="tab==='color'">
+   <div class="process-toolbar"><UiButton variant="outline" @click="showColorHistory=!showColorHistory">{{showColorHistory?'Lịch áp dụng tại Lotus':'Xem lịch màu nguồn'}}</UiButton></div>
    <div v-if="payload.can_configure" class="process-toolbar"><SearchSelect v-model="adoption" :options="adoptionOptions" label="Phiên bản chương trình"/><DatePicker v-model="colorFrom" label="Tạo lịch từ"/><DatePicker v-model="colorTo" label="Tạo lịch đến"/><UiButton :disabled="busy||!adoption" @click="createTags">Phát hành màu dây</UiButton></div>
    <p v-if="!adopted.length" class="notice">Chưa có phiên bản áp dụng được duyệt. Chọn bộ nguồn trong Thông số để tạo lịch màu.</p>
-   <DataTable :rows="filter(payload.colors)" :columns="colorCols" :loading="loading"/>
+   <DataTable :rows="filter(showColorHistory?sourceColors:payload.colors)" :columns="showColorHistory?colorCols.filter(c=>c.field!=='farm'):colorCols" :loading="loading"/>
   </template>
   <template v-else-if="tab==='parameters'">
    <div class="process-toolbar"><UiButton v-if="payload.can_configure" :disabled="!farm" @click="openConfig()">Thêm phiên bản áp dụng</UiButton><UiButton variant="outline" @click="emit('navigate','plan-norm')">Định mức vật tư & nhân công</UiButton></div>
@@ -126,7 +131,7 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
    <template v-if="scenario"><p class="notice">{{forecast?.handover_assumption}}</p><DataTable :rows="filter(forecast?.handover_scenario)" :columns="forecastCols" :loading="busy" empty="Chưa có mô phỏng bàn giao đủ dữ liệu"/></template>
   </template>
   <template v-else-if="tab==='sources'">
-   <DataTable :rows="payload.library?.sources||[]" :columns="[col('title','File nguồn',{minWidth:280}),col('modified_at','Ngày phiên bản'),col('sha256','SHA-256',{minWidth:250})]"/>
+   <DataTable :rows="payload.library?.sources||[]" :columns="[col('title','File nguồn',{minWidth:280}),col('modified_at','Ngày phiên bản'),col('sha256','SHA-256',{minWidth:250})]" interactive @open="openSource"/>
    <p class="notice">Chọn chồi: {{payload.selection_source?.file}} · {{payload.selection_source?.sheet}}!{{payload.selection_source?.range}} · EDATE(K6,6×n).</p>
    <ul><li v-for="item in payload.library?.limitations||[]" :key="item">{{item}}</li></ul>
   </template>
