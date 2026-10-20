@@ -34,6 +34,8 @@ has_permission = {name: "lotus_farm.controls.farm_permission" for name in _scope
 permission_query_conditions = {
     name: "lotus_farm.permissions." + name.lower().replace(" ", "_") for name in _scoped_doctypes
 }
+has_permission["Work Daily Journal"] = "lotus_farm.work_journal.permission"
+permission_query_conditions["Work Daily Journal"] = "lotus_farm.work_journal.journal_query"
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
 doc_events["Sales Order"] = {"before_cancel": "lotus_farm.allocations.sales_order_cancel"}

@@ -1,5 +1,6 @@
 <script setup>
 import {formatDate} from './format'
+import WorkJournalApp from './WorkJournalApp.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {Icon} from 'vant'
 import {useMobileConfirm} from './use-mobile-confirm'
@@ -33,18 +34,20 @@ const rejection=ref(''),rejectReason=ref('')
 const installed=ref(false),discardDialog=ref(null),discardReason=ref(''),discardEntry=ref(null)
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
 let requestId=0,historyId=0,restoring=false,navigationReady=false
+const journal=ref(null)
+const canTasks=computed(()=>!!session.value?.abilities?.['work.task.read'])
 const tabs=['home','history','tasks','profile']
-const mobileTabs=[
+const mobileTabs=computed(()=>[
  {name:'home',label:'Trang chủ',icon:'wap-home-o'},
  {name:'history',label:'Lịch sử',icon:'orders-o'},
  {name:'tasks',label:'Công việc',icon:'todo-list-o'},
  {name:'profile',label:'Tôi',icon:'user-o'}
-]
+].filter(tab=>canTasks.value||!['tasks','history'].includes(tab.name)))
 const mobileTitle=computed(()=>screen.value==='home'?'Công việc ngoài vườn':screenTitle.value)
 
-const screenTitle=computed(()=>({home:'Trang chủ',tasks:'Công việc',history:'Lịch sử',profile:'Tôi',detail:'Chi tiết công việc',result:'Ghi kết quả',block:'Báo vướng mắc',assign:'Lập kế hoạch / Giao việc','assign-preview':'Xem lại kế hoạch',queue:'Hàng chờ',done:'Hoàn tất'})[screen.value]||'Công việc ngoài vườn')
+const screenTitle=computed(()=>({journal:'Nhật ký công việc',home:'Trang chủ',tasks:'Công việc',history:'Lịch sử',profile:'Tôi',detail:'Chi tiết công việc',result:'Ghi kết quả',block:'Báo vướng mắc',assign:'Lập kế hoạch / Giao việc','assign-preview':'Xem lại kế hoạch',queue:'Hàng chờ',done:'Hoàn tất'})[screen.value]||'Công việc ngoài vườn')
 const shortDate=value=>formatDate(value)
-const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')?'home':'profile')
+const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')||screen.value==='journal'?'home':'profile')
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const canAssign=computed(()=>!!session.value?.abilities?.['work.assign'])
 const canPrepare=computed(()=>!!session.value?.abilities?.['work.prepare'])
@@ -98,6 +101,7 @@ function appBack(){
  if(screen.value!=='home')window.history.back()
 }
 function isDirty(){
+ if(screen.value==='journal')return journal.value?.isDirty()||false
  if(screen.value==='result')
   return !!resultForm.value&&(Object.values(resultForm.value).some(v=>String(v||'').trim()!=='')||!!photo.value)
  if(screen.value==='block')return !!blockReason.value.trim()
@@ -106,10 +110,12 @@ function isDirty(){
  return false
 }
 function confirmLeave(){
+ if(screen.value==='journal')return journal.value?.confirmLeave()??Promise.resolve(true)
  if(!isDirty())return Promise.resolve(true)
  return askLeave('Bạn đang nhập dữ liệu chưa lưu. Rời màn hình sẽ mất phần đang nhập.')
 }
 async function changeTab(tab){
+ if(['tasks','history'].includes(tab)&&!canTasks.value)return
  if(saving.value||!tabs.includes(tab)||screen.value===tab||!await confirmLeave())return
  document.dispatchEvent(new Event('warehouse-dismiss-picker'))
  go(tab)
@@ -126,6 +132,7 @@ async function refreshQueue(){
  try{queue.value=await queueRows(session.value.user)}catch(e){error.value=messageFor(e)}
 }
 async function loadDay(){
+ if(!canTasks.value){day.value={tasks:[],plans:[]};return}
  const id=++requestId
  if(!farm.value){day.value={tasks:[],plans:[]};return}
  busy.value=true;error.value=''
@@ -402,7 +409,8 @@ async function onPopstate(e){
   window.history.pushState({lotusWork:{screen:screen.value}},'',location.href);return
  }
  const wanted=e.state?.lotusWork?.screen
- let next=['home','tasks','history','profile','detail','result','block','assign','assign-preview','queue','done'].includes(wanted)?wanted:'home'
+ let next=['home','tasks','history','profile','detail','result','block','assign','assign-preview','queue','done','journal'].includes(wanted)?wanted:'home'
+ if(next==='journal'&&!session.value?.capabilities?.['work_journal.read'])next='home'
  if(next==='result'&&!resultForm.value)next='tasks'
  if(next==='detail'&&!selected.value)next='tasks'
  if(next==='assign-preview'&&!preview.value)next='assign'
@@ -420,6 +428,7 @@ async function onPopstate(e){
 watch(screen,(next,prev)=>{
  if(!navigationReady||restoring)return
  document.dispatchEvent(new Event('warehouse-dismiss-picker'))
+ if(next==='journal'||prev==='journal'){const url=new URL(location.href);if(next==='journal')url.searchParams.set('tab','journal');else url.searchParams.delete('tab');historyStateUrl(url)}
  window.history.replaceState({...window.history.state,scroll:window.scrollY},'',location.href)
  window.history.pushState({lotusWork:{screen:next}},'',location.href)
  window.scrollTo(0,0)
@@ -440,7 +449,8 @@ onMounted(async()=>{
  navigationReady=true
  await bootstrap()
  const target=new URLSearchParams(location.search).get('tab')
- if(session.value&&['tasks','history'].includes(target))changeTab(target)
+ if(target==='journal'&&session.value?.capabilities?.['work_journal.read'])go('journal')
+ else if(session.value&&['tasks','history'].includes(target))changeTab(target)
 })
 onBeforeUnmount(()=>{
  finishLeave(false);navigationReady=false
@@ -465,6 +475,7 @@ onBeforeUnmount(()=>{
    <LotusMobileFeedback v-if="busy||loadingHistory" kind="loading">Đang tải dữ liệu…</LotusMobileFeedback>
 
    <template v-if="session">
+    <WorkJournalApp v-if="screen==='journal'" ref="journal" mobile/>
     <template v-if="screen==='home'">
      <h1>Chọn công việc</h1>
      <div class="work-scope">
@@ -476,10 +487,11 @@ onBeforeUnmount(()=>{
       </div>
      </div>
      <div class="mobile-actions" aria-label="Thao tác Công việc ngoài vườn">
+      <LotusMobileAction v-if="session?.capabilities?.['work_journal.read']" icon="notes-o" title="Nhật ký công việc" @select="go('journal')"/>
       <LotusMobileAction v-if="canAssign" primary icon="edit" title="Lập kế hoạch / Giao việc" :disabled="!online||busy" @select="openAssign"/>
       <LotusMobileAction v-if="canCapture" icon="completed" title="Báo kết quả" @select="status='open';go('tasks')"/>
-      <LotusMobileAction icon="apps-o" title="Công việc đã giao" @select="status='all';go('tasks')"/>
-      <LotusMobileAction icon="flag-o" title="Việc vướng mắc" @select="status='blocked';go('tasks')"/>
+      <LotusMobileAction v-if="canTasks" icon="apps-o" title="Công việc đã giao" @select="status='all';go('tasks')"/>
+      <LotusMobileAction v-if="canTasks" icon="flag-o" title="Việc vướng mắc" @select="status='blocked';go('tasks')"/>
       <LotusMobileAction v-if="needingReview.length" icon="passed" :title="'Chờ tôi kiểm / duyệt ('+needingReview.length+')'" @select="status='review';go('tasks')"/>
       <LotusMobileAction icon="clock-o" title="Kết quả đã ghi" @select="changeTab('history')"/>
      </div>

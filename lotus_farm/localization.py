@@ -2,6 +2,7 @@
 import frappe
 
 ROLE_LABELS = {
+    "Lotus Work Journal Clerk": "Nhân viên nhập nhật ký công việc",
     "System Manager": "Quản trị hệ thống",
     "HR Manager": "Quản lý nhân sự",
     "HR User": "Nhân viên nhân sự",

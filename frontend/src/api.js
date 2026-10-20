@@ -13,7 +13,7 @@ export async function call(method,args={},write=false){
   throw new Error(write?'Chưa gửi được. Giữ bản ghi trong hàng chờ rồi thử lại khi có mạng.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
  }
  const data=await response.json()
- if(!response.ok||data.exc_type){if(response.status===401||data.exc_type==='AuthenticationError')setActiveUser('');throw failure(data)}
+ if(!response.ok||data.exc_type){if(response.status===401||data.exc_type==='AuthenticationError')setActiveUser('');const error=failure(data);error.status=response.status;error.code=data.exc_type;throw error}
  const value=data.message
  if(method==='lotus_farm.console.bootstrap'&&value?.user)setActiveUser(value.user)
  if(!write&&cachedMethod(method))try{await saveRead(activeUser(),method,args,value)}catch{}
