@@ -4,6 +4,7 @@ import {load,mount,tick,ref,h} from './support/mount.mjs'
 import {filterRoles,scopeWarnings} from '../src/user-access.js'
 import {hrCatalogLabel} from '../src/hr-catalog-labels.js'
 const Picker=await load('components/UserRolePicker.vue')
+const Audit=await load('components/UserPermissionAudit.vue')
 const roles=[
  {name:'Lotus Purchase Approver',label:'Người duyệt mua hàng Lotus',group:'Lotus',assignable:true},
  {name:'Accounts Manager',label:'Quản lý kế toán',group:'ERPNext',assignable:true},
@@ -37,4 +38,20 @@ test('role profiles prevent changes and farm/team warnings follow scoped busines
  assert.equal(hrCatalogLabel('Human Resources - LT'),'Nhân sự - LT')
  assert.equal(hrCatalogLabel('Chief Financial Officer'),'Giám đốc tài chính')
  assert.equal(hrCatalogLabel('Phòng mới'),'Phòng mới')
+})
+
+test('saved permission audit distinguishes role rights, denied farm scope and signing readiness',async()=>{
+ const view=mount(Audit,{audit:{enabled:true,active_employee:'',
+  permissions:[{label:'Vườn',doctype:'Farm',read:true,create:false,write:false,submittable:false}],
+  farms:[{name:'A',label:'Vườn A',read:false}],
+  signing:[{chain:'purchase_order',chain_label:'Đơn mua hàng',step:'APPROVE',title:'Người duyệt mua',ready:false,role_eligible:false,roles:['Người duyệt mua hàng Lotus']}]}})
+ await tick()
+ assert.match(view.root.textContent,/Bị chặn/)
+ assert.match(view.root.textContent,/Chưa gắn nhân sự/)
+ assert.match(view.root.textContent,/Thiếu role: Người duyệt mua hàng Lotus/)
+ const record=view.root.querySelector('.lotus-mobile-record')
+ assert.match(record.textContent,/Có/)
+ assert.match(record.textContent,/Không/)
+ assert.match(record.textContent,/Ghi sổ—/)
+ view.unmount()
 })

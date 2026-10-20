@@ -50,11 +50,14 @@ def permission_audit(user):
     from frappe.permissions import get_role_permissions
     from lotus_farm import signing_rules
     permissions = []
+    labels = {'Farm': 'Vườn', 'Daily Work Plan': 'Kế hoạch công việc', 'Daily Work Result': 'Kết quả công việc',
+              'Stock Entry': 'Phiếu kho', 'Material Request': 'Đề nghị vật tư', 'Purchase Order': 'Đơn mua hàng',
+              'Purchase Receipt': 'Phiếu nhập mua', 'Employee': 'Nhân sự', 'Attendance': 'Chấm công', 'User': 'Người dùng'}
     for dt in ('Farm', 'Daily Work Plan', 'Daily Work Result', 'Stock Entry', 'Material Request',
                'Purchase Order', 'Purchase Receipt', 'Employee', 'Attendance', 'User'):
         meta = frappe.get_meta(dt)
         rights = get_role_permissions(meta, user=user)
-        permissions.append(dict(doctype=dt, label=frappe._(dt, lang='vi'),
+        permissions.append(dict(doctype=dt, label=labels.get(dt, frappe._(dt, lang='vi')),
                                 **{key: bool(rights.get(key)) for key in ('read', 'write', 'create', 'submit', 'cancel', 'delete')},
                                 submittable=bool(meta.is_submittable)))
     farms = []

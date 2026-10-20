@@ -2,7 +2,7 @@
 import {computed} from 'vue'
 import DataTable from './DataTable.vue'
 const props=defineProps({audit:Object})
-const columns=computed(()=>[{field:'label',headerName:'Loại dữ liệu',minWidth:180},...Object.entries({read:'Xem',create:'Tạo',write:'Sửa',submit:'Ghi sổ',cancel:'Hủy',delete:'Xóa'}).map(([field,headerName])=>({field,headerName,minWidth:80,valueFormatter:p=>['submit','cancel'].includes(field)&&!p.data?.submittable?'—':p.value?'Có':'Không'}))])
+const columns=computed(()=>[{field:'label',headerName:'Loại dữ liệu',minWidth:180},...Object.entries({read:'Xem',create:'Tạo',write:'Sửa',submit:'Ghi sổ',cancel:'Hủy',delete:'Xóa'}).map(([field,headerName])=>({field,headerName,minWidth:80,cellDataType:false,valueFormatter:p=>['submit','cancel'].includes(field)&&!p.data?.submittable?'—':p.value?'Có':'Không'}))])
 </script>
 <template><section v-if="audit" aria-label="Kiểm tra quyền đã lưu">
  <p class="user-hint">Quyền của cấu hình đã lưu. Lưu hồ sơ để cập nhật sau khi chỉnh vai trò hoặc phạm vi.</p>
