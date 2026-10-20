@@ -250,11 +250,12 @@ def board(company=None, farm=None, zone=None, block=None, cycle=None, from_date=
             schedules.append(dict(source=source.name, farm=source.farm, farm_zone=source.farm_zone, source_cut_qty=source.source_cut_qty, **planned))
     monthly = defaultdict(lambda: defaultdict(float))
     for r in schedules:
-        if r["date_kind"] == "Planned" and str(start) <= r["selection_date"] <= str(end):
+        if r["date_kind"] == "Planned" and r["selection_date"] <= str(end):
             key = (r["farm"], r["farm_zone"], r["selection_date"][:7])
             monthly[key]["cohort_count"] += 1
             monthly[key]["source_cut_qty"] += r["source_cut_qty"]
-    selection_months = [dict(farm=k[0],farm_zone=k[1],month=k[2],**v) for k,v in sorted(monthly.items())]
+    selection_months = [dict(farm=k[0],farm_zone=k[1],month=k[2],
+        verification='Đã đến kỳ · cần đối chiếu thực tế' if k[2]<=nowdate()[:7] else 'Kế hoạch',**v) for k,v in sorted(monthly.items())]
     workflow = []
     for key, title, doctype, route, evidence in PROCESS_STEPS:
         permitted = bool(frappe.has_permission(doctype, "read"))
