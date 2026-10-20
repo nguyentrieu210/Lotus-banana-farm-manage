@@ -1,0 +1,99 @@
+/* Lotus Print v1 — shared by every printed document. Rendered by Chrome (browser print) and wkhtmltopdf
+   (old QtWebKit: no flex/grid/CSS variables), so layout uses tables and literal values only.
+   Brand red appears once (the header rule); nothing relies on colour to be read on a B/W printer. */
+.lp,.lp *{box-sizing:border-box}
+.lp{margin:0;font-family:"DejaVu Sans",Arial,Helvetica,sans-serif;font-size:10.5pt;line-height:1.4;color:#1d2430;background:#e9ecf0}
+.lp-toolbar{text-align:center;padding:12px 8px}
+.lp-toolbar a,.lp-toolbar button{display:inline-block;margin:0 4px;padding:8px 16px;font:inherit;font-size:10pt;color:#1d2430;background:#fff;border:1px solid #b9c0ca;border-radius:6px;text-decoration:none;cursor:pointer}
+.lp-toolbar .lp-primary{color:#fff;background:#c43224;border-color:#c43224}
+.lp-sheet{position:relative;width:210mm;min-height:270mm;margin:0 auto 16px;padding:12mm 12mm 10mm;background:#fff;overflow:hidden}
+.lp--landscape .lp-sheet{width:297mm;min-height:190mm}
+.lp-desk .lp-sheet{width:auto;min-height:0;margin:0;padding:0}
+
+/* Header: logo | company | document */
+.lp-head{display:table;width:100%;border-bottom:2px solid #c43224;padding-bottom:8px;margin-bottom:12px}
+.lp-head>div{display:table-cell;vertical-align:middle}
+.lp-head__logo{width:46mm}
+.lp-head__logo img{display:block;height:16mm;max-width:44mm}
+.lp-head__company{padding:0 8px}
+.lp-head__company strong{display:block;font-size:12pt;letter-spacing:.2px}
+.lp-head__company span{display:block;font-size:9pt;color:#4a5260}
+.lp-head__doc{width:70mm;text-align:right}
+.lp--landscape .lp-head__doc{width:110mm}
+.lp-head__doc h1{margin:0 0 2px;font-size:14pt;font-weight:bold;letter-spacing:.4px}
+.lp-head__doc span{display:block;font-size:9pt;color:#4a5260}
+.lp-head__doc b{color:#1d2430}
+.lp-head__doc .lp-status{display:inline-block;margin-top:3px;padding:1px 8px;border:1px solid #1d2430;border-radius:3px;font-size:8pt;font-weight:bold;letter-spacing:.3px}
+.lp-subtitle{margin:-4px 0 10px;font-size:9.5pt;color:#4a5260}
+
+/* Info grid: label above value, three columns */
+.lp-info{width:100%;border-collapse:collapse;margin:0 0 12px;table-layout:fixed}
+.lp-info td{padding:4px 8px 6px 0;vertical-align:top;border-bottom:1px solid #e3e6ea}
+.lp-info small{display:block;font-size:7.5pt;text-transform:uppercase;letter-spacing:.4px;color:#6a7280}
+.lp-info b{font-weight:bold;overflow-wrap:break-word;word-wrap:break-word}
+
+/* Data tables */
+.lp-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5pt}
+.lp-table thead{display:table-header-group}
+.lp-table tr{page-break-inside:avoid;break-inside:avoid}
+.lp-table th{padding:6px 5px;text-align:left;font-size:8.5pt;font-weight:bold;background:#eef0f3;border-top:1px solid #8a919c;border-bottom:1.5px solid #1d2430;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lp-table td{padding:5px;border-bottom:1px solid #d6dae0;vertical-align:top;overflow-wrap:break-word;word-wrap:break-word}
+.lp-table tbody tr:nth-child(even) td{background:#fafbfc}
+.lp-table td small{display:block;margin-top:1px;font-size:8pt;color:#6a7280}
+.lp-table .num{text-align:right;white-space:nowrap}
+.lp-table th.num{white-space:normal}
+.lp-table .nowrap{white-space:nowrap}
+.lp-table .center{text-align:center}
+.lp-table .stt{width:9mm;text-align:center;color:#4a5260}
+.lp-table tr.lp-total td{font-weight:bold;border-top:1.5px solid #1d2430;border-bottom:0;background:#fff!important}
+.lp-table--compact{font-size:8pt}
+.lp-table--compact th{font-size:7.5pt;padding:4px 3px;vertical-align:bottom}
+.lp-table--compact td{padding:3px}
+.lp-table--dense{font-size:7.5pt}
+.lp-table--dense th{font-size:7pt;padding:4px 2px;text-align:center}
+.lp-table--dense td{padding:3px 2px;text-align:center}
+.lp-table--dense td.name{text-align:left}
+.lp-table .off{background:#eceef1!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lp-table .holiday{background:#e2e4e8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lp-table .draft{font-style:italic}
+
+/* Totals + amount in words */
+.lp-totals{width:84mm;margin:10px 0 0 auto;border-collapse:collapse;font-size:10pt}
+.lp-totals td{padding:3px 0}
+.lp-totals td:last-child{text-align:right;white-space:nowrap}
+.lp-totals .sub td{font-size:9pt;color:#4a5260;padding-left:10px}
+.lp-totals .grand td{padding-top:6px;border-top:1.5px solid #1d2430;font-weight:bold;font-size:11pt}
+.lp-words{margin:8px 0 0;font-size:9.5pt}
+.lp-words b{font-style:italic;font-weight:normal}
+.lp-notes{margin:10px 0 0;padding:6px 8px;border-left:2px solid #8a919c;font-size:9.5pt;white-space:pre-line}
+.lp-legend{margin:6px 0 0;font-size:7.5pt;color:#4a5260}
+
+/* Signatures */
+.lp-place{margin:14px 6mm 0 0;text-align:right;font-style:italic}
+.lp-sign{display:table;width:100%;table-layout:fixed;margin-top:16px;page-break-inside:avoid;break-inside:avoid}
+.lp-sign>div{display:table-cell;padding:0 6px;text-align:center;vertical-align:top}
+.lp-sign b{display:block;font-size:9.5pt}
+.lp-sign small{display:block;font-size:8pt;color:#6a7280}
+.lp-sign .lp-sign__space{height:22mm;line-height:22mm}
+.lp-sign img{max-height:20mm;max-width:46mm;vertical-align:middle}
+.lp-sign .lp-sign__name{font-weight:bold;font-size:9.5pt}
+
+/* Footer (wkhtmltopdf repeats #footer-html on each page) and watermark */
+.lp-footer{margin-top:14px}
+.lp-watermark{position:absolute;top:62mm;left:10%;width:80%;text-align:center;font-size:64pt;font-weight:bold;letter-spacing:6px;color:rgba(29,36,48,.07);-webkit-transform:rotate(-24deg);transform:rotate(-24deg);pointer-events:none;z-index:0}
+.lp-sheet>*{position:relative;z-index:1}
+.lp-sheet>.lp-watermark{z-index:0}
+
+@page{size:A4 portrait;margin:12mm 12mm 16mm}
+.lp--landscape{}
+@media print{
+ html>body{padding:2mm 0 0!important} /* wkhtmltopdf footer page: Frappe pads it 15mm, which pushes the footer off the page */
+ .lp{background:#fff}
+ .lp-toolbar{display:none}
+ .lp-sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;zoom:1!important}
+}
+@media screen and (max-width:600px){
+ .lp-toolbar{position:sticky;top:0;z-index:2;background:#e9ecf0}
+ .lp-toolbar a,.lp-toolbar button{margin:2px;min-height:40px}
+ .lp-sheet{zoom:var(--lp-zoom,1)}
+}

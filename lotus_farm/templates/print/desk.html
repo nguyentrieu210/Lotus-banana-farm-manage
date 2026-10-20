@@ -1,0 +1,3 @@
+{#- Fragment for Desk print formats: Frappe's print view supplies the page; Lotus supplies the content. -#}
+<style>{% include "lotus_farm/templates/print/lotus_print.css" %}.lp-desk{background:#fff}.print-format .lp-sheet{width:auto;min-height:0;margin:0;padding:0}</style>
+<div class="lp lp-desk">{% include "lotus_farm/templates/print/page.html" %}</div>

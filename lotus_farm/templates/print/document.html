@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ p.title }}{% if p.number %} · {{ p.number }}{% endif %}</title>
+<style>{% include "lotus_farm/templates/print/lotus_print.css" %}{% if p.landscape %}@page{size:A4 landscape;margin:10mm 10mm 14mm}{% endif %}</style>
+</head>
+<body class="lp{% if p.landscape %} lp--landscape{% endif %}">
+{% if p.toolbar %}<nav class="lp-toolbar"><button type="button" class="lp-primary" onclick="window.print()">In / Lưu PDF</button>{% if p.pdf_url %}<a href="{{ p.pdf_url }}">Tải PDF</a>{% endif %}{% if p.back_url %}<a href="{{ p.back_url }}">{{ p.back_label or 'Quay lại' }}</a>{% endif %}</nav>{% endif %}
+{% include "lotus_farm/templates/print/page.html" %}
+{% if p.toolbar %}<script>
+(function(){ // Keep an A4 preview fully visible on phones while printing at true A4 size.
+ var sheet=document.querySelector('.lp-sheet');if(!sheet||!window.matchMedia)return
+ function fit(){sheet.style.removeProperty('--lp-zoom');if(!window.matchMedia('(max-width:600px)').matches)return
+  var w=sheet.getBoundingClientRect().width,room=Math.max(240,window.innerWidth-12);if(w>0)sheet.style.setProperty('--lp-zoom',String(Math.min(1,room/w)))}
+ fit();window.addEventListener('resize',fit);window.addEventListener('orientationchange',fit)
+})()
+</script>{% endif %}
+</body></html>

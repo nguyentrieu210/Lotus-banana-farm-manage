@@ -5,6 +5,7 @@ import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vu
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
 import MobileSupplierForm from './components/MobileSupplierForm.vue'
+import MobilePurchaseProposal from './components/MobilePurchaseProposal.vue'
 import {newPurchaseDraft,purchaseFromRequest,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
 import {purchasePdfUrl,sharePurchasePdf} from './purchase-document'
 import {useMobileConfirm} from './use-mobile-confirm'
@@ -30,6 +31,7 @@ const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const session=ref(null),company=ref(''),catalog=ref(null),orders=ref([]),requests=ref([]),suppliers=ref([])
 const tab=ref('home'),view=ref(''),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
+const proposal=ref(null),proposalTitle=ref('Đề xuất mua vật tư'),proposalTodo=ref(0)
 const filter=ref(''),status=ref('Tất cả'),detail=ref(null),draft=ref(null),quote=ref(null),rejectReason=ref('')
 const savedPurchase=ref(null)
 const qrChallenge=ref(null),qrDialog=ref(null),qrSignToken=ref(''),qrSignPending=ref(false)
@@ -54,7 +56,7 @@ const mobileTabs=[
  {name:'suppliers',label:'Nhà cung cấp',icon:'shop-o'},
  {name:'profile',label:'Tôi',icon:'user-o'}
 ]
-const mobileTitle=computed(()=>view.value?({form:'Đơn mua hàng',detail:'Chi tiết đơn mua',supplier:'Nhà cung cấp',requests:'Đề nghị mua'})[view.value]||'Mua hàng Lotus':
+const mobileTitle=computed(()=>view.value?({form:'Đơn mua hàng',detail:'Chi tiết đơn mua',supplier:'Nhà cung cấp',requests:'Đề nghị chờ đặt hàng',proposals:proposalTitle.value})[view.value]||'Mua hàng Lotus':
  ({home:'Mua hàng Lotus',orders:'Đơn mua hàng',suppliers:'Nhà cung cấp',profile:'Tôi'})[tab.value])
 
 const canCreate=computed(()=>session.value?.can_create)
@@ -87,6 +89,8 @@ function openView(next){
 async function back(){
  const target=view.value==='supplier'&&supplierReturn==='form'?'form':''
  if(saving.value||!await confirmLeave(target))return
+ // The proposal screen walks back through its own list / form / detail first.
+ if(view.value==='proposals'&&proposal.value?.back())return
  if(target){view.value='form';supplierForm.value=null;window.history.replaceState({lotusBuying:true,tab:tab.value,view:'form'},'',location.href);return}
  if(view.value){view.value='';detail.value=null;draft.value=null;quote.value=null}
  else changeTab('home')
@@ -117,6 +121,7 @@ async function refresh(){
    api('orders',{company:company.value}),api('requests',{company:company.value}),api('suppliers')
   ])
   orders.value=list;requests.value=req;suppliers.value=providers
+  try{proposalTodo.value=(await call('lotus_farm.purchase_proposal.proposals',{company:company.value,view:'todo'})).length}catch{proposalTodo.value=0}
  }finally{busy.value=false}
 }
 async function initialize(){
@@ -300,11 +305,13 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <div class="buy-summary">
     <LotusMobileButton @click="status='Chờ duyệt';changeTab('orders')"><b>{{counts.pending}}</b><small>Chờ duyệt</small></LotusMobileButton>
     <LotusMobileButton @click="status='Tất cả';changeTab('orders')"><b>{{counts.shipping}}</b><small>Chờ giao</small></LotusMobileButton>
-    <LotusMobileButton @click="openView('requests')"><b>{{counts.requests}}</b><small>Đề nghị mua</small></LotusMobileButton>
+    <LotusMobileButton @click="openView('proposals')"><b>{{proposalTodo}}</b><small>Đề xuất chờ ký</small></LotusMobileButton>
+    <LotusMobileButton @click="openView('requests')"><b>{{counts.requests}}</b><small>Chờ đặt hàng</small></LotusMobileButton>
    </div>
    <div class="mobile-actions" aria-label="Thao tác Mua hàng">
     <LotusMobileAction v-if="canCreate" primary icon="cart-o" title="Tạo đơn mua" @select="newOrder()"/>
-    <LotusMobileAction icon="notes-o" title="Đề nghị mua" @select="openView('requests')"/>
+    <LotusMobileAction icon="description" title="Đề xuất mua vật tư" @select="openView('proposals')"/>
+    <LotusMobileAction icon="notes-o" title="Đề nghị mua chờ đặt hàng" @select="openView('requests')"/>
     <LotusMobileAction v-if="session?.can_approve" icon="passed" title="Duyệt đơn" @select="status='Chờ duyệt';changeTab('orders')"/>
     <LotusMobileAction icon="shop-o" title="Nhà cung cấp" @select="changeTab('suppliers')"/>
    </div>
@@ -397,6 +404,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    </section>
   </template>
 
+  <MobilePurchaseProposal v-if="view==='proposals'" ref="proposal" :company="company" :online="online" :today="session?.today||''" @title="proposalTitle=$event" @notice="notice=$event;error=''" @error="error=$event;notice=''"/>
   <MobileSupplierForm v-if="view==='supplier'&&supplierForm" v-model="supplierForm" :saving="saving" :online="online" @submit="saveSupplier"/>
  </main>
  <LotusMobileDialog ref="qrDialog" class="mobile-leave-dialog">

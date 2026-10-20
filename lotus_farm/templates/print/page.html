@@ -1,0 +1,11 @@
+{%- import "lotus_farm/templates/print/_macros.html" as m -%}
+<main class="lp-sheet">
+ {% if p.watermark %}<div class="lp-watermark">{{ p.watermark }}</div>{% endif %}
+ {% if not p.letterhead %}{{ m.header(p) }}{% endif %}
+ {% if p.subtitle %}<p class="lp-subtitle">{{ p.subtitle }}</p>{% endif %}
+ {{ m.info(p.info, p.info_columns or 3) }}
+ {% include p.body %}
+ {% if p.notes %}<div class="lp-notes"><b>Ghi chú:</b> {{ p.notes }}</div>{% endif %}
+ {{ m.signatures(p.signatures, p.place_date) }}
+ {{ m.footer(p) }}
+</main>

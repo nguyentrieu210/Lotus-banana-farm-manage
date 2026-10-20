@@ -1,1 +1,2 @@
 lotus_farm.patches.dual_work_payment
+lotus_farm.patches.clean_signature_backgrounds

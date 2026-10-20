@@ -5,8 +5,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .buy-head-back{border:0;background:#ffffff34;border-radius:9px;color:white;font-size:27px;width:38px;height:39px}
 .buy-main{max-width:690px;margin:0 auto;padding:15px 14px 38px}
 .buy-main h2{font-size:18px;margin:18px 0 9px;color:var(--lotus-text)}
-.buy-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:5px 0 17px}
-.buy-summary button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:93px;border-radius:13px;border:1px solid var(--lotus-border);background:var(--lotus-surface);color:var(--lotus-text-secondary)}
+.buy-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:5px 0 17px}
+.buy-summary button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:76px;border-radius:13px;border:1px solid var(--lotus-border);background:var(--lotus-surface);color:var(--lotus-text-secondary)}
 .buy-summary b{color:var(--lotus-primary-600);font-size:29px;line-height:1;font-weight:800}
 .buy-summary small{font-size:12px}
 .buy-quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}

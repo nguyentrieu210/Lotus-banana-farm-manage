@@ -55,6 +55,8 @@ def setup():
     install_org_fields()
     from lotus_farm.digital_signature import install_fields as install_signature_fields
     install_signature_fields()
+    from lotus_farm.purchase_proposal import install_fields as install_proposal_fields
+    install_proposal_fields()
     from lotus_farm.hr_payroll import install_fields as install_payroll_fields
     install_payroll_fields()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields

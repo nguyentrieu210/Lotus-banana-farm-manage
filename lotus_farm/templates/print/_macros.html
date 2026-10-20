@@ -1,0 +1,25 @@
+{#- Lotus Print building blocks. Every macro reads the shared context object `p`. -#}
+{% macro header(p) -%}
+<header class="lp-head">
+ <div class="lp-head__logo"><img src="{{ p.identity.logo }}" alt="Lotus Agritech"></div>
+ <div class="lp-head__company"><strong>{{ p.identity.company }}</strong>{% if p.identity.project %}<span>{{ p.identity.project }}</span>{% endif %}{% if p.identity.farm %}<span>{{ p.identity.farm }}</span>{% endif %}</div>
+ <div class="lp-head__doc"><h1>{{ p.title }}</h1>{% if p.number %}<span>Số: <b>{{ p.number }}</b></span>{% endif %}{% if p.date %}<span>Ngày: <b>{{ p.date }}</b></span>{% endif %}{% if p.status %}<span class="lp-status">{{ p.status }}</span>{% endif %}</div>
+</header>
+{%- endmacro %}
+
+{% macro info(rows, columns=3) -%}
+{% if rows %}<table class="lp-info"><tbody>{% for chunk in rows|batch(columns, None) %}<tr>{% for row in chunk %}<td{% if row and row.span %} colspan="{{ row.span }}"{% endif %}>{% if row %}<small>{{ row.label }}</small><b>{{ row.value or '—' }}</b>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table>{% endif %}
+{%- endmacro %}
+
+{% macro signatures(items, place_date='') -%}
+{% if items %}{% if place_date %}<p class="lp-place">{{ place_date }}</p>{% endif %}
+<div class="lp-sign">{% for s in items %}<div><b>{{ s.title }}</b><small>{{ s.hint }}</small>
+ <div class="lp-sign__space">{% if s.image %}<img src="{{ s.image }}" alt="Chữ ký {{ s.name }}">{% else %}&nbsp;{% endif %}</div>
+ {% if s.name %}<div class="lp-sign__name">{{ s.name }}</div>{% endif %}{% if s.signed_at %}<small>Ký lúc {{ s.signed_at }}</small>{% endif %}
+</div>{% endfor %}</div>{% endif %}
+{%- endmacro %}
+
+{% macro footer(p) -%}
+{#- Inline styles: wkhtmltopdf renders this footer as its own page under Frappe print CSS. -#}
+<div id="footer-html" class="lp-footer"><table style="width:100%;border-collapse:collapse;border-top:1px solid #d6dae0;font-family:DejaVu Sans,Arial,sans-serif;font-size:7.5pt;color:#6a7280"><tr><td style="padding:3px 0 0;text-align:left;width:34%">Lotus Agritech · {{ p.number }}</td><td style="padding:3px 0 0;text-align:center">In lúc {{ p.printed_at }} · {{ p.printed_by }}</td><td style="padding:3px 0 0;text-align:right;width:20%">Trang <span class="page"></span>/<span class="topage"></span></td></tr></table></div>
+{%- endmacro %}

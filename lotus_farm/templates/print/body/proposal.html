@@ -1,0 +1,24 @@
+{#- Phiếu đề xuất mua / cấp vật tư — columns as on the farm's Excel forms. -#}
+{% set f = p.fmt %}
+{% if p.purchase %}
+<table class="lp-table lp-table--compact">
+ <colgroup><col style="width:3%"><col style="width:19%"><col style="width:10%"><col style="width:4.5%"><col style="width:6.5%"><col style="width:7%"><col style="width:8%"><col style="width:9.5%"><col style="width:7.5%"><col style="width:9%"><col style="width:16%"></colgroup>
+ <thead><tr><th class="stt">TT</th><th>Tên vật tư, nhiên liệu</th><th>Quy cách / Thông số kỹ thuật</th><th class="center">ĐVT</th><th class="num">SL tồn kho hiện tại</th><th class="num">SL đề xuất mua</th><th class="num">Đơn giá dự kiến (đồng)</th><th class="num">Thành tiền (đồng)</th><th class="center">Thời gian cần hàng</th><th>Nhà cung cấp đề xuất</th><th>Mục đích sử dụng</th></tr></thead>
+ <tbody>{% for r in p.rows %}<tr>
+  <td class="stt">{{ loop.index }}</td><td>{{ r.item_name }}{% if r.notes %}<small>{{ r.notes }}</small>{% endif %}</td><td>{{ r.specification }}</td><td class="center">{{ r.uom }}</td>
+  <td class="num">{{ f.number(r.stock) if r.stock is not none else '' }}</td><td class="num"><b>{{ f.number(r.qty) }}</b></td>
+  <td class="num">{{ f.number(r.price, 0) if r.price else '' }}</td><td class="num">{{ f.number(r.amount, 0) if r.amount else '' }}</td>
+  <td class="center nowrap">{{ r.needed_date }}</td><td>{{ r.supplier }}</td><td>{{ r.purpose }}</td></tr>{% endfor %}<tr class="lp-total"><td></td><td colspan="6">Cộng ({{ p.rows|length }} dòng)</td><td class="num">{{ f.number(p.total, 0) if p.total else '' }}</td><td colspan="3"></td></tr></tbody>
+</table>
+<p class="lp-words">Số tiền bằng chữ: {% if p.all_priced %}<b>{{ f.words(p.total) }}</b>{% else %}<b>chưa đủ đơn giá dự kiến cho mọi dòng</b>{% endif %}</p>
+{% else %}
+<table class="lp-table lp-table--compact">
+ <colgroup><col style="width:3.5%"><col style="width:16%"><col style="width:10%"><col style="width:5%"><col style="width:6.5%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7.5%"><col style="width:9%"><col style="width:9%"><col style="width:7.5%"><col style="width:5%"></colgroup>
+ <thead><tr><th class="stt">TT</th><th>Tên vật tư, nhiên liệu</th><th>Mã / Quy cách</th><th class="center">ĐVT</th><th class="num">Định mức</th><th class="num">SL tồn kho hiện tại</th><th class="num">SL đề xuất cấp</th><th class="num">SL kho cấp phát</th><th class="center">Ngày cần cấp</th><th>Lô / Vị trí sử dụng</th><th>Diện tích / Số cây / KL</th><th>Mục đích sử dụng</th><th>Ghi chú</th></tr></thead>
+ <tbody>{% for r in p.rows %}<tr>
+  <td class="stt">{{ loop.index }}</td><td>{{ r.item_name }}</td><td>{{ r.item_code }}{% if r.specification %}<small>{{ r.specification }}</small>{% endif %}</td><td class="center">{{ r.uom }}</td>
+  <td class="num">{{ f.number(r.norm) if r.norm else '' }}</td><td class="num">{{ f.number(r.stock) if r.stock is not none else '' }}</td><td class="num"><b>{{ f.number(r.qty) }}</b></td>
+  <td class="num">{{ f.number(r.issued_qty) if r.issued_qty is not none else '' }}</td><td class="center nowrap">{{ r.needed_date }}</td><td>{{ r.area }}</td><td>{{ r.scale }}</td><td>{{ r.purpose }}</td><td>{{ r.notes }}</td></tr>{% endfor %}<tr class="lp-total"><td></td><td colspan="5">Cộng ({{ p.rows|length }} dòng)</td><td class="num">{{ f.number(p.rows|sum(attribute='qty')) }}</td><td colspan="6"></td></tr></tbody>
+</table>
+{% endif %}
+<p class="lp-legend">Phiếu đề xuất không chứng minh đã đặt mua hoặc đã xuất kho. Tồn kho là số tại thời điểm in. Chữ ký chỉ hiển thị khi có sự kiện ký số trên phiếu.</p>
