@@ -385,9 +385,9 @@ def material_status(farm,posting_date,block=None,plot=None,cycle=None,zone=None)
         actuals=records('Material Consumption',{'material_requirement':req.name,'docstatus':1},['item','consumed_qty'])
         used={}
         for c in actuals:used[c.item]=used.get(c.item,0)+flt(c.consumed_qty)
-        result=frappe.get_list('Daily Work Result',filters={'work_plan_line':req.work_plan_line,'docstatus':1},fields=['completed_qty'],limit_page_length=1)
+        actual_results=frappe.get_list('Daily Work Result',filters={'work_plan_line':req.work_plan_line,'docstatus':1},fields=['completed_qty'],limit_page_length=1)
         line=frappe.db.get_value('Daily Work Plan Line',req.work_plan_line,['planned_qty'],as_dict=True)
-        ratio=flt(result[0].completed_qty)/flt(line.planned_qty) if result and line and line.planned_qty else None
+        ratio=flt(actual_results[0].completed_qty)/flt(line.planned_qty) if actual_results and line and line.planned_qty else None
         for r in doc.lines:
             expected=flt(r.required_qty)*ratio if ratio is not None else None
             usage.append(dict(requirement=doc.name,item=r.item,uom=r.uom,planned_qty=r.required_qty,used_qty=used.get(r.item,0),expected_for_actual=expected,variance_qty=used.get(r.item,0)-expected if expected is not None else None))

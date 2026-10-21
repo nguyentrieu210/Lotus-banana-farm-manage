@@ -54,9 +54,6 @@ class TestBRDOnSite(unittest.TestCase):
             chart_of_accounts="Standard",
             enable_perpetual_inventory=1,
         ).name
-        # Internal document factories also use user defaults. Keep the synthetic
-        # Farm's Company as the current default inside this test savepoint.
-        frappe.defaults.set_user_default("Company", self.company)
         self.farm = self.make("Farm", farm_code="F-" + self.tag, farm_name="Test", company=self.company).name
         self.variety = self.make("Banana Variety", variety_code="V-" + self.tag, variety_name="Test").name
         self.block = self.make(
@@ -149,9 +146,6 @@ class TestBRDOnSite(unittest.TestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
         frappe.db.rollback(save_point="lotus_brd_test")
-        # Reload the restored defaults instead of caching the rolled-back test
-        # Company after its fixture records have disappeared.
-        frappe.clear_cache(user="Administrator")
 
     @staticmethod
     def make(doctype, **values):
@@ -1006,7 +1000,7 @@ class TestBRDOnSite(unittest.TestCase):
         plan.submit()
         return plan,norm,material_item
 
-    def test_mobile_assignment_one_location_picker_and_demo_seed(self):
+    def test_mobile_assignment_large_blocks_and_historical_demo_seed(self):
         from lotus_farm.mobile_demo_seed import seed
         from lotus_farm.mobile_assignment import options, preview, create
 
@@ -1018,7 +1012,8 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(seed(company=self.company)["already_seeded"])
         catalog = options(sample["farm"])
         self.assertEqual(len(catalog["blocks"]), 3)
-        self.assertEqual(len(catalog["plots"]), 12)
+        self.assertNotIn("plots", catalog)
+        self.assertNotIn("cycles", catalog)
         self.assertEqual(len(catalog["teams"]), 4)
         self.assertGreaterEqual(len(catalog["works"]), 8)
         from frappe.utils import add_days
@@ -1028,24 +1023,32 @@ class TestBRDOnSite(unittest.TestCase):
         team = catalog["teams"][0]["name"]
         payload = [dict(location="block:" + block["name"], work_type=bag["name"], qty=800)]
         shown = preview(sample["farm"], team, payload)
-        self.assertEqual(len(shown["lines"]), 4)
-        self.assertEqual(sum(row["planned_qty"] for row in shown["lines"]), 800)
-        self.assertEqual({row["planned_qty"] for row in shown["lines"]}, {200.0})
-        # A Plot is independently selectable without asking the user for Block.
-        plot = next(p for p in catalog["plots"] if p["plot_code"] == "A03-03")
-        single = preview(sample["farm"], team, [dict(
-            location="plot:" + plot["name"], work_type=bag["name"], qty=250)])
-        self.assertEqual(len(single["lines"]), 1)
-        self.assertEqual(single["lines"][0]["farm_block"], plot["farm_block"])
+        self.assertEqual(len(shown["lines"]), 1)
+        self.assertEqual(shown["lines"][0]["planned_qty"], 800)
+        self.assertEqual(shown["lines"][0]["farm_block"], block["name"])
+        for field in ("farm_plot", "crop_cycle", "sucker_selection_batch"):
+            self.assertIsNone(shown["lines"][0][field])
+        # Historical plots remain in the demo history, but new assignments must
+        # stay on the selected large block without splitting into old plots.
+        historical_plot = frappe.db.get_value("Farm Plot", {
+            "farm": sample["farm"], "plot_code": "A03-03",
+        }, "name")
+        self.assertTrue(historical_plot)
+        with self.assertRaises(frappe.ValidationError):
+            preview(sample["farm"], team, [dict(
+                location="plot:" + historical_plot, work_type=bag["name"], qty=250)])
         outcome = create(sample["farm"], tomorrow, team, payload)
-        self.assertEqual(outcome["count"], 4)
+        self.assertEqual(outcome["count"], 1)
         plan = frappe.get_doc("Daily Work Plan", outcome["plan"])
         self.assertEqual(plan.docstatus, 1)
-        self.assertEqual(len(plan.lines), 4)
+        self.assertEqual(len(plan.lines), 1)
+        self.assertEqual(plan.lines[0].planned_qty, 800)
+        self.assertFalse(plan.lines[0].farm_plot)
+        self.assertFalse(plan.lines[0].crop_cycle)
         with self.assertRaises(frappe.ValidationError):
             create(sample["farm"], tomorrow, team, payload)
         with self.assertRaises(frappe.ValidationError):
-            preview(sample["farm"], team, [dict(location="plot:" + self.plot,
+            preview(sample["farm"], team, [dict(location="block:" + self.block,
                                                 work_type=bag["name"], qty=100)])
 
     def test_promax_norm_plan_materials_and_daily_close(self):
@@ -1202,15 +1205,19 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertEqual(first['document'],again['document']);self.assertTrue(again['replayed'])
         evidence=frappe.get_doc('Field Capture',first['capture'])
         self.assertEqual(evidence.target_name,first['document'])
-        self.assertEqual(frappe.get_doc('Daily Work Result',first['document']).field_capture,evidence.name)
+        pending=frappe.get_doc('Daily Work Result',first['document'])
+        self.assertEqual(pending.field_capture,evidence.name)
+        self.assertEqual(first['review_state'],'Pending')
+        self.assertEqual(pending.review_state,'Pending')
+        self.assertEqual(pending.docstatus,0)
         evidence.latitude=11
         with self.assertRaises(frappe.ValidationError):evidence.save()
         args['values']['completed_qty']=1001
         with self.assertRaises(frappe.ValidationError):capture(**args)
         summary=dashboard(nowdate(),nowdate(),farm=self.farm)
-        self.assertEqual(summary['farms'][0]['work_completion_percent'],80)
+        self.assertEqual(summary['farms'][0]['work_completion_percent'],0)
         self.assertEqual(len(map_data(self.farm)['features']),1)
-        self.assertTrue(any(e['name']==first['document'] for e in plot_history(self.plot)['events']))
+        self.assertFalse(any(e['name']==first['document'] for e in plot_history(self.plot)['events']))
         self.assertEqual(bootstrap(self.farm,nowdate())['user'],'Administrator')
 
     def test_360_excel_staging_dry_run_import_and_tamper(self):

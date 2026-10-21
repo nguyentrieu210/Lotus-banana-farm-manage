@@ -265,7 +265,7 @@ def stock_posted(doc, method=None):
     # Physical finished stock replaces future supply per Item; no duplicated forecast + stock ATP.
     impacts = _forecast_outputs(run, use_snapshot=False)
     import json
-    frappe.db.set_value('Stock Entry', doc.name, 'lotus_forecast_impacts_json', json.dumps(impacts, sort_keys=True))
+    doc.db_set('lotus_forecast_impacts_json', json.dumps(impacts, sort_keys=True), update_modified=False)
     for name, item_amounts in sorted(impacts.items()):
         lock("Harvest Forecast", name)
         supply = frappe.get_doc("Harvest Forecast", name)

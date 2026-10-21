@@ -17,7 +17,10 @@ def _insert_idempotent(doctype, key_field, key, payload, submit=False):
         return doc
     frappe.db.savepoint("lotus_event")
     try:
-        doc = frappe.get_doc(dict(doctype=doctype, **deepcopy(payload)))
+        values = deepcopy(payload)
+        if "company" not in values and values.get("farm") and frappe.get_meta(doctype).has_field("company"):
+            values["company"] = frappe.db.get_value("Farm", values["farm"], "company")
+        doc = frappe.get_doc(dict(doctype=doctype, **values))
         doc.set(key_field, key)
         doc.client_payload_hash = payload_hash
         doc.insert()
