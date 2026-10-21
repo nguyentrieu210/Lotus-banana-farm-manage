@@ -66,7 +66,7 @@ const isActive=group=>group.items.some(item=>itemActive(item))
      </UiButton>
     </div>
     <div v-if="group.expandable" v-show="isOpen(group)&&!sidebarCollapsed" :id="group.id" class="nav-submenu">
-     <template v-for="(item,index) in group.kind==='hr'?group.items:group.items.slice(1)" :key="item.id||item.path">
+     <template v-for="(item,index) in group.kind==='hr'||group.items.length>1?group.items:[]" :key="item.id||item.path">
      <span v-if="item.setup&&!group.items[index-1]?.setup" class="nav-subsection">Thiết lập nhân sự</span>
      <UiButton variant="outline" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:itemActive(item)}" :aria-current="itemActive(item)?'page':undefined" @click="item.query?emit('go',item.path,item.query):emit('go',item.path)">
       <LotusIcon :name="item.icon" class="nav-icon"/>

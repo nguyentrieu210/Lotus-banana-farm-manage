@@ -40,6 +40,11 @@ def map_data(farm,block=None,plot=None,status=None):
     return dict(type='FeatureCollection',features=[dict(type='Feature',geometry=json.loads(r.geojson),properties=dict(plot=r.farm_plot,version=r.version,document=r.name)) for r in latest.values()])
 
 
+def _density(block):
+    from lotus_farm.farm_land_rules import density
+    return density(block.get('lotus_tree_count'), block.get('area_ha'))
+
+
 @frappe.whitelist()
 def map_block_data(farm, block=None, zone=None, include_draft=False):
     """Care boundaries, with explicit draft visibility for imported KML sources."""
@@ -49,7 +54,8 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
     selected_scope = land_scope(farm=farm, block=block, zone=zone)
     selected = records('Farm Block',
                        land_filters(frappe.get_meta('Farm Block'), selected_scope),
-                       ['name', 'block_code', 'block_name', 'farm_zone', 'area_ha'])
+                       ['name', 'block_code', 'block_name', 'farm_zone', 'area_ha', 'variety',
+                        *[f for f in ('lotus_tree_count', 'lotus_estimated_flowering_date') if frappe.get_meta('Farm Block').has_field(f)]])
     allowed = {b.name for b in selected}
     blocks = {b.name: b for b in selected}
     states = ['Draft', 'Approved'] if include_draft in (True, 1, '1', 'true') else ['Approved']
@@ -68,6 +74,10 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
                                                code=blocks[row.farm_block].block_code,
                                                zone=blocks[row.farm_block].farm_zone,
                                                area_ha=blocks[row.farm_block].area_ha,
+                                               variety=blocks[row.farm_block].variety,
+                                               tree_count=blocks[row.farm_block].get('lotus_tree_count') or 0,
+                                               density=_density(blocks[row.farm_block]),
+                                               flowering_month=str(blocks[row.farm_block].get('lotus_estimated_flowering_date') or '')[:7],
                                                approval_state=row.approval_state, version=row.version,
                                                document=row.name)) for row in latest.values()])
     if farm == 'LOTUS-180' and 'Draft' in states:

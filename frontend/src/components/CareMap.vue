@@ -6,12 +6,15 @@ import 'leaflet/dist/leaflet.css'
 import {alignedTiles} from '../map-imagery'
 import {imagery} from '../map-imagery-config'
 import {zoneColor,zoneCenter} from '../map-zones'
+import {fillFor,legendFor} from '../map-land'
 import {Button as UiButton} from './ui/button'
 import LotusIcon from './LotusIcon.vue'
 import {distance,area,crosses,measureLabel,feature} from '../map-measure'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
-const props=defineProps({collection:Object,farm:String,user:String})
+// colorBy: zone (default) | variety | density | flowering — see map-land.js. Zone outlines stay in every mode.
+// compact: a small map of one lot (no measuring tools or status panel).
+const props=defineProps({collection:Object,farm:String,user:String,colorBy:{type:String,default:'zone'},varieties:{type:Array,default:()=>[]},compact:Boolean})
 const emit=defineEmits(['open','reset'])
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask:confirm,finish:finishConfirm}=useWorkspaceConfirm()
 const canvas=ref(null),error=ref(''),count=ref(0),drafts=ref(false)
@@ -48,13 +51,16 @@ function removeSelected(){saved.value=saved.value.filter((_,i)=>i!==selected.val
 async function clearSketches(){if(!await confirm('Xoá toàn bộ nét đo vẽ đã lưu trên máy cho vườn này?'))return;saved.value=[];selected.value=-1;persist();renderSketches()}
 function exportSketches(){const url=URL.createObjectURL(new Blob([JSON.stringify({type:'FeatureCollection',features:saved.value},null,2)],{type:'application/geo+json'}));const a=document.createElement('a');a.href=url;a.download=`${props.farm}-do-ve.geojson`;a.click();URL.revokeObjectURL(url)}
 const features=()=>props.collection?.features||[]
-function content(f){const el=document.createElement('span');el.textContent=`${f.properties.code} · ${Number(f.properties.area_ha||0).toLocaleString('vi-VN')} ha`;return el}
+function content(f){const p=f.properties,el=document.createElement('span');el.textContent=`${p.code} · ${Number(p.area_ha||0).toLocaleString('vi-VN')} ha`+(props.colorBy==='density'&&p.density?` · ${p.density.toLocaleString('vi-VN')} cây/ha`:props.colorBy==='variety'&&p.variety?` · ${p.variety}`:props.colorBy==='flowering'&&p.flowering_month?` · trổ ${p.flowering_month.slice(5)}/${p.flowering_month.slice(0,4)}`:'');return el}
+const legend=computed(()=>legendFor(props.colorBy,{varieties:props.varieties}))
+const tint=f=>props.colorBy==='zone'?{color:zoneColor(f.properties.zone),weight:1.5,fillColor:zoneColor(f.properties.zone),fillOpacity:.12}
+ :{color:'var(--lotus-neutral-950)',weight:1,fillColor:fillFor(f.properties,props.colorBy,{varieties:props.varieties}),fillOpacity:.72}
 function draw(){
  if(!map)return
  if(blocks)blocks.remove();if(zones)zones.remove();zoneLabels?.remove();zoneHalo?.remove();perimeter?.remove();openEdges?.remove()
  const rows=features();count.value=rows.length+(props.collection?.open_features?.length||0);drafts.value=[...rows,...(props.collection?.open_features||[])].some(f=>f.properties.approval_state==='Draft');error.value=''
  if(props.collection?.perimeter)perimeter=L.geoJSON(props.collection.perimeter,{interactive:false,style:{color:'var(--lotus-neutral-0)',weight:5,fillOpacity:0}}).addTo(map)
- blocks=L.geoJSON({type:'FeatureCollection',features:rows},{style:f=>({color:zoneColor(f.properties.zone),weight:1.5,fillColor:zoneColor(f.properties.zone),fillOpacity:.12}),onEachFeature(f,layer){layer.bindTooltip(content(f),{permanent:map.getZoom()>=16.5,direction:'center',className:'care-map-label'});layer.on('click',event=>{if(mode.value)addPoint(event);else emit('open',f.properties.block)})}}).addTo(map)
+ blocks=L.geoJSON({type:'FeatureCollection',features:rows},{style:tint,onEachFeature(f,layer){layer.bindTooltip(content(f),{permanent:map.getZoom()>=16.5,direction:'center',className:'care-map-label'});layer.on('click',event=>{if(mode.value)addPoint(event);else emit('open',f.properties.block)})}}).addTo(map)
  if(props.collection?.open_features?.length)openEdges=L.geoJSON({type:'FeatureCollection',features:props.collection.open_features},{style:f=>({color:zoneColor(f.properties.zone),weight:3,dashArray:'6 5'}),onEachFeature(f,layer){layer.bindTooltip(label(`${f.properties.code} · Ranh chưa khép kín`))}}).addTo(map)
  try{
   const byZone=new Map()
@@ -67,7 +73,7 @@ function draw(){
  }catch{error.value='Không dựng được ranh khu. Ranh từng lô vẫn được hiển thị.'}
  fit()
 }
-function fit(){const target=[blocks,openEdges,perimeter].find(layer=>layer?.getBounds().isValid());if(target)map.fitBounds(target.getBounds(),{paddingTopLeft:[32,100],paddingBottomRight:[32,125],maxZoom:18})}
+function fit(){const target=[blocks,openEdges,perimeter].find(layer=>layer?.getBounds().isValid());if(target)map.fitBounds(target.getBounds(),props.compact?{padding:[18,18],maxZoom:19}:{paddingTopLeft:[32,100],paddingBottomRight:[32,125],maxZoom:18})}
 function background(){
  if(flycam){flycam.remove();flycam=null}
  if(['LOTUS-222','LOTUS-180'].includes(props.farm))flycam=alignedTiles(L,'https://map.gpcds.site/v2/tiles/farm222/{z}/{x}/{y}.webp?v=20261016-116292',{minZoom:12,maxZoom:22,maxNativeZoom:22,bounds:imagery.bounds,noWrap:true,keepBuffer:2,updateWhenIdle:true,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',attribution:'Ảnh flycam Lotus Farm 222'},imagery.displayAlignment).addTo(map)
@@ -78,19 +84,20 @@ onMounted(()=>{
  sketches=L.featureGroup().addTo(map);preview=L.featureGroup().addTo(map);map.on('click',addPoint)
  restore()
  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'Ảnh vệ tinh © Esri'}).addTo(map)
- background();observer=new ResizeObserver(()=>map?.invalidateSize());observer.observe(canvas.value)
+ background();observer=new ResizeObserver(()=>{map?.invalidateSize();if(props.compact&&blocks)fit()});observer.observe(canvas.value)
  map.on('zoomend',()=>blocks?.eachLayer(layer=>{const tooltip=layer.getTooltip();if(tooltip){tooltip.options.permanent=map.getZoom()>=16.5;if(tooltip.options.permanent)layer.openTooltip();else layer.closeTooltip()}}));draw()
 })
 watch(()=>props.collection,draw)
+watch(()=>[props.colorBy,props.varieties],()=>{blocks?.setStyle(tint);blocks?.eachLayer(layer=>layer.setTooltipContent(content(layer.feature)))})
 watch(()=>[props.farm,props.user],()=>{if(map){background();selected.value=-1;restore()}})
 onActivated(()=>map?.invalidateSize())
 onDeactivated(()=>map?.stop())
 onBeforeUnmount(()=>{observer?.disconnect();map?.remove();map=null})
 </script>
-<template><section class="care-map" :class="{'care-map-drawing':mode}">
+<template><section class="care-map" :class="{'care-map-drawing':mode,'care-map--compact':compact}">
  <div ref="canvas" class="care-map-canvas" role="region" aria-label="Bản đồ flycam, ranh khu và lô chăm sóc"/>
  <div class="care-map-filters"><slot name="filters"/></div>
- <div class="care-map-tools" role="toolbar" aria-label="Đo vẽ bản đồ">
+ <div v-if="!compact" class="care-map-tools" role="toolbar" aria-label="Đo vẽ bản đồ">
   <UiButton size="sm" variant="outline" @click="emit('reset');fit()"><LotusIcon name="target"/>Toàn vườn</UiButton>
   <UiButton size="sm" :variant="mode==='line'?'default':'outline'" :disabled="!farm" :aria-pressed="mode==='line'" @click="start('line')"><LotusIcon name="ruler"/>Đo đường</UiButton>
   <UiButton size="sm" :variant="mode==='area'?'default':'outline'" :disabled="!farm" :aria-pressed="mode==='area'" @click="start('area')"><LotusIcon name="map"/>Đo vùng</UiButton>
@@ -98,9 +105,9 @@ onBeforeUnmount(()=>{observer?.disconnect();map?.remove();map=null})
   <UiButton size="sm" variant="outline" :disabled="!saved.length" @click="exportSketches"><LotusIcon name="receive"/>GeoJSON</UiButton>
   <UiButton size="sm" variant="outline" :disabled="!saved.length" @click="clearSketches">Xoá tất cả</UiButton>
  </div>
- <div class="care-map-status" aria-live="polite">
+ <div v-if="!compact" class="care-map-status" aria-live="polite">
   <template v-if="mode"><strong>{{mode==='area'?'Vẽ vùng / đo diện tích':'Vẽ đường / đo khoảng cách'}}</strong><span>{{measurement}} · {{points.length}} điểm</span><div class="actions"><UiButton size="sm" :disabled="!canFinish" @click="finish">Hoàn tất</UiButton><UiButton size="sm" variant="outline" :disabled="!points.length" @click="undo">Lùi điểm</UiButton><UiButton size="sm" variant="outline" @click="cancel">Huỷ</UiButton></div><small>Số đo ước tính. Nét vẽ lưu trên máy theo tài khoản và vườn.</small></template>
-  <template v-else><span>{{count}} lô chăm sóc · {{saved.length}} nét vẽ<span v-if="drafts"> · Ranh nhập từ Lotus Map, chưa duyệt</span></span><div class="care-map-legend"><span v-for="z in shownZones" :key="z"><i :style="{background:zoneColor(z)}"/>Khu {{z}}</span></div><small v-if="collection?.open_features?.length">C-13: ranh nguồn chưa khép kín, hiển thị nét đứt.</small><small v-if="!count">{{farm?'Chưa có ranh lô trong phạm vi đã chọn.':'Chọn vườn để xem bản đồ.'}}</small></template>
+  <template v-else><span>{{count}} lô chăm sóc · {{saved.length}} nét vẽ<span v-if="drafts"> · Ranh nhập từ Lotus Map, chưa duyệt</span></span><div v-if="legend" class="care-map-legend"><span v-for="item in legend" :key="item.label"><i :style="{background:item.color}"/>{{item.label}}</span></div><div v-else class="care-map-legend"><span v-for="z in shownZones" :key="z"><i :style="{background:zoneColor(z)}"/>Khu {{z}}</span></div><small v-if="collection?.open_features?.length">C-13: ranh nguồn chưa khép kín, hiển thị nét đứt.</small><small v-if="!count">{{farm?'Chưa có ranh lô trong phạm vi đã chọn.':'Chọn vườn để xem bản đồ.'}}</small></template>
   <p v-if="error||drawingError" role="alert" class="error">{{drawingError||error}}</p>
  </div>
  <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" @answer="finishConfirm"/>
