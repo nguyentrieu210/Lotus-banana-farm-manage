@@ -1,0 +1,12 @@
+# Narrow overlay on the exact Lotus image serving port 8080.
+FROM lotus-release:276884f
+USER root
+COPY --chown=frappe:frappe lotus_farm/field_todo.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/field_todo.py
+COPY --chown=frappe:frappe lotus_farm/lotus_farm/doctype/field_todo/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/lotus_farm/doctype/field_todo/
+COPY --chown=frappe:frappe frontend/src/FieldTodoApp.vue /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/FieldTodoApp.vue
+COPY --chown=frappe:frappe frontend/src/field-todo.css /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/field-todo.css
+COPY --chown=frappe:frappe frontend/src/WorkMobile.vue /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/WorkMobile.vue
+COPY --chown=frappe:frappe frontend/src/labels.js /home/frappe/frappe-bench/apps/lotus_farm/frontend/src/labels.js
+COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+RUN find /home/frappe/frappe-bench/apps/lotus_farm -name '*.pyc' -delete
+USER frappe

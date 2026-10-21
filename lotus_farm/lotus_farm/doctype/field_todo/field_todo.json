@@ -1,0 +1,184 @@
+{
+  "doctype": "DocType",
+  "name": "Field Todo",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "field_order": [
+    "farm",
+    "farm_block",
+    "work_team",
+    "work_type",
+    "group_code",
+    "section_code",
+    "tracking_mode",
+    "start_date",
+    "due_date",
+    "target_qty",
+    "quantity_unit",
+    "description",
+    "status",
+    "reported_qty",
+    "report_note",
+    "reported_by",
+    "reported_at",
+    "review_note",
+    "reviewed_by",
+    "reviewed_at",
+    "request_key"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Lô lớn",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_team",
+      "label": "Tổ thực hiện",
+      "fieldtype": "Link",
+      "options": "Work Team",
+      "reqd": 1
+    },
+    {
+      "fieldname": "work_type",
+      "label": "Công việc",
+      "fieldtype": "Link",
+      "options": "Work Type",
+      "reqd": 1
+    },
+    {
+      "fieldname": "group_code",
+      "label": "Nhóm công việc",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "section_code",
+      "label": "Hạng mục",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "tracking_mode",
+      "label": "Cách báo cáo",
+      "fieldtype": "Select",
+      "options": "Quantity\nCompletion",
+      "reqd": 1
+    },
+    {
+      "fieldname": "start_date",
+      "label": "Ngày bắt đầu",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "due_date",
+      "label": "Hạn hoàn thành",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "target_qty",
+      "label": "Số lượng dự kiến",
+      "fieldtype": "Float",
+      "precision": "3"
+    },
+    {
+      "fieldname": "quantity_unit",
+      "label": "Đơn vị khối lượng",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "description",
+      "label": "Phạm vi / tiêu chuẩn hoàn thành",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "status",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Open\nDoing\nReported\nAccepted\nRework",
+      "default": "Open",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reported_qty",
+      "label": "Khối lượng báo hoàn thành",
+      "fieldtype": "Float",
+      "precision": "3"
+    },
+    {
+      "fieldname": "report_note",
+      "label": "Ghi chú báo xong",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "reported_by",
+      "label": "Người báo xong",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reported_at",
+      "label": "Ngày giờ báo xong",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_note",
+      "label": "Ý kiến nghiệm thu",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "reviewed_by",
+      "label": "Người nghiệm thu",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_at",
+      "label": "Ngày giờ nghiệm thu",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "request_key",
+      "label": "Mã chống gửi trùng",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1,
+      "hidden": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

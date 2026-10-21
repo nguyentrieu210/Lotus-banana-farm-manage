@@ -1,0 +1,15 @@
+.field-todo{display:flex;flex-direction:column;gap:var(--lotus-space-3,12px);min-width:0}
+.field-todo-toolbar{display:flex;justify-content:space-between;align-items:center;gap:var(--lotus-space-2,8px)}
+.field-todo-toolbar strong{font-size:1rem;min-width:0}
+.field-todo-tabs{display:flex;gap:var(--lotus-space-2,8px);flex-wrap:wrap}
+.field-todo-tabs .van-button{flex:1;min-width:0;font-size:.79rem}
+.field-todo-tabs .active{border-color:var(--lotus-primary);color:var(--lotus-primary);font-weight:700}
+.field-todo-meta,.field-todo-secondary{font-size:.78rem;color:var(--lotus-text-secondary,inherit)}
+.field-todo-row.van-button{display:flex;width:100%;height:auto;min-height:88px;padding:12px;white-space:normal;text-align:left;align-items:stretch}
+.field-todo-row .van-button__content,.field-todo-row .van-button__text{display:flex;width:100%;align-items:stretch;flex-direction:column;gap:5px}
+.field-todo-line{display:flex;align-items:start;justify-content:space-between;gap:8px}
+.field-todo-line small{white-space:nowrap;font-size:.73rem}
+.field-todo-form{display:flex;flex-direction:column;gap:10px}
+.field-todo-form .mobile-submit{width:100%}
+.field-todo-detail p{margin:6px 0;font-size:.88rem;overflow-wrap:anywhere}
+@media(max-width:360px){.field-todo-tabs{gap:4px}.field-todo-tabs .van-button{padding:0 6px;font-size:.72rem}}
