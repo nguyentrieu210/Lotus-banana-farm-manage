@@ -61,6 +61,8 @@ def setup():
     install_payroll_fields()
     from lotus_farm.shift_admin import install_fields as install_shift_fields
     install_shift_fields()
+    from lotus_farm.farm_land import install as install_land
+    install_land()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

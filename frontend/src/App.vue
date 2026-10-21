@@ -46,6 +46,7 @@ const workspaceComponents={
  'cham-cong':defineAsyncComponent({loader:()=>import('./TimekeepingApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'kho':defineAsyncComponent({loader:()=>import('./StockApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'cong-viec':defineAsyncComponent({loader:()=>import('./FarmWorkApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
+ farms:defineAsyncComponent({loader:()=>import('./FarmLandApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
 }
 import {mobileTabs as getMobileTabs, mobileActions as getMobileActions} from './mobile-menu'
 import {queueCapture,queueRows,syncCaptures,reconcileCapture,clearSent} from './offline'

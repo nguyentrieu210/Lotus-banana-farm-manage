@@ -35,15 +35,15 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
  view.unmount()
 })
 
-test('sidebar parent navigates to its existing route; nested pages expand and can be selected',async()=>{
+test('sidebar parent navigates to its first page; the submenu lists every page of the group, the first included',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{},commands:{},modules:{}})
  const visited=[]
  const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['map','Bản đồ'],['work','Công việc'],['labor','Bố trí nhân công']]
  const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'work',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
- assert.deepEqual(parents,['Tổng quan','Bản đồ','Điều hành công việc'])
- assert.equal(view.root.querySelector('.nav-group-current .nav-submenu button .nav-label')?.textContent,'Bố trí nhân công')
- view.root.querySelector('.nav-group-current .nav-submenu button').click();await tick()
+ assert.deepEqual(parents,['Tổng quan','Quản lý vườn','Điều hành công việc'])
+ assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Tiến độ & kết quả','Bố trí nhân công'],'the page the group button opens is listed too')
+ view.root.querySelectorAll('.nav-group-current .nav-submenu button')[1].click();await tick()
  assert.deepEqual(visited,['labor'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
  collapsed.click();await tick()

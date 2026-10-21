@@ -156,11 +156,11 @@ class PlotMaster(Document):
         block = frappe.get_doc('Farm Block', self.farm_block)
         block.check_permission('read')
         if block.farm != self.farm or not block.active:
-            frappe.throw('Plot requires an active Block in the same Farm.')
+            frappe.throw('Thửa phải thuộc một lô đang dùng của cùng vườn.')
         area=number(self.area_ha, 'Plot area', positive=True)
         siblings=sum(flt(v) for v in frappe.get_all('Farm Plot',filters={'farm_block':self.farm_block,'active':1,'name':['!=',self.name]},pluck='area_ha'))
         if self.active and siblings+area>flt(block.area_ha)+0.000001:
-            frappe.throw('Active Plot areas exceed the Block area.')
+            frappe.throw('Tổng diện tích các thửa đang dùng vượt diện tích lô (%.2f ha). Sửa diện tích lô hoặc thửa trước.' % flt(block.area_ha))
         before = self.get_doc_before_save()
         if before and any(self.get(f) != before.get(f) for f in ('farm', 'farm_block', 'plot_code')):
             if frappe.db.exists('Crop Cycle', {'farm_plot': self.name}):

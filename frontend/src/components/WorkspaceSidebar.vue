@@ -54,7 +54,7 @@ const isActive=group=>group.items.some(item=>item.path===props.page)
      </UiButton>
     </div>
     <div v-if="group.expandable" v-show="isOpen(group)&&!sidebarCollapsed" :id="group.id" class="nav-submenu">
-     <UiButton variant="outline" v-for="item in group.items.slice(1)" :key="item.path" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:props.page===item.path}" :aria-current="props.page===item.path?'page':undefined" @click="emit('go',item.path)">
+     <UiButton variant="outline" v-for="item in group.items.length>1?group.items:[]" :key="item.path" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:props.page===item.path}" :aria-current="props.page===item.path?'page':undefined" @click="emit('go',item.path)">
       <LotusIcon :name="item.icon" class="nav-icon"/>
       <span class="nav-label">{{item.label}}</span>
      </UiButton>

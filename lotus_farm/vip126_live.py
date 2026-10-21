@@ -170,6 +170,6 @@ def import_census():
     return {"status": "imported", "farm": FARM, "variety": VARIETY,
         "lots": len(rows), "counted_lots": counted, "known_trees": sum(int(r["tree_count"]) for r in rows if r["tree_count"]),
         "missing_lots":len(rows)-counted,
-        "zone_a_flowering_estimate": FLOWER_DATE, "inferred_planting_date":str(inferred),
+        "zone_a_flowering_estimate": FLOWER_DATE, "inferred_planting_date":"đặt theo lịch khu (lotus_farm.vip126_zone_plan)",
         "new_fields":new_fields,"changed_field_values":changed,
         "note":"Không sửa ngày trồng thực tế; không tạo vụ đã trổ hoặc hàng bán."}

@@ -1,0 +1,91 @@
+/* Vườn & lô (FarmLandApp, LandBlockDetail): tokens only, so light and dark both follow lotus-tokens.css. */
+.land{display:flex;flex-direction:column;gap:12px;min-width:0}
+.land-head,.land-block__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.land-head h2,.land-block__title h2{margin:0;font-size:var(--lotus-text-xl,1.25rem)}
+.land-spacer{flex:1 1 auto}
+.land-farms,.land-views{display:flex;gap:4px;padding:3px;border:1px solid var(--lotus-border);border-radius:10px;background:var(--lotus-surface)}
+.land-farms button,.land-views button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--lotus-muted);font:inherit;font-size:var(--lotus-text-sm);cursor:pointer}
+.land-farms button.on,.land-views button.on{background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-weight:600}
+.land-views svg{width:15px;height:15px}
+.land-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.land-stats>div,.land-stats>button{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);text-align:left;color:var(--lotus-text);font:inherit;min-width:0}
+.land-stats span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.land-stats strong{font-size:1.45rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.land-stats small{font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.land-gaps{cursor:pointer;border-color:var(--lotus-warning-200)!important}
+.land-gaps strong{color:var(--lotus-warning-700)}
+.land-zones{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.land-zone{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;min-width:150px;padding:9px 12px;border:1px solid var(--lotus-border);border-left:5px solid var(--zone);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font:inherit;text-align:left;cursor:pointer}
+.land-zone.on{box-shadow:0 0 0 2px var(--lotus-primary)}
+.land-zone span,.land-zone small{font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.land-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.land-filters label{display:flex;align-items:center;gap:6px;font-size:var(--lotus-text-sm)}
+.land-filters .land-search{flex:0 1 260px}
+.land-filters .land-narrow{flex:0 0 auto;width:auto;min-width:130px}
+.land-count{font-size:var(--lotus-text-sm);color:var(--lotus-muted);font-variant-numeric:tabular-nums}
+.land-table{overflow:auto;max-height:66vh;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.land-table table,.land-mini{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--lotus-text-sm)}
+.land-table th{position:sticky;top:0;z-index:1;background:var(--lotus-soft);text-align:left;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--lotus-border)}
+.land-table th button{display:block;width:100%;padding:9px 10px;border:0;background:transparent;color:inherit;font:inherit;text-align:inherit;cursor:pointer}
+.land-table th.num,.land-table th.num button,.land-table td.num,.land-mini .num{text-align:right}
+.land-table td{padding:8px 10px;border-bottom:1px solid var(--lotus-border);vertical-align:top}
+.land-table tbody tr{cursor:pointer}
+.land-table tbody tr:hover td{background:var(--lotus-hover)}
+.land-table tr.inactive td{color:var(--lotus-muted)}
+.land-table td small{display:block;color:var(--lotus-muted);font-size:var(--lotus-text-xs)}
+.land-table td i{color:var(--lotus-muted)}
+.land-table .num,.land-mini .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.land-check{width:40px}.land-check input{width:18px;height:18px}
+.land-gap{display:inline-block;margin:0 4px 2px 0;padding:1px 7px;border-radius:999px;font-size:var(--lotus-text-xs);background:var(--lotus-warning-soft);color:var(--lotus-warning-700)}
+.land-note{margin:0;font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.land-empty{margin:0;padding:14px;color:var(--lotus-muted);font-size:var(--lotus-text-sm)}
+.land-map{position:relative;min-height:560px;height:66vh;border-radius:var(--lotus-radius-lg);overflow:hidden;border:1px solid var(--lotus-border)}
+.land-map .care-map{height:100%}
+/* One lot */
+.land-block{display:flex;flex-direction:column;gap:12px;min-width:0}
+.land-block__title span{color:var(--lotus-muted);font-size:var(--lotus-text-sm)}
+.land-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.land-card{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);min-width:0}
+.land-card h3{margin:0;font-size:var(--lotus-text-base)}
+.land-card--wide{grid-column:1/-1}
+.land-card--map{min-height:320px}
+.land-card--map .care-map{height:300px;border-radius:var(--lotus-radius-md);overflow:hidden}
+.land-card__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.land-dl{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.land-dl div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.land-dl dt{font-size:var(--lotus-text-xs);color:var(--lotus-muted)}
+.land-dl dd{margin:0;overflow-wrap:anywhere}
+.land-links{display:flex;flex-wrap:wrap;gap:4px 12px}
+.land-mini th,.land-mini td{padding:7px 8px;border-bottom:1px solid var(--lotus-border);text-align:left}
+.land-mini th{font-size:var(--lotus-text-xs);color:var(--lotus-muted);font-weight:600}
+.land-mini td small{color:var(--lotus-muted)}
+.land-row-actions{white-space:nowrap;text-align:right!important}
+.land-history{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:var(--lotus-text-sm)}
+.land-history ul{margin:2px 0 0;padding-left:16px;color:var(--lotus-muted)}
+.land-bad{color:var(--lotus-danger)}
+.land-warn{color:var(--lotus-warning-700);font-size:var(--lotus-text-sm)}
+.land-form{display:flex;flex-direction:column;gap:10px}
+.land-form label{display:flex;flex-direction:column;gap:4px;font-size:var(--lotus-text-sm);font-weight:600}
+.land-form--grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.land-form__full{grid-column:1/-1}
+.land-actions{display:flex;justify-content:flex-end;gap:8px}
+.land-steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:var(--lotus-text-sm)}
+.land-file input{font:inherit}
+.land-preview{max-height:46vh}
+.land-preview tr.bad td{background:var(--lotus-danger-soft)}
+.land-preview tbody tr{cursor:default}
+@media(max-width:900px){
+ .land-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .land-grid,.land-form--grid,.land-dl{grid-template-columns:1fr}
+ .land-map{height:70vh;min-height:420px}
+}
+@media(max-width:560px){
+ .land-farms{overflow-x:auto;max-width:100%}
+ .land-filters .land-search{flex:1 1 100%}
+ .land-stats strong{font-size:1.2rem}
+}
+.land-dl .land-dl__full{grid-column:1/-1}
+.land-dl details summary{cursor:pointer;color:var(--lotus-muted)}
+.land-map .land-colorby{width:auto;min-width:200px}
+.care-map--compact .care-map-filters{display:none}
+.land-card--map .care-map-canvas{height:100%;min-height:0}
