@@ -78,7 +78,9 @@ def setup():
                     options="Packout Run",
                     no_copy=1,
                     insert_after="purpose",
-                )
+                ),
+                dict(fieldname='lotus_forecast_impacts_json', label='Lotus posted forecast impacts',
+                     fieldtype='Long Text', read_only=1, hidden=1, no_copy=1)
             ]
         }
     )

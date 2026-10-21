@@ -7,6 +7,7 @@ from frappe.utils import getdate, flt, now_datetime
 from lotus_farm.controls import check_farm, lock, require_role, validate_version, validate_warehouse, whole_count
 from lotus_farm.rules import quantity, canonical_hash, RuleError
 from lotus_farm.operations_rules import material_needed, labor_needed, labor_summary, completion
+from lotus_farm.inheritance import is_inherited_opening, validate_coverage_date, cycle_provenance
 
 DATE_FIELDS = {
     'Bunch Operation': 'operation_date', 'Harvest Actual': 'harvest_date',
@@ -81,8 +82,10 @@ def plot_scope(doc, method=None):
             cohort.check_permission('read')
             if cohort.crop_cycle != cycle.name:
                 frappe.throw('Cohort belongs to another Cycle.')
-        elif cycle.cycle_type == 'Ratoon' and doc.doctype in (*DAILY_TYPES, 'Daily Work Plan Line'):
+        elif cycle.cycle_type == 'Ratoon' and not is_inherited_opening(cycle) and doc.doctype in (*DAILY_TYPES, 'Daily Work Plan Line'):
             frappe.throw('Ratoon operations require a Sucker Selection Batch.')
+        on_date = doc.get(DATE_FIELDS.get(doc.doctype, 'posting_date')) or doc.get('selection_date')
+        validate_coverage_date(cycle, on_date)
         date = doc.get('posting_date')
         if date and cycle.planting_date and getdate(date) < getdate(cycle.planting_date):
             frappe.throw('Operation date precedes planting.')
@@ -460,6 +463,8 @@ def invalidate_draft_forecasts(doc):
     # Released snapshots remain immutable. A new revision explicitly records these actuals.
     for name in frappe.get_all('Harvest Forecast', filters={'crop_cycle':doc.crop_cycle,'sucker_selection_batch':doc.sucker_selection_batch or '', 'supply_state':['in',['Draft','Released']]}, pluck='name'):
         forecast = frappe.get_doc('Harvest Forecast', name)
+        if forecast.get('process_adoption') and forecast.supply_state == 'Draft':
+            continue  # A changed source requires an explicit recalculation/review.
         forecast.save()
 
 
@@ -775,6 +780,8 @@ class ImportBatch(Document):
 
 def live_loss_fraction(doc):
     """New submitted cancellations reduce current ATP, without rewriting the release snapshot."""
+    if doc.get('source_claims'):
+        return 0  # Cut ledger includes source cancellations in every published slice.
     current = sum(flt(r) for r in frappe.get_all("Bunch Cancellation", filters={
         "crop_cycle": doc.crop_cycle, "sucker_selection_batch": doc.sucker_selection_batch or "",
         "docstatus": 1, "expected_harvest_date": ["between", [doc.period_start_date, doc.period_end_date]],
@@ -827,9 +834,10 @@ class CycleClose(DailyDocument):
         if self.sucker_selection_batch:
             frappe.throw('Cycle close covers the entire Cycle; leave Cohort blank.')
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
-        if cycle.cycle_type=='Ratoon':
-            # The day scope validator normally requires a cohort only for row-level actuals.
-            pass
+        provenance = cycle_provenance(cycle)
+        self.origin_basis = provenance['origin_basis']
+        self.coverage_start_date = provenance['coverage_start_date']
+        self.planting_date_known = int(provenance['planting_date_known'])
         self.area_ha=frappe.db.get_value('Farm Plot',self.farm_plot,'area_ha')
         actuals=frappe.get_all('Harvest Actual',filters={'crop_cycle':self.crop_cycle,'docstatus':1},fields=['name','harvested_bunch_qty','gross_weight_kg','saleable_weight_kg'])
         self.harvested_bunch_qty=sum(flt(r.harvested_bunch_qty) for r in actuals)
@@ -855,7 +863,7 @@ class CycleClose(DailyDocument):
                 self.reject_kg+=flt(run.reject_kg)*share
                 self.process_loss_kg+=flt(run.other_loss_kg)*share
         self.tons_per_ha=self.gross_harvest_kg/1000/number(self.area_ha,'Cycle area',positive=True)
-        evidence=dict(actuals=actuals,packouts=run_evidence,metrics={f:self.get(f) for f in ('area_ha','planted_qty','cancelled_bunch_qty','harvested_bunch_qty','gross_harvest_kg','released_harvest_kg','finished_kg','secondary_kg','reject_kg','process_loss_kg','tons_per_ha','actual_workdays')})
+        evidence=dict(cycle_origin=provenance,actuals=actuals,packouts=run_evidence,metrics={f:self.get(f) for f in ('area_ha','planted_qty','cancelled_bunch_qty','harvested_bunch_qty','gross_harvest_kg','released_harvest_kg','finished_kg','secondary_kg','reject_kg','process_loss_kg','tons_per_ha','actual_workdays')})
         self.snapshot_json=json.dumps(evidence,default=str,sort_keys=True)
         self.snapshot_hash=canonical_hash(evidence)
 
@@ -901,6 +909,8 @@ class CycleClose(DailyDocument):
         before=self.get_doc_before_save()
         if self.snapshot_json!=before.snapshot_json or self.snapshot_hash!=before.snapshot_hash:
             frappe.throw('Submitted Cycle closing metrics are immutable.')
+        if any(self.get(field) != before.get(field) for field in ('origin_basis', 'coverage_start_date', 'planting_date_known')):
+            frappe.throw('Submitted Cycle closing provenance is immutable.')
 
     def before_cancel(self):
         require_role('Lotus Farm Manager')

@@ -15,7 +15,11 @@
     "variety",
     "planting_date",
     "status",
-    "notes"
+    "notes",
+    "origin_basis",
+    "coverage_start_date",
+    "inheritance_note",
+    "handover_zone"
   ],
   "fields": [
     {
@@ -86,6 +90,30 @@
       "label": "Farm Plot",
       "fieldtype": "Link",
       "options": "Farm Plot"
+    },
+    {
+      "fieldname": "origin_basis",
+      "label": "Nguồn vụ",
+      "fieldtype": "Select",
+      "options": "Observed\nHandover",
+      "default": "Observed"
+    },
+    {
+      "fieldname": "coverage_start_date",
+      "label": "Ngày bắt đầu theo dõi thực tế",
+      "fieldtype": "Date",
+      "mandatory_depends_on": "eval:doc.origin_basis == 'Handover'"
+    },
+    {
+      "fieldname": "inheritance_note",
+      "label": "Giải trình ranh giới bàn giao",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "handover_zone",
+      "label": "Khu bàn giao tham chiếu",
+      "fieldtype": "Data",
+      "read_only": 1
     }
   ],
   "permissions": [

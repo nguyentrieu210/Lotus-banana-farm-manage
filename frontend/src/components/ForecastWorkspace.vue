@@ -24,6 +24,7 @@ watch(allRows,()=>{if(selected.value){selected.value=allRows.value.find(r=>r.nam
 watch([query,state,block],()=>{if(selected.value&&!rows.value.some(r=>r.name===selected.value.name))selected.value=null})
 function open(row){if(row?.name)emit('open',row)}
 function takeRow(event){selected.value=event.data||null}
+const sourceBacked=row=>!!row?.process_adoption||!!row?.source_claims?.length
 const fmt=p=>p.value==null?'—':kg(p.value)
 const columnDefs=[
   {field:'name',headerName:'Mã dự thu',minWidth:142,pinned:'left'},
@@ -126,7 +127,8 @@ function create(){emit('create',{farm_block:block.value||undefined,period_start_
           <p v-if="selected.spans_weeks" class="forecast-footnote">Phiếu này trải qua nhiều tuần; trên lịch hiển thị ở tuần bắt đầu.</p>
           <p v-if="selected.availability_status==='Overcommitted'" class="forecast-warning">Đã giữ vượt nguồn cung có thể đáp ứng.</p>
           <UiButton block type="button" @click="open(selected)">Mở phiếu dự thu</UiButton>
-          <UiButton v-if="selected.supply_state==='Released'&&canCreate" block variant="outline" type="button" @click="emit('revise',selected)">Tạo bản điều chỉnh</UiButton>
+          <UiButton v-if="selected.supply_state==='Released'&&canCreate&&!sourceBacked(selected)" block variant="outline" type="button" @click="emit('revise',selected)">Tạo bản điều chỉnh</UiButton>
+          <p v-if="selected.supply_state==='Released'&&canCreate&&sourceBacked(selected)" class="forecast-footnote">Để điều chỉnh nguồn OneDrive, mở phiếu, đối soát phần đang giữ và kết thúc dự thu; sau đó lập nháp mới từ phần buồng còn lại.</p>
         </aside>
       </div>
     </template>

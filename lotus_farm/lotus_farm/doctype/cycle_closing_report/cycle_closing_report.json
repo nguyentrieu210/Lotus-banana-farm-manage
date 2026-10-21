@@ -11,6 +11,9 @@
     "crop_cycle",
     "sucker_selection_batch",
     "posting_date",
+    "origin_basis",
+    "coverage_start_date",
+    "planting_date_known",
     "area_ha",
     "planted_qty",
     "cancelled_bunch_qty",
@@ -79,6 +82,25 @@
       "label": "Posting Date",
       "fieldtype": "Date",
       "reqd": 1
+    },
+    {
+      "fieldname": "origin_basis",
+      "label": "Nguồn vụ",
+      "fieldtype": "Select",
+      "options": "Observed\nHandover",
+      "read_only": 1
+    },
+    {
+      "fieldname": "coverage_start_date",
+      "label": "Ngày bắt đầu theo dõi thực tế",
+      "fieldtype": "Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "planting_date_known",
+      "label": "Đã biết ngày trồng thực tế",
+      "fieldtype": "Check",
+      "read_only": 1
     },
     {
       "fieldname": "area_ha",

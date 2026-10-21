@@ -134,6 +134,7 @@ def _stock_reservation_effect(request):
 
 
 def build_effect(request):
+    lock('Farm', request.farm)
     if request.reconciliation_type == "Stock Entry Reversal":
         return _stock_entry_effect(request)
     if request.reconciliation_type == "Stock Reservation Cancellation":
@@ -153,8 +154,11 @@ def approve(request):
 
 @frappe.whitelist(methods=["POST"])
 def execute(reconciliation):
+    initial = frappe.get_doc('Supply Reconciliation', reconciliation)
+    initial.check_permission('read')
+    lock('Farm', initial.farm)
     lock("Supply Reconciliation", reconciliation)
-    request = frappe.get_doc("Supply Reconciliation", reconciliation)
+    request = frappe.get_doc("Supply Reconciliation", reconciliation, for_update=True)
     request.check_permission("read")
     if request.docstatus != 1 or request.state != "Approved":
         frappe.throw("Only submitted, approved reconciliations can be applied.")

@@ -133,7 +133,7 @@ def preserve_lineage(doc, method=None):
                 "Harvest Actual",
                 "Defect Inspection",
             ],
-            ["farm", "farm_block", "farm_plot", "cycle_no", "parent_cycle", "variety", "planting_date"],
+            ["farm", "farm_block", "farm_plot", "cycle_no", "parent_cycle", "variety", "planting_date", "origin_basis", "coverage_start_date", "inheritance_note", "handover_zone"],
         ),
         "Sucker Selection Batch": (
             "sucker_selection_batch",
@@ -144,9 +144,21 @@ def preserve_lineage(doc, method=None):
         "Farm": ("farm", ["Farm Block"], ["company"]),
     }
     field, targets, immutable = dependencies[doc.doctype]
-    if any(doc.get(f) != before.get(f) for f in immutable) and any(
-        frappe.db.exists(target, {field: doc.name}) for target in targets
-    ):
+    if not any(doc.get(f) != before.get(f) for f in immutable):
+        return
+    references = [(target, field) for target in targets]
+    if doc.doctype in ("Crop Cycle", "Sucker Selection Batch"):
+        # Include plans, child tables and future source rows, with their actual
+        # Link field (notably a successor Crop Cycle uses parent_cycle).
+        references.extend((row.parent, row.fieldname) for row in frappe.get_all(
+            "DocField", filters={"fieldtype": "Link", "options": doc.doctype},
+            fields=["parent", "fieldname"], limit_page_length=0,
+        ))
+        references.extend((row.dt, row.fieldname) for row in frappe.get_all(
+            "Custom Field", filters={"fieldtype": "Link", "options": doc.doctype},
+            fields=["dt", "fieldname"], limit_page_length=0,
+        ))
+    if any(frappe.db.exists(target, {link_field: doc.name}) for target, link_field in set(references)):
         frappe.throw("Used production identities cannot be edited. Create a new cycle/cohort instead.")
 
 
@@ -158,6 +170,8 @@ def validate_operation_date(doc, method=None):
     }[doc.doctype]
     on_date = getdate(doc.get(date_field))
     cycle = frappe.get_doc("Crop Cycle", doc.crop_cycle)
+    from lotus_farm.inheritance import validate_coverage_date
+    validate_coverage_date(cycle, on_date)
     if cycle.planting_date and on_date < getdate(cycle.planting_date):
         frappe.throw("Transaction date precedes planting.")
     if doc.sucker_selection_batch:

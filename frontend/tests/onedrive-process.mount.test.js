@@ -9,6 +9,10 @@ test('workspace distinguishes historical cut stems, planned dates and actual sel
  try{
   button(view.root,'Bàn giao').click();await tick();assert.match(view.root.textContent,/Cây cũ đã chặt/)
   button(view.root,'Chọn chồi').click();await tick();assert.match(view.root.textContent,/6 × n tháng/)
+  button(view.root,'Mở vụ kế thừa theo lô').click();await tick()
+  assert.equal(edits[0][0],'Crop Cycle');assert.equal(edits[0][2].origin_basis,'Handover')
+  for(const field of ['planting_date','parent_cycle','cycle_no','coverage_start_date'])assert.equal(edits[0][2][field],undefined,'unknown legacy history is never invented')
+  edits.length=0
   button(view.root,'Ghi chọn chồi thực tế').click();await tick()
   assert.equal(edits[0][0],'Sucker Selection Batch');assert.equal(edits[0][2].farm_block,'')
   assert.equal(edits[0][2].selected_sucker_qty,undefined,'old stem count is never copied as actual suckers')

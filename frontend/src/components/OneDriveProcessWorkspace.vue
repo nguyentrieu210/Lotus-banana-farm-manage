@@ -4,6 +4,7 @@ import {call,upload} from '../api'
 import DataTable from './DataTable.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import WorkspaceModal from './WorkspaceModal.vue'
+import OneDriveSupplyDialog from './OneDriveSupplyDialog.vue'
 import SearchSelect from './SearchSelect.vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
@@ -17,6 +18,7 @@ const emit=defineEmits(['reload','edit','navigate'])
 const tab=ref(props.forecastOnly?'forecast':'workflow'),search=ref(''),busy=ref(false),error=ref(''),notice=ref(''),preview=ref(null),fileUrl=ref(''),configOpen=ref(false),detail=ref(null),forecast=ref(null),scenario=ref(false)
 const preset=ref(''),condition=ref(''),effective=ref(''),until=ref(''),colorFrom=ref(''),colorTo=ref(''),adoption=ref('')
 const selectionDetail=ref(null)
+const forecastDetail=ref(null),supplySource=ref(null),supplyMonth=ref('')
 const showColorHistory=ref(false)
 const sourceColors=computed(()=>(props.payload.library?.color_history||[]).map(r=>({...r,injection_from:day(r.valid_from,-14),injection_to:day(r.valid_to,-14),harvest_from:day(r.valid_from,55),harvest_to:day(r.valid_to,70)})))
 const reference=ref(''),referenceSearch=ref(''),referenceRows=ref(null),referenceStart=ref(0)
@@ -40,6 +42,9 @@ const parameterCols=[col('enterprise','Đơn vị nguồn'),col('source_farm','V
 const adoptionCols=[farmCol,qty('version','Bản'),col('approval_state','Trạng thái',{valueFormatter:({value})=>value==='Approved'?'Đã duyệt':'Nháp'}),col('source_label','Bộ nguồn',{minWidth:260}),col('condition_class','Đánh giá'),col('valid_from','Từ'),col('valid_to','Đến')]
 const sourceNames={'Observed Cut':'Cắt bắp thực tế','Observed Selection':'Chồi thực tế','Projected Ratoon':'Vụ sau dự phóng','Plan Cohort':'Đợt kế hoạch','Handover Simulation':'Mô phỏng bàn giao'}
 const forecastCols=[farmCol,zoneCol,col('month','Tháng'),col('source_kinds','Mốc tính',{minWidth:180,valueFormatter:({value})=>(value||[]).map(v=>sourceNames[v]||v).join(', ')}),qty('cut_bunches','Buồng cắt bắp'),qty('harvest_bunches','Buồng thu'),qty('gross_kg','Kg nguyên buồng'),qty('processed_kg','Kg sơ chế'),...['A456','A789','B456','B789','CL','CP','CNB13','CNB18'].map(g=>qty('grade_'+g+'_kg',g+' (kg)'))]
+const sourceForecastCols=[col('source','Đợt cắt bắp gốc',{minWidth:180}),col('farm_block','Lô'),col('farm_plot','Thửa'),col('crop_cycle','Vụ'),col('sucker_selection_batch','Đợt chồi'),col('window_start','Cửa sổ từ'),col('window_end','Cửa sổ đến'),qty('remaining_bunch_qty','Buồng còn lại'),qty('cut_bunches','Buồng trong kỳ'),qty('gross_kg','Kg nguyên buồng'),qty('processed_kg','Kg sơ chế')]
+const cutSources=computed(()=>(forecast.value?.source_rows||[]).filter(r=>r.source_kind==='Observed Cut').map(r=>({...r,farm_zone:r.farm_zone||(props.payload.blocks||[]).find(block=>block.name===r.farm_block)?.farm_zone||''})))
+const detailSources=computed(()=>cutSources.value.filter(r=>!forecastDetail.value||(!forecastDetail.value.farm||r.farm===forecastDetail.value.farm)&&(!forecastDetail.value.farm_zone||r.farm_zone===forecastDetail.value.farm_zone)&&(!forecastDetail.value.month||r.month===forecastDetail.value.month)))
 const filter=rows=>(rows||[]).filter(row=>!search.value||Object.values(row).join(' ').toLocaleLowerCase('vi').includes(search.value.toLocaleLowerCase('vi')))
 const totals=computed(()=>{
  const result=new Map()
@@ -50,7 +55,7 @@ const presets=computed(()=>(props.payload.library?.defaults||[]).map(r=>({value:
 const adopted=computed(()=>(props.payload.adoptions||[]).filter(r=>r.approval_state==='Approved'&&(!props.farm||r.farm===props.farm)))
 const adoptionOptions=computed(()=>adopted.value.map(r=>({value:r.name,label:`${r.farm} · bản ${r.version} · ${r.valid_from}`})))
 const chosenPreset=computed(()=>(props.payload.library?.defaults||[]).find(r=>r.key===preset.value))
-watch(scopeKey,()=>{forecastRequest++;uploadRequest++;preview.value=null;fileUrl.value='';forecast.value=null;error.value='';notice.value='';adoption.value='';detail.value=null;selectionDetail.value=null;configOpen.value=false})
+watch(scopeKey,()=>{forecastRequest++;uploadRequest++;preview.value=null;fileUrl.value='';forecast.value=null;error.value='';notice.value='';adoption.value='';detail.value=null;selectionDetail.value=null;forecastDetail.value=null;supplySource.value=null;configOpen.value=false})
 watch(()=>props.payload,()=>{if(tab.value==='forecast')loadForecast()})
 watch(tab,value=>{search.value='';error.value='';if(value==='forecast')loadForecast()})
 async function run(fn){busy.value=true;error.value='';notice.value='';try{return await fn()}catch(e){error.value=e.message;return null}finally{busy.value=false}}
@@ -87,6 +92,10 @@ function workflowOpen(row){if(!row.can_read)return;if(['handover','selection','f
 function openSource(row){if(row.url)window.open(row.url,'_blank','noopener')}
 function newSelection(){emit('edit','Sucker Selection Batch',null,{farm:props.farm,farm_block:props.block||'',crop_cycle:props.cycle||'',selection_date:props.fromDate||''})}
 function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:props.block||'',anchor:'Selection',anchor_date:props.fromDate||'',quantity_basis:'Selected Suckers',version:1,approval_state:'Draft'})}
+function openCutSupply(row){if(row.source_kind!=='Observed Cut')return;supplySource.value=row;supplyMonth.value=row.month||forecastDetail.value?.month||'';forecastDetail.value=null}
+function supplyCreated(result){notice.value=`Đã tạo ${result.documents?.length||0} dự thu nháp; mở phiếu để kiểm tra và duyệt.`;emit('reload');if(result.documents?.length===1)emit('edit','Harvest Forecast',result.documents[0]);else emit('navigate','forecast',{doctype:'Harvest Forecast'})}
+function inheritedCycle(){emit('edit','Crop Cycle',null,{farm:props.farm,farm_block:props.block||'',origin_basis:'Handover',status:'Active',
+ inheritance_note:'Tiếp quản từ Trung Quốc; lịch sử cũ theo khu, chưa có ngày trồng/vụ mẹ theo lô. Ghi nhận vụ chồi mới theo lô từ số liệu thực tế.'})}
 </script>
 
 <template>
@@ -103,7 +112,7 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
    <DataTable :rows="filter(payload.handovers)" :columns="handoverCols" :loading="loading" interactive @open="detail=$event"/>
   </template>
   <template v-else-if="tab==='selection'">
-   <div class="process-toolbar"><UiButton :disabled="!farm" @click="newSelection">Ghi chọn chồi thực tế</UiButton><UiButton variant="outline" :disabled="!farm" @click="newPlan">Lập đợt kế hoạch theo lô</UiButton></div>
+   <div class="process-toolbar"><UiButton variant="outline" v-if="payload.can_configure" :disabled="!farm" @click="inheritedCycle">Mở vụ kế thừa theo lô</UiButton><UiButton :disabled="!farm" @click="newSelection">Ghi chọn chồi thực tế</UiButton><UiButton variant="outline" :disabled="!farm" @click="newPlan">Lập đợt kế hoạch theo lô</UiButton></div>
    <p class="notice">Mốc bàn giao giữ theo khu. Kỳ chọn chồi tiếp theo = ngày mốc gốc + 6 × n tháng. Số cây cũ tham chiếu chưa phải số chồi đã chọn.</p>
    <DataTable :rows="filter(payload.selection_months)" :columns="monthCols" :loading="loading" interactive @open="selectionDetail=$event"/>
    <DataTable :rows="filter(payload.observed_selections)" :columns="actualCols" interactive @open="emit('edit','Sucker Selection Batch',$event.name)"/>
@@ -122,10 +131,10 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
    <template v-if="referenceRows"><p class="notice">{{fmt(referenceRows.total,0)}} dòng tham chiếu nguồn · dữ liệu của đơn vị nguồn được giữ riêng.</p><DataTable :rows="referenceRows.rows" :columns="referenceRows.columns.map(field=>col(field,field==='_source_row'?'Dòng nguồn':field))"/><Pagination :start="referenceStart" :count="referenceRows.rows.length" :has-more="referenceRows.has_more" :page-size="100" @update:start="loadReference"/></template>
   </template>
   <template v-else-if="tab==='forecast'">
-   <div class="process-toolbar"><UiButton :disabled="busy" @click="loadForecast">Tính 36 tháng</UiButton><label class="process-check"><input v-model="scenario" type="checkbox" @change="loadForecast"/> Mô phỏng riêng từ cây cũ bàn giao</label></div>
+   <div class="process-toolbar"><UiButton :disabled="busy" @click="loadForecast">Tính 36 tháng</UiButton><UiButton variant="outline" :disabled="!cutSources.length" @click="forecastDetail={}">Nguồn buồng cắt bắp</UiButton><label class="process-check"><input v-model="scenario" type="checkbox" @change="loadForecast"/> Mô phỏng riêng từ cây cũ bàn giao</label></div>
    <p v-if="!adopted.length" class="notice">Chưa có bộ hệ số đã duyệt cho phạm vi này. Áp dụng phiên bản tại Thông số trước khi tính.</p>
    <p v-for="issue in forecast?.issues||[]" :key="issue.farm+issue.message" class="notice">{{issue.farm}}: {{issue.message}}</p>
-   <DataTable :rows="filter(forecast?.rows)" :columns="forecastCols" :loading="busy" empty="Chưa có đợt chọn chồi thực tế đủ dữ liệu để dự phóng"/>
+   <DataTable :rows="filter(forecast?.rows)" :columns="forecastCols" :loading="busy" empty="Chưa có đợt thực tế đủ dữ liệu để dự phóng" interactive @open="forecastDetail=$event"/>
    <template v-if="forecast?.plan_rows?.length"><p class="notice">Đợt kế hoạch được xem riêng, chưa cộng vào các đợt thực tế.</p><DataTable :rows="filter(forecast.plan_rows)" :columns="forecastCols"/></template>
    <p v-if="forecast?.rows?.length" class="notice">{{forecast.window_distribution}}</p>
    <template v-if="scenario"><p class="notice">{{forecast?.handover_assumption}}</p><DataTable :rows="filter(forecast?.handover_scenario)" :columns="forecastCols" :loading="busy" empty="Chưa có mô phỏng bàn giao đủ dữ liệu"/></template>
@@ -142,6 +151,8 @@ function newPlan(){emit('edit','Plan Cohort',null,{farm:props.farm,farm_block:pr
   </WorkspaceModal>
   <WorkspaceModal :model-value="!!detail" title="Chứng cứ đợt bàn giao" @update:model-value="!$event&&(detail=null)"><template v-if="detail"><p>{{detail.farm}} · khu {{detail.farm_zone}} · {{detail.source_event_date}} · {{fmt(detail.source_cut_qty,0)}} cây cũ đã chặt</p><p>Mốc chọn chồi tương đương: {{detail.equivalent_selection_date}}</p><a :href="detail.source_attachment" target="_blank" rel="noopener">Mở nhật ký gốc</a><DataTable :rows="JSON.parse(detail.source_cells||'[]')" :columns="[col('sheet','Sheet'),col('date_cell','Ô ngày'),col('quantity_cell','Ô số lượng')]"/></template></WorkspaceModal>
   <WorkspaceModal :model-value="!!selectionDetail" title="Ngày chọn chồi theo đợt nguồn" @update:model-value="!$event&&(selectionDetail=null)"><DataTable :rows="selectionDates" :columns="[col('source_date','Ngày mốc bàn giao'),col('selection_date','Ngày chọn dự kiến'),qty('offset_months','Tháng từ mốc'),qty('source_cut_qty','Cây cũ tham chiếu')]"/></WorkspaceModal>
+  <WorkspaceModal :model-value="!!forecastDetail" title="Nguồn buồng cắt bắp theo kỳ" @update:model-value="!$event&&(forecastDetail=null)"><DataTable :rows="detailSources" :columns="sourceForecastCols" empty="Kỳ này chưa có buồng cắt bắp thực tế để chuẩn bị nguồn cung bán hàng." interactive @open="openCutSupply"/></WorkspaceModal>
+  <OneDriveSupplyDialog :source="supplySource" :month="supplyMonth" :company="company" :can-prepare="!!payload.can_configure" @close="supplySource=null" @created="supplyCreated" @edit="(...args)=>{supplySource=null;emit('edit',...args)}"/>
  </section>
 </template>
 

@@ -357,7 +357,7 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
         frappe.throw("Không có quyền xem dự thu.",frappe.PermissionError)
     payload=board(company,farm,zone,block,cycle,from_date)
     start,end=payload['from_date'],payload['to_date']
-    output=[];simulation=[];planned=[];issues=[]
+    output=[];simulation=[];planned=[];issues=[];cut_details=[]
     source_scope=land_scope(company=company,farm=farm,zone=zone,block=block,cycle=cycle)
     permitted_blocks={b.name:b for b in payload['blocks']}
     operation_filters=land_filters(frappe.get_meta('Bunch Operation'),source_scope)
@@ -367,24 +367,15 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
     claims=defaultdict(float)
     for cut in cuts:
         claims[(cut.crop_cycle,cut.sucker_selection_batch or '')]+=float(cut.bunch_qty or 0)
-        harvested=sum(float(r.harvested_bunch_qty or 0) for r in _rows('Harvest Actual',['harvested_bunch_qty'],{'source_cut_operation':cut.name,'docstatus':1}))
-        cancelled=sum(float(r.bunch_qty or 0) for r in _rows('Bunch Cancellation',['bunch_qty'],{'source_operation':cut.name,'docstatus':1}))
-        balance=source_balance(0,cut.bunch_qty,cut.net_bunch_qty,harvested,cancelled)
-        if not balance['remaining_observed_cut']:continue
-        window_start=cut.expected_harvest_from or cut.expected_harvest_date
-        window_end=cut.expected_harvest_to or window_start
-        if not window_start:
-            issues.append(dict(farm=cut.farm,source=cut.name,message='Đợt cắt bắp thiếu cửa sổ dự thu hoặc ngày dự thu.'));continue
-        for part in window_months(window_start,window_end):
-            when=part['month']+'-01'
-            if not start<=when<=end:continue
-            adoption=_active(payload['adoptions'],cut.farm,when)
-            if not adoption:
-                issues.append(dict(farm=cut.farm,source=cut.name,message='Thiếu phiên bản hệ số đã duyệt trong kỳ thu.'));continue
-            params={**adoption,'cut_rate':1}
-            output.append(dict(farm=cut.farm,farm_zone=permitted_blocks[cut.farm_block].farm_zone,farm_block=cut.farm_block,source=cut.name,
-                source_kind='Observed Cut',month=part['month'],process_adoption=adoption.name,
-                **forecast_quantities(balance['remaining_observed_cut'],params,part['share'])))
+        from lotus_farm.onedrive_supply import source_cut, source_rows
+        try:
+            parts=source_rows(source_cut(cut.name))
+        except frappe.ValidationError as exc:
+            issues.append(dict(farm=cut.farm,source=cut.name,message=str(exc)));continue
+        for part in parts:
+            if not start<=part['month']+'-01'<=end:continue
+            part['farm_zone']=permitted_blocks[cut.farm_block].farm_zone
+            output.append(part);cut_details.append(part)
     for row in payload['observed_selections']:
         for part in harvest_curve(row.selection_date,basis='Selection',cycles=1 if row.status=='Closed' else 6):
             when=part['month']+'-01'
@@ -441,13 +432,13 @@ def forecast(company=None,farm=None,zone=None,block=None,cycle=None,from_date=No
         for r in rows:
             adoption=next(a for a in payload['adoptions'] if a.name==r['process_adoption'])
             r.update(_grade_quantities(adoption,r['month'],r['processed_kg']))
-            bases[(r['farm'],r.get('farm_zone',''),r['month'])].add(r['source_kind'])
+            bases[(r['farm'],r.get('farm_zone') or '',r['month'])].add(r['source_kind'])
             for key in ('cut_bunches','harvest_bunches','processed_bunches','gross_kg','processed_kg'):
-                totals[(r['farm'],r.get('farm_zone',''),r['month'])][key]+=r[key]
+                totals[(r['farm'],r.get('farm_zone') or '',r['month'])][key]+=r[key]
             for key,value in r.items():
-                if key.startswith('grade_'):totals[(r['farm'],r.get('farm_zone',''),r['month'])][key]+=value
+                if key.startswith('grade_'):totals[(r['farm'],r.get('farm_zone') or '',r['month'])][key]+=value
         return [dict(farm=k[0],farm_zone=k[1],month=k[2],source_kinds=sorted(bases[k]),**{f:round(v,3) for f,v in values.items()}) for k,values in sorted(totals.items())]
-    return dict(rows=aggregate(output),plan_rows=aggregate(planned),handover_scenario=aggregate(simulation),issues=list({(r['farm'],r['message']):r for r in issues}.values()),
+    return dict(rows=aggregate(output),plan_rows=aggregate(planned),handover_scenario=aggregate(simulation),source_rows=cut_details,issues=list({(r['farm'],r['message']):r for r in issues}.values()),
         from_date=start,to_date=end,planning_only=True,
         window_distribution='Đợt cắt bắp ưu tiên thực tế, trừ đã thu/hủy; phân bổ đều ngày trong cửa sổ khi chưa có đo trái.',
         handover_assumption='Mô phỏng riêng: một cây cũ đã chặt tương ứng một chồi giả định. Chưa có kiểm đếm chồi; không cộng vào dự thu thực tế.')
@@ -529,5 +520,9 @@ def preserve_cut_source(doc,method=None):
     if doc.operation_type!='Cut Bud':return
     used=any(frappe.db.exists(dt,{'source_cut_operation':doc.name,'docstatus':['<',2]}) for dt in ('Bunch Operation','Fruit Measurement','Harvest Actual'))
     before=doc.get_doc_before_save()
+    claim=frappe.qb.DocType('Forecast Source Claim');forecast=frappe.qb.DocType('Harvest Forecast')
+    published=(frappe.qb.from_(claim).join(forecast).on(claim.parent==forecast.name).select(claim.name)
+        .where((claim.source_cut_operation==doc.name)&(claim.parenttype=='Harvest Forecast')&(forecast.supply_state!='Draft')).limit(1).for_update().run())
+    used=bool(used or published)
     if used and (method=='before_cancel' or (before and any(before.get(k)!=doc.get(k) for k in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch','operation_date','bunch_tag','bunch_qty','rejected_qty')))):
         frappe.throw('Đợt cắt bắp đã có công đoạn tiếp nối; giữ nguyên dữ liệu truy xuất.')

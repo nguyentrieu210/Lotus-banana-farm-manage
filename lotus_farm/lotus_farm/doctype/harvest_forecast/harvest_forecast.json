@@ -52,7 +52,9 @@
     "materialized_qty_kg",
     "cancellation_bunch_qty",
     "net_source_bunch_qty",
-    "planning_granularity"
+    "planning_granularity",
+    "process_adoption",
+    "source_claims"
   ],
   "fields": [
     {
@@ -351,6 +353,20 @@
       "label": "Planning Granularity",
       "fieldtype": "Select",
       "options": "Week\nMonth\nCustom"
+    },
+    {
+      "fieldname": "process_adoption",
+      "label": "Phiên bản OneDrive",
+      "fieldtype": "Link",
+      "options": "Lotus Process Adoption",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_claims",
+      "label": "Nguồn cắt bắp theo kỳ",
+      "fieldtype": "Table",
+      "options": "Forecast Source Claim",
+      "read_only": 1
     }
   ],
   "permissions": [

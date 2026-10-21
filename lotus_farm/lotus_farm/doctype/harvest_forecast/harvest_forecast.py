@@ -18,15 +18,21 @@ class HarvestForecast(Document):
             return
         self._validate_period()
         self._validate_scope()
-        self._apply_profile_defaults()
-        self._apply_settings_fallback()
-        self._prepare_output_plan()
-        self._pull_source_qty()
-        from lotus_farm.daily_operations import cancellation_adjustment
-        cancellation_adjustment(self)
+        onedrive = bool(self.get('process_adoption') or self.get('source_claims'))
+        if onedrive:
+            from lotus_farm.onedrive_supply import hydrate_draft
+            hydrate_draft(self)
+            self._prepare_output_plan()
+        else:
+            self._apply_profile_defaults()
+            self._apply_settings_fallback()
+            self._prepare_output_plan()
+            self._pull_source_qty()
+            from lotus_farm.daily_operations import cancellation_adjustment
+            cancellation_adjustment(self)
         self._hydrate_allocations()
         self._calculate()
-        self.formula_version = "lotus-forecast/5"
+        self.formula_version = "lotus-onedrive/1" if onedrive else "lotus-forecast/5"
         self.calculated_at = now_datetime()
         self.source_cutoff = self.calculated_at
         self.snapshot_hash = canonical_hash(self._snapshot())
@@ -72,6 +78,7 @@ class HarvestForecast(Document):
                 "safe_saleable_kg",
                 "expected_harvest_bunch_qty",
                 "revision_reason",
+                "process_adoption",
             )
         }
         for name in ("period_start_date", "period_end_date"):
@@ -92,10 +99,14 @@ class HarvestForecast(Document):
                     "yield_percent",
                     "expected_packed_kg",
                     "safe_commit_kg",
+                    "source_share_percent",
                 )
             }
             for row in self.output_plan or []
         ]
+        from lotus_farm.onedrive_supply import CLAIM_FIELDS
+        values['source_claims'] = [{key: (str(row.get(key)) if row.get(key) is not None and key in ('window_start','window_end','slice_start','slice_end') else row.get(key))
+                                   for key in CLAIM_FIELDS} for row in self.get('source_claims') or []]
         return values
 
     def _validate_frozen(self, before):
@@ -149,9 +160,13 @@ class HarvestForecast(Document):
 
     def _release(self):
         require_role("Lotus Farm Manager")
+        from lotus_farm.onedrive_supply import adopted, assert_source_ownership, blank_filter
+        onedrive = bool(self.get('process_adoption'))
+        if adopted(self.farm) and not onedrive:
+            frappe.throw('Vườn áp dụng OneDrive chỉ phát hành nguồn cung từ đợt cắt bắp có truy xuất. Dùng Xem trước / Tạo nháp trong Dự thu OneDrive.')
         if self.allocations:
             frappe.throw("Release an unallocated forecast first; reserve through the allocation command.")
-        if not self.harvest_profile:
+        if not self.harvest_profile and not onedrive:
             frappe.throw("Release requires an approved Harvest Profile.")
         if self.output_plan:
             if self.item or self.packout_profile:
@@ -164,30 +179,26 @@ class HarvestForecast(Document):
             frappe.throw("A forecast with no source supply cannot be released.")
         # Serialize publication for this biological cycle across all Items and bases.
         lock("Crop Cycle", self.crop_cycle)
-        for actual in frappe.get_all('Harvest Actual', filters={'crop_cycle': self.crop_cycle, 'sucker_selection_batch': self.sucker_selection_batch or '', 'docstatus': 1, 'harvest_date': ['between', [self.period_start_date, self.period_end_date]]}, fields=['name', 'forecast']):
+        for actual in ([] if onedrive else frappe.get_all('Harvest Actual', filters={'crop_cycle': self.crop_cycle, 'sucker_selection_batch': blank_filter(self.sucker_selection_batch), 'docstatus': 1, 'harvest_date': ['between', [self.period_start_date, self.period_end_date]]}, fields=['name', 'forecast'])):
             if not actual.forecast:
                 frappe.throw('Unlinked actual harvest exists in this period. Reconcile harvested supply before releasing a new forecast.')
-        others = frappe.get_all(
-            "Harvest Forecast",
-            filters={
-                "crop_cycle": self.crop_cycle,
-                "supply_state": "Released",
-                "name": ["!=", self.name],
-                "period_start_date": ["<=", self.period_end_date],
-                "period_end_date": [">=", self.period_start_date],
-            },
-            fields=["name", "sucker_selection_batch"],
-        )
+        table = frappe.qb.DocType('Harvest Forecast')
+        others = (frappe.qb.from_(table).select(table.name, table.sucker_selection_batch, table.process_adoption)
+                  .where((table.crop_cycle == self.crop_cycle) & (table.supply_state == 'Released') & (table.name != self.name)
+                         & (table.period_start_date <= self.period_end_date) & (table.period_end_date >= self.period_start_date))
+                  .for_update().run(as_dict=True))
         for other in others:
-            if other.sucker_selection_batch == self.sucker_selection_batch and other.name != self.supersedes:
+            if (other.sucker_selection_batch or '') == (self.sucker_selection_batch or '') and other.name != self.supersedes and not (onedrive and other.process_adoption):
                 frappe.throw("Overlapping released supply would count the same cohort twice.")
+        if onedrive:
+            assert_source_ownership(self)
         if self.supersedes:
-            previous = frappe.get_doc("Harvest Forecast", self.supersedes)
+            previous = frappe.get_doc("Harvest Forecast", self.supersedes, for_update=True)
             previous.check_permission("write")
             lock("Harvest Forecast", previous.name)
-            if previous.materialized_qty_kg or frappe.db.exists(
+            if previous.materialized_qty_kg or (not onedrive and frappe.db.exists(
                 "Harvest Actual", {"forecast": previous.name, "docstatus": 1}
-            ):
+            )):
                 frappe.throw(
                     "Already harvested supply cannot be re-released as a full forecast. Reconcile residual supply first."
                 )
@@ -200,11 +211,13 @@ class HarvestForecast(Document):
                 "crop_cycle",
                 "sucker_selection_batch",
             )
-            if any(self.get(f) != previous.get(f) for f in scope_fields) or any(
+            if any((self.get(f) or '') != (previous.get(f) or '') for f in scope_fields) or (not onedrive and any(
                 getdate(self.get(f)) != getdate(previous.get(f))
                 for f in ("period_start_date", "period_end_date")
-            ):
+            )):
                 frappe.throw("Revision must retain the same supply scope and period.")
+            if onedrive and (not previous.process_adoption or {r.source_cut_operation for r in self.source_claims} != {r.source_cut_operation for r in previous.source_claims}):
+                frappe.throw('Bản thay thế phải giữ cùng nguồn cắt bắp; kỳ mới chỉ nhận phần buồng còn lại.')
             if not self.revision_reason:
                 frappe.throw("Revision reason is required.")
             self.revision_no = int(previous.revision_no or 1) + 1
@@ -226,9 +239,14 @@ class HarvestForecast(Document):
 
     def _calculate_remaining(self):
         from lotus_farm.daily_operations import live_loss_fraction
-        loss_fraction = live_loss_fraction(self)
+        inactive = self.supply_state in ('Closed', 'Superseded')
+        loss_fraction = 0 if inactive else live_loss_fraction(self)
         harvested = sum(flt(v) for v in frappe.get_all('Harvest Actual', filters={'forecast':self.name,'docstatus':1}, pluck='harvested_bunch_qty')) if not self.is_new() else 0
         harvest_fraction = min(harvested / flt(self.expected_harvest_bunch_qty), 1) if self.expected_harvest_bunch_qty else 0
+        if self.get('source_claims') and not inactive:
+            from lotus_farm.onedrive_supply import remaining_fraction
+            loss_fraction = 0
+            harvest_fraction = 1-remaining_fraction(self)
         reserved = [
             row for row in self.allocations or [] if row.allocation_state == "Reserved"
         ]
@@ -300,6 +318,7 @@ class HarvestForecast(Document):
             frappe.throw("Harvest Period End cannot be before Harvest Period Start.")
 
     def _validate_scope(self):
+        from lotus_farm.inheritance import INHERITED_CYCLE_FIELDS, is_inherited_opening
         block = frappe.db.get_value("Farm Block", self.farm_block, ["farm", "variety"], as_dict=True)
         if not block:
             frappe.throw("Farm Block does not exist.")
@@ -309,14 +328,15 @@ class HarvestForecast(Document):
         cycle = frappe.db.get_value(
             "Crop Cycle",
             self.crop_cycle,
-            ["farm", "farm_block", "cycle_type"],
+            ["farm", "farm_block", *INHERITED_CYCLE_FIELDS],
             as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
-        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+        inherited_physical = is_inherited_opening(cycle) and self.forecast_basis in ('Cut Bud Operations','Shooting Operations')
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not inherited_physical:
             frappe.throw("Ratoon forecasts must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:
@@ -442,6 +462,7 @@ class HarvestForecast(Document):
         cycle_variety = frappe.db.get_value("Crop Cycle", self.crop_cycle, "variety")
         seen_items = set()
         total_yield = 0
+        total_source_share = 0
         for row in self.output_plan:
             if row.item in seen_items:
                 frappe.throw("Each forecast output Item can appear only once.")
@@ -464,11 +485,17 @@ class HarvestForecast(Document):
             row.profile_version = profile.version
             row.quality_standard = profile.quality_standard
             row.yield_percent = flt(profile.yield_percent, 6)
+            if self.get('process_adoption'):
+                if not 0 < flt(row.source_share_percent) <= 100:
+                    frappe.throw('Mỗi Item cần tỷ phần kg sơ chế OneDrive lớn hơn 0 và không vượt 100%.')
+                total_source_share += flt(row.source_share_percent)
             if self._is_blank(row.materialized_qty_kg):
                 row.materialized_qty_kg = 0
             total_yield += row.yield_percent
 
-        if total_yield > 100.000001:
+        if self.get('process_adoption') and total_source_share > 100.000001:
+            frappe.throw('Tổng tỷ phần thành phẩm không vượt 100% kg sơ chế OneDrive.')
+        if not self.get('process_adoption') and total_yield > 100.000001:
             frappe.throw("Combined forecast output yield cannot exceed 100%.")
         self.packout_rate_percent = flt(total_yield, 6)
         self.packout_profile_version = 0
@@ -483,6 +510,7 @@ class HarvestForecast(Document):
 
     def _pull_source_qty(self):
         import json
+        from lotus_farm.onedrive_supply import blank_filter
 
         if self.forecast_basis == "Manual":
             self.source_snapshot = json.dumps(
@@ -547,11 +575,7 @@ class HarvestForecast(Document):
                             add_days(self.period_end_date, -days),
                         ],
                     ],
-                    **(
-                        {"sucker_selection_batch": self.sucker_selection_batch}
-                        if self.sucker_selection_batch
-                        else {}
-                    ),
+                    "sucker_selection_batch": blank_filter(self.sucker_selection_batch),
                 },
                 fields=["name", "modified", "operation_date", "net_bunch_qty"],
                 order_by="name",
@@ -586,8 +610,7 @@ class HarvestForecast(Document):
                 "docstatus": 1,
                 "expected_harvest_date": ["between", [self.period_start_date, self.period_end_date]],
             }
-            if self.sucker_selection_batch:
-                filters["sucker_selection_batch"] = self.sucker_selection_batch
+            filters["sucker_selection_batch"] = blank_filter(self.sucker_selection_batch)
             rows = frappe.get_all(
                 "Bunch Operation",
                 filters=filters,
@@ -638,6 +661,11 @@ class HarvestForecast(Document):
                 frappe.throw("Delivery date is earlier than forecast availability.")
 
     def _calculate(self):
+        if self.get('process_adoption'):
+            from lotus_farm.onedrive_supply import calculate
+            calculate(self)
+            self._calculate_remaining()
+            return
         committed_qty_kg = sum(
             flt(row.reserved_qty_kg)
             for row in (self.allocations or [])

@@ -172,11 +172,29 @@ def detail(doctype,name):
 
 
 @frappe.whitelist()
-def link_options(doctype,search='',farm=None,company=None,context_field=None,block=None,cycle=None,on_date=None,operation_type=None):
+def link_options(doctype,search='',farm=None,company=None,context_field=None,block=None,cycle=None,on_date=None,operation_type=None,item=None,approved_only=False):
     if not frappe.has_permission(doctype,'read'):frappe.throw('Link read permission required.',frappe.PermissionError)
     meta=frappe.get_meta(doctype);filters={}
+    if doctype == 'Packout Profile' and cint(approved_only):
+        if farm:
+            selected=frappe.get_doc('Farm',farm);selected.check_permission('read')
+        filters['approval_state']='Approved'
+        if item:filters['item']=item
+        rows=frappe.get_list(doctype,filters=filters,fields=['name','profile_name','farm','valid_from','valid_to','item'],
+                            limit_page_length=1000,order_by='name')
+        day=getdate(on_date) if on_date else None
+        query=search.casefold()[:80]
+        return [dict(value=r.name,label=f'{r.profile_name} · {r.item}') for r in rows
+                if (not r.farm or r.farm==farm) and (not day or (getdate(r.valid_from)<=day and (not r.valid_to or getdate(r.valid_to)>=day)))
+                and (not query or query in (r.name+' '+(r.profile_name or '')+' '+r.item).casefold())][:30]
     if farm and meta.has_field('farm'):filters['farm']=farm
     if company and meta.has_field('company'):filters['company']=company
+    if block and doctype in ('Farm Plot','Crop Cycle','Sucker Selection Batch'):
+        selected=land_scope(company=company,farm=farm,block=block)
+        filters.update(land_filters(meta,selected))
+    if cycle and doctype=='Sucker Selection Batch':
+        selected=land_scope(company=company,farm=farm,block=block,cycle=cycle)
+        filters.update(land_filters(meta,selected))
     if doctype=='Bunch Operation' and context_field=='source_cut_operation':
         selected=land_scope(company=company,farm=farm,block=block,cycle=cycle)
         filters.update(land_filters(meta,selected));filters.update(operation_type='Cut Bud',docstatus=1)

@@ -2,6 +2,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import cint, flt, getdate
 import json
+from lotus_farm.inheritance import INHERITED_CYCLE_FIELDS, is_inherited_opening, validate_coverage_date
 
 
 class DefectInspection(Document):
@@ -26,14 +27,15 @@ class DefectInspection(Document):
         cycle = frappe.db.get_value(
             "Crop Cycle",
             self.crop_cycle,
-            ["farm", "farm_block", "cycle_type"],
+            ["farm", "farm_block", *INHERITED_CYCLE_FIELDS],
             as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
-        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+        validate_coverage_date(cycle, self.inspection_date)
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not is_inherited_opening(cycle):
             frappe.throw("Ratoon inspections must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:

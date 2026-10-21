@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import add_days, cint, getdate, now_datetime
+from lotus_farm.inheritance import INHERITED_CYCLE_FIELDS, is_inherited_opening, validate_coverage_date
 
 
 class BunchOperation(Document):
@@ -25,14 +26,15 @@ class BunchOperation(Document):
         cycle = frappe.db.get_value(
             "Crop Cycle",
             self.crop_cycle,
-            ["farm", "farm_block", "cycle_type"],
+            ["farm", "farm_block", *INHERITED_CYCLE_FIELDS],
             as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
-        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+        validate_coverage_date(cycle, self.operation_date)
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not is_inherited_opening(cycle):
             frappe.throw("Ratoon operations must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:
@@ -62,6 +64,15 @@ class BunchOperation(Document):
     def _set_expected_harvest(self):
         if self.expected_harvest_date:
             return
+
+        if self.operation_type == 'Cut Bud' and self.bunch_tag:
+            tag = frappe.get_doc('Bunch Tag', self.bunch_tag)
+            tag.check_permission('read')
+            if tag.get('process_adoption'):
+                start = getdate(add_days(tag.valid_from, 55))
+                end = getdate(add_days(tag.valid_to, 70))
+                self.expected_harvest_date = add_days(start, (end-start).days//2)
+                return
 
         fieldname = {
             "Shooting": "shooting_to_harvest_days",

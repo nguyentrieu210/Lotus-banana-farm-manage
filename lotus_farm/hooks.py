@@ -155,6 +155,10 @@ doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validat
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
+for _event in ('on_submit', 'on_cancel'):
+    _existing = doc_events.setdefault('Bunch Cancellation', {}).get(_event, [])
+    if isinstance(_existing, str): _existing = [_existing]
+    doc_events['Bunch Cancellation'][_event] = [*_existing, 'lotus_farm.onedrive_supply.refresh_cut_forecasts']
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
 doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.validate_requirement_warehouse','before_update_after_submit':'lotus_farm.warehouse_planning.validate_requirement_warehouse'}
 doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}

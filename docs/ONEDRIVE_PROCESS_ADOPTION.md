@@ -24,6 +24,22 @@ không gộp thành cùng bản master tháng 6. Thư viện và nguồn nằm t
 Nhập lại cùng ngày/khu/nhóm nguồn không tạo trùng; file đổi số lượng được chặn đối soát.
 File nguồn private, SHA-256, sheet và ô nguồn được lưu cùng từng đợt.
 
+Để bắt đầu ghi theo lô sau tiếp quản, chọn **Mở vụ kế thừa theo lô**. Người quản lý chọn
+lô/thửa theo dõi thực, nhập số vụ từ 2 và giải trình hồ sơ vụ trước còn thiếu. Vụ gốc này
+có loại Ratoon, nguồn Handover, giữ trống ngày trồng và liên kết vụ mẹ khi chưa biết.
+Chỉ khu bàn giao được ghi tham chiếu; không gán đợt cắt cũ theo ngày xuống lô hay phân bổ
+số cây cũ. Số vụ cũng do quản lý xác nhận, không tự giả định. Quản lý nhập **ngày bắt
+đầu ghi nhận từ tiếp quản** (`coverage_start_date`); đây là ranh giới chứng cứ, không
+phải ngày trồng hay ngày chọn chồi suy ngược. Giao dịch của vụ kế thừa không được trước
+ranh giới này.
+
+Vụ kế thừa mở đầu cho phép ghi công việc, công, vật tư, cắt bắp, chăm sóc buồng, mẫu đo,
+hủy và thu hoạch khi chưa có hồ sơ đợt chọn chồi. Các công đoạn vẫn phải giữ thửa/vụ,
+ngày và đợt cắt bắp gốc thật; không tạo `Sucker Selection Batch` để vượt kiểm tra. Khi
+có chọn chồi thực tế thì ghi ngày và số chồi kiểm đếm. Vụ kế tiếp liên kết vụ kế thừa
+này như chu kỳ thông thường và phải có đợt chọn chồi khi ghi sản xuất/thu hoạch; không
+truyền ngoại lệ Handover sang các vụ sau.
+
 ## Màu dây và truy xuất
 
 `Chăm sóc buồng và thu hoạch.xlsx / DmMauDay` có 183 kỳ. 13 kỳ đầu 7 ngày, 170 kỳ sau
@@ -108,6 +124,66 @@ và phiên bản được duyệt. Biểu mẫu nguồn bổ sung đã kiểm tr
 theo luống, phiếu xưởng đóng gói và báo cáo kết vụ. Danh sách cột nguồn được lưu trong
 `onedrive_form_headers.json` để mở rộng ánh xạ mà giữ đúng đơn vị và ý nghĩa.
 
+Kiểm kê [nguồn, sheet, cột, đơn vị và phạm vi ERP](ONEDRIVE_SOURCE_COVERAGE.md) phân
+biệt dữ liệu bàn giao đã nhập, thư viện tham chiếu, chức năng vận hành có sẵn và
+mapping nguồn còn thiếu. Danh sách DocType hoặc tiêu đề cột không xác nhận toàn bộ
+workbook đã được nhập. Phiếu xưởng sheet `BC`, đơn vị/chiều đo L1…L140, các cột
+SL/NS/phẩm cấp và chỉ tiêu từng dòng báo cáo kết vụ còn cần đối soát trước nhập tự động.
+
+Thu hoạch đi qua `Harvest Actual` → `Harvest Lot` → QC đầu vào → đóng gói → chứng từ
+kho ERP. Cân là chứng cứ kg thật; đọc cân liên kết phải cùng vườn và đúng kg của phiếu.
+Nguyên liệu phải có Item/Warehouse/Batch và phiếu nhận ERP đã ghi sổ trước Repack;
+không tạo tồn từ dự phóng. Ca xưởng giữ người làm và kg sơ chế theo lô, chỉ chốt sau
+khi packout đã duyệt QC, cân đối khối lượng và thành phẩm đã ghi sổ.
+
+Chốt ngày vẫn yêu cầu kế hoạch/kết quả/công thực tế, vật tư nếu có, đủ nguồn nhận và
+QC, các phiếu xưởng/kho và tích hợp hết lỗi. Kết vụ dùng tổng chứng từ thực tế, không
+đòi tạo lại vụ mẹ hoặc sự kiện trồng chưa biết. Vụ kế thừa phải hiển thị phạm vi từ
+ngày tiếp quản và tình trạng thiếu lịch sử trồng; số cây trồng bằng 0 trong tổng sự
+kiện đã ghi không khẳng định lô chưa từng trồng cây. Kg/công/năng suất báo cáo giữ
+nguyên số thực ghi nhận, không bù dữ liệu lịch sử bằng hệ số nguồn OneDrive.
+
 Quy tắc việc định kỳ hỗ trợ cả ngày và **tháng lịch**; gợi ý giao việc và tính nhân công,
 vật tư dùng cùng mốc gốc. Định mức chưa có dữ liệu hiển thị thiếu, không thay bằng số 0
 hoặc tự đoán năng suất/đơn giá/liều lượng.
+
+## Nguồn cung bán hàng từ cắt bắp
+
+Chính sách Lotus đã chốt: chỉ buồng thực tế đã cắt bắp, có màu dây theo phiên bản đã
+duyệt, mới được phát hành giữ hàng. Chồi đã kiểm đếm, vụ chồi dự phóng, kế hoạch và
+mô phỏng bàn giao vẫn phục vụ điều hành. Không tự tạo Item hoặc hồ sơ đóng gói.
+
+`onedrive_supply` dùng chung bộ tính cho bảng tháng và phiếu `Harvest Forecast`.
+API `onedrive_workspace.forecast` giữ các tổng cũ và bổ sung `source_rows` để truy đến
+thửa/vụ/đợt cắt bắp, cửa sổ, phiên bản và dấu kiểm nguồn. Phiên bản hệ số của buồng là
+phiên bản gắn với màu dây khi cắt, được giữ nguyên khi lịch hệ số tương lai thay đổi.
+
+`POST onedrive_supply.prepare_cut_forecasts` nhận các đợt cùng vườn/vụ, kỳ thu và
+ánh xạ Item/hồ sơ đóng gói/tỷ phần kg sơ chế. `preview=1` chỉ tính; `preview=0` cần
+`expected_source_hash` cùng `client_event_id`, tạo phiếu nháp theo từng đợt. Gửi lại
+cùng yêu cầu trả cùng phiếu. Nguồn đổi sau xem trước thì phải xem lại. Sau khi lập
+nháp, nguồn đổi trước phát hành cũng phải lưu tính lại và kiểm tra lại.
+
+Mỗi phiếu có `Forecast Source Claim` giữ đợt gốc, cửa sổ, phần ngày đã nhận, sức chứa,
+buồng còn lúc lập và dấu kiểm. Các phần ngày đang phát hành không được trùng nhau
+trên mọi kỳ và Item. Bảng thành phẩm phân chia kg sơ chế OneDrive; hồ sơ đóng gói
+xác nhận Item/phẩm chất/hiệu lực, không nhân thêm tỷ lệ nguyên liệu lần thứ hai.
+
+Sức chứa ban đầu được chia đều theo ngày trong cửa sổ. Thu/hủy được gắn với đợt
+gốc, trừ trước vào tháng của ngày thực tế, sau đó phần sức chứa còn lại sớm nhất.
+Quy tắc này độc lập với việc đã lập bao nhiêu phiếu nên đổi kỳ không sinh thêm nguồn.
+Đảo chứng từ thực tế tính lại lượng còn; bản đã duyệt và dấu kiểm vẫn bất biến.
+
+Khi nhập thành phẩm, tác động vào từng dự thu/Item được lưu trên Stock Entry
+(`lotus_forecast_impacts_json`). Đối soát đảo kho sử dụng đúng ảnh hưởng đã ghi sổ,
+không tính lại theo các đợt thu phát sinh về sau. Không sửa hoặc xóa dấu kiểm này qua
+biểu mẫu/API. Cơ chế giữ hàng và chuyển sang Stock Reservation hiện có tiếp tục dùng.
+
+`POST onedrive_supply.close_forecast` kết thúc phiếu đã phát hành với lý do và kiểm
+tra phiên bản sửa. Phải xử lý các lượng giữ tương lai còn Reserved; lịch sử đã chuyển
+sang kho được giữ nguyên. Sau đó mới kết vụ. Đợt cắt bắp đã từng phát hành được giữ
+nguyên truy xuất, kể cả khi phiếu dự thu đã kết thúc hoặc bị thay thế.
+
+API tích hợp `create_operation` bổ sung tùy chọn `bunch_tag` và
+`source_cut_operation`; khách cũ không truyền hai trường này giữ nguyên dấu kiểm
+chống gửi trùng của yêu cầu cũ.

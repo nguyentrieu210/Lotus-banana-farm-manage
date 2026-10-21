@@ -54,6 +54,9 @@ class TestBRDOnSite(unittest.TestCase):
             chart_of_accounts="Standard",
             enable_perpetual_inventory=1,
         ).name
+        # Internal document factories also use user defaults. Keep the synthetic
+        # Farm's Company as the current default inside this test savepoint.
+        frappe.defaults.set_user_default("Company", self.company)
         self.farm = self.make("Farm", farm_code="F-" + self.tag, farm_name="Test", company=self.company).name
         self.variety = self.make("Banana Variety", variety_code="V-" + self.tag, variety_name="Test").name
         self.block = self.make(
@@ -146,9 +149,17 @@ class TestBRDOnSite(unittest.TestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
         frappe.db.rollback(save_point="lotus_brd_test")
+        # Reload the restored defaults instead of caching the rolled-back test
+        # Company after its fixture records have disappeared.
+        frappe.clear_cache(user="Administrator")
 
     @staticmethod
     def make(doctype, **values):
+        # Disposable sites can be restored with a user's default Company. Farm
+        # fixtures must carry their explicit Company through custom-field
+        # defaults too, rather than inheriting an unrelated installed company.
+        if "company" not in values and values.get("farm") and frappe.get_meta(doctype).has_field("company"):
+            values["company"] = frappe.db.get_value("Farm", values["farm"], "company")
         return frappe.get_doc(dict(doctype=doctype, **values)).insert()
 
     def forecast(self):
@@ -979,7 +990,7 @@ class TestBRDOnSite(unittest.TestCase):
                 self.make('UOM',uom_name=uom)
         category=self.make('Work Category',category_code='CSB-'+self.tag,category_name='Bunch care').name
         work=self.make('Work Type',work_code='BAG-'+self.tag,work_name='Bag bunches',category=category,
-                       uom='Bunch',productivity_per_workday=40).name
+                       uom='Bunch',allow_daywork=1,productivity_per_workday=40).name
         norm=None; material_item=None
         if material:
             basis=self.make('Norm Basis',basis_code='BUNCH-'+self.tag,basis_name='Per bunch',uom='Bunch').name
