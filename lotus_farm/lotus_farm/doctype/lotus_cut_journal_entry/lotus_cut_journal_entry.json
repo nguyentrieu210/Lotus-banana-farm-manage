@@ -1,0 +1,91 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Cut Journal Entry",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "description": "Một dòng nhật ký chặt cây mẹ lần 2 (khu, ngày, số cây). Chỉ ghi qua lotus_farm.cut_forecast (nhập Excel).",
+  "sort_field": "cut_date",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "farm_zone",
+      "label": "Khu",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "cut_date",
+      "label": "Ngày chặt mẹ lần 2",
+      "fieldtype": "Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "tree_qty",
+      "label": "Số cây",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source_ref",
+      "label": "Dòng trên file nguồn",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "entry_key",
+      "label": "Mã đối chiếu",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "import_batch",
+      "label": "Lần nhập",
+      "fieldtype": "Link",
+      "options": "Lotus Cut Journal Import",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "farm_zone",
+    "cut_date",
+    "tree_qty",
+    "source_ref",
+    "entry_key",
+    "import_batch"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

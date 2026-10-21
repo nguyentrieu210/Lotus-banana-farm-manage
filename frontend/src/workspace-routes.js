@@ -7,6 +7,7 @@ export const workspaceModules={
  'kho':{label:'Quản lý kho',capability:'stock'},
  'cong-viec':{label:'Công việc vườn',module:'work'},
  farms:{label:'Vườn & lô',module:'farms'},
+ forecast:{label:'Dự thu',module:'forecast'},
 }
 export function internalWorkspaceTarget(href,origin){
  let url
