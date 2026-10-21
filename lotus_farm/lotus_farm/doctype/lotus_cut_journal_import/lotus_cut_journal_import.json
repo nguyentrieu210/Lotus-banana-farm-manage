@@ -1,0 +1,133 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Cut Journal Import",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "description": "Chứng cứ một lần nhập file nhật ký chặt mẹ lần 2: file gốc, SHA-256, số dòng mới / trùng / xung đột.",
+  "sort_field": "imported_at",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "source_file",
+      "label": "File gốc",
+      "fieldtype": "Attach",
+      "read_only": 1
+    },
+    {
+      "fieldname": "file_name",
+      "label": "Tên file",
+      "fieldtype": "Data",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "sha256",
+      "label": "SHA-256",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "new_rows",
+      "label": "Dòng mới",
+      "fieldtype": "Int",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "existing_rows",
+      "label": "Dòng đã có",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "conflict_rows",
+      "label": "Dòng xung đột (bỏ qua)",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "error_rows",
+      "label": "Dòng lỗi (bỏ qua)",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "trees",
+      "label": "Số cây đã nhập",
+      "fieldtype": "Int",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "profile",
+      "label": "Bộ thông số tạo từ file",
+      "fieldtype": "Link",
+      "options": "Lotus Cut Forecast Profile"
+    },
+    {
+      "fieldname": "imported_by",
+      "label": "Người nhập",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "imported_at",
+      "label": "Nhập lúc",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "undone_at",
+      "label": "Hoàn tác lúc",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "undone_by",
+      "label": "Người hoàn tác",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "source_file",
+    "file_name",
+    "sha256",
+    "new_rows",
+    "existing_rows",
+    "conflict_rows",
+    "error_rows",
+    "trees",
+    "profile",
+    "imported_by",
+    "imported_at",
+    "undone_at",
+    "undone_by"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

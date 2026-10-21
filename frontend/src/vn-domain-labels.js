@@ -75,6 +75,8 @@ export const extraFieldNames = Object.freeze({
   legacy_source_key: 'Mã dữ liệu cũ',
 })
 export const extraStateNames = Object.freeze({
+  Excel: 'File Excel',
+  Web: 'Sửa trên web',
   Manual: 'Nhập tay',
   'Sucker Selection': 'Theo đợt chọn chồi',
   'Shooting Operations': 'Theo số buồng đã trổ',

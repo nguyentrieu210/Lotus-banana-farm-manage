@@ -1,0 +1,251 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Cut Forecast Profile",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "description": "Bộ thông số dự thu theo nhật ký chặt mẹ lần 2 của một vườn. Bản đã duyệt không sửa; đổi thông số là tạo phiên bản mới.",
+  "sort_field": "version",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Phiên bản",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "default": "Draft",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source",
+      "label": "Nguồn",
+      "fieldtype": "Select",
+      "options": "Excel\nWeb",
+      "default": "Web"
+    },
+    {
+      "fieldname": "source_import",
+      "label": "Lần nhập",
+      "fieldtype": "Link",
+      "options": "Lotus Cut Journal Import"
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Người duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_at",
+      "label": "Duyệt lúc",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "timing_section",
+      "label": "Mốc thời gian (ngày)",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "days_to_first_shoot",
+      "label": "Chặt mẹ lần 2 → bắt đầu đợt trổ 1",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "120"
+    },
+    {
+      "fieldname": "wave_step_days",
+      "label": "Bước giữa 2 đợt trổ",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "30"
+    },
+    {
+      "fieldname": "window_days",
+      "label": "Số ngày trong mỗi cửa sổ trổ",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "30"
+    },
+    {
+      "fieldname": "representative_day",
+      "label": "Ngày đại diện trong cửa sổ",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "14"
+    },
+    {
+      "fieldname": "shoot_to_inject_days",
+      "label": "Trổ → chích bắp",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "5"
+    },
+    {
+      "fieldname": "inject_to_budcut_days",
+      "label": "Chích bắp → cắt bắp",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "15"
+    },
+    {
+      "fieldname": "budcut_to_harvest_days",
+      "label": "Cắt bắp → thu hoạch",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "65"
+    },
+    {
+      "fieldname": "rates_section",
+      "label": "Tỷ lệ và khối lượng",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "cut_rate",
+      "label": "Tỷ lệ cắt bắp / số cây trổ",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.9"
+    },
+    {
+      "fieldname": "harvest_rate",
+      "label": "Tỷ lệ thu hoạch / cắt bắp",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.97"
+    },
+    {
+      "fieldname": "pack_rate",
+      "label": "Tỷ lệ đóng gói / thu hoạch",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.98"
+    },
+    {
+      "fieldname": "kg_per_bunch",
+      "label": "Kg sơ chế / buồng",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "20"
+    },
+    {
+      "fieldname": "sucker_per_tree",
+      "label": "Chồi hữu hiệu / cây mẹ chặt",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "1"
+    },
+    {
+      "fieldname": "waves_section",
+      "label": "Phân bổ trổ theo đợt",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "wave_1_share",
+      "label": "Tỷ lệ trổ đợt 1",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.17"
+    },
+    {
+      "fieldname": "wave_2_share",
+      "label": "Tỷ lệ trổ đợt 2",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.4"
+    },
+    {
+      "fieldname": "wave_3_share",
+      "label": "Tỷ lệ trổ đợt 3",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.25"
+    },
+    {
+      "fieldname": "wave_4_share",
+      "label": "Tỷ lệ trổ đợt 4",
+      "fieldtype": "Float",
+      "precision": "4",
+      "reqd": 1,
+      "default": "0.18"
+    }
+  ],
+  "field_order": [
+    "farm",
+    "version",
+    "approval_state",
+    "source",
+    "source_import",
+    "approved_by",
+    "approved_at",
+    "notes",
+    "timing_section",
+    "days_to_first_shoot",
+    "wave_step_days",
+    "window_days",
+    "representative_day",
+    "shoot_to_inject_days",
+    "inject_to_budcut_days",
+    "budcut_to_harvest_days",
+    "rates_section",
+    "cut_rate",
+    "harvest_rate",
+    "pack_rate",
+    "kg_per_bunch",
+    "sucker_per_tree",
+    "waves_section",
+    "wave_1_share",
+    "wave_2_share",
+    "wave_3_share",
+    "wave_4_share"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

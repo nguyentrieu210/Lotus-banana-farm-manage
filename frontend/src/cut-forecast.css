@@ -1,0 +1,27 @@
+/* Dự thu theo nhật ký chặt mẹ lần 2 (CutForecastApp): builds on land.css, tokens only. */
+.cutfc{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cutfc-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cutfc-title{display:flex;flex-direction:column;gap:2px;margin-right:8px}
+.cutfc-title h2{margin:0;font-size:var(--lotus-text-xl,1.25rem)}
+.cutfc-title span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.cutfc .cutfc-narrow{flex:0 0 auto;width:auto;min-width:130px}
+.cutfc .cutfc-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cutfc-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cutfc-table{max-height:none}
+.cutfc-table tbody tr{cursor:default}
+.cutfc-table tbody tr.clickable{cursor:pointer}
+.cutfc-table tr.past td{color:var(--lotus-muted)}
+.cutfc-table tr.now td{background:var(--lotus-primary-subtle)}
+.cutfc-table tfoot th{position:static;padding:9px 10px;border-top:1px solid var(--lotus-border);background:var(--lotus-soft);text-align:left;white-space:nowrap}
+.cutfc-table tfoot th.num{text-align:right;font-variant-numeric:tabular-nums}
+.cutfc-table td small{display:block}
+.cutfc-journal{max-height:70vh}
+.cutfc-journal td{white-space:nowrap}
+.cutfc-sub{margin:8px 0 0;font-size:var(--lotus-text-sm)}
+.cutfc-params{align-items:end}
+.cutfc-input{display:flex;align-items:center;gap:6px}
+.cutfc-input em{font-style:normal;font-weight:400;color:var(--lotus-muted);min-width:28px}
+.cutfc-check{display:flex;align-items:center;gap:8px;font-size:var(--lotus-text-sm);font-weight:600}
+.cutfc-check input{width:18px;height:18px}
+@media(max-width:1100px){.cutfc .cutfc-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.cutfc-charts{grid-template-columns:1fr}.cutfc .cutfc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
