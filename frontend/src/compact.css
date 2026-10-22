@@ -285,7 +285,8 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-excel-popup .excel-values{overflow:auto;min-height:45px;max-height:230px;flex:1}
 .lotus-excel-popup .excel-values label{display:flex;align-items:center;gap:8px;padding:6px 3px;border-radius:4px;cursor:pointer}
 .lotus-excel-popup .excel-values label:hover{background:var(--lotus-neutral-50)}
-.lotus-excel-popup input[type=checkbox]{height:16px;width:16px;accent-color:var(--lotus-accent,var(--lotus-primary-600))}
+.lotus-excel-popup input[type=checkbox]{appearance:auto;display:block;position:static;height:16px;width:16px;min-height:0;min-width:16px;margin:0;padding:0;box-shadow:none;background-image:none;flex:0 0 16px;accent-color:var(--lotus-accent,var(--lotus-primary-600))}
+.lotus-excel-popup input[type=checkbox]:focus:not(:focus-visible){outline:none}
 .lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
 .lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--lotus-neutral-200)}
 .lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:#fff;color:var(--lotus-neutral-700);font-size:12px}
