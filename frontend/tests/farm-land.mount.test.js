@@ -38,7 +38,7 @@ async function open(path){
  return {root,router,unmount:()=>{app.unmount();root.remove()}}
 }
 const text=root=>root.textContent.replace(/\s+/g,' ')
-const rows=root=>[...root.querySelectorAll('.land-table tbody tr')].map(tr=>tr.querySelector('b').textContent)
+const rows=root=>[...root.querySelectorAll('.land-table .lotus-mobile-record > strong')].map(el=>el.textContent.split(' ·')[0])
 
 test('lots list shows area, trees and density; the gap tile filters to lots missing a count',async()=>{
  calls.length=0;routes={[L+'overview']:overview(false)}
@@ -47,7 +47,7 @@ test('lots list shows area, trees and density; the gap tile filters to lots miss
  assert.match(text(view.root),/12\.000.*đã đếm 2\/3 lô/)
  assert.match(text(view.root),/2\.400 cây\/ha/)
  assert.deepEqual(rows(view.root),['A1','A2','B1'])
- view.root.querySelector('.land-gaps').click();await tick()
+ view.root.querySelector('.land-gaps').click();await tick();await tick();await tick()
  assert.deepEqual(rows(view.root),['A2'],'only lots without a tree count')
  assert.ok(![...view.root.querySelectorAll('button')].some(b=>/Nhập Excel|Sửa .* lô/.test(b.textContent)),'no editing for readers')
  view.unmount()
@@ -56,13 +56,39 @@ test('lots list shows area, trees and density; the gap tile filters to lots miss
 test('a zone card filters the list and a row opens the lot page',async()=>{
  routes={[L+'overview']:overview(true),[L+'block_detail']:a=>a.section==='overview'?{can_edit:true,block:{...lot('B1'),farm_name:'Vườn 222'},plots:[{name:'P1',plot_code:'B1-1',plot_name:'Thửa 1',area_ha:1.2,active:1}],geometry:null,history:[]}:{}}
  const view=await open('/farms?farm=LOTUS-222')
- ;[...view.root.querySelectorAll('.land-zone')].find(b=>b.textContent.includes('Khu B')).click();await tick()
+ ;[...view.root.querySelectorAll('.land-zone')].find(b=>b.textContent.includes('Khu B')).click();await tick();await tick();await tick()
  assert.deepEqual(rows(view.root),['B1'])
- view.root.querySelector('.land-table tbody tr').click();await tick();await tick();await tick()
+ view.root.querySelector('.land-table .ag-row[row-id="B-B1"]').click();await tick();await tick();await tick()
  assert.equal(view.router.currentRoute.value.query.block,'B-B1')
  assert.match(text(view.root),/Lô B1.*Vườn 222 · Khu B/)
  assert.match(text(view.root),/Thửa trong lô.*B1-1/)
  assert.match(text(view.root),/Lô chưa có ranh giới/)
  assert.ok([...view.root.querySelectorAll('button')].some(b=>b.textContent.includes('Sửa lô')),'land managers can edit')
+ view.unmount()
+})
+test('bulk edit after a zone filter writes the selected Farm Block ID, not the display row number',async()=>{
+ calls.length=0
+ routes={
+  [L+'overview']:overview(true),
+  [L+'save_block']:{ok:true}
+ }
+ const view=await open('/farms?farm=LOTUS-222')
+ const zoneB=[...view.root.querySelectorAll('.land-zone')].find(b=>b.textContent.includes('Khu B'))
+ zoneB.click();await tick();await tick()
+ assert.deepEqual(rows(view.root),['B1'])
+ const choose=view.root.querySelector('.land-table .ag-row[row-id="B-B1"] input[aria-label="Chọn lô B1"]')
+ assert.ok(choose,'checkbox belongs to the filtered B1 record')
+ choose.click();await tick()
+ const change=[...view.root.querySelectorAll('button')].find(b=>b.textContent.includes('Sửa 1 lô đã chọn'))
+ assert.ok(change,'only the filtered lot is selected')
+ change.click();await tick()
+ const field=document.querySelector('dialog[open] .land-form input[maxlength="20"]')
+ assert.ok(field,'bulk form opens')
+ field.value='Z';field.dispatchEvent(new window.Event('input',{bubbles:true}));await tick()
+ const form=field.closest('form')
+ form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}))
+ await tick();await tick()
+ const writes=calls.filter(x=>x.method===L+'save_block')
+ assert.deepEqual(writes.map(x=>x.args.name),['B-B1'])
  view.unmount()
 })
