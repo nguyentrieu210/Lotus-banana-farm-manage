@@ -1,6 +1,7 @@
 <script setup>
 import {formatDate} from './format'
 import WorkJournalApp from './WorkJournalApp.vue'
+import FieldTodoApp from './FieldTodoApp.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {Icon} from 'vant'
 import {useMobileConfirm} from './use-mobile-confirm'
@@ -35,19 +36,20 @@ const installed=ref(false),discardDialog=ref(null),discardReason=ref(''),discard
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
 let requestId=0,historyId=0,restoring=false,navigationReady=false
 const journal=ref(null)
+const todoRef=ref(null)
 const canTasks=computed(()=>!!session.value?.abilities?.['work.task.read'])
-const tabs=['home','history','tasks','profile']
+const tabs=['home','history','todo','profile']
 const mobileTabs=computed(()=>[
  {name:'home',label:'Trang chủ',icon:'wap-home-o'},
  {name:'history',label:'Lịch sử',icon:'orders-o'},
- {name:'tasks',label:'Công việc',icon:'todo-list-o'},
+ {name:'todo',label:'Công việc',icon:'todo-list-o'},
  {name:'profile',label:'Tôi',icon:'user-o'}
-].filter(tab=>canTasks.value||!['tasks','history'].includes(tab.name)))
+].filter(tab=>canTasks.value||!['todo','history'].includes(tab.name)))
 const mobileTitle=computed(()=>screen.value==='home'?'Công việc ngoài vườn':screenTitle.value)
 
-const screenTitle=computed(()=>({journal:'Nhật ký công việc',home:'Trang chủ',tasks:'Công việc',history:'Lịch sử',profile:'Tôi',detail:'Chi tiết công việc',result:'Ghi kết quả',block:'Báo vướng mắc',assign:'Lập kế hoạch / Giao việc','assign-preview':'Xem lại kế hoạch',queue:'Hàng chờ',done:'Hoàn tất'})[screen.value]||'Công việc ngoài vườn')
+const screenTitle=computed(()=>({todo:'Bảng giao việc',journal:'Nhật ký công việc',home:'Trang chủ',tasks:'Công việc',history:'Lịch sử',profile:'Tôi',detail:'Chi tiết công việc',result:'Ghi kết quả',block:'Báo vướng mắc',assign:'Lập kế hoạch / Giao việc','assign-preview':'Xem lại kế hoạch',queue:'Hàng chờ',done:'Hoàn tất'})[screen.value]||'Công việc ngoài vườn')
 const shortDate=value=>formatDate(value)
-const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block'].includes(screen.value)?'tasks':screen.value.startsWith('assign')||screen.value==='journal'?'home':'profile')
+const rootTab=computed(()=>tabs.includes(screen.value)?screen.value:['detail','result','block','tasks'].includes(screen.value)?'todo':screen.value.startsWith('assign')||screen.value==='journal'?'home':'profile')
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const canAssign=computed(()=>!!session.value?.abilities?.['work.assign'])
 const canPrepare=computed(()=>!!session.value?.abilities?.['work.prepare'])
@@ -102,6 +104,7 @@ function appBack(){
 }
 function isDirty(){
  if(screen.value==='journal')return journal.value?.isDirty()||false
+ if(screen.value==='todo')return todoRef.value?.isDirty()||false
  if(screen.value==='result')
   return !!resultForm.value&&(Object.values(resultForm.value).some(v=>String(v||'').trim()!=='')||!!photo.value)
  if(screen.value==='block')return !!blockReason.value.trim()
@@ -163,6 +166,7 @@ async function changeFarm(value){
  if(screen.value==='history')await loadHistory()
 }
 async function changeDate(){await loadDay();if(screen.value==='history')await loadHistory()}
+async function refreshCurrentScreen(){if(screen.value==='todo')return todoRef.value?.refresh();return loadDay()}
 async function bootstrap(){
  busy.value=true;error.value=''
  try{
@@ -409,7 +413,7 @@ async function onPopstate(e){
   window.history.pushState({lotusWork:{screen:screen.value}},'',location.href);return
  }
  const wanted=e.state?.lotusWork?.screen
- let next=['home','tasks','history','profile','detail','result','block','assign','assign-preview','queue','done','journal'].includes(wanted)?wanted:'home'
+ let next=['home','tasks','todo','history','profile','detail','result','block','assign','assign-preview','queue','done','journal'].includes(wanted)?wanted:'home'
  if(next==='journal'&&!session.value?.capabilities?.['work_journal.read'])next='home'
  if(next==='result'&&!resultForm.value)next='tasks'
  if(next==='detail'&&!selected.value)next='tasks'
@@ -463,7 +467,7 @@ onBeforeUnmount(()=>{
 </script>
 
 <template>
- <LotusMobileShell app="work" :refresh="loadDay" :refreshable="tabs.includes(screen)" class="lotus-mobile lotus-work" :class="{'mobile-keyboard-open':keyboard}"
+ <LotusMobileShell app="work" :refresh="refreshCurrentScreen" :refreshable="tabs.includes(screen)" class="lotus-mobile lotus-work" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="rootTab"
   :back="!tabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="changeTab" 
@@ -476,6 +480,7 @@ onBeforeUnmount(()=>{
 
    <template v-if="session">
     <WorkJournalApp v-if="screen==='journal'" ref="journal" mobile/>
+    <FieldTodoApp v-if="screen==='todo'" ref="todoRef" :farm="farm" :date="date" :can-assign="canAssign" :can-capture="canCapture" :user="session.user"/>
     <template v-if="screen==='home'">
      <h1>Chọn công việc</h1>
      <div class="work-scope">
@@ -488,7 +493,8 @@ onBeforeUnmount(()=>{
      </div>
      <div class="mobile-actions" aria-label="Thao tác Công việc ngoài vườn">
       <LotusMobileAction v-if="session?.capabilities?.['work_journal.read']" icon="notes-o" title="Nhật ký công việc" @select="go('journal')"/>
-      <LotusMobileAction v-if="canAssign" primary icon="edit" title="Lập kế hoạch / Giao việc" :disabled="!online||busy" @select="openAssign"/>
+      <LotusMobileAction v-if="canTasks" primary icon="todo-list-o" title="Bảng giao việc theo lô" @select="go('todo')"/>
+      <LotusMobileAction v-if="canAssign" icon="edit" title="Lập kế hoạch / Giao việc" :disabled="!online||busy" @select="openAssign"/>
       <LotusMobileAction v-if="canCapture" icon="completed" title="Báo kết quả" @select="status='open';go('tasks')"/>
       <LotusMobileAction v-if="canTasks" icon="apps-o" title="Công việc đã giao" @select="status='all';go('tasks')"/>
       <LotusMobileAction v-if="canTasks" icon="flag-o" title="Việc vướng mắc" @select="status='blocked';go('tasks')"/>
