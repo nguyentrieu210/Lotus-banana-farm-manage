@@ -88,11 +88,11 @@ test('status chips filter the roster and the month sheet shades days off',async(
  chip('Chưa chấm').click();await tick()
  assert.deepEqual([...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent),['Bình'])
  ;[...view.root.querySelectorAll('[role=tab]')].find(b=>b.textContent==='Bảng công tháng').click();await tick();await tick()
- const head=[...view.root.querySelectorAll('.tk-sheet thead th')]
- assert.ok(head[4].classList.contains('is-off'),'4/10 is a weekly off day')
- assert.ok(head[20].classList.contains('is-holiday'),'20/10 is a public holiday')
- const cells=[...view.root.querySelectorAll('.tk-sheet tbody tr')[0].querySelectorAll('td')]
- assert.equal(cells[0].textContent,'X');assert.ok(cells[1].classList.contains('is-draft'),'draft attendance is marked, not counted')
+ const head=day=>view.root.querySelector('.tk-sheet .ag-header-cell[col-id="day_'+day+'"]')
+ assert.ok(head(4).classList.contains('is-off'),'4/10 is a weekly off day')
+ assert.ok(head(20).classList.contains('is-holiday'),'20/10 is a public holiday')
+ const entry=day=>view.root.querySelector('.tk-sheet .ag-row[row-id="E1"] .ag-cell[col-id="day_'+day+'"]')
+ assert.equal(entry(1).textContent,'X');assert.ok(entry(2).classList.contains('is-draft'),'draft attendance is marked, not counted')
  assert.match(view.root.textContent,/Đã khóa kỳ/)
  view.unmount()
 })

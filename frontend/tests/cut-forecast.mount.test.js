@@ -52,10 +52,10 @@ test('the forecast shows totals and stages in the order trổ → chích bắp �
  assert.match(page,/Cây mẹ chặt lần 2\s*430\.871/)
  assert.match(page,/Tấn sơ chế\s*7\.375 tấn/)
  assert.match(page,/Tháng cao điểm\s*05\/2027/)
- const head=[...view.root.querySelector('.cutfc-table thead tr').children].map(th=>th.textContent.trim())
- assert.deepEqual(head,['Tháng','Trổ buồng (cây)','Chích bắp','Cắt bắp','Thu hoạch','Đóng gói','Tấn sơ chế'])
- assert.ok(head.indexOf('Chích bắp')<head.indexOf('Cắt bắp'),'chích bắp comes before cắt bắp')
- const first=view.root.querySelector('.cutfc-table tbody tr')
+ const head=[...view.root.querySelector('.cutfc-table .lotus-ag-grid').querySelectorAll('.ag-header-cell[col-id]')].map(th=>th.getAttribute('col-id'))
+ assert.deepEqual(head,['month','shoot','inject','budcut','harvest','pack','tonnes'])
+ assert.ok(head.indexOf('inject')<head.indexOf('budcut'),'chích bắp comes before cắt bắp')
+ const first=view.root.querySelector('.cutfc-table .ag-row')
  assert.match(first.textContent,/08\/2026.*đã qua/,'a past month is marked')
  assert.ok(!button(view.root,'Nhập Excel'),'readers cannot import')
  view.unmount()
@@ -65,7 +65,7 @@ test('the journal tab lists each wave with its dates; zone filter goes to the se
  routes={[M+'board']:board(false)}
  const view=await open('/forecast')
  button(view.root,'Nhật ký & lịch từng đợt').click();await tick()
- const row=view.root.querySelector('.cutfc-journal tbody tr').textContent
+ const row=view.root.querySelector('.cutfc-journal .ag-row').textContent
  assert.match(row,/31\/03\/2026.*12.*29\/07\/2026 – 27\/08\/2026.*12\/08\/2026.*17\/08\/2026.*01\/09\/2026.*05\/11\/2026/)
  await view.router.push('/forecast?zone=C');await tick();await tick()
  assert.equal(calls.at(-1).args.zone,'C')

@@ -1,6 +1,7 @@
 <script setup>
 import {computed,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
+import DataTable from './DataTable.vue'
 const props=defineProps({farm:{type:String,default:''},block:{type:String,default:''}})
 const data=ref(null),loading=ref(false),error=ref('')
 const search=ref(''),missingOnly=ref(false)
@@ -16,8 +17,9 @@ async function reload(){
 }
 onMounted(reload)
 watch(()=>[props.farm,props.block],reload)
+const tableColumns=[{field:'code',headerName:'Lô lớn'},{field:'area_ha',headerName:'Diện tích',valueFormatter:p=>amount(p.value)+' ha'},{field:'tree_count',headerName:'Số cây có nguồn',valueFormatter:p=>p.value==null?'Chưa có':amount(p.value)},{field:'count_status',headerName:'Trạng thái',valueFormatter:p=>p.data?.area_match?p.value:'Cần đối chiếu diện tích'}]
 const rows=computed(()=>data.value?.rows?.filter(r=>
- (!missingOnly.value||r.tree_count==null)&&
+ (!missingOnly.value||r.tree_count===null)&&
  (!search.value||r.code.toLowerCase().includes(search.value.trim().toLowerCase()))
  )||[])
 </script>
@@ -54,17 +56,7 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
         <label class="lotus-import__check"><input type="checkbox" v-model="missingOnly"/> Chỉ hiện lô thiếu số cây</label>
       </div>
       <div class="lotus-import__scroll">
-        <table>
-          <thead><tr><th>Lô lớn</th><th>Diện tích</th><th>Số cây có nguồn</th><th>Trạng thái</th></tr></thead>
-          <tbody>
-            <tr v-for="r in rows" :key="r.block">
-              <td><b>{{r.code}}</b></td><td>{{amount(r.area_ha)}} ha</td>
-              <td>{{r.tree_count===null?'Chưa có':amount(r.tree_count)}}</td>
-              <td>{{r.area_match?r.count_status:'Cần đối chiếu diện tích'}}</td>
-            </tr>
-            <tr v-if="!rows.length"><td colspan="4">Không có lô phù hợp.</td></tr>
-          </tbody>
-        </table>
+        <DataTable :rows="rows" :columns="tableColumns" row-key="block" storage-key="import-lot-preview"/>
       </div>
       <p class="lotus-import__footer">{{data.notice}} Ngày trổ khu A chỉ là ước tính cấp khu; không tạo bản ghi “Đã trổ” cho từng lô.</p>
     </template>

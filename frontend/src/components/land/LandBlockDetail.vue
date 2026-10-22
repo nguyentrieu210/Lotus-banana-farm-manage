@@ -4,6 +4,7 @@
 import {computed,defineAsyncComponent,reactive,ref,watch} from 'vue'
 import {useRouter} from 'vue-router'
 import LotusIcon from '../LotusIcon.vue'
+import DataTable from '../DataTable.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import {Button as UiButton} from '../ui/button'
 import {Input as UiInput} from '../ui/input'
@@ -44,6 +45,29 @@ const kindOf=f=>({float:'number',int:'number',date:'date'})[f.kind]||'text'
 watch(()=>props.block,()=>{info.value=null;for(const k of Object.keys(section))delete section[k];tab.value='overview';loadOverview()},{immediate:true})
 watch(tab,name=>{if(!section[name])loadSection(name)})
 function applyRange(){for(const k of Object.keys(section))delete section[k];loadSection(tab.value)}
+
+const dcol=(field,headerName,formatter)=>({field,headerName,minWidth:115,...(formatter?{valueFormatter:p=>formatter(p.value,p.data)}:{})})
+const dnum=(field,headerName,precision=0)=>dcol(field,headerName,v=>num(v,precision))
+const ddate=(field,headerName)=>dcol(field,headerName,v=>vnDate(v))
+function plotActions(params){
+ const parent=document.createElement('div')
+ for(const [name,act] of [['Lịch sử thửa',()=>router.push('/plots/'+encodeURIComponent(params.data.name))],...(info.value?.can_edit?[['Sửa',()=>openPlot(params.data)]]:[])]){
+  const btn=document.createElement('button');btn.type='button';btn.textContent=name;btn.className='land-text-link'
+  btn.addEventListener('click',e=>{e.stopPropagation();act()});parent.appendChild(btn)
+ }
+ return parent
+}
+const plotsCols=[dcol('plot_code','Mã thửa'),dcol('plot_name','Tên'),dnum('area_ha','Diện tích (ha)',3),dcol('active','Trạng thái',v=>v?'Đang dùng':'Ngừng'),{field:'name',colId:'actions',headerName:'Thao tác',cellRenderer:plotActions,minWidth:180,sortable:false,hideOnMobile:true}]
+const worksCols=[dcol('work','Công việc'),dcol('qty','Khối lượng',(v,r)=>num(v,2)+' '+(r.uom||'')),dnum('workdays','Công',2),dnum('days','Số ngày'),ddate('last','Gần nhất')]
+const teamsCols=[dcol('team','Đội'),dcol('workdays','Tổng công',v=>num(v,2)+' công')]
+const materialsCols=[dcol('item_name','Vật tư',(_,r)=>r.item_name+' · '+r.uom),dnum('required','Định mức',2),dnum('consumed','Đã dùng',2),dcol('variance','Chênh',(_,r)=>r.required?num(r.consumed-r.required,2):'—')]
+const forecastCols=[dcol('period_start_date','Kỳ',(_,r)=>vnDate(r.period_start_date)+' – '+vnDate(r.period_end_date)),dnum('expected_harvest_bunch_qty','Buồng'),dnum('saleable_forecast_kg','Đạt bán (kg)'),dcol('supply_state','Trạng thái')]
+const cancelledCols=[dcol('reason','Nguyên nhân'),dcol('bunches','Số buồng',v=>num(v)+' buồng')]
+const measuredCols=[ddate('posting_date','Ngày'),dnum('sample_count','Mẫu'),dcol('average_length','Dài TB',(v,r)=>num(v,1)+' '+r.uom),dnum('average_diameter','Đường kính TB',1)]
+const diseaseCols=[dcol('disease','Bệnh'),dnum('observations','Lần'),dnum('plants','Cây bị'),dcol('severity','Mức gần nhất'),ddate('last','Gần nhất')]
+const operationsCols=[ddate('week','Tuần từ'),dcol('operation','Thao tác',v=>OPERATIONS[v]||v),dnum('bunches','Buồng')]
+const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>PLANTING[v]||v),dnum('plant_qty','Số cây'),dcol('area_ha','Diện tích',v=>num(v,2)+' ha'),dcol('notes','Ghi chú')]
+
 </script>
 
 <template>
@@ -80,9 +104,7 @@ function applyRange(){for(const k of Object.keys(section))delete section[k];load
    <small v-if="info.geometry?.approval_state==='Draft'" class="land-note">Ranh bản nháp (phiên bản {{info.geometry.version}}), chưa duyệt.</small>
   </div>
   <div class="land-card land-card--wide"><header class="land-card__head"><h3>Thửa trong lô</h3><UiButton v-if="info.can_edit" variant="outline" size="sm" @click="openPlot()"><LotusIcon name="plus"/>Thêm thửa</UiButton></header>
-   <table v-if="info.plots.length" class="land-mini"><thead><tr><th>Mã thửa</th><th>Tên</th><th class="num">Diện tích (ha)</th><th>Trạng thái</th><th></th></tr></thead>
-    <tbody><tr v-for="p in info.plots" :key="p.name"><td><b>{{p.plot_code}}</b></td><td>{{p.plot_name}}</td><td class="num">{{num(p.area_ha,3)}}</td><td>{{p.active?'Đang dùng':'Ngừng'}}</td>
-     <td class="land-row-actions"><UiButton variant="link" size="sm" @click="router.push('/plots/'+encodeURIComponent(p.name))">Lịch sử thửa ↗</UiButton><UiButton v-if="info.can_edit" variant="link" size="sm" @click="openPlot(p)">Sửa</UiButton></td></tr></tbody></table>
+   <DataTable v-if="info.plots.length" :rows="info.plots" :columns="plotsCols" row-key="name" storage-key="lot-plot-list"/>
    <p v-else class="land-empty">Lô chưa chia thửa.</p>
    <p v-if="info.plots.length&&Math.abs(plotsArea-Number(b.area_ha||0))>0.05" class="land-warn">Tổng diện tích thửa {{num(plotsArea,2)}} ha khác diện tích lô {{num(b.area_ha,2)}} ha.</p>
   </div>
@@ -90,15 +112,13 @@ function applyRange(){for(const k of Object.keys(section))delete section[k];load
 
  <section v-if="tab==='work'&&section.work" class="land-grid">
   <div class="land-card land-card--wide"><h3>Công việc đã làm</h3>
-   <table v-if="section.work.work?.length" class="land-mini"><thead><tr><th>Công việc</th><th class="num">Khối lượng</th><th class="num">Công</th><th class="num">Số ngày</th><th>Gần nhất</th></tr></thead>
-    <tbody><tr v-for="w in section.work.work" :key="w.work"><td>{{w.work}}</td><td class="num">{{num(w.qty,2)}} {{w.uom}}</td><td class="num">{{num(w.workdays,2)}}</td><td class="num">{{w.days}}</td><td>{{vnDate(w.last)}}</td></tr></tbody></table>
+   <DataTable v-if="section.work.work?.length" :rows="section.work.work" :columns="worksCols" row-key="work" storage-key="lot-work"/>
    <p v-else class="land-empty">{{section.work.work===null?'Bạn chưa có quyền xem kết quả công việc.':'Chưa có kết quả công việc đã duyệt của lô trong khoảng ngày này.'}}</p></div>
   <div class="land-card"><h3>Nhân công theo đội</h3>
-   <table v-if="section.work.teams?.length" class="land-mini"><tbody><tr v-for="t in section.work.teams" :key="t.team"><td>{{t.team}}</td><td class="num">{{num(t.workdays,2)}} công</td></tr></tbody></table>
+   <DataTable v-if="section.work.teams?.length" :rows="section.work.teams" :columns="teamsCols" row-key="team" storage-key="lot-teams"/>
    <p v-else class="land-empty">Chưa bố trí nhân công cho lô.</p></div>
   <div class="land-card"><h3>Vật tư: định mức và đã dùng</h3>
-   <table v-if="section.work.materials?.length" class="land-mini"><thead><tr><th>Vật tư</th><th class="num">Định mức</th><th class="num">Đã dùng</th><th class="num">Chênh</th></tr></thead>
-    <tbody><tr v-for="m in section.work.materials" :key="m.item"><td>{{m.item_name}}<small> · {{m.uom}}</small></td><td class="num">{{num(m.required,2)}}</td><td class="num">{{num(m.consumed,2)}}</td><td class="num" :class="{'land-bad':m.required&&m.consumed>m.required*1.05}">{{m.required?num(m.consumed-m.required,2):'—'}}</td></tr></tbody></table>
+   <DataTable v-if="section.work.materials?.length" :rows="section.work.materials" :columns="materialsCols" row-key="item" storage-key="lot-materials"/>
    <p v-else class="land-empty">Chưa có nhu cầu hay sử dụng vật tư của lô.</p></div>
  </section>
 
@@ -108,30 +128,25 @@ function applyRange(){for(const k of Object.keys(section))delete section[k];load
     <p v-if="!section.yield.harvest.rows.length" class="land-empty">Chưa có lượt thu hoạch đã duyệt.</p></template>
    <p v-else class="land-empty">Bạn chưa có quyền xem thu hoạch.</p></div>
   <div class="land-card"><h3>Dự thu</h3>
-   <table v-if="section.yield.forecasts?.length" class="land-mini"><thead><tr><th>Kỳ</th><th class="num">Buồng</th><th class="num">Đạt bán (kg)</th><th>Trạng thái</th></tr></thead>
-    <tbody><tr v-for="f in section.yield.forecasts" :key="f.name"><td>{{vnDate(f.period_start_date)}} – {{vnDate(f.period_end_date)}}</td><td class="num">{{num(f.expected_harvest_bunch_qty)}}</td><td class="num">{{num(f.saleable_forecast_kg)}}</td><td>{{f.supply_state||'—'}}</td></tr></tbody></table>
+   <DataTable v-if="section.yield.forecasts?.length" :rows="section.yield.forecasts" :columns="forecastCols" row-key="name" storage-key="lot-forecast"/>
    <p v-else class="land-empty">Chưa có dự thu cho lô.</p></div>
   <div class="land-card"><header class="land-card__head"><h3>Hủy buồng theo nguyên nhân</h3><UiButton variant="link" size="sm" @click="go('losses')">Hủy & tổn thất ↗</UiButton></header>
-   <table v-if="section.yield.cancellations?.length" class="land-mini"><tbody><tr v-for="c in section.yield.cancellations" :key="c.reason"><td>{{c.reason}}</td><td class="num">{{num(c.bunches)}} buồng</td></tr></tbody></table>
+   <DataTable v-if="section.yield.cancellations?.length" :rows="section.yield.cancellations" :columns="cancelledCols" row-key="reason" storage-key="lot-cancellations"/>
    <p v-else class="land-empty">Không có buồng hủy trong khoảng ngày này.</p></div>
   <div class="land-card"><header class="land-card__head"><h3>Đo trái gần nhất</h3><UiButton variant="link" size="sm" @click="go('measurements')">Đo trái ↗</UiButton></header>
-   <table v-if="section.yield.measurements?.length" class="land-mini"><thead><tr><th>Ngày</th><th class="num">Mẫu</th><th class="num">Dài TB</th><th class="num">Đường kính TB</th></tr></thead>
-    <tbody><tr v-for="(m,i) in section.yield.measurements" :key="i"><td>{{vnDate(m.posting_date)}}</td><td class="num">{{m.sample_count}}</td><td class="num">{{num(m.average_length,1)}} {{m.uom}}</td><td class="num">{{num(m.average_diameter,1)}}</td></tr></tbody></table>
+   <DataTable v-if="section.yield.measurements?.length" :rows="section.yield.measurements" :columns="measuredCols" storage-key="lot-measurements"/>
    <p v-else class="land-empty">Chưa có lần đo trái của lô.</p></div>
  </section>
 
  <section v-if="tab==='care'&&section.care" class="land-grid">
   <div class="land-card"><h3>Bệnh ghi nhận</h3>
-   <table v-if="section.care.diseases?.length" class="land-mini"><thead><tr><th>Bệnh</th><th class="num">Lần</th><th class="num">Cây bị</th><th>Mức gần nhất</th><th>Gần nhất</th></tr></thead>
-    <tbody><tr v-for="d in section.care.diseases" :key="d.disease"><td>{{d.disease}}</td><td class="num">{{d.observations}}</td><td class="num">{{num(d.plants)}}</td><td>{{d.severity||'—'}}</td><td>{{vnDate(d.last)}}</td></tr></tbody></table>
+   <DataTable v-if="section.care.diseases?.length" :rows="section.care.diseases" :columns="diseaseCols" row-key="disease" storage-key="lot-diseases"/>
    <p v-else class="land-empty">Không có ghi nhận bệnh trong khoảng ngày này.</p></div>
   <div class="land-card"><h3>Chăm sóc buồng theo tuần</h3>
-   <table v-if="section.care.operations?.length" class="land-mini"><thead><tr><th>Tuần từ</th><th>Thao tác</th><th class="num">Buồng</th></tr></thead>
-    <tbody><tr v-for="o in section.care.operations" :key="o.week+o.operation"><td>{{vnDate(o.week)}}</td><td>{{OPERATIONS[o.operation]||o.operation}}</td><td class="num">{{num(o.bunches)}}</td></tr></tbody></table>
+   <DataTable v-if="section.care.operations?.length" :rows="section.care.operations" :columns="operationsCols" storage-key="lot-operations"/>
    <p v-else class="land-empty">Chưa có thao tác buồng trong khoảng ngày này.</p></div>
   <div class="land-card land-card--wide"><h3>Trồng / trồng dặm</h3>
-   <table v-if="section.care.planting?.length" class="land-mini"><thead><tr><th>Ngày</th><th>Loại</th><th class="num">Số cây</th><th class="num">Diện tích</th><th>Ghi chú</th></tr></thead>
-    <tbody><tr v-for="(p,i) in section.care.planting" :key="i"><td>{{vnDate(p.posting_date)}}</td><td>{{PLANTING[p.event_type]||p.event_type}}</td><td class="num">{{num(p.plant_qty)}}</td><td class="num">{{num(p.area_ha,2)}} ha</td><td>{{p.notes}}</td></tr></tbody></table>
+   <DataTable v-if="section.care.planting?.length" :rows="section.care.planting" :columns="plantingCols" storage-key="lot-planting"/>
    <p v-else class="land-empty">Chưa có lần trồng hay trồng dặm trong khoảng ngày này.</p></div>
  </section>
 

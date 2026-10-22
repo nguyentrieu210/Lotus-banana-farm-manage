@@ -49,9 +49,9 @@ test('chart offers a table view with the same numbers',async()=>{
  const toggle=view.root.querySelector('.lotus-chart-head button')
  assert.equal(toggle.textContent,'Xem bảng số liệu')
  toggle.click();await tick()
- const rows=[...view.root.querySelectorAll('.lotus-chart-table tbody tr')].map(r=>[...r.children].map(c=>c.textContent))
+ const rows=[...view.root.querySelectorAll('.lotus-chart-table .ag-row')].map(r=>['label','series_0'].map(f=>r.querySelector('.ag-cell[col-id="'+f+'"]')?.textContent))
  assert.deepEqual(rows,[['Khu A','15.000'],['Khu B','5.000']])
- assert.equal(view.root.querySelector('.lotus-chart-table thead').textContent,'Số cây (cây)')
+ assert.match(view.root.querySelector('.lotus-chart-table .ag-header').textContent,/Số cây \(cây\)/)
  view.unmount()
  const empty=mount(LotusChart,{title:'Rỗng',categories:['T1'],series:[{name:'X',data:[0]}],empty:'Không có số.'});await tick()
  assert.equal(empty.root.querySelector('.lotus-chart-empty').textContent,'Không có số.')
@@ -63,7 +63,7 @@ test('chart offers a table view with the same numbers',async()=>{
 test('without a usable canvas the chart falls back to its table',async()=>{
  const view=mount(LotusChart,{title:'Kho',categories:['10/26'],series:[{name:'Nhập',data:[10]},{name:'Xuất',data:[1]}],unit:'phiếu'});await tick()
  assert.equal(view.root.querySelector('.lotus-chart-head button'),null,'no toggle when only the table can be shown')
- assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-table tbody td')].map(c=>c.textContent),['10','1'])
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-table .ag-cell[col-id="series_0"], .lotus-chart-table .ag-cell[col-id="series_1"]')].map(c=>c.textContent),['10','1'])
  view.unmount()
 })
 test('commerce offers independent party/status filters and retains company figures under a land scope',async()=>{
