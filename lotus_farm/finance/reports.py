@@ -89,7 +89,8 @@ def pending():
     for p in frappe.get_all(posting.POSTING, filters={'state': 'Draft'}, fields=['name', 'voucher_type', 'voucher_name', 'purpose', 'amount', 'source_name', 'posted_by'],
                             order_by='creation desc'):
         vouchers.append(dict(p, kind='voucher', reason='Phiếu chi chờ ký'))
-    return dict(receipts=receipts, payroll=payroll, issues=issues, vouchers=vouchers)
+    from lotus_farm.finance.costing import lots_to_receive
+    return dict(receipts=receipts, payroll=payroll, issues=issues, vouchers=vouchers, harvests=lots_to_receive())
 
 
 @frappe.whitelist()

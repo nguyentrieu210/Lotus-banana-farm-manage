@@ -39,6 +39,7 @@ KEYS = OrderedDict((
     ('stock_shortage', ('Thiếu kiểm kê / tài sản thiếu chờ xử lý', ('Asset', 'Liability', 'Expense'), None)),
     ('cost_of_goods_sold', ('Giá vốn hàng bán', ('Expense',), None)),
     ('other_expense', ('Chi phí khác (xuất hủy, hư hỏng)', ('Expense',), None)),
+    ('packing_cost', ('Chi phí vật liệu sản xuất chung (bao bì, vật liệu đóng gói)', ('Expense',), None)),
     ('opening_equity', ('Đối ứng số dư đầu kỳ', ('Equity',), None)),
     ('round_off', ('Làm tròn', ('Expense', 'Income'), None)),
 ))
@@ -277,3 +278,54 @@ def aging(due_date, today):
     if days <= 90:
         return 'Quá hạn 61–90 ngày'
     return 'Quá hạn trên 90 ngày'
+
+
+# Product costing (giá thành chuối) ------------------------------------------------------------------------
+
+def costing_rows(pools):
+    """Month-end cost of each lot's harvest.
+
+    pools: dict(lotus_farm, lotus_farm_block (None = the farm's costs without a lot), lotus_crop_cycle,
+      wip_open, cost_month, provisional, kg_harvested, kg_remaining).
+    The harvest of the month carries (work in progress at the start + costs transferred this month) in the proportion
+    kg harvested / (kg harvested + kg still expected from the lot's forecast); the rest stays in 154 for later bunches.
+    adjustment = actual - provisional (what the harvest receipts already moved from 154 to 155 at the provisional rate).
+    """
+    out = []
+    for p in pools:
+        wip_open, cost = int(round(p.get('wip_open') or 0)), int(round(p.get('cost_month') or 0))
+        provisional = int(round(p.get('provisional') or 0))
+        kg, remaining = float(p.get('kg_harvested') or 0), max(0.0, float(p.get('kg_remaining') or 0))
+        pool = wip_open + cost
+        absorbed = int(round(pool * kg / (kg + remaining))) if kg > 0 else 0
+        out.append(dict(p, wip_open=wip_open, cost_month=cost, provisional=provisional, kg_harvested=kg, kg_remaining=remaining,
+                        absorbed=absorbed, adjustment=absorbed - provisional, wip_close=pool - absorbed,
+                        cost_per_kg=round(absorbed / kg, 2) if kg > 0 else None,
+                        basis='Toàn bộ chi phí còn lại (không có dự thu)' if kg > 0 and not remaining else
+                        ('Theo kg thu / (kg thu + kg dự thu còn lại)' if kg > 0 else 'Chưa thu hoạch: giữ dở dang')))
+    return out
+
+
+def costing_entry(rows, accounts):
+    """Journal for the costing adjustment: harvest cost above the provisional rate goes to cost of goods sold
+    (Nợ 632 / Có 154), below it comes back (Nợ 154 / Có 632), lot by lot."""
+    lines = []
+    for r in rows:
+        adj = int(r.get('adjustment') or 0)
+        if not adj:
+            continue
+        dims = {f: r.get(f) for f in DIM_FIELDS}
+        label = 'Giá thành ' + str(r.get('lotus_farm_block') or r.get('lotus_farm') or '')
+        if adj > 0:
+            lines += [line(accounts['cost_of_goods_sold'], debit=adj, dims=dims, note=label), line(accounts['production_cost'], credit=adj, dims=dims, note=label)]
+        else:
+            lines += [line(accounts['production_cost'], debit=-adj, dims=dims, note=label), line(accounts['cost_of_goods_sold'], credit=-adj, dims=dims, note=label)]
+    return lines
+
+
+def provisional_rate(last_actual, standard):
+    """VND per kg for a harvest receipt: the lot's last actual cost per kg, else the planned (standard) cost."""
+    for value in (last_actual, standard):
+        if value and float(value) > 0:
+            return float(value)
+    return None

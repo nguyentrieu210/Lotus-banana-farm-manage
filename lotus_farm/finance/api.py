@@ -17,7 +17,7 @@ def settings():
     accounts = frappe.get_all('Account', filters={'company': company, 'is_group': 0, 'disabled': 0},
                               fields=['name', 'account_number', 'account_name', 'root_type', 'account_type'], order_by='account_number, name')
     return dict(enabled=bool(cfg.finance_enabled), company=cfg.company or company, cutover_date=str(cfg.cutover_date or ''),
-                coa_version=cfg.coa_version or '', coa_applied_at=str(cfg.coa_applied_at or ''), coa_applied_by=cfg.coa_applied_by or '',
+                harvest_standard_cost=flt(cfg.get('harvest_standard_cost')), coa_version=cfg.coa_version or '', coa_applied_at=str(cfg.coa_applied_at or ''), coa_applied_by=cfg.coa_applied_by or '',
                 mapping=setup.mapping(cfg), keys=[dict(key=k, label=v[0], roots=v[1], account_type=v[2]) for k, v in rules.KEYS.items()],
                 errors=setup.mapping_errors(cfg), accounts=accounts, periods=posting.periods(company), is_chief=setup.is_chief())
 
@@ -31,6 +31,8 @@ def save_settings(values):
     doc.company = doc.company or setup.company()
     if 'cutover_date' in values:
         doc.cutover_date = values.get('cutover_date') or None
+    if 'harvest_standard_cost' in values:
+        doc.harvest_standard_cost = max(0, flt(values.get('harvest_standard_cost')))
     for key, account in (values.get('mapping') or {}).items():
         if key in rules.KEYS:
             doc.set('acct_' + key, account or None)

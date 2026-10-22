@@ -54,6 +54,7 @@ ISSUE_PURPOSES = {
     'Sale': ('Xuất bán / sản phẩm phụ', 'cost_of_goods_sold', False),
     'Disposal': ('Xuất hủy, hư hỏng', 'other_expense', False),
     'Shortage': ('Thiếu khi kiểm kê / chờ xử lý', 'stock_shortage', False),
+    'Packing': ('Xuất bao bì / vật liệu đóng gói (chi phí chung của vườn)', 'packing_cost', False),
 }
 
 
@@ -87,10 +88,20 @@ def stock_entry_accounts(doc, method=None):
     if doc.docstatus == 2 or not _has_dims(doc):
         return
     kind = doc.get('stock_entry_type')
-    if kind not in ('Material Issue', 'Material Receipt'):
+    if kind not in ('Material Issue', 'Material Receipt', 'Repack'):
         return
     enforce, m = _enforced(doc)
     cost_center = frappe.get_cached_value('Company', doc.company, 'cost_center')
+    if kind == 'Repack':
+        # Packing: any gap between the fruit consumed and the cartons made stays in the farm's production cost.
+        farm = frappe.db.get_value('Packout Run', doc.get('lotus_packout_run'), 'farm') if doc.get('lotus_packout_run') else None
+        if enforce:
+            for row in doc.items:
+                row.expense_account = m['production_cost']
+                row.cost_center = row.cost_center or cost_center
+                if farm and not row.get('lotus_farm'):
+                    row.lotus_farm = farm
+        return
     if kind == 'Material Issue':
         purpose = 'Production' if doc.get('lotus_issue_mode') else doc.get('lotus_issue_purpose')
         for i, row in enumerate(doc.items, start=1):
@@ -102,6 +113,10 @@ def stock_entry_accounts(doc, method=None):
             label, key, needs_lot = ISSUE_PURPOSES[purpose]
             if needs_lot and not row.get('lotus_farm'):
                 frappe.throw('Dòng %d (%s): chọn lô sử dụng có trong danh sách lô để tính chi phí vào đúng lô.' % (i, row.item_code))
+            if purpose == 'Packing' and not row.get('lotus_farm'):
+                row.lotus_farm = _warehouse_farm(row.s_warehouse)
+                if not row.lotus_farm:
+                    frappe.throw('Dòng %d (%s): ghi mã lô hoặc chọn kho của vườn để chi phí bao bì vào đúng vườn.' % (i, row.item_code))
             row.expense_account = m[key]
             row.cost_center = row.cost_center or cost_center
         return

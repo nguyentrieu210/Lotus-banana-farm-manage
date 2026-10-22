@@ -42,6 +42,12 @@
       "read_only": 1
     },
     {
+      "fieldname": "harvest_standard_cost",
+      "label": "Giá thành kế hoạch chuối thu hoạch (đồng/kg)",
+      "fieldtype": "Currency",
+      "description": "Dùng làm giá tạm tính khi lô chưa có giá thành thực tế tháng trước"
+    },
+    {
       "fieldname": "accounts_section",
       "label": "Tài khoản theo nghiệp vụ",
       "fieldtype": "Section Break"
@@ -173,6 +179,12 @@
       "options": "Account"
     },
     {
+      "fieldname": "acct_packing_cost",
+      "label": "Chi phí vật liệu sản xuất chung (bao bì)",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
       "fieldname": "acct_opening_equity",
       "label": "Đối ứng số dư đầu kỳ",
       "fieldtype": "Link",
@@ -192,6 +204,7 @@
     "coa_version",
     "coa_applied_at",
     "coa_applied_by",
+    "harvest_standard_cost",
     "accounts_section",
     "acct_inventory_material",
     "acct_finished_goods",
@@ -214,6 +227,7 @@
     "acct_stock_shortage",
     "acct_cost_of_goods_sold",
     "acct_other_expense",
+    "acct_packing_cost",
     "acct_opening_equity",
     "acct_round_off"
   ],

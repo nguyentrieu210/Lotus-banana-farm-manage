@@ -217,7 +217,8 @@
   "round_off": "811",
   "stock_shortage": "1381",
   "cost_of_goods_sold": "632",
-  "other_expense": "811"
+  "other_expense": "811",
+  "packing_cost": "6272"
  },
  "company_defaults": {
   "default_cash_account": "111",

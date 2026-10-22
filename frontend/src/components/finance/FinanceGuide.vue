@@ -20,6 +20,7 @@ const START=[
  'Chọn ngày bắt đầu ghi sổ (cutover) — nên là ngày đầu tháng. Chứng từ trước ngày này nằm trong số dư đầu kỳ, Lotus không ghi sổ lại.',
  'Nhập số dư đầu kỳ bằng file mẫu (tiền, ngân hàng, công nợ từng nhà cung cấp, vốn…). Không nhập lại tồn kho nếu kho đã có giá trị trong Lotus.',
  'Khóa sổ các tháng trước ngày bắt đầu để không ai ghi nhầm vào.',
+ 'Nhập "Giá thành kế hoạch chuối thu hoạch (đ / kg)" ở Thiết lập: giá tạm tính khi lô chưa có giá thành thực tế của tháng trước.',
  'Bật "Ghi sổ kế toán từ Lotus". Từ đó phiếu xuất kho bắt buộc có lô, phiếu nhập bắt buộc có lý do.',
 ]
 const DAILY=[
@@ -27,6 +28,7 @@ const DAILY=[
  ['Kế toán — mỗi ngày','Mở Chờ hạch toán: chọn các phiếu nhận hàng cùng nhà cung cấp → Lập hóa đơn (số, ngày hóa đơn). Xem "Xuất kho chưa gắn lô" và nhắc kho sửa.'],
  ['Kế toán — khi trả tiền','Công nợ phải trả → Lập phiếu chi: nhập số tiền trả từng hóa đơn, tiền mặt hay chuyển khoản (ghi số ủy nhiệm chi), chọn Kế toán trưởng và Giám đốc ký. Phiếu chỉ ghi sổ khi Giám đốc ký xong.'],
  ['Kế toán — chi phí dịch vụ','Công nợ phải trả → Hóa đơn dịch vụ / chi phí: thuê máy, vận chuyển cho lô chọn "Sản xuất" và vườn / lô; chi phí văn phòng chọn "Quản lý".'],
+ ['Kho / xưởng — chuối thu hoạch','Lô thu hoạch đã xác nhận hiện ở Chờ hạch toán › Lô thu hoạch chưa nhập kho → Nhập kho. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
  ['Kế toán trưởng / Giám đốc','Thông báo "Đến lượt bạn ký" → Thu / Chi (hoặc trang Phiếu chi chờ ký) → Ký hoặc Trả lại kèm lý do.'],
 ]
 const MONTH=[
@@ -34,6 +36,7 @@ const MONTH=[
  'Bảng lương tháng đã ký đủ → Chờ hạch toán › Xem trước bút toán → Ghi sổ. Sau đó lập phiếu chi lương ở Thu / Chi.',
  'Phiếu chi trong tháng đã ký xong hoặc đã hủy.',
  'Thiết lập › Kết chuyển CP của tháng: chuyển 621 / 622 / 627 sang 154 theo từng lô.',
+ 'Thiết lập › Giá thành của tháng: xem bảng giá thành từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính vào 632.',
  'Báo cáo › Đối chiếu: mọi dòng "Khớp". Báo cáo › Bảng cân đối phát sinh: Nợ = Có.',
  'Thiết lập › Khóa tháng. Muốn sửa sau khi khóa: Kế toán trưởng mở lại kỳ kèm lý do.',
 ]
@@ -54,6 +57,9 @@ const ENTRIES=[
  ['Tiền khoán đội','Kế toán','Nợ 622 (vườn / công việc) / Có 334'],
  ['Chi lương','Kế toán → KTT → GĐ','Nợ 334 / Có 112 hoặc 111'],
  ['Kết chuyển chi phí cuối tháng','Kế toán trưởng','Nợ 154 / Có 621, 622, 627 (giữ vườn / lô)'],
+ ['Nhập kho chuối thu hoạch','Kho / kế toán','Nợ 155 / Có 154 (lô trồng) theo giá tạm tính / kg'],
+ ['Xuất bao bì đóng gói','Kho','Nợ 6272 (vườn) / Có 152'],
+ ['Giá thành cuối tháng','Kế toán trưởng','Thực tế cao hơn tạm tính: Nợ 632 / Có 154; thấp hơn: Nợ 154 / Có 632 (theo lô)'],
 ]
 const FIX=[
  ['Hóa đơn, phiếu chi đã ghi sổ bị sai','Kế toán trưởng: Thu / Chi hoặc Nhật ký → Đảo (ghi lý do). Lotus hủy chứng từ, sổ cái tự có bút toán đảo, rồi lập lại chứng từ đúng.'],
@@ -66,7 +72,9 @@ const FAQ=[
  ['Vì sao không lưu được phiếu xuất kho?','Ghi sổ đang bật: mỗi dòng phải có mã lô có trong danh sách để chi phí vào đúng lô.'],
  ['Vì sao Giám đốc không thấy sổ sách?','Người duyệt chi chỉ thấy phiếu chờ mình ký. Muốn xem sổ cần vai trò Kế toán / Kế toán trưởng / Kiểm soát.'],
  ['Ngày nhập ở đâu cũng là dd/mm/yyyy?','Đúng, các ô ngày trong màn kế toán nhập theo ngày/tháng/năm.'],
- ['Có VAT chưa?','Chưa ở bản này: hóa đơn mua ghi tổng tiền. VAT, bán hàng, giá thành, báo cáo tài chính đang được bổ sung.'],
+ ['Giá thành chuối tính thế nào?','Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại của lô). Vụ đã đóng thì dồn hết. Chi phí chung của vườn chia theo kg của cả vườn. Phần chưa thu nằm lại 154.'],
+ ['Đã tính giá thành nhưng cần tính lại?','Kế toán trưởng đảo bút toán giá thành của tháng (Nhật ký → Đảo), rồi tính lại.'],
+ ['Có VAT chưa?','Chưa ở bản này: hóa đơn mua ghi tổng tiền. VAT, bán hàng, báo cáo tài chính đang được bổ sung.'],
 ]
 </script>
 

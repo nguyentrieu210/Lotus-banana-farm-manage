@@ -25,7 +25,7 @@ import './finance.css'
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
 const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
-const REPORTS=[['trial_balance','Bảng cân đối phát sinh'],['ledger','Sổ chi tiết tài khoản'],['costs','Chi phí theo vườn / lô'],['reconciliation','Đối chiếu']]
+const REPORTS=[['trial_balance','Bảng cân đối phát sinh'],['ledger','Sổ chi tiết tài khoản'],['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['reconciliation','Đối chiếu']]
 const route=useRoute(),router=useRouter(),session=useSession()
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask,finish:finishConfirm}=useWorkspaceConfirm()
 const ledgerUser=computed(()=>!!session.capabilities?.finance_ledger)
@@ -60,6 +60,7 @@ async function loadReport(){
  if(report.value==='costs')reportData.value=await call(F+'reports.costs',{...args,group_by:groupBy.value})
  if(report.value==='reconciliation')reportData.value=await call(F+'reports.reconciliation',{on_date:range.value.to})
  if(report.value==='ledger')reportData.value=ledgerAccount.value?await call(F+'reports.ledger',{...args,account:ledgerAccount.value}):null
+ if(report.value==='costing'){await ensureLookups();reportData.value=await call(F+'costing.preview',{month:range.value.to.slice(0,7)})}
 }
 function exportReport(kind){const q={kind,from_date:range.value.from,to_date:range.value.to};if(kind==='costs')q.group_by=groupBy.value;if(kind==='ledger')q.account=ledgerAccount.value
  location.href='/api/method/lotus_farm.finance.reports.export?'+new URLSearchParams(q)}
@@ -79,6 +80,8 @@ async function postPayroll(){saving.value=true
  try{const r=await call(F+'payroll.post',{period:payrollView.value.period,source_hash:payrollView.value.source_hash},true)
   notice.value='Đã ghi sổ lương '+payrollView.value.month+': '+r.voucher+' ('+vnd(r.amount)+').';payrollView.value=null;await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
+async function receiveHarvest(lot){if(!await ask('Nhập kho lô thu hoạch '+lot.name+' ('+num(lot.released_raw_kg,1)+' kg) theo giá thành tạm tính? Bút toán Nợ 155 / Có 154 theo từng lô trồng.','Nhập kho chuối thu hoạch'))return
+ await run(async()=>{const r=await call(F+'costing.receive_harvest',{harvest_lot:lot.name},true);notice.value='Đã nhập kho '+num(r.kg,1)+' kg ('+vnd(r.amount)+'): '+r.stock_entry+'.';await load()})}
 
 // Payables: supplier payment voucher, service invoice
 const payOpen=ref(false),pay=ref({supplier:'',mode:'cash',posting_date:today,reference_no:'',allocations:{}}),signers=ref({}),signerOptions=ref(null)
@@ -126,7 +129,7 @@ async function reverse(postingName,label){if(!overview.value?.is_chief)return
 
 // Settings (chief accountant)
 const form=ref({enabled:false,cutover_date:'',mapping:{}}),coa=ref(null),openingPreview=ref(null)
-watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,mapping:{...s.mapping}}})
+watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',mapping:{...s.mapping}}})
 const accountLabel=a=>(a.account_number?a.account_number+' - ':'')+a.account_name
 const accountsFor=key=>{const k=(settings.value?.keys||[]).find(x=>x.key===key);return (settings.value?.accounts||[]).filter(a=>!k||k.roots.includes(a.root_type))}
 async function saveSettings(){saving.value=true
@@ -144,6 +147,12 @@ const closingView=ref(null)
 async function previewClosing(m){await ensureLookups();await run(async()=>{closingView.value=await call(F+'closing.preview',{month:m})})}
 async function postClosing(){saving.value=true
  try{const r=await call(F+'closing.post',{month:closingView.value.month},true);notice.value='Đã kết chuyển chi phí tháng '+closingView.value.month+' sang 154: '+r.voucher+' ('+vnd(r.amount)+').';closingView.value=null}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+const costingView=ref(null)
+async function previewCosting(m){await ensureLookups();await run(async()=>{costingView.value=await call(F+'costing.preview',{month:m})})}
+async function postCosting(){saving.value=true
+ try{const r=await call(F+'costing.run',{month:costingView.value.month},true)
+  notice.value='Đã tính giá thành tháng '+costingView.value.month+': giá thành sản lượng thu '+vnd(r.absorbed)+', chênh lệch so với tạm tính '+vnd(r.adjustment)+(r.voucher?' ('+r.voucher+')':'')+'.';costingView.value=null}
  catch(e){error.value=e.message}finally{saving.value=false}}
 async function closeMonth(m){if(!await ask('Khóa sổ tháng '+m.slice(5)+'/'+m.slice(0,4)+'? Sau khi khóa không ghi, sửa hay hủy chứng từ trong tháng được nữa.','Khóa sổ'))return
  await run(async()=>{await call(F+'posting.close_month',{month:m},true);settings.value=await call(F+'api.settings');notice.value='Đã khóa sổ tháng '+m.slice(5)+'/'+m.slice(0,4)+'.'})}
@@ -171,6 +180,16 @@ const receiptColumns=computed(()=>[...(overview.value?.can_post?[{field:'__pick'
 const receiptRows=computed(()=>(pendingData.value?.receipts||[]).map(r=>({...r,__pick:picked.value.has(r.name)})))
 const payrollPendingColumns=[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},{field:'name',headerName:'Kỳ công',minWidth:200},
  {field:'closed_at',headerName:'Đóng lúc',minWidth:120,valueFormatter:p=>vnDate(String(p.value||'').slice(0,10))},{field:'__view',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Xem trước bút toán',r=>previewPayroll(r.name))}]
+const harvestColumns=computed(()=>[{field:'name',headerName:'Lô thu hoạch',minWidth:170},{field:'farm',headerName:'Vườn',minWidth:120},dateCol('received_date','Ngày nhận'),
+ {field:'released_raw_kg',headerName:'Kg',minWidth:100,type:'numericColumn',valueFormatter:p=>num(p.value,1)},{field:'reason',headerName:'Tình trạng',minWidth:240,flex:2},
+ ...(overview.value?.can_post?[{field:'__receive',headerName:'',minWidth:120,sortable:false,cellRenderer:cellButton('Nhập kho',receiveHarvest,r=>r.raw_item&&r.raw_warehouse&&r.raw_batch)}]:[])])
+const costingColumns=[{field:'label',headerName:'Lô',minWidth:170,flex:2,valueGetter:p=>p.node?.rowPinned?p.data.label:p.data.label+(p.data.lotus_farm_block&&p.data.lotus_farm?' · '+p.data.lotus_farm:'')},
+ moneyCol('wip_open','Dở dang đầu kỳ'),moneyCol('cost_month','Chi phí tháng'),{field:'kg_harvested',headerName:'Kg thu',minWidth:100,type:'numericColumn',valueFormatter:p=>p.value?num(p.value,1):''},
+ {field:'kg_remaining',headerName:'Kg dự thu còn lại',minWidth:130,type:'numericColumn',valueFormatter:p=>p.value?num(p.value,1):''},moneyCol('absorbed','Giá thành sản lượng'),
+ {field:'cost_per_kg',headerName:'Giá thành / kg',minWidth:120,type:'numericColumn',valueFormatter:p=>p.value?num(p.value,2):''},moneyCol('provisional','Đã nhập kho (tạm tính)'),
+ moneyCol('adjustment','Chênh lệch → 632'),moneyCol('wip_close','Dở dang cuối kỳ'),{field:'basis',headerName:'Cách tính',minWidth:220,flex:2}]
+const costingRows=view=>(view?.rows||[]).map((r,i)=>({...r,__key:(r.lotus_farm||'')+'|'+(r.lotus_farm_block||'')+'|'+i}))
+const costingTotals=view=>view?.totals?[{__key:'__total',label:'Tổng',...view.totals,cost_per_kg:view.totals.kg_harvested?view.totals.absorbed/view.totals.kg_harvested:null}]:[]
 const issueColumns=[{field:'name',headerName:'Phiếu xuất',minWidth:170},dateCol('posting_date','Ngày'),{field:'reason',headerName:'Lý do',minWidth:320,flex:3},moneyCol('amount','Giá trị')]
 const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2,valueGetter:p=>p.data.account_label||p.data.account},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
  {field:'lotus_farm_block',headerName:'Vườn / lô',minWidth:130,valueGetter:p=>[p.data.lotus_farm,dimLabel('lotus_farm_block',p.data.lotus_farm_block)].filter(Boolean).join(' / ')},
@@ -270,6 +289,7 @@ useNoticeToast(notice)
     <li><button type="button" @click="go('pending')"><b>{{overview.pending_counts.receipts}}</b> phiếu nhận hàng chưa có hóa đơn</button></li>
     <li><button type="button" @click="go('pending')"><b>{{overview.pending_counts.payroll}}</b> bảng lương đã ký chưa ghi sổ</button></li>
     <li><button type="button" @click="go('pending')"><b>{{overview.pending_counts.issues}}</b> dòng xuất kho chưa gắn lô</button></li>
+    <li><button type="button" @click="go('pending')"><b>{{overview.pending_counts.harvests||0}}</b> lô thu hoạch chưa nhập kho</button></li>
     <li><button type="button" @click="go('cash')"><b>{{overview.pending_counts.vouchers}}</b> phiếu chi đang chờ ký</button></li>
    </ul></section>
  </template>
@@ -284,6 +304,9 @@ useNoticeToast(notice)
   </section>
   <section class="land-card"><h3>Xuất kho chưa gắn lô</h3><p class="land-note">Chi phí của các dòng này chưa vào lô nào. Sửa ô "Khu vực / lô sử dụng" thành mã lô trong danh sách khi lập phiếu.</p>
    <div class="land-table fin-table"><DataTable :rows="keyed(pendingData.issues)" :columns="issueColumns" row-key="__key" storage-key="fin-issues" interactive empty="Mọi dòng xuất kho đã gắn lô." @open="r=>openWarehouse(r.name)"/></div>
+  </section>
+  <section class="land-card"><h3>Lô thu hoạch chưa nhập kho</h3><p class="land-note">Nhập kho theo giá thành tạm tính / kg (giá thành thực tế tháng trước của lô, chưa có thì giá kế hoạch ở Thiết lập): Nợ 155 / Có 154. Cuối tháng tính lại giá thành thực tế.</p>
+   <div class="land-table fin-table"><DataTable :rows="pendingData.harvests||[]" :columns="harvestColumns" row-key="name" storage-key="fin-harvests" empty="Mọi lô thu hoạch đã nhập kho."/></div>
   </section>
  </template>
 
@@ -341,6 +364,12 @@ useNoticeToast(notice)
     :categories="costChart.map(r=>r.label)" :series="[{name:'Vật tư',data:costChart.map(r=>r.materials)},{name:'Nhân công',data:costChart.map(r=>Number(r.labour)+Number(r.crews))},{name:'Dịch vụ',data:costChart.map(r=>r.services)}]" unit="đ" :height="320"/>
    <section class="land-card"><div class="land-table fin-table"><DataTable :rows="costRows" :columns="costColumns" :pinned-bottom-rows="costTotals" row-key="__key" storage-key="fin-costs" empty="Chưa có chi phí sản xuất trong khoảng ngày này."/></div></section>
   </template>
+  <section v-else-if="report==='costing'&&reportData?.rows" class="land-card">
+   <div class="land-card__head"><h3>Giá thành chuối tháng {{reportData.month.slice(5)}}/{{reportData.month.slice(0,4)}}</h3><span :class="reportData.posted?'fin-ok':'land-warn'">{{reportData.posted?'Đã tính giá thành':reportData.closed?'Chưa tính giá thành':'Chưa kết chuyển chi phí'}}</span></div>
+   <p class="land-note">Tháng lấy theo ngày "Đến". Bảng xem trước tính lại từ sổ cái; tháng đã tính thì bảng đã lưu nằm trong lịch sử bên dưới.</p>
+   <div class="land-table fin-table"><DataTable :rows="costingRows(reportData)" :columns="costingColumns" :pinned-bottom-rows="costingTotals(reportData)" row-key="__key" storage-key="fin-costing" empty="Tháng này không có chi phí dở dang hay sản lượng thu hoạch."/></div>
+   <details v-if="reportData.runs?.length"><summary>Các tháng đã tính giá thành</summary><ul class="fin-list"><li v-for="r in reportData.runs" :key="r.name">{{r.month.slice(5)}}/{{r.month.slice(0,4)}} · {{num(r.kg_harvested,1)}} kg · giá thành {{vnd(r.absorbed)}} · chênh lệch {{vnd(r.adjustment)}} · {{r.state==='Posted'?'đang dùng':'đã đảo'}}{{r.voucher?' · '+r.voucher:''}}</li></ul></details>
+  </section>
   <section v-else-if="report==='reconciliation'&&reportData?.checks" class="land-card"><h3>Đối chiếu sổ kế toán với nghiệp vụ Lotus ({{vnDate(reportData.on_date)}})</h3>
    <div class="land-table fin-table"><DataTable :rows="reportData.checks" :columns="reconColumns" row-key="label" storage-key="fin-reconciliation"/></div>
   </section>
@@ -368,14 +397,15 @@ useNoticeToast(notice)
    <form class="land-form--grid" @submit.prevent="saveSettings">
     <label v-for="k in settings.keys" :key="k.key">{{k.label}}<UiSelect v-model="form.mapping[k.key]" :disabled="!settings.is_chief"><option value="">Chưa chọn</option><option v-for="a in accountsFor(k.key)" :key="a.name" :value="a.name">{{accountLabel(a)}}</option></UiSelect></label>
     <label>Ngày bắt đầu ghi sổ (cutover)<DatePicker v-model="form.cutover_date" :disabled="!settings.is_chief"/></label>
+    <label>Giá thành kế hoạch chuối thu hoạch (đ / kg)<UiInput v-model="form.harvest_standard_cost" type="number" min="0" :disabled="!settings.is_chief" placeholder="Dùng khi lô chưa có giá thành thực tế"/></label>
     <label class="fin-check"><input v-model="form.enabled" type="checkbox" :disabled="!settings.is_chief">Bật ghi sổ kế toán từ Lotus</label>
     <div v-if="settings.is_chief" class="land-actions land-form__full"><UiButton type="submit" :disabled="saving">Lưu</UiButton></div>
    </form>
   </section>
   <section class="land-card"><div class="land-card__head"><h3>Kết chuyển và khóa sổ theo tháng</h3><UiSelect v-model.number="year" aria-label="Năm" class="fin-narrow"><option v-for="y in [Number(today.slice(0,4))-1,Number(today.slice(0,4)),Number(today.slice(0,4))+1]" :key="y" :value="y">Năm {{y}}</option></UiSelect></div>
-   <p class="land-warn">Thứ tự cuối tháng: ghi sổ lương → kết chuyển chi phí (Kết chuyển CP) → kiểm tra Đối chiếu → Khóa. Đã khóa thì không kết chuyển được nữa.</p>
+   <p class="land-warn">Thứ tự cuối tháng: ghi sổ lương → kết chuyển chi phí (Kết chuyển CP) → tính giá thành (Giá thành) → kiểm tra Đối chiếu → Khóa. Đã khóa thì không kết chuyển hay tính giá thành được nữa.</p>
    <div class="fin-months"><div v-for="m in months" :key="m" class="fin-month" :class="{closed:periodOf(m)?.closed}"><b>{{m.slice(5)}}/{{m.slice(0,4)}}</b><small>{{periodOf(m)?.closed?'Đã khóa':'Đang mở'}}</small>
-    <UiButton size="sm" variant="ghost" @click="previewClosing(m)">Kết chuyển CP</UiButton>
+    <UiButton size="sm" variant="ghost" @click="previewClosing(m)">Kết chuyển CP</UiButton><UiButton size="sm" variant="ghost" @click="previewCosting(m)">Giá thành</UiButton>
     <template v-if="settings.is_chief"><UiButton v-if="!periodOf(m)?.closed" size="sm" variant="outline" @click="closeMonth(m)">Khóa</UiButton><UiButton v-else size="sm" variant="ghost" @click="reopenMonth(m)">Mở lại</UiButton></template></div></div>
   </section>
   <section class="land-card"><h3>Người làm kế toán</h3>
@@ -428,6 +458,18 @@ useNoticeToast(notice)
    <p v-if="closingView.posted" class="land-warn">Tháng này đã kết chuyển ({{closingView.posted.voucher}}).</p>
    <div class="land-table land-preview"><DataTable :rows="keyed(closingView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-closing-lines" empty="Không có chi phí 621 / 622 / 627 trong tháng."/></div>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="closingView=null">Đóng</UiButton><UiButton v-if="settings?.is_chief&&!closingView.posted" :disabled="saving||!closingView.lines.length||!settings?.enabled" @click="postClosing">Ghi sổ kết chuyển</UiButton></div>
+  </div>
+ </WorkspaceModal>
+
+ <WorkspaceModal :model-value="!!costingView" title="Tính giá thành chuối" :busy="saving" width="1180px" @update:model-value="v=>{if(!v)costingView=null}">
+  <div v-if="costingView" class="land-form">
+   <p>Tháng {{costingView.month}} · ngày hạch toán {{vnDate(costingView.posting_date)}} · {{num(costingView.totals.kg_harvested,1)}} kg thu · giá thành sản lượng <b>{{vnd(costingView.totals.absorbed)}}</b> · chênh lệch so với tạm tính <b>{{vnd(costingView.totals.adjustment)}}</b></p>
+   <p class="land-note">Mỗi lô: (dở dang đầu kỳ + chi phí tháng) × kg thu ÷ (kg thu + kg dự thu còn lại). Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Chênh lệch dương ghi Nợ 632 / Có 154, âm ghi ngược lại.</p>
+   <p v-if="!costingView.closed" class="land-warn">Chưa kết chuyển chi phí 621 / 622 / 627 sang 154 của tháng này. Bấm "Kết chuyển CP" trước.</p>
+   <p v-if="costingView.posted?.voucher" class="land-warn">Tháng này đã tính giá thành ({{costingView.posted.voucher}}). Đảo bút toán đó nếu cần tính lại.</p>
+   <div class="land-table land-preview"><DataTable :rows="costingRows(costingView)" :columns="costingColumns" :pinned-bottom-rows="costingTotals(costingView)" row-key="__key" storage-key="fin-costing-preview" empty="Tháng này không có chi phí dở dang hay sản lượng thu hoạch."/></div>
+   <details v-if="costingView.lines.length"><summary>Bút toán chênh lệch ({{costingView.lines.length}} dòng)</summary><DataTable :rows="keyed(costingView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-costing-lines"/></details>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="costingView=null">Đóng</UiButton><UiButton v-if="settings?.is_chief&&!costingView.posted?.voucher" :disabled="saving||!costingView.closed||!costingView.rows.length||!settings?.enabled" @click="postCosting">Ghi sổ giá thành</UiButton></div>
   </div>
  </WorkspaceModal>
 

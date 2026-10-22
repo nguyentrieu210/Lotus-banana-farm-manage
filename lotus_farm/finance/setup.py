@@ -164,7 +164,9 @@ def install():
                  depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
             dict(fieldname='lotus_purchase_invoice', label='Hóa đơn mua', fieldtype='Link', options='Purchase Invoice', read_only=1, no_copy=1,
                  insert_after='lotus_supplier'),
-            dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage',
+            dict(fieldname='lotus_harvest_lot', label='Lô thu hoạch nhập kho', fieldtype='Link', options='Harvest Lot', read_only=1, no_copy=1,
+                 insert_after='lotus_purchase_invoice'),
+            dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage\nPacking',
                  insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
         ]})
     install_dimensions()

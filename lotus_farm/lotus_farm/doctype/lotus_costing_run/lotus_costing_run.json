@@ -1,0 +1,108 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Costing Run",
+  "module": "Lotus Farm",
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "month",
+      "label": "Tháng",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Posted\nReversed",
+      "default": "Posted",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "voucher",
+      "label": "Bút toán chênh lệch",
+      "fieldtype": "Link",
+      "options": "Journal Entry",
+      "read_only": 1
+    },
+    {
+      "fieldname": "kg_harvested",
+      "label": "Kg thu hoạch",
+      "fieldtype": "Float",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "absorbed",
+      "label": "Giá thành sản lượng thu",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "adjustment",
+      "label": "Chênh lệch so với tạm tính",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "wip_close",
+      "label": "Dở dang cuối kỳ",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "rows",
+      "label": "Theo lô",
+      "fieldtype": "Table",
+      "options": "Lotus Costing Row"
+    }
+  ],
+  "field_order": [
+    "company",
+    "month",
+    "state",
+    "voucher",
+    "kg_harvested",
+    "absorbed",
+    "adjustment",
+    "wip_close",
+    "rows"
+  ],
+  "autoname": "hash",
+  "track_changes": 1,
+  "description": "Bảng tính giá thành chuối một tháng: chi phí dở dang, chi phí kết chuyển, kg thu, kg dự thu còn lại, giá thành / kg và bút toán chênh lệch so với giá tạm tính.",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1
+    }
+  ]
+}

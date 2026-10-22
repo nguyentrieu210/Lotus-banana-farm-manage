@@ -134,6 +134,31 @@ class FinanceRules(unittest.TestCase):
         self.assertEqual(rules.snapshot_people(dict(rows=[3])), [3])
         self.assertEqual(rules.snapshot_people({}), [])
 
+    def test_costing_spreads_lot_costs_over_expected_harvest(self):
+        rows = rules.costing_rows([
+            dict(lotus_farm='F', lotus_farm_block='A1', wip_open=6_000_000, cost_month=4_000_000, provisional=1_500_000, kg_harvested=1000, kg_remaining=4000),
+            dict(lotus_farm='F', lotus_farm_block='A2', wip_open=3_000_000, cost_month=0, provisional=0, kg_harvested=0, kg_remaining=0),
+            dict(lotus_farm='F', lotus_farm_block='A3', wip_open=0, cost_month=900_000, provisional=200_000, kg_harvested=300, kg_remaining=0)])
+        a1, a2, a3 = rows
+        self.assertEqual((a1['absorbed'], a1['wip_close'], a1['cost_per_kg'], a1['adjustment']), (2_000_000, 8_000_000, 2000.0, 500_000),
+                         '1000 of 5000 kg: one fifth of 10 M, the rest stays in 154')
+        self.assertEqual((a2['absorbed'], a2['wip_close'], a2['adjustment']), (0, 3_000_000, 0), 'a lot without harvest keeps its cost in progress')
+        self.assertEqual((a3['absorbed'], a3['wip_close']), (900_000, 0), 'no forecast left: the harvest carries everything')
+        self.assertIn('không có dự thu', a3['basis'])
+        lines = rules.costing_entry(rows, ACCOUNTS)
+        self.assertEqual(rules.check_entry(lines), [])
+        cogs = [ln for ln in lines if ln['account'] == ACCOUNTS['cost_of_goods_sold']]
+        self.assertEqual([(ln['debit'], ln['lotus_farm_block']) for ln in cogs], [(500_000, 'A1'), (700_000, 'A3')])
+        below = rules.costing_entry(rules.costing_rows([dict(lotus_farm='F', lotus_farm_block='B', wip_open=0, cost_month=100, provisional=300,
+                                                              kg_harvested=10, kg_remaining=0)]), ACCOUNTS)
+        self.assertEqual([(ln['account'], ln['debit']) for ln in below if ln['debit']], [(ACCOUNTS['production_cost'], 200)],
+                         'a provisional rate above the actual cost comes back to 154')
+
+    def test_provisional_rate(self):
+        self.assertEqual(rules.provisional_rate(2100, 1800), 2100)
+        self.assertEqual(rules.provisional_rate(None, 1800), 1800)
+        self.assertIsNone(rules.provisional_rate(0, None))
+
     def test_aging(self):
         today = dt.date(2026, 10, 22)
         self.assertEqual(rules.aging(dt.date(2026, 10, 30), today), 'Trong hạn')

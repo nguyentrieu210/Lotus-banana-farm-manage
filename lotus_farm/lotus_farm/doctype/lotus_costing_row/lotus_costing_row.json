@@ -1,0 +1,103 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Costing Row",
+  "module": "Lotus Farm",
+  "fields": [
+    {
+      "fieldname": "lotus_farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "lotus_farm_block",
+      "label": "Lô",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "lotus_crop_cycle",
+      "label": "Vụ",
+      "fieldtype": "Link",
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "wip_open",
+      "label": "Dở dang đầu kỳ",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "cost_month",
+      "label": "Chi phí trong tháng",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "provisional",
+      "label": "Đã nhập kho theo giá tạm tính",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "kg_harvested",
+      "label": "Kg thu hoạch",
+      "fieldtype": "Float",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "kg_remaining",
+      "label": "Kg dự thu còn lại",
+      "fieldtype": "Float"
+    },
+    {
+      "fieldname": "absorbed",
+      "label": "Giá thành sản lượng thu",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "adjustment",
+      "label": "Chênh lệch",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "wip_close",
+      "label": "Dở dang cuối kỳ",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "cost_per_kg",
+      "label": "Giá thành / kg",
+      "fieldtype": "Currency",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "basis",
+      "label": "Cách tính",
+      "fieldtype": "Data"
+    }
+  ],
+  "field_order": [
+    "lotus_farm",
+    "lotus_farm_block",
+    "lotus_crop_cycle",
+    "wip_open",
+    "cost_month",
+    "provisional",
+    "kg_harvested",
+    "kg_remaining",
+    "absorbed",
+    "adjustment",
+    "wip_close",
+    "cost_per_kg",
+    "basis"
+  ],
+  "istable": 1,
+  "editable_grid": 0,
+  "permissions": []
+}

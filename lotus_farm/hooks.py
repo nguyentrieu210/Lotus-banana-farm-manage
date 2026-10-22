@@ -237,3 +237,6 @@ for _dt, _event, _handler in (
 
 doc_events.setdefault("Stock Reconciliation", {})
 doc_events["Stock Reconciliation"]["before_submit"] = "lotus_farm.finance.stock.reconciliation_accounts"
+
+doc_events.setdefault("Journal Entry", {})
+doc_events["Journal Entry"]["on_cancel"] = "lotus_farm.finance.costing.costing_reversed"
