@@ -3,6 +3,7 @@ const props=defineProps({embedded:Boolean,navigationKey:String})
 const emit=defineEmits(['navigation-consumed'])
 import {unitLabel} from './units'
 import WorkspaceModal from './components/WorkspaceModal.vue'
+import DataTable from './components/DataTable.vue'
 import {computed,nextTick,onActivated,onMounted,ref,watch} from 'vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import SearchSelect from './components/SearchSelect.vue'
@@ -20,6 +21,49 @@ import {dismissOnBackdrop} from './dialogs'
 const tabs=[{id:'overview',label:'Tổng quan',icon:'◷'},{id:'plans',label:'Kế hoạch',icon:'☷'},{id:'progress',label:'Tiến độ',icon:'✓'},{id:'setup',label:'Danh mục & cấu hình',icon:'⚙'}]
 const kinds=[{id:'works',label:'Công việc & năng suất',type:'Work Type'},{id:'norms',label:'Định mức vật tư',type:'Material Norm Profile'},{id:'bases',label:'Cơ sở định mức',type:'Norm Basis'},{id:'categories',label:'Nhóm công đoạn',type:'Work Category'},{id:'teams',label:'Tổ lao động',type:'Work Team'},{id:'cycles',label:'Vụ cây theo lô',type:'Crop Cycle'},{id:'varieties',label:'Giống cây',type:'Banana Variety'},{id:'land',label:'Lô chăm sóc',type:'Farm Block'}]
 const session=ref(null),data=ref(null),farm=ref(''),zone=ref(''),date=ref(''),tab=ref('overview'),kind=ref('works'),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),search=ref(''),taskState=ref(''),team=ref('')
+const planColumns=[
+ {field:'name',headerName:'Kế hoạch',minWidth:180},
+ {field:'posting_date',headerName:'Ngày',minWidth:135},
+ {field:'rate_approval_state',headerName:'Trạng thái',valueGetter:p=>p.data.rate_approval_state==='Pending'?'Chờ duyệt giá':p.data.rate_approval_state==='Rejected'?'Từ chối':p.data.rate_approval_state==='Approved'?'Đã duyệt giá':(['Nháp','Đã giao','Đã hủy'][p.data.docstatus]),minWidth:165},
+ {field:'rate_details',headerName:'Chi tiết giá',minWidth:220},
+ {field:'rate_request_reason',headerName:'Lý do',minWidth:180},
+ {field:'rate_approved_by',headerName:'Người duyệt',minWidth:140},
+ {field:'modified',headerName:'Cập nhật',minWidth:185}
+]
+const configColumns=computed(()=>{
+ const action={field:'_action',headerName:'Thao tác',minWidth:145,sortable:false,valueGetter:p=>kind.value==='cycles'?'Xem vụ cây':kind.value==='land'?'Xem lô':data.value?.permissions?.[currentType.value]?.write?'Cấu hình / sửa':'Xem'}
+ if(kind.value==='works')return [
+  {field:'work_code',headerName:'Mã'},{field:'work_name',headerName:'Công việc'},{field:'category_label',headerName:'Nhóm công đoạn'},
+  {field:'uom',headerName:'Đơn vị',valueGetter:p=>unitName(p.data.uom)},
+  {field:'payment_basis',headerName:'Hình thức công',valueGetter:p=>p.data.payment_basis?stateLabel(p.data.payment_basis):'Chưa chọn'},
+  {field:'productivity_per_workday',headerName:'Năng suất trung bình',valueGetter:p=>p.data.productivity_per_workday>0?fmt(p.data.productivity_per_workday):'Chưa cấu hình'},
+  {field:'piecework_rate',headerName:'Đơn giá khoán',valueGetter:p=>p.data.allow_piecework?fmt(p.data.piecework_rate)+' đ/'+unitName(p.data.uom):'—'},
+  {field:'active',headerName:'Trạng thái',valueGetter:p=>p.data.active?'Đang dùng':'Ngừng dùng'},action]
+ if(kind.value==='norms')return [
+  {field:'profile_name',headerName:'Bộ định mức'},{field:'work_label',headerName:'Công việc'},{field:'version',headerName:'Phiên bản'},
+  {field:'valid_from',headerName:'Hiệu lực',valueGetter:p=>p.data.valid_from+' / '+(p.data.valid_to||'Chưa đặt ngày kết thúc')},
+  {field:'approval_state',headerName:'Trạng thái',valueGetter:p=>stateLabel(p.data.approval_state)},action]
+ if(['cycles','land'].includes(kind.value))return [
+  {field:'block_code',headerName:'Lô chăm sóc'},{field:'block_label',headerName:'Khu'},{field:'area_ha',headerName:'Diện tích ha',valueGetter:p=>fmt(p.data.area_ha)},
+  {field:'cycle_count',headerName:kind.value==='cycles'?'Vụ cây':'Hoạt động',valueGetter:p=>kind.value==='cycles'?cycleFor(p.data).map(c=>c.name+' · Vụ '+c.cycle_no).join('; ')||'Chưa có vụ cây':p.data.active?'Có':'Không'},action]
+ return [
+  {field:'code',headerName:'Mã',valueGetter:p=>p.data.team_code||p.data.category_code||p.data.variety_code||p.data.basis_code},
+  {field:'label',headerName:'Tên',valueGetter:p=>p.data.team_name||p.data.category_name||p.data.variety_name||p.data.basis_name},
+  {field:'active',headerName:'Hoạt động',valueGetter:p=>p.data.active?'Có':'Không'},action]
+})
+function configCellAction(event){
+ if(event.colDef?.field!=='_action'||!event.data)return
+ const r=event.data
+ if(kind.value==='cycles'){if(cycleFor(r).length)edit('Crop Cycle',cycleFor(r)[0].name);else if(mayCreate('Crop Cycle'))newCycle(r)}
+ else edit(kind.value==='land'?'Farm Block':currentType.value,r.name)
+}
+const progressColumns=[
+ {field:'work_name',headerName:'Công việc',minWidth:180},
+ {field:'block_code',headerName:'Lô chăm sóc',minWidth:130},
+ {field:'work_team',headerName:'Tổ',valueGetter:p=>teamName(p.data.work_team),minWidth:150},
+ {field:'completed_qty',headerName:'Đã làm / giao',valueGetter:p=>fmt(p.data.completed_qty)+' / '+fmt(p.data.planned_qty)+' '+unitLabel(p.data.uom),minWidth:170},
+ {field:'status',headerName:'Trạng thái',valueGetter:p=>stateLabel(p.data.status),minWidth:140},
+]
 const editor=ref(null),schema=ref(null),dialog=ref(null),editorError=ref('')
 const assignmentPortal=ref(null),assignmentDialog=ref(null),assignmentOpen=ref(false),assignmentBusy=ref(false)
 async function openAssignment(){if(assignmentOpen.value||!farm.value||!session.value?.commands?.work||busy.value)return;assignmentOpen.value=true;await nextTick();assignmentDialog.value.showModal();if(props.embedded)emit('navigation-consumed');else{const url=new URL(location.href);url.searchParams.delete('action');history.replaceState(history.state,'',url)}}
@@ -147,20 +191,31 @@ onActivated(()=>{if(farm.value&&!busy.value&&new URL(location.href).searchParams
      <section class="farm-card"><h2>Chuẩn bị để giao việc</h2><div class="farm-check"><span>{{missingNorms?'○':'✓'}} Định mức năng suất công việc</span><UiButton variant="outline" @click="configure('works')">{{missingNorms?'Bổ sung '+missingNorms+' công việc':'Xem cấu hình'}}</UiButton></div><div class="farm-check"><span>{{missingCycles||ambiguousCycles?'○':'✓'}} Vụ cây theo lô <small v-if="ambiguousCycles">· {{ambiguousCycles}} lô có nhiều vụ hoạt động</small></span><UiButton variant="outline" @click="configure('cycles')">Cấu hình vụ cây</UiButton></div><div class="farm-check"><span>{{readiness.active_teams?'✓':'○'}} Tổ lao động</span><UiButton variant="outline" @click="configure('teams')">Quản lý tổ</UiButton></div><p class="farm-muted">Nhập năng suất và vụ cây đúng thực tế. Hệ thống kiểm tra lại từng lô, công việc và quyền khi giao việc.</p></section>
      <div class="farm-two"><section class="farm-card"><h2>Kế hoạch ngày {{date}}</h2><strong class="farm-big">{{data.plans.length}}</strong><p class="farm-muted">Phiếu kế hoạch, gồm nháp và đã nộp.</p><UiButton variant="outline" @click="choose('plans')">Xem kế hoạch</UiButton></section><section class="farm-card"><h2>Tiến độ hôm nay</h2><strong class="farm-big">{{overview.tasks?.filter(t=>t.status==='Completed').length||0}} / {{overview.tasks?.length||0}}</strong><p class="farm-muted">Dòng việc hoàn thành / đã giao.</p><UiButton variant="outline" @click="choose('progress')">Theo dõi tiến độ</UiButton></section></div>
     </template>
-    <template v-else-if="tab==='plans'"><section class="farm-card"><div class="farm-toolbar"><UiInput v-model="search" aria-label="Tìm kế hoạch" placeholder="Tìm mã kế hoạch…"/><UiButton v-if="session?.commands?.work" class="farm-primary-link" :disabled="busy" @click="openAssignment">＋ Lập kế hoạch</UiButton></div><div class="farm-table-wrap"><table><thead><tr><th>Kế hoạch</th><th>Ngày</th><th>Trạng thái</th><th>Duyệt giá</th><th>Cập nhật</th></tr></thead><tbody><tr v-for="p in plans" :key="p.name"><td><button class="farm-text-link" @click="edit('Daily Work Plan',p.name)">{{p.name}}</button><div v-if="p.rate_details" class="farm-muted">{{p.rate_details}}</div><div v-if="p.rate_request_reason" class="farm-muted">Lý do: {{p.rate_request_reason}}</div></td><td>{{p.posting_date}}</td><td>{{p.rate_approval_state==='Pending'?'Chờ duyệt giá':p.rate_approval_state==='Rejected'?'Từ chối':p.rate_approval_state==='Approved'?'Đã duyệt giá':(['Nháp','Đã giao','Đã hủy'][p.docstatus])}}</td><td><template v-if="session?.commands?.rate_approve&&p.docstatus===0&&p.rate_approval_state==='Pending'"><span v-if="p.owner===session?.user">Không tự duyệt</span><template v-else><UiButton :disabled="approvalBusy" @click="decideRate(p,'Approve')">Duyệt và giao</UiButton><UiButton variant="outline" :disabled="approvalBusy" @click="rejecting=rejecting===p.name?'':p.name">Từ chối</UiButton><div v-if="rejecting===p.name"><UiInput v-model="rejectReason" placeholder="Lý do từ chối"/><UiButton :disabled="approvalBusy||!rejectReason.trim()" @click="decideRate(p,'Reject')">Xác nhận từ chối</UiButton></div></template></template><span v-else>{{p.rate_approved_by||'-'}}</span></td><td>{{p.modified}}</td></tr></tbody></table></div><p v-if="!plans.length" class="farm-empty">Chưa có kế hoạch phù hợp trong ngày này.</p></section></template>
-    <template v-else-if="tab==='progress'"><section class="farm-card"><div class="farm-toolbar"><UiInput v-model="search" aria-label="Tìm tiến độ" placeholder="Tìm công việc, lô, tổ…"/><SearchSelect v-model="team" :options="[{value:'',label:'Tất cả tổ'},...teams]" label="Lọc theo tổ"/><SearchSelect v-model="taskState" :options="[{value:'',label:'Tất cả trạng thái'},...['Planned','Ready','In Progress','Blocked','Completed'].map(value=>({value,label:stateLabel(value)}))]" label="Lọc trạng thái"/><a :href="legacyURL('work')" class="farm-text-link">Cập nhật / ghi kết quả ↗</a></div><div class="farm-table-wrap"><table><thead><tr><th>Công việc</th><th>Lô chăm sóc</th><th>Tổ</th><th>Đã làm / giao</th><th>Trạng thái</th></tr></thead><tbody><tr v-for="t in tasks" :key="t.line"><td>{{t.work_name}}</td><td>{{t.block_code}}</td><td>{{teamName(t.work_team)}}</td><td>{{fmt(t.completed_qty)}} / {{fmt(t.planned_qty)}} {{unitLabel(t.uom)}}</td><td>{{stateLabel(t.status)}}</td></tr></tbody></table></div><p v-if="!tasks.length" class="farm-empty">Chưa có việc đã giao phù hợp trong ngày này.</p></section></template>
+    <template v-else-if="tab==='plans'"><section class="farm-card"><div class="farm-toolbar"><UiInput v-model="search" aria-label="Tìm kế hoạch" placeholder="Tìm mã kế hoạch…"/><UiButton v-if="session?.commands?.work" class="farm-primary-link" :disabled="busy" @click="openAssignment">＋ Lập kế hoạch</UiButton></div><div class="farm-table-wrap"><DataTable :rows="plans" :columns="planColumns" row-key="name" storage-key="farm-work-plans" interactive @open="edit('Daily Work Plan',$event.name)" />
+ <div v-if="session?.commands?.rate_approve" class="farm-plan-approvals">
+  <div v-for="p in plans.filter(p=>p.docstatus===0&&p.rate_approval_state==='Pending')" :key="p.name" class="farm-card">
+   <strong>{{p.name}}</strong><span v-if="p.rate_details">{{p.rate_details}}</span><span v-if="p.rate_request_reason">Lý do: {{p.rate_request_reason}}</span>
+   <span v-if="p.owner===session?.user">Không tự duyệt</span>
+   <div v-else class="farm-toolbar">
+    <UiButton :disabled="approvalBusy" @click="decideRate(p,'Approve')">Duyệt và giao</UiButton>
+    <UiButton variant="outline" :disabled="approvalBusy" @click="rejecting=rejecting===p.name?'':p.name">Từ chối</UiButton>
+    <div v-if="rejecting===p.name"><UiInput v-model="rejectReason" placeholder="Lý do từ chối"/><UiButton :disabled="approvalBusy||!rejectReason.trim()" @click="decideRate(p,'Reject')">Xác nhận từ chối</UiButton></div>
+   </div>
+  </div>
+ </div></div><p v-if="!plans.length" class="farm-empty">Chưa có kế hoạch phù hợp trong ngày này.</p></section></template>
+    <template v-else-if="tab==='progress'"><section class="farm-card"><div class="farm-toolbar"><UiInput v-model="search" aria-label="Tìm tiến độ" placeholder="Tìm công việc, lô, tổ…"/><SearchSelect v-model="team" :options="[{value:'',label:'Tất cả tổ'},...teams]" label="Lọc theo tổ"/><SearchSelect v-model="taskState" :options="[{value:'',label:'Tất cả trạng thái'},...['Planned','Ready','In Progress','Blocked','Completed'].map(value=>({value,label:stateLabel(value)}))]" label="Lọc trạng thái"/><a :href="legacyURL('work')" class="farm-text-link">Cập nhật / ghi kết quả ↗</a></div><DataTable :rows="tasks" :columns="progressColumns" row-key="line" storage-key="farm-work-progress" empty="Chưa có việc được giao phù hợp trong ngày này." /><p v-if="!tasks.length" class="farm-empty">Chưa có việc đã giao phù hợp trong ngày này.</p></section></template>
     <template v-else-if="tab==='setup'">
      <nav class="farm-config-tabs" aria-label="Danh mục cấu hình"><UiButton v-for="k in kinds.filter(k=>['works','teams','cycles'].includes(k.id))" :key="k.id" :variant="kind===k.id?'default':'outline'" @click="kind=k.id">{{k.label}}</UiButton></nav><details class="farm-config-more"><summary>Danh mục bổ trợ</summary><div class="farm-config-tabs"><UiButton v-for="k in kinds.filter(k=>!['works','teams','cycles'].includes(k.id))" :key="k.id" :variant="kind===k.id?'default':'outline'" @click="kind=k.id">{{k.label}}</UiButton></div></details>
      <section class="farm-card"><div class="farm-toolbar"><UiInput v-model="search" :aria-label="'Tìm '+selectedKind.label" placeholder="Gõ để lọc danh mục…"/><span class="farm-muted">{{configRows.length}} dòng</span><UiButton v-if="!['cycles','land'].includes(kind)&&mayCreate(currentType)" @click="edit(currentType)">＋ Thêm {{kind==='teams'?'tổ':kind==='varieties'?'giống':kind==='categories'?'nhóm':kind==='norms'?'định mức vật tư':kind==='bases'?'cơ sở định mức':'công việc'}}</UiButton></div>
       <p v-if="kind==='norms'" class="farm-muted">Mỗi bộ định mức gắn với một công việc và ngày hiệu lực. <UiButton v-if="!data.bases?.length&&mayCreate('Norm Basis')" variant="outline" @click="configure('bases')">Tạo cơ sở định mức</UiButton></p><p v-if="['works','categories','varieties'].includes(kind)" class="farm-muted">Danh mục này dùng chung trong Lotus. Chỉ nhập thông tin và định mức đã được xác nhận.</p>
-      <div class="farm-table-wrap"><table>
-       <thead><tr v-if="kind==='works'"><th>Mã</th><th>Công việc</th><th>Nhóm công đoạn</th><th>Đơn vị</th><th>Hình thức công</th><th>Năng suất trung bình</th><th>Đơn giá khoán</th><th>Trạng thái</th><th></th></tr><tr v-else-if="kind==='norms'"><th>Bộ định mức</th><th>Công việc</th><th>Phiên bản</th><th>Hiệu lực từ / đến</th><th>Trạng thái</th><th></th></tr><tr v-else-if="['cycles','land'].includes(kind)"><th>Lô chăm sóc</th><th>Khu</th><th>Diện tích ha</th><th>{{kind==='cycles'?'Vụ cây':'Hoạt động'}}</th><th></th></tr><tr v-else><th>Mã</th><th>Tên</th><th>Hoạt động</th><th></th></tr></thead>
-       <tbody><tr v-for="r in configRows" :key="r.name">
-        <template v-if="kind==='works'"><td>{{r.work_code}}</td><td>{{r.work_name}}</td><td>{{r.category_label}}</td><td>{{unitName(r.uom)}}</td><td><span :class="{'farm-missing':!r.payment_basis}">{{r.payment_basis?stateLabel(r.payment_basis):'Chưa chọn'}}</span></td><td><span :class="{'farm-missing':!r.productivity_per_workday}">{{r.productivity_per_workday>0?fmt(r.productivity_per_workday):'Chưa cấu hình'}}</span></td><td>{{r.allow_piecework?fmt(r.piecework_rate)+' đ/'+unitName(r.uom):'—'}}</td><td>{{r.active?'Đang dùng':'Ngừng dùng'}}</td><td><UiButton variant="outline" @click="edit('Work Type',r.name)">{{data.permissions['Work Type'].write?'Cấu hình':'Xem'}}</UiButton></td></template>
-        <template v-else-if="kind==='norms'"><td>{{r.profile_name}}</td><td>{{r.work_label}}</td><td>{{r.version}}</td><td>{{r.valid_from}} / {{r.valid_to||'Chưa đặt ngày kết thúc'}}</td><td>{{stateLabel(r.approval_state)}}</td><td><UiButton variant="outline" @click="edit('Material Norm Profile',r.name)">{{r.approval_state==='Approved'?'Xem / tạo phiên bản':'Cấu hình'}}</UiButton></td></template><template v-else-if="['cycles','land'].includes(kind)"><td>{{r.block_code}}</td><td>{{r.block_label}}</td><td>{{fmt(r.area_ha)}}</td><td v-if="kind==='cycles'"><span v-if="!cycleFor(r).length" class="farm-missing">Chưa có vụ cây</span><button v-for="c in cycleFor(r)" :key="c.name" class="farm-cycle-link" @click="edit('Crop Cycle',c.name)">{{c.name}} · Vụ {{c.cycle_no}} · {{stateLabel(c.status)}}</button></td><td v-else>{{r.active?'Có':'Không'}}</td><td><UiButton v-if="kind==='cycles'&&mayCreate('Crop Cycle')" variant="outline" @click="newCycle(r)">＋ Thêm vụ</UiButton><UiButton v-else-if="kind==='land'" variant="outline" @click="edit('Farm Block',r.name)">Xem lô</UiButton></td></template>
-        <template v-else><td>{{r.team_code||r.category_code||r.variety_code||r.basis_code}}</td><td>{{r.team_name||r.category_name||r.variety_name||r.basis_name}}</td><td>{{r.active?'Có':'Không'}}</td><td><UiButton variant="outline" @click="edit(currentType,r.name)">{{data.permissions[currentType].write?'Sửa':'Xem'}}</UiButton></td></template>
-       </tr></tbody>
-      </table></div><p v-if="!configRows.length" class="farm-empty">Chưa có dữ liệu phù hợp hoặc tài khoản chưa có quyền đọc danh mục.</p>
+      <div class="farm-table-wrap"><DataTable :rows="configRows" :columns="configColumns" row-key="name" :storage-key="'farm-work-setup-'+kind" @cell-open="configCellAction" />
+ <div v-if="kind==='cycles'" class="farm-cycle-actions">
+  <div v-for="r in configRows" :key="r.name" class="farm-toolbar">
+   <strong>{{r.block_code}}</strong>
+   <UiButton v-for="c in cycleFor(r)" :key="c.name" variant="outline" @click="edit('Crop Cycle',c.name)">{{c.name}} · Vụ {{c.cycle_no}} · {{stateLabel(c.status)}}</UiButton>
+   <UiButton v-if="mayCreate('Crop Cycle')" variant="outline" @click="newCycle(r)">＋ Thêm vụ</UiButton>
+  </div>
+ </div></div><p v-if="!configRows.length" class="farm-empty">Chưa có dữ liệu phù hợp hoặc tài khoản chưa có quyền đọc danh mục.</p>
      </section>
     </template>
    </template>

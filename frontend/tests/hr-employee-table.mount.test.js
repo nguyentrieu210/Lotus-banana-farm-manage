@@ -35,7 +35,7 @@ test('HR employee list uses shared column filters and opens the selected employe
   assert.match(records(view.root).textContent,/An/)
   assert.doesNotMatch(records(view.root).textContent,/Bình/)
   assert.match(records(view.root).textContent,/Vườn 1.*Thời vụ.*Công nhật.*Chờ tiếp nhận/)
-  grid.$emit('row-clicked',{data:people[0]});await tick();await tick()
+  view.root.querySelector('.lotus-ag-grid').__vueParentComponent.proxy.$emit('row-clicked',{data:people[0]});await tick();await tick()
   assert.deepEqual(calls.filter(c=>c.method==='employee_detail').map(c=>c.args.employee),['EMP-A'])
   assert.ok(document.querySelector('dialog[open]'))
  }finally{view.unmount()}

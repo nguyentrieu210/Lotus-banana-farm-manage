@@ -3,6 +3,8 @@
 // clock, and mapping the IDs a clock uses to employees (lotus_farm.device_admin). Punch logs stay below.
 import {computed,reactive,ref,watch} from 'vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
+import DataTable from '../DataTable.vue'
+import LotusGridEditCell from '../LotusGridEditCell.vue'
 import LotusIcon from '../LotusIcon.vue'
 import {Button as UiButton} from '../ui/button'
 import {Input as UiInput} from '../ui/input'
@@ -13,6 +15,22 @@ const props=defineProps({company:String,farms:{type:Array,default:()=>[]}})
 const emit=defineEmits(['changed','notice','error'])
 const data=ref(null),busy=ref(false),saving=ref(false),formOpen=ref(false),guideFor=ref(null),search=ref(''),loadError=ref('')
 const form=reactive({}),choice=reactive({})
+const mappingActions={
+ getChoice:u=>choice[u.device+'|'+u.device_user_id]||'',
+ setChoice:(u,v)=>{choice[u.device+'|'+u.device_user_id]=v},
+ canManage:()=>!!data.value?.can_manage,
+ isSaving:()=>saving.value,
+ employees:()=>data.value?.employees||[],
+ onMap:u=>map(u)
+}
+const mappingColumns=[
+ {field:'device',headerName:'Máy',valueGetter:p=>data.value?.machines?.find(m=>m.name===p.data.device)?.device_code||p.data.device,minWidth:130},
+ {field:'device_user_id',headerName:'Mã trên máy',minWidth:150},
+ {field:'name_on_device',headerName:'Tên trên máy',minWidth:150},
+ {field:'punches',headerName:'Lượt chờ',minWidth:125},
+ {field:'employee_select',headerName:'Nhân viên',minWidth:255,cellRenderer:LotusGridEditCell,cellRendererParams:mappingActions},
+ {field:'map_action',headerName:'Gắn',minWidth:95,cellRenderer:LotusGridEditCell,cellRendererParams:mappingActions,sortable:false}
+]
 const MODES=[['ADMS','ADMS – máy tự gửi lên Lotus (khuyên dùng)'],['File CSV','Nhập file CSV từ máy'],['LAN SDK','LAN SDK (chưa hỗ trợ)'],['Vendor Cloud','Dịch vụ hãng (chưa hỗ trợ)']]
 const modeLabel=m=>(MODES.find(x=>x[0]===m)||[m,m])[1].split(' – ')[0].split(' (')[0]
 const ago=v=>{if(!v)return 'chưa từng';const m=Math.round((Date.now()-new Date(String(v).replace(' ','T')+'+07:00'))/60000);return m<1?'vừa xong':m<60?m+' phút trước':m<1440?Math.round(m/60)+' giờ trước':Math.round(m/1440)+' ngày trước'}
@@ -59,10 +77,7 @@ defineExpose({load})
  <section v-if="data" class="hr-devices__map" aria-label="Gắn mã máy với nhân viên">
   <header class="hr-devices__head"><h4>Mã trên máy chưa gắn nhân viên <span class="hr-pay__count">{{data.unmapped.length}}</span></h4><UiInput v-model="search" type="search" placeholder="Tìm mã hoặc tên trên máy…" aria-label="Tìm mã trên máy"/></header>
   <p class="tk-hint">Máy gửi danh sách người đã đăng ký vân tay/khuôn mặt cùng tên trên máy. Lotus gợi ý nhân viên trùng tên; kiểm tra rồi bấm Gắn. Các lượt chấm trước đó của mã này được tính lại ngay.</p>
-  <div v-if="unmapped.length" class="hr-ops-scroll"><table><thead><tr><th>Máy</th><th>Mã trên máy</th><th>Tên trên máy</th><th>Lượt chờ</th><th>Nhân viên</th><th></th></tr></thead>
-   <tbody><tr v-for="u in unmapped" :key="u.device+u.device_user_id"><td>{{data.machines.find(m=>m.name===u.device)?.device_code||u.device}}</td><td><b>{{u.device_user_id}}</b></td><td>{{u.name_on_device||'—'}}</td><td>{{u.punches||0}}</td>
-    <td><UiSelect v-model="choice[u.device+'|'+u.device_user_id]" :aria-label="'Nhân viên cho mã '+u.device_user_id" :disabled="!data.can_manage||saving"><option value="">Chọn nhân viên…</option><option v-for="e in data.employees" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}{{e.name===u.suggested?' (gợi ý)':''}}</option></UiSelect></td>
-    <td><UiButton v-if="data.can_manage" size="sm" :disabled="saving||!choice[u.device+'|'+u.device_user_id]" @click="map(u)">Gắn</UiButton></td></tr></tbody></table></div>
+  <div v-if="unmapped.length" class="hr-ops-scroll"><DataTable :rows="unmapped" :columns="mappingColumns" storage-key="hr-device-unmapped" /></div>
   <p v-else class="tk-empty">Mọi mã trên máy đã gắn nhân viên.</p>
  </section>
 

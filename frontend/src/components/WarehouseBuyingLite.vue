@@ -11,6 +11,13 @@ import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
 import {Textarea as UiTextarea} from './ui/textarea'
 
+const purchaseItemsColumns=[
+ {field:'item_name',headerName:'Tên hàng'},
+ {field:'qty',headerName:'Đặt',valueGetter:p=>fmtn(p.data.qty)},
+ {field:'received_qty',headerName:'Đã nhận',valueGetter:p=>fmtn(p.data.received_qty)},
+ {field:'remaining_qty',headerName:'Còn chờ',valueGetter:p=>fmtn(p.data.remaining_qty)},
+ {field:'uom',headerName:'ĐVT',valueGetter:p=>unitLabel(p.data.uom)}
+]
 const props=defineProps({company:String,warehouse:String,today:String})
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse_buying_lite.'+name,args,write)
 const receivingAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_planning.'+name,args,write)
@@ -274,7 +281,7 @@ defineExpose({refresh:()=>load(true),startReceiving,createOrder:async()=>{await 
     <header><h2>Đơn mua {{current.name}}</h2><UiButton variant="outline" @click="detailDialog.close()">Đóng</UiButton></header>
     <p v-if="detailError" class="stock-error" role="alert">{{detailError}}</p>
     <div class="stock-buying-fields"><span><strong>NCC</strong>{{current.supplier_name}}</span><span><strong>Cách mua</strong>{{current.mode}}</span><span><strong>Kho</strong>{{warehouseName(current.items[0]?.warehouse)}}</span><span><strong>Hẹn giao</strong>{{current.expected_date}}</span><span><strong>Tình trạng</strong>{{current.status}}</span></div>
-    <table class="stock-buying-detail-table"><thead><tr><th>Tên hàng</th><th>Đặt</th><th>Đã nhận</th><th>Còn chờ</th><th>ĐVT</th></tr></thead><tbody><tr v-for="r in current.items" :key="r.line"><td>{{r.item_name}}</td><td>{{fmtn(r.qty)}}</td><td>{{fmtn(r.received_qty)}}</td><td>{{fmtn(r.remaining_qty)}}</td><td>{{unitLabel(r.uom)}}</td></tr></tbody></table>
+    <DataTable :rows="current.items" :columns="purchaseItemsColumns" row-key="line" storage-key="buying-receipt-detail" />
     <section class="stock-buying-quotes"><h3>Báo giá đính kèm</h3><p v-if="!current.quote_files.length">Chưa có báo giá.</p><p v-for="q in current.quote_files" :key="q.name"><a v-if="q.file_url?.startsWith('/')" :href="q.file_url" target="_blank" rel="noopener noreferrer">{{q.file_name}} ↗</a></p></section>
     <p v-if="current.notes">Ghi chú: {{current.notes}}</p>
     <section v-if="current.receipts?.length" class="stock-buying-receipts">

@@ -180,10 +180,7 @@ useNoticeToast(notice)
    <label class="land-file">File Excel đã sửa<input type="file" accept=".xlsx" :disabled="saving" @change="readFile"></label>
    <template v-if="preview">
     <p><b>{{preview.ready}}</b> lô sẽ cập nhật · {{preview.unchanged}} lô không đổi · <span :class="{'land-bad':preview.errors}">{{preview.errors}} dòng lỗi</span></p>
-    <div class="land-table land-preview"><table><thead><tr><th>Dòng</th><th>Lô</th><th>Thay đổi</th><th>Lỗi / cảnh báo</th></tr></thead>
-     <tbody><tr v-for="r in preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :key="r.line" :class="{bad:r.errors.length}"><td>{{r.line}}</td><td><b>{{r.code}}</b></td>
-      <td><div v-for="c in r.changes" :key="c.field"><small>{{c.label}}:</small> {{changeText(c)}}</div></td>
-      <td><div v-for="e in r.errors" :key="e" class="land-bad">{{e}}</div><div v-for="w in r.warnings" :key="w" class="land-warn">{{w}}</div></td></tr></tbody></table></div>
+    <div class="land-table land-preview"><DataTable :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>
     <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="importOpen=false">Hủy</UiButton><UiButton type="button" :disabled="saving||!preview.ready" @click="commitImport">{{saving?'Đang cập nhật…':'Cập nhật '+preview.ready+' lô'}}</UiButton></div>
    </template>
   </div>

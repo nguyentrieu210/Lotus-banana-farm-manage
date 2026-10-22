@@ -28,7 +28,7 @@ test('clocks show their connection, and a suggested employee is ready to map',as
  const view=mount(Panel,{company:'Lotus',farms:[{name:'F1',farm_name:'Vườn 222'}]});await tick();await tick()
  assert.match(text(view.root),/Cổng khu A.*Đang kết nối/)
  assert.match(text(view.root),/Kho B.*Nhập file CSV/)
- const rows=[...view.root.querySelectorAll('.hr-devices__map tbody tr')]
+ const rows=[...view.root.querySelectorAll('.hr-devices__map .ag-row')]
  assert.equal(rows[0].querySelector('select').value,'E1','the matching name is preselected')
  assert.equal(rows[1].querySelector('select').value,'')
  assert.ok([...rows[1].querySelectorAll('button')].find(b=>b.textContent.trim()==='Gắn').disabled,'nothing to map without a choice')
@@ -40,7 +40,7 @@ test('clocks show their connection, and a suggested employee is ready to map',as
 test('readers see clocks and IDs without mapping or editing',async()=>{
  routes={[D+'overview']:overview(false)}
  const view=mount(Panel,{company:'Lotus',farms:[]});await tick();await tick()
- assert.ok(![...view.root.querySelectorAll('button')].some(b=>/Gắn|Khai báo máy|Sửa/.test(b.textContent)))
- assert.ok(view.root.querySelector('.hr-devices__map select').disabled)
+ assert.ok(![...view.root.querySelectorAll('button:not(.excel-sort)')].some(b=>/Gắn|Khai báo máy|Sửa/.test(b.textContent)))
+ assert.ok(view.root.querySelector('.hr-devices__map select')?.disabled)
  view.unmount()
 })

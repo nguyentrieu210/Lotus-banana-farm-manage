@@ -5,6 +5,7 @@ import {computed,nextTick,onMounted,reactive,ref} from 'vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import DataTable from './components/DataTable.vue'
+import TimekeepingGridCell from './components/TimekeepingGridCell.vue'
 import LotusIcon from './components/LotusIcon.vue'
 import MonthPicker from './components/MonthPicker.vue'
 import TkMonthSheet from './components/timekeeping/TkMonthSheet.vue'
@@ -47,6 +48,38 @@ const canEditStaff=computed(()=>!locked.value&&!!(cap.value.Attendance?.create||
 const selected=computed(()=>staff.value.filter(r=>r.selected))
 const statuses={'Present':'Có mặt','Half Day':'Nửa ngày','Absent':'Vắng','Work From Home':'Làm từ xa','On Leave':'Nghỉ phép'}
 const editableStatuses=Object.entries(statuses).filter(([key])=>key!=='On Leave')
+const attendanceCellActions={
+ getRow:data=>staff.value.find(r=>r.employee===data.employee)||data,
+ saving:()=>saving.value,
+ canEditStaff:()=>canEditStaff.value,
+ canCorrect:()=>canCorrect.value,
+ chooseStatus:row=>chooseStatus(row),
+ editableStatuses:()=>editableStatuses,
+ onEdit:edit,
+ punchFlags:row=>punchFlags(row),
+ punchText:row=>punchText(row),
+ useMachine:row=>useMachine(row),
+ openCorrection:row=>openCorrection(row),
+ rowState:row=>rowState(row),
+ stateLabel:v=>stateLabel[v]||v
+}
+const attendanceRowClass=row=>[
+ row.machine?.needs_review?'attendance-review':'',
+ row.edited?'is-edited':'',
+ row.selected?'is-selected':''
+].filter(Boolean).join(' ')
+const attendanceColumns=[
+ {field:'selected',headerName:'Chọn',minWidth:105,sortable:false,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'employee_name',headerName:'Nhân viên',minWidth:220,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'shift',headerName:'Ca',minWidth:140},
+ {field:'status',headerName:'Trạng thái',minWidth:190,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'machine_punch',headerName:'Máy chấm',minWidth:240,valueGetter:p=>punchText(p.data)||'—',cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'working_hours',headerName:'Giờ làm',minWidth:130,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'overtime_hours',headerName:'Tăng ca',minWidth:130,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'note',headerName:'Ghi chú',minWidth:200,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'row_state',headerName:'Phiếu',minWidth:180,valueGetter:p=>stateLabel[rowState(p.data)],cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions}
+]
+
 const rowState=r=>r.docstatus===1?'approved':r.machine?.needs_review?'review':r.matches?'matching':!r.name?'empty':'draft'
 const stateLabel={empty:'Chưa chấm',draft:'Nháp',approved:'Đã duyệt',review:'Cần kiểm tra',matching:'Khớp máy'}
 const counts=computed(()=>{const c={all:staff.value.length,empty:0,draft:0,approved:0,review:0,matching:0};for(const r of staff.value)c[rowState(r)]++;return c})
@@ -189,18 +222,8 @@ useNoticeToast(notice)
     </DropdownMenu>
    </div>
    <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
-    <table><thead><tr><th class="tk-col-check"><input type="checkbox" :checked="allChecked" aria-label="Chọn tất cả nhân viên đang hiện" @change="toggleAll"></th><th>Nhân viên</th><th class="tk-col-shift">Ca</th><th class="tk-col-status">Trạng thái</th><th class="tk-col-punch">Máy chấm</th><th class="tk-col-num">Giờ làm</th><th class="tk-col-num">Tăng ca</th><th>Ghi chú</th><th class="tk-col-state">Phiếu</th></tr></thead>
-     <tbody><tr v-for="row in shown" :key="row.employee" :class="{'attendance-review':row.machine?.needs_review,'is-edited':row.edited,'is-selected':row.selected}">
-      <td class="tk-col-check"><input v-model="row.selected" type="checkbox" :aria-label="'Chọn '+row.employee_name"></td>
-      <td class="tk-col-person"><strong>{{row.employee_name}}</strong><small>{{row.employee}}<template v-if="row.designation||row.department"> · {{row.designation||row.department}}</template></small></td>
-      <td class="tk-col-shift" data-label="Ca">{{row.shift||'—'}}</td>
-      <td class="tk-col-status" data-label="Trạng thái"><UiSelect v-model="row.status" :aria-label="'Trạng thái '+row.employee_name" :disabled="saving||row.docstatus===1||row.status==='On Leave'||!canEditStaff" @change="chooseStatus(row)"><option value="">Chưa chấm</option><option v-if="row.status==='On Leave'" value="On Leave">Nghỉ phép (HRMS)</option><option v-for="[value,label] in editableStatuses" :key="value" :value="value">{{label}}</option></UiSelect></td>
-      <td class="tk-col-punch" data-label="Máy chấm"><span class="tk-punch">{{punchText(row)||'—'}}</span><small v-for="flag in punchFlags(row)" :key="flag" class="tk-flag">{{flag}}</small><small v-if="row.machine?.needs_review" class="tk-flag is-warn">Cần kiểm tra</small><small v-if="row.manual" class="tk-flag is-warn">Đã chỉnh tay, khác máy</small><UiButton v-if="canEditStaff&&row.docstatus===0&&row.machine?.status&&(row.manual||!row.matches)" variant="link" size="sm" class="tk-correct" @click="useMachine(row)">Dùng số máy</UiButton></td>
-      <td class="tk-col-num" data-label="Giờ làm"><UiInput v-model.number="row.working_hours" type="number" min="0" max="24" step="0.25" :aria-label="'Giờ làm '+row.employee_name" :disabled="saving||row.docstatus===1||row.status==='On Leave'||!canEditStaff" @input="edit(row)"/></td>
-      <td class="tk-col-num" data-label="Tăng ca"><UiInput v-model.number="row.overtime_hours" type="number" min="0" max="16" step="0.25" :aria-label="'Giờ tăng ca '+row.employee_name" :disabled="saving||row.docstatus===1||['On Leave','Absent'].includes(row.status)||!canEditStaff" @input="edit(row)"/></td>
-      <td class="tk-col-note" data-label="Ghi chú"><UiInput v-model="row.note" :aria-label="'Ghi chú '+row.employee_name" :disabled="saving||row.docstatus===1||!canEditStaff" @input="edit(row)"/></td>
-      <td class="tk-col-state" data-label="Phiếu"><span class="tk-pill" :class="'is-'+rowState(row)">{{stateLabel[rowState(row)]}}</span><small v-if="row.edited" class="tk-flag is-warn">Chưa lưu</small><UiButton v-if="canCorrect&&row.docstatus===1" variant="link" size="sm" class="tk-correct" :aria-label="'Sửa công đã duyệt của '+row.employee_name" @click="openCorrection(row)">Sửa công</UiButton></td>
-     </tr></tbody></table>
+    <label class="tk-check"><input type="checkbox" :checked="allChecked" aria-label="Chọn tất cả nhân viên đang hiện" @change="toggleAll"/> Chọn tất cả nhân viên đang hiện</label>
+     <DataTable :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
      <template v-else>Chưa có nhân viên đang làm trong công ty này.<UiButton v-if="cap.Employee?.create" variant="link" @click="openMaster('employee')">Thêm nhân sự</UiButton></template>

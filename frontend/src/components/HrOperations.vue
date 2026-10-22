@@ -9,10 +9,38 @@ import UiSelect from './ui/select/Select.vue'
 import {DatePicker} from './ui/date-picker'
 import '../hr-operations.css'
 import WorkspaceModal from './WorkspaceModal.vue'
+import DataTable from './DataTable.vue'
+import LotusGridEditCell from './LotusGridEditCell.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 import HrDevicePanel from './hr/HrDevicePanel.vue'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 
+const punchActions={
+ canSelect:p=>props.manager&&!['Synced','Ignored'].includes(p.state),
+ isChecked:p=>selected.value.includes(p.name),
+ toggle:(p,checked)=>{selected.value=checked?[...new Set([...selected.value,p.name])]:selected.value.filter(n=>n!==p.name)}
+}
+const punchColumns=[
+ {field:'select_log',headerName:'Chọn',minWidth:100,sortable:false,cellRenderer:LotusGridEditCell,cellRendererParams:punchActions},
+ {field:'punched_at',headerName:'Thời gian',minWidth:165},
+ {field:'device',headerName:'Máy',minWidth:140},
+ {field:'device_user_id',headerName:'Mã trên máy',minWidth:150},
+ {field:'employee',headerName:'Nhân viên',minWidth:150,valueGetter:p=>p.data.employee||'Chưa ghép'},
+ {field:'log_type',headerName:'Vào / Ra',valueGetter:p=>stateLabel(p.data.log_type||'Unknown'),minWidth:115},
+ {field:'state',headerName:'Trạng thái',valueGetter:p=>stateLabel(p.data.state),minWidth:125}
+]
+const assignmentColumns=[
+ {field:'employee',headerName:'Nhân viên',valueGetter:p=>org.value?.employees?.find(e=>e.name===p.data.employee)?.employee_name||p.data.employee},
+ {field:'farm',headerName:'Vườn'},
+ {field:'work_team',headerName:'Tổ/đội',valueGetter:p=>org.value?.teams?.find(t=>t.name===p.data.work_team)?.team_name||'—'},
+ {field:'role_title',headerName:'Chức vụ'},
+ {field:'valid_from',headerName:'Từ ngày'},
+ {field:'valid_to',headerName:'Đến ngày',valueGetter:p=>p.data.valid_to||'Hiện tại'}
+]
+const previewColumns=computed(()=>[
+ {field:'row',headerName:'Dòng'},
+ ...(columns[kind.value]||[]).map(field=>({field,headerName:field,valueGetter:p=>p.data.values[field]||'—'}))
+])
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,finish:finishConfirm}=useWorkspaceConfirm()
 // view: render one area as its own page tab (organization | import | devices = machines + punches); empty keeps the inner tabs.
 const props=defineProps({company:{type:String,default:''},manager:Boolean,view:{type:String,default:''}})
@@ -187,8 +215,7 @@ async function syncRange(){
     <label>Cấp trên<UiSelect v-model="assignment.approver"><option value="">Chưa chọn</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}}</option></UiSelect></label>
     <UiButton type="submit" :disabled="busy">Lưu phân công</UiButton>
    </form></WorkspaceModal>
-   <div class="hr-ops-scroll"><table><thead><tr><th>Nhân viên</th><th>Vườn</th><th>Tổ/đội</th><th>Chức vụ</th><th>Từ ngày</th><th>Đến ngày</th></tr></thead>
-    <tbody><tr v-for="a in org?.assignments||[]" :key="a.name"><td>{{org.employees.find(e=>e.name===a.employee)?.employee_name||a.employee}}</td><td>{{a.farm}}</td><td>{{org.teams.find(t=>t.name===a.work_team)?.team_name||'—'}}</td><td>{{a.role_title||'—'}}</td><td>{{a.valid_from}}</td><td>{{a.valid_to||'Hiện tại'}}</td></tr></tbody></table></div>
+   <div class="hr-ops-scroll"><DataTable :rows="org?.assignments||[]" :columns="assignmentColumns" row-key="name" storage-key="hr-assignments" /></div>
   </section>
  </template>
  <template v-else-if="active==='import'">
@@ -205,8 +232,7 @@ async function syncRange(){
    <div v-if="preview" class="hr-ops-panel">
     <strong>{{uploadName}}: {{preview.ready}} dòng hợp lệ, {{preview.errors.length}} dòng lỗi.</strong>
     <ul v-if="preview.errors.length"><li v-for="r in preview.errors" :key="r.row">Dòng {{r.row}}: {{r.error}}</li></ul>
-    <div v-if="preview.normalized?.length" class="hr-ops-scroll"><table><thead><tr><th>Dòng</th><th v-for="field in columns[kind]" :key="field">{{field}}</th></tr></thead>
-     <tbody><tr v-for="r in preview.normalized.slice(0,20)" :key="r.row"><td>{{r.row}}</td><td v-for="field in columns[kind]" :key="field">{{r.values[field]||'—'}}</td></tr></tbody></table></div>
+    <div v-if="preview.normalized?.length" class="hr-ops-scroll"><DataTable :rows="preview.normalized.slice(0,20)" :columns="previewColumns" row-key="row" storage-key="hr-import-preview" /></div>
     <p v-if="preview.ready>20" class="hr-ops-tip">Đang hiện 20 dòng đầu, các dòng còn lại vẫn được kiểm tra.</p>
     <UiButton v-if="manager" type="button" :disabled="busy||preview.errors?.length>0||!preview.ready" @click="confirmImport">Xác nhận nhập {{preview.ready}} dòng</UiButton>
    </div>
@@ -222,11 +248,8 @@ async function syncRange(){
    <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span><span>Đã bỏ qua: <strong>{{hardware?.counts?.Ignored||0}}</strong></span></div>
    <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><UiButton v-if="manager" type="button" variant="outline" :disabled="busy||!selectedPunches.length" @click="ignoreReason='';ignoreOpen=true">Bỏ qua {{selectedPunches.length}} log…</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
    <div v-if="manager" class="hr-ops-actions"><label>Từ ngày<DatePicker v-model="syncFrom" :disabled="busy" aria-label="Chuyển log từ ngày"/></label><label>Đến ngày<DatePicker v-model="syncTo" :min="syncFrom" :disabled="busy" aria-label="Chuyển log đến ngày"/></label><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hệ thống tự chuyển log hôm nay và hôm qua mỗi 10 phút; mở Chấm công cũng cập nhật ngày đang xem.</span></div>
-   <div class="hr-ops-scroll"><table><thead><tr><th><input v-if="manager&&openPunches.length" type="checkbox" :checked="allOpen" aria-label="Chọn mọi log chưa xử lý" @change="toggleOpen"/></th><th>Thời gian</th><th>Máy</th><th>Mã trên máy</th><th>Nhân viên</th><th>Vào / Ra</th><th>Trạng thái</th></tr></thead>
-    <tbody><tr v-for="p in hardware?.punches||[]" :key="p.name">
-     <td><input v-if="manager&&!['Synced','Ignored'].includes(p.state)" type="checkbox" :value="p.name" v-model="selected" :aria-label="'Chọn log '+p.punched_at"/></td>
-     <td>{{p.punched_at}}</td><td>{{p.device}}</td><td>{{p.device_user_id}}</td><td>{{p.employee||'Chưa ghép'}}</td><td>{{stateLabel(p.log_type||'Unknown')}}</td><td>{{stateLabel(p.state)}}</td>
-    </tr></tbody></table></div>
+   <label v-if="manager&&openPunches.length" class="tk-check"><input type="checkbox" :checked="allOpen" aria-label="Chọn mọi log chưa xử lý" @change="toggleOpen"/> Chọn mọi log chưa xử lý</label>
+   <div class="hr-ops-scroll"><DataTable :rows="hardware?.punches||[]" :columns="punchColumns" row-key="name" storage-key="hr-hardware-punches" /></div>
    <p class="hr-ops-tip">Nếu chưa có log, vào mục Nhập dữ liệu nhân sự → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>
  </template>

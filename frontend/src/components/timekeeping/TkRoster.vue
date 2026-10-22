@@ -4,6 +4,8 @@
 // Shift Assignments and refuses closed months. Everyone else sees the grid read-only.
 import {computed,onBeforeUnmount,ref,watch} from 'vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
+import DataTable from '../DataTable.vue'
+import RosterGridCell from '../RosterGridCell.vue'
 import LotusIcon from '../LotusIcon.vue'
 import {Button as UiButton} from '../ui/button'
 import {Input as UiInput} from '../ui/input'
@@ -24,6 +26,21 @@ const weekday=d=>['CN','T2','T3','T4','T5','T6','T7'][new Date(d+'T00:00:00Z').g
 const dm=d=>d.slice(8,10)+'/'+d.slice(5,7)
 const label=computed(()=>dm(start.value)+' – '+dm(addDays(start.value,span.value-1))+'/'+addDays(start.value,span.value-1).slice(0,4))
 const key=(employee,date)=>employee+'|'+date
+const rosterActions={
+ canManage:()=>canManage.value,
+ isClosed:closedDay,
+ isPicked:(row,date)=>picked.value.has(key(row.employee,date)),
+ pickRow,down,enter,dm,shortShift,
+ colors:()=>colors.value
+}
+const rosterColumns=computed(()=>[
+ {field:'employee',headerName:'Nhân viên',minWidth:210,pinned:'left',cellRenderer:RosterGridCell,cellRendererParams:rosterActions,sortable:false},
+ ...(data.value?.days||[]).map(d=>({
+  field:'day_'+d.date,headerName:weekday(d.date)+' '+dm(d.date),minWidth:92,maxWidth:110,
+  valueGetter:p=>p.data.cells.find(c=>c.date===d.date)?.shift||'—',
+  cellRenderer:RosterGridCell,cellRendererParams:{...rosterActions,rosterDate:d.date},sortable:false
+ }))
+])
 const pickedCells=computed(()=>[...picked.value].map(k=>{const [employee,date]=k.split('|');return {employee,date}}))
 const pickedPeople=computed(()=>[...new Set(pickedCells.value.map(c=>c.employee))])
 const hhmm=v=>String(v||'').slice(0,5)
@@ -70,15 +87,12 @@ defineExpose({load})
  <p class="tk-shiftlegend"><span v-for="s in ordered" :key="s.name" class="tk-shiftchip" :style="{'--shift':colors[s.name]}"><b>{{shortShift(s.name)}}</b>{{s.name}} {{hhmm(s.start_time)}}–{{hhmm(s.end_time)}}</span><span class="tk-shiftchip is-none"><b>—</b>Không xếp ca</span><span v-if="canManage" class="tk-hint">Bấm hoặc kéo để chọn ô · bấm tên để chọn cả hàng · bấm ngày để chọn cả cột.</span><span v-else class="tk-hint">Chỉ xem. Quản trị viên hoặc Quản lý nhân sự đổi ca.</span></p>
  <p v-if="result&&(result.errors.length||result.warnings.length)" class="tk-banner is-holiday" role="status"><LotusIcon name="flag"/><span><template v-for="e in result.errors" :key="'e'+e.employee">{{e.employee_name}}: {{e.message}}. </template><template v-for="w in result.warnings" :key="'w'+w.employee">{{w.message}} </template></span></p>
  <div class="tk-rostergrid" :class="{busy}" @pointerleave="up">
-  <table v-if="data?.rows?.length"><thead><tr><th class="tk-rostergrid__who">Nhân viên</th><th v-for="d in data.days" :key="d.date" :class="{'is-off':d.off,'is-closed':d.closed}"><button type="button" :disabled="!canManage||d.closed" :aria-label="'Chọn cả ngày '+dm(d.date)" @click="pickDay(d.date)"><small>{{weekday(d.date)}}</small>{{dm(d.date)}}<LotusIcon v-if="d.closed" name="lock"/></button></th></tr></thead>
-   <tbody><tr v-for="row in data.rows" :key="row.employee">
-    <th class="tk-rostergrid__who" scope="row"><button type="button" :disabled="!canManage" @click="pickRow(row)"><strong>{{row.employee_name}}</strong><small>{{row.designation||row.department||row.employee}}</small></button></th>
-    <td v-for="(c,i) in row.cells" :key="c.date" :class="{'is-off':data.days[i].off,'is-closed':data.days[i].closed}">
-     <button type="button" class="tk-cell" :class="{picked:picked.has(key(row.employee,c.date)),empty:!c.shift}" :style="c.shift?{'--shift':colors[c.shift]||'#4b5563'}:null"
-      :disabled="!canManage||data.days[i].closed" :aria-pressed="picked.has(key(row.employee,c.date))?'true':'false'"
-      :aria-label="row.employee_name+' '+dm(c.date)+': '+(c.shift||'không xếp ca')+(c.worked?', đã có công duyệt':'')"
-      :title="(c.shift||'Không xếp ca')+(c.worked?' · đã có công duyệt':'')" @pointerdown.prevent="down(row,c)" @pointerenter="enter(row,c)">{{c.shift?shortShift(c.shift):'—'}}<i v-if="c.worked" class="tk-cell__done" aria-hidden="true"></i></button>
-    </td></tr></tbody></table>
+  <div v-if="data?.rows?.length">
+    <div v-if="canManage" class="tk-roster-days" role="group" aria-label="Chọn cả ngày">
+     <UiButton v-for="d in data.days" :key="d.date" size="sm" variant="outline" :disabled="d.closed" :aria-label="'Chọn cả ngày '+dm(d.date)" @click="pickDay(d.date)">{{weekday(d.date)}} {{dm(d.date)}}</UiButton>
+    </div>
+    <DataTable :rows="data.rows" :columns="rosterColumns" row-key="employee" storage-key="tk-roster-shifts" />
+   </div>
   <p v-else-if="!busy" class="tk-empty">Không có nhân viên đang làm phù hợp bộ lọc.</p>
  </div>
  <div v-if="canManage&&picked.size" class="tk-rosterbar" role="toolbar" aria-label="Đổi ca các ô đã chọn">
