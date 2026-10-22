@@ -11,16 +11,23 @@ import {call} from '../../api'
 
 const props=defineProps({company:String,farms:{type:Array,default:()=>[]}})
 const emit=defineEmits(['changed','notice','error'])
-const data=ref(null),busy=ref(false),saving=ref(false),formOpen=ref(false),guideFor=ref(null),search=ref('')
+const data=ref(null),busy=ref(false),saving=ref(false),formOpen=ref(false),guideFor=ref(null),search=ref(''),loadError=ref('')
 const form=reactive({}),choice=reactive({})
 const MODES=[['ADMS','ADMS – máy tự gửi lên Lotus (khuyên dùng)'],['File CSV','Nhập file CSV từ máy'],['LAN SDK','LAN SDK (chưa hỗ trợ)'],['Vendor Cloud','Dịch vụ hãng (chưa hỗ trợ)']]
 const modeLabel=m=>(MODES.find(x=>x[0]===m)||[m,m])[1].split(' – ')[0].split(' (')[0]
 const ago=v=>{if(!v)return 'chưa từng';const m=Math.round((Date.now()-new Date(String(v).replace(' ','T')+'+07:00'))/60000);return m<1?'vừa xong':m<60?m+' phút trước':m<1440?Math.round(m/60)+' giờ trước':Math.round(m/1440)+' ngày trước'}
 const employeeName=n=>(data.value?.employees||[]).find(e=>e.name===n)?.employee_name||n
 const unmapped=computed(()=>(data.value?.unmapped||[]).filter(u=>!search.value||(u.device_user_id+' '+u.name_on_device).toLowerCase().includes(search.value.toLowerCase())))
-async function load(){if(!props.company)return;busy.value=true
- try{data.value=await call('lotus_farm.device_admin.overview',{company:props.company});for(const u of data.value.unmapped)choice[u.device+'|'+u.device_user_id]=u.suggested||''}
- catch(e){emit('error',e.message)}finally{busy.value=false}}
+async function load(){
+ if(!props.company){data.value=null;loadError.value='Chưa chọn công ty để xem máy chấm công.';return}
+ busy.value=true;loadError.value=''
+ try{
+  const result=await call('lotus_farm.device_admin.overview',{company:props.company})
+  if(!result||typeof result!=='object')throw new Error('Máy chủ chưa trả về danh sách máy chấm công.')
+  data.value={...result,machines:result.machines||[],unmapped:result.unmapped||[],employees:result.employees||[]}
+  for(const u of data.value.unmapped)choice[u.device+'|'+u.device_user_id]=u.suggested||''
+ }catch(e){loadError.value=e.message||'Không lấy được dữ liệu máy chấm công.';emit('error',loadError.value)}finally{busy.value=false}
+}
 function openForm(m=null){Object.assign(form,{name:null,modified:null,farm:props.farms[0]?.name||'',device_code:'',device_name:'',model:'',serial_number:'',connection_mode:'ADMS',timezone:'Asia/Ho_Chi_Minh',active:1,notes:''},m||{});formOpen.value=true}
 async function saveForm(){saving.value=true
  try{const {name,modified,...values}=form;const r=await call('lotus_farm.hr_operations.save_device',{company:props.company,values,name,modified},true);formOpen.value=false
@@ -36,16 +43,18 @@ defineExpose({load})
 
 <template>
 <section class="hr-ops-panel hr-devices" aria-label="Máy chấm công">
- <header class="hr-devices__head"><h3>Máy chấm công</h3><UiButton v-if="data?.can_manage" variant="outline" :disabled="busy" @click="openForm()"><LotusIcon name="plus"/>Khai báo máy</UiButton></header>
+ <header class="hr-devices__head"><h3>Máy chấm công</h3><UiButton variant="outline" :disabled="busy" @click="load">Làm mới danh sách</UiButton><UiButton v-if="data?.can_manage" variant="outline" :disabled="busy" @click="openForm()"><LotusIcon name="plus"/>Khai báo máy</UiButton></header>
+ <p v-if="busy" class="tk-hint" role="status">Đang lấy danh sách máy chấm công…</p>
+ <p v-if="loadError" class="hr-ops-error" role="alert">{{loadError}} <UiButton variant="outline" size="sm" @click="load">Thử lại</UiButton></p>
  <div v-if="data?.machines?.length" class="hr-devices__grid">
   <article v-for="m in data.machines" :key="m.name" class="hr-device" :class="{'is-online':m.online,'is-off':!m.active}">
    <header><span class="hr-device__dot" aria-hidden="true"></span><b>{{m.device_name}}</b><small>{{m.device_code}}</small></header>
-   <p class="hr-device__state">{{!m.active?'Đã tắt':m.connection_mode!=='ADMS'?'Nhập file CSV':m.online?'Đang kết nối':'Mất kết nối'}}<small v-if="m.connection_mode==='ADMS'"> · liên lạc {{ago(m.last_seen_at)}}</small></p>
+   <p class="hr-device__state">{{!m.active?'Đã tắt':m.connection_mode==='LAN SDK'?'LAN SDK (chưa xác nhận tự động)':m.connection_mode==='Vendor Cloud'?'Cloud (chưa xác nhận tự động)':m.connection_mode==='File CSV'?'Nhập từ file CSV':m.online?'Đang kết nối':'Chưa nhận kết nối ADMS'}}<small v-if="m.connection_mode==='ADMS'"> · liên lạc {{ago(m.last_seen_at)}}</small></p>
    <dl><div><dt>Hôm nay</dt><dd>{{m.punches_today}} lượt chấm</dd></div><div><dt>Mã đã gắn</dt><dd>{{m.mapped}} người</dd></div><div><dt>Lượt chấm cuối</dt><dd>{{ago(m.last_event_at)}}</dd></div><div><dt>Kết nối · SN</dt><dd>{{modeLabel(m.connection_mode)}}<template v-if="m.serial_number"> · {{m.serial_number}}</template></dd></div></dl>
    <footer><UiButton v-if="m.connection_mode==='ADMS'" variant="outline" size="sm" @click="guideFor=m">Cách cài trên máy</UiButton><UiButton v-if="data.can_manage" variant="ghost" size="sm" :aria-label="'Sửa máy '+m.device_code" @click="openForm(m)"><LotusIcon name="edit"/>Sửa</UiButton></footer>
   </article>
  </div>
- <p v-else-if="!busy" class="tk-empty">Chưa khai báo máy chấm công. Bấm Khai báo máy, chọn ADMS và nhập số serial (SN) in trên máy.</p>
+ <p v-else-if="!busy&&!loadError" class="tk-empty">Chưa khai báo máy chấm công. Bấm Khai báo máy, chọn ADMS và nhập số serial (SN) in trên máy.</p>
 
  <section v-if="data" class="hr-devices__map" aria-label="Gắn mã máy với nhân viên">
   <header class="hr-devices__head"><h4>Mã trên máy chưa gắn nhân viên <span class="hr-pay__count">{{data.unmapped.length}}</span></h4><UiInput v-model="search" type="search" placeholder="Tìm mã hoặc tên trên máy…" aria-label="Tìm mã trên máy"/></header>

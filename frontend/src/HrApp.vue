@@ -193,7 +193,7 @@ useNoticeToast(notice)
    </section>
   </template>
   <HrOperations v-if="tab==='import'" ref="ops" :company="company" :manager="isManager" view="import"/>
-  <HrOperations v-if="tab==='devices'" ref="ops" :company="company" :manager="isManager" view="devices"/>
+  <HrOperations v-if="tab==='devices'" :key="'devices'" ref="ops" :company="company" :manager="isManager" view="devices"/>
   <HrPayrollPeriod v-if="tab==='payroll'&&isManager" ref="payroll" :company="company" :today="today" @notice="notice=$event" @error="error=$event"/>
 
   <WorkspaceModal v-model="editCandidate" :title="selectedCandidate?'Cập nhật ứng viên':'Thêm ứng viên'" :busy="saving">
