@@ -26,7 +26,7 @@ const base=(day)=>({
 })
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
-const row=(root,name)=>[...root.querySelectorAll('.attendance-roster tbody tr')].find(tr=>tr.textContent.includes(name))
+const row=(root,name)=>[...root.querySelectorAll('.attendance-roster .ag-row')].find(tr=>tr.textContent.includes(name))
 
 test('the board shows the device reading with minutes, and approves only matching rows in one step',async()=>{
  calls.length=0
@@ -39,7 +39,7 @@ test('the board shows the device reading with minutes, and approves only matchin
  rows[1]={...rows[1],machine:{checkins:1,status:'',in_time:'2026-10-14 07:05:00',out_time:null,needs_review:1,reason:'Thiếu lượt chấm',late_minutes:0,early_minutes:0,after_minutes:0,suggested_overtime:0,clean:false}}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
  assert.equal(calls.find(c=>c.method==='lotus_farm.attendance_day.board').args.date,'2026-10-14')
- const first=[...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent)
+ const first=[...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent)
  assert.deepEqual(first,['Bình','An'],'a row needing review comes first')
  assert.match(row(view.root,'An').textContent,/06:12 → 14:50/)
  assert.match(row(view.root,'An').textContent,/Muộn 12′/)
@@ -83,10 +83,10 @@ test('status chips filter the roster and the month sheet shades days off',async(
  routes['lotus_farm.attendance_day.board'].rows[0]={...routes['lotus_farm.attendance_day.board'].rows[0],name:'ATT-1',status:'Present',docstatus:1}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
  const chip=label=>[...view.root.querySelectorAll('.tk-views button')].find(b=>b.textContent.startsWith(label))
- chip('Đã duyệt').click();await tick()
- assert.deepEqual([...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent),['An'])
- chip('Chưa chấm').click();await tick()
- assert.deepEqual([...view.root.querySelectorAll('.attendance-roster tbody tr strong')].map(n=>n.textContent),['Bình'])
+ chip('Đã duyệt').click();await tick();await tick();await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent),['An'])
+ chip('Chưa chấm').click();await tick();await tick();await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent),['Bình'])
  ;[...view.root.querySelectorAll('[role=tab]')].find(b=>b.textContent==='Bảng công tháng').click();await tick();await tick()
  const head=day=>view.root.querySelector('.tk-sheet .ag-header-cell[col-id="day_'+day+'"]')
  assert.ok(head(4).classList.contains('is-off'),'4/10 is a weekly off day')

@@ -53,10 +53,10 @@ test('receipts of one supplier become one invoice; mixing suppliers is not allow
  calls.length=0
  routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'payments.make_goods_invoice']:{invoice:'PINV-1',amount:1500000}}
  const view=await open('/tai-chinh?tab=pending')
- const rows=[...view.root.querySelectorAll('.fin-table tbody tr')]
- rows[0].click();rows[1].click();await tick()
+ const pick=async name=>{const box=view.root.querySelector('.ag-row[row-id="'+name+'"] input[aria-label="Chọn '+name+'"]');box.checked=!box.checked;box.dispatchEvent(new window.Event('change'));for(let i=0;i<3;i++)await tick()}
+ await pick('PR-1');await pick('PR-2')
  assert.ok(button(view.root,'Lập hóa đơn (2)').disabled,'two suppliers cannot share one invoice')
- rows[1].click();await tick()
+ await pick('PR-2')
  const make=button(view.root,'Lập hóa đơn (1)');assert.ok(!make.disabled);make.click();await tick()
  const modal=document.body.querySelector('.land-form')
  const input=modal.querySelector('input');input.value='HD-001';input.dispatchEvent(new window.Event('input'));await tick()
@@ -101,6 +101,6 @@ test('cost report by lot lists materials, labour and services',async()=>{
    totals:{materials:300000,labour:2000000,crews:500000,services:100000,total:2900000}}}
  const view=await open('/tai-chinh?tab=reports')
  button(view.root,'Chi phí theo vườn / lô').click();for(let i=0;i<4;i++)await tick()
- assert.match(text(view.root),/A-1\s*LOTUS-222\s*300\.000\s*2\.000\.000\s*500\.000\s*100\.000\s*2\.900\.000\s*1\.000\.000/)
+ assert.match(text(view.root),/A-1 · LOTUS-222\s*300\.000\s*2\.000\.000\s*500\.000\s*100\.000\s*2\.900\.000\s*1\.000\.000/)
  view.unmount()
 })

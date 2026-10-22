@@ -63,6 +63,20 @@ const missingCount=computed(()=>overview.value.employees.filter(e=>e.lotus_onboa
 const designationCount=computed(()=>{const all=Object.values(catalog.value.designation_groups||{}).flat();return {all:all.length,done:all.filter(n=>catalog.value.designations.some(d=>d.name===n)).length}})
 const today=computed(()=>session.value?.today||'')
 const contractDue=e=>e.contract_end_date&&e.contract_end_date<=today.value
+const candidateColumns=[
+ {field:'applicant_name',headerName:'Ứng viên',minWidth:180,valueGetter:p=>p.data.applicant_name+' · '+formatDate(p.data.applied_on)},
+ {field:'phone',headerName:'Liên hệ',minWidth:135},
+ {field:'designation',headerName:'Chức danh',valueGetter:p=>hrCatalogLabel(p.data.designation),minWidth:155},
+ {field:'farm',headerName:'Vườn',minWidth:125},
+ {field:'source',headerName:'Nguồn',minWidth:125},
+ {field:'status',headerName:'Trạng thái',valueGetter:p=>stages[p.data.status]||p.data.status,minWidth:150},
+ {field:'candidate_action',headerName:'Thao tác',valueGetter:p=>isManager.value&&p.data.status==='Offered'&&!p.data.employee?'Tiếp nhận':'Xử lý',minWidth:115,sortable:false}
+]
+function candidateCellAction(event){
+ if(event.colDef?.field!=='candidate_action'||!event.data)return
+ if(isManager.value&&event.data.status==='Offered'&&!event.data.employee)startHire(event.data)
+ else openCandidate(event.data)
+}
 const employeeColumns=computed(()=>[
  {field:'name',headerName:'Mã',minWidth:160},
  {field:'employee_name',headerName:'Họ tên',minWidth:200,flex:1.5},
@@ -209,9 +223,8 @@ useNoticeToast(notice)
   </template>
 
   <template v-if="tab==='candidates'">
-   <section class="stock-panel hr-table workspace-record-list" aria-label="Ứng viên"><table><colgroup><col><col><col><col><col><col class="workspace-col-status"><col class="workspace-col-actions"></colgroup>
-    <thead><tr><th>Ứng viên</th><th>Liên hệ</th><th>Chức danh</th><th>Vườn</th><th>Nguồn</th><th>Trạng thái</th><th></th></tr></thead>
-    <tbody><tr v-for="c in filteredCandidates" :key="c.name"><td><strong>{{c.applicant_name}}</strong><small>{{formatDate(c.applied_on)}}</small></td><td>{{c.phone}}</td><td>{{hrCatalogLabel(c.designation)}}</td><td>{{c.farm||'—'}}</td><td>{{c.source||'—'}}</td><td><span class="tk-pill" :class="stageTone[c.status]">{{stages[c.status]}}</span></td><td><UiButton variant="outline" size="sm" @click="openCandidate(c)">Xử lý</UiButton><UiButton v-if="isManager&&c.status==='Offered'&&!c.employee" size="sm" @click="startHire(c)">Tiếp nhận</UiButton></td></tr></tbody></table>
+   <section class="stock-panel hr-table workspace-record-list" aria-label="Ứng viên"><DataTable :rows="filteredCandidates" :columns="candidateColumns" row-key="name" storage-key="hr-candidates" @cell-open="candidateCellAction" />
+     <div v-if="isManager&&filteredCandidates.some(c=>c.status==='Offered'&&!c.employee)" class="hr-candidate-ready"><div v-for="c in filteredCandidates.filter(c=>c.status==='Offered'&&!c.employee)" :key="c.name" class="hr-ops-actions"><strong>{{c.applicant_name}}</strong><UiButton size="sm" @click="startHire(c)">Tiếp nhận</UiButton></div></div>
     <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
   </template>
 

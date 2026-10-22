@@ -1,9 +1,25 @@
 <script setup>
 import {computed,defineAsyncComponent,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
+import DataTable from './DataTable.vue'
 import {Button as UiButton} from './ui/button'
 const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
 const ZonePlantingSchedule=defineAsyncComponent(()=>import('./ZonePlantingSchedule.vue'))
+const forecastColumns=[
+ {field:'block_code',headerName:'Lô',valueGetter:p=>p.data.block_code+(p.data.synthetic_count?' · Cây giả lập':'')+(p.data.synthetic_stage?' · Mốc giả lập':'')},
+ {field:'cycle_no',headerName:'Vụ'},
+ {field:'flowering_month',headerName:'Tháng trổ'},
+ {field:'flowering_share_percent',headerName:'Tỷ lệ trổ',valueGetter:p=>p.data.flowering_share_percent==null?'—':p.data.flowering_share_percent+'%'},
+ {field:'flowering_bunches',headerName:'Buồng trổ',valueGetter:p=>p.data.flowering_bunches==null?'—':integer(p.data.flowering_bunches)},
+ {field:'source_label',headerName:'Nguồn',valueGetter:p=>p.data.source_label+(p.data.cycle_no>1?' · Từ '+stageName(p.data.anchor_stage):'')},
+ {field:'source_date',headerName:'Ngày mốc',valueGetter:p=>dm(p.data.source_date)},
+ {field:'cut_date',headerName:'Cắt bắp dự kiến',valueGetter:p=>dm(p.data.cut_date)},
+ {field:'harvest_earliest_date',headerName:'Khoảng ngày thu',valueGetter:p=>p.data.harvest_earliest_date?dm(p.data.harvest_earliest_date)+' – '+dm(p.data.harvest_latest_date):'—'},
+ {field:'expected_date',headerName:'Thu cơ sở',valueGetter:p=>dm(p.data.expected_date)},
+ {field:'bunches',headerName:'Buồng thu',valueGetter:p=>integer(p.data.bunches)},
+ {field:'gross_kg',headerName:'Tấn buồng thô',valueGetter:p=>ton(p.data.gross_kg)},
+ {field:'packed_kg',headerName:'Tấn thành phẩm',valueGetter:p=>ton(p.data.packed_kg)}
+]
 const props=defineProps({farm:{type:String,default:''},block:{type:String,default:''}})
 const area=ref('ALL'),scenario=ref('base'),year=ref('2027'),mode=ref('trial')
 const trialBlock=ref(''),trialStage=ref('sucker'),trialDate=ref('2026-11-15'),trialQty=ref('')
@@ -135,19 +151,7 @@ function clearTrial(){appliedTrial.value=null;load()}
   <DesktopForecastChart v-if="yearMonths.some(m=>Number(m.gross_kg)>0)" :months="yearMonths"/>
   <p v-else class="vip126-timeline__info">Chưa có dự thu trong năm/khu này.</p>
   <div class="vip126-timeline__scroll">
-   <table>
-    <thead><tr><th>Lô</th><th>Vụ</th><th>Tháng trổ</th><th>Tỷ lệ trổ</th><th>Buồng trổ</th><th>Nguồn</th><th>Ngày mốc</th><th>Cắt bắp dự kiến</th><th>Khoảng ngày thu</th><th>Thu cơ sở</th><th>Buồng thu</th><th>Tấn buồng thô *</th><th>Tấn thành phẩm **</th></tr></thead>
-    <tbody>
-     <tr v-for="(r,i) in yearRows" :key="r.block+'-'+r.cycle_no+'-'+i">
-      <td><strong>{{r.block_code}}</strong><small v-if="r.synthetic_count">Cây giả lập</small><small v-if="r.synthetic_stage">Mốc giả lập</small></td>
-      <td>{{r.cycle_no}}</td><td>{{r.flowering_month||'—'}}</td><td>{{r.flowering_share_percent==null?'—':r.flowering_share_percent+'%'}}</td><td>{{r.flowering_bunches==null?'—':integer(r.flowering_bunches)}}</td>
-      <td>{{r.source_label}}<small v-if="r.cycle_no>1">Từ {{stageName(r.anchor_stage)}}</small></td>
-      <td>{{dm(r.source_date)}}</td><td>{{dm(r.cut_date)}}</td><td>{{r.harvest_earliest_date?dm(r.harvest_earliest_date)+' – '+dm(r.harvest_latest_date):'—'}}</td><td>{{dm(r.expected_date)}}</td>
-      <td>{{integer(r.bunches)}}</td><td>{{ton(r.gross_kg)}}</td><td>{{ton(r.packed_kg)}}</td>
-     </tr>
-     <tr v-if="!yearRows.length"><td colspan="13">Chưa có lịch trong năm này.</td></tr>
-    </tbody>
-   </table>
+   <DataTable :rows="yearRows" :columns="forecastColumns" storage-key="vip126-forecast" empty="Chưa có lịch trong năm này." />
   </div>
   <details v-if="forecast.issues?.length" class="vip126-timeline__issues"><summary>Các lô cần đối chiếu ({{forecast.issues.length}})</summary>
    <p v-for="(item,i) in forecast.issues" :key="i"><b>{{item.block_code}}:</b> {{item.reason}}</p>

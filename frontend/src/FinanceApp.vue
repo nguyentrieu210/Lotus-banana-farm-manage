@@ -9,6 +9,7 @@ import LotusChart from './components/LotusChart.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import SignerPicker from './components/SignerPicker.vue'
+import DataTable from './components/DataTable.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
@@ -139,6 +140,7 @@ async function closeMonth(m){if(!await ask('Khóa sổ tháng '+m.slice(5)+'/'+m
  await run(async()=>{await call(F+'posting.close_month',{month:m},true);settings.value=await call(F+'api.settings');notice.value='Đã khóa sổ tháng '+m.slice(5)+'/'+m.slice(0,4)+'.'})}
 async function reopenMonth(m){const reason=window.prompt('Lý do mở lại kỳ '+m+' (bắt buộc):');if(!reason)return
  await run(async()=>{await call(F+'posting.reopen_month',{month:m,reason},true);settings.value=await call(F+'api.settings');notice.value='Đã mở lại kỳ.'})}
+function openWarehouse(name){location.href='/warehouse?doc='+encodeURIComponent(name)+'&doctype=Stock%20Entry'}
 function downloadOpening(){location.href='/api/method/lotus_farm.finance.api.opening_template'}
 async function readOpening(event){const file=event.target.files?.[0];if(!file)return;saving.value=true
  try{const content=await new Promise((ok,fail)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=fail;r.readAsDataURL(file)});openingPreview.value=await call(F+'api.opening_preview',{content},true)}
@@ -147,6 +149,53 @@ async function commitOpening(){saving.value=true
  try{const r=await call(F+'api.opening_commit',{token:openingPreview.value.token},true);notice.value='Đã ghi số dư đầu kỳ '+r.voucher+' ('+vnd(r.amount)+').';openingPreview.value=null}
  catch(e){error.value=e.message}finally{saving.value=false}}
 
+// Grid columns (shared DataTable). Money columns show whole đồng; action cells stop the row click.
+const money=p=>p.value?num(p.value):''
+const dateCol=(field,headerName)=>({field,headerName,minWidth:110,valueFormatter:p=>vnDate(p.value)})
+const moneyCol=(field,headerName,extra={})=>({field,headerName,minWidth:130,type:'numericColumn',valueFormatter:p=>p.node?.rowPinned?num(p.value):money(p),...extra})
+function cellButton(label,fn,show=()=>true){return params=>{if(!params.data||params.node?.rowPinned||!show(params.data))return '';const b=document.createElement('button');b.type='button';b.className='fin-cell-action';b.textContent=label
+ b.addEventListener('click',e=>{e.stopPropagation();fn(params.data)});return b}}
+function pickCell(params){if(!params.data)return '';const input=document.createElement('input');input.type='checkbox';input.checked=picked.value.has(params.data.name);input.setAttribute('aria-label','Chọn '+params.data.name)
+ input.addEventListener('click',e=>e.stopPropagation());input.addEventListener('change',e=>{e.stopPropagation();togglePick(params.data.name)});return input}
+const receiptColumns=computed(()=>[...(overview.value?.can_post?[{field:'__pick',headerName:'Chọn',minWidth:70,maxWidth:80,sortable:false,hideOnMobile:true,cellRenderer:pickCell}]:[]),
+ {field:'name',headerName:'Phiếu nhận',minWidth:170},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200,valueGetter:p=>p.data.supplier_name||p.data.supplier},dateCol('posting_date','Ngày'),moneyCol('to_bill','Chưa lập hóa đơn')])
+const receiptRows=computed(()=>(pendingData.value?.receipts||[]).map(r=>({...r,__pick:picked.value.has(r.name)})))
+const payrollPendingColumns=[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},{field:'name',headerName:'Kỳ công',minWidth:200},
+ {field:'closed_at',headerName:'Đóng lúc',minWidth:120,valueFormatter:p=>vnDate(String(p.value||'').slice(0,10))},{field:'__view',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Xem trước bút toán',r=>previewPayroll(r.name))}]
+const issueColumns=[{field:'name',headerName:'Phiếu xuất',minWidth:170},dateCol('posting_date','Ngày'),{field:'reason',headerName:'Lý do',minWidth:320,flex:3},moneyCol('amount','Giá trị')]
+const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
+ {field:'lotus_farm_block',headerName:'Vườn / lô',minWidth:130,valueGetter:p=>[p.data.lotus_farm,dimLabel('lotus_farm_block',p.data.lotus_farm_block)].filter(Boolean).join(' / ')},
+ {field:'remarks',headerName:'Diễn giải',minWidth:180,valueGetter:p=>String(p.data.remarks||p.data.note||'').split('\n')[0]}]
+const supplierColumns=computed(()=>[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:220,flex:2},moneyCol('invoiced','Đã nhận hóa đơn'),moneyCol('paid','Đã trả'),moneyCol('owed','Còn nợ'),moneyCol('overdue','Quá hạn'),
+ {field:'open_invoices',headerName:'Hóa đơn còn nợ',minWidth:110},...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:140,sortable:false,cellRenderer:cellButton('Lập phiếu chi',r=>openPay(r.supplier),r=>r.open_invoices>0)}]:[])])
+const invoiceColumns=[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200},{field:'bill_no',headerName:'Số hóa đơn',minWidth:130,valueGetter:p=>p.data.bill_no||p.data.name},dateCol('bill_date','Ngày'),dateCol('due_date','Hạn trả'),
+ moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn nợ'),moneyCol('paying','Đang chờ chi'),{field:'aging',headerName:'Tuổi nợ',minWidth:150,cellClass:p=>p.value&&p.value!=='Trong hạn'?'fin-cell-bad':''}]
+const salaryReadyColumns=computed(()=>[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},moneyCol('net','Thực nhận'),{field:'payroll_voucher',headerName:'Bút toán lương',minWidth:170},
+ ...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Lập phiếu chi lương',openSalary)}]:[])])
+const voucherColumns=computed(()=>[{field:'name',headerName:'Phiếu',minWidth:170},{field:'kind',headerName:'Loại',minWidth:140},{field:'party_name',headerName:'Đối tượng',minWidth:180},dateCol('posting_date','Ngày'),moneyCol('amount','Số tiền'),
+ {field:'state',headerName:'Trạng thái',minWidth:110,cellClass:p=>p.value==='Chờ ký'?'fin-cell-warn':''},
+ {field:'signers',headerName:'Người ký',minWidth:260,flex:2,valueGetter:p=>(p.data.signing?.steps||[]).map(x=>x.title+': '+(x.name||'—')+' ('+(x.state||'—')+')').join(' · ')},
+ {field:'__drop',headerName:'',minWidth:90,sortable:false,cellRenderer:cellButton('Hủy',dropDraft,v=>v.state==='Chờ ký'&&overview.value?.can_post)},
+ {field:'__reverse',headerName:'',minWidth:90,sortable:false,cellRenderer:cellButton('Đảo',v=>reverse(v.posting,v.name),v=>v.state==='Đã chi'&&overview.value?.is_chief)}])
+const tbColumns=[{field:'number',headerName:'Số TK',minWidth:90},{field:'name',headerName:'Tên tài khoản',minWidth:240,flex:2},moneyCol('opening_debit','Dư Nợ đầu kỳ'),moneyCol('opening_credit','Dư Có đầu kỳ'),
+ moneyCol('debit','Phát sinh Nợ'),moneyCol('credit','Phát sinh Có'),moneyCol('closing_debit','Dư Nợ cuối kỳ'),moneyCol('closing_credit','Dư Có cuối kỳ')]
+const tbTotals=computed(()=>reportData.value?.totals&&report.value==='trial_balance'?[{account:'__total',number:'',name:'Tổng cộng',...reportData.value.totals}]:[])
+const ledgerColumns=[dateCol('posting_date','Ngày'),{field:'voucher_no',headerName:'Chứng từ',minWidth:170},{field:'party',headerName:'Đối tượng',minWidth:120},
+ {field:'remarks',headerName:'Diễn giải',minWidth:200,flex:2,valueGetter:p=>String(p.data.remarks||'').split('\n')[0]},moneyCol('debit','Nợ'),moneyCol('credit','Có'),moneyCol('balance','Số dư',{valueFormatter:p=>num(p.value)})]
+const ledgerRows=computed(()=>(reportData.value?.lines||[]).map((l,i)=>({...l,__key:i})))
+const groupLabel=computed(()=>({lotus_farm:'Vườn',lotus_farm_block:'Lô',lotus_crop_cycle:'Vụ',lotus_work_type:'Công việc'})[groupBy.value])
+const costColumns=computed(()=>[{field:'label',headerName:groupLabel.value,minWidth:180,flex:2,valueGetter:p=>p.data.label+(groupBy.value!=='lotus_farm'&&p.data.farm&&!p.node?.rowPinned?' · '+p.data.farm:'')},
+ moneyCol('materials','Vật tư'),moneyCol('labour','Nhân công'),moneyCol('crews','Khoán'),moneyCol('services','Dịch vụ'),moneyCol('total','Tổng'),...(groupBy.value==='lotus_farm_block'?[moneyCol('per_ha','Chi phí / ha')]:[])])
+const costRows=computed(()=>(report.value==='costs'&&reportData.value?.rows||[]).map((r,i)=>({...r,__key:(r.dim||'-')+'|'+(r.farm||'')+'|'+i})))
+const costTotals=computed(()=>report.value==='costs'&&reportData.value?.totals?[{__key:'__total',label:'Tổng',...reportData.value.totals}]:[])
+const reconColumns=[{field:'label',headerName:'Nội dung',minWidth:320,flex:3},moneyCol('ledger','Sổ kế toán',{valueFormatter:p=>num(p.value)}),moneyCol('source','Nghiệp vụ',{valueFormatter:p=>num(p.value)}),
+ {field:'difference',headerName:'Chênh lệch',minWidth:120,valueFormatter:p=>p.data.ok?'Khớp':num(p.value),cellClass:p=>p.data?.ok?'fin-cell-ok':'fin-cell-bad'}]
+const transferColumns=[{field:'old',headerName:'Tài khoản cũ',minWidth:220,flex:2},{field:'new',headerName:'Chuyển sang',minWidth:240,flex:2},moneyCol('balance','Số dư',{valueFormatter:p=>num(p.value)})]
+const openingColumns=[{field:'line',headerName:'Dòng',minWidth:70},{field:'number',headerName:'TK',minWidth:90},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},moneyCol('debit','Dư Nợ'),moneyCol('credit','Dư Có'),
+ {field:'errors',headerName:'Lỗi',minWidth:260,flex:2,valueGetter:p=>(p.data.errors||[]).join('; '),cellClass:p=>p.value?'fin-cell-bad':''}]
+const payrollLineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'lotus_farm',headerName:'Vườn',minWidth:110},
+ {field:'lotus_farm_block',headerName:'Lô',minWidth:90,valueGetter:p=>dimLabel('lotus_farm_block',p.data.lotus_farm_block)},{field:'lotus_work_type',headerName:'Công việc',minWidth:120},{field:'note',headerName:'Diễn giải',minWidth:140}]
+const keyed=list=>(list||[]).map((r,i)=>({...r,__key:i}))
 const tiles=computed(()=>overview.value?.tiles||{})
 const costChart=computed(()=>(report.value==='costs'&&reportData.value?.rows||[]).slice(0,12))
 watch(()=>route.query.tab,load)
@@ -200,43 +249,30 @@ useNoticeToast(notice)
  <template v-else-if="tab==='pending'&&pendingData">
   <section class="land-card">
    <div class="land-card__head"><h3>Phiếu nhận hàng chưa có hóa đơn</h3><UiButton v-if="overview?.can_post" :disabled="!picked.size||pickedSupplier.length!==1" :title="pickedSupplier.length>1?'Chọn phiếu của cùng một nhà cung cấp':''" @click="invoice={bill_no:'',bill_date:today,due_date:''};invoiceOpen=true">Lập hóa đơn ({{picked.size}})</UiButton></div>
-   <div class="land-table fin-table"><table><thead><tr><th class="land-check"></th><th>Phiếu nhận</th><th>Nhà cung cấp</th><th>Ngày</th><th class="num">Chưa lập hóa đơn</th></tr></thead>
-    <tbody><tr v-for="r in pendingData.receipts" :key="r.name" @click="togglePick(r.name)"><td class="land-check" @click.stop><input type="checkbox" :checked="picked.has(r.name)" :aria-label="'Chọn '+r.name" @change="togglePick(r.name)"></td>
-     <td><b>{{r.name}}</b></td><td>{{r.supplier_name||r.supplier}}</td><td>{{vnDate(r.posting_date)}}</td><td class="num">{{vnd(r.to_bill)}}</td></tr></tbody></table>
-    <p v-if="!pendingData.receipts.length" class="land-empty">Mọi phiếu nhận hàng đã có hóa đơn.</p></div>
+   <div class="land-table fin-table"><DataTable :rows="receiptRows" :columns="receiptColumns" row-key="name" storage-key="fin-receipts" interactive empty="Mọi phiếu nhận hàng đã có hóa đơn." @open="r=>togglePick(r.name)"/></div>
   </section>
   <section class="land-card"><h3>Bảng lương đã ký, chưa ghi sổ</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Tháng</th><th>Kỳ công</th><th>Đóng lúc</th><th></th></tr></thead>
-    <tbody><tr v-for="p in pendingData.payroll" :key="p.name"><td><b>{{p.month.slice(5)}}/{{p.month.slice(0,4)}}</b></td><td>{{p.name}}</td><td>{{vnDate(p.closed_at.slice(0,10))}}</td><td class="land-row-actions"><UiButton size="sm" variant="outline" @click="previewPayroll(p.name)">Xem trước bút toán</UiButton></td></tr></tbody></table>
-    <p v-if="!pendingData.payroll.length" class="land-empty">Không có bảng lương chờ ghi sổ.</p></div>
+   <div class="land-table fin-table"><DataTable :rows="pendingData.payroll" :columns="payrollPendingColumns" row-key="name" storage-key="fin-payroll-pending" interactive empty="Không có bảng lương chờ ghi sổ." @open="r=>previewPayroll(r.name)"/></div>
   </section>
   <section class="land-card"><h3>Xuất kho chưa gắn lô</h3><p class="land-note">Chi phí của các dòng này chưa vào lô nào. Sửa ô "Khu vực / lô sử dụng" thành mã lô trong danh sách khi lập phiếu.</p>
-   <div class="land-table fin-table"><table><thead><tr><th>Phiếu</th><th>Ngày</th><th>Lý do</th><th class="num">Giá trị</th></tr></thead>
-    <tbody><tr v-for="r in pendingData.issues" :key="r.name+r.idx"><td><a :href="'/warehouse?doc='+encodeURIComponent(r.name)+'&doctype=Stock%20Entry'">{{r.name}}</a></td><td>{{vnDate(r.posting_date)}}</td><td>{{r.reason}}</td><td class="num">{{vnd(r.amount)}}</td></tr></tbody></table>
-    <p v-if="!pendingData.issues.length" class="land-empty">Mọi dòng xuất kho đã gắn lô.</p></div>
+   <div class="land-table fin-table"><DataTable :rows="keyed(pendingData.issues)" :columns="issueColumns" row-key="__key" storage-key="fin-issues" interactive empty="Mọi dòng xuất kho đã gắn lô." @open="r=>openWarehouse(r.name)"/></div>
   </section>
  </template>
 
  <section v-else-if="tab==='journal'" class="land-card">
   <div class="land-filters"><label>Từ<UiInput v-model="range.from" type="date"/></label><label>Đến<UiInput v-model="range.to" type="date"/></label><UiButton variant="outline" @click="load">Xem</UiButton><span class="land-spacer"></span><span class="land-count">{{journalRows.length}} chứng từ</span></div>
   <details v-for="v in journalRows" :key="v.voucher_no" class="fin-entry"><summary><span>{{vnDate(v.posting_date)}}</span><b>{{v.voucher_no}}</b><span>{{v.source.purpose?v.source.doctype+' '+v.source.name:v.voucher_type}}</span><strong>{{vnd(v.amount)}}</strong></summary>
-   <table class="land-mini"><thead><tr><th>Tài khoản</th><th class="num">Nợ</th><th class="num">Có</th><th>Đối tượng</th><th>Vườn / lô</th><th>Diễn giải</th></tr></thead>
-    <tbody><tr v-for="(l,i) in v.lines" :key="i"><td>{{l.account}}</td><td class="num">{{l.debit?vnd(l.debit):''}}</td><td class="num">{{l.credit?vnd(l.credit):''}}</td><td>{{l.party||''}}</td><td>{{[l.lotus_farm,dimLabel('lotus_farm_block',l.lotus_farm_block)].filter(Boolean).join(' / ')}}</td><td><small>{{(l.remarks||'').split('\n')[0]}}</small></td></tr></tbody></table></details>
+   <DataTable :rows="keyed(v.lines)" :columns="lineColumns" row-key="__key" storage-key="fin-journal-lines"/></details>
   <p v-if="!journalRows.length&&!busy" class="land-empty">Không có chứng từ trong khoảng ngày này.</p>
  </section>
 
  <template v-else-if="tab==='payables'&&payData">
   <div class="land-filters"><span class="land-count">Sổ cái 331: {{vnd(payData.gl_total)}}</span><span class="land-spacer"></span><UiButton variant="outline" @click="exportReport('payables')"><LotusIcon name="download"/>Xuất Excel</UiButton><UiButton v-if="overview?.can_post" variant="outline" @click="openService">Hóa đơn dịch vụ / chi phí</UiButton></div>
   <section class="land-card"><h3>Theo nhà cung cấp</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Nhà cung cấp</th><th class="num">Đã nhận hóa đơn</th><th class="num">Đã trả</th><th class="num">Còn nợ</th><th class="num">Quá hạn</th><th></th></tr></thead>
-    <tbody><tr v-for="s in payData.suppliers" :key="s.supplier"><td><b>{{s.supplier_name}}</b><small>{{s.open_invoices}} hóa đơn còn nợ</small></td><td class="num">{{vnd(s.invoiced)}}</td><td class="num">{{vnd(s.paid)}}</td><td class="num"><b>{{vnd(s.owed)}}</b></td><td class="num" :class="{'land-bad':s.overdue}">{{s.overdue?vnd(s.overdue):'—'}}</td>
-     <td class="land-row-actions"><UiButton v-if="overview?.can_post&&s.open_invoices" size="sm" variant="outline" @click="openPay(s.supplier)">Lập phiếu chi</UiButton></td></tr></tbody></table>
-    <p v-if="!payData.suppliers.length" class="land-empty">Chưa có công nợ nhà cung cấp.</p></div>
+   <div class="land-table fin-table"><DataTable :rows="payData.suppliers" :columns="supplierColumns" row-key="supplier" storage-key="fin-suppliers" empty="Chưa có công nợ nhà cung cấp."/></div>
   </section>
   <section class="land-card"><h3>Hóa đơn còn nợ</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Nhà cung cấp</th><th>Số hóa đơn</th><th>Ngày</th><th>Hạn trả</th><th class="num">Tổng tiền</th><th class="num">Còn nợ</th><th>Tuổi nợ</th></tr></thead>
-    <tbody><tr v-for="i in payData.invoices" :key="i.name"><td>{{i.supplier_name}}</td><td><b>{{i.bill_no||i.name}}</b><small>{{i.name}}</small></td><td>{{vnDate(i.bill_date)}}</td><td>{{vnDate(i.due_date)}}</td><td class="num">{{vnd(i.grand_total)}}</td>
-     <td class="num"><b>{{vnd(i.outstanding_amount)}}</b><small v-if="i.paying">đang chờ chi {{vnd(i.paying)}}</small></td><td :class="{'land-bad':i.aging!=='Trong hạn'}">{{i.aging}}</td></tr></tbody></table></div>
+   <div class="land-table fin-table"><DataTable :rows="payData.invoices" :columns="invoiceColumns" row-key="name" storage-key="fin-open-invoices" empty="Không có hóa đơn còn nợ."/></div>
   </section>
  </template>
 
@@ -246,15 +282,10 @@ useNoticeToast(notice)
     <div class="land-actions"><UiButton v-if="v.signing.can_return" variant="outline" :disabled="saving" @click="returnOpen=v">Trả lại</UiButton><UiButton v-if="v.signing.can_sign" :disabled="saving" @click="sign(v)">Ký</UiButton></div></article>
   </section>
   <section v-if="cash.salary_ready.length" class="land-card"><h3>Lương đã ghi sổ, chưa chi</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Tháng</th><th class="num">Thực nhận</th><th>Bút toán lương</th><th></th></tr></thead>
-    <tbody><tr v-for="s in cash.salary_ready" :key="s.period"><td><b>{{s.month.slice(5)}}/{{s.month.slice(0,4)}}</b></td><td class="num">{{vnd(s.net)}}</td><td>{{s.payroll_voucher}}</td><td class="land-row-actions"><UiButton v-if="overview?.can_post" size="sm" variant="outline" @click="openSalary(s)">Lập phiếu chi lương</UiButton></td></tr></tbody></table></div>
+   <div class="land-table fin-table"><DataTable :rows="cash.salary_ready" :columns="salaryReadyColumns" row-key="period" storage-key="fin-salary-ready"/></div>
   </section>
   <section class="land-card"><h3>Phiếu chi</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Phiếu</th><th>Loại</th><th>Đối tượng</th><th>Ngày</th><th class="num">Số tiền</th><th>Trạng thái</th><th>Người ký</th><th></th></tr></thead>
-    <tbody><tr v-for="v in cash.vouchers" :key="v.name"><td><b>{{v.name}}</b><small>{{v.reference}}</small></td><td>{{v.kind}}</td><td>{{v.party_name||''}}</td><td>{{vnDate(v.posting_date)}}</td><td class="num">{{vnd(v.amount)}}</td>
-     <td :class="{'land-warn':v.state==='Chờ ký'}">{{v.state}}</td><td><small v-for="s in v.signing?.steps||[]" :key="s.key" :class="s.state==='Đã ký'?'fin-ok':''">{{s.title}}: {{s.name||'—'}} ({{s.state||'—'}})<br></small></td>
-     <td class="land-row-actions"><UiButton v-if="v.state==='Chờ ký'&&overview?.can_post" size="sm" variant="ghost" @click="dropDraft(v)">Hủy</UiButton><UiButton v-if="v.state==='Đã chi'&&overview?.is_chief" size="sm" variant="ghost" @click="reverse(v.posting,v.name)">Đảo</UiButton></td></tr></tbody></table>
-    <p v-if="!cash.vouchers.length" class="land-empty">Chưa có phiếu chi nào lập từ Lotus.</p></div>
+   <div class="land-table fin-table"><DataTable :rows="cash.vouchers" :columns="voucherColumns" row-key="name" storage-key="fin-vouchers" empty="Chưa có phiếu chi nào lập từ Lotus."/></div>
   </section>
  </template>
 
@@ -269,27 +300,21 @@ useNoticeToast(notice)
   </div>
   <section v-if="report==='trial_balance'&&reportData?.rows" class="land-card">
    <div class="land-card__head"><h3>Bảng cân đối phát sinh {{vnDate(reportData.from_date)}} – {{vnDate(reportData.to_date)}}</h3><span :class="reportData.balanced?'fin-ok':'land-bad'">{{reportData.balanced?'Cân Nợ = Có':'Lệch Nợ / Có'}}</span></div>
-   <div class="land-table fin-table"><table><thead><tr><th>Số TK</th><th>Tên tài khoản</th><th class="num">Dư Nợ đầu kỳ</th><th class="num">Dư Có đầu kỳ</th><th class="num">Phát sinh Nợ</th><th class="num">Phát sinh Có</th><th class="num">Dư Nợ cuối kỳ</th><th class="num">Dư Có cuối kỳ</th></tr></thead>
-    <tbody><tr v-for="r in reportData.rows" :key="r.account" class="clickable" @click="ledgerAccount=r.account;report='ledger'"><td><b>{{r.number||'—'}}</b></td><td>{{r.name}}</td><td class="num">{{r.opening_debit?num(r.opening_debit):''}}</td><td class="num">{{r.opening_credit?num(r.opening_credit):''}}</td><td class="num">{{r.debit?num(r.debit):''}}</td><td class="num">{{r.credit?num(r.credit):''}}</td><td class="num">{{r.closing_debit?num(r.closing_debit):''}}</td><td class="num">{{r.closing_credit?num(r.closing_credit):''}}</td></tr></tbody>
-    <tfoot><tr><th></th><th>Tổng cộng</th><th v-for="k in ['opening_debit','opening_credit','debit','credit','closing_debit','closing_credit']" :key="k" class="num">{{num(reportData.totals[k])}}</th></tr></tfoot></table></div>
+   <div class="land-table fin-table"><DataTable :rows="reportData.rows" :columns="tbColumns" :pinned-bottom-rows="tbTotals" row-key="account" storage-key="fin-trial-balance" interactive empty="Không có phát sinh trong kỳ." @open="r=>{ledgerAccount=r.account;report='ledger'}"/></div>
+   <p class="land-note">Bấm một tài khoản để xem sổ chi tiết.</p>
   </section>
   <section v-else-if="report==='ledger'" class="land-card">
    <p v-if="!reportData" class="land-empty">Chọn một tài khoản để xem sổ chi tiết.</p>
    <template v-else><h3>{{reportData.account}}</h3><p class="land-note">Số dư đầu kỳ {{vnd(reportData.opening)}} · cuối kỳ {{vnd(reportData.closing)}}</p>
-    <div class="land-table fin-table"><table><thead><tr><th>Ngày</th><th>Chứng từ</th><th>Đối tượng</th><th>Diễn giải</th><th class="num">Nợ</th><th class="num">Có</th><th class="num">Số dư</th></tr></thead>
-     <tbody><tr v-for="(l,i) in reportData.lines" :key="i"><td>{{vnDate(l.posting_date)}}</td><td><b>{{l.voucher_no}}</b><small>{{l.voucher_type}}</small></td><td>{{l.party||''}}</td><td><small>{{(l.remarks||'').split('\n')[0]}}</small></td><td class="num">{{l.debit?num(l.debit):''}}</td><td class="num">{{l.credit?num(l.credit):''}}</td><td class="num">{{num(l.balance)}}</td></tr></tbody></table></div></template>
+    <div class="land-table fin-table"><DataTable :rows="ledgerRows" :columns="ledgerColumns" row-key="__key" storage-key="fin-ledger" empty="Không có phát sinh trong kỳ."/></div></template>
   </section>
   <template v-else-if="report==='costs'&&reportData?.rows">
    <LotusChart v-if="costChart.length" :title="'Chi phí sản xuất theo '+(groupBy==='lotus_farm'?'vườn':groupBy==='lotus_farm_block'?'lô':groupBy==='lotus_crop_cycle'?'vụ':'công việc')+' (10 lớn nhất)'" kind="hbar"
     :categories="costChart.map(r=>r.label)" :series="[{name:'Vật tư',data:costChart.map(r=>r.materials)},{name:'Nhân công',data:costChart.map(r=>Number(r.labour)+Number(r.crews))},{name:'Dịch vụ',data:costChart.map(r=>r.services)}]" unit="đ" :height="320"/>
-   <section class="land-card"><div class="land-table fin-table"><table><thead><tr><th>{{groupBy==='lotus_farm'?'Vườn':groupBy==='lotus_farm_block'?'Lô':groupBy==='lotus_crop_cycle'?'Vụ':'Công việc'}}</th><th class="num">Vật tư</th><th class="num">Nhân công</th><th class="num">Khoán</th><th class="num">Dịch vụ</th><th class="num">Tổng</th><th v-if="groupBy==='lotus_farm_block'" class="num">Chi phí / ha</th></tr></thead>
-    <tbody><tr v-for="r in reportData.rows" :key="(r.dim||'-')+r.farm"><td><b>{{r.label}}</b><small v-if="groupBy!=='lotus_farm'">{{r.farm||''}}</small></td><td class="num">{{num(r.materials)}}</td><td class="num">{{num(r.labour)}}</td><td class="num">{{num(r.crews)}}</td><td class="num">{{num(r.services)}}</td><td class="num"><b>{{num(r.total)}}</b></td><td v-if="groupBy==='lotus_farm_block'" class="num">{{r.per_ha?num(r.per_ha):'—'}}</td></tr></tbody>
-    <tfoot><tr><th>Tổng</th><th v-for="k in ['materials','labour','crews','services','total']" :key="k" class="num">{{num(reportData.totals[k])}}</th><th v-if="groupBy==='lotus_farm_block'"></th></tr></tfoot></table>
-    <p v-if="!reportData.rows.length" class="land-empty">Chưa có chi phí sản xuất trong khoảng ngày này.</p></div></section>
+   <section class="land-card"><div class="land-table fin-table"><DataTable :rows="costRows" :columns="costColumns" :pinned-bottom-rows="costTotals" row-key="__key" storage-key="fin-costs" empty="Chưa có chi phí sản xuất trong khoảng ngày này."/></div></section>
   </template>
   <section v-else-if="report==='reconciliation'&&reportData?.checks" class="land-card"><h3>Đối chiếu sổ kế toán với nghiệp vụ Lotus ({{vnDate(reportData.on_date)}})</h3>
-   <div class="land-table fin-table"><table><thead><tr><th>Nội dung</th><th class="num">Sổ kế toán</th><th class="num">Nghiệp vụ</th><th class="num">Chênh lệch</th></tr></thead>
-    <tbody><tr v-for="c in reportData.checks" :key="c.label"><td>{{c.label}}</td><td class="num">{{num(c.ledger)}}</td><td class="num">{{num(c.source)}}</td><td class="num" :class="c.ok?'fin-ok':'land-bad'">{{c.ok?'Khớp':num(c.difference)}}</td></tr></tbody></table></div>
+   <div class="land-table fin-table"><DataTable :rows="reportData.checks" :columns="reconColumns" row-key="label" storage-key="fin-reconciliation"/></div>
   </section>
  </template>
 
@@ -301,7 +326,7 @@ useNoticeToast(notice)
    <template v-if="coa">
     <p>{{coa.name}} — thêm <b>{{coa.add.length}}</b> tài khoản (đã có {{coa.existing}}).</p><p class="land-note">{{coa.note}}</p>
     <p v-for="e in coa.errors" :key="e" class="land-bad">{{e}}</p>
-    <div class="land-table land-preview"><table><thead><tr><th>Tài khoản cũ</th><th>Chuyển sang</th><th class="num">Số dư</th></tr></thead><tbody><tr v-for="t in coa.transfer" :key="t.old"><td>{{t.old}}</td><td>{{t.new}}</td><td class="num">{{num(t.balance)}}</td></tr></tbody></table></div>
+    <div class="land-table land-preview"><DataTable :rows="coa.transfer" :columns="transferColumns" row-key="old" storage-key="fin-coa-transfer" empty="Không có số dư cần chuyển."/></div>
     <p class="land-note">Kho: {{coa.warehouses.map(w=>w.warehouse).join(', ')}} → {{coa.warehouses[0]?.account}}</p>
     <div class="land-actions"><UiButton :disabled="saving||!!coa.errors.length||!settings.is_chief" @click="applyCoa">Áp dụng TT133</UiButton></div>
    </template>
@@ -323,8 +348,7 @@ useNoticeToast(notice)
    <p class="land-note">Tải file mẫu, điền số dư từng tài khoản tại ngày bắt đầu ghi sổ (công nợ 331 ghi theo từng nhà cung cấp), rồi tải lên để xem trước. Tổng Dư Nợ phải bằng tổng Dư Có.</p>
    <div class="land-actions fin-left"><UiButton variant="outline" @click="downloadOpening"><LotusIcon name="download"/>File mẫu</UiButton><label class="land-file">Tải file số dư<input type="file" accept=".xlsx" :disabled="saving" @change="readOpening"></label></div>
    <template v-if="openingPreview"><p>Dư Nợ {{vnd(openingPreview.debit)}} · Dư Có {{vnd(openingPreview.credit)}} · <span :class="openingPreview.balanced?'fin-ok':'land-bad'">{{openingPreview.balanced?'Cân':'Không cân'}}</span> · {{openingPreview.errors}} dòng lỗi · ngày {{vnDate(openingPreview.on_date)}}</p>
-    <div class="land-table land-preview"><table><thead><tr><th>Dòng</th><th>TK</th><th>Nhà cung cấp</th><th class="num">Dư Nợ</th><th class="num">Dư Có</th><th>Lỗi</th></tr></thead>
-     <tbody><tr v-for="r in openingPreview.rows" :key="r.line" :class="{bad:r.errors.length}"><td>{{r.line}}</td><td>{{r.number}}</td><td>{{r.supplier||''}}</td><td class="num">{{r.debit?num(r.debit):''}}</td><td class="num">{{r.credit?num(r.credit):''}}</td><td><div v-for="e in r.errors" :key="e" class="land-bad">{{e}}</div></td></tr></tbody></table></div>
+    <div class="land-table land-preview"><DataTable :rows="openingPreview.rows" :columns="openingColumns" row-key="line" storage-key="fin-opening"/></div>
     <div class="land-actions"><UiButton :disabled="saving||!openingPreview.balanced||openingPreview.errors>0||openingPreview.existing" :title="openingPreview.existing?'Đã có bút toán số dư đầu kỳ':''" @click="commitOpening">Ghi số dư đầu kỳ</UiButton></div></template>
   </section>
  </template>
@@ -341,16 +365,15 @@ useNoticeToast(notice)
    <p>Tháng {{payrollView.month}} · {{payrollView.people}} người · {{payrollView.crews}} đội khoán · ngày hạch toán {{vnDate(payrollView.posting_date)}}</p>
    <p class="land-note">Tổng lương {{vnd(payrollView.totals.gross)}} · bảo hiểm doanh nghiệp {{vnd(payrollView.totals.employer_insurance)}} · khoán {{vnd(payrollView.totals.crews)}} · thực nhận {{vnd(payrollView.totals.net)}}. {{payrollView.indirect.length}} người không có công ở lô nào được tính chi phí quản lý.</p>
    <p v-for="i in payrollView.issues" :key="i" class="land-bad">{{i}}</p>
-   <div class="land-table land-preview"><table><thead><tr><th>Tài khoản</th><th class="num">Nợ</th><th class="num">Có</th><th>Vườn</th><th>Lô</th><th>Công việc</th><th>Diễn giải</th></tr></thead>
-    <tbody><tr v-for="(l,i) in payrollView.lines" :key="i"><td>{{l.account}}</td><td class="num">{{l.debit?num(l.debit):''}}</td><td class="num">{{l.credit?num(l.credit):''}}</td><td>{{l.lotus_farm||''}}</td><td>{{dimLabel('lotus_farm_block',l.lotus_farm_block)}}</td><td>{{l.lotus_work_type||''}}</td><td><small>{{l.note}}</small></td></tr></tbody></table></div>
+   <div class="land-table land-preview"><DataTable :rows="keyed(payrollView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-payroll-lines"/></div>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="payrollView=null">Đóng</UiButton><UiButton v-if="overview?.can_post&&!payrollView.posted" :disabled="saving||!!payrollView.issues.length||!overview?.enabled" @click="postPayroll">Ghi sổ</UiButton></div>
   </div>
  </WorkspaceModal>
 
  <WorkspaceModal v-model="payOpen" title="Phiếu chi trả nhà cung cấp" :busy="saving" width="760px">
   <form class="land-form" @submit.prevent="preparePay">
-   <div class="land-table land-preview"><table><thead><tr><th>Hóa đơn</th><th>Hạn</th><th class="num">Còn nợ</th><th class="num">Trả lần này</th></tr></thead>
-    <tbody><tr v-for="i in supplierInvoices" :key="i.name"><td><b>{{i.bill_no||i.name}}</b></td><td>{{vnDate(i.due_date)}}</td><td class="num">{{vnd(i.outstanding_amount-(i.paying||0))}}</td><td class="num"><UiInput v-model="pay.allocations[i.name]" type="number" min="0" :aria-label="'Trả hóa đơn '+(i.bill_no||i.name)"/></td></tr></tbody></table></div>
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--head" aria-hidden="true"><span>Hóa đơn</span><span>Hạn</span><span class="num">Còn nợ</span><span class="num">Trả lần này</span></div>
+    <div v-for="i in supplierInvoices" :key="i.name" class="fin-form-row" role="listitem"><b>{{i.bill_no||i.name}}</b><span>{{vnDate(i.due_date)}}</span><span class="num">{{vnd(i.outstanding_amount-(i.paying||0))}}</span><UiInput v-model="pay.allocations[i.name]" type="number" min="0" :aria-label="'Trả hóa đơn '+(i.bill_no||i.name)"/></div></div>
    <p>Tổng chi: <b>{{vnd(payTotal)}}</b></p>
    <div class="land-form--grid"><label>Hình thức<UiSelect v-model="pay.mode"><option value="cash">Tiền mặt (phiếu chi)</option><option value="bank">Chuyển khoản (ủy nhiệm chi)</option></UiSelect></label><label>Ngày chi<UiInput v-model="pay.posting_date" type="date"/></label>
     <label v-if="pay.mode==='bank'" class="land-form__full">Số ủy nhiệm chi / giao dịch<UiInput v-model="pay.reference_no" required/></label></div>
@@ -370,12 +393,12 @@ useNoticeToast(notice)
   <form class="land-form" @submit.prevent="saveService">
    <div class="land-form--grid"><label>Nhà cung cấp<UiSelect v-model="service.supplier" required><option value="">Chọn…</option><option v-for="s in lookups?.suppliers||[]" :key="s.name" :value="s.name">{{s.supplier_name}}</option></UiSelect></label>
     <label>Số hóa đơn<UiInput v-model="service.bill_no" required/></label><label>Ngày hóa đơn<UiInput v-model="service.bill_date" type="date"/></label><label>Hạn thanh toán<UiInput v-model="service.due_date" type="date"/></label></div>
-   <div class="land-table land-preview"><table><thead><tr><th>Nội dung</th><th class="num">Số tiền</th><th>Loại chi phí</th><th>Vườn</th><th>Lô</th><th></th></tr></thead>
-    <tbody><tr v-for="(l,i) in service.lines" :key="i"><td><UiInput v-model="l.description" placeholder="VD: Thuê máy cày lô A1" :aria-label="'Nội dung dòng '+(i+1)"/></td><td><UiInput v-model="l.amount" type="number" min="0" :aria-label="'Số tiền dòng '+(i+1)"/></td>
-     <td><UiSelect v-model="l.cost" :aria-label="'Loại chi phí dòng '+(i+1)"><option value="production">Sản xuất (vào lô)</option><option value="admin">Quản lý</option></UiSelect></td>
-     <td><UiSelect v-model="l.lotus_farm" :aria-label="'Vườn dòng '+(i+1)"><option value="">—</option><option v-for="f in lookups?.farms||[]" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect></td>
-     <td><UiSelect v-model="l.lotus_farm_block" :aria-label="'Lô dòng '+(i+1)"><option value="">—</option><option v-for="b in blocksOf(l.lotus_farm)" :key="b.name" :value="b.name">{{b.block_code}}</option></UiSelect></td>
-     <td><UiButton type="button" size="sm" variant="ghost" :disabled="service.lines.length<2" @click="service.lines.splice(i,1)">Xóa</UiButton></td></tr></tbody></table></div>
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--service fin-form-row--head" aria-hidden="true"><span>Nội dung</span><span>Số tiền</span><span>Loại chi phí</span><span>Vườn</span><span>Lô</span><span></span></div>
+    <div v-for="(l,i) in service.lines" :key="i" class="fin-form-row fin-form-row--service" role="listitem"><UiInput v-model="l.description" placeholder="VD: Thuê máy cày lô A1" :aria-label="'Nội dung dòng '+(i+1)"/><UiInput v-model="l.amount" type="number" min="0" :aria-label="'Số tiền dòng '+(i+1)"/>
+     <UiSelect v-model="l.cost" :aria-label="'Loại chi phí dòng '+(i+1)"><option value="production">Sản xuất (vào lô)</option><option value="admin">Quản lý</option></UiSelect>
+     <UiSelect v-model="l.lotus_farm" :aria-label="'Vườn dòng '+(i+1)"><option value="">—</option><option v-for="f in lookups?.farms||[]" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect>
+     <UiSelect v-model="l.lotus_farm_block" :aria-label="'Lô dòng '+(i+1)"><option value="">—</option><option v-for="b in blocksOf(l.lotus_farm)" :key="b.name" :value="b.name">{{b.block_code}}</option></UiSelect>
+     <UiButton type="button" size="sm" variant="ghost" :disabled="service.lines.length<2" @click="service.lines.splice(i,1)">Xóa</UiButton></div></div>
    <div class="land-actions fin-left"><UiButton type="button" variant="outline" @click="service.lines.push(newServiceLine())">Thêm dòng</UiButton></div>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="serviceOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!service.supplier||!service.bill_no">Ghi hóa đơn</UiButton></div></form>
  </WorkspaceModal>

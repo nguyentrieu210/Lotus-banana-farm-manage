@@ -1,6 +1,7 @@
 <script setup>
 import {computed,nextTick,ref,watch} from 'vue'
 import WorkspaceModal from './WorkspaceModal.vue'
+import DataTable from './DataTable.vue'
 import {unitLabel} from '../units'
 import {dismissOnBackdrop} from '../dialogs'
 import SchemaForm from './SchemaForm.vue'
@@ -14,6 +15,45 @@ import {cleanFields} from '../domain'
 import {simulate,ANCHORS} from '../plan-norm-engine'
 import '../plan-norm-settings.css'
 
+const ruleColumns=[
+ {field:'rule_name',headerName:'Công việc',valueGetter:p=>(workNames[p.data.work_type]||p.data.rule_name)+' · bản '+p.data.version},
+ {field:'anchor',headerName:'Tính từ',valueGetter:p=>ANCHORS[p.data.anchor]||p.data.anchor},
+ {field:'offset_days',headerName:'Chênh lệch',valueGetter:p=>(Number(p.data.offset_months)?p.data.offset_months+' tháng lịch + ':'')+(Number(p.data.offset_days)>0?'+':'')+p.data.offset_days+' ngày'},
+ {field:'repeat_months',headerName:'Lặp lại',valueGetter:p=>Number(p.data.repeat_months)>0?'Mỗi '+p.data.repeat_months+' tháng lịch':Number(p.data.repeat_days)>0?'Mỗi '+p.data.repeat_days+' ngày':'Một lần'},
+ {field:'quantity_basis',headerName:'Đơn vị tính',valueGetter:p=>quantityLabels[p.data.quantity_basis]||p.data.quantity_basis},
+ {field:'approval_state',headerName:'Trạng thái',valueGetter:p=>state(p.data)}
+]
+const monthColumns=[
+ {field:'month',headerName:'Tháng'},
+ {field:'tasks',headerName:'Công việc'},
+ {field:'workdays',headerName:'Công lao động',valueGetter:p=>fmt(p.data.workdays)},
+ {field:'piecework_cost',headerName:'Chi phí khoán',valueGetter:p=>fmt(p.data.piecework_cost,0)},
+ {field:'bunches',headerName:'Buồng dự kiến',valueGetter:p=>fmt(p.data.bunches,0)},
+ {field:'gross_kg',headerName:'Kg buồng',valueGetter:p=>fmt(p.data.gross_kg,0)},
+ {field:'packed_kg',headerName:'Kg đóng gói',valueGetter:p=>fmt(p.data.packed_kg,0)}
+]
+const eventColumns=[
+ {field:'date',headerName:'Ngày'},
+ {field:'farm_block',headerName:'Lô',valueGetter:p=>blockNames[p.data.farm_block]||p.data.farm_block},
+ {field:'cohort',headerName:'Đợt'},
+ {field:'work_type',headerName:'Công việc'},
+ {field:'qty',headerName:'Khối lượng',valueGetter:p=>fmt(p.data.qty)+' '+unitLabel(p.data.uom)},
+ {field:'required_workdays',headerName:'Số công',valueGetter:p=>fmt(p.data.required_workdays)}
+]
+const harvestColumns=[
+ {field:'date',headerName:'Ngày'},
+ {field:'farm_block',headerName:'Lô',valueGetter:p=>blockNames[p.data.farm_block]||p.data.farm_block},
+ {field:'cohort',headerName:'Đợt'},
+ {field:'bunches',headerName:'Số buồng',valueGetter:p=>fmt(p.data.bunches,0)},
+ {field:'gross_kg',headerName:'Kg buồng',valueGetter:p=>fmt(p.data.gross_kg,0)},
+ {field:'packed_kg',headerName:'Kg đóng gói',valueGetter:p=>fmt(p.data.packed_kg,0)}
+]
+const materialColumns=[
+ {field:'date',headerName:'Ngày'},
+ {field:'item',headerName:'Mã vật tư'},
+ {field:'quantity',headerName:'Số lượng',valueGetter:p=>fmt(p.data.quantity,3)},
+ {field:'uom',headerName:'Đơn vị',valueGetter:p=>unitLabel(p.data.uom)}
+]
 const props=defineProps({
   farm:{type:String,default:''},block:{type:String,default:''},
   payload:{type:Object,default:()=>({})},loading:Boolean,
@@ -153,12 +193,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
       <p>Ví dụ: cắt bắp vào ngày trổ + 17 ngày. Có thể đặt số ngày âm để làm trước mốc.</p></div>
      <UiButton v-if="perm('Work Schedule Rule').create" type="button" @click="open('Work Schedule Rule')">+ Thêm quy tắc</UiButton>
     </div>
-    <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Công việc</th><th>Tính từ</th><th>Chênh lệch</th><th>Lặp lại</th><th>Đơn vị tính</th><th>Trạng thái</th></tr></thead>
-      <tbody><tr v-for="r in payload.rules||[]" :key="r.name" tabindex="0" role="button" @click="open('Work Schedule Rule',r)" @keydown.enter="open('Work Schedule Rule',r)">
-       <td><strong>{{workNames[r.work_type]||r.rule_name}}</strong><small>{{r.rule_name}} · bản {{r.version}}</small></td>
-        <td>{{ANCHORS[r.anchor]||r.anchor}}</td><td><template v-if="Number(r.offset_months)">{{r.offset_months}} tháng lịch + </template>{{Number(r.offset_days)>0?'+':''}}{{r.offset_days}} ngày</td>
-        <td>{{Number(r.repeat_months)>0?'Mỗi '+r.repeat_months+' tháng lịch':Number(r.repeat_days)>0?'Mỗi '+r.repeat_days+' ngày':'Một lần'}}</td><td>{{quantityLabels[r.quantity_basis]||r.quantity_basis}}</td><td><span class="pn-state" :class="{approved:r.approval_state==='Approved'}">{{state(r)}}</span></td></tr>
-       <tr v-if="!payload.rules?.length"><td colspan="6">Chưa có quy tắc công việc của vườn.</td></tr></tbody></table></div>
+    <div class="pn-table-scroll"><DataTable :rows="payload.rules||[]" :columns="ruleColumns" row-key="name" storage-key="plan-norm-rules" interactive @open="open('Work Schedule Rule',$event)" empty="Chưa có quy tắc công việc của vườn." /></div>
    </div>
 
    <template v-else-if="tab==='norm'">
@@ -213,19 +248,13 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
         </button>
        </div>
        <div class="pn-section-head"><h3>{{selectedMonth?'Tháng '+selectedMonth:'Tổng hợp 36 tháng'}}</h3><UiButton v-if="selectedMonth" variant="outline" type="button" @click="selectedMonth=''">Xem tất cả</UiButton></div>
-       <div class="pn-table-scroll"><table class="pn-table">
-        <thead><tr><th>Tháng</th><th>Công việc</th><th>Công lao động</th><th>Chi phí khoán</th><th>Buồng dự kiến</th><th>Kg buồng</th><th>Kg đóng gói</th></tr></thead>
-        <tbody><tr v-for="m in filteredMonths" :key="m.month" @click="toggleMonth(m.month)" tabindex="0" role="button" @keydown.enter="toggleMonth(m.month)">
-         <td><strong>{{m.month}}</strong></td><td>{{m.tasks}}</td><td>{{fmt(m.workdays)}}</td><td>{{fmt(m.piecework_cost,0)}}</td><td>{{fmt(m.bunches,0)}}</td><td>{{fmt(m.gross_kg,0)}}</td><td>{{fmt(m.packed_kg,0)}}</td></tr></tbody></table></div>
+       <div class="pn-table-scroll"><DataTable :rows="filteredMonths" :columns="monthColumns" row-key="month" storage-key="plan-norm-months" interactive @open="toggleMonth($event.month)" /></div>
        <details class="pn-details"><summary>Công việc đến hạn ({{visibleEvents.length}})</summary>
-         <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Lô</th><th>Đợt</th><th>Công việc</th><th>Khối lượng</th><th>Số công</th></tr></thead>
-          <tbody><tr v-for="e in visibleEvents" :key="e.key"><td>{{e.date}}</td><td>{{blockNames[e.farm_block]||e.farm_block}}</td><td>{{e.cohort}}</td><td>{{e.work_type}}</td><td>{{fmt(e.qty)}} {{unitLabel(e.uom)}}</td><td>{{fmt(e.required_workdays)}}</td></tr></tbody></table></div></details>
+         <div class="pn-table-scroll"><DataTable :rows="visibleEvents" :columns="eventColumns" row-key="key" storage-key="plan-norm-events" /></div></details>
        <details class="pn-details"><summary>Đợt thu hoạch dự kiến ({{visibleHarvests.length}})</summary>
-         <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Lô</th><th>Đợt</th><th>Số buồng</th><th>Kg buồng</th><th>Kg đóng gói</th></tr></thead>
-          <tbody><tr v-for="h in visibleHarvests" :key="h.cohort+h.date+h.wave"><td>{{h.date}}</td><td>{{blockNames[h.farm_block]||h.farm_block}}</td><td>{{h.cohort}}</td><td>{{fmt(h.bunches,0)}}</td><td>{{fmt(h.gross_kg,0)}}</td><td>{{fmt(h.packed_kg,0)}}</td></tr></tbody></table></div></details>
+         <div class="pn-table-scroll"><DataTable :rows="visibleHarvests" :columns="harvestColumns" storage-key="plan-norm-harvest" /></div></details>
        <details class="pn-details"><summary>Vật tư cần dùng ({{summary.materials.length}} dòng tính)</summary>
-         <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Ngày</th><th>Mã vật tư</th><th>Số lượng</th><th>Đơn vị</th></tr></thead><tbody>
-          <tr v-for="(m,i) in summary.materials" :key="i"><td>{{m.date}}</td><td>{{m.item}}</td><td>{{fmt(m.quantity,3)}}</td><td>{{unitLabel(m.uom)}}</td></tr></tbody></table></div></details>
+         <div class="pn-table-scroll"><DataTable :rows="summary.materials" :columns="materialColumns" storage-key="plan-norm-materials" /></div></details>
        <div v-if="summary.warnings?.length" class="pn-warning">
         <button type="button" @click="showWarnings=!showWarnings">⚠ Có {{summary.warnings.length}} vấn đề cần kiểm tra {{showWarnings?'⌃':'⌄'}}</button>
         <ul v-if="showWarnings"><li v-for="w in summary.warnings" :key="w">{{w}}</li></ul>
