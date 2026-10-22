@@ -31,7 +31,7 @@ const columns={
 }
 const api=(method,args={},post=false)=>call('lotus_farm.hr_operations.'+method,args,post)
 const editAssignment=ref(false)
-const active=ref(props.view||'organization'),farm=ref(''),busy=ref(false),error=ref(''),notice=ref('')
+const selectedTab=ref('organization'),active=computed(()=>props.view||selectedTab.value),farm=ref(''),busy=ref(false),error=ref(''),notice=ref('')
 const org=ref(null),hardware=ref(null),kind=ref('Designation'),uploadName=ref('')
 const uploadData=ref([]),preview=ref(null),selected=ref([])
 const assignment=reactive({employee:'',farm:'',department:'',designation:'',work_team:'',role_title:'',valid_from:'',valid_to:'',approver:'',notes:''})
@@ -60,7 +60,7 @@ const isSaving=computed(()=>busy.value&&(editDevice.value||editAssignment.value|
 function discardChanges(){editDevice.value=false;editAssignment.value=false;preview.value=null;uploadData.value=[]}
 defineExpose({refresh,hasUnsavedChanges,isSaving,discardChanges})
 watch(()=>props.company,()=>{org.value=null;hardware.value=null;preview.value=null;uploadData.value=[];farm.value='';refresh()})
-function choose(id){active.value=id;notice.value='';error.value=''}
+function choose(id){selectedTab.value=id;notice.value='';error.value=''}
 function template(){
  const header=columns[kind.value]||[]
  const csv='\ufeff'+header.join(',')+'\r\n'
