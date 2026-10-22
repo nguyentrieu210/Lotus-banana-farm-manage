@@ -11,6 +11,7 @@ import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import SignerPicker from './components/SignerPicker.vue'
 import DataTable from './components/DataTable.vue'
 import FinanceGuide from './components/finance/FinanceGuide.vue'
+import FinanceAssets from './components/finance/FinanceAssets.vue'
 import {DatePicker} from './components/ui/date-picker'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -24,11 +25,12 @@ import './finance.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
-const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
+const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
 const REPORTS=[['b01','B01 Tình hình tài chính'],['b02','B02 Kết quả kinh doanh'],['b03','B03 Lưu chuyển tiền tệ'],['trial_balance','Bảng cân đối phát sinh'],
  ['general_journal','Nhật ký chung'],['ledger','Sổ cái / sổ quỹ / tiền gửi'],['party','Công nợ theo đối tượng'],['stock','Nhập – xuất – tồn'],
  ['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['vat','Thuế GTGT'],['bank','Đối chiếu ngân hàng'],['reconciliation','Đối chiếu']]
 const STATEMENTS=['b01','b02','b03']
+
 const route=useRoute(),router=useRouter(),session=useSession()
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask,finish:finishConfirm}=useWorkspaceConfirm()
 const ledgerUser=computed(()=>!!session.capabilities?.finance_ledger)
@@ -562,6 +564,7 @@ useNoticeToast(notice)
   </section>
  </template>
 
+ <FinanceAssets v-else-if="tab==='assets'" @notice="notice=$event"/>
  <FinanceGuide v-else-if="tab==='guide'" @go="go"/>
 
  <template v-else-if="tab==='settings'&&settings">

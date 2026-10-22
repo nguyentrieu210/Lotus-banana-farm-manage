@@ -1,0 +1,90 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Asset Allocation",
+  "module": "Lotus Farm",
+  "custom": 0,
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "istable": 0,
+  "track_changes": true,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "asset",
+      "label": "Tài sản",
+      "fieldtype": "Link",
+      "options": "Asset"
+    },
+    {
+      "fieldname": "month",
+      "label": "Tháng (yyyy-mm)",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "rows",
+      "label": "Phân bổ",
+      "fieldtype": "Table",
+      "options": "Lotus Asset Allocation Row",
+      "reqd": 1
+    },
+    {
+      "fieldname": "locked_by_run",
+      "label": "Bảng khấu hao đã duyệt",
+      "fieldtype": "Link",
+      "options": "Lotus Asset Depreciation Run",
+      "read_only": 1
+    },
+    {
+      "fieldname": "active_key",
+      "label": "Khóa tài sản và tháng",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "company",
+    "asset",
+    "month",
+    "rows",
+    "locked_by_run",
+    "active_key"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}
