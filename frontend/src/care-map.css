@@ -2,6 +2,7 @@
 
 /* The map owns the full remaining viewport; no page gutter or flycam sliver. */
 .app-shell.map-workspace>main{display:flex;flex-direction:column;padding:0!important;max-width:none;height:100dvh;overflow:hidden;scrollbar-gutter:auto}
+.app-shell.map-workspace>main>.workspace-bar{margin:0!important;width:100%!important;flex-shrink:0}
 .map-workspace>main>.map-panel{flex:1;min-height:0;margin:0;border:0;padding:0}
 .map-panel .care-map{height:100%;overflow:hidden;border-radius:0}
 .map-panel .care-map-canvas{height:100%;min-height:0;border:0;border-radius:0}

@@ -91,7 +91,7 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
                 block=by_code[f['properties']['id']].name, approval_state='Draft'))
             for f in source['features'] if f['geometry']['type'] not in ('Polygon', 'MultiPolygon')
             and f['properties']['id'] in by_code]
-        result['source_label'] = 'HTT 170 ha · ranh bao gốc, chia lô dự thảo'
+        result['source_label'] = 'KML gốc HTT 170 ha'
     return result
 
 

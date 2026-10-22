@@ -15,6 +15,13 @@ chỉ bind `127.0.0.1`; truy cập công khai đi qua tunnel cloudflared `lotus.
 Trước khi migrate, so DocField trong DB với JSON của commit: field có trong DB mà thiếu trong
 code sẽ bị migrate gỡ khỏi DocType.
 
+Với bản sửa chỉ ở frontend, dùng `Dockerfile.frontend-release` từ cùng git archive và
+gắn một tag local cho SHA256 image đang chạy đã kiểm tra. Truyền tag đó qua `BASE_IMAGE`
+và ID qua `BASE_IMAGE_ID`; kiểm tra tag vẫn trỏ đúng ID trước khi build. Nó chỉ thay nguồn frontend và
+bundle đã build; backend cùng các asset cũ được giữ từ image nền. Ghi lại image nền và
+commit trong biên bản phát hành, vẫn dùng một `lotus-release:<sha>` cho mọi dịch vụ qua
+`compose.release.yaml`, sao lưu như thường lệ và không chạy migrate khi không đổi schema.
+
 # Triển khai có HRMS
 
 `Dockerfile` build từ ERPNext v16.50.0 và HRMS tag v16.50.0 (commit HRMS 7c037698ce57d1492f05a8b4a586a7578f722879). HRMS này yêu cầu Frappe >=16.50 và ERPNext >=16.0. Dùng tag đã kiểm tra, không lấy nhánh thay đổi tùy ý khi triển khai lại.

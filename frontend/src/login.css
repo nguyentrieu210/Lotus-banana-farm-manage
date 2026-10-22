@@ -46,8 +46,12 @@ body:has(.lotus-login) :is(.page-content-wrapper,.page_content,.page-content,.co
 .lotus-login .btn-login-with-email-link:not([data-variant=solid]){min-height:44px;background:transparent;color:var(--lotus-muted);border:1px solid var(--lotus-border);border-radius:10px;font-size:12px}
 .lotus-login .sign-up-message{margin-top:16px!important}
 .lotus-login-options{display:flex;align-items:center;justify-content:space-between;gap:var(--lotus-space-2);width:100%}
-.lotus-login .lotus-remember-account{display:flex;align-items:center;gap:var(--lotus-space-2);min-height:36px;font-size:var(--lotus-text-xs);color:var(--lotus-text-strong);cursor:pointer;margin:0;white-space:nowrap}
-.lotus-login .lotus-remember-account input{appearance:auto!important;-webkit-appearance:checkbox!important;opacity:1!important;filter:none!important;cursor:pointer;width:20px!important;height:20px!important;min-width:20px;min-height:20px;margin:0;accent-color:var(--lotus-primary-600);flex-shrink:0;color-scheme:light}
+.lotus-login .lotus-remember-account{position:relative;display:flex;align-items:center;gap:var(--lotus-space-2);min-height:36px;font-size:var(--lotus-text-xs);color:var(--lotus-text-strong);cursor:pointer;margin:0;white-space:nowrap}
+.lotus-login .lotus-remember-account input{position:absolute;left:0;top:50%;transform:translateY(-50%);opacity:0!important;cursor:pointer;width:20px!important;height:20px!important;min-width:20px;min-height:20px;margin:0;z-index:1}
+.lotus-checkbox-mark{position:relative;display:block;flex-shrink:0;width:20px;height:20px;border:2px solid var(--lotus-border-strong);border-radius:4px;background:var(--lotus-surface);pointer-events:none}
+.lotus-remember-account input:checked+.lotus-checkbox-mark{background:var(--lotus-primary-600);border-color:var(--lotus-primary-600)}
+.lotus-remember-account input:checked+.lotus-checkbox-mark::after{content:'';position:absolute;left:5px;top:1px;width:6px;height:11px;border:solid white;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.lotus-remember-account input:focus-visible+.lotus-checkbox-mark{box-shadow:var(--lotus-focus)}
 .lotus-login-options>a{display:flex;align-items:center;min-height:36px;white-space:nowrap}
 @media(max-width:600px){
  .lotus-login{padding:24px 16px;align-items:center}

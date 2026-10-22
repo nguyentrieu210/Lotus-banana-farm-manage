@@ -3,6 +3,8 @@
 .lotus-date__field:focus-within{border-color:var(--lotus-primary);box-shadow:var(--lotus-focus)}
 .lotus-date__field[aria-invalid=true]{border-color:var(--lotus-danger)}
 .lotus-date__field[data-disabled]{opacity:.55}
+.lotus-date__input{flex:1;width:100%;min-width:0;padding:0;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-variant-numeric:tabular-nums}
+.lotus-date__input::placeholder{color:var(--lotus-neutral-400)}
 .lotus-date__segment{padding:1px 2px;border-radius:4px;outline:none;caret-color:transparent}
 .lotus-date__segment:focus{background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
 .lotus-date__segment[data-placeholder]{color:var(--lotus-neutral-400)}

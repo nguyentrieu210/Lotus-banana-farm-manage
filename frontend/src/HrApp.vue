@@ -5,6 +5,7 @@ import {useRouter} from 'vue-router'
 import {normalizeHrView} from './hr-navigation.js'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
+import DataTable from './components/DataTable.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import LotusIcon from './components/LotusIcon.vue'
@@ -62,6 +63,17 @@ const missingCount=computed(()=>overview.value.employees.filter(e=>e.lotus_onboa
 const designationCount=computed(()=>{const all=Object.values(catalog.value.designation_groups||{}).flat();return {all:all.length,done:all.filter(n=>catalog.value.designations.some(d=>d.name===n)).length}})
 const today=computed(()=>session.value?.today||'')
 const contractDue=e=>e.contract_end_date&&e.contract_end_date<=today.value
+const employeeColumns=computed(()=>[
+ {field:'name',headerName:'Mã',minWidth:160},
+ {field:'employee_name',headerName:'Họ tên',minWidth:200,flex:1.5},
+ {field:'department',headerName:'Phòng ban',minWidth:170,valueFormatter:p=>p.value||'—'},
+ {field:'designation',headerName:'Chức danh',minWidth:170,valueGetter:p=>hrCatalogLabel(p.data.designation)||'—'},
+ {field:'lotus_farm',headerName:'Vườn',minWidth:150,valueGetter:p=>catalog.value.farms.find(f=>f.name===p.data.lotus_farm)?.farm_name||p.data.lotus_farm||'—'},
+ {field:'lotus_worker_category',headerName:'Loại lao động',minWidth:170,valueGetter:p=>cats[p.data.lotus_worker_category]||contractTypeNames[p.data.employment_type]||p.data.employment_type||'—'},
+ {field:'lotus_payment_basis',headerName:'Cơ chế lương',minWidth:150,valueGetter:p=>bases[p.data.lotus_payment_basis]||'Chưa cấu hình'},
+ {field:'lotus_onboarding_state',headerName:'Tiếp nhận',minWidth:165,cellClass:'lotus-grid-status',valueGetter:p=>p.data.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'},
+ {field:'status',headerName:'Trạng thái',minWidth:180,valueGetter:p=>stateLabel(p.data.status)+(contractDue(p.data)?' · Hợp đồng đến hạn '+formatDate(p.data.contract_end_date):'')},
+])
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}
 function resetPanels(){revealedCccd.value='';cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
 function applyView(t){resetPanels();offboardOpen.value=false;search.value='';tab.value=normalizeHrView(t)}
@@ -191,16 +203,9 @@ useNoticeToast(notice)
   <WorkspaceSummaryStrip v-if="listTab" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
 
   <template v-if="tab==='employees'||tab==='onboarding'">
-   <section class="stock-panel hr-table workspace-record-list workspace-employee-list" :aria-label="tab==='onboarding'?'Nhân viên chờ tiếp nhận':'Hồ sơ nhân viên'"><table><colgroup><col><col><col><col><col><col><col class="workspace-col-status"><col class="workspace-col-actions"></colgroup>
-    <thead><tr><th>Mã</th><th>Họ tên</th><th>Chức danh</th><th>Vườn</th><th>Loại lao động</th><th>Cơ chế lương</th><th>Tiếp nhận</th><th></th></tr></thead>
-    <tbody><tr v-for="person in filteredEmployees" :key="person.name">
-     <td>{{person.name}}</td><td><strong>{{person.employee_name}}</strong><small>{{person.department}}</small></td>
-     <td>{{hrCatalogLabel(person.designation)||'—'}}</td><td>{{person.lotus_farm||'—'}}</td>
-     <td>{{cats[person.lotus_worker_category]||contractTypeNames[person.employment_type]||person.employment_type||'—'}}</td>
-     <td>{{bases[person.lotus_payment_basis]||'Chưa cấu hình'}}</td>
-     <td><span class="tk-pill" :class="person.lotus_onboarding_state==='Ready'?'is-approved':'is-draft'">{{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}}</span><small>{{stateLabel(person.status)}}</small><small v-if="contractDue(person)" class="tk-flag is-warn">Hợp đồng đến hạn {{formatDate(person.contract_end_date)}}</small></td>
-     <td><UiButton v-if="isManager" variant="outline" size="sm" @click="openEmployee(person)">{{tab==='onboarding'?'Kiểm tra hồ sơ':'Xem / sửa'}}</UiButton></td></tr>
-    </tbody></table><p v-if="!filteredEmployees.length" class="stock-empty">{{tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'}}</p></section>
+   <section class="stock-panel workspace-employee-list" :aria-label="tab==='onboarding'?'Nhân viên chờ tiếp nhận':'Hồ sơ nhân viên'">
+    <DataTable :key="company+':'+tab" :storage-key="'hr-employees:'+company+':'+tab" :rows="filteredEmployees" :columns="employeeColumns" :loading="busy" :interactive="isManager" :empty="tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'" @open="openEmployee"/>
+   </section>
   </template>
 
   <template v-if="tab==='candidates'">

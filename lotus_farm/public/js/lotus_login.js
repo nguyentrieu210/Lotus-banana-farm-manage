@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
  const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.id='lotus-remember-account'
  checkbox.checked=true
  try{const preference=localStorage.getItem(key);if(preference!==null){checkbox.checked=preference!=='';if(preference&&!username.value)username.value=preference}}catch{}
- label.append(checkbox,document.createTextNode('Ghi nhớ tài khoản'))
+ const mark=document.createElement('span');mark.className='lotus-checkbox-mark';mark.setAttribute('aria-hidden','true')
+ label.append(checkbox,mark,document.createTextNode('Ghi nhớ tài khoản'))
  const options=document.createElement('div');options.className='lotus-login-options'
  options.append(label)
  const forgot=form.querySelector('a[href="#forgot"]'),oldParent=forgot?.parentElement

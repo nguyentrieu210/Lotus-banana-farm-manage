@@ -1,0 +1,14 @@
+# UI-only release: preserve the entire running backend and all cached assets.
+# Build context must be a git archive, just like Dockerfile.release.
+# Tag the verified live SHA256 ID locally; verify that tag still resolves to the ID.
+ARG BASE_IMAGE=lotus-release-base:verified
+FROM ${BASE_IMAGE}
+ARG REVISION
+ARG BASE_IMAGE_ID
+USER root
+COPY --chown=frappe:root app/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/frontend/
+COPY --chown=frappe:root app/lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+LABEL org.opencontainers.image.revision=${REVISION} \
+      com.lotus.base.image.id=${BASE_IMAGE_ID} \
+      org.opencontainers.image.source=https://github.com/nguyentrieu210/Lotus-banana-farm-manage
+USER frappe

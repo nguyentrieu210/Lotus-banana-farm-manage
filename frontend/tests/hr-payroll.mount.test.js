@@ -40,7 +40,7 @@ test('employee list filters by farm and category, without showing a single compa
  const view=mount(HrApp,{embedded:true});await tick();await tick()
  const farm=[...view.root.querySelectorAll('label')].find(l=>l.textContent.startsWith('Vườn')).querySelector('select')
  farm.value='LOTUS-222';farm.dispatchEvent(new Event('change',{bubbles:true}));await tick()
- const body=view.root.querySelector('tbody')
+ const body=view.root.querySelector('.lotus-mobile-records')
  assert.match(body.textContent,/An/);assert.doesNotMatch(body.textContent,/Bình/)
  assert.equal([...view.root.querySelectorAll('label')].some(l=>l.textContent.startsWith('Công ty')),false)
  view.unmount()
@@ -64,7 +64,7 @@ test('payroll tab shows last month, blockers keep the close button disabled, she
 test('pay rate inputs follow the payment basis and only managers see payroll',async()=>{
  routes=routesFor(true)
  const view=mount(HrApp,{embedded:true});await tick()
- button(view.root,'Xem / sửa').click();await tick();await tick()
+ view.root.querySelector('.lotus-mobile-record').click();await tick();await tick()
  const labels=[...document.querySelectorAll('.hr-form-grid label')].map(l=>l.firstChild?.textContent?.trim())
  assert.ok(labels.includes('Đơn giá công nhật (VND)'))
  assert.ok(!labels.includes('Lương cơ bản tháng (VND)'),'daywork has no monthly base salary field')

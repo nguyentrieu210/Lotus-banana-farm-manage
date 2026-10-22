@@ -12,6 +12,7 @@ test('login remembers only the account and lets the browser manage the password'
  const form=document.querySelector('form'),user=document.getElementById('login_email'),password=document.getElementById('login_password')
  assert.equal(user.autocomplete,'username');assert.equal(password.autocomplete,'current-password')
  assert.ok(document.querySelector('.lotus-login-options .lotus-remember-account'))
+ assert.ok(document.querySelector('.lotus-remember-account input+.lotus-checkbox-mark'))
  assert.ok(document.querySelector('.lotus-login-options a[href="#forgot"]'))
  user.value='worker@example.com';password.value='test-value-never-store'
  form.dispatchEvent(new window.Event('submit'))
