@@ -42,6 +42,15 @@ KEYS = OrderedDict((
     ('packing_cost', ('Chi phí vật liệu sản xuất chung (bao bì, vật liệu đóng gói)', ('Expense',), None)),
     ('opening_equity', ('Đối ứng số dư đầu kỳ', ('Equity',), None)),
     ('round_off', ('Làm tròn', ('Expense', 'Income'), None)),
+    ('pit_payable', ('Thuế thu nhập cá nhân phải nộp (khấu trừ từ lương)', ('Liability',), None)),
+    ('union_fee', ('Kinh phí công đoàn phải nộp', ('Liability',), None)),
+    ('advance', ('Tạm ứng (nhân viên đi mua, công tác)', ('Asset',), None)),
+    ('receivable_customer', ('Phải thu của khách hàng', ('Asset',), 'Receivable')),
+    ('sales_revenue', ('Doanh thu bán hàng', ('Income',), None)),
+    ('output_vat', ('Thuế GTGT đầu ra phải nộp', ('Liability',), 'Tax')),
+    ('input_vat', ('Thuế GTGT đầu vào được khấu trừ', ('Asset',), 'Tax')),
+    ('income_summary', ('Xác định kết quả kinh doanh (911)', ('Equity',), None)),
+    ('retained_earnings', ('Lợi nhuận sau thuế chưa phân phối năm nay', ('Equity',), None)),
 ))
 INSURANCE_KEYS = (('bhxh', 'social_insurance'), ('bhyt', 'health_insurance'), ('bhtn', 'unemployment_insurance'))
 
@@ -181,19 +190,23 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
       net; crews with work_team, work_type, amount).
     shares: employee -> [(dims, workdays)] of the month's actual work by lot (empty -> indirect cost).
     accounts: mapping key -> account. employee_farms: employee -> farm (dimension of indirect cost).
-    Debits: gross + employer insurance of each person to direct labour (622) by workday share, or to management
-    staff cost (6421) without lot work; crew piece-rate to direct labour by farm and work type. Credits: net pay, insurance (employee + employer
-    shares), crew payable.
+    Debits: gross + employer insurance + union fee (KPCĐ) of each person to direct labour (622) by workday share, or to
+    management staff cost (6421) without lot work; crew piece-rate to direct labour by farm and work type. Credits: net pay,
+    insurance (employee + employer shares), personal income tax withheld (3335), union fee (3382), crew payable.
     """
     lines, issues = [], []
     insurance = {k: 0 for k, _ in INSURANCE_KEYS}
     employee_farms, crew_farms = employee_farms or {}, crew_farms or {}
+    pit_total = union_total = 0
     for r in snapshot_people(snapshot):
         gross, er = int(round(r.get('gross') or 0)), int(round(r.get('employer_insurance') or 0))
         ee, net = int(round(r.get('employee_insurance') or 0)), int(round(r.get('net') or 0))
-        if gross - ee != net:
-            issues.append('%s: lương thực nhận %s khác tổng lương trừ bảo hiểm' % (r.get('employee'), net))
-        cost = gross + er
+        pit, union = int(round(r.get('pit') or 0)), int(round(r.get('union_fee') or 0))
+        if gross - ee - pit != net:
+            issues.append('%s: lương thực nhận %s khác tổng lương trừ bảo hiểm và thuế TNCN' % (r.get('employee'), net))
+        pit_total += pit
+        union_total += union
+        cost = gross + er + union
         if not cost:
             continue
         work = [(d, w) for d, w in shares.get(r.get('employee')) or [] if w]
@@ -203,13 +216,23 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
         else:
             farm = employee_farms.get(r.get('employee'))
             lines.append(line(accounts['admin_labour'], debit=cost, dims={'lotus_farm': farm} if farm else None, note='Lương gián tiếp'))
-        for (k, _), part in zip(INSURANCE_KEYS, _parts(ee, r.get('base'), employee_rates)):
-            insurance[k] += part
-        for (k, _), part in zip(INSURANCE_KEYS, _parts(er, r.get('base'), employer_rates)):
-            insurance[k] += part
+        parts = r.get('insurance_parts')
+        if parts:
+            # the sheet keeps each part (capped bases) exactly as withheld
+            for k, _ in INSURANCE_KEYS:
+                insurance[k] += int(parts['employee'].get(k) or 0) + int(parts['employer'].get(k) or 0)
+        else:
+            for (k, _), part in zip(INSURANCE_KEYS, _parts(ee, r.get('base'), employee_rates)):
+                insurance[k] += part
+            for (k, _), part in zip(INSURANCE_KEYS, _parts(er, r.get('base'), employer_rates)):
+                insurance[k] += part
         lines.append(line(accounts['payable_employee'], credit=net, note='Thực nhận'))
     for k, key in INSURANCE_KEYS:
         lines.append(line(accounts[key], credit=insurance[k], note='Bảo hiểm (người lao động + doanh nghiệp)'))
+    if pit_total:
+        lines.append(line(accounts['pit_payable'], credit=pit_total, note='Thuế TNCN khấu trừ'))
+    if union_total:
+        lines.append(line(accounts['union_fee'], credit=union_total, note='Kinh phí công đoàn 2%'))
     for c in snapshot.get('crews') or []:
         amount = int(round(c.get('amount') or 0))
         if not amount:

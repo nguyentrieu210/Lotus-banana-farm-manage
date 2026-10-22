@@ -11,6 +11,8 @@ frappe.set_user('Administrator')
 from lotus_farm.finance import rules, setup  # noqa: E402
 
 setup.install()
+from lotus_farm.hr_workspace import install_fields  # noqa: E402
+install_fields()
 frappe.db.commit()
 report = dict(roles=[r for r in (setup.ACCOUNTANT, setup.CHIEF) if frappe.db.exists('Role', r)],
               dimensions=frappe.get_all('Accounting Dimension', fields=['document_type', 'fieldname']),

@@ -3,12 +3,17 @@
 The base salary covers 26 workdays of 8 hours, so one hour is base / 208. The same arithmetic is
 used by the Lotus payroll sheet and by the HRMS Salary Structure formulas (lotus_farm.hr_payroll),
 so the sheet and the salary slips agree. Contractor crew piecework is a payable to the crew,
-never an employee wage. Personal income tax is not computed here.
+never an employee wage. With the statutory parameters (data/payroll_vn.json, by effective date) the
+insurance bases are capped, the employer's union fee (KPCĐ) and personal income tax are computed.
 """
+import json
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from pathlib import Path
 
 from lotus_farm.timekeeping_rules import status_days
+
+PARAMS_FILE = Path(__file__).resolve().parent / 'data' / 'payroll_vn.json'
 
 STANDARD_DAYS = 26
 HOURS_PER_DAY = 8
@@ -153,8 +158,84 @@ def pay_base(basis, base_salary=0, daily_rate=0):
     return _num(base_salary)
 
 
-def hourly_pay(basis, summary, base_salary=0, daily_rate=0, insured=False):
-    """Earnings, employee deductions and employer insurance for one employee, plus data gaps."""
+def load_params(path=PARAMS_FILE):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def effective(rows, on_date):
+    """The latest confirmed row with from <= on_date (rows marked confirmed=false are never applied)."""
+    day = str(on_date)[:10]
+    rows = sorted((r for r in rows or [] if r.get('confirmed', True) and str(r['from']) <= day), key=lambda r: r['from'])
+    return rows[-1] if rows else None
+
+
+def params_on(on_date, data=None):
+    """Statutory parameters for a pay month: dict(pit, flat, insurance) or None where nothing applies yet."""
+    data = data or load_params()
+    return dict(pit=effective(data.get('pit_progressive'), on_date), flat=effective(data.get('pit_flat'), on_date),
+                insurance=effective(data.get('insurance'), on_date))
+
+
+def progressive_tax(taxable, brackets):
+    """Tax on the monthly taxable income by the progressive brackets [[upper or None, rate], ...]."""
+    taxable, tax, lower = max(0.0, _num(taxable)), 0.0, 0.0
+    for upper, rate in brackets:
+        top = taxable if upper is None else min(taxable, float(upper))
+        if top > lower:
+            tax += (top - lower) * rate
+        if upper is None or taxable <= upper:
+            break
+        lower = float(upper)
+    return round(tax)
+
+
+def tax_method(category, months_of_contract=None):
+    """'progressive' for employees on a labour contract of 3 months or more, 'flat' (10% at source) for
+    seasonal / probation workers and contracts shorter than 3 months."""
+    if category in ('Seasonal', 'Probation'):
+        return 'flat'
+    if months_of_contract is not None and months_of_contract < 3:
+        return 'flat'
+    return 'progressive' if category in ('Permanent', 'Fixed-term') else 'flat'
+
+
+def contributions(base, insurance, region=None):
+    """Compulsory insurance on the contract salary, capped: BHXH and BHYT at cap_multiple x base salary, BHTN at
+    cap_multiple x regional minimum wage. Returns employee and employer parts and the union fee (2% of the BHXH base)."""
+    base = _num(base)
+    cap = insurance['cap_multiple'] * insurance['base_salary']
+    regional = (insurance.get('regional_minimum') or {}).get(region or '')
+    bases = dict(bhxh=min(base, cap), bhyt=min(base, cap), bhtn=min(base, insurance['cap_multiple'] * regional) if regional else base)
+    employee = {k: round(bases[k] * r) for k, r in insurance['employee'].items()}
+    employer = {k: round(bases[k] * r) for k, r in insurance['employer'].items()}
+    return dict(employee=employee, employer=employer, union_fee=round(bases['bhxh'] * insurance.get('union_fee', 0)),
+                capped=base > cap or (regional and base > insurance['cap_multiple'] * regional))
+
+
+def income_tax(gross, exempt, employee_insurance, method, params, dependents=0, commitment=False):
+    """Personal income tax withheld this month.
+
+    progressive: (gross - exempt overtime / night premium - employee insurance - self - dependents) by the brackets.
+    flat: 10% of the payment when it reaches the threshold, unless the worker filed the 08/CK-TNCN commitment.
+    """
+    if method == 'progressive' and params.get('pit'):
+        p = params['pit']
+        taxable = max(0, round(_num(gross) - _num(exempt) - _num(employee_insurance) - p['self'] - p['dependent'] * max(0, int(dependents or 0))))
+        return dict(pit=progressive_tax(taxable, p['brackets']), taxable_income=taxable, pit_method='progressive')
+    if method == 'flat' and params.get('flat'):
+        f = params['flat']
+        payment = max(0, round(_num(gross) - _num(employee_insurance)))
+        due = payment >= f['threshold'] and not commitment
+        return dict(pit=round(payment * f['rate']) if due else 0, taxable_income=payment if due else 0,
+                    pit_method='commitment' if commitment and payment >= f['threshold'] else 'flat')
+    return dict(pit=0, taxable_income=0, pit_method=method or '')
+
+
+def hourly_pay(basis, summary, base_salary=0, daily_rate=0, insured=False, params=None, region=None, tax=None):
+    """Earnings, employee deductions and employer insurance for one employee, plus data gaps.
+
+    params (params_on) switches on the capped insurance, the union fee and the income tax; tax = dict(method,
+    dependents, commitment) of the employee. Without params the old arithmetic applies (no cap, no tax)."""
     issues = []
     if not basis:
         issues.append('Chưa chọn cơ chế lương')
@@ -163,7 +244,8 @@ def hourly_pay(basis, summary, base_salary=0, daily_rate=0, insured=False):
     elif basis == 'Daywork' and _num(daily_rate) <= 0:
         issues.append('Thiếu đơn giá công')
     zero = dict(hour_rate=0, regular_pay=0, paid_pay=0, night_pay=0, overtime_pay=0, gross=0,
-                employee_insurance=0, net=0, employer_insurance=0)
+                employee_insurance=0, net=0, employer_insurance=0, union_fee=0, pit=0, taxable_income=0, pit_exempt=0,
+                pit_method='', insurance_parts=None)
     result = dict(zero, base=0, via_crew=basis == 'Piecework', issues=issues)
     if issues or basis == 'Piecework':
         return result
@@ -175,8 +257,22 @@ def hourly_pay(basis, summary, base_salary=0, daily_rate=0, insured=False):
                    overtime_pay=rate * sum(OT_RATES[k] * s.get('ot_' + k, 0) for k in OT_RATES))
     amounts = {k: round(v) for k, v in amounts.items()}
     gross = sum(amounts.values())
-    employee = sum(round(base * r) for r in EMPLOYEE_INSURANCE.values()) if insured else 0
-    employer = sum(round(base * r) for r in EMPLOYER_INSURANCE.values()) if insured else 0
-    result.update(amounts, base=round(base), hour_rate=round(rate), gross=gross, employee_insurance=employee,
-                  net=gross - employee, employer_insurance=employer)
+    if not params:
+        employee = sum(round(base * r) for r in EMPLOYEE_INSURANCE.values()) if insured else 0
+        employer = sum(round(base * r) for r in EMPLOYER_INSURANCE.values()) if insured else 0
+        result.update(amounts, base=round(base), hour_rate=round(rate), gross=gross, employee_insurance=employee,
+                      net=gross - employee, employer_insurance=employer)
+        return result
+    parts = contributions(base, params['insurance'], region) if insured and params.get('insurance') else None
+    employee = sum(parts['employee'].values()) if parts else 0
+    employer = sum(parts['employer'].values()) if parts else 0
+    # Personal income tax does not apply to the premium part of overtime and night work (Luật Thuế TNCN, miễn thuế).
+    exempt = amounts['night_pay'] + max(0, amounts['overtime_pay'] - round(rate * sum(s.get('ot_' + k, 0) for k in OT_RATES)))
+    tax = tax or {}
+    withheld = income_tax(gross, exempt, employee, tax.get('method'), params, tax.get('dependents'), tax.get('commitment'))
+    result.update(amounts)
+    result.update(withheld, base=round(base), hour_rate=round(rate), gross=gross, employee_insurance=employee,
+                  employer_insurance=employer, union_fee=parts['union_fee'] if parts else 0, pit_exempt=exempt,
+                  insurance_parts=dict(employee=parts['employee'], employer=parts['employer']) if parts else None,
+                  net=gross - employee - withheld['pit'])
     return result

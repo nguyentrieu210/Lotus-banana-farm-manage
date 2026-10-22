@@ -283,7 +283,8 @@ def reconciliation(on_date=None):
     for p in frappe.get_all(posting.POSTING, filters={'source_doctype': 'Lotus Timekeeping Period', 'purpose': 'Payroll', 'state': 'Posted'},
                             fields=['source_name', 'voucher_name', 'amount']):
         snap = json.loads(frappe.db.get_value('Lotus Timekeeping Period', p.source_name, 'snapshot') or '{}')
-        source = sum(int(round(r.get('gross') or 0)) + int(round(r.get('employer_insurance') or 0)) for r in rules.snapshot_people(snap)) \
+        source = sum(int(round(r.get('gross') or 0)) + int(round(r.get('employer_insurance') or 0)) + int(round(r.get('union_fee') or 0))
+                     for r in rules.snapshot_people(snap)) \
             + sum(int(round(c.get('amount') or 0)) for c in snap.get('crews') or [])
         posted = flt(frappe.db.get_value('Journal Entry', p.voucher_name, 'total_debit'))
         checks.append(dict(label='Bảng lương %s so với bút toán %s' % (p.source_name, p.voucher_name), ledger=posted, source=source))
@@ -349,4 +350,8 @@ def lookups():
                 blocks=frappe.get_all('Farm Block', filters={'active': 1}, fields=['name', 'block_code', 'block_name', 'farm'], order_by='farm, block_code', limit_page_length=0),
                 work_types=frappe.get_all('Work Type', filters={'active': 1}, fields=['name', 'work_name'], order_by='work_name', limit_page_length=0),
                 accounts=frappe.get_all('Account', filters={'company': setup.company(), 'is_group': 0, 'disabled': 0},
-                                        fields=['name', 'account_number', 'account_name'], order_by='account_number, name', limit_page_length=0))
+                                        fields=['name', 'account_number', 'account_name'], order_by='account_number, name', limit_page_length=0),
+                employees=frappe.get_all('Employee', filters={'company': setup.company(), 'status': 'Active'}, fields=['name', 'employee_name'],
+                                         order_by='employee_name', limit_page_length=0),
+                customers=frappe.get_all('Customer', filters={'disabled': 0}, fields=['name', 'customer_name', 'tax_id'], order_by='customer_name',
+                                         limit_page_length=0))

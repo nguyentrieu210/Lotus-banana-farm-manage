@@ -128,7 +128,7 @@ function emptyEmployee(){
   lotus_farm:'',lotus_work_team:'',cell_number:'',personal_email:'',current_address:'',permanent_address:'',
   cccd:'',lotus_id_issue_on:'',lotus_id_issue_at:DEFAULT_CCCD_ISSUER,lotus_emergency_name:'',lotus_emergency_phone:'',
   lotus_tax_code:'',lotus_social_insurance_no:'',health_insurance_no:'',contract_end_date:'',lotus_onboarding_state:'Pending',
-  lotus_base_salary:0,lotus_daily_rate:0})
+  lotus_base_salary:0,lotus_daily_rate:0,lotus_dependents:0,lotus_pit_commitment:0})
  editEmployee.value=true
 }
 async function openEmployee(item){if(!isManager.value)return;busy.value=true;error.value=''
@@ -293,6 +293,8 @@ useNoticeToast(notice)
      <FormField label="Số BHXH" hint="Có số BHXH thì bảng lương trừ 10,5% bảo hiểm." v-slot="f"><UiInput v-bind="f" v-model="employeeForm.lotus_social_insurance_no"/></FormField>
      <FormField label="Số BHYT" v-slot="f"><UiInput v-bind="f" v-model="employeeForm.health_insurance_no"/></FormField>
      <FormField label="Mã số thuế cá nhân" v-slot="f"><UiInput v-bind="f" v-model="employeeForm.lotus_tax_code"/></FormField>
+     <FormField label="Số người phụ thuộc đã đăng ký" hint="Mỗi người được giảm trừ khi tính thuế TNCN (hợp đồng từ 3 tháng)." v-slot="f"><UiInput v-bind="f" v-model.number="employeeForm.lotus_dependents" type="number" min="0" max="20"/></FormField>
+     <FormField label="Cam kết 08/CK-TNCN" hint="Lao động thời vụ có thu nhập dưới mức chịu thuế: không khấu trừ 10%." v-slot="f"><label class="hr-check"><input v-bind="f" v-model="employeeForm.lotus_pit_commitment" type="checkbox" :true-value="1" :false-value="0">Đã nộp cam kết</label></FormField>
     </div>
     </template><h3 class="hr-form-section">Công việc & hợp đồng</h3>
     <div class="hr-form-grid">

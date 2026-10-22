@@ -48,6 +48,13 @@
       "description": "Dùng làm giá tạm tính khi lô chưa có giá thành thực tế tháng trước"
     },
     {
+      "fieldname": "minimum_wage_region",
+      "label": "Vùng lương tối thiểu (trần BHTN)",
+      "fieldtype": "Select",
+      "options": "\nI\nII\nIII\nIV",
+      "description": "Theo địa bàn doanh nghiệp (Nghị định lương tối thiểu vùng)"
+    },
+    {
       "fieldname": "accounts_section",
       "label": "Tài khoản theo nghiệp vụ",
       "fieldtype": "Section Break"
@@ -195,6 +202,60 @@
       "label": "Làm tròn",
       "fieldtype": "Link",
       "options": "Account"
+    },
+    {
+      "fieldname": "acct_pit_payable",
+      "label": "Thuế TNCN phải nộp",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_union_fee",
+      "label": "Kinh phí công đoàn",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_advance",
+      "label": "Tạm ứng",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_receivable_customer",
+      "label": "Phải thu khách hàng",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_sales_revenue",
+      "label": "Doanh thu bán hàng",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_output_vat",
+      "label": "Thuế GTGT đầu ra",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_input_vat",
+      "label": "Thuế GTGT đầu vào",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_income_summary",
+      "label": "Xác định kết quả kinh doanh",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_retained_earnings",
+      "label": "Lợi nhuận chưa phân phối năm nay",
+      "fieldtype": "Link",
+      "options": "Account"
     }
   ],
   "field_order": [
@@ -205,6 +266,7 @@
     "coa_applied_at",
     "coa_applied_by",
     "harvest_standard_cost",
+    "minimum_wage_region",
     "accounts_section",
     "acct_inventory_material",
     "acct_finished_goods",
@@ -229,7 +291,16 @@
     "acct_other_expense",
     "acct_packing_cost",
     "acct_opening_equity",
-    "acct_round_off"
+    "acct_round_off",
+    "acct_pit_payable",
+    "acct_union_fee",
+    "acct_advance",
+    "acct_receivable_customer",
+    "acct_sales_revenue",
+    "acct_output_vat",
+    "acct_input_vat",
+    "acct_income_summary",
+    "acct_retained_earnings"
   ],
   "permissions": [
     {

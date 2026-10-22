@@ -115,6 +115,24 @@ async function sendBack(){saving.value=true
  catch(e){error.value=e.message}finally{saving.value=false}}
 async function dropDraft(v){if(!await ask('Hủy phiếu chi '+v.name+' chưa ký xong?','Hủy phiếu chi'))return
  await run(async()=>{await call(F+'payments.cancel_draft',{doctype:v.doctype,name:v.name,reason:'Hủy phiếu chi chưa ký'},true);notice.value='Đã hủy phiếu chi.';await load()})}
+const advanceOpen=ref(false),advance=ref({employee:'',amount:'',month:today.slice(0,7),mode:'cash',posting_date:today,reference_no:''})
+async function openAdvance(){await ensureLookups();advance.value={employee:'',amount:'',month:today.slice(0,7),mode:'cash',posting_date:today,reference_no:''}
+ signerOptions.value=await call('lotus_farm.signing.candidates',{chain:'payment_voucher',company:overview.value?.company});advanceOpen.value=true}
+async function prepareAdvance(){saving.value=true
+ try{const r=await call(F+'payroll.prepare_advance',{...advance.value,amount:Number(advance.value.amount),signers:JSON.stringify(signers.value)},true)
+  notice.value='Đã lập phiếu tạm ứng '+r.voucher+' và gửi ký.';advanceOpen.value=false;await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+const statutoryOpen=ref(false),statutory=ref({rows:[],mode:'bank',posting_date:today,reference_no:''})
+async function openStatutory(){const rows=await call(F+'payroll.statutory_balances')
+ statutory.value={rows:rows.map(r=>({...r,amount:r.payable||''})),mode:'bank',posting_date:today,reference_no:''}
+ signerOptions.value=await call('lotus_farm.signing.candidates',{chain:'payment_voucher',company:overview.value?.company});statutoryOpen.value=true}
+const statutoryTotal=computed(()=>statutory.value.rows.reduce((s,r)=>s+Number(r.amount||0),0))
+async function prepareStatutory(){saving.value=true
+ try{const r=await call(F+'payroll.prepare_statutory',{lines:JSON.stringify(statutory.value.rows.filter(x=>Number(x.amount)>0).map(x=>({key:x.key,amount:Number(x.amount)}))),
+   mode:statutory.value.mode,posting_date:statutory.value.posting_date,reference_no:statutory.value.reference_no||null,signers:JSON.stringify(signers.value)},true)
+  notice.value='Đã lập phiếu nộp '+r.voucher+' và gửi ký.';statutoryOpen.value=false;await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+function exportTransfer(period){location.href='/api/method/lotus_farm.finance.payroll.export_salary_transfer?'+new URLSearchParams({period})}
 const salaryOpen=ref(null),salary=ref({mode:'bank',posting_date:today,reference_no:''})
 async function openSalary(row){salary.value={mode:'bank',posting_date:today,reference_no:''};signerOptions.value=await call('lotus_farm.signing.candidates',{chain:'payment_voucher',company:overview.value?.company});salaryOpen.value=row}
 async function prepareSalary(){saving.value=true
@@ -129,7 +147,12 @@ async function reverse(postingName,label){if(!overview.value?.is_chief)return
 
 // Settings (chief accountant)
 const form=ref({enabled:false,cutover_date:'',mapping:{}}),coa=ref(null),openingPreview=ref(null)
-watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',mapping:{...s.mapping}}})
+watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',minimum_wage_region:s.minimum_wage_region||'',mapping:{...s.mapping}}})
+const paramGroups={pit_progressive:'Thuế TNCN lũy tiến (giảm trừ gia cảnh)',pit_flat:'Thuế TNCN khấu trừ 10%',insurance:'Bảo hiểm, KPCĐ'}
+const pct=v=>num(Math.round(Number(v)*1000)/10,1)+'%',sumOf=o=>Object.values(o||{}).reduce((a,b)=>a+b,0)
+function paramSummary(r){if(r.group==='pit_progressive')return 'Bản thân '+num(r.self)+' · người phụ thuộc '+num(r.dependent)+' · '+r.brackets.map(b=>(b[0]?'đến '+num(b[0]/1e6)+' tr':'phần còn lại')+' '+pct(b[1])).join(', ')
+ if(r.group==='pit_flat')return pct(r.rate)+' mỗi lần trả từ '+num(r.threshold)+' đ'
+ return 'NLĐ '+pct(sumOf(r.employee))+' · DN '+pct(sumOf(r.employer))+' · KPCĐ '+pct(r.union_fee)+' · lương cơ sở '+num(r.base_salary)}
 const accountLabel=a=>(a.account_number?a.account_number+' - ':'')+a.account_name
 const accountsFor=key=>{const k=(settings.value?.keys||[]).find(x=>x.key===key);return (settings.value?.accounts||[]).filter(a=>!k||k.roots.includes(a.root_type))}
 async function saveSettings(){saving.value=true
@@ -198,7 +221,9 @@ const supplierColumns=computed(()=>[{field:'supplier_name',headerName:'Nhà cung
  {field:'open_invoices',headerName:'Hóa đơn còn nợ',minWidth:110},...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:140,sortable:false,cellRenderer:cellButton('Lập phiếu chi',r=>openPay(r.supplier),r=>r.open_invoices>0)}]:[])])
 const invoiceColumns=[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200},{field:'bill_no',headerName:'Số hóa đơn',minWidth:130,valueGetter:p=>p.data.bill_no||p.data.name},dateCol('bill_date','Ngày'),dateCol('due_date','Hạn trả'),
  moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn nợ'),moneyCol('paying','Đang chờ chi'),{field:'aging',headerName:'Tuổi nợ',minWidth:150,cellClass:p=>p.value&&p.value!=='Trong hạn'?'fin-cell-bad':''}]
-const salaryReadyColumns=computed(()=>[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},moneyCol('net','Thực nhận'),{field:'payroll_voucher',headerName:'Bút toán lương',minWidth:170},
+const salaryReadyColumns=computed(()=>[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},moneyCol('net','Thực lĩnh'),
+ moneyCol('advance','Đã tạm ứng'),moneyCol('to_pay','Còn phải chi'),{field:'payroll_voucher',headerName:'Bút toán lương',minWidth:170},
+ {field:'__list',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Danh sách chuyển khoản',r=>exportTransfer(r.period))},
  ...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Lập phiếu chi lương',openSalary)}]:[])])
 const voucherColumns=computed(()=>[{field:'name',headerName:'Phiếu',minWidth:170},{field:'kind',headerName:'Loại',minWidth:140},{field:'party_name',headerName:'Đối tượng',minWidth:180},dateCol('posting_date','Ngày'),moneyCol('amount','Số tiền'),
  {field:'state',headerName:'Trạng thái',minWidth:110,cellClass:p=>p.value==='Chờ ký'?'fin-cell-warn':''},
@@ -328,6 +353,7 @@ useNoticeToast(notice)
  </template>
 
  <template v-else-if="tab==='cash'&&cash">
+  <div v-if="overview?.can_post" class="land-filters"><span class="land-spacer"></span><UiButton variant="outline" @click="openAdvance">Tạm ứng lương</UiButton><UiButton variant="outline" @click="openStatutory">Nộp BH, KPCĐ, thuế TNCN</UiButton></div>
   <section v-if="mine.length" class="land-card"><h3>Chờ bạn ký</h3>
    <article v-for="v in mine" :key="v.name" class="fin-voucher"><header><b>{{v.kind}} · {{v.party_name}}</b><strong>{{vnd(v.amount)}}</strong></header><small>{{v.name}} · {{vnDate(v.posting_date)}}</small>
     <div class="land-actions"><UiButton v-if="v.signing.can_return" variant="outline" :disabled="saving" @click="returnOpen=v">Trả lại</UiButton><UiButton v-if="v.signing.can_sign" :disabled="saving" @click="sign(v)">Ký</UiButton></div></article>
@@ -398,6 +424,7 @@ useNoticeToast(notice)
     <label v-for="k in settings.keys" :key="k.key">{{k.label}}<UiSelect v-model="form.mapping[k.key]" :disabled="!settings.is_chief"><option value="">Chưa chọn</option><option v-for="a in accountsFor(k.key)" :key="a.name" :value="a.name">{{accountLabel(a)}}</option></UiSelect></label>
     <label>Ngày bắt đầu ghi sổ (cutover)<DatePicker v-model="form.cutover_date" :disabled="!settings.is_chief"/></label>
     <label>Giá thành kế hoạch chuối thu hoạch (đ / kg)<UiInput v-model="form.harvest_standard_cost" type="number" min="0" :disabled="!settings.is_chief" placeholder="Dùng khi lô chưa có giá thành thực tế"/></label>
+    <label>Vùng lương tối thiểu (trần BHTN)<UiSelect v-model="form.minimum_wage_region" :disabled="!settings.is_chief"><option value="">Chưa chọn (không áp trần BHTN)</option><option v-for="v in ['I','II','III','IV']" :key="v" :value="v">Vùng {{v}}</option></UiSelect></label>
     <label class="fin-check"><input v-model="form.enabled" type="checkbox" :disabled="!settings.is_chief">Bật ghi sổ kế toán từ Lotus</label>
     <div v-if="settings.is_chief" class="land-actions land-form__full"><UiButton type="submit" :disabled="saving">Lưu</UiButton></div>
    </form>
@@ -407,6 +434,10 @@ useNoticeToast(notice)
    <div class="fin-months"><div v-for="m in months" :key="m" class="fin-month" :class="{closed:periodOf(m)?.closed}"><b>{{m.slice(5)}}/{{m.slice(0,4)}}</b><small>{{periodOf(m)?.closed?'Đã khóa':'Đang mở'}}</small>
     <UiButton size="sm" variant="ghost" @click="previewClosing(m)">Kết chuyển CP</UiButton><UiButton size="sm" variant="ghost" @click="previewCosting(m)">Giá thành</UiButton>
     <template v-if="settings.is_chief"><UiButton v-if="!periodOf(m)?.closed" size="sm" variant="outline" @click="closeMonth(m)">Khóa</UiButton><UiButton v-else size="sm" variant="ghost" @click="reopenMonth(m)">Mở lại</UiButton></template></div></div>
+  </section>
+  <section v-if="settings.payroll_params" class="land-card"><h3>Tham số lương theo pháp luật</h3>
+   <p class="land-note">{{settings.payroll_params.note}}</p>
+   <ul class="fin-list"><li v-for="r in settings.payroll_params.rows" :key="r.group+r.from" :class="{'fin-muted':r.confirmed===false}"><b>{{paramGroups[r.group]}} từ {{vnDate(r.from)}}{{r.confirmed===false?' (chưa xác nhận, chưa áp dụng)':''}}</b>: {{paramSummary(r)}}<br><small>{{r.source}}</small></li></ul>
   </section>
   <section class="land-card"><h3>Người làm kế toán</h3>
    <p class="land-note">Kế toán: lập hóa đơn, phiếu chi, ghi sổ lương. Kế toán trưởng: ký phiếu chi, đảo bút toán, kết chuyển, khóa sổ, cấu hình. Kiểm soát: chỉ xem. {{staff?.can_assign?'':'Chỉ Quản trị hệ thống được gán vai trò.'}}</p>
@@ -445,7 +476,7 @@ useNoticeToast(notice)
  <WorkspaceModal :model-value="!!payrollView" title="Bút toán lương" :busy="saving" width="980px" @update:model-value="v=>{if(!v)payrollView=null}">
   <div v-if="payrollView" class="land-form">
    <p>Tháng {{payrollView.month}} · {{payrollView.people}} người · {{payrollView.crews}} đội khoán · ngày hạch toán {{vnDate(payrollView.posting_date)}}</p>
-   <p class="land-note">Tổng lương {{vnd(payrollView.totals.gross)}} · bảo hiểm doanh nghiệp {{vnd(payrollView.totals.employer_insurance)}} · khoán {{vnd(payrollView.totals.crews)}} · thực nhận {{vnd(payrollView.totals.net)}}. {{payrollView.indirect.length}} người không có công ở lô nào được tính chi phí quản lý.</p>
+   <p class="land-note">Tổng lương {{vnd(payrollView.totals.gross)}} · bảo hiểm doanh nghiệp {{vnd(payrollView.totals.employer_insurance)}} · KPCĐ {{vnd(payrollView.totals.union_fee)}} · thuế TNCN khấu trừ {{vnd(payrollView.totals.pit)}} · khoán {{vnd(payrollView.totals.crews)}} · thực nhận {{vnd(payrollView.totals.net)}}. {{payrollView.indirect.length}} người không có công ở lô nào được tính chi phí quản lý.</p>
    <p v-for="i in payrollView.issues" :key="i" class="land-bad">{{i}}</p>
    <div class="land-table land-preview"><DataTable :rows="keyed(payrollView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-payroll-lines"/></div>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="payrollView=null">Đóng</UiButton><UiButton v-if="overview?.can_post&&!payrollView.posted" :disabled="saving||!!payrollView.issues.length||!overview?.enabled" @click="postPayroll">Ghi sổ</UiButton></div>
@@ -485,11 +516,35 @@ useNoticeToast(notice)
  </WorkspaceModal>
 
  <WorkspaceModal :model-value="!!salaryOpen" title="Phiếu chi lương" :busy="saving" width="640px" @update:model-value="v=>{if(!v)salaryOpen=null}">
-  <form v-if="salaryOpen" class="land-form" @submit.prevent="prepareSalary"><p>Tháng {{salaryOpen.month}} · thực nhận {{vnd(salaryOpen.net)}}</p>
+  <form v-if="salaryOpen" class="land-form" @submit.prevent="prepareSalary"><p>Tháng {{salaryOpen.month}} · thực lĩnh {{vnd(salaryOpen.net)}} · đã tạm ứng {{vnd(salaryOpen.advance)}} · chi lần này <b>{{vnd(salaryOpen.to_pay)}}</b></p>
    <div class="land-form--grid"><label>Hình thức<UiSelect v-model="salary.mode"><option value="bank">Chuyển khoản</option><option value="cash">Tiền mặt</option></UiSelect></label><label>Ngày chi<DatePicker v-model="salary.posting_date"/></label>
     <label v-if="salary.mode==='bank'" class="land-form__full">Số ủy nhiệm chi<UiInput v-model="salary.reference_no"/></label></div>
    <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="salaryOpen=null">Hủy</UiButton><UiButton type="submit" :disabled="saving">Lập phiếu và gửi ký</UiButton></div></form>
+ </WorkspaceModal>
+
+ <WorkspaceModal v-model="advanceOpen" title="Phiếu tạm ứng lương" :busy="saving" width="640px">
+  <form class="land-form" @submit.prevent="prepareAdvance">
+   <div class="land-form--grid"><label>Nhân viên<UiSelect v-model="advance.employee" required><option value="">Chọn…</option><option v-for="e in lookups?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
+    <label>Số tiền<UiInput v-model="advance.amount" type="number" min="0" required/></label>
+    <label>Trừ vào lương tháng<UiInput v-model="advance.month" type="month" required/></label>
+    <label>Hình thức<UiSelect v-model="advance.mode"><option value="cash">Tiền mặt</option><option value="bank">Chuyển khoản</option></UiSelect></label>
+    <label>Ngày chi<DatePicker v-model="advance.posting_date"/></label>
+    <label v-if="advance.mode==='bank'">Số ủy nhiệm chi<UiInput v-model="advance.reference_no"/></label></div>
+   <p class="land-note">Nợ 334 / Có 111 hoặc 112. Khi chi lương tháng đó, Lotus tự trừ số đã tạm ứng.</p>
+   <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="advanceOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!advance.employee||!Number(advance.amount)">Lập phiếu và gửi ký</UiButton></div></form>
+ </WorkspaceModal>
+
+ <WorkspaceModal v-model="statutoryOpen" title="Nộp bảo hiểm, kinh phí công đoàn, thuế TNCN" :busy="saving" width="760px">
+  <form class="land-form" @submit.prevent="prepareStatutory">
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--head" aria-hidden="true"><span>Khoản</span><span class="num">Còn phải nộp</span><span class="num">Đang chờ ký</span><span class="num">Nộp lần này</span></div>
+    <div v-for="r in statutory.rows" :key="r.key" class="fin-form-row" role="listitem"><b>{{r.label}}</b><span class="num">{{vnd(r.owed)}}</span><span class="num">{{vnd(r.pending)}}</span><UiInput v-model="r.amount" type="number" min="0" :aria-label="'Nộp '+r.label"/></div></div>
+   <p>Tổng nộp: <b>{{vnd(statutoryTotal)}}</b></p>
+   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="statutory.mode"><option value="bank">Chuyển khoản (ủy nhiệm chi)</option><option value="cash">Tiền mặt</option></UiSelect></label><label>Ngày nộp<DatePicker v-model="statutory.posting_date"/></label>
+    <label v-if="statutory.mode==='bank'" class="land-form__full">Số ủy nhiệm chi<UiInput v-model="statutory.reference_no" required/></label></div>
+   <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="statutoryOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!statutoryTotal">Lập phiếu và gửi ký</UiButton></div></form>
  </WorkspaceModal>
 
  <WorkspaceModal v-model="serviceOpen" title="Hóa đơn dịch vụ / chi phí" :busy="saving" width="980px">

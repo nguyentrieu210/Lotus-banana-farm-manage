@@ -257,8 +257,8 @@ def _voucher(doctype, name):
     if doctype not in (PE, 'Journal Entry'):
         frappe.throw('Chứng từ không phải phiếu chi.')
     doc = frappe.get_doc(doctype, name)
-    if doctype == 'Journal Entry' and doc.get('lotus_payment_kind') != 'Salary':
-        frappe.throw('Bút toán này không phải phiếu chi lương.')
+    if doctype == 'Journal Entry' and doc.get('lotus_payment_kind') not in setup.SIGNED_JE_KINDS:
+        frappe.throw('Bút toán này không phải phiếu chi.')
     return doc
 
 
@@ -328,8 +328,12 @@ def _voucher_info(doc, signing=None):
                     money=doc.paid_from, reference=doc.reference_no or '', kind='Trả nhà cung cấp')
     else:
         lines = [dict(label=a.account, amount=flt(a.debit) or -flt(a.credit)) for a in doc.accounts]
-        info = dict(party='', party_name='Người lao động', amount=flt(doc.total_debit), money=next((a.account for a in doc.accounts if a.credit), ''),
-                    reference=doc.cheque_no or '', kind='Chi lương')
+        kind = doc.get('lotus_payment_kind')
+        party = doc.get('lotus_employee')
+        party_name = (frappe.db.get_value('Employee', party, 'employee_name') if party else None) or \
+            ('Cơ quan BHXH / thuế / công đoàn' if kind == 'Statutory' else 'Người lao động')
+        info = dict(party=party or '', party_name=party_name, amount=flt(doc.total_debit), money=next((a.account for a in doc.accounts if a.credit), ''),
+                    reference=doc.cheque_no or '', kind={'Advance': 'Tạm ứng lương', 'Statutory': 'Nộp BH, KPCĐ, thuế'}.get(kind, 'Chi lương'))
     return dict(info, doctype=doc.doctype, name=doc.name, posting_date=str(doc.posting_date), remark=doc.get('remarks') or doc.get('user_remark') or '',
                 docstatus=doc.docstatus, lines=lines, signing=signing.status(doc))
 
@@ -339,7 +343,7 @@ def vouchers():
     """Payment vouchers made from Lotus (drafts waiting for signatures first), and payroll months ready to be paid."""
     setup.require_view()
     rows = []
-    for p in frappe.get_all(posting.POSTING, filters={'purpose': ['in', ['Supplier Payment', 'Salary Payment']]},
+    for p in frappe.get_all(posting.POSTING, filters={'purpose': ['in', ['Supplier Payment', 'Salary Payment', 'Salary Advance', 'Statutory Payment']]},
                             fields=['name', 'voucher_type', 'voucher_name', 'state', 'purpose', 'source_name', 'amount', 'posted_by', 'reason'],
                             order_by='creation desc', limit_page_length=200):
         if p.state == 'Reversed' and not frappe.db.exists(p.voucher_type, p.voucher_name):
@@ -352,8 +356,9 @@ def vouchers():
     ready = []
     for p in frappe.get_all(posting.POSTING, filters={'purpose': 'Payroll', 'state': 'Posted'}, fields=['source_name', 'voucher_name']):
         if not posting.active('Lotus Timekeeping Period', p.source_name, 'Salary Payment'):
-            snap = frappe.db.get_value('Lotus Timekeeping Period', p.source_name, ['month', 'snapshot'], as_dict=True)
-            import json
-            net = sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(json.loads(snap.snapshot or '{}')))
-            ready.append(dict(period=p.source_name, month=snap.month, net=net, payroll_voucher=p.voucher_name))
+            from lotus_farm.finance.payroll import pay_list
+            period = frappe.get_doc('Lotus Timekeeping Period', p.source_name)
+            people = pay_list(period)
+            ready.append(dict(period=p.source_name, month=period.month, net=sum(r['net'] for r in people), advance=sum(r['advance'] for r in people),
+                              to_pay=sum(r['to_pay'] for r in people), payroll_voucher=p.voucher_name))
     return dict(vouchers=rows, salary_ready=ready)

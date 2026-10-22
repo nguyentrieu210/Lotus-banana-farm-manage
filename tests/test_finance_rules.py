@@ -27,7 +27,10 @@ class FinanceRules(unittest.TestCase):
         self.assertEqual(numbers['155']['name'], 'Sản phẩm')
         self.assertEqual(numbers['215']['name'], 'Tài sản sinh học')
         self.assertEqual(numbers['6277']['parent'], '627')
-        self.assertEqual(sum(1 for a in coa['accounts'] if len(a['number']) == 3), 70, 'TT99 has 71 level-1 accounts; 911 is left to ERPNext period closing')
+        self.assertEqual(sum(1 for a in coa['accounts'] if len(a['number']) == 3), 71, 'TT99 has 71 level-1 accounts, 911 included')
+        self.assertEqual(numbers['911']['root_type'], 'Equity')
+        for key, number in coa['defaults'].items():
+            self.assertIn(key, rules.KEYS, 'default for an unknown key ' + key)
         self.assertEqual(numbers['331']['account_type'], 'Payable')
         self.assertEqual(numbers['3388']['account_type'], 'Stock Received But Not Billed')
         plan = rules.coa_plan(coa, {'111'})

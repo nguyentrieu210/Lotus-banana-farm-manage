@@ -1,7 +1,7 @@
 {
  "name": "Hệ thống tài khoản kế toán doanh nghiệp (Thông tư 99/2025/TT-BTC, Phụ lục II)",
  "version": "tt99-2025-lotus-1",
- "note": "Theo Phụ lục II phần A Thông tư 99/2025/TT-BTC (hiệu lực 01/01/2026). Không gồm 911 (ERPNext kết chuyển bằng Period Closing Voucher) và các TK cấp 3 41111/41112 (chỉ dùng cho công ty cổ phần; Điều 11 cho phép doanh nghiệp điều chỉnh). Kế toán trưởng đối chiếu với văn bản gốc trước khi áp dụng.",
+ "note": "Theo Phụ lục II phần A Thông tư 99/2025/TT-BTC (hiệu lực 01/01/2026). TK 911 đặt dưới loại Vốn chủ sở hữu trong ERPNext (luôn kết chuyển hết về 4212 cuối tháng, không có số dư). Không gồm các TK cấp 3 41111/41112 (chỉ dùng cho công ty cổ phần; Điều 11 cho phép doanh nghiệp điều chỉnh). Kế toán trưởng đối chiếu với văn bản gốc trước khi áp dụng.",
  "columns": [ "number", "name", "parent", "root_type", "account_type" ],
  "accounts": [
   [ "1", "Loại 1 - Tài sản ngắn hạn", null, "Asset", "" ],
@@ -192,7 +192,9 @@
   [ "8211", "Chi phí thuế TNDN hiện hành", "821", "Expense", "" ],
   [ "82111", "Chi phí thuế thu nhập doanh nghiệp hiện hành theo quy định của Luật thuế thu nhập doanh nghiệp", "8211", "Expense", "Tax" ],
   [ "82112", "Chi phí thuế thu nhập doanh nghiệp bổ sung theo quy định về thuế tối thiểu toàn cầu", "8211", "Expense", "Tax" ],
-  [ "8212", "Chi phí thuế TNDN hoãn lại", "821", "Expense", "Tax" ]
+  [ "8212", "Chi phí thuế TNDN hoãn lại", "821", "Expense", "Tax" ],
+  [ "9", "Loại 9 - Xác định kết quả kinh doanh", null, "Equity", "" ],
+  [ "911", "Xác định kết quả kinh doanh", "9", "Equity", "" ]
  ],
  "defaults": {
   "inventory_material": "152",
@@ -218,7 +220,16 @@
   "stock_shortage": "1381",
   "cost_of_goods_sold": "632",
   "other_expense": "811",
-  "packing_cost": "6272"
+  "packing_cost": "6272",
+  "pit_payable": "3335",
+  "union_fee": "3382",
+  "receivable_customer": "131",
+  "sales_revenue": "511",
+  "output_vat": "33311",
+  "input_vat": "1331",
+  "income_summary": "911",
+  "retained_earnings": "4212",
+  "advance": "141"
  },
  "company_defaults": {
   "default_cash_account": "111",

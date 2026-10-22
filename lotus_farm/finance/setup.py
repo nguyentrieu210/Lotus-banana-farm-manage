@@ -21,9 +21,14 @@ READ_DOCTYPES = ('Account', 'GL Entry', 'Journal Entry', 'Purchase Invoice', 'Pa
                  'Supplier', 'Purchase Receipt', 'Stock Entry', 'Cost Center', 'Accounting Dimension',
                  # masters ERPNext reads while building an invoice or payment for the current user
                  'Item', 'Item Group', 'UOM', 'Warehouse', 'Company', 'Supplier Group', 'Currency', 'Price List',
-                 'Mode of Payment', 'Fiscal Year', 'Payment Term', 'Payment Terms Template', 'Bank Account')
+                 'Mode of Payment', 'Fiscal Year', 'Payment Term', 'Payment Terms Template', 'Bank Account',
+                 'Customer', 'Customer Group', 'Territory', 'Sales Order', 'Delivery Note', 'Sales Invoice',
+                 'Sales Taxes and Charges Template', 'Purchase Taxes and Charges Template', 'Item Tax Template', 'Employee')
 # The vouchers accountants make (Lotus checks its own rules first; ERPNext's mapper checks these permissions).
-WRITE_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry')
+WRITE_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Sales Invoice', 'Delivery Note', 'Customer')
+# Journal Entry kinds made by Lotus: signed payment vouchers (Salary, Advance, Statutory) and month-end entries (Closing, Result).
+JE_KINDS = ('Salary', 'Closing', 'Advance', 'Statutory', 'Result')
+SIGNED_JE_KINDS = ('Salary', 'Advance', 'Statutory')
 
 
 def _has(roles):
@@ -155,8 +160,12 @@ def install():
                 update_permission_property(doctype, role, 0, 'read', 1)
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
     create_custom_fields({
-        'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\nSalary\nClosing',
-                               read_only=1, no_copy=1, insert_after='voucher_type')],
+        'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\n' + '\n'.join(JE_KINDS),
+                               read_only=1, no_copy=1, insert_after='voucher_type'),
+                          dict(fieldname='lotus_employee', label='Nhân viên (tạm ứng)', fieldtype='Link', options='Employee', read_only=1, no_copy=1,
+                               insert_after='lotus_payment_kind'),
+                          dict(fieldname='lotus_pay_month', label='Tháng lương', fieldtype='Data', read_only=1, no_copy=1,
+                               insert_after='lotus_employee')],
         'Stock Entry': [
             dict(fieldname='lotus_receipt_reason', label='Lý do nhập kho', fieldtype='Select', options='\nPurchase\nRecovery\nSurplus\nHarvest',
                  insert_after='stock_entry_type', depends_on="eval:doc.stock_entry_type=='Material Receipt'"),
@@ -170,9 +179,38 @@ def install():
                  insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
         ]})
     install_dimensions()
+    add_missing_accounts()
     fill_mapping()
     if settings().coa_version:
         fix_references(company())
+
+
+def add_missing_accounts():
+    """Accounts added to the chart in a later release (911) are created on a company that already applied it; nothing
+    else of the chart is touched (re-applying would reset the mapping and the warehouse accounts)."""
+    doc = settings()
+    if not doc.coa_version:
+        return []
+    company_name = doc.company or company()
+    coa = rules.load_coa()
+    names, roots = _numbers(company_name), _roots(company_name)
+    groups = {a['parent'] for a in coa['accounts'] if a.get('parent')}
+    currency = frappe.get_cached_value('Company', company_name, 'default_currency')
+    added = []
+    for a in coa['accounts']:
+        if a['number'] in names:
+            continue
+        parent = roots.get(a['root_type']) if a['parent'] is None else names.get(a['parent'])
+        if not parent:
+            continue
+        acc = frappe.get_doc(dict(doctype='Account', account_name=a['name'], account_number=a['number'], parent_account=parent, company=company_name,
+                                  is_group=1 if a['number'] in groups else 0, root_type=a['root_type'], account_type=a['account_type'] or None,
+                                  account_currency=currency))
+        acc.flags.ignore_permissions = True
+        acc.insert()
+        names[a['number']] = acc.name
+        added.append(acc.name)
+    return added
 
 
 def fill_mapping():

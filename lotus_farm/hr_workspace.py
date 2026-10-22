@@ -215,6 +215,11 @@ def install_fields():
              fieldtype="Currency", permlevel=1, insert_after="lotus_social_insurance_no"),
         dict(fieldname="lotus_daily_rate", label="Lotus · Đơn giá công nhật",
              fieldtype="Currency", permlevel=1, insert_after="lotus_base_salary"),
+        # Personal income tax on the payroll sheet (lotus_farm.payroll_rules.income_tax).
+        dict(fieldname="lotus_dependents", label="Lotus · Số người phụ thuộc đã đăng ký",
+             fieldtype="Int", permlevel=1, insert_after="lotus_daily_rate"),
+        dict(fieldname="lotus_pit_commitment", label="Lotus · Đã nộp cam kết 08/CK-TNCN",
+             fieldtype="Check", permlevel=1, insert_after="lotus_dependents"),
     ]
     create_custom_fields({"Employee": values}, update=True, ignore_validate=True)
     # Database uniqueness protects against parallel registrations bypassing API prechecks.
@@ -321,7 +326,7 @@ def employee_detail(company, employee):
         "lotus_emergency_name", "lotus_emergency_phone", "lotus_tax_code",
         "lotus_social_insurance_no", "health_insurance_no",
         "contract_end_date", "job_applicant", "relieving_date", "reason_for_leaving",
-        "lotus_base_salary", "lotus_daily_rate",
+        "lotus_base_salary", "lotus_daily_rate", "lotus_dependents", "lotus_pit_commitment",
     ]
     return {k: doc.get(k) for k in fields} | {
         "cccd_recorded": bool(doc.get("lotus_cccd_hash")),
@@ -341,6 +346,13 @@ def _apply_employee(doc, values, company, new):
             if amount > 1_000_000_000:
                 frappe.throw(label + " vượt giới hạn hợp lệ.")
             doc.set(field, amount)
+    if "lotus_dependents" in values:
+        count = cint(values["lotus_dependents"] or 0)
+        if count < 0 or count > 20:
+            frappe.throw("Số người phụ thuộc không hợp lệ.")
+        doc.lotus_dependents = count
+    if "lotus_pit_commitment" in values:
+        doc.lotus_pit_commitment = 1 if values["lotus_pit_commitment"] else 0
     simple = (
         "gender", "date_of_birth", "date_of_joining", "designation", "department",
         "employment_type", "grade", "reports_to", "cell_number", "personal_email",

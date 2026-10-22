@@ -1,7 +1,8 @@
 """Tài chính – Kế toán: an approved month of pay (Lotus Timekeeping Period, Closed, with its frozen snapshot)
-posted as one Journal Entry. Each person's cost (gross + employer insurance) is split over the lots they
+posted as one Journal Entry. Each person's cost (gross + employer insurance + union fee) is split over the lots they
 worked that month by actual workdays (Daily Work Result labour, else Labor Allocation); people without lot
-work go to the administrative expense account. Paying the month is a signed cash/bank voucher.
+work go to the administrative expense account. Paying the month is a signed cash/bank voucher for the net pay less
+the advances of the month; advances and the payment of insurance / union fee / income tax are signed vouchers too.
 """
 import calendar
 import json
@@ -65,6 +66,8 @@ def build(name):
                      totals=dict(gross=sum(int(round(r.get('gross') or 0)) for r in rules.snapshot_people(snapshot)),
                                  net=sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(snapshot)),
                                  employer_insurance=sum(int(round(r.get('employer_insurance') or 0)) for r in rules.snapshot_people(snapshot)),
+                                 pit=sum(int(round(r.get('pit') or 0)) for r in rules.snapshot_people(snapshot)),
+                                 union_fee=sum(int(round(r.get('union_fee') or 0)) for r in rules.snapshot_people(snapshot)),
                                  crews=sum(int(round(c.get('amount') or 0)) for c in snapshot.get('crews') or []), sheet=totals),
                      posted=_posted(doc.name))
 
@@ -125,17 +128,182 @@ def assert_reopenable(period):
         frappe.throw('Lương tháng này đã có phiếu chi (%s). Hủy phiếu chi trước khi mở lại kỳ.' % pay.voucher_name)
 
 
+def _advances(company, month, docstatus=1):
+    """Salary advances of a pay month per employee (submitted vouchers; docstatus=0 for the ones still being signed)."""
+    if not frappe.get_meta('Journal Entry').has_field('lotus_pay_month'):
+        return {}
+    out = {}
+    for r in frappe.get_all('Journal Entry', filters={'company': company, 'docstatus': docstatus, 'lotus_payment_kind': 'Advance', 'lotus_pay_month': month},
+                            fields=['lotus_employee', 'total_debit']):
+        out[r.lotus_employee] = out.get(r.lotus_employee, 0) + int(round(flt(r.total_debit)))
+    return out
+
+
+def pay_list(doc):
+    """What each person receives for the month: net pay of the frozen sheet less the advances already paid."""
+    people = rules.snapshot_people(json.loads(doc.snapshot or '{}'))
+    advances = _advances(doc.company, doc.month)
+    meta = frappe.get_meta('Employee')
+    bank_fields = [f for f in ('bank_name', 'bank_ac_no', 'salary_mode') if meta.has_field(f)]
+    banks = {e.name: e for e in frappe.get_all('Employee', filters={'name': ['in', [p.get('employee') for p in people] or ['']]},
+                                                fields=['name'] + bank_fields)}
+    rows = []
+    for p in people:
+        net = int(round(p.get('net') or 0))
+        advance = advances.get(p.get('employee'), 0)
+        if not net and not advance:
+            continue
+        bank = banks.get(p.get('employee')) or frappe._dict()
+        rows.append(dict(employee=p.get('employee'), employee_name=p.get('employee_name'), net=net, advance=advance, to_pay=net - advance,
+                         bank_name=bank.get('bank_name') or '', bank_ac_no=bank.get('bank_ac_no') or '', salary_mode=bank.get('salary_mode') or ''))
+    return rows
+
+
+@frappe.whitelist()
+def salary_list(period):
+    setup.require_view()
+    doc = _period(period)
+    rows = pay_list(doc)
+    return dict(period=doc.name, month=doc.month, rows=rows, total=sum(max(0, r['to_pay']) for r in rows),
+                issues=['%s: tạm ứng %s lớn hơn thực lĩnh %s' % (r['employee_name'], r['advance'], r['net']) for r in rows if r['to_pay'] < 0])
+
+
+@frappe.whitelist()
+def export_salary_transfer(period):
+    """Bank transfer list (Excel) of the month: one row per person paid by bank."""
+    setup.require_view()
+    doc = _period(period)
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    book = Workbook()
+    ws = book.active
+    ws.title = 'Chuyển khoản lương'
+    ws.append(['Danh sách chi lương tháng ' + doc.month + ' (thực lĩnh trừ tạm ứng)'])
+    ws.append(['STT', 'Mã NV', 'Họ tên', 'Ngân hàng', 'Số tài khoản', 'Thực lĩnh', 'Đã tạm ứng', 'Số tiền chuyển', 'Nội dung'])
+    for cell in ws[2]:
+        cell.font = Font(bold=True)
+    for i, r in enumerate([r for r in pay_list(doc) if r['to_pay'] > 0], start=1):
+        account = str(r['bank_ac_no'] or '')
+        ws.append([i, r['employee'], r['employee_name'], r['bank_name'], "'" + account if account[:1] in ('=', '+', '-', '@') else account,
+                   r['net'], r['advance'], r['to_pay'], 'Luong thang %s %s' % (doc.month[5:] + '/' + doc.month[:4], r['employee'])])
+    output = BytesIO()
+    book.save(output)
+    frappe.local.response.filename = 'chuyen-khoan-luong-' + doc.month + '.xlsx'
+    frappe.local.response.filecontent = output.getvalue()
+    frappe.local.response.type = 'download'
+
+
+@frappe.whitelist(methods=['POST'])
+def prepare_advance(employee, amount, month, mode, posting_date, signers, reference_no=None):
+    """Salary advance (Nợ 334 / Có tiền) for a pay month, signed like every payment voucher; the month's salary payment
+    pays the rest."""
+    setup.require_post()
+    setup.require_enabled()
+    company = setup.company()
+    amount = int(round(flt(amount)))
+    if amount <= 0:
+        frappe.throw('Nhập số tiền tạm ứng.')
+    if not frappe.db.exists('Employee', {'name': employee, 'company': company}):
+        frappe.throw('Nhân viên không thuộc công ty.')
+    month = str(month or '')[:7]
+    if len(month) != 7 or month[4] != '-':
+        frappe.throw('Chọn tháng lương được tạm ứng.')
+    period = frappe.db.get_value(PERIOD, {'company': company, 'month': month})
+    if period and posting.active(PERIOD, period, 'Salary Payment'):
+        frappe.throw('Lương tháng %s đã có phiếu chi, không tạm ứng thêm vào tháng này.' % month)
+    m = setup.mapping()
+    money = m['bank'] if mode == 'bank' else m['cash']
+    setup.check_cutover(posting_date)
+    posting.check_open(company, posting_date)
+    name = frappe.db.get_value('Employee', employee, 'employee_name')
+    je = journal(company, posting_date, [rules.line(m['payable_employee'], debit=amount, note='Tạm ứng lương ' + name),
+                                         rules.line(money, credit=amount, note='Tạm ứng lương ' + name)],
+                 'Tạm ứng lương tháng %s: %s' % (month, name), kind='Advance')
+    je.db_set(dict(lotus_employee=employee, lotus_pay_month=month, **({'cheque_no': reference_no, 'cheque_date': posting_date} if mode == 'bank' and reference_no else {})))
+    posting.record('Employee', employee, 'Salary Advance', je, amount=amount, source_hash=month, key_suffix=je.name)
+    from lotus_farm.finance.payments import start_signing
+    return start_signing(je, signers)
+
+
+STATUTORY_KEYS = (('social_insurance', 'BHXH'), ('health_insurance', 'BHYT'), ('unemployment_insurance', 'BHTN'),
+                  ('union_fee', 'Kinh phí công đoàn'), ('pit_payable', 'Thuế TNCN'))
+
+
+@frappe.whitelist()
+def statutory_balances():
+    """What is owed to the social insurance agency, the union and the tax office (credit balances), less vouchers being signed."""
+    setup.require_view()
+    company = setup.company()
+    m = setup.mapping()
+    drafts = {}
+    for a in frappe.db.sql("""select a.account, sum(a.debit) amount from `tabJournal Entry Account` a join `tabJournal Entry` j on j.name=a.parent
+            where j.docstatus=0 and j.company=%s and j.lotus_payment_kind='Statutory' group by a.account""", company, as_dict=True) \
+            if frappe.get_meta('Journal Entry').has_field('lotus_payment_kind') else []:
+        drafts[a.account] = flt(a.amount)
+    rows = []
+    for key, label in STATUTORY_KEYS:
+        account = m.get(key)
+        if not account:
+            continue
+        owed = -flt(frappe.db.sql("""select sum(debit-credit) from `tabGL Entry` where company=%s and account=%s and is_cancelled=0""",
+                                  (company, account))[0][0])
+        rows.append(dict(key=key, label=label, account=account, owed=round(owed), pending=round(drafts.get(account, 0)),
+                         payable=max(0, round(owed - drafts.get(account, 0)))))
+    return rows
+
+
+@frappe.whitelist(methods=['POST'])
+def prepare_statutory(lines, mode, posting_date, signers, reference_no=None, remark=None):
+    """Payment of insurance / union fee / personal income tax (Nợ 3383, 3384, 3386, 3382, 3335 / Có tiền), signed."""
+    setup.require_post()
+    setup.require_enabled()
+    company = setup.company()
+    m = setup.mapping()
+    owed = {r['key']: r for r in statutory_balances()}
+    chosen = [(l.get('key'), int(round(flt(l.get('amount'))))) for l in (frappe.parse_json(lines) if isinstance(lines, str) else lines or [])]
+    chosen = [(k, a) for k, a in chosen if a > 0]
+    if not chosen:
+        frappe.throw('Nhập số tiền nộp.')
+    for key, amount in chosen:
+        if key not in owed:
+            frappe.throw('Khoản nộp không hợp lệ.')
+        if amount > owed[key]['payable'] + 0.5:
+            frappe.throw('%s chỉ còn phải nộp %s.' % (owed[key]['label'], format(owed[key]['payable'], ',').replace(',', '.')))
+    if mode == 'bank' and not reference_no:
+        frappe.throw('Chuyển khoản cần số ủy nhiệm chi.')
+    money = m['bank'] if mode == 'bank' else m['cash']
+    setup.check_cutover(posting_date)
+    posting.check_open(company, posting_date)
+    total = sum(a for _, a in chosen)
+    labels = dict(STATUTORY_KEYS)
+    je = journal(company, posting_date, [rules.line(m[k], debit=a, note='Nộp ' + labels[k]) for k, a in chosen] + [rules.line(money, credit=total, note='Nộp bảo hiểm / thuế')],
+                 remark or 'Nộp ' + ', '.join(labels[k] for k, _ in chosen), kind='Statutory')
+    if reference_no:
+        je.db_set(dict(cheque_no=reference_no, cheque_date=posting_date))
+    posting.record('Lotus Finance Settings', setup.SETTINGS, 'Statutory Payment', je, amount=total, source_hash=','.join(k for k, _ in chosen), key_suffix=je.name)
+    from lotus_farm.finance.payments import start_signing
+    return start_signing(je, signers)
+
+
 @frappe.whitelist(methods=['POST'])
 def prepare_salary_payment(period, mode, posting_date, signers, reference_no=None):
-    """Draft voucher paying the month's net pay (Nợ phải trả NLĐ / Có tiền), sent for signatures."""
+    """Draft voucher paying the month's net pay less advances (Nợ phải trả NLĐ / Có tiền), sent for signatures."""
     setup.require_post()
     setup.require_enabled()
     doc = _period(period)
     if not posting.active(PERIOD, doc.name, 'Payroll'):
         frappe.throw('Ghi sổ bảng lương tháng %s trước khi chi lương.' % doc.month)
+    if _advances(doc.company, doc.month, docstatus=0):
+        frappe.throw('Còn phiếu tạm ứng lương tháng %s chưa ký xong. Ký hoặc hủy trước khi chi lương.' % doc.month)
     posting.guard(PERIOD, doc.name, 'Salary Payment')
-    snapshot = json.loads(doc.snapshot)
-    net = sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(snapshot))
+    rows = pay_list(doc)
+    short = [r for r in rows if r['to_pay'] < 0]
+    if short:
+        frappe.throw('Tạm ứng lớn hơn thực lĩnh: ' + ', '.join(r['employee_name'] for r in short))
+    net = sum(r['to_pay'] for r in rows)
+    if net <= 0:
+        frappe.throw('Không còn lương phải chi cho tháng %s.' % doc.month)
     m = setup.mapping()
     money = m['bank'] if mode == 'bank' else m['cash']
     setup.check_cutover(posting_date)

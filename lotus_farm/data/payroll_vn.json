@@ -1,0 +1,56 @@
+{
+ "note": "Tham số lương theo pháp luật Việt Nam, mỗi dòng có ngày hiệu lực (from). Bảng lương tháng dùng dòng mới nhất có from <= ngày cuối tháng. Dòng confirmed=false chưa đối chiếu văn bản gốc nên KHÔNG được áp dụng cho đến khi kế toán trưởng xác nhận và đổi thành true.",
+ "pit_progressive": [
+  {
+   "from": "2020-07-01",
+   "self": 11000000,
+   "dependent": 4400000,
+   "brackets": [[5000000, 0.05], [10000000, 0.10], [18000000, 0.15], [32000000, 0.20], [52000000, 0.25], [80000000, 0.30], [null, 0.35]],
+   "source": "Luật Thuế TNCN 04/2007/QH12 sửa đổi 26/2012/QH13 (Điều 22); Nghị quyết 954/2020/UBTVQH14 (giảm trừ 11 / 4,4 triệu)."
+  },
+  {
+   "from": "2026-01-01",
+   "self": 15500000,
+   "dependent": 6200000,
+   "brackets": [[10000000, 0.05], [30000000, 0.10], [60000000, 0.20], [100000000, 0.30], [null, 0.35]],
+   "source": "Luật Thuế TNCN 109/2025/QH15: biểu 5 bậc 5% – 35%, quy định về tiền lương, tiền công của cá nhân cư trú áp dụng từ kỳ tính thuế 2026; giảm trừ gia cảnh 15,5 triệu (bản thân) / 6,2 triệu (người phụ thuộc). Kiểm tra 23/10/2026: giảm trừ và kỳ áp dụng theo xaydungchinhsach.chinhphu.vn (Giới thiệu Luật 109/2025/QH15); bậc đầu (đến 10 triệu, 5%) và bậc cuối (trên 100 triệu, 35%) theo vietnamnet.vn; ngưỡng 30 / 60 triệu theo bài tổng hợp (dhtaxlaw.com.vn, seabank.com.vn) — kế toán đối chiếu biểu thuế trong văn bản gốc."
+  }
+ ],
+ "pit_flat": [
+  {
+   "from": "2014-01-01",
+   "rate": 0.10,
+   "threshold": 2000000,
+   "source": "Thông tư 111/2013/TT-BTC Điều 25 khoản 1 điểm i: cá nhân không ký hợp đồng lao động hoặc ký dưới 3 tháng, mỗi lần trả từ 2 triệu đồng trở lên khấu trừ 10%; được tạm không khấu trừ khi nộp cam kết mẫu 08/CK-TNCN (Thông tư 80/2021/TT-BTC)."
+  },
+  {
+   "from": "2026-07-01",
+   "rate": 0.10,
+   "threshold": 5000000,
+   "confirmed": false,
+   "source": "Một số bài tổng hợp (ancvietnam.com 09/2026) nêu ngưỡng 5 triệu đồng/lần từ 01/7/2026 theo nghị định hướng dẫn Luật 109/2025/QH15. Chưa đối chiếu nghị định gốc: giữ ngưỡng 2 triệu cho đến khi kế toán trưởng xác nhận."
+  }
+ ],
+ "insurance": [
+  {
+   "from": "2026-01-01",
+   "employee": {"bhxh": 0.08, "bhyt": 0.015, "bhtn": 0.01},
+   "employer": {"bhxh": 0.175, "bhyt": 0.03, "bhtn": 0.01},
+   "union_fee": 0.02,
+   "base_salary": 2340000,
+   "cap_multiple": 20,
+   "regional_minimum": {"I": 5310000, "II": 4730000, "III": 4140000, "IV": 3700000},
+   "source": "Luật BHXH 41/2024/QH15 (NLĐ 8%, DN 14% hưu trí + 3% ốm đau thai sản; 0,5% TNLĐ-BNN theo Nghị định 58/2020/NĐ-CP); Luật BHYT (4,5%: DN 3%, NLĐ 1,5%); Luật Việc làm (BHTN 1% + 1%); Luật Công đoàn 50/2024/QH15 (kinh phí công đoàn 2% quỹ lương đóng BHXH). Trần BHXH/BHYT = 20 × lương cơ sở 2.340.000; trần BHTN = 20 × lương tối thiểu vùng (Nghị định 293/2025/NĐ-CP, từ 01/01/2026)."
+  },
+  {
+   "from": "2026-07-01",
+   "employee": {"bhxh": 0.08, "bhyt": 0.015, "bhtn": 0.01},
+   "employer": {"bhxh": 0.175, "bhyt": 0.03, "bhtn": 0.01},
+   "union_fee": 0.02,
+   "base_salary": 2530000,
+   "cap_multiple": 20,
+   "regional_minimum": {"I": 5310000, "II": 4730000, "III": 4140000, "IV": 3700000},
+   "source": "Lương cơ sở 2.530.000 từ 01/7/2026 (Nghị định 161/2026/NĐ-CP theo thuvienphapluat.vn) → trần BHXH/BHYT 50.600.000. Tỷ lệ đóng không đổi."
+  }
+ ]
+}

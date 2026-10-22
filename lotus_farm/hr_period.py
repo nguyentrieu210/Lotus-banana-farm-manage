@@ -11,7 +11,7 @@ from datetime import date
 import frappe
 from frappe.utils import cint, flt, getdate, now_datetime, nowdate
 
-from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay
+from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay, params_on, tax_method
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
@@ -137,13 +137,15 @@ def setup_calendar(company, year, weekly_off=None, extra=None):
 
 # Month close ------------------------------------------------------------------------------------
 
+PEOPLE_FIELDS = ['name', 'employee_name', 'status', 'department', 'designation', 'lotus_work_team',
+                 'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
+                 'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date', 'contract_end_date',
+                 'lotus_onboarding_state', 'lotus_dependents', 'lotus_pit_commitment']
+
+
 def _people(company, begin, end):
     rows = frappe.get_all('Employee', filters={'company': company, 'date_of_joining': ['<=', end]},
-                          fields=['name', 'employee_name', 'status', 'department', 'designation', 'lotus_work_team',
-                                  'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
-                                  'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date',
-                                  'lotus_onboarding_state'],
-                          order_by='employee_name', limit_page_length=0)
+                          fields=PEOPLE_FIELDS, order_by='employee_name', limit_page_length=0)
     # People who left before the month are out; Inactive means onboarding is not finished.
     return [r for r in rows if r.status == 'Active' or (r.status == 'Left' and r.relieving_date and getdate(r.relieving_date) >= begin)]
 
@@ -394,22 +396,28 @@ def _sheet(company, month, begin, end):
     known = {p.name for p in people}
     # An employee with approved attendance stays on the sheet even if the profile changed later.
     if worked - known:
-        people += frappe.get_all('Employee', filters={'name': ['in', list(worked - known)]},
-                                 fields=['name', 'employee_name', 'status', 'department', 'designation', 'lotus_work_team',
-                                         'lotus_worker_category', 'lotus_payment_basis', 'lotus_base_salary', 'lotus_daily_rate',
-                                         'lotus_tax_code', 'lotus_social_insurance_no', 'date_of_joining', 'relieving_date',
-                                         'lotus_onboarding_state'])
+        people += frappe.get_all('Employee', filters={'name': ['in', list(worked - known)]}, fields=PEOPLE_FIELDS)
     summaries, holidays = month_hours(company, begin, end, people)
+    params = params_on(end)
+    region = frappe.db.get_single_value('Lotus Finance Settings', 'minimum_wage_region') \
+        if frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.get_meta('Lotus Finance Settings').has_field('minimum_wage_region') else None
     employees = []
     for person in people:
         summary = summaries.get(person.name, empty_summary())
+        months = None
+        if person.contract_end_date and person.date_of_joining:
+            span = getdate(person.contract_end_date) - getdate(person.date_of_joining)
+            months = span.days / 30.4
+        tax = dict(method=tax_method(person.lotus_worker_category, months), dependents=cint(person.lotus_dependents),
+                   commitment=bool(cint(person.lotus_pit_commitment)))
         pay = hourly_pay(person.lotus_payment_basis, summary, person.lotus_base_salary, person.lotus_daily_rate,
-                         insured=bool(person.lotus_social_insurance_no))
+                         insured=bool(person.lotus_social_insurance_no), params=params, region=region, tax=tax)
         employees.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department,
                               designation=person.designation, work_team=person.lotus_work_team,
                               worker_category=person.lotus_worker_category, payment_basis=person.lotus_payment_basis,
                               base_salary=flt(person.lotus_base_salary), daily_rate=flt(person.lotus_daily_rate),
                               tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
+                              dependents=tax['dependents'], pit_commitment=tax['commitment'],
                               onboarding=person.lotus_onboarding_state, status=person.status, **summary, **pay))
     crews = {}
     for row in frappe.get_all('Lotus Crew Attendance', filters={'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 1},
@@ -442,6 +450,7 @@ def _sheet(company, month, begin, end):
                 totals=dict(employees=len(employees), gross=sum(e['gross'] for e in employees), net=sum(e['net'] for e in employees),
                             employee_insurance=sum(e['employee_insurance'] for e in employees),
                             employer_insurance=sum(e['employer_insurance'] for e in employees),
+                            pit=sum(e.get('pit') or 0 for e in employees), union_fee=sum(e.get('union_fee') or 0 for e in employees),
                             crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees)))
 
 
@@ -477,7 +486,8 @@ def export_payroll(company, month):
         ws.title = title
         ws.append(['Bảng lương ' + str(month) + ' · ' + str(company) + ' · ' + banner])
         ws.append(['Lương CB cho ' + str(data['standard_days']) + ' công × 8 giờ: đơn giá giờ = lương CB ÷ ' + str(data['hours_base'])
-                   + '. Ca đêm +30%; tăng ca 150% / 200% / 300%. Chưa trừ thuế TNCN.'])
+                   + '. Ca đêm +30%; tăng ca 150% / 200% / 300%. Thuế TNCN: lũy tiến sau giảm trừ gia cảnh (HĐ từ 3 tháng), '
+                   + '10% tại nguồn (thời vụ, thử việc, HĐ dưới 3 tháng; miễn khi có cam kết 08). Phần lương đêm, tăng ca cao hơn giờ thường không chịu thuế.'])
         ws.append(header)
         for cell in ws[3]:
             cell.font = Font(bold=True)
@@ -490,13 +500,15 @@ def export_payroll(company, month):
            'Công', 'Giờ công thường', 'Giờ đêm', 'Giờ TC ngày thường', 'Giờ làm ngày nghỉ tuần', 'Giờ làm ngày lễ',
            'Phép có lương (ngày)', 'Lễ hưởng lương (ngày)', 'Nghỉ không lương', 'Vắng',
            'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Tổng thu nhập',
-           'BHXH+BHYT+BHTN NLĐ', 'Thực lĩnh trước thuế', 'BH doanh nghiệp đóng', 'MST', 'Số BHXH', 'Ghi chú'],
+           'BHXH+BHYT+BHTN NLĐ', 'Người phụ thuộc', 'Thu nhập tính thuế', 'Thuế TNCN', 'Thực lĩnh',
+           'BH doanh nghiệp đóng', 'KPCĐ 2% (DN)', 'MST', 'Số BHXH', 'Ghi chú'],
           [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
             labels.get(e['payment_basis'], e['payment_basis']), e['base'], e['hour_rate'],
             e['workdays'], e['regular_hours'], e['night_hours'], e['ot_regular'], e['ot_weekly_off'], e['ot_holiday'],
             e['paid_leave_days'], e['paid_holiday_days'], e['unpaid_leave_days'], e['absent_days'],
             e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e['gross'],
-            e['employee_insurance'], e['net'], e['employer_insurance'], e['tax_code'], e['social_insurance_no'],
+            e['employee_insurance'], e.get('dependents') or 0, e.get('taxable_income') or 0, e.get('pit') or 0, e['net'],
+            e['employer_insurance'], e.get('union_fee') or 0, e['tax_code'], e['social_insurance_no'],
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
     sheet(book.create_sheet(), 'Đội khoán',
           ['Đội', 'Đầu câu', 'Điện thoại', 'Công việc', 'Khối lượng', 'Đơn vị', 'Đơn giá', 'Thành tiền', 'Tổng công', 'Người-ngày'],

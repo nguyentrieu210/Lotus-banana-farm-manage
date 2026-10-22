@@ -87,7 +87,8 @@ const sheetCols=[
  pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee+' · '+(bases[r.payment_basis]||'Chưa chọn cơ chế')),
  pmoney('base','Lương CB'),pnum('workdays','Công'),pnum('regular_hours','Giờ thường'),pnum('night_hours','Giờ đêm'),
  pcol('ot_regular','Giờ tăng ca',(_,r)=>num(Number(r.ot_regular||0)+Number(r.ot_weekly_off||0)+Number(r.ot_holiday||0))),
- pnum('paid_hours','Lễ, phép (giờ)'),pmoney('gross','Thu nhập'),pmoney('employee_insurance','BH người LĐ'),pmoney('net','Thực lĩnh'),
+ pnum('paid_hours','Lễ, phép (giờ)'),pmoney('gross','Thu nhập'),pmoney('employee_insurance','BH người LĐ'),
+ pcol('pit','Thuế TNCN',(_,r)=>r.pit?money(r.pit)+(r.pit_method==='flat'?' (10%)':''):r.pit_method==='commitment'?'Cam kết 08':''),pmoney('net','Thực lĩnh'),
  pcol('issues','Ghi chú',(_,r)=>(r.via_crew?'Trả qua đội khoán; ':'')+(r.issues||[]).join('; '))
 ]
 function slipLink(params){const a=document.createElement('a');a.href='/app/salary-slip/'+encodeURIComponent(params.data.name);a.target='_blank';a.rel='noopener';a.textContent=params.data.name;return a}
@@ -156,8 +157,9 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
   <div><span>Nhân viên</span><strong>{{sheet.totals.employees}}</strong></div>
   <div><span>Tổng thu nhập</span><strong>{{money(sheet.totals.gross)}}</strong></div>
   <div><span>BH người lao động</span><strong>{{money(sheet.totals.employee_insurance)}}</strong></div>
-  <div><span>Thực lĩnh trước thuế</span><strong>{{money(sheet.totals.net)}}</strong></div>
-  <div><span>BH doanh nghiệp đóng</span><strong>{{money(sheet.totals.employer_insurance)}}</strong></div>
+  <div><span>Thuế TNCN khấu trừ</span><strong>{{money(sheet.totals.pit||0)}}</strong></div>
+  <div><span>Thực lĩnh</span><strong>{{money(sheet.totals.net)}}</strong></div>
+  <div><span>BH doanh nghiệp đóng</span><strong>{{money(sheet.totals.employer_insurance)}}</strong><small v-if="sheet.totals.union_fee">KPCĐ {{money(sheet.totals.union_fee)}}</small></div>
   <div><span>Phải trả đội khoán</span><strong>{{money(sheet.totals.crew_amount)}}</strong></div>
  </div>
 
