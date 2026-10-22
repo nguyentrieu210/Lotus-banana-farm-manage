@@ -66,10 +66,12 @@ const isActive=group=>group.items.some(item=>itemActive(item))
      </UiButton>
     </div>
     <div v-if="group.expandable" v-show="isOpen(group)&&!sidebarCollapsed" :id="group.id" class="nav-submenu">
-     <UiButton variant="outline" v-for="item in group.items.length>1?group.items:[]" :key="item.path" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:props.page===item.path}" :aria-current="props.page===item.path?'page':undefined" @click="emit('go',item.path)">
-      <LotusIcon :name="item.icon" class="nav-icon"/>
-      <span class="nav-label">{{item.label}}</span>
-     </UiButton>
+     <template v-for="(item,index) in group.items" :key="item.id||item.path">
+      <span v-if="group.kind==='hr'&&item.setup&&!group.items.slice(0,index).some(i=>i.setup)" class="nav-subsection">Thiết lập nhân sự</span>
+      <UiButton v-if="group.kind==='hr'||group.items.length>1" variant="outline" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:itemActive(item)}" :aria-current="itemActive(item)?'page':undefined" @click="emit('go',item.path,group.kind==='hr'?item.query:undefined)">
+       <LotusIcon :name="item.icon" class="nav-icon"/>
+       <span class="nav-label">{{item.label}}</span>
+      </UiButton>
      </template>
      <a v-for="link in group.links" :key="link.href" class="nav-sub-link" :href="link.href" :title="link.label">
       <LotusIcon :name="link.icon" class="nav-icon"/>

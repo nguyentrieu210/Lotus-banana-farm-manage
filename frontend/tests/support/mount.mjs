@@ -10,9 +10,10 @@ const runtime=path.join(project,'node_modules/.lotus-mount')
 fs.mkdirSync(runtime,{recursive:true})
 
 export const window=new Window({url:'http://localhost:8080/lotus',width:1440,height:900})
-for(const name of ['window','document','navigator','location','Element','HTMLElement','HTMLDialogElement','SVGElement','Node','Event','CustomEvent','KeyboardEvent','MouseEvent','getComputedStyle','requestAnimationFrame','cancelAnimationFrame','localStorage','ResizeObserver','MutationObserver','IntersectionObserver','PointerEvent','FocusEvent'])
+for(const name of ['window','document','Document','ShadowRoot','navigator','location','Element','HTMLElement','HTMLDialogElement','SVGElement','Node','Event','CustomEvent','KeyboardEvent','MouseEvent','getComputedStyle','requestAnimationFrame','cancelAnimationFrame','localStorage','ResizeObserver','MutationObserver','IntersectionObserver','PointerEvent','FocusEvent'])
  Object.defineProperty(globalThis,name,{value:typeof window[name]==='function'&&['getComputedStyle','requestAnimationFrame','cancelAnimationFrame'].includes(name)?window[name].bind(window):window[name],configurable:true})
 window.HTMLElement.prototype.scrollIntoView=function(){}
+globalThis.history??=window.history
 
 const {parse,compileScript}=await import(pathToFileURL(path.join(project,'node_modules/@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js')))
 // One Vue instance for the compiled components and for libraries such as reka-ui (both resolve the bare 'vue').

@@ -1,12 +1,9 @@
 <script setup>
 import {computed,ref,watch} from 'vue'
-import {AgGridVue} from 'ag-grid-vue3'
-import '../grid-modules.js'
-import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
+import DataTable from './DataTable.vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
-import {compactGridTheme} from '../grid-theme'
 import {forecastStates,availabilityStates,filterForecasts,blockTotals,peakWeek,percent,kg} from '../forecast-planning'
 import '../forecast-workspace.css'
 

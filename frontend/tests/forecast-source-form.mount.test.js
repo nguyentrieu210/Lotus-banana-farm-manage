@@ -66,8 +66,8 @@ test('OneDrive publications use reviewed retirement rather than the legacy clone
   try{
    const tab=[...view.root.querySelectorAll('button')].find(el=>el.textContent==='Phiếu dự thu');tab.click();await tick();await tick()
    // Happy DOM has no grid layout; exercise the real mounted grid's row event boundary.
-   const grid=view.root.querySelector('.forecast-grid')?.__vueParentComponent?.proxy;assert.ok(grid,'native forecast grid is mounted')
-   grid.$emit('row-clicked',{data:row});await tick()
+   const grid=view.root.querySelector('.forecast-grid-shell .lotus-data-table')?.__vueParentComponent?.proxy;assert.ok(grid,'shared forecast DataTable is mounted')
+   grid.$emit('open',row);await tick()
    const inspector=view.root.querySelector('.forecast-inspector');assert.ok(inspector)
    const revise=[...inspector.querySelectorAll('button')].find(el=>el.textContent==='Tạo bản điều chỉnh')
    if(process_adoption){assert.equal(revise,undefined);assert.match(inspector.textContent,/đối soát phần đang giữ và kết thúc dự thu/)}
