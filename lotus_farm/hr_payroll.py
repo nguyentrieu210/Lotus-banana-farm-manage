@@ -227,7 +227,8 @@ def payroll_run(company, month):
         rows.append(dict(slip, lotus_gross=lotus.get('gross'), lotus_net=lotus.get('net'),
                          difference=round(flt(slip.gross_pay) - flt(lotus.get('gross')))))
     journals = sorted({s.journal_entry for s in slips if s.journal_entry})
-    return dict(month=month, structure=payroll_setup_status(company)['structure'],
+    finance_on = bool(frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.db.get_single_value('Lotus Finance Settings', 'finance_enabled'))
+    return dict(month=month, structure=payroll_setup_status(company)['structure'], finance=dict(enabled=finance_on, url='/lotus/tai-chinh?tab=pending'),
                 entry=dict(name=entry.name, status=entry.status, docstatus=entry.docstatus) if entry else None,
                 slips=rows, journal_entries=journals,
                 totals=dict(gross=sum(flt(s.gross_pay) for s in slips), deductions=sum(flt(s.total_deduction) for s in slips),
@@ -235,9 +236,17 @@ def payroll_run(company, month):
 
 
 @frappe.whitelist(methods=['POST'])
+def _finance_posts_payroll():
+    """With Lotus finance switched on, payroll is posted once, from Tài chính – Kế toán (lotus_farm.finance.payroll)."""
+    if frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.db.get_single_value('Lotus Finance Settings', 'finance_enabled'):
+        frappe.throw('Bảng lương được ghi sổ ở Tài chính – Kế toán › Chờ hạch toán (theo hệ thống tài khoản Thông tư 99). '
+                     'Không dùng phiếu lương HRMS để tránh ghi sổ hai lần.')
+
+
 def create_payroll(company, month):
     """Payroll Entry for a closed month: lists employees with a salary assignment and creates draft Salary Slips."""
     _hr_manager()
+    _finance_posts_payroll()
     _company(company)
     begin, end = _month(month)
     from lotus_farm.hr_period import is_closed
@@ -264,6 +273,7 @@ def create_payroll(company, month):
 def post_payroll(company, month):
     """Submit the month's draft Salary Slips; HRMS books Salary expense against Payroll Payable."""
     _hr_manager()
+    _finance_posts_payroll()
     _company(company)
     begin, end = _month(month)
     entry = _entry(company, begin, end)

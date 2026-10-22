@@ -166,6 +166,7 @@ def document(doctype, name):
     doc = _stock_doc(doctype, name)
     from lotus_farm.warehouse_masters import item_pack
     return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
+                receipt_reason=doc.get('lotus_receipt_reason') or '', supplier=doc.get('lotus_supplier') or '',
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
                 issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'),
@@ -437,7 +438,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None):
     _access()
     _company(company)
     types = {'receipt': 'Material Receipt', 'issue': 'Material Issue', 'transfer': 'Material Transfer'}
@@ -493,6 +494,12 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
     else:
         doc.stock_entry_type = types[kind]
         doc.remarks = str(notes or '')[:2000]
+        if kind == 'receipt' and doc.meta.has_field('lotus_receipt_reason'):
+            if receipt_reason and receipt_reason not in ('Purchase', 'Recovery', 'Surplus'):
+                frappe.throw('Lý do nhập kho không hợp lệ.')
+            # The finance rules (lotus_farm.finance.stock) decide the credited account from the reason.
+            doc.lotus_receipt_reason = receipt_reason or None
+            doc.lotus_supplier = supplier if receipt_reason == 'Purchase' else None
         if kind == 'issue':
             if issue_mode not in ('Manual', 'Plan', 'Request'):
                 frappe.throw('Hình thức xuất kho không hợp lệ.')
@@ -553,6 +560,8 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                 values['basic_rate'] = rate/factor
                 values['set_basic_rate_manually'] = 1
                 basic_total += qty * rate
+            if kind == 'receipt' and receipt_reason == 'Recovery':
+                values['lotus_usage_area'] = _text(row.get('area'), 'Lô thu hồi vật tư')
             if kind == 'issue':
                 values['lotus_usage_area'] = _text(row.get('area'), 'Khu vực / lô sử dụng')
                 if issue_mode == 'Plan':

@@ -155,6 +155,24 @@
       "options": "Account"
     },
     {
+      "fieldname": "acct_stock_shortage",
+      "label": "Thiếu kiểm kê / tài sản thiếu chờ xử lý",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_cost_of_goods_sold",
+      "label": "Giá vốn hàng bán",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_other_expense",
+      "label": "Chi phí khác (xuất hủy, hư hỏng)",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
       "fieldname": "acct_opening_equity",
       "label": "Đối ứng số dư đầu kỳ",
       "fieldtype": "Link",
@@ -193,6 +211,9 @@
     "acct_cash",
     "acct_bank",
     "acct_stock_adjustment",
+    "acct_stock_shortage",
+    "acct_cost_of_goods_sold",
+    "acct_other_expense",
     "acct_opening_equity",
     "acct_round_off"
   ],

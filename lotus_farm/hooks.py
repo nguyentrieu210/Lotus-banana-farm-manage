@@ -40,8 +40,8 @@ doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
 doc_events["Sales Order"] = {"before_cancel": "lotus_farm.allocations.sales_order_cancel"}
 doc_events["Stock Entry"] = {
-    "validate": ["lotus_farm.stock_bridge.validate_entry", "lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.issue_dimensions"],
-    "before_submit": ["lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.issue_dimensions"],
+    "validate": ["lotus_farm.stock_bridge.validate_entry", "lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.stock_entry_accounts"],
+    "before_submit": ["lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.stock_entry_accounts"],
     "on_submit": "lotus_farm.stock_bridge.stock_posted",
     "before_cancel": "lotus_farm.stock_bridge.before_stock_cancel",
     "on_cancel": "lotus_farm.stock_bridge.stock_reversed",
@@ -234,3 +234,6 @@ for _dt, _event, _handler in (
     if isinstance(_existing, str):
         _existing = [_existing]
     doc_events[_dt][_event] = [*_existing, _handler]
+
+doc_events.setdefault("Stock Reconciliation", {})
+doc_events["Stock Reconciliation"]["before_submit"] = "lotus_farm.finance.stock.reconciliation_accounts"

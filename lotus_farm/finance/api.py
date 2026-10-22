@@ -164,3 +164,104 @@ def opening_commit(token):
     posting.record('Lotus Finance Settings', setup.SETTINGS, 'Opening Balance', je, amount=sum(ln['debit'] for ln in lines), source_hash=str(token))
     frappe.cache.delete_value('lotus_opening:' + frappe.session.user + ':' + str(token))
     return dict(voucher=je.name, amount=sum(ln['debit'] for ln in lines))
+
+
+# Adjustment journal (phiếu kế toán khác) -------------------------------------------------------------
+
+@frappe.whitelist(methods=['POST'])
+def adjustment(lines, posting_date, remark, commit=0):
+    """Chief accountant's journal for what no Lotus document covers (reclassifying 3381, corrections):
+    lines [{account, debit, credit, party, lotus_farm, lotus_farm_block, note}] -> preview, or posted when commit=1."""
+    setup.require_chief()
+    setup.require_enabled()
+    rows = frappe.parse_json(lines) if isinstance(lines, str) else (lines or [])
+    remark = str(remark or '').strip()
+    if len(remark) < 5:
+        frappe.throw('Ghi diễn giải bút toán (ít nhất 5 ký tự).')
+    company = setup.company()
+    accounts = {a.name: a for a in frappe.get_all('Account', filters={'company': company, 'is_group': 0, 'disabled': 0},
+                                                 fields=['name', 'account_type', 'root_type'])}
+    built, errors = [], []
+    for i, r in enumerate(rows, start=1):
+        a = accounts.get(r.get('account'))
+        if not a:
+            errors.append('Dòng %d: chọn tài khoản chi tiết đang dùng' % i)
+            continue
+        party = (r.get('party') or '').strip()
+        if a.account_type in ('Payable', 'Receivable') and not party:
+            errors.append('Dòng %d: tài khoản công nợ cần đối tượng (nhà cung cấp / khách hàng)' % i)
+        dims = {f: r.get(f) for f in rules.DIM_FIELDS if r.get(f)}
+        if dims.get('lotus_farm_block') and not dims.get('lotus_farm'):
+            dims['lotus_farm'] = frappe.db.get_value('Farm Block', dims['lotus_farm_block'], 'farm')
+        line = rules.line(a.name, debit=flt(r.get('debit')), credit=flt(r.get('credit')), dims=dims, note=r.get('note') or remark)
+        line['party_type'] = ('Supplier' if a.account_type == 'Payable' else 'Customer') if party else None
+        line['party'] = party or None
+        built.append(line)
+    errors += rules.check_entry(built) if built else ['Nhập ít nhất hai dòng Nợ / Có']
+    setup.check_cutover(posting_date)
+    if not cint(commit) or errors:
+        return dict(lines=built, errors=errors, total=sum(ln['debit'] for ln in built))
+    posting.check_open(company, posting_date)
+    cost_center = frappe.get_cached_value('Company', company, 'cost_center')
+    je = frappe.get_doc(dict(doctype='Journal Entry', voucher_type='Journal Entry', company=company, posting_date=posting_date, user_remark=remark,
+                             accounts=[dict(account=ln['account'], debit_in_account_currency=ln['debit'], credit_in_account_currency=ln['credit'],
+                                            cost_center=cost_center, user_remark=ln['note'], party_type=ln['party_type'], party=ln['party'],
+                                            **{f: ln.get(f) for f in rules.DIM_FIELDS if ln.get(f)}) for ln in built]))
+    je.flags.ignore_permissions = True
+    je.insert()
+    je.submit()
+    posting.record('Lotus Finance Settings', setup.SETTINGS, 'Adjustment', je, amount=sum(ln['debit'] for ln in built), source_hash=remark[:140],
+                   key_suffix=je.name)
+    return dict(voucher=je.name, total=sum(ln['debit'] for ln in built), errors=[])
+
+
+# People who do the accounting ------------------------------------------------------------------------
+
+ROLE_CHOICES = (('Lotus Chief Accountant', 'Kế toán trưởng'), ('Lotus Accountant', 'Kế toán'), ('Lotus Auditor', 'Kiểm soát (chỉ xem)'))
+
+
+def _admin():
+    if frappe.session.user != 'Administrator' and 'System Manager' not in frappe.get_roles():
+        frappe.throw('Chỉ Quản trị hệ thống được gán vai trò kế toán.', frappe.PermissionError)
+
+
+@frappe.whitelist()
+def people():
+    """Enabled staff logins with their accounting roles (the director's approver role is shown for the payment chain)."""
+    setup.require_view()
+    users = frappe.get_all('User', filters={'enabled': 1, 'user_type': 'System User', 'name': ['not in', ['Administrator', 'Guest']]},
+                           fields=['name', 'full_name'], order_by='full_name', limit_page_length=0)
+    roles = {}
+    for r in frappe.get_all('Has Role', filters={'parenttype': 'User', 'role': ['in', [c[0] for c in ROLE_CHOICES] + ['Lotus Purchase Approver', 'Lotus Farm Manager']]},
+                            fields=['parent', 'role'], limit_page_length=0):
+        roles.setdefault(r.parent, set()).add(r.role)
+    employees = {e.user_id: e for e in frappe.get_all('Employee', filters={'status': 'Active', 'user_id': ['is', 'set']},
+                                                      fields=['user_id', 'employee_name', 'designation'])}
+    rows = []
+    for u in users:
+        mine = roles.get(u.name, set())
+        staff = employees.get(u.name) or {}
+        rows.append(dict(user=u.name, name=staff.get('employee_name') or u.full_name or u.name, designation=staff.get('designation') or '',
+                         employee=u.name in employees, chief='Lotus Chief Accountant' in mine, accountant='Lotus Accountant' in mine,
+                         auditor='Lotus Auditor' in mine, approver=bool(mine & {'Lotus Purchase Approver', 'Lotus Farm Manager'})))
+    return dict(people=rows, can_assign=frappe.session.user == 'Administrator' or 'System Manager' in frappe.get_roles(),
+                roles=[dict(role=r, label=l) for r, l in ROLE_CHOICES])
+
+
+@frappe.whitelist(methods=['POST'])
+def set_role(user, role, on):
+    _admin()
+    if role not in dict(ROLE_CHOICES):
+        frappe.throw('Vai trò không hợp lệ.')
+    doc = frappe.get_doc('User', user)
+    has = any(r.role == role for r in doc.roles)
+    if cint(on) and not has:
+        doc.append('roles', dict(role=role))
+    elif not cint(on) and has:
+        doc.set('roles', [r for r in doc.roles if r.role != role])
+    else:
+        return dict(changed=False)
+    doc.flags.ignore_permissions = True
+    doc.save()
+    doc.add_comment('Info', '%s vai trò %s (%s)' % ('Gán' if cint(on) else 'Bỏ', dict(ROLE_CHOICES)[role], frappe.session.user))
+    return dict(changed=True)

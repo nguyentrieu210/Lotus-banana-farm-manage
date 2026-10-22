@@ -114,6 +114,9 @@ try:
     refused(as_user, accountant, payments.make_goods_invoice, json.dumps([pr2.name]), 'HD3-' + tag, add_days(cutover, -1), text='trước ngày bắt đầu ghi sổ')
     pr2.cancel()
 
+    _block = frappe.db.sql("""select name, block_code from `tabFarm Block` where block_code in
+        (select block_code from `tabFarm Block` group by block_code having count(*)=1) limit 1""", as_dict=True)[0]
+    block_code_for_test, block_name_for_test = _block.block_code, _block.name
     signers = {'CHIEF': chief, 'APPROVE': director}
     first = as_user(accountant, payments.prepare_supplier_payment, supplier, json.dumps([{'invoice': inv['invoice'], 'amount': 600000}]), 'cash', today, json.dumps(signers))
     refused(as_user, accountant, payments.prepare_supplier_payment, supplier, json.dumps([{'invoice': inv['invoice'], 'amount': 1000000}]), 'cash', today,
@@ -131,6 +134,63 @@ try:
     assert owed is None or abs(flt(owed['owed'])) < 1, owed
     assert flt(frappe.db.get_value('Purchase Invoice', inv['invoice'], 'outstanding_amount')) == 0
     report['purchase'] = dict(receipt=pr.name, invoice=inv['invoice'], payments=[first['voucher'], second['voucher']])
+
+    # 2b. Warehouse receipts by reason, issues by purpose, count shortage --------------------------------------
+    def entry(kind, rows, **head):
+        d = frappe.get_doc(dict(doctype='Stock Entry', company=company, stock_entry_type=kind, purpose=kind, posting_date=today, set_posting_time=1,
+                                items=rows, **head))
+        d.flags.ignore_permissions = True
+        return d
+    no_reason = entry('Material Receipt', [dict(item_code=item, qty=1, basic_rate=50000, t_warehouse=warehouse)])
+    refused(no_reason.insert, text='lý do nhập kho')
+    bought = entry('Material Receipt', [dict(item_code=item, qty=4, basic_rate=50000, set_basic_rate_manually=1, t_warehouse=warehouse)],
+                   lotus_receipt_reason='Purchase', lotus_supplier=supplier)
+    bought.insert()
+    bought.submit()
+    assert any(x.account == m['received_not_billed'] and flt(x.credit) == 200000 for x in gl(bought.name)), gl(bought.name)
+    assert any(r['name'] == bought.name for r in reports.pending()['receipts']), 'a purchase without order waits for its invoice'
+    inv2 = as_user(accountant, payments.make_goods_invoice, json.dumps([bought.name]), 'HDNPO-' + tag, today)
+    inv2_gl = {x.account: x for x in gl(inv2['invoice'])}
+    assert flt(inv2_gl[m['received_not_billed']].debit) == 200000 and inv2_gl[m['payable_supplier']].party == supplier, inv2_gl
+    assert frappe.db.get_value('Stock Entry', bought.name, 'lotus_purchase_invoice') == inv2['invoice']
+    assert not frappe.db.get_value('Stock Ledger Entry', {'voucher_no': inv2['invoice']}), 'the invoice does not move stock again'
+    recovered = entry('Material Receipt', [dict(item_code=item, qty=1, basic_rate=50000, set_basic_rate_manually=1, t_warehouse=warehouse,
+                                                 lotus_usage_area=block_code_for_test)], lotus_receipt_reason='Recovery')
+    recovered.insert()
+    recovered.submit()
+    back = [x for x in gl(recovered.name) if x.account == m['material_cost']]
+    assert back and flt(back[0].credit) > 0 and back[0].lotus_farm_block == block_name_for_test, back
+    desk_issue = entry('Material Issue', [dict(item_code=item, qty=1, s_warehouse=warehouse)])
+    refused(desk_issue.insert, text='mục đích xuất kho')
+    desk_issue.lotus_issue_purpose = 'Disposal'
+    desk_issue.insert()
+    desk_issue.submit()
+    assert any(x.account == m['other_expense'] and flt(x.debit) > 0 for x in gl(desk_issue.name)), gl(desk_issue.name)
+    from erpnext.stock.utils import get_stock_balance
+    qty_now, rate_now = get_stock_balance(item, warehouse, today, with_valuation_rate=True)[:2]
+    count = frappe.get_doc(dict(doctype='Stock Reconciliation', company=company, purpose='Stock Reconciliation', posting_date=today, set_posting_time=1,
+                                items=[dict(item_code=item, warehouse=warehouse, qty=flt(qty_now) - 1, valuation_rate=rate_now)]))
+    count.flags.ignore_permissions = True
+    count.insert()
+    count.submit()
+    assert any(x.account == m['stock_shortage'] and flt(x.debit) > 0 for x in gl(count.name)), gl(count.name)
+    report['stock'] = dict(purchase_without_order=bought.name, invoice=inv2['invoice'], recovery=recovered.name, disposal=desk_issue.name, shortage=count.name)
+
+    # 2c. Legacy HRMS payroll closed, adjustment journal, accounting roles ---------------------------------
+    from lotus_farm import hr_payroll
+    refused(hr_payroll.create_payroll, company, today[:7], text='Tài chính – Kế toán')
+    draft = as_user(chief, api.adjustment, json.dumps([dict(account=m['stock_adjustment'], debit=1000), dict(account=m['opening_equity'], credit=900)]),
+                    today, 'Thử bút toán lệch', 0)
+    assert draft['errors'], 'an unbalanced adjustment is refused'
+    posted_adj = as_user(chief, api.adjustment, json.dumps([dict(account=m['stock_adjustment'], debit=1000), dict(account=m['opening_equity'], credit=1000)]),
+                         today, 'Phân loại lại thử nghiệm', 1)
+    assert posted_adj.get('voucher'), posted_adj
+    refused(as_user, accountant, api.adjustment, '[]', today, 'Kế toán không được', 1, kind=frappe.PermissionError)
+    api.set_role(leader, 'Lotus Auditor', 1)
+    assert 'Lotus Auditor' in frappe.get_roles(leader)
+    assert any(p_['user'] == leader and p_['auditor'] for p_ in api.people()['people'])
+    refused(as_user, chief, api.set_role, leader, 'Lotus Accountant', 1, kind=frappe.PermissionError)
+    report['controls'] = dict(adjustment=posted_adj['voucher'])
 
     # 3. Material issue on a lot -------------------------------------------------------------------------
     block = frappe.db.sql("""select name, block_code, farm from `tabFarm Block` where block_code in
@@ -171,7 +231,10 @@ try:
     rows = [dict(employee=e, base=6000000, gross=7000000 + i * 500000, employee_insurance=630000, net=6370000 + i * 500000, employer_insurance=1290000)
             for i, e in enumerate(employees)]
     team = frappe.get_all('Work Team', filters={'farm': block.farm}, pluck='name', limit_page_length=1)
-    snapshot = dict(rows=rows, crews=[dict(work_team=team[0], work_type=None, amount=2500000)] if team else [], totals={})
+    from lotus_farm import hr_period
+    shape = hr_period.payroll_sheet(company, month)
+    assert 'employees' in shape and 'rows' not in shape, 'the frozen payroll sheet keeps people under employees'
+    snapshot = dict(employees=rows, crews=[dict(work_team=team[0], work_type=None, amount=2500000)] if team else [], totals={})
     period = frappe.get_doc(dict(doctype='Lotus Timekeeping Period', company=company, month=month, status='Closed', snapshot=json.dumps(snapshot),
                                  snapshot_hash='h-' + tag))
     period.flags.lotus_period_action = True  # the signed close itself is covered by verify_timekeeping

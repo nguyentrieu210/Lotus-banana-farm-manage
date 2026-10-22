@@ -154,9 +154,58 @@ def install():
                 add_permission(doctype, role)
                 update_permission_property(doctype, role, 0, 'read', 1)
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-    create_custom_fields({'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\nSalary\nClosing',
-                                                 read_only=1, no_copy=1, insert_after='voucher_type')]})
+    create_custom_fields({
+        'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\nSalary\nClosing',
+                               read_only=1, no_copy=1, insert_after='voucher_type')],
+        'Stock Entry': [
+            dict(fieldname='lotus_receipt_reason', label='Lý do nhập kho', fieldtype='Select', options='\nPurchase\nRecovery\nSurplus\nHarvest',
+                 insert_after='stock_entry_type', depends_on="eval:doc.stock_entry_type=='Material Receipt'"),
+            dict(fieldname='lotus_supplier', label='Nhà cung cấp (nhập mua ngoài)', fieldtype='Link', options='Supplier', insert_after='lotus_receipt_reason',
+                 depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
+            dict(fieldname='lotus_purchase_invoice', label='Hóa đơn mua', fieldtype='Link', options='Purchase Invoice', read_only=1, no_copy=1,
+                 insert_after='lotus_supplier'),
+            dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage',
+                 insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
+        ]})
     install_dimensions()
+    fill_mapping()
+    if settings().coa_version:
+        fix_references(company())
+
+
+def fill_mapping():
+    """Keys added in later releases get the chart's default account when the company already has it."""
+    doc = settings()
+    if not doc.coa_version:
+        return
+    coa = rules.load_coa()
+    names = _numbers(doc.company or company())
+    for key in rules.KEYS:
+        number = coa['defaults'].get(key)
+        if number and not doc.get('acct_' + key) and names.get(number):
+            frappe.db.set_single_value(SETTINGS, 'acct_' + key, names[number])
+
+
+def fix_references(company_name):
+    """Defaults kept outside the company record (items, item groups, modes of payment, salary components) that still point at
+    retired accounts move to the chart's accounts, or are cleared so the company defaults apply."""
+    names = _numbers(company_name)
+    retired = set(frappe.get_all('Account', filters={'company': company_name, 'disabled': 1}, pluck='name'))
+    if not retired:
+        return 0
+    changed = 0
+    by_field = {'expense_account': names.get('632'), 'income_account': names.get('511'), 'default_account': None}
+    for doctype, field in (('Item Default', 'expense_account'), ('Item Default', 'income_account'), ('Mode of Payment Account', 'default_account'),
+                           ('Salary Component Account', 'account')):
+        if not frappe.db.exists('DocType', doctype) or not frappe.get_meta(doctype).has_field(field):
+            continue
+        for row in frappe.get_all(doctype, filters={field: ['in', list(retired)]}, fields=['name', 'parent', field]):
+            value = by_field.get(field)
+            if doctype == 'Mode of Payment Account':
+                value = names.get('111') if 'cash' in (row.parent or '').lower() or 'tiền mặt' in (row.parent or '').lower() else names.get('112')
+            frappe.db.set_value(doctype, row.name, field, value)
+            changed += 1
+    return changed
 
 
 def install_dimensions():
@@ -361,6 +410,7 @@ def coa_apply(on_date=None, warehouse_accounts=None):
             if not frappe.db.exists('Account', {'parent_account': name}):
                 frappe.db.set_value('Account', name, 'is_group', 0)
     translate_old_accounts(company_name)
+    fix_references(company_name)
     frappe.clear_cache()
     frappe.flags.lotus_coa_apply = False
     doc = settings()

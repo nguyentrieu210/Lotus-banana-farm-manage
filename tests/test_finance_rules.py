@@ -75,7 +75,7 @@ class FinanceRules(unittest.TestCase):
 
     def test_payroll_entry_splits_cost_by_lot_work_and_balances(self):
         a, b, c = employee('E1', 6_000_000, 7_000_000), employee('E2', 5_000_000, 5_500_000), employee('E3', 0, 3_000_000, insured=False)
-        snapshot = dict(rows=[a, b, c], crews=[dict(work_team='T1', work_type='Cắt bắp', amount=2_000_000)])
+        snapshot = dict(employees=[a, b, c], crews=[dict(work_team='T1', work_type='Cắt bắp', amount=2_000_000)])
         shares = rules.shares_from_work([
             dict(employee='E1', workdays=10, lotus_farm='F', lotus_farm_block='A1', lotus_work_type='Phun'),
             dict(employee='E1', workdays=12, lotus_farm='F', lotus_farm_block='A2', lotus_work_type='Phun'),
@@ -106,7 +106,7 @@ class FinanceRules(unittest.TestCase):
     def test_payroll_entry_reports_gaps(self):
         row = employee('E1', 6_000_000, 7_000_000)
         row['net'] += 1
-        snapshot = dict(rows=[row], crews=[dict(work_team='T9', work_type='X', amount=100)])
+        snapshot = dict(employees=[row], crews=[dict(work_team='T9', work_type='X', amount=100)])
         _, issues = rules.payroll_entry(snapshot, {}, ACCOUNTS, payroll_rules.EMPLOYEE_INSURANCE, payroll_rules.EMPLOYER_INSURANCE)
         self.assertTrue(any('thực nhận' in i for i in issues))
         self.assertTrue(any('Đội T9 chưa gắn vườn' in i for i in issues))
@@ -128,6 +128,11 @@ class FinanceRules(unittest.TestCase):
         wip = [ln for ln in lines if ln['account'] == '154']
         self.assertEqual([(ln['debit'], ln['credit'], ln['lotus_farm_block']) for ln in wip], [(300000, 0, 'A1'), (1000000, 0, 'A1'), (0, 50000, 'A2')])
         self.assertEqual(len(lines), 6, 'a zero balance is skipped')
+
+    def test_snapshot_people_reads_the_frozen_sheet(self):
+        self.assertEqual(rules.snapshot_people(dict(employees=[1, 2])), [1, 2], 'hr_period._sheet stores employees')
+        self.assertEqual(rules.snapshot_people(dict(rows=[3])), [3])
+        self.assertEqual(rules.snapshot_people({}), [])
 
     def test_aging(self):
         today = dt.date(2026, 10, 22)

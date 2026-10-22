@@ -35,7 +35,10 @@ KEYS = OrderedDict((
     ('unemployment_insurance', ('Bảo hiểm thất nghiệp phải nộp', ('Liability',), None)),
     ('cash', ('Tiền mặt', ('Asset',), 'Cash')),
     ('bank', ('Tiền gửi ngân hàng', ('Asset',), 'Bank')),
-    ('stock_adjustment', ('Chênh lệch kiểm kê / điều chỉnh kho', ('Asset', 'Liability', 'Expense', 'Income', 'Equity'), None)),
+    ('stock_adjustment', ('Thừa kiểm kê / tài sản thừa chờ xử lý', ('Asset', 'Liability', 'Expense', 'Income', 'Equity'), None)),
+    ('stock_shortage', ('Thiếu kiểm kê / tài sản thiếu chờ xử lý', ('Asset', 'Liability', 'Expense'), None)),
+    ('cost_of_goods_sold', ('Giá vốn hàng bán', ('Expense',), None)),
+    ('other_expense', ('Chi phí khác (xuất hủy, hư hỏng)', ('Expense',), None)),
     ('opening_equity', ('Đối ứng số dư đầu kỳ', ('Equity',), None)),
     ('round_off', ('Làm tròn', ('Expense', 'Income'), None)),
 ))
@@ -165,6 +168,11 @@ def check_entry(lines):
     return errors
 
 
+def snapshot_people(snapshot):
+    """The employees of a frozen payroll sheet (hr_period._sheet stores them under 'employees')."""
+    return (snapshot or {}).get('employees') or (snapshot or {}).get('rows') or []
+
+
 def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, crew_farms=None, employee_farms=None):
     """Journal lines for an approved month.
 
@@ -179,7 +187,7 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
     lines, issues = [], []
     insurance = {k: 0 for k, _ in INSURANCE_KEYS}
     employee_farms, crew_farms = employee_farms or {}, crew_farms or {}
-    for r in snapshot.get('rows') or []:
+    for r in snapshot_people(snapshot):
         gross, er = int(round(r.get('gross') or 0)), int(round(r.get('employer_insurance') or 0))
         ee, net = int(round(r.get('employee_insurance') or 0)), int(round(r.get('net') or 0))
         if gross - ee != net:

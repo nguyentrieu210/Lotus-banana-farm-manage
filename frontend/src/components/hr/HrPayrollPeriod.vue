@@ -128,12 +128,13 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
       <a v-if="period?.signing" class="hr-steps__link" :href="period.print_url" target="_blank" rel="noopener">Xem bảng lương ký duyệt ↗</a>
       <UiButton v-if="closed" size="sm" variant="outline" :disabled="saving||busy" @click="reopenReason='';reopenOpen=true">Mở lại kỳ</UiButton>
      </template>
-     <template v-if="s.id==='slips'">
+     <a v-if="run?.finance?.enabled&&(s.id==='slips'||s.id==='post')" class="hr-steps__link" :href="run.finance.url">Ghi sổ lương ở Tài chính – Kế toán ↗</a>
+     <template v-if="s.id==='slips'&&!run?.finance?.enabled">
       <UiButton v-if="run&&!run.structure" size="sm" :disabled="saving||busy" @click="step('setup_payroll')"><LotusIcon name="settings"/>Cài đặt lương HRMS</UiButton>
       <UiButton v-else-if="run&&!run.entry" size="sm" :disabled="saving||busy||!closed" @click="step('create_payroll')"><LotusIcon name="document"/>Tạo phiếu lương HRMS</UiButton>
       <a v-else-if="run?.entry" class="hr-steps__link" :href="'/app/payroll-entry/'+encodeURIComponent(run.entry.name)" target="_blank" rel="noopener">Mở {{run.entry.name}} ↗</a>
      </template>
-     <template v-if="s.id==='post'">
+     <template v-if="s.id==='post'&&!run?.finance?.enabled">
       <UiButton v-if="drafts" size="sm" :disabled="saving||busy" @click="step('post_payroll')"><LotusIcon name="wallet"/>Duyệt &amp; hạch toán</UiButton>
       <a v-for="j in run?.journal_entries||[]" :key="j" class="hr-steps__link" :href="'/app/journal-entry/'+encodeURIComponent(j)" target="_blank" rel="noopener">Bút toán {{j}} ↗</a>
      </template>

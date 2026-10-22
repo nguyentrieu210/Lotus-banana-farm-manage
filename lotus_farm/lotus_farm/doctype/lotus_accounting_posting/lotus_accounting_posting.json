@@ -33,7 +33,7 @@
       "fieldname": "purpose",
       "label": "Mục đích",
       "fieldtype": "Select",
-      "options": "Purchase Invoice\nSupplier Payment\nPayroll\nSalary Payment\nOpening Balance\nChart Transfer\nCost Closing",
+      "options": "Purchase Invoice\nSupplier Payment\nPayroll\nSalary Payment\nOpening Balance\nChart Transfer\nCost Closing\nAdjustment",
       "reqd": 1,
       "in_list_view": 1
     },

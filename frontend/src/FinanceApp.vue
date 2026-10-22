@@ -10,6 +10,8 @@ import WorkspaceModal from './components/WorkspaceModal.vue'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import SignerPicker from './components/SignerPicker.vue'
 import DataTable from './components/DataTable.vue'
+import FinanceGuide from './components/finance/FinanceGuide.vue'
+import {DatePicker} from './components/ui/date-picker'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
@@ -22,7 +24,7 @@ import './finance.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
-const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập']]
+const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
 const REPORTS=[['trial_balance','Bảng cân đối phát sinh'],['ledger','Sổ chi tiết tài khoản'],['costs','Chi phí theo vườn / lô'],['reconciliation','Đối chiếu']]
 const route=useRoute(),router=useRouter(),session=useSession()
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask,finish:finishConfirm}=useWorkspaceConfirm()
@@ -49,7 +51,7 @@ async function load(){
   if(tab.value==='payables'){await ensureLookups();payData.value=await call(F+'reports.payables')}
   if(tab.value==='cash'){cash.value=await call(F+'payments.vouchers');mine.value=await call(F+'payments.my_vouchers')}
   if(tab.value==='reports'){await ensureLookups();await loadReport()}
-  if(tab.value==='settings')settings.value=await call(F+'api.settings')
+  if(tab.value==='settings'){settings.value=await call(F+'api.settings');staff.value=await call(F+'api.people');await ensureLookups()}
  })
 }
 async function loadReport(){
@@ -125,6 +127,7 @@ async function reverse(postingName,label){if(!overview.value?.is_chief)return
 // Settings (chief accountant)
 const form=ref({enabled:false,cutover_date:'',mapping:{}}),coa=ref(null),openingPreview=ref(null)
 watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,mapping:{...s.mapping}}})
+const accountLabel=a=>(a.account_number?a.account_number+' - ':'')+a.account_name
 const accountsFor=key=>{const k=(settings.value?.keys||[]).find(x=>x.key===key);return (settings.value?.accounts||[]).filter(a=>!k||k.roots.includes(a.root_type))}
 async function saveSettings(){saving.value=true
  try{settings.value=await call(F+'api.save_settings',{values:JSON.stringify(form.value)},true);notice.value=settings.value.enabled?'Đã lưu. Ghi sổ kế toán đang bật.':'Đã lưu cấu hình.';overview.value=null}
@@ -134,7 +137,8 @@ async function applyCoa(){if(!await ask('Áp dụng hệ thống tài khoản Th
  saving.value=true
  try{const r=await call(F+'api.coa_apply',{on_date:coa.value.on_date},true);notice.value='Đã áp dụng Thông tư 99: thêm '+r.added+' tài khoản'+(r.transfer?', chuyển số dư bằng '+r.transfer:'')+'.';coa.value=null;settings.value=await call(F+'api.settings')}
  catch(e){error.value=e.message}finally{saving.value=false}}
-const months=computed(()=>{const y=Number(today.slice(0,4));return Array.from({length:12},(_,i)=>y+'-'+String(i+1).padStart(2,'0'))})
+const year=ref(Number(today.slice(0,4)))
+const months=computed(()=>Array.from({length:12},(_,i)=>year.value+'-'+String(i+1).padStart(2,'0')))
 const periodOf=m=>(settings.value?.periods||[]).find(p=>String(p.start_date).slice(0,7)===m)
 const closingView=ref(null)
 async function previewClosing(m){await ensureLookups();await run(async()=>{closingView.value=await call(F+'closing.preview',{month:m})})}
@@ -200,6 +204,25 @@ const openingColumns=[{field:'line',headerName:'Dòng',minWidth:70},{field:'numb
  {field:'errors',headerName:'Lỗi',minWidth:260,flex:2,valueGetter:p=>(p.data.errors||[]).join('; '),cellClass:p=>p.value?'fin-cell-bad':''}]
 const payrollLineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'lotus_farm',headerName:'Vườn',minWidth:110},
  {field:'lotus_farm_block',headerName:'Lô',minWidth:90,valueGetter:p=>dimLabel('lotus_farm_block',p.data.lotus_farm_block)},{field:'lotus_work_type',headerName:'Công việc',minWidth:120},{field:'note',headerName:'Diễn giải',minWidth:140}]
+const staff=ref(null)
+function roleCell(key,role){return params=>{if(!params.data)return '';const input=document.createElement('input');input.type='checkbox';input.checked=!!params.data[key];input.disabled=!staff.value?.can_assign
+ input.setAttribute('aria-label',role+' cho '+params.data.name);input.addEventListener('click',e=>e.stopPropagation())
+ input.addEventListener('change',async e=>{e.stopPropagation();await run(async()=>{await call(F+'api.set_role',{user:params.data.user,role,on:input.checked?1:0},true);staff.value=await call(F+'api.people');notice.value='Đã cập nhật vai trò của '+params.data.name+'.'})});return input}}
+const peopleColumns=[{field:'name',headerName:'Nhân sự',minWidth:200,flex:2},{field:'designation',headerName:'Chức danh',minWidth:140},{field:'user',headerName:'Tài khoản',minWidth:200},
+ {field:'chief',headerName:'Kế toán trưởng',minWidth:120,sortable:false,cellRenderer:roleCell('chief','Lotus Chief Accountant')},
+ {field:'accountant',headerName:'Kế toán',minWidth:100,sortable:false,cellRenderer:roleCell('accountant','Lotus Accountant')},
+ {field:'auditor',headerName:'Kiểm soát',minWidth:100,sortable:false,cellRenderer:roleCell('auditor','Lotus Auditor')},
+ {field:'approver',headerName:'Ký duyệt chi',minWidth:110,valueFormatter:p=>p.value?'Có':'—'},{field:'employee',headerName:'Hồ sơ NV',minWidth:100,valueFormatter:p=>p.value?'Có':'Chưa gắn'}]
+function newAdjLine(){return {account:'',debit:'',credit:'',party:'',lotus_farm_block:''}}
+const adj=ref({posting_date:today,remark:'',lines:[newAdjLine(),newAdjLine()]}),adjErrors=ref([])
+const adjDebit=computed(()=>adj.value.lines.reduce((t,l)=>t+Math.round(Number(l.debit||0)),0))
+const adjCredit=computed(()=>adj.value.lines.reduce((t,l)=>t+Math.round(Number(l.credit||0)),0))
+async function sendAdjustment(commit){saving.value=true;adjErrors.value=[]
+ try{const r=await call(F+'api.adjustment',{lines:JSON.stringify(adj.value.lines.filter(l=>l.account)),posting_date:adj.value.posting_date,remark:adj.value.remark,commit},true)
+  adjErrors.value=r.errors||[];if(commit&&r.voucher){notice.value='Đã ghi bút toán điều chỉnh '+r.voucher+' ('+vnd(r.total)+').';adj.value={posting_date:today,remark:'',lines:[newAdjLine(),newAdjLine()]}}
+  else if(!adjErrors.value.length)notice.value='Bút toán hợp lệ, bấm Ghi sổ để ghi.'}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+function openLedger(account){if(!account)return;ledgerAccount.value=account;report.value='ledger';range.value={from:today.slice(0,4)+'-01-01',to:today};go('reports')}
 const keyed=list=>(list||[]).map((r,i)=>({...r,__key:i}))
 const tiles=computed(()=>overview.value?.tiles||{})
 const costChart=computed(()=>(report.value==='costs'&&reportData.value?.rows||[]).slice(0,12))
@@ -265,7 +288,7 @@ useNoticeToast(notice)
  </template>
 
  <section v-else-if="tab==='journal'" class="land-card">
-  <div class="land-filters"><label>Từ<UiInput v-model="range.from" type="date"/></label><label>Đến<UiInput v-model="range.to" type="date"/></label><UiButton variant="outline" @click="load">Xem</UiButton><span class="land-spacer"></span><span class="land-count">{{journalRows.length}} chứng từ</span></div>
+  <div class="land-filters"><label>Từ<DatePicker v-model="range.from"/></label><label>Đến<DatePicker v-model="range.to"/></label><UiButton variant="outline" @click="load">Xem</UiButton><span class="land-spacer"></span><span class="land-count">{{journalRows.length}} chứng từ</span></div>
   <details v-for="v in journalRows" :key="v.voucher_no" class="fin-entry"><summary><span>{{vnDate(v.posting_date)}}</span><b>{{v.voucher_no}}</b><span>{{v.source.purpose?v.source.doctype+' '+v.source.name:v.voucher_type}}</span><strong>{{vnd(v.amount)}}</strong></summary>
    <DataTable :rows="keyed(v.lines)" :columns="lineColumns" row-key="__key" storage-key="fin-journal-lines"/></details>
   <p v-if="!journalRows.length&&!busy" class="land-empty">Không có chứng từ trong khoảng ngày này.</p>
@@ -297,7 +320,7 @@ useNoticeToast(notice)
  <template v-else-if="tab==='reports'">
   <div class="land-filters">
    <div class="land-views" role="group" aria-label="Báo cáo"><button v-for="[id,label] in REPORTS" :key="id" type="button" :class="{on:report===id}" :aria-pressed="report===id" @click="report=id">{{label}}</button></div>
-   <label>Từ<UiInput v-model="range.from" type="date"/></label><label>Đến<UiInput v-model="range.to" type="date"/></label>
+   <label>Từ<DatePicker v-model="range.from"/></label><label>Đến<DatePicker v-model="range.to"/></label>
    <UiSelect v-if="report==='costs'" v-model="groupBy" aria-label="Nhóm theo" class="fin-narrow"><option value="lotus_farm">Theo vườn</option><option value="lotus_farm_block">Theo lô</option><option value="lotus_crop_cycle">Theo vụ</option><option value="lotus_work_type">Theo công việc</option></UiSelect>
    <UiSelect v-if="report==='ledger'" v-model="ledgerAccount" aria-label="Tài khoản" class="fin-wide"><option value="">Chọn tài khoản…</option><option v-for="a in lookups?.accounts||[]" :key="a.name" :value="a.name">{{a.name}}</option></UiSelect>
    <UiButton variant="outline" @click="run(loadReport)">Xem</UiButton>
@@ -323,6 +346,8 @@ useNoticeToast(notice)
   </section>
  </template>
 
+ <FinanceGuide v-else-if="tab==='guide'" @go="go"/>
+
  <template v-else-if="tab==='settings'&&settings">
   <section class="land-card"><h3>Hệ thống tài khoản</h3>
    <p v-if="settings.coa_version" class="land-note">Đã áp dụng {{settings.coa_version}} lúc {{vnDate(settings.coa_applied_at.slice(0,10))}} ({{settings.coa_applied_by}}).</p>
@@ -341,17 +366,35 @@ useNoticeToast(notice)
   <section class="land-card"><h3>Tài khoản theo nghiệp vụ và bật ghi sổ</h3>
    <p v-for="e in settings.errors" :key="e" class="land-warn">{{e}}</p>
    <form class="land-form--grid" @submit.prevent="saveSettings">
-    <label v-for="k in settings.keys" :key="k.key">{{k.label}}<UiSelect v-model="form.mapping[k.key]" :disabled="!settings.is_chief"><option value="">Chưa chọn</option><option v-for="a in accountsFor(k.key)" :key="a.name" :value="a.name">{{a.name}}</option></UiSelect></label>
-    <label>Ngày bắt đầu ghi sổ (cutover)<UiInput v-model="form.cutover_date" type="date" :disabled="!settings.is_chief"/></label>
+    <label v-for="k in settings.keys" :key="k.key">{{k.label}}<UiSelect v-model="form.mapping[k.key]" :disabled="!settings.is_chief"><option value="">Chưa chọn</option><option v-for="a in accountsFor(k.key)" :key="a.name" :value="a.name">{{accountLabel(a)}}</option></UiSelect></label>
+    <label>Ngày bắt đầu ghi sổ (cutover)<DatePicker v-model="form.cutover_date" :disabled="!settings.is_chief"/></label>
     <label class="fin-check"><input v-model="form.enabled" type="checkbox" :disabled="!settings.is_chief">Bật ghi sổ kế toán từ Lotus</label>
     <div v-if="settings.is_chief" class="land-actions land-form__full"><UiButton type="submit" :disabled="saving">Lưu</UiButton></div>
    </form>
   </section>
-  <section class="land-card"><h3>Kết chuyển và khóa sổ theo tháng ({{today.slice(0,4)}})</h3>
-   <p class="land-note">Cuối tháng: kết chuyển chi phí 621 / 622 / 627 sang 154 theo từng vườn, lô (giữ nguyên chiều phân tích), rồi khóa sổ.</p>
+  <section class="land-card"><div class="land-card__head"><h3>Kết chuyển và khóa sổ theo tháng</h3><UiSelect v-model.number="year" aria-label="Năm" class="fin-narrow"><option v-for="y in [Number(today.slice(0,4))-1,Number(today.slice(0,4)),Number(today.slice(0,4))+1]" :key="y" :value="y">Năm {{y}}</option></UiSelect></div>
+   <p class="land-warn">Thứ tự cuối tháng: ghi sổ lương → kết chuyển chi phí (Kết chuyển CP) → kiểm tra Đối chiếu → Khóa. Đã khóa thì không kết chuyển được nữa.</p>
    <div class="fin-months"><div v-for="m in months" :key="m" class="fin-month" :class="{closed:periodOf(m)?.closed}"><b>{{m.slice(5)}}/{{m.slice(0,4)}}</b><small>{{periodOf(m)?.closed?'Đã khóa':'Đang mở'}}</small>
     <UiButton size="sm" variant="ghost" @click="previewClosing(m)">Kết chuyển CP</UiButton>
     <template v-if="settings.is_chief"><UiButton v-if="!periodOf(m)?.closed" size="sm" variant="outline" @click="closeMonth(m)">Khóa</UiButton><UiButton v-else size="sm" variant="ghost" @click="reopenMonth(m)">Mở lại</UiButton></template></div></div>
+  </section>
+  <section class="land-card"><h3>Người làm kế toán</h3>
+   <p class="land-note">Kế toán: lập hóa đơn, phiếu chi, ghi sổ lương. Kế toán trưởng: ký phiếu chi, đảo bút toán, kết chuyển, khóa sổ, cấu hình. Kiểm soát: chỉ xem. {{staff?.can_assign?'':'Chỉ Quản trị hệ thống được gán vai trò.'}}</p>
+   <div class="land-table fin-table"><DataTable :rows="staff?.people||[]" :columns="peopleColumns" row-key="user" storage-key="fin-people" empty="Chưa có tài khoản nhân sự."/></div>
+  </section>
+  <section v-if="settings.is_chief" class="land-card"><div class="land-card__head"><h3>Bút toán điều chỉnh (phiếu kế toán khác)</h3><UiButton variant="ghost" size="sm" @click="openLedger(settings.mapping.stock_adjustment)">Xem sổ chi tiết 3381</UiButton></div>
+   <p class="land-note">Dùng cho nghiệp vụ không có chứng từ Lotus: phân loại lại số dư treo (VD 3381), điều chỉnh sai sót. Nợ phải bằng Có; tài khoản công nợ cần ghi mã đối tượng.</p>
+   <div class="land-form--grid"><label>Ngày hạch toán<DatePicker v-model="adj.posting_date"/></label><label>Diễn giải<UiInput v-model="adj.remark" placeholder="VD: Phân loại lại tồn kho đầu kỳ từ 3381 sang 4111"/></label></div>
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--adj fin-form-row--head" aria-hidden="true"><span>Tài khoản</span><span>Nợ</span><span>Có</span><span>Đối tượng</span><span>Lô</span><span></span></div>
+    <div v-for="(l,i) in adj.lines" :key="i" class="fin-form-row fin-form-row--adj" role="listitem">
+     <UiSelect v-model="l.account" :aria-label="'Tài khoản dòng '+(i+1)"><option value="">Chọn…</option><option v-for="a in settings.accounts" :key="a.name" :value="a.name">{{accountLabel(a)}}</option></UiSelect>
+     <UiInput v-model="l.debit" type="number" min="0" :aria-label="'Nợ dòng '+(i+1)"/><UiInput v-model="l.credit" type="number" min="0" :aria-label="'Có dòng '+(i+1)"/>
+     <UiInput v-model="l.party" placeholder="Mã NCC / KH" :aria-label="'Đối tượng dòng '+(i+1)"/>
+     <UiSelect v-model="l.lotus_farm_block" :aria-label="'Lô dòng '+(i+1)"><option value="">—</option><option v-for="b in lookups?.blocks||[]" :key="b.name" :value="b.name">{{b.block_code}}</option></UiSelect>
+     <UiButton type="button" size="sm" variant="ghost" :disabled="adj.lines.length<3" @click="adj.lines.splice(i,1)">Xóa</UiButton></div></div>
+   <p>Tổng Nợ {{vnd(adjDebit)}} · Tổng Có {{vnd(adjCredit)}} <span :class="adjDebit===adjCredit&&adjDebit>0?'fin-ok':'land-bad'">{{adjDebit===adjCredit&&adjDebit>0?'Cân':'Chưa cân'}}</span></p>
+   <p v-for="e in adjErrors" :key="e" class="land-bad">{{e}}</p>
+   <div class="land-actions fin-left"><UiButton type="button" variant="outline" @click="adj.lines.push(newAdjLine())">Thêm dòng</UiButton><span class="land-spacer"></span><UiButton :disabled="saving" variant="outline" @click="sendAdjustment(0)">Xem trước</UiButton><UiButton :disabled="saving||adjDebit!==adjCredit||!adjDebit" @click="sendAdjustment(1)">Ghi sổ</UiButton></div>
   </section>
   <section v-if="settings.is_chief" class="land-card"><h3>Số dư đầu kỳ</h3>
    <p class="land-note">Tải file mẫu, điền số dư từng tài khoản tại ngày bắt đầu ghi sổ (công nợ 331 ghi theo từng nhà cung cấp), rồi tải lên để xem trước. Tổng Dư Nợ phải bằng tổng Dư Có.</p>
@@ -364,7 +407,7 @@ useNoticeToast(notice)
 
  <WorkspaceModal v-model="invoiceOpen" title="Hóa đơn nhà cung cấp" :busy="saving" width="560px">
   <form class="land-form" @submit.prevent="makeInvoice"><p>{{pickedReceipts.length}} phiếu nhận · {{pickedReceipts[0]?.supplier_name}} · {{vnd(pickedReceipts.reduce((s,r)=>s+Number(r.to_bill||0),0))}}</p>
-   <label>Số hóa đơn<UiInput v-model="invoice.bill_no" required/></label><label>Ngày hóa đơn<UiInput v-model="invoice.bill_date" type="date" required/></label><label>Hạn thanh toán<UiInput v-model="invoice.due_date" type="date"/></label>
+   <label>Số hóa đơn<UiInput v-model="invoice.bill_no" required/></label><label>Ngày hóa đơn<DatePicker v-model="invoice.bill_date" required/></label><label>Hạn thanh toán<DatePicker v-model="invoice.due_date"/></label>
    <p class="land-note">Ghi Nợ hàng về chưa có hóa đơn / Có phải trả người bán. Chưa tính VAT ở phiên bản này.</p>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="invoiceOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!invoice.bill_no">Ghi hóa đơn</UiButton></div></form>
  </WorkspaceModal>
@@ -393,7 +436,7 @@ useNoticeToast(notice)
    <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--head" aria-hidden="true"><span>Hóa đơn</span><span>Hạn</span><span class="num">Còn nợ</span><span class="num">Trả lần này</span></div>
     <div v-for="i in supplierInvoices" :key="i.name" class="fin-form-row" role="listitem"><b>{{i.bill_no||i.name}}</b><span>{{vnDate(i.due_date)}}</span><span class="num">{{vnd(i.outstanding_amount-(i.paying||0))}}</span><UiInput v-model="pay.allocations[i.name]" type="number" min="0" :aria-label="'Trả hóa đơn '+(i.bill_no||i.name)"/></div></div>
    <p>Tổng chi: <b>{{vnd(payTotal)}}</b></p>
-   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="pay.mode"><option value="cash">Tiền mặt (phiếu chi)</option><option value="bank">Chuyển khoản (ủy nhiệm chi)</option></UiSelect></label><label>Ngày chi<UiInput v-model="pay.posting_date" type="date"/></label>
+   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="pay.mode"><option value="cash">Tiền mặt (phiếu chi)</option><option value="bank">Chuyển khoản (ủy nhiệm chi)</option></UiSelect></label><label>Ngày chi<DatePicker v-model="pay.posting_date"/></label>
     <label v-if="pay.mode==='bank'" class="land-form__full">Số ủy nhiệm chi / giao dịch<UiInput v-model="pay.reference_no" required/></label></div>
    <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="payOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!payTotal">Lập phiếu và gửi ký</UiButton></div></form>
@@ -401,7 +444,7 @@ useNoticeToast(notice)
 
  <WorkspaceModal :model-value="!!salaryOpen" title="Phiếu chi lương" :busy="saving" width="640px" @update:model-value="v=>{if(!v)salaryOpen=null}">
   <form v-if="salaryOpen" class="land-form" @submit.prevent="prepareSalary"><p>Tháng {{salaryOpen.month}} · thực nhận {{vnd(salaryOpen.net)}}</p>
-   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="salary.mode"><option value="bank">Chuyển khoản</option><option value="cash">Tiền mặt</option></UiSelect></label><label>Ngày chi<UiInput v-model="salary.posting_date" type="date"/></label>
+   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="salary.mode"><option value="bank">Chuyển khoản</option><option value="cash">Tiền mặt</option></UiSelect></label><label>Ngày chi<DatePicker v-model="salary.posting_date"/></label>
     <label v-if="salary.mode==='bank'" class="land-form__full">Số ủy nhiệm chi<UiInput v-model="salary.reference_no"/></label></div>
    <SignerPicker v-model="signers" :options="signerOptions" :disabled="saving"/>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="salaryOpen=null">Hủy</UiButton><UiButton type="submit" :disabled="saving">Lập phiếu và gửi ký</UiButton></div></form>
@@ -410,7 +453,7 @@ useNoticeToast(notice)
  <WorkspaceModal v-model="serviceOpen" title="Hóa đơn dịch vụ / chi phí" :busy="saving" width="980px">
   <form class="land-form" @submit.prevent="saveService">
    <div class="land-form--grid"><label>Nhà cung cấp<UiSelect v-model="service.supplier" required><option value="">Chọn…</option><option v-for="s in lookups?.suppliers||[]" :key="s.name" :value="s.name">{{s.supplier_name}}</option></UiSelect></label>
-    <label>Số hóa đơn<UiInput v-model="service.bill_no" required/></label><label>Ngày hóa đơn<UiInput v-model="service.bill_date" type="date"/></label><label>Hạn thanh toán<UiInput v-model="service.due_date" type="date"/></label></div>
+    <label>Số hóa đơn<UiInput v-model="service.bill_no" required/></label><label>Ngày hóa đơn<DatePicker v-model="service.bill_date"/></label><label>Hạn thanh toán<DatePicker v-model="service.due_date"/></label></div>
    <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--service fin-form-row--head" aria-hidden="true"><span>Nội dung</span><span>Số tiền</span><span>Loại chi phí</span><span>Vườn</span><span>Lô</span><span></span></div>
     <div v-for="(l,i) in service.lines" :key="i" class="fin-form-row fin-form-row--service" role="listitem"><UiInput v-model="l.description" placeholder="VD: Thuê máy cày lô A1" :aria-label="'Nội dung dòng '+(i+1)"/><UiInput v-model="l.amount" type="number" min="0" :aria-label="'Số tiền dòng '+(i+1)"/>
      <UiSelect v-model="l.cost" :aria-label="'Loại chi phí dòng '+(i+1)"><option value="production">Sản xuất (vào lô)</option><option value="admin">Quản lý</option></UiSelect>

@@ -282,7 +282,7 @@ def reconciliation(on_date=None):
     for p in frappe.get_all(posting.POSTING, filters={'source_doctype': 'Lotus Timekeeping Period', 'purpose': 'Payroll', 'state': 'Posted'},
                             fields=['source_name', 'voucher_name', 'amount']):
         snap = json.loads(frappe.db.get_value('Lotus Timekeeping Period', p.source_name, 'snapshot') or '{}')
-        source = sum(int(round(r.get('gross') or 0)) + int(round(r.get('employer_insurance') or 0)) for r in snap.get('rows') or []) \
+        source = sum(int(round(r.get('gross') or 0)) + int(round(r.get('employer_insurance') or 0)) for r in rules.snapshot_people(snap)) \
             + sum(int(round(c.get('amount') or 0)) for c in snap.get('crews') or [])
         posted = flt(frappe.db.get_value('Journal Entry', p.voucher_name, 'total_debit'))
         checks.append(dict(label='Bảng lương %s so với bút toán %s' % (p.source_name, p.voucher_name), ledger=posted, source=source))

@@ -50,7 +50,7 @@ def build(name):
     snapshot = json.loads(doc.snapshot)
     m = setup.mapping()
     work = _work_rows(doc.company, doc.month)
-    employees = [r.get('employee') for r in snapshot.get('rows') or []]
+    employees = [r.get('employee') for r in rules.snapshot_people(snapshot)]
     farms = {e.name: e.lotus_farm for e in frappe.get_all('Employee', filters={'name': ['in', employees or ['']]}, fields=['name', 'lotus_farm'])} \
         if frappe.get_meta('Employee').has_field('lotus_farm') else {}
     teams = [c.get('work_team') for c in snapshot.get('crews') or []]
@@ -58,13 +58,13 @@ def build(name):
     lines, issues = rules.payroll_entry(snapshot, rules.shares_from_work(work), m, payroll_rules.EMPLOYEE_INSURANCE,
                                         payroll_rules.EMPLOYER_INSURANCE, crew_farms=crew_farms, employee_farms=farms)
     direct = {r['employee'] for r in work}
-    indirect = [r.get('employee') for r in snapshot.get('rows') or [] if r.get('employee') not in direct and (r.get('gross') or 0)]
+    indirect = [r.get('employee') for r in rules.snapshot_people(snapshot) if r.get('employee') not in direct and (r.get('gross') or 0)]
     totals = snapshot.get('totals') or {}
     return doc, dict(period=doc.name, month=doc.month, company=doc.company, posting_date=_month_end(doc.month), source_hash=doc.snapshot_hash,
-                     lines=lines, issues=issues, people=len(snapshot.get('rows') or []), indirect=indirect, crews=len(snapshot.get('crews') or []),
-                     totals=dict(gross=sum(int(round(r.get('gross') or 0)) for r in snapshot.get('rows') or []),
-                                 net=sum(int(round(r.get('net') or 0)) for r in snapshot.get('rows') or []),
-                                 employer_insurance=sum(int(round(r.get('employer_insurance') or 0)) for r in snapshot.get('rows') or []),
+                     lines=lines, issues=issues, people=len(rules.snapshot_people(snapshot)), indirect=indirect, crews=len(snapshot.get('crews') or []),
+                     totals=dict(gross=sum(int(round(r.get('gross') or 0)) for r in rules.snapshot_people(snapshot)),
+                                 net=sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(snapshot)),
+                                 employer_insurance=sum(int(round(r.get('employer_insurance') or 0)) for r in rules.snapshot_people(snapshot)),
                                  crews=sum(int(round(c.get('amount') or 0)) for c in snapshot.get('crews') or []), sheet=totals),
                      posted=_posted(doc.name))
 
@@ -135,7 +135,7 @@ def prepare_salary_payment(period, mode, posting_date, signers, reference_no=Non
         frappe.throw('Ghi sổ bảng lương tháng %s trước khi chi lương.' % doc.month)
     posting.guard(PERIOD, doc.name, 'Salary Payment')
     snapshot = json.loads(doc.snapshot)
-    net = sum(int(round(r.get('net') or 0)) for r in snapshot.get('rows') or [])
+    net = sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(snapshot))
     m = setup.mapping()
     money = m['bank'] if mode == 'bank' else m['cash']
     setup.check_cutover(posting_date)

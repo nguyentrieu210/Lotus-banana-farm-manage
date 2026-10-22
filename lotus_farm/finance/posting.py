@@ -11,7 +11,8 @@ from lotus_farm.finance import setup
 
 POSTING = 'Lotus Accounting Posting'
 # Vouchers a closed month refuses (ERPNext Accounting Period checks them on submit and cancel).
-LOCKED_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Purchase Receipt', 'Stock Entry', 'Stock Reconciliation')
+LOCKED_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Purchase Receipt', 'Stock Entry', 'Stock Reconciliation',
+                   'Delivery Note', 'Sales Invoice')
 MONTHS = 'Tháng %02d/%04d'
 
 

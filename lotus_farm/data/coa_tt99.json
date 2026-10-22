@@ -214,7 +214,10 @@
   "bank": "112",
   "stock_adjustment": "3381",
   "opening_equity": "4111",
-  "round_off": "811"
+  "round_off": "811",
+  "stock_shortage": "1381",
+  "cost_of_goods_sold": "632",
+  "other_expense": "811"
  },
  "company_defaults": {
   "default_cash_account": "111",
@@ -222,7 +225,7 @@
   "default_receivable_account": "131",
   "default_payable_account": "331",
   "write_off_account": "811",
-  "default_expense_account": "6428",
+  "default_expense_account": "632",
   "default_income_account": "511",
   "exchange_gain_loss_account": "635",
   "round_off_account": "811",

@@ -33,7 +33,8 @@ def _duplicate(supplier, bill_no):
 
 @frappe.whitelist()
 def receipts_to_bill(supplier=None):
-    """Submitted receipts not fully invoiced, with their unbilled amount."""
+    """Submitted receipts not fully invoiced, with their unbilled amount: purchase receipts of orders, and goods bought
+    without an order that the warehouse received with reason "Mua ngoài" (Stock Entry, credited to 3388)."""
     setup.require_view()
     filters = {'docstatus': 1, 'company': setup.company(), 'per_billed': ['<', 99.99], 'is_return': 0}
     if supplier:
@@ -43,6 +44,17 @@ def receipts_to_bill(supplier=None):
     for r in rows:
         r['to_bill'] = round(flt(r.grand_total) * (100 - flt(r.per_billed)) / 100)
         r['posting_date'] = str(r.posting_date)
+        r['doctype'] = 'Purchase Receipt'
+    if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
+        se_filters = {'docstatus': 1, 'company': setup.company(), 'stock_entry_type': 'Material Receipt', 'lotus_receipt_reason': 'Purchase',
+                      'lotus_purchase_invoice': ['in', ['', None]]}
+        if supplier:
+            se_filters['lotus_supplier'] = supplier
+        names = {s_.name: s_.supplier_name for s_ in frappe.get_all('Supplier', fields=['name', 'supplier_name'], limit_page_length=0)}
+        for e in frappe.get_all('Stock Entry', filters=se_filters, fields=['name', 'lotus_supplier', 'posting_date', 'total_incoming_value'],
+                                order_by='posting_date, name', limit_page_length=500):
+            rows.append(dict(name=e.name, doctype='Stock Entry', supplier=e.lotus_supplier, supplier_name=names.get(e.lotus_supplier, e.lotus_supplier),
+                             posting_date=str(e.posting_date), grand_total=flt(e.total_incoming_value), per_billed=0, to_bill=round(flt(e.total_incoming_value))))
     return rows
 
 
@@ -58,6 +70,8 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
         frappe.throw('Chọn ít nhất một phiếu nhận hàng.')
     if not bill_no:
         frappe.throw('Nhập số hóa đơn của nhà cung cấp.')
+    if all(frappe.db.exists('Stock Entry', r) for r in receipts):
+        return _invoice_stock_entries(receipts, bill_no, bill_date, due_date, posting_date)
     docs = [frappe.get_doc('Purchase Receipt', r) for r in receipts]
     suppliers = {d.supplier for d in docs}
     if len(suppliers) != 1:
@@ -84,6 +98,40 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
     pi.insert()
     pi.submit()
     posting.record(PI, pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=','.join(receipts))
+    return dict(invoice=pi.name, amount=pi.grand_total)
+
+
+def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_date=None):
+    """Invoice for goods received without an order: the stock is already in (Nợ 152 / Có 3388), so the invoice only moves
+    3388 to the supplier (Nợ 3388 / Có 331) and does not update stock again."""
+    docs = [frappe.get_doc('Stock Entry', n) for n in names]
+    for d in docs:
+        if d.docstatus != 1 or d.stock_entry_type != 'Material Receipt' or d.get('lotus_receipt_reason') != 'Purchase':
+            frappe.throw('Phiếu %s không phải phiếu nhập hàng mua ngoài.' % d.name)
+        if d.get('lotus_purchase_invoice'):
+            frappe.throw('Phiếu nhập %s đã có hóa đơn %s.' % (d.name, d.lotus_purchase_invoice))
+    suppliers = {d.lotus_supplier for d in docs}
+    if len(suppliers) != 1 or None in suppliers:
+        frappe.throw('Các phiếu nhập phải cùng một nhà cung cấp.')
+    supplier = docs[0].lotus_supplier
+    _duplicate(supplier, bill_no)
+    posting_date = posting_date or bill_date
+    setup.check_cutover(posting_date)
+    posting.check_open(docs[0].company, posting_date, PI)
+    m = setup.mapping()
+    cost_center = frappe.get_cached_value('Company', docs[0].company, 'cost_center')
+    items = [dict(item_code=r.item_code, item_name=r.item_name, qty=r.transfer_qty, uom=r.stock_uom, stock_uom=r.stock_uom, conversion_factor=1,
+                  rate=flt(r.amount) / flt(r.transfer_qty) if flt(r.transfer_qty) else 0, expense_account=m['received_not_billed'], cost_center=cost_center,
+                  description='%s (phiếu nhập %s)' % (r.item_name or r.item_code, d.name))
+             for d in docs for r in d.items]
+    pi = frappe.get_doc(dict(doctype=PI, company=docs[0].company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
+                             posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
+    pi.flags.ignore_permissions = True
+    pi.insert()
+    pi.submit()
+    for d in docs:
+        d.db_set('lotus_purchase_invoice', pi.name)
+    posting.record(PI, pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=','.join(names))
     return dict(invoice=pi.name, amount=pi.grand_total)
 
 
@@ -306,6 +354,6 @@ def vouchers():
         if not posting.active('Lotus Timekeeping Period', p.source_name, 'Salary Payment'):
             snap = frappe.db.get_value('Lotus Timekeeping Period', p.source_name, ['month', 'snapshot'], as_dict=True)
             import json
-            net = sum(int(round(r.get('net') or 0)) for r in json.loads(snap.snapshot or '{}').get('rows') or [])
+            net = sum(int(round(r.get('net') or 0)) for r in rules.snapshot_people(json.loads(snap.snapshot or '{}')))
             ready.append(dict(period=p.source_name, month=snap.month, net=net, payroll_voucher=p.voucher_name))
     return dict(vouchers=rows, salary_ready=ready)
