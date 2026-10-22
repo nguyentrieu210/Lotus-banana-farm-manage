@@ -4,7 +4,8 @@ A goods invoice is made from submitted Purchase Receipts (ERPNext's make_purchas
 quantity stays in step with the receipt): Nợ hàng về chưa có hóa đơn / Có phải trả người bán. A service
 invoice (transport, machine hire…) posts its lines to production overhead services (6277, with farm / lot) or to
 administrative services (6427). A payment is a draft Payment Entry allocated to open invoices, signed by the
-accountant, the chief accountant and the director; the last signature submits it. No VAT in this release.
+accountant, the chief accountant and the director; the last signature submits it. Each invoice carries one VAT rate
+(data/vat_vn.json): input VAT goes to 1331.
 """
 import frappe
 from frappe.utils import flt, getdate, nowdate
@@ -23,6 +24,24 @@ def _due(bill_date, due_date):
     if due < getdate(bill_date):
         frappe.throw('Hạn thanh toán không được trước ngày hóa đơn.')
     return due
+
+
+def apply_vat(doc, code, on_date, account):
+    """One VAT rate per invoice: a tax row on the net total to the input (1331) or output (33311) VAT account; KCT / 0% add none."""
+    try:
+        rate = rules.vat_rate(code, on_date)
+    except ValueError as exc:
+        frappe.throw(str(exc))
+    if doc.meta.has_field('lotus_vat_code'):
+        doc.lotus_vat_code = str(code or 'KCT')
+    doc.set('taxes', [])
+    doc.taxes_and_charges = None
+    if rate:
+        row = dict(charge_type='On Net Total', account_head=account, rate=rate * 100, description='Thuế GTGT %s%%' % code,
+                   cost_center=frappe.get_cached_value('Company', doc.company, 'cost_center'))
+        if doc.doctype == PI:
+            row.update(category='Total', add_deduct_tax='Add')
+        doc.append('taxes', row)
 
 
 def _duplicate(supplier, bill_no):
@@ -59,8 +78,8 @@ def receipts_to_bill(supplier=None):
 
 
 @frappe.whitelist(methods=['POST'])
-def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date=None):
-    """One supplier invoice for one or more receipts of the same supplier (the unbilled quantities)."""
+def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date=None, vat_code='KCT'):
+    """One supplier invoice for one or more receipts of the same supplier (the unbilled quantities); input VAT to 1331."""
     setup.require_post()
     setup.require_enabled()
     from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
@@ -71,7 +90,7 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
     if not bill_no:
         frappe.throw('Nhập số hóa đơn của nhà cung cấp.')
     if all(frappe.db.exists('Stock Entry', r) for r in receipts):
-        return _invoice_stock_entries(receipts, bill_no, bill_date, due_date, posting_date)
+        return _invoice_stock_entries(receipts, bill_no, bill_date, due_date, posting_date, vat_code)
     docs = [frappe.get_doc('Purchase Receipt', r) for r in receipts]
     suppliers = {d.supplier for d in docs}
     if len(suppliers) != 1:
@@ -92,7 +111,7 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
     m = setup.mapping()
     pi.update(dict(bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date), posting_date=posting_date, set_posting_time=1,
                    credit_to=m['payable_supplier'], taxes_and_charges=None))
-    pi.set('taxes', [])
+    apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.set('payment_schedule', [])
     pi.flags.ignore_permissions = True
     pi.insert()
@@ -101,7 +120,7 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
     return dict(invoice=pi.name, amount=pi.grand_total)
 
 
-def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_date=None):
+def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_date=None, vat_code='KCT'):
     """Invoice for goods received without an order: the stock is already in (Nợ 152 / Có 3388), so the invoice only moves
     3388 to the supplier (Nợ 3388 / Có 331) and does not update stock again."""
     docs = [frappe.get_doc('Stock Entry', n) for n in names]
@@ -126,6 +145,7 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
              for d in docs for r in d.items]
     pi = frappe.get_doc(dict(doctype=PI, company=docs[0].company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
+    apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.flags.ignore_permissions = True
     pi.insert()
     pi.submit()
@@ -136,7 +156,7 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
 
 
 @frappe.whitelist(methods=['POST'])
-def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, posting_date=None):
+def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, posting_date=None, vat_code='KCT'):
     """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type}]"""
     setup.require_post()
     setup.require_enabled()
@@ -168,6 +188,7 @@ def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, pos
     posting.check_open(company, posting_date, PI)
     pi = frappe.get_doc(dict(doctype=PI, company=company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
+    apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.flags.ignore_permissions = True
     pi.insert()
     pi.submit()

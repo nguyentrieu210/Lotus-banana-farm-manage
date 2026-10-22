@@ -1,0 +1,41 @@
+{
+ "note": "Thuế suất GTGT theo Luật Thuế GTGT 48/2024/QH15 (hiệu lực 01/7/2025). Mỗi hóa đơn chọn một mức; mức có ngày hết hiệu lực (to) chỉ chọn được cho hóa đơn trong khoảng đó. Kế toán đối chiếu danh mục hàng hóa với Điều 5, Điều 9 của Luật và nghị định hướng dẫn trước khi chọn.",
+ "rates": [
+  {
+   "code": "KCT",
+   "label": "Không chịu thuế / không có thuế GTGT",
+   "rate": 0,
+   "from": "2025-07-01",
+   "source": "Luật 48/2024/QH15 Điều 5 khoản 1: sản phẩm cây trồng chưa chế biến hoặc chỉ qua sơ chế thông thường của tổ chức, cá nhân tự sản xuất bán ra thuộc đối tượng không chịu thuế — áp dụng cho chuối của vườn bán ra. Dùng cả cho hóa đơn mua không có thuế GTGT (hộ nông dân, hóa đơn bán hàng)."
+  },
+  {
+   "code": "0",
+   "label": "0% (xuất khẩu)",
+   "rate": 0,
+   "from": "2025-07-01",
+   "source": "Luật 48/2024/QH15 Điều 9 khoản 1: hàng hóa xuất khẩu."
+  },
+  {
+   "code": "5",
+   "label": "5%",
+   "rate": 0.05,
+   "from": "2025-07-01",
+   "source": "Luật 48/2024/QH15 Điều 9 khoản 2 (ví dụ sản phẩm cây trồng chưa chế biến ở khâu kinh doanh thương mại, phân bón, thuốc bảo vệ thực vật, máy móc nông nghiệp chuyên dùng)."
+  },
+  {
+   "code": "8",
+   "label": "8% (giảm 2% theo Nghị quyết 204/2025/QH15)",
+   "rate": 0.08,
+   "from": "2025-07-01",
+   "to": "2026-12-31",
+   "source": "Nghị quyết 204/2025/QH15: giảm 2% cho nhóm hàng hóa, dịch vụ thuế suất 10% (khoản 3 Điều 9), từ 01/7/2025 đến hết 31/12/2026, trừ các nhóm loại trừ trong Nghị quyết."
+  },
+  {
+   "code": "10",
+   "label": "10%",
+   "rate": 0.10,
+   "from": "2025-07-01",
+   "source": "Luật 48/2024/QH15 Điều 9 khoản 3."
+  }
+ ]
+}

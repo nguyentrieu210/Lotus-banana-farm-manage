@@ -29,6 +29,7 @@ WRITE_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Sales I
 # Journal Entry kinds made by Lotus: signed payment vouchers (Salary, Advance, Statutory) and month-end entries (Closing, Result).
 JE_KINDS = ('Salary', 'Closing', 'Advance', 'Statutory', 'Result')
 SIGNED_JE_KINDS = ('Salary', 'Advance', 'Statutory')
+VAT_OPTIONS = '\nKCT\n0\n5\n8\n10'
 
 
 def _has(roles):
@@ -177,7 +178,15 @@ def install():
                  insert_after='lotus_purchase_invoice'),
             dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage\nPacking',
                  insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
-        ]})
+        ],
+        'Purchase Invoice': [dict(fieldname='lotus_vat_code', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='bill_date')],
+        'Sales Invoice': [
+            dict(fieldname='lotus_vat_code', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='due_date'),
+            dict(fieldname='lotus_einvoice_series', label='Ký hiệu hóa đơn điện tử', fieldtype='Data', insert_after='lotus_vat_code'),
+            dict(fieldname='lotus_einvoice_no', label='Số hóa đơn điện tử', fieldtype='Data', insert_after='lotus_einvoice_series'),
+        ],
+        'Customer': [dict(fieldname='lotus_credit_days', label='Hạn thanh toán (ngày)', fieldtype='Int', insert_after='tax_id')],
+    })
     install_dimensions()
     add_missing_accounts()
     fill_mapping()

@@ -54,6 +54,9 @@
 @media(max-width:700px){.fin-form-row,.fin-form-row--service{grid-template-columns:1fr 1fr}.fin-form-row--head{display:none}}
 .fin-list{margin:6px 0;padding-left:18px;max-height:240px;overflow:auto;font-size:var(--lotus-text-sm)}
 .fin-form-row--adj{grid-template-columns:2.6fr 1fr 1fr 1fr 0.8fr auto}
+.fin-form-row--sale{grid-template-columns:2.6fr 0.9fr 0.9fr 1fr 1.2fr auto}
+@media(max-width:700px){.fin-form-row--sale{grid-template-columns:1fr 1fr}}
+.fin-muted{color:var(--lotus-muted)}
 .fin-guide{display:flex;flex-direction:column;gap:12px}
 .fin-guide__nav{display:flex;flex-wrap:wrap;gap:6px}
 .fin-guide__nav button{padding:6px 12px;border:1px solid var(--lotus-border);border-radius:999px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit;font-size:var(--lotus-text-sm);cursor:pointer}

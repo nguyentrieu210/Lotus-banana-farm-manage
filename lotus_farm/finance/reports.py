@@ -56,7 +56,8 @@ def overview(on_date=None):
     tiles = dict(cash=_balance(company, [m['cash']], on_date), bank=_balance(company, [m['bank']], on_date),
                  payable_supplier=-_balance(company, [m['payable_supplier']], on_date), payable_employee=-_balance(company, [m['payable_employee']], on_date),
                  insurance=-_balance(company, [m['social_insurance'], m['health_insurance'], m['unemployment_insurance']], on_date),
-                 received_not_billed=-_balance(company, [m['received_not_billed']], on_date), month_cost=flt(cost))
+                 received_not_billed=-_balance(company, [m['received_not_billed']], on_date), month_cost=flt(cost),
+                 receivable=_balance(company, [m.get('receivable_customer')], on_date))
     waiting = pending()
     return dict(company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'), on_date=str(on_date),
                 enabled=bool(cfg.finance_enabled), cutover_date=str(cfg.cutover_date or ''), coa_version=cfg.coa_version or '',
@@ -280,6 +281,9 @@ def reconciliation(on_date=None):
                        source=sum(flt(r['to_bill']) for r in receipts_to_bill())))
     outstanding = flt(frappe.db.sql("""select sum(outstanding_amount) from `tabPurchase Invoice` where company=%s and docstatus=1""", company)[0][0])
     checks.append(dict(label='Phải trả người bán so với hóa đơn còn nợ', ledger=-_balance(company, [m['payable_supplier']], on_date), source=outstanding))
+    if m.get('receivable_customer'):
+        owed = flt(frappe.db.sql("""select sum(outstanding_amount) from `tabSales Invoice` where company=%s and docstatus=1""", company)[0][0])
+        checks.append(dict(label='Phải thu khách hàng so với hóa đơn bán còn phải thu', ledger=_balance(company, [m['receivable_customer']], on_date), source=owed))
     for p in frappe.get_all(posting.POSTING, filters={'source_doctype': 'Lotus Timekeeping Period', 'purpose': 'Payroll', 'state': 'Posted'},
                             fields=['source_name', 'voucher_name', 'amount']):
         snap = json.loads(frappe.db.get_value('Lotus Timekeeping Period', p.source_name, 'snapshot') or '{}')

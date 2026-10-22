@@ -9,6 +9,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 COA_FILE = Path(__file__).resolve().parents[1] / 'data' / 'coa_tt99.json'
+VAT_FILE = Path(__file__).resolve().parents[1] / 'data' / 'vat_vn.json'
 ROOT_TYPES = ('Asset', 'Liability', 'Equity', 'Income', 'Expense')
 # Accounting dimensions on every ledger line: (Lotus field / dimension fieldname, DocType, label).
 DIMENSIONS = (('lotus_farm', 'Farm', 'Vườn'), ('lotus_farm_block', 'Farm Block', 'Lô'),
@@ -176,6 +177,42 @@ def check_entry(lines):
     if not debit:
         errors.append('Bút toán không có số tiền')
     return errors
+
+
+def load_vat(path=VAT_FILE):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def vat_rates(on_date, data=None):
+    """VAT rates an invoice dated on_date may use (a rate with 'to' expires after that day)."""
+    day = str(on_date)[:10]
+    data = data or load_vat()
+    return [r for r in data['rates'] if str(r['from']) <= day and (not r.get('to') or day <= str(r['to']))]
+
+
+def vat_rate(code, on_date, data=None):
+    """The rate (fraction) of a VAT code on a date; refuses a code not in force."""
+    for r in vat_rates(on_date, data):
+        if r['code'] == str(code or 'KCT'):
+            return float(r['rate'])
+    raise ValueError('Thuế suất GTGT "%s" không áp dụng cho ngày %s' % (code, str(on_date)[:10]))
+
+
+def vat_summary(purchases, sales):
+    """Monthly VAT figures (tờ khai 01/GTGT, tham khảo): rows of dict(code, net, tax) for purchases and sales ->
+    totals by code, input and output tax and the VAT payable (negative = carried forward)."""
+    def by_code(rows):
+        out = OrderedDict()
+        for r in rows:
+            c = out.setdefault(str(r.get('code') or 'KCT'), dict(code=str(r.get('code') or 'KCT'), net=0, tax=0, count=0))
+            c['net'] += int(round(r.get('net') or 0))
+            c['tax'] += int(round(r.get('tax') or 0))
+            c['count'] += 1
+        return list(out.values())
+    p, s = by_code(purchases), by_code(sales)
+    input_tax, output_tax = sum(r['tax'] for r in p), sum(r['tax'] for r in s)
+    return dict(purchases=p, sales=s, input_tax=input_tax, output_tax=output_tax, payable=output_tax - input_tax,
+                taxable_sales=sum(r['net'] for r in s if r['code'] != 'KCT'), exempt_sales=sum(r['net'] for r in s if r['code'] == 'KCT'))
 
 
 def snapshot_people(snapshot):

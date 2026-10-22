@@ -24,8 +24,8 @@ import './finance.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
-const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
-const REPORTS=[['trial_balance','Bảng cân đối phát sinh'],['ledger','Sổ chi tiết tài khoản'],['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['reconciliation','Đối chiếu']]
+const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
+const REPORTS=[['trial_balance','Bảng cân đối phát sinh'],['ledger','Sổ chi tiết tài khoản'],['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['vat','Thuế GTGT'],['reconciliation','Đối chiếu']]
 const route=useRoute(),router=useRouter(),session=useSession()
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask,finish:finishConfirm}=useWorkspaceConfirm()
 const ledgerUser=computed(()=>!!session.capabilities?.finance_ledger)
@@ -48,7 +48,8 @@ async function load(){
   if(!overview.value||tab.value==='overview')overview.value=await call(F+'reports.overview')
   if(tab.value==='pending')pendingData.value=await call(F+'reports.pending')
   if(tab.value==='journal'){await ensureLookups();journalRows.value=await call(F+'reports.journal',{from_date:range.value.from,to_date:range.value.to})}
-  if(tab.value==='payables'){await ensureLookups();payData.value=await call(F+'reports.payables')}
+  if(tab.value==='payables'){await ensureLookups();payData.value=await call(F+'reports.payables');await ensureVat()}
+  if(tab.value==='sales'){await ensureLookups();await ensureVat();salesData.value=await call(F+'sales.receivables')}
   if(tab.value==='cash'){cash.value=await call(F+'payments.vouchers');mine.value=await call(F+'payments.my_vouchers')}
   if(tab.value==='reports'){await ensureLookups();await loadReport()}
   if(tab.value==='settings'){settings.value=await call(F+'api.settings');staff.value=await call(F+'api.people');await ensureLookups()}
@@ -61,17 +62,49 @@ async function loadReport(){
  if(report.value==='reconciliation')reportData.value=await call(F+'reports.reconciliation',{on_date:range.value.to})
  if(report.value==='ledger')reportData.value=ledgerAccount.value?await call(F+'reports.ledger',{...args,account:ledgerAccount.value}):null
  if(report.value==='costing'){await ensureLookups();reportData.value=await call(F+'costing.preview',{month:range.value.to.slice(0,7)})}
+ if(report.value==='vat'){await ensureVat();reportData.value=await call(F+'sales.vat_report',{month:range.value.to.slice(0,7)})}
 }
+const vatOptions=ref(null)
+async function ensureVat(){if(!vatOptions.value)vatOptions.value=await call(F+'sales.vat_options',{on_date:today})}
+const vatLabel=code=>(vatOptions.value?.rates||[]).find(r=>r.code===code)?.label||code||'KCT'
+// Sales: customers, invoices that ship the goods, receipts
+const salesData=ref(null),customerOpen=ref(false),customer=ref({}),saleOpen=ref(false),sale=ref({}),saleStock=ref([]),receiptOpen=ref(false),receipt=ref({})
+function openCustomer(row){customer.value=row?{name:row.customer,customer_name:row.customer_name,tax_id:row.tax_id,address:row.address,credit_days:row.credit_days}:{customer_name:'',tax_id:'',address:'',credit_days:0};customerOpen.value=true}
+async function saveCustomer(){saving.value=true
+ try{const r=await call(F+'sales.save_customer',{values:JSON.stringify(customer.value)},true);notice.value='Đã lưu khách hàng '+r.customer_name+'.';customerOpen.value=false;lookups.value=null;await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+function newSaleLine(){return {stock:'',qty:'',rate:'',batch_no:''}}
+async function openSale(){await run(async()=>{saleStock.value=await call(F+'sales.stock_for_sale')});sale.value={customer:'',posting_date:today,due_date:'',vat_code:'KCT',einvoice_series:'',einvoice_no:'',lines:[newSaleLine()]};saleOpen.value=true}
+const stockKey=s=>s.item_code+'|'+s.warehouse
+const stockOf=l=>saleStock.value.find(s=>stockKey(s)===l.stock)
+const saleNet=computed(()=>(sale.value.lines||[]).reduce((t,l)=>t+Math.round(Number(l.qty||0)*Number(l.rate||0)),0))
+const saleTax=computed(()=>Math.round(saleNet.value*Number((vatOptions.value?.rates||[]).find(r=>r.code===sale.value.vat_code)?.rate||0)))
+async function saveSale(){saving.value=true
+ try{const lines=sale.value.lines.filter(l=>l.stock).map(l=>{const s=stockOf(l);return {item_code:s.item_code,warehouse:s.warehouse,qty:Number(l.qty),rate:Number(l.rate),batch_no:l.batch_no||null}})
+  const r=await call(F+'sales.make_sales_invoice',{customer:sale.value.customer,posting_date:sale.value.posting_date,lines:JSON.stringify(lines),vat_code:sale.value.vat_code,
+   due_date:sale.value.due_date||null,einvoice_series:sale.value.einvoice_series||null,einvoice_no:sale.value.einvoice_no||null},true)
+  notice.value='Đã ghi hóa đơn bán '+r.invoice+' ('+vnd(r.amount)+', giá vốn '+vnd(r.cost)+').';saleOpen.value=false;await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+function openReceipt(row){receipt.value={customer:row.customer,customer_name:row.customer_name,mode:'bank',posting_date:today,reference_no:'',
+ allocations:Object.fromEntries((salesData.value?.invoices||[]).filter(i=>i.customer===row.customer).map(i=>[i.name,Math.round(i.outstanding_amount)]))};receiptOpen.value=true}
+const receiptInvoices=computed(()=>(salesData.value?.invoices||[]).filter(i=>i.customer===receipt.value.customer))
+const receiptTotal=computed(()=>Object.values(receipt.value.allocations||{}).reduce((s,v)=>s+Number(v||0),0))
+async function saveReceipt(){saving.value=true
+ try{const allocations=Object.entries(receipt.value.allocations).filter(([,v])=>Number(v)>0).map(([invoice,amount])=>({invoice,amount:Number(amount)}))
+  const r=await call(F+'sales.receive_payment',{customer:receipt.value.customer,allocations:JSON.stringify(allocations),mode:receipt.value.mode,posting_date:receipt.value.posting_date,reference_no:receipt.value.reference_no||null},true)
+  notice.value='Đã ghi phiếu thu '+r.receipt+' ('+vnd(r.amount)+').';receiptOpen.value=false;await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}}
+function exportVat(){location.href='/api/method/lotus_farm.finance.sales.export_vat?'+new URLSearchParams({month:range.value.to.slice(0,7)})}
 function exportReport(kind){const q={kind,from_date:range.value.from,to_date:range.value.to};if(kind==='costs')q.group_by=groupBy.value;if(kind==='ledger')q.account=ledgerAccount.value
  location.href='/api/method/lotus_farm.finance.reports.export?'+new URLSearchParams(q)}
 
 // Pending: supplier invoice from receipts, payroll preview/post
-const picked=ref(new Set()),invoiceOpen=ref(false),invoice=ref({bill_no:'',bill_date:today,due_date:''})
+const picked=ref(new Set()),invoiceOpen=ref(false),invoice=ref({bill_no:'',bill_date:today,due_date:'',vat_code:'KCT'})
 const pickedReceipts=computed(()=>(pendingData.value?.receipts||[]).filter(r=>picked.value.has(r.name)))
 const pickedSupplier=computed(()=>[...new Set(pickedReceipts.value.map(r=>r.supplier))])
 function togglePick(name){const next=new Set(picked.value);next.has(name)?next.delete(name):next.add(name);picked.value=next}
 async function makeInvoice(){saving.value=true
- try{const r=await call(F+'payments.make_goods_invoice',{receipts:JSON.stringify([...picked.value]),bill_no:invoice.value.bill_no,bill_date:invoice.value.bill_date,due_date:invoice.value.due_date||null},true)
+ try{const r=await call(F+'payments.make_goods_invoice',{receipts:JSON.stringify([...picked.value]),bill_no:invoice.value.bill_no,bill_date:invoice.value.bill_date,due_date:invoice.value.due_date||null,vat_code:invoice.value.vat_code||'KCT'},true)
   notice.value='Đã ghi hóa đơn '+r.invoice+' ('+vnd(r.amount)+').';invoiceOpen.value=false;picked.value=new Set();await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
 const payrollView=ref(null)
@@ -95,12 +128,12 @@ async function preparePay(){saving.value=true
    signers:JSON.stringify(signers.value),reference_no:pay.value.reference_no||null},true)
   notice.value='Đã lập phiếu chi '+r.voucher+' và gửi Kế toán trưởng ký.';payOpen.value=false;await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
-const serviceOpen=ref(false),service=ref({supplier:'',bill_no:'',bill_date:today,due_date:'',lines:[]})
+const serviceOpen=ref(false),service=ref({supplier:'',bill_no:'',bill_date:today,due_date:'',vat_code:'KCT',lines:[]})
 function newServiceLine(){return {description:'',amount:'',cost:'production',lotus_farm:'',lotus_farm_block:'',lotus_work_type:''}}
-function openService(){service.value={supplier:'',bill_no:'',bill_date:today,due_date:'',lines:[newServiceLine()]};serviceOpen.value=true}
+function openService(){service.value={supplier:'',bill_no:'',bill_date:today,due_date:'',vat_code:'KCT',lines:[newServiceLine()]};serviceOpen.value=true}
 const blocksOf=farm=>(lookups.value?.blocks||[]).filter(b=>!farm||b.farm===farm)
 async function saveService(){saving.value=true
- try{const r=await call(F+'payments.make_service_invoice',{supplier:service.value.supplier,bill_no:service.value.bill_no,bill_date:service.value.bill_date,due_date:service.value.due_date||null,
+ try{const r=await call(F+'payments.make_service_invoice',{supplier:service.value.supplier,bill_no:service.value.bill_no,bill_date:service.value.bill_date,due_date:service.value.due_date||null,vat_code:service.value.vat_code||'KCT',
    lines:JSON.stringify(service.value.lines.map(l=>({...l,amount:Number(l.amount)})))},true)
   notice.value='Đã ghi hóa đơn dịch vụ '+r.invoice+' ('+vnd(r.amount)+').';serviceOpen.value=false;await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
@@ -213,6 +246,22 @@ const costingColumns=[{field:'label',headerName:'Lô',minWidth:170,flex:2,valueG
  moneyCol('adjustment','Chênh lệch → 632'),moneyCol('wip_close','Dở dang cuối kỳ'),{field:'basis',headerName:'Cách tính',minWidth:220,flex:2}]
 const costingRows=view=>(view?.rows||[]).map((r,i)=>({...r,__key:(r.lotus_farm||'')+'|'+(r.lotus_farm_block||'')+'|'+i}))
 const costingTotals=view=>view?.totals?[{__key:'__total',label:'Tổng',...view.totals,cost_per_kg:view.totals.kg_harvested?view.totals.absorbed/view.totals.kg_harvested:null}]:[]
+const customerColumns=computed(()=>[{field:'customer_name',headerName:'Khách hàng',minWidth:220,flex:2},{field:'tax_id',headerName:'MST',minWidth:120},moneyCol('invoiced','Đã xuất hóa đơn'),
+ moneyCol('received','Đã thu'),moneyCol('owed','Còn phải thu'),moneyCol('overdue','Quá hạn'),{field:'credit_days',headerName:'Hạn nợ (ngày)',minWidth:110},
+ ...(overview.value?.can_post?[{field:'__edit',headerName:'',minWidth:80,sortable:false,cellRenderer:cellButton('Sửa',openCustomer)},
+  {field:'__receive',headerName:'',minWidth:110,sortable:false,cellRenderer:cellButton('Thu tiền',openReceipt,r=>r.open_invoices>0)}]:[])])
+const receivableColumns=[{field:'customer_name',headerName:'Khách hàng',minWidth:200},{field:'lotus_einvoice_no',headerName:'Số HĐ điện tử',minWidth:130,valueGetter:p=>[p.data.lotus_einvoice_series,p.data.lotus_einvoice_no].filter(Boolean).join(' ')||p.data.name},
+ dateCol('posting_date','Ngày'),dateCol('due_date','Hạn thu'),moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn phải thu'),
+ {field:'aging',headerName:'Tuổi nợ',minWidth:150,cellClass:p=>p.value&&p.value!=='Trong hạn'?'fin-cell-bad':''}]
+const salesInvoiceColumns=[{field:'name',headerName:'Hóa đơn',minWidth:170},{field:'customer_name',headerName:'Khách hàng',minWidth:200},dateCol('posting_date','Ngày'),
+ {field:'lotus_vat_code',headerName:'Thuế suất',minWidth:110,valueFormatter:p=>p.value&&p.value!=='KCT'?p.value+'%':'KCT'},moneyCol('net_total','Chưa thuế'),moneyCol('total_taxes_and_charges','Thuế GTGT'),moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn phải thu')]
+const vatPurchaseColumns=[{field:'bill_no',headerName:'Số hóa đơn',minWidth:130},dateCol('bill_date','Ngày HĐ'),{field:'supplier_name',headerName:'Người bán',minWidth:200,flex:2},{field:'tax_id',headerName:'MST',minWidth:120},
+ moneyCol('net','Chưa thuế'),{field:'code',headerName:'Thuế suất',minWidth:100,valueFormatter:p=>p.value&&p.value!=='KCT'?p.value+'%':'KCT'},moneyCol('tax','Thuế GTGT')]
+const vatSalesColumns=[{field:'einvoice_no',headerName:'Số hóa đơn',minWidth:150,valueGetter:p=>[p.data.series,p.data.einvoice_no].filter(Boolean).join(' ')||p.data.name},dateCol('posting_date','Ngày'),
+ {field:'customer_name',headerName:'Người mua',minWidth:200,flex:2},{field:'tax_id',headerName:'MST',minWidth:120},moneyCol('net','Doanh thu chưa thuế'),
+ {field:'code',headerName:'Thuế suất',minWidth:100,valueFormatter:p=>p.value&&p.value!=='KCT'?p.value+'%':'KCT'},moneyCol('tax','Thuế GTGT')]
+const vatCheckColumns=[{field:'label',headerName:'Đối chiếu',minWidth:320,flex:3},moneyCol('listing','Bảng kê',{valueFormatter:p=>num(p.value)}),moneyCol('ledger','Sổ kế toán',{valueFormatter:p=>num(p.value)}),
+ {field:'ok',headerName:'Kết quả',minWidth:100,valueFormatter:p=>p.value?'Khớp':'Lệch',cellClass:p=>p.value?'fin-cell-ok':'fin-cell-bad'}]
 const issueColumns=[{field:'name',headerName:'Phiếu xuất',minWidth:170},dateCol('posting_date','Ngày'),{field:'reason',headerName:'Lý do',minWidth:320,flex:3},moneyCol('amount','Giá trị')]
 const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2,valueGetter:p=>p.data.account_label||p.data.account},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
  {field:'lotus_farm_block',headerName:'Vườn / lô',minWidth:130,valueGetter:p=>[p.data.lotus_farm,dimLabel('lotus_farm_block',p.data.lotus_farm_block)].filter(Boolean).join(' / ')},
@@ -321,7 +370,7 @@ useNoticeToast(notice)
 
  <template v-else-if="tab==='pending'&&pendingData">
   <section class="land-card">
-   <div class="land-card__head"><h3>Phiếu nhận hàng chưa có hóa đơn</h3><UiButton v-if="overview?.can_post" :disabled="!picked.size||pickedSupplier.length!==1" :title="pickedSupplier.length>1?'Chọn phiếu của cùng một nhà cung cấp':''" @click="invoice={bill_no:'',bill_date:today,due_date:''};invoiceOpen=true">Lập hóa đơn ({{picked.size}})</UiButton></div>
+   <div class="land-card__head"><h3>Phiếu nhận hàng chưa có hóa đơn</h3><UiButton v-if="overview?.can_post" :disabled="!picked.size||pickedSupplier.length!==1" :title="pickedSupplier.length>1?'Chọn phiếu của cùng một nhà cung cấp':''" @click="invoice={bill_no:'',bill_date:today,due_date:'',vat_code:'KCT'};ensureVat();invoiceOpen=true">Lập hóa đơn ({{picked.size}})</UiButton></div>
    <div class="land-table fin-table"><DataTable :rows="receiptRows" :columns="receiptColumns" row-key="name" storage-key="fin-receipts" interactive empty="Mọi phiếu nhận hàng đã có hóa đơn." @open="r=>togglePick(r.name)"/></div>
   </section>
   <section class="land-card"><h3>Bảng lương đã ký, chưa ghi sổ</h3>
@@ -341,6 +390,20 @@ useNoticeToast(notice)
    <DataTable :rows="keyed(v.lines)" :columns="lineColumns" row-key="__key" storage-key="fin-journal-lines"/></details>
   <p v-if="!journalRows.length&&!busy" class="land-empty">Không có chứng từ trong khoảng ngày này.</p>
  </section>
+
+ <template v-else-if="tab==='sales'&&salesData">
+  <div class="land-filters"><span class="land-count">Sổ cái 131: {{vnd(salesData.gl_total)}}</span><span class="land-spacer"></span>
+   <template v-if="overview?.can_post"><UiButton variant="outline" @click="openCustomer()">Thêm khách hàng</UiButton><UiButton @click="openSale">Lập hóa đơn bán</UiButton></template></div>
+  <section class="land-card"><h3>Khách hàng</h3>
+   <div class="land-table fin-table"><DataTable :rows="salesData.customers" :columns="customerColumns" row-key="customer" storage-key="fin-customers" empty="Chưa có khách hàng. Bấm Thêm khách hàng."/></div>
+  </section>
+  <section class="land-card"><h3>Hóa đơn còn phải thu</h3>
+   <div class="land-table fin-table"><DataTable :rows="salesData.invoices" :columns="receivableColumns" row-key="name" storage-key="fin-receivables" empty="Không có hóa đơn còn phải thu."/></div>
+  </section>
+  <section class="land-card"><h3>Hóa đơn bán gần đây</h3><p class="land-note">Hóa đơn bán xuất kho luôn: Nợ 632 / Có 155 theo giá trị tồn kho, Nợ 131 / Có 511 (và 33311 nếu có thuế). Chuối của vườn tự trồng bán ra không chịu thuế GTGT (KCT).</p>
+   <div class="land-table fin-table"><DataTable :rows="salesData.recent" :columns="salesInvoiceColumns" row-key="name" storage-key="fin-sales-invoices" empty="Chưa có hóa đơn bán."/></div>
+  </section>
+ </template>
 
  <template v-else-if="tab==='payables'&&payData">
   <div class="land-filters"><span class="land-count">Sổ cái 331: {{vnd(payData.gl_total)}}</span><span class="land-spacer"></span><UiButton variant="outline" @click="exportReport('payables')"><LotusIcon name="download"/>Xuất Excel</UiButton><UiButton v-if="overview?.can_post" variant="outline" @click="openService">Hóa đơn dịch vụ / chi phí</UiButton></div>
@@ -396,6 +459,15 @@ useNoticeToast(notice)
    <div class="land-table fin-table"><DataTable :rows="costingRows(reportData)" :columns="costingColumns" :pinned-bottom-rows="costingTotals(reportData)" row-key="__key" storage-key="fin-costing" empty="Tháng này không có chi phí dở dang hay sản lượng thu hoạch."/></div>
    <details v-if="reportData.runs?.length"><summary>Các tháng đã tính giá thành</summary><ul class="fin-list"><li v-for="r in reportData.runs" :key="r.name">{{r.month.slice(5)}}/{{r.month.slice(0,4)}} · {{num(r.kg_harvested,1)}} kg · giá thành {{vnd(r.absorbed)}} · chênh lệch {{vnd(r.adjustment)}} · {{r.state==='Posted'?'đang dùng':'đã đảo'}}{{r.voucher?' · '+r.voucher:''}}</li></ul></details>
   </section>
+  <template v-else-if="report==='vat'&&reportData?.summary">
+   <section class="land-card"><div class="land-card__head"><h3>Thuế GTGT tháng {{reportData.month.slice(5)}}/{{reportData.month.slice(0,4)}}</h3><UiButton variant="outline" @click="exportVat"><LotusIcon name="download"/>Xuất bảng kê Excel</UiButton></div>
+    <div class="land-stats fin-stats"><div><span>Thuế GTGT đầu vào</span><strong>{{vnd(reportData.summary.input_tax)}}</strong></div><div><span>Thuế GTGT đầu ra</span><strong>{{vnd(reportData.summary.output_tax)}}</strong></div>
+     <div><span>{{reportData.summary.payable>=0?'Phải nộp':'Còn được khấu trừ'}}</span><strong>{{vnd(Math.abs(reportData.summary.payable))}}</strong></div><div><span>Doanh thu không chịu thuế</span><strong>{{vnd(reportData.summary.exempt_sales)}}</strong></div></div>
+    <p class="land-note">Tháng lấy theo ngày "Đến". Số liệu tham khảo để lập tờ khai 01/GTGT trên HTKK / eTax (chưa trừ số còn được khấu trừ của kỳ trước).</p>
+    <div class="land-table fin-table"><DataTable :rows="reportData.checks" :columns="vatCheckColumns" row-key="label" storage-key="fin-vat-checks"/></div></section>
+   <section class="land-card"><h3>Bảng kê hóa đơn mua vào</h3><div class="land-table fin-table"><DataTable :rows="reportData.purchases" :columns="vatPurchaseColumns" row-key="name" storage-key="fin-vat-purchases" empty="Không có hóa đơn mua trong tháng."/></div></section>
+   <section class="land-card"><h3>Bảng kê hóa đơn bán ra</h3><div class="land-table fin-table"><DataTable :rows="reportData.sales" :columns="vatSalesColumns" row-key="name" storage-key="fin-vat-sales" empty="Không có hóa đơn bán trong tháng."/></div></section>
+  </template>
   <section v-else-if="report==='reconciliation'&&reportData?.checks" class="land-card"><h3>Đối chiếu sổ kế toán với nghiệp vụ Lotus ({{vnDate(reportData.on_date)}})</h3>
    <div class="land-table fin-table"><DataTable :rows="reportData.checks" :columns="reconColumns" row-key="label" storage-key="fin-reconciliation"/></div>
   </section>
@@ -469,7 +541,8 @@ useNoticeToast(notice)
  <WorkspaceModal v-model="invoiceOpen" title="Hóa đơn nhà cung cấp" :busy="saving" width="560px">
   <form class="land-form" @submit.prevent="makeInvoice"><p>{{pickedReceipts.length}} phiếu nhận · {{pickedReceipts[0]?.supplier_name}} · {{vnd(pickedReceipts.reduce((s,r)=>s+Number(r.to_bill||0),0))}}</p>
    <label>Số hóa đơn<UiInput v-model="invoice.bill_no" required/></label><label>Ngày hóa đơn<DatePicker v-model="invoice.bill_date" required/></label><label>Hạn thanh toán<DatePicker v-model="invoice.due_date"/></label>
-   <p class="land-note">Ghi Nợ hàng về chưa có hóa đơn / Có phải trả người bán. Chưa tính VAT ở phiên bản này.</p>
+   <label>Thuế suất GTGT<UiSelect v-model="invoice.vat_code"><option v-for="r in vatOptions?.rates||[]" :key="r.code" :value="r.code">{{r.label}}</option></UiSelect></label>
+   <p class="land-note">Ghi Nợ hàng về chưa có hóa đơn / Có phải trả người bán; thuế GTGT đầu vào Nợ 1331.</p>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="invoiceOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!invoice.bill_no">Ghi hóa đơn</UiButton></div></form>
  </WorkspaceModal>
 
@@ -523,6 +596,42 @@ useNoticeToast(notice)
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="salaryOpen=null">Hủy</UiButton><UiButton type="submit" :disabled="saving">Lập phiếu và gửi ký</UiButton></div></form>
  </WorkspaceModal>
 
+ <WorkspaceModal v-model="customerOpen" title="Khách hàng" :busy="saving" width="560px">
+  <form class="land-form" @submit.prevent="saveCustomer">
+   <label>Tên khách hàng<UiInput v-model="customer.customer_name" required/></label><label>Mã số thuế<UiInput v-model="customer.tax_id" inputmode="numeric"/></label>
+   <label>Địa chỉ<UiInput v-model="customer.address"/></label><label>Hạn thanh toán (ngày)<UiInput v-model="customer.credit_days" type="number" min="0"/></label>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="customerOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!customer.customer_name">Lưu</UiButton></div></form>
+ </WorkspaceModal>
+
+ <WorkspaceModal v-model="saleOpen" title="Hóa đơn bán hàng (xuất kho)" :busy="saving" width="1080px">
+  <form class="land-form" @submit.prevent="saveSale">
+   <div class="land-form--grid"><label>Khách hàng<UiSelect v-model="sale.customer" required><option value="">Chọn…</option><option v-for="c in lookups?.customers||[]" :key="c.name" :value="c.name">{{c.customer_name}}{{c.tax_id?' · '+c.tax_id:''}}</option></UiSelect></label>
+    <label>Ngày hóa đơn<DatePicker v-model="sale.posting_date"/></label><label>Hạn thu<DatePicker v-model="sale.due_date"/></label>
+    <label>Thuế suất GTGT<UiSelect v-model="sale.vat_code"><option v-for="r in vatOptions?.rates||[]" :key="r.code" :value="r.code">{{r.label}}</option></UiSelect></label>
+    <label>Ký hiệu hóa đơn điện tử<UiInput v-model="sale.einvoice_series" placeholder="VD: 1C26TLT"/></label><label>Số hóa đơn điện tử<UiInput v-model="sale.einvoice_no"/></label></div>
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--sale fin-form-row--head" aria-hidden="true"><span>Hàng · kho</span><span class="num">Tồn</span><span>Số lượng</span><span>Đơn giá</span><span>Lô hàng (batch)</span><span></span></div>
+    <div v-for="(l,i) in sale.lines" :key="i" class="fin-form-row fin-form-row--sale" role="listitem">
+     <UiSelect v-model="l.stock" :aria-label="'Hàng dòng '+(i+1)"><option value="">Chọn…</option><option v-for="s in saleStock" :key="stockKey(s)" :value="stockKey(s)">{{s.item_name}} · {{s.warehouse}}</option></UiSelect>
+     <span class="num">{{stockOf(l)?num(stockOf(l).actual_qty,2)+' '+stockOf(l).stock_uom:'—'}}</span>
+     <UiInput v-model="l.qty" type="number" min="0" step="any" :aria-label="'Số lượng dòng '+(i+1)"/><UiInput v-model="l.rate" type="number" min="0" :aria-label="'Đơn giá dòng '+(i+1)"/>
+     <UiSelect v-if="stockOf(l)?.has_batch_no" v-model="l.batch_no" :aria-label="'Batch dòng '+(i+1)"><option value="">Chọn…</option><option v-for="b in stockOf(l).batches||[]" :key="b.name" :value="b.name">{{b.name}} ({{num(b.qty,2)}})</option></UiSelect><span v-else>—</span>
+     <UiButton type="button" size="sm" variant="ghost" :disabled="sale.lines.length<2" @click="sale.lines.splice(i,1)">Xóa</UiButton></div></div>
+   <p v-if="!saleStock.length" class="land-warn">Chưa có hàng trong kho thành phẩm (TK 155). Nhập kho chuối thu hoạch hoặc kết quả đóng gói trước.</p>
+   <p>Chưa thuế {{vnd(saleNet)}} · thuế GTGT {{vnd(saleTax)}} · tổng <b>{{vnd(saleNet+saleTax)}}</b></p>
+   <div class="land-actions fin-left"><UiButton type="button" variant="outline" @click="sale.lines.push(newSaleLine())">Thêm dòng</UiButton><span class="land-spacer"></span>
+    <UiButton type="button" variant="outline" :disabled="saving" @click="saleOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!sale.customer||!saleNet">Ghi hóa đơn</UiButton></div></form>
+ </WorkspaceModal>
+
+ <WorkspaceModal v-model="receiptOpen" title="Phiếu thu tiền khách hàng" :busy="saving" width="760px">
+  <form class="land-form" @submit.prevent="saveReceipt"><p>{{receipt.customer_name}}</p>
+   <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--head" aria-hidden="true"><span>Hóa đơn</span><span>Hạn</span><span class="num">Còn phải thu</span><span class="num">Thu lần này</span></div>
+    <div v-for="i in receiptInvoices" :key="i.name" class="fin-form-row" role="listitem"><b>{{[i.lotus_einvoice_series,i.lotus_einvoice_no].filter(Boolean).join(' ')||i.name}}</b><span>{{vnDate(i.due_date)}}</span><span class="num">{{vnd(i.outstanding_amount)}}</span><UiInput v-model="receipt.allocations[i.name]" type="number" min="0" :aria-label="'Thu hóa đơn '+i.name"/></div></div>
+   <p>Tổng thu: <b>{{vnd(receiptTotal)}}</b></p>
+   <div class="land-form--grid"><label>Hình thức<UiSelect v-model="receipt.mode"><option value="bank">Chuyển khoản (báo có)</option><option value="cash">Tiền mặt (phiếu thu)</option></UiSelect></label><label>Ngày thu<DatePicker v-model="receipt.posting_date"/></label>
+    <label v-if="receipt.mode==='bank'" class="land-form__full">Số giao dịch / báo có<UiInput v-model="receipt.reference_no" required/></label></div>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="receiptOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!receiptTotal">Ghi phiếu thu</UiButton></div></form>
+ </WorkspaceModal>
+
  <WorkspaceModal v-model="advanceOpen" title="Phiếu tạm ứng lương" :busy="saving" width="640px">
   <form class="land-form" @submit.prevent="prepareAdvance">
    <div class="land-form--grid"><label>Nhân viên<UiSelect v-model="advance.employee" required><option value="">Chọn…</option><option v-for="e in lookups?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
@@ -550,7 +659,8 @@ useNoticeToast(notice)
  <WorkspaceModal v-model="serviceOpen" title="Hóa đơn dịch vụ / chi phí" :busy="saving" width="980px">
   <form class="land-form" @submit.prevent="saveService">
    <div class="land-form--grid"><label>Nhà cung cấp<UiSelect v-model="service.supplier" required><option value="">Chọn…</option><option v-for="s in lookups?.suppliers||[]" :key="s.name" :value="s.name">{{s.supplier_name}}</option></UiSelect></label>
-    <label>Số hóa đơn<UiInput v-model="service.bill_no" required/></label><label>Ngày hóa đơn<DatePicker v-model="service.bill_date"/></label><label>Hạn thanh toán<DatePicker v-model="service.due_date"/></label></div>
+    <label>Số hóa đơn<UiInput v-model="service.bill_no" required/></label><label>Ngày hóa đơn<DatePicker v-model="service.bill_date"/></label><label>Hạn thanh toán<DatePicker v-model="service.due_date"/></label>
+    <label>Thuế suất GTGT<UiSelect v-model="service.vat_code"><option v-for="r in vatOptions?.rates||[]" :key="r.code" :value="r.code">{{r.label}}</option></UiSelect></label></div>
    <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--service fin-form-row--head" aria-hidden="true"><span>Nội dung</span><span>Số tiền</span><span>Loại chi phí</span><span>Vườn</span><span>Lô</span><span></span></div>
     <div v-for="(l,i) in service.lines" :key="i" class="fin-form-row fin-form-row--service" role="listitem"><UiInput v-model="l.description" placeholder="VD: Thuê máy cày lô A1" :aria-label="'Nội dung dòng '+(i+1)"/><UiInput v-model="l.amount" type="number" min="0" :aria-label="'Số tiền dòng '+(i+1)"/>
      <UiSelect v-model="l.cost" :aria-label="'Loại chi phí dòng '+(i+1)"><option value="production">Sản xuất (vào lô)</option><option value="admin">Quản lý</option></UiSelect>
