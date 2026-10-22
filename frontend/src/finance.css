@@ -58,6 +58,12 @@
 @media(max-width:700px){.fin-form-row--sale{grid-template-columns:1fr 1fr}}
 .fin-muted{color:var(--lotus-muted)}
 .fin .fin-cell-total{font-weight:700}
+.fin-checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--lotus-text-sm)}
+.fin-checklist li{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--lotus-border);border-radius:8px;background:var(--lotus-surface)}
+.fin-checklist__mark{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;font-weight:700;color:var(--lotus-neutral-0);background:var(--lotus-warning-600)}
+.fin-checklist li.is-done .fin-checklist__mark{background:var(--lotus-success-600)}
+.fin-checklist li.is-na .fin-checklist__mark{background:var(--lotus-neutral-400)}
+.fin-checklist small{color:var(--lotus-muted)}
 .fin-guide{display:flex;flex-direction:column;gap:12px}
 .fin-guide__nav{display:flex;flex-wrap:wrap;gap:6px}
 .fin-guide__nav button{padding:6px 12px;border:1px solid var(--lotus-border);border-radius:999px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit;font-size:var(--lotus-text-sm);cursor:pointer}

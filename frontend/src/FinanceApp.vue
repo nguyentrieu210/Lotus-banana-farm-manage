@@ -55,7 +55,7 @@ async function load(){
   if(tab.value==='sales'){await ensureLookups();await ensureVat();salesData.value=await call(F+'sales.receivables')}
   if(tab.value==='cash'){cash.value=await call(F+'payments.vouchers');mine.value=await call(F+'payments.my_vouchers')}
   if(tab.value==='reports'){await ensureLookups();await loadReport()}
-  if(tab.value==='settings'){settings.value=await call(F+'api.settings');staff.value=await call(F+'api.people');await ensureLookups()}
+  if(tab.value==='settings'){settings.value=await call(F+'api.settings');staff.value=await call(F+'api.people');await ensureLookups();await loadChecklist()}
  })
 }
 async function loadReport(){
@@ -249,6 +249,9 @@ async function previewClosing(m){await ensureLookups();await run(async()=>{closi
 async function postClosing(){saving.value=true
  try{const r=await call(F+'closing.post',{month:closingView.value.month},true);notice.value='Đã kết chuyển chi phí tháng '+closingView.value.month+' sang 154: '+r.voucher+' ('+vnd(r.amount)+').';closingView.value=null}
  catch(e){error.value=e.message}finally{saving.value=false}}
+const checklistMonth=ref(today.slice(0,7)),checklist=ref(null)
+async function loadChecklist(){checklist.value=await call(F+'api.month_checklist',{month:checklistMonth.value})}
+watch(checklistMonth,()=>run(loadChecklist))
 const resultView=ref(null)
 async function previewResult(m){await run(async()=>{resultView.value=await call(F+'closing.result_preview',{month:m})})}
 async function postResult(){saving.value=true
@@ -586,6 +589,13 @@ useNoticeToast(notice)
     <label class="fin-check"><input v-model="form.enabled" type="checkbox" :disabled="!settings.is_chief">Bật ghi sổ kế toán từ Lotus</label>
     <div v-if="settings.is_chief" class="land-actions land-form__full"><UiButton type="submit" :disabled="saving">Lưu</UiButton></div>
    </form>
+  </section>
+  <section class="land-card"><div class="land-card__head"><h3>Đóng tháng — danh sách kiểm tra</h3><UiInput v-model="checklistMonth" type="month" class="fin-narrow" aria-label="Tháng kiểm tra"/></div>
+   <p v-if="checklist" class="land-note">Đã xong {{checklist.done}} / {{checklist.total}} bước. Lotus tự kiểm tra từng bước từ sổ kế toán; làm theo thứ tự từ trên xuống.</p>
+   <ol v-if="checklist" class="fin-checklist"><li v-for="s in checklist.steps" :key="s.key" :class="'is-'+s.state">
+    <span class="fin-checklist__mark" :aria-label="s.state==='done'?'Đã xong':s.state==='na'?'Không áp dụng':'Chưa xong'">{{s.state==='done'?'✓':s.state==='na'?'—':'!'}}</span>
+    <span><b>{{s.label}}</b><small v-if="s.detail"> — {{s.detail}}</small><small v-if="s.state==='na'"> — không áp dụng tháng này</small></span>
+    <UiButton v-if="s.state==='todo'&&s.go&&s.go!=='settings'" size="sm" variant="ghost" @click="go(s.go)">Mở</UiButton></li></ol>
   </section>
   <section class="land-card"><div class="land-card__head"><h3>Kết chuyển và khóa sổ theo tháng</h3><UiSelect v-model.number="year" aria-label="Năm" class="fin-narrow"><option v-for="y in [Number(today.slice(0,4))-1,Number(today.slice(0,4)),Number(today.slice(0,4))+1]" :key="y" :value="y">Năm {{y}}</option></UiSelect></div>
    <p class="land-warn">Thứ tự cuối tháng: ghi sổ lương → kết chuyển chi phí (Kết chuyển CP) → tính giá thành (Giá thành) → kết chuyển kết quả kinh doanh (KQKD 911) → kiểm tra Đối chiếu → Khóa. Đã khóa thì không làm các bước trên được nữa.</p>

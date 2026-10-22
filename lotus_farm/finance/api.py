@@ -23,6 +23,56 @@ def settings():
                 errors=setup.mapping_errors(cfg), accounts=accounts, periods=posting.periods(company), is_chief=setup.is_chief())
 
 
+@frappe.whitelist()
+def month_checklist(month):
+    """Đóng tháng: each step with its state read from the books (done / todo / n/a) and what is left."""
+    setup.require_view()
+    company = setup.company()
+    m = setup.mapping()
+    from lotus_farm.finance import closing, payments, reports
+    from lotus_farm.finance.costing import _receipts
+    start, end = closing._bounds(month)
+    steps = []
+
+    def step(key, label, done, detail='', applies=True, go=None):
+        steps.append(dict(key=key, label=label, state='na' if not applies else 'done' if done else 'todo', detail=detail if applies and not done else '', go=go))
+    receipts = [r for r in payments.receipts_to_bill() if start <= r['posting_date'] <= end]
+    step('invoices', 'Phiếu nhận hàng trong tháng đã có hóa đơn', not receipts, '%d phiếu chưa có hóa đơn' % len(receipts) if receipts else '', go='pending')
+    issues = [i for i in reports.pending()['issues'] if start <= i['posting_date'] <= end]
+    step('lots', 'Phiếu xuất kho đã gắn lô', not issues, '%d dòng xuất chưa gắn lô' % len(issues) if issues else '', go='pending')
+    period = frappe.db.get_value('Lotus Timekeeping Period', {'company': company, 'month': month}, ['name', 'status'], as_dict=True)
+    payroll_done = bool(period and posting.active('Lotus Timekeeping Period', period.name, 'Payroll'))
+    step('payroll', 'Bảng lương đã ký đủ và ghi sổ', payroll_done, '' if payroll_done else ('Kỳ công chưa khóa' if not period or period.status != 'Closed' else 'Chưa ghi sổ lương'),
+         go='pending')
+    drafts = [p for p in frappe.get_all(posting.POSTING, filters={'state': 'Draft', 'posting_date': ['between', [start, end]]}, pluck='voucher_name')]
+    step('vouchers', 'Phiếu chi trong tháng đã ký xong hoặc hủy', not drafts, '%d phiếu chi đang chờ ký' % len(drafts) if drafts else '', go='cash')
+    insured = [m[k] for k in ('social_insurance', 'health_insurance', 'unemployment_insurance', 'union_fee', 'pit_payable') if m.get(k)]
+    owed = -flt(frappe.db.sql("""select sum(debit-credit) from `tabGL Entry` where company=%s and is_cancelled=0 and posting_date<=%s and account in %s""",
+                              (company, end, tuple(insured) or ('',)))[0][0])
+    accrued = flt(frappe.db.sql("""select sum(credit) from `tabGL Entry` where company=%s and is_cancelled=0 and posting_date between %s and %s and account in %s""",
+                                (company, start, end, tuple(insured) or ('',)))[0][0])
+    step('statutory', 'Bảo hiểm, KPCĐ, thuế TNCN tháng trước đã nộp', owed <= accrued + 0.5,
+         'Còn nợ từ các tháng trước %s đ' % format(round(owed - accrued), ',').replace(',', '.') if owed > accrued + 0.5 else '', go='cash')
+    leftover = closing._balances(company, month)
+    cost_done = bool(posting.active(setup.SETTINGS, setup.SETTINGS, 'Cost Closing', month))
+    step('cost_closing', 'Kết chuyển chi phí 621 / 622 / 627 sang 154', cost_done or not leftover, '' if cost_done or not leftover else 'Còn chi phí chưa kết chuyển',
+         go='settings')
+    harvested = frappe.db.count('Stock Entry', {'name': ['in', _receipts(company) or ['']], 'posting_date': ['between', [start, end]]})
+    costed = frappe.db.exists('Lotus Costing Run', {'company': company, 'month': month, 'state': 'Posted'})
+    step('costing', 'Tính giá thành chuối', bool(costed), '' if costed else 'Có nhập kho thu hoạch, chưa tính giá thành', applies=bool(harvested or costed), go='settings')
+    result = closing.result_preview(month)
+    step('result', 'Kết chuyển kết quả kinh doanh 911 → 4212', bool(result['posted']) or not result['lines'],
+         '' if result['posted'] or not result['lines'] else ('%s %s đ chưa kết chuyển' % ('Lãi' if result['profit'] >= 0 else 'Lỗ', format(abs(result['profit']), ',').replace(',', '.'))),
+         go='settings')
+    checks = reports.reconciliation(end)['checks']
+    bad = [c['label'] for c in checks if not c['ok']]
+    step('reconciliation', 'Đối chiếu sổ kế toán với nghiệp vụ: chênh lệch = 0', not bad, '; '.join(bad[:3]), go='reports')
+    locked = next((p for p in posting.periods(company) if str(p['start_date'])[:7] == month), None)
+    step('lock', 'Khóa sổ tháng', bool(locked and locked['closed']), '', go='settings')
+    applicable = [s for s in steps if s['state'] != 'na']
+    return dict(month=month, steps=steps, done=sum(1 for s in applicable if s['state'] == 'done'), total=len(applicable))
+
+
 def _payroll_params():
     """Statutory payroll parameters in force today and every row with its source (shown read-only in Thiết lập)."""
     from frappe.utils import nowdate
