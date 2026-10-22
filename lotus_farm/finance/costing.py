@@ -200,6 +200,8 @@ def run(month):
     company = setup.company()
     if posting.active('Lotus Finance Settings', setup.SETTINGS, 'Costing', month):
         frappe.throw('Tháng %s đã tính giá thành. Đảo bút toán giá thành trước nếu cần tính lại.' % month)
+    from lotus_farm.finance.closing import require_no_result
+    require_no_result(month)
     # a sheet without adjustment voucher left nothing in the ledger: computing again replaces it
     for name in frappe.get_all(RUN, filters={'company': company, 'month': month, 'state': 'Posted'}, pluck='name'):
         frappe.db.set_value(RUN, name, 'state', 'Reversed')

@@ -67,6 +67,21 @@ test('receipts of one supplier become one invoice; mixing suppliers is not allow
  view.unmount()
 })
 
+test('B01 shows the TT99 lines with negative (*) figures in brackets and the balance check',async()=>{
+ routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'reports.trial_balance']:{rows:[],totals:{},balanced:true},
+  [F+'statements.b01']:{form:'B01-DN',title:'BÁO CÁO TÌNH HÌNH TÀI CHÍNH',on_date:'2026-10-22',compare_date:'2025-12-31',source:'Thông tư 99/2025/TT-BTC',notes:[],uncovered:[],double:[],
+   checks:[{label:'Tổng cộng tài sản (280) = Tổng cộng nguồn vốn (440), cuối kỳ',ok:true,difference:0}],
+   rows:[{code:'221',name:'1. Tài sản cố định hữu hình',level:2,total:true,closing:20000000,opening:0},{code:'223',name:'- Giá trị hao mòn lũy kế (*)',level:3,total:false,closing:-5000000,opening:0},
+    {code:'280',name:'TỔNG CỘNG TÀI SẢN (280 = 100 + 200)',level:0,total:true,closing:2530450000,opening:0}]}}
+ const view=await open('/tai-chinh?tab=reports')
+ ;[...view.root.querySelectorAll('.land-views button')].find(b=>b.textContent.includes('B01')).click();for(let i=0;i<5;i++)await tick()
+ const page=text(view.root)
+ assert.match(page,/BÁO CÁO TÌNH HÌNH TÀI CHÍNH/)
+ assert.match(page,/\(5\.000\.000\)/)
+ assert.match(page,/Cân, khớp sổ/)
+ view.unmount()
+})
+
 test('sales tab lists customers with what they still owe and the open invoices by age',async()=>{
  routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'sales.vat_options']:vat,
   [F+'sales.receivables']:{gl_total:11480000,customers:[{customer:'C1',customer_name:'Công ty Xuất khẩu A',tax_id:'0312345678',invoiced:11480000,received:0,owed:11480000,overdue:0,open_invoices:2,credit_days:15}],

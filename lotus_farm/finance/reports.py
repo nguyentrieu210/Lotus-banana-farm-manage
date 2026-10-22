@@ -48,11 +48,11 @@ def overview(on_date=None):
     m = setup.mapping(cfg)
     on_date = getdate(on_date or nowdate())
     start = get_first_day(on_date)
-    from lotus_farm.finance.closing import closing_vouchers
-    # Costs of the month on every expense account; the month-end transfer to 154 is not a cost.
+    from lotus_farm.finance.closing import closing_vouchers, result_vouchers
+    # Costs of the month on every expense account; the month-end transfers to 154 and to 911 are not costs.
     cost = frappe.db.sql("""select sum(g.debit) - sum(g.credit) from `tabGL Entry` g join tabAccount a on a.name=g.account
         where g.company=%s and g.is_cancelled=0 and g.posting_date between %s and %s and a.root_type='Expense' and g.voucher_no not in %s""",
-                         (company, start, on_date, tuple(closing_vouchers(company)) or ('',)))[0][0]
+                         (company, start, on_date, tuple(closing_vouchers(company) + result_vouchers(company)) or ('',)))[0][0]
     tiles = dict(cash=_balance(company, [m['cash']], on_date), bank=_balance(company, [m['bank']], on_date),
                  payable_supplier=-_balance(company, [m['payable_supplier']], on_date), payable_employee=-_balance(company, [m['payable_employee']], on_date),
                  insurance=-_balance(company, [m['social_insurance'], m['health_insurance'], m['unemployment_insurance']], on_date),

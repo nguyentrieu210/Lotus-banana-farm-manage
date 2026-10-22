@@ -10,6 +10,7 @@ from pathlib import Path
 
 COA_FILE = Path(__file__).resolve().parents[1] / 'data' / 'coa_tt99.json'
 VAT_FILE = Path(__file__).resolve().parents[1] / 'data' / 'vat_vn.json'
+STATEMENTS_FILE = Path(__file__).resolve().parents[1] / 'data' / 'bctc_tt99.json'
 ROOT_TYPES = ('Asset', 'Liability', 'Equity', 'Income', 'Expense')
 # Accounting dimensions on every ledger line: (Lotus field / dimension fieldname, DocType, label).
 DIMENSIONS = (('lotus_farm', 'Farm', 'Vườn'), ('lotus_farm_block', 'Farm Block', 'Lô'),
@@ -177,6 +178,123 @@ def check_entry(lines):
     if not debit:
         errors.append('Bút toán không có số tiền')
     return errors
+
+
+def result_entry(balances, summary_account, retained_account):
+    """Month-end closing of income and expense accounts (Thông tư 99): every account's balance of the month goes to 911,
+    then 911 goes to 4212 (profit Nợ 911 / Có 4212, loss Nợ 4212 / Có 911). balances: dict(account, net = debit - credit)."""
+    lines, total = [], 0
+    for b in balances:
+        net = int(round(b.get('net') or 0))
+        if not net:
+            continue
+        total += net
+        if net > 0:
+            lines += [line(summary_account, debit=net, note='Kết chuyển ' + str(b['account'])), line(b['account'], credit=net, note='Kết chuyển sang 911')]
+        else:
+            lines += [line(b['account'], debit=-net, note='Kết chuyển sang 911'), line(summary_account, credit=-net, note='Kết chuyển ' + str(b['account']))]
+    profit = -total
+    if profit > 0:
+        lines += [line(summary_account, debit=profit, note='Lợi nhuận'), line(retained_account, credit=profit, note='Lợi nhuận')]
+    elif profit < 0:
+        lines += [line(retained_account, debit=-profit, note='Lỗ'), line(summary_account, credit=-profit, note='Lỗ')]
+    return lines, profit
+
+
+# Financial statements (B01 / B02 / B03, data/bctc_tt99.json) -----------------------------------------------
+# A part is one account (and party, for receivables / payables) with number, net = debit - credit, debit, credit.
+
+def load_statements(path=STATEMENTS_FILE):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def term_matches(number, term):
+    number = str(number or '')
+    return any(number.startswith(p) for p in term.get('acc') or []) and not any(number.startswith(x) for x in term.get('exclude') or [])
+
+
+def term_amount(term, parts):
+    rows = [p for p in parts if term_matches(p['number'], term)]
+    bal = term['bal']
+    if bal == 'net_debit':
+        return sum(p['net'] for p in rows)
+    if bal == 'net_credit':
+        return -sum(p['net'] for p in rows)
+    if bal == 'debit_parts':
+        return sum(p['net'] for p in rows if p['net'] > 0)
+    if bal == 'credit_parts':
+        return -sum(p['net'] for p in rows if p['net'] < 0)
+    if bal == 'debit_mov':
+        return sum(p.get('debit') or 0 for p in rows)
+    if bal == 'credit_mov':
+        return sum(p.get('credit') or 0 for p in rows)
+    raise ValueError('Kiểu số dư không hợp lệ: %s' % bal)
+
+
+def evaluate_statement(lines, amount):
+    """lines: [{code, sum: ['a', '-b'] | terms: [...], neg}] -> {code: value}. amount(term) gives a term's figure; a line
+    marked neg (*) is shown as a negative number and adds into its parent as such."""
+    by_code = {ln['code']: ln for ln in lines}
+    values = {}
+
+    def value(code):
+        if code not in values:
+            ln = by_code[code]
+            if 'sum' in ln:
+                v = sum(-value(c[1:]) if c.startswith('-') else value(c) for c in ln['sum'])
+            else:
+                v = sum(amount(t) for t in ln.get('terms') or [])
+                if ln.get('neg'):
+                    v = -v
+            values[code] = int(round(v))
+        return values[code]
+    for ln in lines:
+        value(ln['code'])
+    return values
+
+
+def coverage(lines, parts):
+    """Parts no line takes (uncovered) or that two lines take (double), by the sign of their balance."""
+    uncovered, double = [], []
+    for p in parts:
+        if abs(p['net']) < 0.5:
+            continue
+        hits = []
+        for ln in lines:
+            for t in ln.get('terms') or []:
+                if not t.get('acc') or t.get('at') or not term_matches(p['number'], t):
+                    continue
+                if t['bal'] in ('net_debit', 'net_credit') or (t['bal'] == 'debit_parts' and p['net'] > 0) or (t['bal'] == 'credit_parts' and p['net'] < 0):
+                    hits.append(ln['code'])
+        if not hits:
+            uncovered.append(p)
+        elif len(hits) > 1:
+            double.append(dict(p, lines=hits))
+    return uncovered, double
+
+
+def match_bank(statement, ledger, days=3):
+    """Bank statement lines (date, amount + in / - out, reference, description) against ledger lines on the bank account
+    (date, amount = debit - credit, voucher, reference): same amount and reference first, then same amount nearest in date
+    within `days`. Returns matched pairs and what is left on each side."""
+    from datetime import date as _date
+    day = lambda v: v if isinstance(v, _date) else _date.fromisoformat(str(v)[:10])
+    free = list(range(len(ledger)))
+    matched, left = [], []
+    for s in statement:
+        amount = int(round(s['amount']))
+        same = [i for i in free if int(round(ledger[i]['amount'])) == amount]
+        ref = str(s.get('reference') or '').strip().lower()
+        pick = next((i for i in same if ref and ref in str(ledger[i].get('reference') or '').lower()), None)
+        if pick is None:
+            near = sorted((abs((day(ledger[i]['date']) - day(s['date'])).days), i) for i in same)
+            pick = near[0][1] if near and near[0][0] <= days else None
+        if pick is None:
+            left.append(s)
+        else:
+            free.remove(pick)
+            matched.append(dict(statement=s, ledger=ledger[pick]))
+    return dict(matched=matched, statement_only=left, ledger_only=[ledger[i] for i in free])
 
 
 def load_vat(path=VAT_FILE):

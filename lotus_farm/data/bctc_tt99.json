@@ -1,0 +1,2068 @@
+{
+ "version": "tt99-bctc-lotus-1",
+ "source": "Mẫu B01-DN, B02-DN, B03-DN (gián tiếp) kèm theo Thông tư 99/2025/TT-BTC ngày 27/10/2025, Phụ lục IV. Tên và mã số chỉ tiêu lấy từ biểu mẫu Word/Excel do MISA (amis.misa.vn) và xcyber.vn đăng lại, kiểm tra ngày 23/10/2026. Công thức mã 30 trên biểu mẫu đăng lại ghi \"20 + (21 - 22) - (25 + 26)\" (lỗi in): dùng 30 = 20 + 21 + 22 - 23 - 25 - 26 theo các bài giải thích Thông tư 99. Cách lấy số từng chỉ tiêu theo hệ thống tài khoản Phụ lục II; kế toán trưởng đối chiếu trước khi nộp.",
+ "notes": [
+  "Chỉ tiêu không có số liệu vẫn giữ mã số, không đánh lại.",
+  "Số dư công nợ (131, 331, 333, 334, 338, 136, 138) tách theo từng đối tượng: dư Nợ vào tài sản, dư Có vào nợ phải trả.",
+  "Lotus chưa phân biệt ngắn hạn / dài hạn cho 128, 242, 341, 352: mặc định ngắn hạn; kế toán điều chỉnh khi lập báo cáo năm.",
+  "420b = 4212 + 911 + doanh thu, chi phí chưa kết chuyển của kỳ (khi chưa chạy kết chuyển 911)."
+ ],
+ "b01": [
+  {
+   "code": "100",
+   "name": "A - TÀI SẢN NGẮN HẠN",
+   "level": 0,
+   "sum": [
+    "110",
+    "120",
+    "130",
+    "140",
+    "150",
+    "160"
+   ]
+  },
+  {
+   "code": "110",
+   "name": "I. Tiền và các khoản tương đương tiền",
+   "level": 1,
+   "sum": [
+    "111",
+    "112"
+   ]
+  },
+  {
+   "code": "111",
+   "name": "1. Tiền",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "111",
+      "112",
+      "113"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "112",
+   "name": "2. Các khoản tương đương tiền",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "120",
+   "name": "II. Đầu tư tài chính ngắn hạn",
+   "level": 1,
+   "sum": [
+    "121",
+    "122",
+    "123",
+    "124",
+    "125",
+    "126"
+   ]
+  },
+  {
+   "code": "121",
+   "name": "1. Chứng khoán kinh doanh",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "121"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "122",
+   "name": "2. Dự phòng giảm giá chứng khoán kinh doanh (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2291"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "123",
+   "name": "3. Đầu tư nắm giữ đến ngày đáo hạn ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "128"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "124",
+   "name": "4. Dự phòng đầu tư nắm giữ đến ngày đáo hạn ngắn hạn (*)",
+   "level": 2,
+   "neg": true,
+   "terms": []
+  },
+  {
+   "code": "125",
+   "name": "5. Đầu tư ngắn hạn khác",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "126",
+   "name": "6. Dự phòng tổn thất các khoản đầu tư ngắn hạn khác (*)",
+   "level": 2,
+   "neg": true,
+   "terms": []
+  },
+  {
+   "code": "130",
+   "name": "III. Các khoản phải thu ngắn hạn",
+   "level": 1,
+   "sum": [
+    "131",
+    "132",
+    "133",
+    "134",
+    "135",
+    "136",
+    "137"
+   ]
+  },
+  {
+   "code": "131",
+   "name": "1. Phải thu ngắn hạn của khách hàng",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "131"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "132",
+   "name": "2. Trả trước cho người bán ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "331"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "133",
+   "name": "3. Phải thu nội bộ ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "1362",
+      "1363",
+      "1368"
+     ],
+     "bal": "net_debit"
+    },
+    {
+     "acc": [
+      "336"
+     ],
+     "exclude": [
+      "3361"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "134",
+   "name": "4. Phải thu theo tiến độ hợp đồng xây dựng",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "337"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "135",
+   "name": "5. Phải thu ngắn hạn khác",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "141"
+     ],
+     "bal": "net_debit"
+    },
+    {
+     "acc": [
+      "1383",
+      "1388",
+      "334",
+      "338"
+     ],
+     "exclude": [
+      "3387"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "136",
+   "name": "6. Dự phòng phải thu ngắn hạn khó đòi (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2293"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "137",
+   "name": "7. Tài sản thiếu chờ xử lý",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "1381"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "140",
+   "name": "IV. Hàng tồn kho",
+   "level": 1,
+   "sum": [
+    "141",
+    "142"
+   ]
+  },
+  {
+   "code": "141",
+   "name": "1. Hàng tồn kho",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "151",
+      "152",
+      "153",
+      "154",
+      "155",
+      "156",
+      "157",
+      "158"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "142",
+   "name": "2. Dự phòng giảm giá hàng tồn kho (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2294"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "150",
+   "name": "V. Tài sản sinh học ngắn hạn",
+   "level": 1,
+   "sum": [
+    "151",
+    "152",
+    "153"
+   ]
+  },
+  {
+   "code": "151",
+   "name": "1. Súc vật nuôi lấy sản phẩm một lần ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "2152"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "152",
+   "name": "2. Cây trồng theo mùa vụ hoặc lấy sản phẩm một lần ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "2153"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "153",
+   "name": "3. Dự phòng tổn thất tài sản sinh học ngắn hạn (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2295"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "160",
+   "name": "VI. Tài sản ngắn hạn khác",
+   "level": 1,
+   "sum": [
+    "161",
+    "162",
+    "163",
+    "164",
+    "165"
+   ]
+  },
+  {
+   "code": "161",
+   "name": "1. Chi phí chờ phân bổ ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "242"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "162",
+   "name": "2. Thuế GTGT được khấu trừ",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "133"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "163",
+   "name": "3. Thuế và các khoản khác phải thu Nhà nước",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "333"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "164",
+   "name": "4. Giao dịch mua bán lại trái phiếu Chính phủ",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "171"
+     ],
+     "bal": "debit_parts"
+    }
+   ]
+  },
+  {
+   "code": "165",
+   "name": "5. Tài sản ngắn hạn khác",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "200",
+   "name": "B - TÀI SẢN DÀI HẠN",
+   "level": 0,
+   "sum": [
+    "210",
+    "220",
+    "230",
+    "240",
+    "250",
+    "260",
+    "270"
+   ]
+  },
+  {
+   "code": "210",
+   "name": "I. Các khoản phải thu dài hạn",
+   "level": 1,
+   "sum": [
+    "211",
+    "212",
+    "213",
+    "214",
+    "215",
+    "216"
+   ]
+  },
+  {
+   "code": "211",
+   "name": "1. Phải thu dài hạn của khách hàng",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "212",
+   "name": "2. Trả trước cho người bán dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "213",
+   "name": "3. Vốn kinh doanh ở đơn vị trực thuộc",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "1361"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "214",
+   "name": "4. Phải thu nội bộ dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "215",
+   "name": "5. Phải thu dài hạn khác",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "216",
+   "name": "6. Dự phòng phải thu dài hạn khó đòi (*)",
+   "level": 2,
+   "neg": true,
+   "terms": []
+  },
+  {
+   "code": "220",
+   "name": "II. Tài sản cố định",
+   "level": 1,
+   "sum": [
+    "221",
+    "224",
+    "227"
+   ]
+  },
+  {
+   "code": "221",
+   "name": "1. Tài sản cố định hữu hình",
+   "level": 2,
+   "sum": [
+    "222",
+    "223"
+   ]
+  },
+  {
+   "code": "222",
+   "name": "- Nguyên giá",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "211"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "223",
+   "name": "- Giá trị hao mòn lũy kế (*)",
+   "level": 3,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2141"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "224",
+   "name": "2. Tài sản cố định thuê tài chính",
+   "level": 2,
+   "sum": [
+    "225",
+    "226"
+   ]
+  },
+  {
+   "code": "225",
+   "name": "- Nguyên giá",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "212"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "226",
+   "name": "- Giá trị hao mòn lũy kế (*)",
+   "level": 3,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2142"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "227",
+   "name": "3. Tài sản cố định vô hình",
+   "level": 2,
+   "sum": [
+    "228",
+    "229"
+   ]
+  },
+  {
+   "code": "228",
+   "name": "- Nguyên giá",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "213"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "229",
+   "name": "- Giá trị hao mòn lũy kế (*)",
+   "level": 3,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2143"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "230",
+   "name": "III. Tài sản sinh học dài hạn",
+   "level": 1,
+   "sum": [
+    "231",
+    "236",
+    "237",
+    "238"
+   ]
+  },
+  {
+   "code": "231",
+   "name": "1. Súc vật nuôi cho sản phẩm định kỳ",
+   "level": 2,
+   "sum": [
+    "232",
+    "233"
+   ]
+  },
+  {
+   "code": "232",
+   "name": "a) Súc vật nuôi cho sản phẩm định kỳ chưa đến giai đoạn trưởng thành",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "21511"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "233",
+   "name": "b) Súc vật nuôi cho sản phẩm định kỳ đến giai đoạn trưởng thành",
+   "level": 3,
+   "sum": [
+    "234",
+    "235"
+   ]
+  },
+  {
+   "code": "234",
+   "name": "- Nguyên giá",
+   "level": 4,
+   "terms": [
+    {
+     "acc": [
+      "215121"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "235",
+   "name": "- Giá trị khấu hao lũy kế (*)",
+   "level": 4,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "215122"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "236",
+   "name": "2. Súc vật nuôi lấy sản phẩm một lần dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "237",
+   "name": "3. Cây trồng theo mùa vụ hoặc lấy sản phẩm một lần dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "238",
+   "name": "4. Dự phòng tổn thất tài sản sinh học dài hạn (*)",
+   "level": 2,
+   "neg": true,
+   "terms": []
+  },
+  {
+   "code": "240",
+   "name": "IV. Bất động sản đầu tư",
+   "level": 1,
+   "sum": [
+    "241",
+    "242"
+   ]
+  },
+  {
+   "code": "241",
+   "name": "- Nguyên giá",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "217"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "242",
+   "name": "- Giá trị hao mòn lũy kế (*)",
+   "level": 3,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2147"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "250",
+   "name": "V. Tài sản dở dang dài hạn",
+   "level": 1,
+   "sum": [
+    "251",
+    "252"
+   ]
+  },
+  {
+   "code": "251",
+   "name": "1. Chi phí sản xuất, kinh doanh dở dang dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "252",
+   "name": "2. Chi phí xây dựng cơ bản dở dang",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "241"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "260",
+   "name": "VI. Đầu tư tài chính dài hạn",
+   "level": 1,
+   "sum": [
+    "261",
+    "262",
+    "263",
+    "264",
+    "265",
+    "266"
+   ]
+  },
+  {
+   "code": "261",
+   "name": "1. Đầu tư vào công ty con",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "221"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "262",
+   "name": "2. Đầu tư vào công ty liên doanh, liên kết",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "222"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "263",
+   "name": "3. Đầu tư góp vốn vào đơn vị khác",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "228"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "264",
+   "name": "4. Dự phòng tổn thất đầu tư vào đơn vị khác dài hạn (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "2292"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "265",
+   "name": "5. Đầu tư nắm giữ đến ngày đáo hạn dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "266",
+   "name": "6. Dự phòng đầu tư nắm giữ đến ngày đáo hạn dài hạn (*)",
+   "level": 2,
+   "neg": true,
+   "terms": []
+  },
+  {
+   "code": "270",
+   "name": "VII. Tài sản dài hạn khác",
+   "level": 1,
+   "sum": [
+    "271",
+    "272",
+    "273",
+    "274"
+   ]
+  },
+  {
+   "code": "271",
+   "name": "1. Chi phí chờ phân bổ dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "272",
+   "name": "2. Tài sản thuế thu nhập hoãn lại",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "243"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "273",
+   "name": "3. Thiết bị, vật tư, phụ tùng thay thế dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "274",
+   "name": "4. Tài sản dài hạn khác",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "244"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "280",
+   "name": "TỔNG CỘNG TÀI SẢN (280 = 100 + 200)",
+   "level": 0,
+   "sum": [
+    "100",
+    "200"
+   ]
+  },
+  {
+   "code": "300",
+   "name": "C - NỢ PHẢI TRẢ",
+   "level": 0,
+   "sum": [
+    "310",
+    "330"
+   ]
+  },
+  {
+   "code": "310",
+   "name": "I. Nợ ngắn hạn",
+   "level": 1,
+   "sum": [
+    "311",
+    "312",
+    "313",
+    "314",
+    "315",
+    "316",
+    "317",
+    "318",
+    "319",
+    "320",
+    "321",
+    "322",
+    "323",
+    "324",
+    "325"
+   ]
+  },
+  {
+   "code": "311",
+   "name": "1. Phải trả người bán ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "331"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "312",
+   "name": "2. Người mua trả tiền trước ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "131"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "313",
+   "name": "3. Phải trả cổ tức, lợi nhuận",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "332"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "314",
+   "name": "4. Thuế và các khoản phải nộp Nhà nước ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "333"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "315",
+   "name": "5. Phải trả người lao động",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "334"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "316",
+   "name": "6. Chi phí phải trả ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "335"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "317",
+   "name": "7. Phải trả nội bộ ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "336"
+     ],
+     "exclude": [
+      "3361"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "318",
+   "name": "8. Phải trả theo tiến độ hợp đồng xây dựng ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "337"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "319",
+   "name": "9. Doanh thu chờ phân bổ ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "3387"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "320",
+   "name": "10. Phải trả ngắn hạn khác",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "338"
+     ],
+     "exclude": [
+      "3387"
+     ],
+     "bal": "credit_parts"
+    },
+    {
+     "acc": [
+      "1381",
+      "1383",
+      "1388"
+     ],
+     "bal": "credit_parts"
+    },
+    {
+     "acc": [
+      "344"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "321",
+   "name": "11. Vay và nợ thuê tài chính ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "341"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "322",
+   "name": "12. Dự phòng phải trả ngắn hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "352"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "323",
+   "name": "13. Quỹ khen thưởng, phúc lợi",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "353"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "324",
+   "name": "14. Quỹ bình ổn giá",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "357"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "325",
+   "name": "15. Giao dịch mua bán lại trái phiếu Chính phủ",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "171"
+     ],
+     "bal": "credit_parts"
+    }
+   ]
+  },
+  {
+   "code": "330",
+   "name": "II. Nợ dài hạn",
+   "level": 1,
+   "sum": [
+    "331",
+    "332",
+    "333",
+    "334",
+    "335",
+    "336",
+    "337",
+    "338",
+    "339",
+    "340",
+    "341",
+    "342",
+    "343",
+    "344"
+   ]
+  },
+  {
+   "code": "331",
+   "name": "1. Phải trả người bán dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "332",
+   "name": "2. Người mua trả tiền trước dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "333",
+   "name": "3. Thuế và các khoản phải nộp Nhà nước dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "334",
+   "name": "4. Chi phí phải trả dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "335",
+   "name": "5. Phải trả nội bộ về vốn kinh doanh",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "3361"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "336",
+   "name": "6. Phải trả nội bộ dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "337",
+   "name": "7. Doanh thu chờ phân bổ dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "338",
+   "name": "8. Phải trả dài hạn khác",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "339",
+   "name": "9. Vay và nợ thuê tài chính dài hạn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "3431"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "340",
+   "name": "10. Trái phiếu chuyển đổi",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "3432"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "341",
+   "name": "11. Cổ phiếu ưu đãi",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "342",
+   "name": "12. Thuế thu nhập hoãn lại phải trả",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "347"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "343",
+   "name": "13. Dự phòng phải trả dài hạn",
+   "level": 2,
+   "terms": []
+  },
+  {
+   "code": "344",
+   "name": "14. Quỹ phát triển khoa học và công nghệ",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "356"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "400",
+   "name": "D - VỐN CHỦ SỞ HỮU",
+   "level": 0,
+   "sum": [
+    "411",
+    "412",
+    "413",
+    "414",
+    "415",
+    "416",
+    "417",
+    "418",
+    "419",
+    "420"
+   ]
+  },
+  {
+   "code": "411",
+   "name": "1. Vốn góp của chủ sở hữu",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "4111"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "412",
+   "name": "2. Thặng dư vốn",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "4112"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "413",
+   "name": "3. Quyền chọn chuyển đổi trái phiếu",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "4113"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "414",
+   "name": "4. Vốn khác của chủ sở hữu",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "4118"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "415",
+   "name": "5. Cổ phiếu mua lại của chính mình (*)",
+   "level": 2,
+   "neg": true,
+   "terms": [
+    {
+     "acc": [
+      "419"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "416",
+   "name": "6. Chênh lệch đánh giá lại tài sản",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "412"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "417",
+   "name": "7. Chênh lệch tỷ giá hối đoái",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "413"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "418",
+   "name": "8. Quỹ đầu tư phát triển",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "414"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "419",
+   "name": "9. Quỹ khác thuộc vốn chủ sở hữu",
+   "level": 2,
+   "terms": [
+    {
+     "acc": [
+      "418"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "420",
+   "name": "10. Lợi nhuận sau thuế chưa phân phối",
+   "level": 2,
+   "sum": [
+    "420a",
+    "420b"
+   ]
+  },
+  {
+   "code": "420a",
+   "name": "- LNST chưa phân phối lũy kế đến cuối kỳ trước",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "4211"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "420b",
+   "name": "- LNST chưa phân phối kỳ này",
+   "level": 3,
+   "terms": [
+    {
+     "acc": [
+      "4212",
+      "911",
+      "5",
+      "6",
+      "7",
+      "8"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "440",
+   "name": "TỔNG CỘNG NGUỒN VỐN (440 = 300 + 400)",
+   "level": 0,
+   "sum": [
+    "300",
+    "400"
+   ]
+  }
+ ],
+ "b02": [
+  {
+   "code": "01",
+   "name": "1. Doanh thu bán hàng và cung cấp dịch vụ",
+   "terms": [
+    {
+     "acc": [
+      "511"
+     ],
+     "bal": "credit_mov"
+    }
+   ]
+  },
+  {
+   "code": "02",
+   "name": "2. Các khoản giảm trừ doanh thu",
+   "terms": [
+    {
+     "acc": [
+      "511"
+     ],
+     "bal": "debit_mov"
+    },
+    {
+     "acc": [
+      "521"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "10",
+   "name": "3. Doanh thu thuần về bán hàng và cung cấp dịch vụ (10 = 01 - 02)",
+   "sum": [
+    "01",
+    "-02"
+   ]
+  },
+  {
+   "code": "11",
+   "name": "4. Giá vốn hàng bán",
+   "terms": [
+    {
+     "acc": [
+      "632"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "20",
+   "name": "5. Lợi nhuận gộp về bán hàng và cung cấp dịch vụ (20 = 10 - 11)",
+   "sum": [
+    "10",
+    "-11"
+   ]
+  },
+  {
+   "code": "21",
+   "name": "6. Lãi/lỗ của hoạt động bán, thanh lý bất động sản đầu tư",
+   "terms": []
+  },
+  {
+   "code": "22",
+   "name": "7. Doanh thu hoạt động tài chính",
+   "terms": [
+    {
+     "acc": [
+      "515"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "23",
+   "name": "8. Chi phí tài chính",
+   "terms": [
+    {
+     "acc": [
+      "635"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "24",
+   "name": "- Trong đó: Chi phí lãi vay",
+   "detail": true,
+   "terms": []
+  },
+  {
+   "code": "25",
+   "name": "9. Chi phí bán hàng",
+   "terms": [
+    {
+     "acc": [
+      "641"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "26",
+   "name": "10. Chi phí quản lý doanh nghiệp",
+   "terms": [
+    {
+     "acc": [
+      "642"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "30",
+   "name": "11. Lợi nhuận thuần từ hoạt động kinh doanh (30 = 20 + 21 + 22 - 23 - 25 - 26)",
+   "sum": [
+    "20",
+    "21",
+    "22",
+    "-23",
+    "-25",
+    "-26"
+   ]
+  },
+  {
+   "code": "31",
+   "name": "12. Thu nhập khác",
+   "terms": [
+    {
+     "acc": [
+      "711"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "32",
+   "name": "13. Chi phí khác",
+   "terms": [
+    {
+     "acc": [
+      "811"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "40",
+   "name": "14. Lợi nhuận khác (40 = 31 - 32)",
+   "sum": [
+    "31",
+    "-32"
+   ]
+  },
+  {
+   "code": "50",
+   "name": "15. Tổng lợi nhuận kế toán trước thuế (50 = 30 + 40)",
+   "sum": [
+    "30",
+    "40"
+   ]
+  },
+  {
+   "code": "51",
+   "name": "16. Chi phí thuế TNDN hiện hành",
+   "terms": [
+    {
+     "acc": [
+      "8211"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "52",
+   "name": "17. Chi phí thuế TNDN hoãn lại",
+   "terms": [
+    {
+     "acc": [
+      "8212"
+     ],
+     "bal": "net_debit"
+    }
+   ]
+  },
+  {
+   "code": "60",
+   "name": "18. Lợi nhuận sau thuế thu nhập doanh nghiệp (60 = 50 - 51 - 52)",
+   "sum": [
+    "50",
+    "-51",
+    "-52"
+   ]
+  }
+ ],
+ "b03": [
+  {
+   "code": "01",
+   "name": "1. Lợi nhuận trước thuế",
+   "terms": [
+    {
+     "ref": "b02:50"
+    }
+   ]
+  },
+  {
+   "code": "02",
+   "name": "- Khấu hao TSCĐ và BĐSĐT",
+   "terms": [
+    {
+     "acc": [
+      "214",
+      "215122"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "03",
+   "name": "- Các khoản dự phòng",
+   "terms": [
+    {
+     "acc": [
+      "229",
+      "352"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "04",
+   "name": "- Lãi, lỗ chênh lệch tỷ giá hối đoái do đánh giá lại các khoản mục tiền tệ có gốc ngoại tệ",
+   "terms": []
+  },
+  {
+   "code": "05",
+   "name": "- Lãi, lỗ từ hoạt động đầu tư, tài chính",
+   "terms": []
+  },
+  {
+   "code": "06",
+   "name": "- Chi phí đi vay",
+   "terms": []
+  },
+  {
+   "code": "07",
+   "name": "- Các khoản điều chỉnh khác",
+   "adjust": true,
+   "terms": []
+  },
+  {
+   "code": "08",
+   "name": "3. Lợi nhuận từ hoạt động kinh doanh trước thay đổi vốn lưu động",
+   "sum": [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07"
+   ]
+  },
+  {
+   "code": "09",
+   "name": "- Tăng, giảm các khoản phải thu",
+   "terms": [
+    {
+     "acc": [
+      "131",
+      "133",
+      "136",
+      "138",
+      "141",
+      "244"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "10",
+   "name": "- Tăng, giảm hàng tồn kho",
+   "terms": [
+    {
+     "acc": [
+      "15",
+      "2152",
+      "2153"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "11",
+   "name": "- Tăng, giảm các khoản phải trả (Không kể lãi vay phải trả, thuế thu nhập doanh nghiệp phải nộp)",
+   "terms": [
+    {
+     "acc": [
+      "331",
+      "333",
+      "334",
+      "335",
+      "336",
+      "337",
+      "338",
+      "344",
+      "347",
+      "353",
+      "356",
+      "357",
+      "243"
+     ],
+     "exclude": [
+      "3334"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "12",
+   "name": "- Tăng, giảm chi phí chờ phân bổ",
+   "terms": [
+    {
+     "acc": [
+      "242"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "13",
+   "name": "- Tăng, giảm chứng khoán kinh doanh",
+   "terms": [
+    {
+     "acc": [
+      "121"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "14",
+   "name": "- Chi phí đi vay đã trả",
+   "terms": []
+  },
+  {
+   "code": "15",
+   "name": "- Thuế thu nhập doanh nghiệp đã nộp",
+   "terms": [
+    {
+     "acc": [
+      "3334",
+      "821"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "16",
+   "name": "- Tiền thu khác từ hoạt động kinh doanh",
+   "fallback": true,
+   "terms": []
+  },
+  {
+   "code": "17",
+   "name": "- Tiền chi khác cho hoạt động kinh doanh",
+   "terms": []
+  },
+  {
+   "code": "20",
+   "name": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+   "sum": [
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17"
+   ]
+  },
+  {
+   "code": "21",
+   "name": "1. Tiền chi để mua sắm, xây dựng TSCĐ và các tài sản dài hạn khác",
+   "terms": [
+    {
+     "acc": [
+      "211",
+      "212",
+      "213",
+      "217",
+      "241",
+      "21511",
+      "215121"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "22",
+   "name": "2. Tiền thu từ thanh lý, nhượng bán TSCĐ và các tài sản dài hạn khác",
+   "terms": []
+  },
+  {
+   "code": "23",
+   "name": "3. Tiền chi cho vay, mua các công cụ nợ của đơn vị khác",
+   "terms": [
+    {
+     "acc": [
+      "128",
+      "171"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "24",
+   "name": "4. Tiền thu hồi cho vay, bán lại các công cụ nợ của đơn vị khác",
+   "terms": []
+  },
+  {
+   "code": "25",
+   "name": "5. Tiền chi đầu tư góp vốn vào đơn vị khác",
+   "terms": [
+    {
+     "acc": [
+      "221",
+      "222",
+      "228"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "26",
+   "name": "6. Tiền thu hồi đầu tư góp vốn vào đơn vị khác",
+   "terms": []
+  },
+  {
+   "code": "27",
+   "name": "7. Tiền thu lãi cho vay, cổ tức và lợi nhuận được chia",
+   "terms": []
+  },
+  {
+   "code": "30",
+   "name": "Lưu chuyển tiền thuần từ hoạt động đầu tư",
+   "sum": [
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27"
+   ]
+  },
+  {
+   "code": "31",
+   "name": "1. Tiền thu từ phát hành cổ phiếu, nhận vốn góp của chủ sở hữu",
+   "terms": [
+    {
+     "acc": [
+      "411"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "32",
+   "name": "2. Tiền trả lại vốn góp cho các chủ sở hữu, mua lại cổ phiếu đã phát hành",
+   "terms": [
+    {
+     "acc": [
+      "419"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "33",
+   "name": "3. Tiền thu từ đi vay",
+   "terms": [
+    {
+     "acc": [
+      "341",
+      "343"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "34",
+   "name": "4. Tiền trả nợ gốc vay",
+   "terms": []
+  },
+  {
+   "code": "35",
+   "name": "5. Tiền trả nợ gốc thuê tài chính",
+   "terms": []
+  },
+  {
+   "code": "36",
+   "name": "6. Cổ tức, lợi nhuận đã trả cho chủ sở hữu",
+   "terms": [
+    {
+     "acc": [
+      "332",
+      "412",
+      "413",
+      "414",
+      "418",
+      "421",
+      "911"
+     ],
+     "bal": "net_credit"
+    }
+   ]
+  },
+  {
+   "code": "40",
+   "name": "Lưu chuyển tiền thuần từ hoạt động tài chính",
+   "sum": [
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "36"
+   ]
+  },
+  {
+   "code": "50",
+   "name": "Lưu chuyển tiền thuần trong kỳ (50 = 20 + 30 + 40)",
+   "sum": [
+    "20",
+    "30",
+    "40"
+   ]
+  },
+  {
+   "code": "60",
+   "name": "Tiền và tương đương tiền đầu kỳ",
+   "terms": [
+    {
+     "acc": [
+      "111",
+      "112",
+      "113"
+     ],
+     "bal": "net_debit",
+     "at": "opening"
+    }
+   ]
+  },
+  {
+   "code": "61",
+   "name": "Ảnh hưởng của thay đổi tỷ giá hối đoái quy đổi ngoại tệ",
+   "terms": []
+  },
+  {
+   "code": "70",
+   "name": "Tiền và tương đương tiền cuối kỳ (70 = 50 + 60 + 61)",
+   "sum": [
+    "50",
+    "60",
+    "61"
+   ]
+  }
+ ],
+ "cash": [
+  "111",
+  "112",
+  "113"
+ ]
+}
