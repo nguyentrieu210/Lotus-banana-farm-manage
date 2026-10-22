@@ -59,14 +59,38 @@
       "options": "Account"
     },
     {
+      "fieldname": "acct_material_cost",
+      "label": "Chi phí nguyên liệu, vật liệu trực tiếp",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_labour_cost",
+      "label": "Chi phí nhân công trực tiếp",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_overhead_service",
+      "label": "Chi phí sản xuất chung – dịch vụ mua ngoài",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_admin_labour",
+      "label": "Chi phí nhân viên quản lý",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
       "fieldname": "acct_production_cost",
-      "label": "Chi phí sản xuất dở dang",
+      "label": "Chi phí sản xuất, kinh doanh dở dang (154)",
       "fieldtype": "Link",
       "options": "Account"
     },
     {
       "fieldname": "acct_admin_expense",
-      "label": "Chi phí quản lý",
+      "label": "Chi phí quản lý – dịch vụ mua ngoài",
       "fieldtype": "Link",
       "options": "Account"
     },
@@ -153,6 +177,10 @@
     "accounts_section",
     "acct_inventory_material",
     "acct_finished_goods",
+    "acct_material_cost",
+    "acct_labour_cost",
+    "acct_overhead_service",
+    "acct_admin_labour",
     "acct_production_cost",
     "acct_admin_expense",
     "acct_received_not_billed",

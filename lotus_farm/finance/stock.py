@@ -1,5 +1,5 @@
 """Tài chính – Kế toán: a material issue carries farm / lot / crop cycle / work type on each row, so ERPNext's
-own stock posting (Nợ chi phí sản xuất dở dang / Có kho) lands on the right lot. Planned issues take them from
+own stock posting (Nợ 621 chi phí nguyên liệu, vật liệu trực tiếp / Có kho) lands on the right lot. Planned issues take them from
 the Material Requirement; a manual issue names the lot in "Khu vực / lô sử dụng" (its first part is matched to a
 lot code of the issuing warehouse's farm). Nothing is posted twice: the warehouse stays the only writer.
 """
@@ -44,7 +44,7 @@ def _requirement_dims(requirement):
 
 def issue_dimensions(doc, method=None):
     """Stock Entry validate: fill the dimensions of Material Issue rows; once finance is on (from the cutover date)
-    every row must name its farm and the row's expense account is production cost."""
+    every row must name its farm and the row's expense account is direct material cost (621)."""
     if doc.docstatus == 2 or doc.get('stock_entry_type') != 'Material Issue' or not _has_dims(doc):
         return
     cfg = setup.settings()
@@ -66,7 +66,7 @@ def issue_dimensions(doc, method=None):
         if enforce:
             if not row.get('lotus_farm'):
                 frappe.throw('Dòng %d (%s): chọn lô sử dụng có trong danh sách lô để tính chi phí vào đúng lô.' % (i, row.item_code))
-            row.expense_account = m['production_cost']
+            row.expense_account = m['material_cost']
             row.cost_center = row.cost_center or frappe.get_cached_value('Company', doc.company, 'cost_center')
 
 

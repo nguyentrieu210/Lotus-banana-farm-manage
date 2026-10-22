@@ -62,14 +62,18 @@ try:
     stock_before = reports.reconciliation(today)['checks']
     result = setup.coa_apply(today)
     m = setup.mapping()
-    assert m['inventory_material'].startswith('152 ') and m['payable_supplier'].startswith('331 ') and m['unemployment_insurance'].startswith('3385 '), m
+    assert m['inventory_material'].startswith('152 ') and m['payable_supplier'].startswith('331 ') and m['unemployment_insurance'].startswith('3386 '), m
+    assert m['cash'].startswith('111 ') and m['material_cost'].startswith('621 ') and m['labour_cost'].startswith('622 '), m
+    live = {a.account_number for a in frappe.get_all('Account', filters={'company': company, 'disabled': 0, 'is_group': 0}, fields=['account_number'])}
+    assert '1111' not in live and '3385' not in live and '' not in live and None not in live, 'only Thông tư 99 accounts stay in use'
     if result['transfer']:
         lines = gl(result['transfer'])
         assert abs(sum(flt(x.debit) for x in lines) - sum(flt(x.credit) for x in lines)) < 1, lines
     checks = reports.reconciliation(today)['checks']
     stock_checks = [c for c in checks if c['label'].startswith('Giá trị kho')]
     assert stock_checks and all(c['ok'] for c in stock_checks), stock_checks
-    report['coa'] = dict(added=result['added'], transfer=result['transfer'], stock=[(c['label'], c['ledger']) for c in stock_checks])
+    report['coa'] = dict(added=result['added'], updated=result['updated'], deleted=result['deleted'], disabled=result['disabled'], transfer=result['transfer'],
+                         stock=[(c['label'], c['ledger']) for c in stock_checks])
 
     accountant = person('acc', ['Lotus Accountant'], company)
     chief = person('chief', ['Lotus Chief Accountant'], company)
@@ -137,7 +141,7 @@ try:
     se.flags.ignore_permissions = True
     se.insert()
     se.submit()
-    cost = [x for x in gl(se.name) if x.account == m['production_cost']]
+    cost = [x for x in gl(se.name) if x.account == m['material_cost']]
     assert cost and cost[0].lotus_farm_block == block.name and cost[0].lotus_farm == block.farm, cost
     bad = frappe.copy_doc(se)
     bad.items[0].lotus_usage_area = 'không rõ ' + tag
@@ -145,9 +149,24 @@ try:
     bad.flags.ignore_permissions = True
     refused(bad.insert, text='chọn lô sử dụng')
     report['issue'] = dict(entry=se.name, block=block.block_code, amount=flt(cost[0].debit))
+    from lotus_farm.finance import closing
+    month_now = today[:7]
+    view_close = closing.preview(month_now)
+    assert any(ln['account'] == m['production_cost'] and ln['lotus_farm_block'] == block.name for ln in view_close['lines']), view_close['lines'][:3]
+    refused(as_user, accountant, closing.post, month_now, kind=frappe.PermissionError)
+    closed = as_user(chief, closing.post, month_now)
+    refused(as_user, chief, closing.post, month_now, text='đã kết chuyển')
+    left = frappe.db.sql("""select sum(debit-credit) from `tabGL Entry` where is_cancelled=0 and account=%s and posting_date between %s and %s""",
+                         (m['material_cost'], month_now + '-01', view_close['posting_date']))[0][0]
+    assert abs(flt(left)) < 1, 'after the transfer 621 is empty for the month'
+    after = reports.costs(month_now + '-01', today, 'lotus_farm_block')
+    assert any(r['dim'] == block.name and flt(r['materials']) > 0 for r in after['rows']), 'the lot cost report ignores the transfer'
+    report['closing'] = dict(voucher=closed['voucher'], amount=closed['amount'])
 
     # 4. Payroll -------------------------------------------------------------------------------------------
     month = cutover[:7]
+    if any(p_['closed'] and str(p_['start_date'])[:7] == month for p_ in posting.periods(company)):
+        as_user(chief, posting.reopen_month, month, 'Mở để kiểm tra (rollback)')  # locked on the real site
     employees = frappe.get_all('Employee', filters={'company': company, 'status': 'Active'}, pluck='name', limit_page_length=3)
     rows = [dict(employee=e, base=6000000, gross=7000000 + i * 500000, employee_insurance=630000, net=6370000 + i * 500000, employer_insurance=1290000)
             for i, e in enumerate(employees)]

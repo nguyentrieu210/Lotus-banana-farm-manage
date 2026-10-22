@@ -48,8 +48,11 @@ def overview(on_date=None):
     m = setup.mapping(cfg)
     on_date = getdate(on_date or nowdate())
     start = get_first_day(on_date)
-    cost = frappe.db.sql("""select sum(debit) - sum(credit) from `tabGL Entry` where company=%s and is_cancelled=0
-        and posting_date between %s and %s and account in %s""", (company, start, on_date, tuple(a for a in (m['production_cost'], m['admin_expense']) if a) or ('',)))[0][0]
+    from lotus_farm.finance.closing import closing_vouchers
+    # Costs of the month on every expense account; the month-end transfer to 154 is not a cost.
+    cost = frappe.db.sql("""select sum(g.debit) - sum(g.credit) from `tabGL Entry` g join tabAccount a on a.name=g.account
+        where g.company=%s and g.is_cancelled=0 and g.posting_date between %s and %s and a.root_type='Expense' and g.voucher_no not in %s""",
+                         (company, start, on_date, tuple(closing_vouchers(company)) or ('',)))[0][0]
     tiles = dict(cash=_balance(company, [m['cash']], on_date), bank=_balance(company, [m['bank']], on_date),
                  payable_supplier=-_balance(company, [m['payable_supplier']], on_date), payable_employee=-_balance(company, [m['payable_employee']], on_date),
                  insurance=-_balance(company, [m['social_insurance'], m['health_insurance'], m['unemployment_insurance']], on_date),
@@ -149,12 +152,12 @@ def payables(on_date=None):
 
 
 def _accounts(company):
-    return frappe.get_all('Account', filters={'company': company}, fields=['name', 'account_number', 'account_name', 'root_type', 'is_group', 'parent_account', 'lft', 'rgt'],
+    return frappe.get_all('Account', filters={'company': company}, fields=['name', 'account_number', 'account_name', 'root_type', 'is_group', 'parent_account', 'lft', 'rgt', 'disabled'],
                           order_by='lft')
 
 
 @frappe.whitelist()
-def trial_balance(from_date=None, to_date=None):
+def trial_balance(from_date=None, to_date=None, show_retired=0):
     """Bảng cân đối phát sinh: opening, period and closing debit/credit of every account with movement, by account number."""
     setup.require_view()
     company = setup.company()
@@ -170,6 +173,9 @@ def trial_balance(from_date=None, to_date=None):
         a = meta.get(r.account) or frappe._dict(account_number='', account_name=r.account, root_type='')
         opening, closing = flt(r.opening), flt(r.opening) + flt(r.debit) - flt(r.credit)
         if not any(round(x) for x in (opening, r.debit, r.credit, closing)):
+            continue
+        # Retired accounts of the old chart (disabled, nothing left on them) only clutter the report.
+        if a.get('disabled') and not round(opening) and not round(closing) and not int(show_retired or 0):
             continue
         out.append(dict(account=r.account, number=a.account_number or '', name=a.account_name, root_type=a.root_type,
                         opening_debit=max(opening, 0), opening_credit=max(-opening, 0), debit=flt(r.debit), credit=flt(r.credit),
@@ -205,28 +211,28 @@ COST_GROUPS = (('lotus_farm', 'Vườn'), ('lotus_farm_block', 'Lô'), ('lotus_c
 
 @frappe.whitelist()
 def costs(from_date=None, to_date=None, group_by='lotus_farm_block', farm=None):
-    """Chi phí theo vườn / lô / vụ / công việc on the production cost account, split into materials (stock issues),
-    labour (payroll), crews (piece-rate) and services (supplier invoices)."""
+    """Chi phí theo vườn / lô / vụ / công việc (Thông tư 99): materials 621, labour 622 (crews = lines noted Khoán),
+    machines and overheads 623 / 627. The month-end transfer to 154 is left out, so costs stay visible after closing."""
     setup.require_view()
     if group_by not in dict(COST_GROUPS):
         frappe.throw('Chọn nhóm theo vườn, lô, vụ hoặc công việc.')
     if not frappe.get_meta('GL Entry').has_field(group_by):
         return dict(rows=[], totals={}, group_by=group_by)
     company = setup.company()
-    m = setup.mapping()
     start, end = _range(from_date, to_date)
-    conds = 'g.company=%(c)s and g.is_cancelled=0 and g.account=%(a)s and g.posting_date between %(s)s and %(e)s'
-    values = dict(c=company, a=m['production_cost'], s=start, e=end)
+    from lotus_farm.finance.closing import closing_vouchers, cost_accounts
+    conds = 'g.company=%(c)s and g.is_cancelled=0 and g.account in %(a)s and g.posting_date between %(s)s and %(e)s and g.voucher_no not in %(x)s'
+    values = dict(c=company, a=tuple(cost_accounts(company)) or ('',), s=start, e=end, x=tuple(closing_vouchers(company)) or ('',))
     if farm:
         conds += ' and g.lotus_farm=%(f)s'
         values['f'] = farm
     rows = frappe.db.sql("""select g.%(g)s dim, g.lotus_farm farm,
-            sum(case when g.voucher_type in ('Stock Entry','Stock Reconciliation') then g.debit - g.credit else 0 end) materials,
-            sum(case when g.voucher_type='Journal Entry' and g.remarks not like 'Khoán%%' then g.debit - g.credit else 0 end) labour,
-            sum(case when g.voucher_type='Journal Entry' and g.remarks like 'Khoán%%' then g.debit - g.credit else 0 end) crews,
-            sum(case when g.voucher_type='Purchase Invoice' then g.debit - g.credit else 0 end) services,
+            sum(case when a.account_number like '621%%' then g.debit - g.credit else 0 end) materials,
+            sum(case when a.account_number like '622%%' and g.remarks not like 'Khoán%%' then g.debit - g.credit else 0 end) labour,
+            sum(case when a.account_number like '622%%' and g.remarks like 'Khoán%%' then g.debit - g.credit else 0 end) crews,
+            sum(case when a.account_number like '623%%' or a.account_number like '627%%' then g.debit - g.credit else 0 end) services,
             sum(g.debit - g.credit) total
-        from `tabGL Entry` g where %(w)s group by g.%(g)s, g.lotus_farm order by total desc""".replace('%(g)s', group_by).replace('%(w)s', conds), values, as_dict=True)
+        from `tabGL Entry` g join tabAccount a on a.name=g.account where %(w)s group by g.%(g)s, g.lotus_farm order by total desc""".replace('%(g)s', group_by).replace('%(w)s', conds), values, as_dict=True)
     labels = _dim_labels(group_by, [r.dim for r in rows])
     blocks = {b.name: b for b in frappe.get_all('Farm Block', filters={'name': ['in', [r.dim for r in rows if r.dim] or ['']]}, fields=['name', 'area_ha'])} \
         if group_by == 'lotus_farm_block' else {}

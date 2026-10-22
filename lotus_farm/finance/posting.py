@@ -15,12 +15,12 @@ LOCKED_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Purcha
 MONTHS = 'Tháng %02d/%04d'
 
 
-def active_key(source_doctype, source_name, purpose):
-    return '%s|%s|%s' % (source_doctype, source_name, purpose)
+def active_key(source_doctype, source_name, purpose, suffix=None):
+    return '%s|%s|%s' % (source_doctype, source_name, purpose) + ('|' + str(suffix) if suffix else '')
 
 
-def active(source_doctype, source_name, purpose):
-    name = frappe.db.get_value(POSTING, {'active_key': active_key(source_doctype, source_name, purpose)})
+def active(source_doctype, source_name, purpose, suffix=None):
+    name = frappe.db.get_value(POSTING, {'active_key': active_key(source_doctype, source_name, purpose, suffix)})
     return frappe.get_doc(POSTING, name) if name else None
 
 
@@ -34,10 +34,10 @@ def guard(source_doctype, source_name, purpose):
             source_doctype, source_name, existing.voucher_type, existing.voucher_name))
 
 
-def record(source_doctype, source_name, purpose, voucher, amount=0, source_hash=''):
+def record(source_doctype, source_name, purpose, voucher, amount=0, source_hash='', key_suffix=None):
     doc = frappe.get_doc(dict(doctype=POSTING, company=voucher.get('company'), source_doctype=source_doctype, source_name=source_name, purpose=purpose,
                               source_hash=source_hash, voucher_type=voucher.doctype, voucher_name=voucher.name, posting_date=voucher.get('posting_date'),
-                              amount=amount, state='Posted' if voucher.docstatus == 1 else 'Draft', active_key=active_key(source_doctype, source_name, purpose),
+                              amount=amount, state='Posted' if voucher.docstatus == 1 else 'Draft', active_key=active_key(source_doctype, source_name, purpose, key_suffix),
                               posted_by=frappe.session.user, posted_at=now_datetime()))
     doc.flags.ignore_permissions = True
     doc.flags.ignore_links = True
@@ -112,7 +112,7 @@ def close_month(month):
     start, end, label = _month_bounds(month)
     name = frappe.db.get_value('Accounting Period', {'company': company, 'start_date': start, 'end_date': end})
     doc = frappe.get_doc('Accounting Period', name) if name else frappe.get_doc(dict(doctype='Accounting Period', company=company, start_date=start, end_date=end,
-                                                                                       period_name=label + ' - ' + frappe.get_cached_value('Company', company, 'abbr')))
+                                                                                       period_name=label))  # ERPNext appends the company abbreviation
     doc.disabled = 0
     existing = {d.document_type: d for d in doc.get('closed_documents') or []}
     for doctype in LOCKED_DOCTYPES:

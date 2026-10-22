@@ -130,12 +130,17 @@ async function saveSettings(){saving.value=true
  try{settings.value=await call(F+'api.save_settings',{values:JSON.stringify(form.value)},true);notice.value=settings.value.enabled?'Đã lưu. Ghi sổ kế toán đang bật.':'Đã lưu cấu hình.';overview.value=null}
  catch(e){error.value=e.message}finally{saving.value=false}}
 async function previewCoa(){await run(async()=>{coa.value=await call(F+'api.coa_preview',{on_date:today})})}
-async function applyCoa(){if(!await ask('Áp dụng hệ thống tài khoản TT133: thêm '+coa.value.add.length+' tài khoản, đổi tài khoản kho và chuyển số dư cũ. Không hoàn tác bằng một nút được. Tiếp tục?','Áp dụng TT133'))return
+async function applyCoa(){if(!await ask('Áp dụng hệ thống tài khoản Thông tư 99: thêm '+coa.value.add.length+' tài khoản, đổi tài khoản kho và chuyển số dư cũ. Không hoàn tác bằng một nút được. Tiếp tục?','Áp dụng Thông tư 99'))return
  saving.value=true
- try{const r=await call(F+'api.coa_apply',{on_date:coa.value.on_date},true);notice.value='Đã áp dụng TT133: thêm '+r.added+' tài khoản'+(r.transfer?', chuyển số dư bằng '+r.transfer:'')+'.';coa.value=null;settings.value=await call(F+'api.settings')}
+ try{const r=await call(F+'api.coa_apply',{on_date:coa.value.on_date},true);notice.value='Đã áp dụng Thông tư 99: thêm '+r.added+' tài khoản'+(r.transfer?', chuyển số dư bằng '+r.transfer:'')+'.';coa.value=null;settings.value=await call(F+'api.settings')}
  catch(e){error.value=e.message}finally{saving.value=false}}
 const months=computed(()=>{const y=Number(today.slice(0,4));return Array.from({length:12},(_,i)=>y+'-'+String(i+1).padStart(2,'0'))})
 const periodOf=m=>(settings.value?.periods||[]).find(p=>String(p.start_date).slice(0,7)===m)
+const closingView=ref(null)
+async function previewClosing(m){await ensureLookups();await run(async()=>{closingView.value=await call(F+'closing.preview',{month:m})})}
+async function postClosing(){saving.value=true
+ try{const r=await call(F+'closing.post',{month:closingView.value.month},true);notice.value='Đã kết chuyển chi phí tháng '+closingView.value.month+' sang 154: '+r.voucher+' ('+vnd(r.amount)+').';closingView.value=null}
+ catch(e){error.value=e.message}finally{saving.value=false}}
 async function closeMonth(m){if(!await ask('Khóa sổ tháng '+m.slice(5)+'/'+m.slice(0,4)+'? Sau khi khóa không ghi, sửa hay hủy chứng từ trong tháng được nữa.','Khóa sổ'))return
  await run(async()=>{await call(F+'posting.close_month',{month:m},true);settings.value=await call(F+'api.settings');notice.value='Đã khóa sổ tháng '+m.slice(5)+'/'+m.slice(0,4)+'.'})}
 async function reopenMonth(m){const reason=window.prompt('Lý do mở lại kỳ '+m+' (bắt buộc):');if(!reason)return
@@ -207,7 +212,7 @@ useNoticeToast(notice)
 <template>
 <section class="fin lotus-ui">
  <header class="fin-head">
-  <div class="fin-title"><h2>Tài chính – Kế toán</h2><span v-if="overview">{{overview.company}} · {{overview.coa_version?'Hệ thống tài khoản '+overview.coa_version:'Chưa áp dụng hệ thống tài khoản TT133'}}</span></div>
+  <div class="fin-title"><h2>Tài chính – Kế toán</h2><span v-if="overview">{{overview.company}} · {{overview.coa_version?'Hệ thống tài khoản '+overview.coa_version:'Chưa áp dụng hệ thống tài khoản Thông tư 99'}}</span></div>
   <span class="land-spacer"></span>
   <span v-if="overview" class="fin-state" :class="{on:overview.enabled}">{{overview.enabled?'Đang ghi sổ từ '+vnDate(overview.cutover_date):'Ghi sổ từ Lotus đang tắt'}}</span>
  </header>
@@ -228,7 +233,7 @@ useNoticeToast(notice)
  </section>
 
  <template v-else-if="tab==='overview'&&overview">
-  <p v-if="!overview.enabled" class="notice" role="status">Ghi sổ kế toán từ Lotus đang tắt. Kế toán trưởng vào <a href="#" @click.prevent="go('settings')">Thiết lập</a> để áp dụng hệ thống tài khoản TT133, chọn tài khoản, ngày bắt đầu ghi sổ rồi bật.</p>
+  <p v-if="!overview.enabled" class="notice" role="status">Ghi sổ kế toán từ Lotus đang tắt. Kế toán trưởng vào <a href="#" @click.prevent="go('settings')">Thiết lập</a> để áp dụng hệ thống tài khoản Thông tư 99, chọn tài khoản, ngày bắt đầu ghi sổ rồi bật.</p>
   <p v-for="e in overview.mapping_errors.slice(0,4)" :key="e" class="land-warn">{{e}}</p>
   <div class="land-stats fin-stats">
    <div><span>Tiền mặt</span><strong>{{vnd(tiles.cash)}}</strong></div>
@@ -321,14 +326,16 @@ useNoticeToast(notice)
  <template v-else-if="tab==='settings'&&settings">
   <section class="land-card"><h3>Hệ thống tài khoản</h3>
    <p v-if="settings.coa_version" class="land-note">Đã áp dụng {{settings.coa_version}} lúc {{vnDate(settings.coa_applied_at.slice(0,10))}} ({{settings.coa_applied_by}}).</p>
-   <p v-else class="land-note">Chưa áp dụng. Xem trước để kiểm tra danh mục tài khoản TT133, tài khoản kho và bút toán chuyển số dư từ hệ thống tài khoản cũ.</p>
-   <div class="land-actions fin-left"><UiButton variant="outline" @click="previewCoa">Xem trước áp dụng TT133</UiButton></div>
+   <p v-else class="land-note">Chưa áp dụng. Xem trước để kiểm tra danh mục tài khoản Thông tư 99, tài khoản kho và bút toán chuyển số dư từ hệ thống tài khoản cũ.</p>
+   <div class="land-actions fin-left"><UiButton variant="outline" @click="previewCoa">Xem trước áp dụng Thông tư 99</UiButton></div>
    <template v-if="coa">
-    <p>{{coa.name}} — thêm <b>{{coa.add.length}}</b> tài khoản (đã có {{coa.existing}}).</p><p class="land-note">{{coa.note}}</p>
+    <p>{{coa.name}} — thêm <b>{{coa.add.length}}</b>, sửa tên / loại <b>{{coa.update.length}}</b>, xóa <b>{{coa.retire.filter(r=>r.action==='delete').length}}</b>, ngừng dùng <b>{{coa.retire.filter(r=>r.action==='disable').length}}</b> tài khoản (tài khoản đã có bút toán không xóa được, chỉ ngừng dùng).</p>
+    <details v-if="coa.update.length"><summary>Tài khoản đổi tên theo Thông tư 99</summary><ul class="fin-list"><li v-for="u in coa.update" :key="u.account">{{u.number}}: {{u.old_name}} → <b>{{u.name}}</b></li></ul></details>
+    <details v-if="coa.retire.length"><summary>Tài khoản không có trong Thông tư 99</summary><ul class="fin-list"><li v-for="r in coa.retire" :key="r.account">{{r.label}} — {{r.action==='delete'?'xóa':'ngừng dùng'}}</li></ul></details><p class="land-note">{{coa.note}}</p>
     <p v-for="e in coa.errors" :key="e" class="land-bad">{{e}}</p>
     <div class="land-table land-preview"><DataTable :rows="coa.transfer" :columns="transferColumns" row-key="old" storage-key="fin-coa-transfer" empty="Không có số dư cần chuyển."/></div>
     <p class="land-note">Kho: {{coa.warehouses.map(w=>w.warehouse).join(', ')}} → {{coa.warehouses[0]?.account}}</p>
-    <div class="land-actions"><UiButton :disabled="saving||!!coa.errors.length||!settings.is_chief" @click="applyCoa">Áp dụng TT133</UiButton></div>
+    <div class="land-actions"><UiButton :disabled="saving||!!coa.errors.length||!settings.is_chief" @click="applyCoa">Áp dụng Thông tư 99</UiButton></div>
    </template>
   </section>
   <section class="land-card"><h3>Tài khoản theo nghiệp vụ và bật ghi sổ</h3>
@@ -340,8 +347,10 @@ useNoticeToast(notice)
     <div v-if="settings.is_chief" class="land-actions land-form__full"><UiButton type="submit" :disabled="saving">Lưu</UiButton></div>
    </form>
   </section>
-  <section class="land-card"><h3>Khóa sổ theo tháng ({{today.slice(0,4)}})</h3>
+  <section class="land-card"><h3>Kết chuyển và khóa sổ theo tháng ({{today.slice(0,4)}})</h3>
+   <p class="land-note">Cuối tháng: kết chuyển chi phí 621 / 622 / 627 sang 154 theo từng vườn, lô (giữ nguyên chiều phân tích), rồi khóa sổ.</p>
    <div class="fin-months"><div v-for="m in months" :key="m" class="fin-month" :class="{closed:periodOf(m)?.closed}"><b>{{m.slice(5)}}/{{m.slice(0,4)}}</b><small>{{periodOf(m)?.closed?'Đã khóa':'Đang mở'}}</small>
+    <UiButton size="sm" variant="ghost" @click="previewClosing(m)">Kết chuyển CP</UiButton>
     <template v-if="settings.is_chief"><UiButton v-if="!periodOf(m)?.closed" size="sm" variant="outline" @click="closeMonth(m)">Khóa</UiButton><UiButton v-else size="sm" variant="ghost" @click="reopenMonth(m)">Mở lại</UiButton></template></div></div>
   </section>
   <section v-if="settings.is_chief" class="land-card"><h3>Số dư đầu kỳ</h3>
@@ -367,6 +376,15 @@ useNoticeToast(notice)
    <p v-for="i in payrollView.issues" :key="i" class="land-bad">{{i}}</p>
    <div class="land-table land-preview"><DataTable :rows="keyed(payrollView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-payroll-lines"/></div>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="payrollView=null">Đóng</UiButton><UiButton v-if="overview?.can_post&&!payrollView.posted" :disabled="saving||!!payrollView.issues.length||!overview?.enabled" @click="postPayroll">Ghi sổ</UiButton></div>
+  </div>
+ </WorkspaceModal>
+
+ <WorkspaceModal :model-value="!!closingView" title="Kết chuyển chi phí sản xuất sang 154" :busy="saving" width="980px" @update:model-value="v=>{if(!v)closingView=null}">
+  <div v-if="closingView" class="land-form">
+   <p>Tháng {{closingView.month}} · ngày hạch toán {{vnDate(closingView.posting_date)}} · tổng kết chuyển <b>{{vnd(closingView.total)}}</b></p>
+   <p v-if="closingView.posted" class="land-warn">Tháng này đã kết chuyển ({{closingView.posted.voucher}}).</p>
+   <div class="land-table land-preview"><DataTable :rows="keyed(closingView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-closing-lines" empty="Không có chi phí 621 / 622 / 627 trong tháng."/></div>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="closingView=null">Đóng</UiButton><UiButton v-if="settings?.is_chief&&!closingView.posted" :disabled="saving||!closingView.lines.length||!settings?.enabled" @click="postClosing">Ghi sổ kết chuyển</UiButton></div>
   </div>
  </WorkspaceModal>
 

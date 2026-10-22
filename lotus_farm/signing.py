@@ -32,7 +32,7 @@ URLS = {
 def chain_for(doc):
     if doc.doctype == 'Material Request':
         return 'purchase_proposal' if doc.material_request_type == 'Purchase' else 'issue_proposal'
-    if doc.doctype == 'Payment Entry' or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind')):
+    if doc.doctype == 'Payment Entry' or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind') == 'Salary'):
         return 'payment_voucher'
     return {'Purchase Order': 'purchase_order', 'Stock Entry': 'stock_document', 'Stock Reconciliation': 'stock_document',
             'Purchase Receipt': 'stock_document', 'Lotus Timekeeping Period': 'timekeeping_period'}.get(doc.doctype)

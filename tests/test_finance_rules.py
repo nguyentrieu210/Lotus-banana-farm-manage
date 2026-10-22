@@ -14,19 +14,24 @@ def employee(code, base, gross, insured=True):
 
 
 class FinanceRules(unittest.TestCase):
-    def test_tt133_chart_is_consistent(self):
+    def test_tt99_chart_is_consistent(self):
         coa = rules.load_coa()
         self.assertEqual(rules.validate_coa(coa), [])
         numbers = {a['number']: a for a in coa['accounts']}
-        for n in ('1111', '1121', '152', '154', '155', '331', '334', '3383', '3384', '3385', '3388', '4111', '6422'):
+        for n in ('111', '112', '152', '154', '155', '331', '334', '3383', '3384', '3386', '3388', '4111', '621', '622', '6277', '6421', '6427', '2153'):
             self.assertIn(n, numbers)
-        self.assertEqual(numbers['3385']['name'], 'Bảo hiểm thất nghiệp', 'TT133: 3385 is unemployment insurance')
-        self.assertEqual(numbers['3386']['name'], 'Nhận ký quỹ, ký cược')
-        self.assertNotIn('621', numbers, 'TT133 has no 621/622/627: production cost is 154')
+        self.assertEqual(numbers['3386']['name'], 'Bảo hiểm thất nghiệp', 'TT99: 3386 is unemployment insurance')
+        self.assertNotIn('3385', numbers)
+        self.assertNotIn('1111', numbers, 'TT99: 111 and 112 have no level-2 accounts')
+        self.assertEqual(numbers['112']['name'], 'Tiền gửi không kỳ hạn')
+        self.assertEqual(numbers['155']['name'], 'Sản phẩm')
+        self.assertEqual(numbers['215']['name'], 'Tài sản sinh học')
+        self.assertEqual(numbers['6277']['parent'], '627')
+        self.assertEqual(sum(1 for a in coa['accounts'] if len(a['number']) == 3), 70, 'TT99 has 71 level-1 accounts; 911 is left to ERPNext period closing')
         self.assertEqual(numbers['331']['account_type'], 'Payable')
         self.assertEqual(numbers['3388']['account_type'], 'Stock Received But Not Billed')
-        plan = rules.coa_plan(coa, {'111', '1111'})
-        self.assertNotIn('1111', [a['number'] for a in plan])
+        plan = rules.coa_plan(coa, {'111'})
+        self.assertNotIn('111', [a['number'] for a in plan])
         self.assertEqual(next(a for a in plan if a['number'] == '338')['is_group'], 1)
         self.assertEqual(next(a for a in plan if a['number'] == '3388')['is_group'], 0)
 
@@ -88,8 +93,9 @@ class FinanceRules(unittest.TestCase):
         a2 = next(ln for ln in lines if ln['lotus_farm_block'] == 'A2')
         self.assertEqual(a1['debit'] + a2['debit'], e1)
         self.assertEqual(a1['debit'], round(e1 * 12 / 24), 'E1 worked 12 of 24 days on A1')
-        indirect = next(ln for ln in lines if ln['account'] == ACCOUNTS['admin_expense'])
-        self.assertEqual((indirect['debit'], indirect['lotus_farm']), (3_000_000, 'F'), 'no lot work -> administrative cost of the farm')
+        indirect = next(ln for ln in lines if ln['account'] == ACCOUNTS['admin_labour'])
+        self.assertEqual((indirect['debit'], indirect['lotus_farm']), (3_000_000, 'F'), 'no lot work -> management staff cost (6421) of the farm')
+        self.assertTrue(all(ln['account'] == ACCOUNTS['labour_cost'] for ln in lines if ln.get('lotus_farm_block')), 'lot work -> direct labour 622')
         crew = next(ln for ln in lines if ln['note'] == 'Khoán T1' and ln['debit'])
         self.assertEqual((crew['lotus_farm'], crew['lotus_work_type'], crew['debit']), ('F', 'Cắt bắp', 2_000_000))
         bhxh = next(ln for ln in lines if ln['account'] == ACCOUNTS['social_insurance'])
@@ -113,6 +119,15 @@ class FinanceRules(unittest.TestCase):
         for english in ('Application of Funds (Assets)', 'Source of Funds (Liabilities)', 'Equity', 'Income', 'Expenses'):
             self.assertIn(english, names['groups'])
         self.assertFalse(set(names['groups']) & set(names['accounts']), 'a name is either a group or a leaf')
+
+    def test_closing_moves_each_lot_to_wip(self):
+        rows = [dict(account='621', net=300000, lotus_farm='F', lotus_farm_block='A1'), dict(account='622', net=1000000, lotus_farm='F', lotus_farm_block='A1'),
+                dict(account='6277', net=-50000, lotus_farm='F', lotus_farm_block='A2'), dict(account='622', net=0, lotus_farm='F')]
+        lines = rules.closing_entry(rows, '154')
+        self.assertEqual(rules.check_entry(lines), [])
+        wip = [ln for ln in lines if ln['account'] == '154']
+        self.assertEqual([(ln['debit'], ln['credit'], ln['lotus_farm_block']) for ln in wip], [(300000, 0, 'A1'), (1000000, 0, 'A1'), (0, 50000, 'A2')])
+        self.assertEqual(len(lines), 6, 'a zero balance is skipped')
 
     def test_aging(self):
         today = dt.date(2026, 10, 22)

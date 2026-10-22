@@ -8,7 +8,7 @@ import json
 from collections import OrderedDict
 from pathlib import Path
 
-COA_FILE = Path(__file__).resolve().parents[1] / 'data' / 'coa_tt133.json'
+COA_FILE = Path(__file__).resolve().parents[1] / 'data' / 'coa_tt99.json'
 ROOT_TYPES = ('Asset', 'Liability', 'Equity', 'Income', 'Expense')
 # Accounting dimensions on every ledger line: (Lotus field / dimension fieldname, DocType, label).
 DIMENSIONS = (('lotus_farm', 'Farm', 'Vườn'), ('lotus_farm_block', 'Farm Block', 'Lô'),
@@ -20,8 +20,12 @@ DIM_FIELDS = tuple(d[0] for d in DIMENSIONS)
 KEYS = OrderedDict((
     ('inventory_material', ('Kho nguyên liệu, vật liệu', ('Asset',), 'Stock')),
     ('finished_goods', ('Kho thành phẩm', ('Asset',), 'Stock')),
-    ('production_cost', ('Chi phí sản xuất dở dang (vật tư, nhân công xuất cho vườn/lô)', ('Asset', 'Expense'), None)),
-    ('admin_expense', ('Chi phí quản lý (nhân viên gián tiếp, chi không thuộc lô)', ('Expense',), None)),
+    ('material_cost', ('Chi phí nguyên liệu, vật liệu trực tiếp (xuất kho cho vườn/lô)', ('Expense',), None)),
+    ('labour_cost', ('Chi phí nhân công trực tiếp (lương có công ở lô, tiền khoán)', ('Expense',), None)),
+    ('overhead_service', ('Chi phí sản xuất chung – dịch vụ mua ngoài (thuê máy, vận chuyển cho lô)', ('Expense',), None)),
+    ('production_cost', ('Chi phí sản xuất, kinh doanh dở dang (nhận kết chuyển 621/622/627)', ('Asset',), None)),
+    ('admin_labour', ('Chi phí nhân viên quản lý (lương gián tiếp)', ('Expense',), None)),
+    ('admin_expense', ('Chi phí quản lý – dịch vụ mua ngoài', ('Expense',), None)),
     ('received_not_billed', ('Hàng về chưa có hóa đơn', ('Liability',), 'Stock Received But Not Billed')),
     ('payable_supplier', ('Phải trả người bán', ('Liability',), 'Payable')),
     ('payable_employee', ('Phải trả người lao động', ('Liability',), None)),
@@ -168,8 +172,8 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
       net; crews with work_team, work_type, amount).
     shares: employee -> [(dims, workdays)] of the month's actual work by lot (empty -> indirect cost).
     accounts: mapping key -> account. employee_farms: employee -> farm (dimension of indirect cost).
-    Debits: gross + employer insurance of each person to production cost by workday share (or admin expense);
-    crew piece-rate to production cost by farm and work type. Credits: net pay, insurance (employee + employer
+    Debits: gross + employer insurance of each person to direct labour (622) by workday share, or to management
+    staff cost (6421) without lot work; crew piece-rate to direct labour by farm and work type. Credits: net pay, insurance (employee + employer
     shares), crew payable.
     """
     lines, issues = [], []
@@ -186,10 +190,10 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
         work = [(d, w) for d, w in shares.get(r.get('employee')) or [] if w]
         if work:
             for (dims, _), part in zip(work, split_amount(cost, [w for _, w in work])):
-                lines.append(line(accounts['production_cost'], debit=part, dims=dims, note='Lương'))
+                lines.append(line(accounts['labour_cost'], debit=part, dims=dims, note='Lương'))
         else:
             farm = employee_farms.get(r.get('employee'))
-            lines.append(line(accounts['admin_expense'], debit=cost, dims={'lotus_farm': farm} if farm else None, note='Lương gián tiếp'))
+            lines.append(line(accounts['admin_labour'], debit=cost, dims={'lotus_farm': farm} if farm else None, note='Lương gián tiếp'))
         for (k, _), part in zip(INSURANCE_KEYS, _parts(ee, r.get('base'), employee_rates)):
             insurance[k] += part
         for (k, _), part in zip(INSURANCE_KEYS, _parts(er, r.get('base'), employer_rates)):
@@ -204,7 +208,7 @@ def payroll_entry(snapshot, shares, accounts, employee_rates, employer_rates, cr
         farm = crew_farms.get(c.get('work_team'))
         if not farm:
             issues.append('Đội %s chưa gắn vườn' % c.get('work_team'))
-        lines.append(line(accounts['production_cost'], debit=amount, dims={'lotus_farm': farm, 'lotus_work_type': c.get('work_type')}, note='Khoán ' + str(c.get('work_team'))))
+        lines.append(line(accounts['labour_cost'], debit=amount, dims={'lotus_farm': farm, 'lotus_work_type': c.get('work_type')}, note='Khoán ' + str(c.get('work_team'))))
         lines.append(line(accounts['crew_payable'], credit=amount, note='Khoán ' + str(c.get('work_team'))))
     lines = merge(lines)
     return lines, issues + ([] if not lines else check_entry(lines))
@@ -234,6 +238,23 @@ def shares_from_work(rows):
         key = dims_key(dims)
         bucket[key] = (dims, bucket.get(key, (dims, 0))[1] + float(r['workdays']))
     return {e: list(b.values()) for e, b in out.items()}
+
+
+def closing_entry(rows, wip_account):
+    """Month-end transfer of production costs to work in progress, lot by lot.
+    rows: dict(account, net, lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type) = the month's balance of
+    621 / 622 / 627x per dimension set -> Nợ 154 (same dimensions) / Có each cost account. Zero balances are skipped."""
+    lines = []
+    for r in rows:
+        net = int(round(r.get('net') or 0))
+        if not net:
+            continue
+        dims = {f: r.get(f) for f in DIM_FIELDS}
+        if net > 0:
+            lines += [line(wip_account, debit=net, dims=dims, note='Kết chuyển ' + r['account']), line(r['account'], credit=net, dims=dims, note='Kết chuyển')]
+        else:
+            lines += [line(wip_account, credit=-net, dims=dims, note='Kết chuyển ' + r['account']), line(r['account'], debit=-net, dims=dims, note='Kết chuyển')]
+    return lines
 
 
 def aging(due_date, today):

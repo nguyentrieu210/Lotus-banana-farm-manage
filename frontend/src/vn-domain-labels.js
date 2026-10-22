@@ -81,6 +81,7 @@ export const extraStateNames = Object.freeze({
   'Salary Payment': 'Chi lương',
   'Opening Balance': 'Số dư đầu kỳ',
   'Chart Transfer': 'Chuyển hệ thống tài khoản',
+  'Cost Closing': 'Kết chuyển chi phí',
   Posted: 'Đã ghi sổ',
   Reversed: 'Đã đảo',
   Excel: 'File Excel',

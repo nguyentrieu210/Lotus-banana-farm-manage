@@ -1,12 +1,16 @@
 """Tài chính – Kế toán: who may do what, the settings, the accounting dimensions, and applying the TT133
 chart of accounts (preview first; the chief accountant applies it, it never runs on migrate).
 """
+import json
+from pathlib import Path
+
 import frappe
 from frappe.utils import flt, getdate, now_datetime, nowdate
 
 from lotus_farm.finance import rules
 
 SETTINGS = 'Lotus Finance Settings'
+COA_DIR = Path(__file__).resolve().parents[1] / 'data'
 ACCOUNTANT = 'Lotus Accountant'
 CHIEF = 'Lotus Chief Accountant'
 ACCOUNTANTS = (ACCOUNTANT, CHIEF, 'Accounts User', 'Accounts Manager', 'System Manager')
@@ -109,7 +113,8 @@ def validate_settings(doc):
     """On save: only the chief accountant; switching on needs a cutover date and every account valid."""
     if not frappe.flags.in_install and not frappe.flags.in_migrate:
         require_chief()
-    if doc.finance_enabled:
+    # While the chart is being switched, renames save this document midway; coa_apply validates at the end.
+    if doc.finance_enabled and not frappe.flags.lotus_coa_apply:
         if not doc.company:
             frappe.throw('Chọn công ty trước khi bật ghi sổ.')
         if not doc.cutover_date:
@@ -149,7 +154,7 @@ def install():
                 add_permission(doctype, role)
                 update_permission_property(doctype, role, 0, 'read', 1)
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-    create_custom_fields({'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\nSalary',
+    create_custom_fields({'Journal Entry': [dict(fieldname='lotus_payment_kind', label='Phiếu chi Lotus', fieldtype='Select', options='\nSalary\nClosing',
                                                  read_only=1, no_copy=1, insert_after='voucher_type')]})
     install_dimensions()
 
@@ -173,7 +178,11 @@ def install_dimensions():
             make_dimension_in_accounting_doctypes(doc=doc)
 
 
-# Chart of accounts (TT133) -----------------------------------------------------------------------------
+# Chart of accounts (Thông tư 99) -----------------------------------------------------------------------
+# Applying the chart reconciles whatever the company has with lotus_farm/data/coa_tt99.json: missing accounts are
+# added, accounts with the same number get the official name, parent and type, the company / warehouse / Lotus
+# defaults move to the new accounts, balances on retired accounts are moved by one journal, and every account the
+# chart does not have is deleted (or disabled when it has ledger history or is still referenced).
 
 def _roots(company_name):
     roots = {}
@@ -181,6 +190,11 @@ def _roots(company_name):
         if not r.parent_account and r.root_type not in roots:
             roots[r.root_type] = r.name
     return roots
+
+
+def _accounts(company_name):
+    return frappe.get_all('Account', filters={'company': company_name}, fields=['name', 'account_number', 'account_name', 'parent_account', 'is_group',
+                                                                                'root_type', 'account_type', 'disabled', 'lft', 'rgt'], order_by='lft')
 
 
 def _numbers(company_name):
@@ -194,110 +208,178 @@ def _balances(company_name, on_date):
     return {r.account: flt(r.balance) for r in rows}
 
 
-def _plain_name(account):
-    meta = frappe.db.get_value('Account', account, ['account_name', 'account_type', 'root_type'], as_dict=True) or {}
-    return meta
+def _with_history(company_name):
+    return set(frappe.db.sql_list("select distinct account from `tabGL Entry` where company=%s", company_name))
+
+
+def _docname(number, name, abbr):
+    return '%s - %s - %s' % (number, name, abbr)
 
 
 def coa_preview(on_date=None, warehouse_accounts=None):
-    """What applying TT133 would do: accounts to add, company defaults, warehouse accounts, balance transfer."""
+    """What applying the chart would do: add, rename, retire (delete / disable), defaults, warehouses, balance moves."""
     company_name = company()
     coa = rules.load_coa()
     errors = rules.validate_coa(coa)
-    numbers = _numbers(company_name)
-    plan = rules.coa_plan(coa, set(numbers))
+    abbr = frappe.get_cached_value('Company', company_name, 'abbr')
     roots = _roots(company_name)
     for root_type in {a['root_type'] for a in coa['accounts']}:
         if root_type not in roots:
             errors.append('Công ty chưa có tài khoản gốc loại %s' % root_type)
-    abbr = frappe.get_cached_value('Company', company_name, 'abbr')
-    by_number = dict(numbers)
-    for a in plan:
-        by_number[a['number']] = '%s - %s - %s' % (a['number'], a['name'], abbr)
-    defaults = {k: by_number.get(v) for k, v in coa['defaults'].items()}
-    warehouses = []
-    for w in frappe.get_all('Warehouse', filters={'company': company_name, 'is_group': 0}, fields=['name', 'account', 'warehouse_name'], order_by='name'):
-        chosen = (warehouse_accounts or {}).get(w.name) or defaults['inventory_material']
-        warehouses.append(dict(warehouse=w.name, current=w.account, account=chosen))
+    target = {a['number']: a for a in coa['accounts']}
+    groups = {a['parent'] for a in coa['accounts'] if a.get('parent')}
+    current = _accounts(company_name)
+    by_number = {a.account_number: a for a in current if a.account_number}
+    history = _with_history(company_name)
     on_date = str(getdate(on_date or nowdate()))
-    transfer, missing = [], []
-    stock_numbers = {coa['defaults']['inventory_material'], coa['defaults']['finished_goods'], coa['defaults'].get('goods'), coa['defaults'].get('inventory_tools')}
-    for account, balance in sorted(_balances(company_name, on_date).items()):
-        meta = _plain_name(account)
-        number = frappe.db.get_value('Account', account, 'account_number')
-        if number and number in {a['number'] for a in coa['accounts']}:
+    balances = _balances(company_name, on_date)
+    add, update = [], []
+    for number, a in target.items():
+        is_group = 1 if number in groups else 0
+        have = by_number.get(number)
+        if not have:
+            add.append(dict(a, is_group=is_group))
             continue
-        target = coa['transfer'].get(meta.get('account_name'))
-        if meta.get('account_type') in ('Payable', 'Receivable'):
-            missing.append('%s có số dư công nợ theo đối tượng; chuyển bằng bút toán số dư đầu kỳ theo từng nhà cung cấp/khách hàng' % account)
+        if have.root_type != a['root_type']:
+            errors.append('TK %s hiện là loại %s, danh mục mới là %s' % (number, have.root_type, a['root_type']))
+        if is_group and not have.is_group and have.name in history:
+            errors.append('TK %s đã có bút toán nên không chuyển thành tài khoản tổng hợp được' % number)
+        if have.account_name != a['name'] or bool(have.is_group) != bool(is_group) or (have.account_type or '') != (a['account_type'] or '') \
+                or have.disabled:
+            update.append(dict(a, is_group=is_group, account=have.name, old_name=have.account_name, new_account=_docname(number, a['name'], abbr)))
+    names = {n: _docname(n, a['name'], abbr) for n, a in target.items()}
+    retire = []
+    for acc in current:
+        if not acc.parent_account or (acc.account_number and acc.account_number in target):
             continue
-        if not target:
-            missing.append('Chưa có tài khoản TT133 để chuyển số dư của %s (%s)' % (account, format(round(balance), ',').replace(',', '.')))
+        keep = acc.name in history
+        if keep and abs(balances.get(acc.name, 0)) > 0.5 and not acc.is_group:
+            continue  # moved by the transfer journal below, then disabled
+        retire.append(dict(account=acc.name, label=(acc.account_number + ' - ' if acc.account_number else '') + acc.account_name,
+                           action='disable' if keep else 'delete', is_group=acc.is_group, lft=acc.lft))
+    transfer = []
+    for account, balance in sorted(balances.items()):
+        acc = next((a for a in current if a.name == account), None)
+        if not acc or (acc.account_number and acc.account_number in target):
             continue
-        transfer.append(dict(old=account, new=by_number.get(target), number=target, balance=round(balance), stock=target in stock_numbers))
-    return dict(company=company_name, version=coa['version'], name=coa['name'], note=coa['note'], add=plan, existing=len(numbers),
-                defaults=defaults, warehouses=warehouses, transfer=transfer, errors=errors + missing, on_date=on_date,
-                applied=settings().coa_version)
+        number = coa['transfer'].get(acc.account_name.replace(' (TK cũ)', '')) or (acc.account_number if acc.account_number in target else None)
+        if not number:
+            # a retired TT133 account keeps its number when TT99 has it; otherwise the Standard name map decides
+            from_vi = {v + ' (TK cũ)': k for k, v in json.loads((COA_DIR / 'erpnext_standard_accounts_vi.json').read_text(encoding='utf-8'))['accounts'].items()}
+            number = coa['transfer'].get(from_vi.get(acc.account_name, ''))
+        if acc.account_type in ('Payable', 'Receivable'):
+            errors.append('%s còn số dư công nợ theo đối tượng; chuyển bằng số dư đầu kỳ theo từng nhà cung cấp/khách hàng' % account)
+        elif not number:
+            errors.append('Chưa có tài khoản để chuyển số dư của %s (%s)' % (account, format(round(balance), ',').replace(',', '.')))
+        else:
+            transfer.append(dict(old=account, new=names[number], number=number, balance=round(balance)))
+            retire.append(dict(account=account, label=acc.account_name, action='disable', is_group=0, lft=acc.lft))
+    defaults = {k: names.get(v) for k, v in coa['defaults'].items()}
+    warehouses = [dict(warehouse=w.name, current=w.account, account=(warehouse_accounts or {}).get(w.name) or defaults['inventory_material'])
+                  for w in frappe.get_all('Warehouse', filters={'company': company_name, 'is_group': 0}, fields=['name', 'account'], order_by='name')]
+    company_defaults = {f: names.get(n) for f, n in coa.get('company_defaults', {}).items() if frappe.get_meta('Company').has_field(f)}
+    return dict(company=company_name, version=coa['version'], name=coa['name'], note=coa['note'], add=add, update=update,
+                retire=sorted(retire, key=lambda r: -r['lft']), existing=len(by_number), defaults=defaults, company_defaults=company_defaults,
+                warehouses=warehouses, transfer=transfer, errors=errors, on_date=on_date, applied=settings().coa_version)
 
 
 def coa_apply(on_date=None, warehouse_accounts=None):
-    """Apply the preview in one transaction. Order matters: link the new stock accounts to the warehouses first,
-    then move the old balances, so ERPNext accepts the journal on the stock account."""
+    """Apply the preview in one transaction. Order matters: new accounts first, then every default (company,
+    warehouses, Lotus) moves to them, then balances move, then retired accounts go."""
     require_chief()
     preview = coa_preview(on_date, warehouse_accounts)
     if preview['errors']:
         frappe.throw('Chưa áp dụng được:<br>' + '<br>'.join(preview['errors']))
+    frappe.flags.lotus_coa_apply = True
     company_name = preview['company']
     roots = _roots(company_name)
     names = _numbers(company_name)
+    currency = frappe.get_cached_value('Company', company_name, 'default_currency')
+    # Leaves that become groups (no history, checked in the preview) must be groups before children are added.
+    for u in preview['update']:
+        if u['is_group'] and not frappe.db.get_value('Account', u['account'], 'is_group'):
+            frappe.db.set_value('Account', u['account'], 'is_group', 1)
     for a in preview['add']:
         parent = roots[a['root_type']] if a['parent'] is None else names[a['parent']]
         doc = frappe.get_doc(dict(doctype='Account', account_name=a['name'], account_number=a['number'], parent_account=parent, company=company_name,
-                                  is_group=a['is_group'], root_type=a['root_type'], account_type=a['account_type'] or None,
-                                  account_currency=frappe.get_cached_value('Company', company_name, 'default_currency')))
+                                  is_group=a['is_group'], root_type=a['root_type'], account_type=a['account_type'] or None, account_currency=currency))
         doc.flags.ignore_permissions = True
         doc.flags.ignore_mandatory = True
         doc.insert()
         names[a['number']] = doc.name
-    d = preview['defaults']
-    frappe.db.set_value('Company', company_name, dict(
-        default_inventory_account=d['inventory_material'], stock_received_but_not_billed=d['received_not_billed'],
-        stock_adjustment_account=d['stock_adjustment'], default_payable_account=d['payable_supplier'],
-        default_cash_account=d['cash'], default_bank_account=d['bank'], default_payroll_payable_account=d['payable_employee'],
-        default_expense_account=d['admin_expense'], round_off_account=d['round_off']))
+    # Defaults first, on today's record names: renaming an account below carries every link to its new name.
+    coa = rules.load_coa()
+    current = lambda number: names.get(number)
+    frappe.db.set_value('Company', company_name, {f: current(n) for f, n in coa.get('company_defaults', {}).items()
+                                                  if frappe.get_meta('Company').has_field(f) and current(n)})
     for w in preview['warehouses']:
-        frappe.db.set_value('Warehouse', w['warehouse'], 'account', w['account'])
+        number = next((n for n, a in names.items() if a == w['account']), None) or coa['defaults']['inventory_material']
+        frappe.db.set_value('Warehouse', w['warehouse'], 'account', current(number))
     frappe.flags.pop('warehouse_account_map', None)
-    # A retired stock account (no warehouse points to it any more) stops being typed Stock, otherwise ERPNext
-    # compares it with the value of every warehouse and refuses the journal that moves its balance to 152.
+    for key in rules.KEYS:
+        if coa['defaults'].get(key) and current(coa['defaults'][key]):
+            frappe.db.set_single_value(SETTINGS, 'acct_' + key, current(coa['defaults'][key]))
+    if not frappe.db.get_single_value(SETTINGS, 'company'):
+        frappe.db.set_single_value(SETTINGS, 'company', company_name)
+    renamed = {}
+    for u in preview['update']:
+        name = u['account']
+        if u['old_name'] != u['name']:
+            name = _rename_account(name, u['name'], u['number'], company_name)
+            renamed[u['account']] = name
+        names[u['number']] = name
+        frappe.db.set_value('Account', name, dict(account_type=u['account_type'] or '', disabled=0))
+    resolve = lambda acc: renamed.get(acc, acc) if acc else acc
+    frappe.flags.pop('warehouse_account_map', None)
+    doc = settings()
+    # A retired stock account stops being typed Stock, otherwise ERPNext compares it with the value of every
+    # warehouse and refuses the journal that moves its balance.
     for t in preview['transfer']:
         if frappe.db.get_value('Account', t['old'], 'account_type') == 'Stock':
             frappe.db.set_value('Account', t['old'], 'account_type', '')
-    doc = settings()
-    for key in rules.KEYS:
-        if d.get(key) and not doc.get('acct_' + key):
-            doc.set('acct_' + key, d[key])
-    doc.company = doc.company or company_name
-    voucher = None
-    if preview['transfer']:
-        voucher = _transfer_journal(company_name, preview['on_date'], preview['transfer'])
+    voucher = _transfer_journal(company_name, preview['on_date'], [dict(t, new=resolve(t['new'])) for t in preview['transfer']], preview['version']) \
+        if preview['transfer'] else None
+    deleted, disabled, kept = [], [], []
+    for r in preview['retire']:
+        if not frappe.db.exists('Account', r['account']):
+            continue
+        if r['action'] == 'delete' and not frappe.db.exists('Account', {'parent_account': r['account']}):
+            frappe.db.savepoint('lotus_coa_delete')
+            try:
+                frappe.delete_doc('Account', r['account'], ignore_permissions=True, force=False)
+                deleted.append(r['account'])
+                continue
+            except Exception as exc:
+                # still referenced (mode of payment, item defaults…): undo the attempt and keep it disabled
+                frappe.db.rollback(save_point='lotus_coa_delete')
+                kept.append((r['account'], str(exc)[:200]))
+        frappe.db.set_value('Account', r['account'], 'disabled', 1)
+        disabled.append(r['account'])
+    for u in preview['update']:
+        name = names[u['number']]
+        if not u['is_group'] and frappe.db.get_value('Account', name, 'is_group') and not frappe.db.exists('Account', {'parent_account': name, 'disabled': 0}):
+            if not frappe.db.exists('Account', {'parent_account': name}):
+                frappe.db.set_value('Account', name, 'is_group', 0)
     translate_old_accounts(company_name)
+    frappe.clear_cache()
+    frappe.flags.lotus_coa_apply = False
+    doc = settings()
     doc.coa_version = preview['version']
     doc.coa_applied_at = now_datetime()
     doc.coa_applied_by = frappe.session.user
     doc.flags.ignore_permissions = True
     doc.save()
-    doc.add_comment('Info', 'Áp dụng %s; thêm %d tài khoản; chuyển số dư: %s' % (preview['version'], len(preview['add']), voucher or 'không có'))
-    return dict(added=len(preview['add']), transfer=voucher)
+    doc.add_comment('Info', 'Áp dụng %s; thêm %d, sửa %d, xóa %d, ngừng dùng %d tài khoản; chuyển số dư: %s' % (
+        preview['version'], len(preview['add']), len(preview['update']), len(deleted), len(disabled), voucher or 'không có'))
+    return dict(added=len(preview['add']), updated=len(preview['update']), deleted=len(deleted), disabled=len(disabled), transfer=voucher,
+                kept=[k for k in kept][:20])
 
 
 def translate_old_accounts(company_name=None):
-    """Vietnamese display names for ERPNext's Standard chart (replaced by TT133). Only account_name changes (the
+    """Vietnamese display names for ERPNext's Standard chart (replaced by the Vietnamese chart). Only account_name changes (the
     record name and every voucher stay as they are); retired leaf accounts are marked (TK cũ). Safe to rerun."""
-    import json
-    from pathlib import Path
     company_name = company_name or company()
-    names = json.loads((Path(rules.COA_FILE).parent / 'erpnext_standard_accounts_vi.json').read_text(encoding='utf-8'))
+    names = json.loads((COA_DIR / 'erpnext_standard_accounts_vi.json').read_text(encoding='utf-8'))
     changed = 0
     for a in frappe.get_all('Account', filters={'company': company_name, 'account_number': ['in', ['', None]]}, fields=['name', 'account_name', 'is_group']):
         vi = names['groups'].get(a.account_name) if a.is_group else names['accounts'].get(a.account_name)
@@ -307,7 +389,18 @@ def translate_old_accounts(company_name=None):
     return changed
 
 
-def _transfer_journal(company_name, on_date, transfer):
+def _rename_account(name, account_name, number, company_name):
+    """ERPNext's update_account_number refuses a rename within 5 minutes of a ledger change, and every rename touches
+    the ledger rows of the account; switching a whole chart renames many accounts in one go, so rename directly."""
+    from erpnext.accounts.doctype.account.account import get_account_autoname
+    frappe.db.set_value('Account', name, dict(account_name=account_name, account_number=number))
+    new = get_account_autoname(number, account_name, company_name)
+    if new != name:
+        frappe.rename_doc('Account', name, new, force=True, merge=False, show_alert=False)
+    return new
+
+
+def _transfer_journal(company_name, on_date, transfer, version):
     cost_center = frappe.get_cached_value('Company', company_name, 'cost_center')
     accounts = []
     for t in transfer:
@@ -315,10 +408,10 @@ def _transfer_journal(company_name, on_date, transfer):
         accounts.append(dict(account=t['new'], debit_in_account_currency=max(b, 0), credit_in_account_currency=max(-b, 0), cost_center=cost_center))
         accounts.append(dict(account=t['old'], debit_in_account_currency=max(-b, 0), credit_in_account_currency=max(b, 0), cost_center=cost_center))
     je = frappe.get_doc(dict(doctype='Journal Entry', voucher_type='Journal Entry', company=company_name, posting_date=on_date,
-                             user_remark='Chuyển số dư sang hệ thống tài khoản TT133', accounts=accounts))
+                             user_remark='Chuyển số dư sang hệ thống tài khoản ' + version, accounts=accounts))
     je.flags.ignore_permissions = True
     je.insert()
     je.submit()
     from lotus_farm.finance.posting import record
-    record('Lotus Finance Settings', SETTINGS, 'Chart Transfer', je, amount=sum(abs(t['balance']) for t in transfer), source_hash='tt133')
+    record('Lotus Finance Settings', SETTINGS, 'Chart Transfer', je, amount=sum(abs(t['balance']) for t in transfer), source_hash=version, key_suffix=version)
     return je.name

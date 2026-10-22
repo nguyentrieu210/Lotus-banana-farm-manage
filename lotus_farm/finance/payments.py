@@ -2,8 +2,8 @@
 
 A goods invoice is made from submitted Purchase Receipts (ERPNext's make_purchase_invoice, so the billed
 quantity stays in step with the receipt): Nợ hàng về chưa có hóa đơn / Có phải trả người bán. A service
-invoice (transport, machine hire…) posts its lines straight to production cost (with farm / lot) or to
-administrative expense. A payment is a draft Payment Entry allocated to open invoices, signed by the
+invoice (transport, machine hire…) posts its lines to production overhead services (6277, with farm / lot) or to
+administrative services (6427). A payment is a draft Payment Entry allocated to open invoices, signed by the
 accountant, the chief accountant and the director; the last signature submits it. No VAT in this release.
 """
 import frappe
@@ -113,7 +113,7 @@ def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, pos
         if production and not dims.get('lotus_farm'):
             frappe.throw('Dòng %d: chi phí sản xuất phải chọn vườn (và lô nếu có).' % i)
         items.append(dict(item_name=str(ln.get('description') or 'Chi phí dịch vụ')[:140], description=ln.get('description') or 'Chi phí dịch vụ',
-                          qty=1, rate=amount, uom=uom, conversion_factor=1, expense_account=m['production_cost'] if production else m['admin_expense'],
+                          qty=1, rate=amount, uom=uom, conversion_factor=1, expense_account=m['overhead_service'] if production else m['admin_expense'],
                           cost_center=cost_center, **dims))
     posting_date = posting_date or bill_date
     setup.check_cutover(posting_date)
@@ -209,7 +209,7 @@ def _voucher(doctype, name):
     if doctype not in (PE, 'Journal Entry'):
         frappe.throw('Chứng từ không phải phiếu chi.')
     doc = frappe.get_doc(doctype, name)
-    if doctype == 'Journal Entry' and not doc.get('lotus_payment_kind'):
+    if doctype == 'Journal Entry' and doc.get('lotus_payment_kind') != 'Salary':
         frappe.throw('Bút toán này không phải phiếu chi lương.')
     return doc
 
