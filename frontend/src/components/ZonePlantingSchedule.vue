@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted,ref,watch} from 'vue'
 import {call} from '../api'
+import DataTable from './DataTable.vue'
 const props=defineProps({farm:{type:String,default:''},zone:{type:String,default:'ALL'},block:{type:String,default:''}})
 const result=ref(null),busy=ref(false),error=ref('')
 let seq=0
@@ -19,6 +20,13 @@ async function load(){
 watch(()=>[props.farm,props.zone,props.block],load)
 onMounted(load)
 const date=s=>s?.split('-').reverse().join('/')||'Chưa xác nhận'
+const columns=[{field:'zone',headerName:'Khu',valueFormatter:p=>'Khu '+p.value},
+ {field:'estimated_planting_date',headerName:'Ngày trồng ước tính',valueFormatter:p=>date(p.value)},
+ {field:'estimated_sucker_selection_date',headerName:'Chọn chồi dự kiến',valueFormatter:p=>date(p.value)},
+ {field:'estimated_flowering_date',headerName:'Trổ đợt đầu',valueFormatter:p=>date(p.value)},
+ {field:'lots',headerName:'Lô'},
+ {field:'saved_estimated_dates',headerName:'Đã lưu kế hoạch',valueFormatter:p=>p.data?.pending?'Chờ xác nhận':p.value+' / '+p.data?.lots+' lô'},
+ {field:'actual_planting_lots',headerName:'Thực tế',valueFormatter:p=>p.value+' lô có ngày trồng thật'}]
 </script>
 <template>
  <section class="zone-plan" aria-label="Kế hoạch trồng theo khu">
@@ -28,16 +36,7 @@ const date=s=>s?.split('-').reverse().join('/')||'Chưa xác nhận'
   <p v-if="busy" class="zone-plan__note">Đang kiểm tra dữ liệu đã lưu…</p>
   <p v-if="error" role="alert">{{error}}</p>
   <div v-if="result?.available" class="zone-plan__scroll">
-   <table><thead><tr><th>Khu</th><th>Ngày trồng ước tính</th><th>Chọn chồi dự kiến</th><th>Trổ đợt đầu</th><th>Lô</th><th>Đã lưu kế hoạch</th><th>Thực tế</th></tr></thead>
-    <tbody>
-     <tr v-for="z in result.zones" :key="z.zone">
-      <td><b>Khu {{z.zone}}</b></td><td>{{date(z.estimated_planting_date)}}</td>
-      <td>{{date(z.estimated_sucker_selection_date)}}</td><td>{{date(z.estimated_flowering_date)}}</td><td>{{z.lots}}</td>
-      <td>{{z.pending?'Chờ xác nhận':z.saved_estimated_dates+' / '+z.lots+' lô'}}</td>
-      <td>{{z.actual_planting_lots}} lô có ngày trồng thật</td>
-     </tr>
-    </tbody>
-   </table>
+   <DataTable :rows="result.zones||[]" :columns="columns" row-key="zone" storage-key="zone-planting" empty="Chưa có khu phù hợp."/>
   </div>
   <p v-if="result?.available" class="zone-plan__note"><b>Phân bổ trổ:</b> 20% tháng đầu, 60% tháng tiếp, 20% tháng cuối. Trổ đầu sau trồng 6 tháng; chọn chồi 90 ngày sau trồng. Khu E chưa được xác nhận lịch trồng; trong chế độ chạy thử chỉ dùng mốc giả lập. Ngày chọn chồi hoặc trổ ghi nhận mới sẽ thay mốc dự phóng của đợt tương ứng.</p>
  </section>

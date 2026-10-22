@@ -38,7 +38,22 @@ const columnDefs=[
   {field:'available_to_promise_kg',headerName:'Còn có thể giữ (kg)',type:'numericColumn',minWidth:169,valueFormatter:fmt},
   {field:'supply_state',headerName:'Trạng thái',minWidth:134,valueFormatter:p=>forecastStates[p.value]||p.value},
 ]
-const defaultColDef={sortable:true,resizable:true,filter:false}
+const weekCols=[
+ {field:'week_start',headerName:'Tuần bắt đầu',valueFormatter:p=>p.value+' – '+p.data.week_end},
+ {field:'gross_kg',headerName:'Dự thu ngoài vườn (kg)',valueFormatter:p=>kg(p.value)},
+ {field:'packed_kg',headerName:'Đóng gói dự kiến (kg)',valueFormatter:p=>kg(p.value)},
+ {field:'actual_gross_kg',headerName:'Đã thu (kg buồng)',valueFormatter:p=>kg(p.value)},
+ {field:'active_count',headerName:'Số dự thu'}
+]
+const blockCols=[
+ {field:'farm_block',headerName:'Lô',valueFormatter:p=>p.value+' · '+p.data.farm},
+ {field:'count',headerName:'Dự thu'},
+ {field:'bunches',headerName:'Buồng',valueFormatter:p=>kg(p.value)},
+ {field:'gross',headerName:'Kg buồng',valueFormatter:p=>kg(p.value)},
+ {field:'packed',headerName:'Kg đóng gói',valueFormatter:p=>kg(p.value)},
+ {field:'available',headerName:'Còn giữ được',valueFormatter:p=>kg(p.value)},
+ {field:'actual',headerName:'Đã thu (kg buồng)',valueFormatter:p=>kg(p.value)}
+]
 const showRows=computed(()=>tab.value==='list')
 function create(){emit('create',{farm_block:block.value||undefined,period_start_date:props.payload?.from_date||undefined,period_end_date:props.payload?.to_date||undefined})}
 </script>
@@ -77,39 +92,17 @@ function create(){emit('create',{farm_block:block.value||undefined,period_start_
       <div v-if="tab==='weeks'" class="forecast-week-panel">
         <div class="forecast-week-head"><strong>Kế hoạch theo tuần</strong><span>Phiếu nhiều tuần được xếp một lần vào tuần bắt đầu trong khoảng lọc, không chia đều sản lượng.</span></div>
         <div class="forecast-week-scroll">
-          <table class="forecast-week-table">
-            <thead><tr><th>Tuần bắt đầu</th><th>Dự thu ngoài vườn (kg)</th><th>Đóng gói dự kiến (kg)</th><th>Đã thu (kg buồng)</th><th>Số dự thu</th></tr></thead>
-            <tbody>
-              <tr v-for="week in weeks" :key="week.week_start">
-                <td class="forecast-no-wrap"><strong>{{week.week_start}}</strong><small>– {{week.week_end}}</small></td>
-                <td><div class="forecast-meter"><div class="forecast-meter-fill forecast-meter-gross" :style="{width:percent(week.gross_kg,peak)+'%'}"/></div><b>{{kg(week.gross_kg)}}</b></td>
-                <td><div class="forecast-meter"><div class="forecast-meter-fill" :style="{width:percent(week.packed_kg,peak)+'%'}"/></div><b>{{kg(week.packed_kg)}}</b></td>
-                <td><div class="forecast-meter"><div class="forecast-meter-fill forecast-meter-actual" :style="{width:percent(week.actual_gross_kg,peak)+'%'}"/></div><b>{{kg(week.actual_gross_kg)}}</b></td>
-                <td>{{week.active_count}}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable :rows="weeks" :columns="weekCols" row-key="week_start" storage-key="forecast-weekly" empty="Không có dự thu trong tuần."/>
         </div>
         <p class="forecast-footnote">{{props.payload?.rule}} Sản lượng đã thu là kg buồng thực tế, <strong>không phải</strong> kg thành phẩm đóng gói; đây không phải phép so sánh chênh lệch trực tiếp.</p>
       </div>
       <div v-else-if="tab==='blocks'" class="forecast-week-panel">
         <div class="forecast-week-head"><strong>Phân bổ theo lô</strong><span>Chỉ cộng các bản đã phát hành; bấm lô để lọc phiếu.</span></div>
-        <div class="forecast-week-scroll"><table class="forecast-week-table">
-          <thead><tr><th>Lô</th><th>Dự thu</th><th>Buồng</th><th>Kg buồng</th><th>Kg đóng gói</th><th>Còn giữ được</th><th>Đã thu (kg buồng, theo phiếu)</th></tr></thead>
-          <tbody>
-            <tr v-for="item in groupRows" :key="item.key" class="forecast-clickable" tabindex="0" role="button" @click="block=item.farm_block;tab='list'" @keydown.enter="block=item.farm_block;tab='list'">
-              <td><strong>{{item.farm_block}}</strong><small>{{item.farm}}</small></td><td>{{item.count}}</td><td>{{kg(item.bunches)}}</td><td>{{kg(item.gross)}}</td><td>{{kg(item.packed)}}</td><td>{{kg(item.available)}}</td><td>{{kg(item.actual)}}</td>
-            </tr>
-            <tr v-if="!groupRows.length"><td colspan="7">Không có dự thu đã phát hành phù hợp bộ lọc.</td></tr>
-          </tbody>
-        </table></div>
+        <div class="forecast-week-scroll"><DataTable :rows="groupRows" :columns="blockCols" row-key="key" storage-key="forecast-by-lot" interactive @open="item=>{block=item.farm_block;tab='list'}" empty="Không có dự thu phù hợp bộ lọc."/></div>
       </div>
       <div v-else class="forecast-grid-area">
         <div class="forecast-grid-shell">
-          <AgGridVue class="forecast-grid" :theme="compactGridTheme" :locale-text="AG_GRID_LOCALE_VN"
-            :row-data="rows" :column-defs="columnDefs" :default-col-def="defaultColDef"
-            :dom-layout="rows.length<9?'autoHeight':'normal'" :row-selection="{mode:'singleRow',enableClickSelection:true,checkboxes:false}"
-            @row-clicked="takeRow" @row-double-clicked="event=>open(event.data)"/>
+          <DataTable :rows="rows" :columns="columnDefs" row-key="name" storage-key="forecast-list" interactive @open="selected=$event" @row-double-open="open"/>
         </div>
         <aside v-if="selected" class="forecast-inspector" aria-label="Chi tiết dự thu đã chọn">
           <div class="forecast-inspector-title"><strong>{{selected.name}}</strong><button type="button" aria-label="Đóng chi tiết" @click="selected=null">×</button></div>

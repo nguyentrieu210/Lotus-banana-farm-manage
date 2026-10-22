@@ -1,6 +1,7 @@
 <script setup>
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusIcon from '../LotusIcon.vue'
+import DataTable from '../DataTable.vue'
 import MonthPicker from '../MonthPicker.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import WorkspaceConfirm from '../WorkspaceConfirm.vue'
@@ -77,6 +78,28 @@ async function signHere(){
 async function reopen(){saving.value=true
  try{await periodApi('reopen_period',{company:props.company,month:month.value,reason:reopenReason.value},true);reopenOpen.value=false;reopenReason.value='';emit('notice','Đã mở lại kỳ '+label(month.value)+'.');await load()}
  catch(e){emit('error',e.message)}finally{saving.value=false}}
+
+const pcol=(field,headerName,format)=>({field,headerName,minWidth:130,...(format?{valueFormatter:p=>format(p.value,p.data)}:{})})
+const pmoney=(field,label)=>pcol(field,label,v=>money(v))
+const pnum=(field,label)=>pcol(field,label,v=>num(v))
+const sheetCols=[
+ pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee+' · '+(bases[r.payment_basis]||'Chưa chọn cơ chế')),
+ pmoney('base','Lương CB'),pnum('workdays','Công'),pnum('regular_hours','Giờ thường'),pnum('night_hours','Giờ đêm'),
+ pcol('ot_regular','Giờ tăng ca',(_,r)=>num(Number(r.ot_regular||0)+Number(r.ot_weekly_off||0)+Number(r.ot_holiday||0))),
+ pnum('paid_hours','Lễ, phép (giờ)'),pmoney('gross','Thu nhập'),pmoney('employee_insurance','BH người LĐ'),pmoney('net','Thực lĩnh'),
+ pcol('issues','Ghi chú',(_,r)=>(r.via_crew?'Trả qua đội khoán; ':'')+(r.issues||[]).join('; '))
+]
+function slipLink(params){const a=document.createElement('a');a.href='/app/salary-slip/'+encodeURIComponent(params.data.name);a.target='_blank';a.rel='noopener';a.textContent=params.data.name;return a}
+const slipCols=[
+ {field:'name',headerName:'Phiếu lương',minWidth:220,cellRenderer:slipLink},
+ pcol('employee_name','Nhân viên'),pmoney('gross_pay','Thu nhập HRMS'),pmoney('total_deduction','Khấu trừ'),
+ pmoney('net_pay','Thực lĩnh'),pmoney('difference','Lệch bảng Lotus'),
+ pcol('docstatus','Trạng thái',(_,r)=>r.docstatus===1?(r.journal_entry?'Đã hạch toán':'Đã duyệt'):'Nháp')
+]
+const crewCols=[pcol('team_name','Đội'),pcol('foreman','Đầu câu'),pcol('work_name','Công việc'),pcol('completed_qty','Khối lượng',(_,r)=>num(r.completed_qty)+' '+r.uom),
+ pmoney('unit_rate','Đơn giá'),pmoney('amount','Thành tiền'),pnum('workdays','Tổng công')]
+const issueCols=[pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee),pcol('issue','Vấn đề')]
+
 onMounted(load)
 watch(()=>props.company,load)
 defineExpose({load})
@@ -135,28 +158,25 @@ defineExpose({load})
 
  <section v-if="view==='sheet'&&sheet" class="tk-card hr-pay__table" aria-label="Bảng lương nhân sự">
   <header class="tk-card__head"><h3>Bảng lương {{label(sheet.month)}}</h3><span class="tk-pill" :class="sheet.draft?'is-draft':'is-approved'">{{sheet.draft?'Bản nháp':'Đã chốt'}}</span><span class="tk-hint">Đơn giá giờ = lương CB ÷ {{sheet.hours_base}} · ca đêm +30% · tăng ca 150/200/300%</span></header>
-  <div class="hr-pay__scroll"><table><thead><tr><th>Nhân viên</th><th class="num">Lương CB</th><th class="num">Công</th><th class="num">Giờ thường</th><th class="num">Giờ đêm</th><th class="num">Giờ tăng ca</th><th class="num">Lễ, phép (giờ)</th><th class="num">Thu nhập</th><th class="num">BH người LĐ</th><th class="num">Thực lĩnh</th><th>Ghi chú</th></tr></thead>
-   <tbody><tr v-for="e in sheet.employees" :key="e.employee"><td><strong>{{e.employee_name}}</strong><small>{{e.employee}} · {{bases[e.payment_basis]||'Chưa chọn cơ chế'}}</small></td><td class="num">{{money(e.base)}}</td><td class="num">{{num(e.workdays)}}</td><td class="num">{{num(e.regular_hours)}}</td><td class="num">{{num(e.night_hours)}}</td><td class="num">{{num(e.ot_regular+e.ot_weekly_off+e.ot_holiday)}}</td><td class="num">{{num(e.paid_hours)}}</td><td class="num">{{money(e.gross)}}</td><td class="num">{{money(e.employee_insurance)}}</td><td class="num"><strong>{{money(e.net)}}</strong></td><td><span v-if="e.via_crew" class="tk-pill">Trả qua đội khoán</span><span v-for="i in e.issues" :key="i" class="tk-pill is-warn">{{i}}</span></td></tr></tbody></table>
+  <div class="hr-pay__scroll"><DataTable :rows="sheet.employees" :columns="sheetCols" row-key="employee" storage-key="payroll-sheet" empty="Chưa có nhân viên trong tháng."/>
    <p v-if="!sheet.employees.length" class="tk-empty">Chưa có nhân viên trong tháng này.</p></div>
  </section>
 
  <section v-if="view==='slips'&&run" class="tk-card hr-pay__table" aria-label="Phiếu lương HRMS">
   <header class="tk-card__head"><h3>Phiếu lương HRMS</h3><span class="tk-hint">Thuế TNCN chưa tự tính: kế toán nhập Additional Salary (Income Tax) trước khi duyệt.</span></header>
-  <div class="hr-pay__scroll"><table v-if="run.slips.length"><thead><tr><th>Phiếu lương</th><th>Nhân viên</th><th class="num">Thu nhập HRMS</th><th class="num">Khấu trừ</th><th class="num">Thực lĩnh</th><th class="num">Lệch bảng Lotus</th><th>Trạng thái</th></tr></thead>
-   <tbody><tr v-for="s in run.slips" :key="s.name"><td><a :href="'/app/salary-slip/'+encodeURIComponent(s.name)" target="_blank" rel="noopener">{{s.name}}</a></td><td>{{s.employee_name}}</td><td class="num">{{money(s.gross_pay)}}</td><td class="num">{{money(s.total_deduction)}}</td><td class="num"><strong>{{money(s.net_pay)}}</strong></td><td class="num" :class="{'is-warn':Math.abs(s.difference)>1}">{{money(s.difference)}}</td><td><span class="tk-pill" :class="s.docstatus===1?'is-approved':'is-draft'">{{s.docstatus===1?(s.journal_entry?'Đã hạch toán':'Đã duyệt'):'Nháp'}}</span></td></tr></tbody></table>
+  <div class="hr-pay__scroll"><DataTable v-if="run.slips.length" :rows="run.slips" :columns="slipCols" row-key="name" storage-key="payroll-slips"/>
    <p v-else class="tk-empty">{{run.structure?'Chưa có phiếu lương HRMS cho tháng này.':'Cài đặt lương HRMS ở bước 3 trước.'}}</p></div>
  </section>
 
  <section v-if="view==='crews'&&sheet" class="tk-card hr-pay__table" aria-label="Phải trả đội khoán">
   <header class="tk-card__head"><h3>Phải trả đội khoán</h3><span class="tk-hint">Tiền khoán trả cho tổ trưởng/đội, không lên phiếu lương cá nhân.</span></header>
-  <div class="hr-pay__scroll"><table v-if="sheet.crews.length"><thead><tr><th>Đội</th><th>Đầu câu</th><th>Công việc</th><th class="num">Khối lượng</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th><th class="num">Tổng công</th></tr></thead>
-   <tbody><tr v-for="(c,i) in sheet.crews" :key="i"><td>{{c.team_name}}</td><td>{{c.foreman}}</td><td>{{c.work_name||'—'}}</td><td class="num">{{num(c.completed_qty)}} {{c.uom}}</td><td class="num">{{money(c.unit_rate)}}</td><td class="num"><strong>{{money(c.amount)}}</strong></td><td class="num">{{num(c.workdays)}}</td></tr></tbody></table>
+  <div class="hr-pay__scroll"><DataTable v-if="sheet.crews.length" :rows="sheet.crews" :columns="crewCols" storage-key="payroll-crews"/>
    <p v-else class="tk-empty">Chưa có phiếu khoán đã duyệt trong tháng.</p></div>
  </section>
 
  <section v-if="view==='issues'" class="tk-card hr-pay__table" aria-label="Cần kiểm tra">
   <header class="tk-card__head"><h3>Cần kiểm tra</h3></header>
-  <div class="hr-pay__scroll"><table v-if="issues.length"><thead><tr><th>Nhân viên</th><th>Vấn đề</th></tr></thead><tbody><tr v-for="(i,n) in issues" :key="n"><td>{{i.employee_name}}<small>{{i.employee}}</small></td><td>{{i.issue}}</td></tr></tbody></table>
+  <div class="hr-pay__scroll"><DataTable v-if="issues.length" :rows="issues" :columns="issueCols" row-key="employee" storage-key="payroll-issues"/>
    <p v-else class="tk-empty">Không có vấn đề cần kiểm tra.</p></div>
  </section>
 

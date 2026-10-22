@@ -5,6 +5,7 @@ import {BarChart,LineChart} from 'echarts/charts'
 import {GridComponent,TooltipComponent,LegendComponent} from 'echarts/components'
 import {CanvasRenderer} from 'echarts/renderers'
 import {Button as UiButton} from './ui/button'
+import DataTable from './DataTable.vue'
 import {dark} from '../workspace'
 useEcharts([BarChart,LineChart,GridComponent,TooltipComponent,LegendComponent,CanvasRenderer])
 // Report chart: one value axis, at most 3 series in the fixed --lotus-chart-1..3 order, table view always available.
@@ -24,6 +25,8 @@ const shown=computed(()=>props.series.slice(0,3))
 const hasData=computed(()=>props.categories.length>0&&shown.value.some(s=>s.data.some(v=>v!=null&&Number(v)!==0)))
 const number=v=>v==null||Number.isNaN(Number(v))?'—':new Intl.NumberFormat('vi-VN',{maximumFractionDigits:props.decimals}).format(Number(v))
 const withUnit=v=>number(v)+(props.unit&&v!=null?' '+props.unit:'')
+const tableRows=computed(()=>props.categories.map((label,i)=>({label,...Object.fromEntries(shown.value.map((s,k)=>['series_'+k,s.data[i]]))})))
+const tableCols=computed(()=>[{field:'label',headerName:'Thời kỳ'},...shown.value.map((s,k)=>({field:'series_'+k,headerName:s.name+(props.unit?' ('+props.unit+')':''),valueFormatter:p=>number(p.value)}))])
 const summary=computed(()=>shown.value.map(s=>s.name+': tổng '+withUnit(s.data.reduce((n,v)=>n+Number(v||0),0))).join('; '))
 function render(){
  if(!target.value||!hasData.value||noCanvas.value){chart?.dispose();chart=null;return}
@@ -60,8 +63,7 @@ onBeforeUnmount(()=>{observer?.disconnect();chart?.dispose();chart=null})
  <p v-if="!hasData" class="lotus-chart-empty">{{empty}}</p>
  <template v-else>
   <div v-show="!showTable&&!noCanvas" ref="target" class="lotus-chart-canvas" :style="{height:height+'px'}" role="img" :aria-label="title+'. '+summary"/>
-  <div v-if="showTable||noCanvas" class="lotus-chart-table"><table><thead><tr><th scope="col"></th><th v-for="s in shown" :key="s.name" scope="col">{{s.name}}{{unit?' ('+unit+')':''}}</th></tr></thead>
-   <tbody><tr v-for="(label,i) in categories" :key="label+i"><th scope="row">{{label}}</th><td v-for="s in shown" :key="s.name">{{number(s.data[i])}}</td></tr></tbody></table></div>
+  <div v-if="showTable||noCanvas" class="lotus-chart-table"><DataTable :rows="tableRows" :columns="tableCols" storage-key="chart-data-table" empty="Không có dữ liệu để hiển thị."/></div>
  </template>
 </section>
 </template>

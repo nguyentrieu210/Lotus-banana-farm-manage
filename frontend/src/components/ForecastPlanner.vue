@@ -6,6 +6,7 @@ import WorkspaceTabs from './WorkspaceTabs.vue'
 import DesktopPageHeading from './DesktopPageHeading.vue'
 import DesktopMetricCard from './DesktopMetricCard.vue'
 import DesktopEmptyState from './DesktopEmptyState.vue'
+import DataTable from './DataTable.vue'
 import {sampleForecastCalendar} from '../forecast-sample.js'
 const DesktopForecastChart=defineAsyncComponent(()=>import('./DesktopForecastChart.vue'))
 import '../forecast-calendar.css'
@@ -41,6 +42,7 @@ const yearTotal=computed(()=>months.value.reduce((sum,m)=>sum+(Number(m.gross_kg
 const issueCount=computed(()=>displayPayload.value?.issues?.length||0)
 const confidence=r=>r?.confidence||'—'
 const monthName=m=>String(Number(m.slice(5)))+'/ '+m.slice(0,4)
+const calendarCols=[{field:'block_name',headerName:'Lô'},{field:'cycle_no',headerName:'Vụ'},{field:'expected_date',headerName:'Ngày dự thu'},{field:'source_label',headerName:'Nguồn tính',valueFormatter:p=>p.value+(p.data?.projected?' · Chỉ dự phóng, chưa chốt':'')},{field:'confidence',headerName:'Độ tin cậy'},{field:'bunches',headerName:'Buồng',valueFormatter:p=>bunches(p.value)},{field:'gross_kg',headerName:'Tấn buồng',valueFormatter:p=>ton(p.value)},{field:'packed_kg',headerName:'Tấn thành phẩm',valueFormatter:p=>ton(p.value)}]
 function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
 </script>
 
@@ -83,22 +85,7 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
     <section class="calendar-panel">
       <div class="calendar-panel-title"><strong>{{selectedMonth?'Dự thu tháng '+monthName(selectedMonth):'Các đợt dự thu năm '+year}}</strong><span>{{rows.length}} đợt · nhấp dòng để xem nguồn tính</span></div>
       <div class="calendar-scroll">
-        <table class="calendar-table">
-          <thead><tr><th>Lô</th><th>Vụ</th><th>Ngày dự thu</th><th>Nguồn tính</th><th>Độ tin cậy</th><th>Buồng</th><th>Tấn buồng</th><th>Tấn thành phẩm</th></tr></thead>
-          <tbody>
-            <tr v-for="(r,i) in rows" :key="r.farm_block+'-'+r.cycle+'-'+r.month+'-'+r.source+'-'+i">
-              <td><strong>{{r.block_name}}</strong><small>{{r.farm}}</small></td>
-              <td>{{r.cycle_no}}</td>
-              <td>{{r.expected_date}}</td>
-              <td>{{r.source_label}}<small v-if="r.projected">Chỉ là dự phóng, chưa chốt</small></td>
-              <td><span class="calendar-confidence" :class="r.source">{{confidence(r)}}</span></td>
-              <td>{{bunches(r.bunches)}}</td>
-              <td>{{ton(r.gross_kg)}}</td>
-              <td>{{ton(r.packed_kg)}}</td>
-            </tr>
-            <tr v-if="!rows.length"><td colspan="8" class="calendar-hint">Chưa có số dự thu đủ căn cứ. Hãy xem mục Cần bổ sung dữ liệu ở dưới.</td></tr>
-          </tbody>
-        </table>
+        <DataTable :rows="rows" :columns="calendarCols" storage-key="forecast-calendar-grid" empty="Không có dự thu phù hợp."/>
       </div>
       <p class="calendar-note">Không cộng các công đoạn trùng một đợt. Các đợt chưa đủ thông tin liên kết sẽ được báo cần đối chiếu; số tự dự phóng không dùng để cam kết bán hàng.</p>
     </section>

@@ -7,6 +7,7 @@ import {computed,onMounted,ref,watch} from 'vue'
 import {useRoute,useRouter} from 'vue-router'
 import LotusIcon from './components/LotusIcon.vue'
 import LotusChart from './components/LotusChart.vue'
+import DataTable from './components/DataTable.vue'
 import WorkspaceModal from './components/WorkspaceModal.vue'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import {Button as UiButton} from './components/ui/button'
@@ -68,6 +69,24 @@ async function undo(batch){
  saving.value=true
  try{const r=await call('lotus_farm.cut_forecast.undo_import',{farm:farm.value,batch:batch.name},true);notice.value='Đã xóa '+num(r.removed)+' dòng nhật ký.';await load()}
  catch(e){error.value=e.message}finally{saving.value=false}}
+
+const col=(field,headerName,fmt)=>({field,headerName,minWidth:120,...(fmt?{valueFormatter:p=>fmt(p.value,p.data)}:{})})
+const quantity=(f,l,d=0)=>col(f,l,v=>num(v,d))
+const dateCol=(f,l)=>col(f,l,v=>vnDate(String(v||'').slice(0,10)))
+const monthCols=[col('month','Tháng',v=>monthLabel(v)+(v<thisMonth.value?' · đã qua':v===thisMonth.value?' · tháng này':'')),quantity('shoot','Trổ buồng (cây)'),quantity('inject','Chích bắp'),quantity('budcut','Cắt bắp'),quantity('harvest','Thu hoạch'),quantity('pack','Đóng gói'),quantity('tonnes','Tấn sơ chế',2)]
+const monthTotals=computed(()=>t.value?[{month:'Tổng',shoot:t.value.shoot,inject:t.value.inject,budcut:t.value.budcut,harvest:t.value.harvest,pack:t.value.pack,tonnes:t.value.tonnes}]:[])
+const zoneRows=computed(()=>(data.value?.zones||[]).map(z=>({...z,cut_range:vnDate(z.first_cut)+' – '+vnDate(z.last_cut)+' · '+z.entries+' dòng'})))
+const zoneCols=[col('zone','Khu',v=>'Khu '+v),col('cut_range','Ngày chặt'),quantity('trees','Cây mẹ chặt 2'),quantity('shoot','Trổ buồng'),quantity('budcut','Cắt bắp'),quantity('harvest','Thu hoạch'),quantity('pack','Đóng gói'),quantity('tonnes','Tấn sơ chế',2)]
+const matrixCols=computed(()=>[col('zone','Khu'),...zoneMonthCols.value.map(m=>col(m,monthLabel(m),v=>v?num(v,1):'—'))])
+const matrixRows=computed(()=>(data.value?.zones||[]).map(z=>({zone:z.zone,...data.value?.zone_months?.[z.zone]})))
+const journalCols=[col('zone','Khu'),dateCol('cut_date','Ngày chặt mẹ 2'),quantity('tree_qty','Cây mẹ'),col('wave','Đợt',(_,r)=>r.wave+' · '+pct(r.share)+'%'),quantity('shoot_qty','Số cây trổ'),col('shoot_from','Cửa sổ trổ',(_,r)=>vnDate(r.shoot_from)+' – '+vnDate(r.shoot_to)),dateCol('shoot_date','Trổ (đại diện)'),dateCol('inject_date','Chích bắp'),dateCol('budcut_date','Cắt bắp'),quantity('budcut_qty','Buồng cắt'),dateCol('harvest_date','Thu hoạch'),quantity('harvest_qty','Buồng thu'),quantity('pack_qty','Đóng gói'),quantity('kg','Kg sơ chế'),col('source_ref','Dòng nguồn')]
+const profileCols=[col('version','Phiên bản',(_,r)=>r.version+(r.name===data.value?.profile?.name?' · đang dùng':'')),col('source','Nguồn',v=>v==='Excel'?'File Excel':'Web'),col('approved_by','Người duyệt'),dateCol('approved_at','Lúc'),col('days_to_first_shoot','Trổ đợt 1',v=>v+' ngày'),col('cut_rate','Cắt bắp',v=>pct(v)+'%'),col('harvest_rate','Thu',v=>pct(v)+'%'),col('pack_rate','Đóng gói',v=>pct(v)+'%'),quantity('kg_per_bunch','Kg/buồng',1),col('notes','Ghi chú')]
+const importRows=computed(()=>(data.value?.imports||[]).map(b=>({...b,conflicts:b.conflict_rows+' / '+b.error_rows})))
+const importCols=[col('file_name','File'),quantity('new_rows','Dòng mới'),quantity('existing_rows','Đã có'),col('conflicts','Xung đột / lỗi'),quantity('trees','Số cây'),col('imported_by','Người nhập'),dateCol('imported_at','Lúc'),col('undone_at','Trạng thái',v=>v?'Đã hoàn tác':'Đã nhập')]
+const changeCols=[col('label','Thông số'),col('old','Đang dùng'),col('new','Trong file')]
+const conflictRows=computed(()=>(preview.value?.rows||[]).filter(r=>r.state==='conflict'||r.state==='error').map(r=>({...r,problem:r.state==='conflict'?'Đã nhập '+num(r.old_qty)+' cây, file ghi '+num(r.tree_qty)+' cây — kiểm tra lại':(r.errors||[]).join('; ')})))
+const conflictCols=[quantity('line','Dòng'),col('zone','Khu'),dateCol('cut_date','Ngày'),quantity('tree_qty','Số cây'),col('problem','Tình trạng')]
+
 const STATE={new:'Mới',same:'Đã có',conflict:'Khác số cây',error:'Lỗi'}
 watch(()=>[route.query.farm,route.query.zone],load)
 onMounted(load)
@@ -109,29 +128,21 @@ useNoticeToast(notice)
 
   <section v-if="t" class="land-card">
    <div class="land-card__head"><h3>Theo tháng</h3><small class="land-note">Mỗi giai đoạn tính vào tháng của ngày diễn ra giai đoạn đó. Đóng gói và tấn tính theo tháng thu.</small></div>
-   <div class="land-table cutfc-table"><table><thead><tr><th>Tháng</th><th class="num">Trổ buồng (cây)</th><th class="num">Chích bắp</th><th class="num">Cắt bắp</th><th class="num">Thu hoạch</th><th class="num">Đóng gói</th><th class="num">Tấn sơ chế</th></tr></thead>
-    <tbody><tr v-for="m in data.months" :key="m.month" :class="{past:m.month<thisMonth,now:m.month===thisMonth}"><td><b>{{monthLabel(m.month)}}</b><small v-if="m.month<thisMonth">đã qua</small><small v-else-if="m.month===thisMonth">tháng này</small></td>
-     <td class="num">{{num(m.shoot)}}</td><td class="num">{{num(m.inject)}}</td><td class="num">{{num(m.budcut)}}</td><td class="num">{{num(m.harvest)}}</td><td class="num">{{num(m.pack)}}</td><td class="num"><b>{{num(m.tonnes,2)}}</b></td></tr></tbody>
-    <tfoot><tr><th>Tổng</th><th class="num">{{num(t.shoot)}}</th><th class="num">{{num(t.inject)}}</th><th class="num">{{num(t.budcut)}}</th><th class="num">{{num(t.harvest)}}</th><th class="num">{{num(t.pack)}}</th><th class="num">{{num(t.tonnes,2)}}</th></tr></tfoot></table></div>
+   <div class="land-table cutfc-table"><DataTable :rows="data.months||[]" :columns="monthCols" :pinned-bottom-rows="monthTotals" storage-key="cutfc-months"/></div>
   </section>
 
   <section v-if="t" class="land-card">
    <h3>Theo khu</h3>
-   <div class="land-table cutfc-table"><table><thead><tr><th>Khu</th><th>Ngày chặt</th><th class="num">Cây mẹ chặt 2</th><th class="num">Trổ buồng</th><th class="num">Cắt bắp</th><th class="num">Thu hoạch</th><th class="num">Đóng gói</th><th class="num">Tấn sơ chế</th></tr></thead>
-    <tbody><tr v-for="z in data.zones" :key="z.zone" class="clickable" @click="setScope({zone:zone===z.zone?undefined:z.zone})"><td><b>Khu {{z.zone}}</b></td><td>{{vnDate(z.first_cut)}} – {{vnDate(z.last_cut)}}<small>{{z.entries}} dòng</small></td>
-     <td class="num">{{num(z.trees)}}</td><td class="num">{{num(z.shoot)}}</td><td class="num">{{num(z.budcut)}}</td><td class="num">{{num(z.harvest)}}</td><td class="num">{{num(z.pack)}}</td><td class="num"><b>{{num(z.tonnes,2)}}</b></td></tr></tbody></table></div>
+   <div class="land-table cutfc-table"><DataTable row-key="zone" :rows="zoneRows" :columns="zoneCols" storage-key="cutfc-zones" interactive @open="z=>setScope({zone:zone===z.zone?undefined:z.zone})"/></div>
    <h3 class="cutfc-sub">Tấn sơ chế theo khu và tháng thu</h3>
-   <div class="land-table cutfc-table"><table><thead><tr><th>Khu</th><th v-for="m in zoneMonthCols" :key="m" class="num">{{monthLabel(m)}}</th></tr></thead>
-    <tbody><tr v-for="z in data.zones" :key="z.zone"><td><b>{{z.zone}}</b></td><td v-for="m in zoneMonthCols" :key="m" class="num">{{data.zone_months[z.zone]?.[m]?num(data.zone_months[z.zone][m],1):'—'}}</td></tr></tbody></table></div>
+   <div class="land-table cutfc-table"><DataTable row-key="zone" :rows="matrixRows" :columns="matrixCols" storage-key="cutfc-matrix"/></div>
   </section>
  </template>
 
  <section v-else-if="tab==='journal'" class="land-card">
   <div class="land-filters"><UiSelect v-model="journalWave" aria-label="Lọc đợt trổ" class="cutfc-narrow"><option value="">Mọi đợt trổ</option><option v-for="k in [1,2,3,4]" :key="k" :value="String(k)">Đợt {{k}}</option></UiSelect>
    <span class="land-spacer"></span><span class="land-count">{{num(journal.length)}} dòng (mỗi dòng chặt tách thành 4 đợt trổ)</span></div>
-  <div class="land-table cutfc-table cutfc-journal"><table><thead><tr><th>Khu</th><th>Ngày chặt mẹ 2</th><th class="num">Cây mẹ</th><th class="num">Đợt</th><th class="num">Số cây trổ</th><th>Cửa sổ trổ</th><th>Trổ (đại diện)</th><th>Chích bắp</th><th>Cắt bắp</th><th class="num">Buồng cắt</th><th>Thu hoạch</th><th class="num">Buồng thu</th><th class="num">Đóng gói</th><th class="num">Kg sơ chế</th><th>Dòng nguồn</th></tr></thead>
-   <tbody><tr v-for="r in journal.slice(0,journalLimit)" :key="(r.entry||r.source_ref)+r.wave"><td>{{r.zone}}</td><td>{{vnDate(r.cut_date)}}</td><td class="num">{{num(r.tree_qty)}}</td><td class="num">{{r.wave}} <small>{{pct(r.share)}}%</small></td><td class="num">{{num(r.shoot_qty)}}</td>
-    <td>{{vnDate(r.shoot_from)}} – {{vnDate(r.shoot_to)}}</td><td>{{vnDate(r.shoot_date)}}</td><td>{{vnDate(r.inject_date)}}</td><td>{{vnDate(r.budcut_date)}}</td><td class="num">{{num(r.budcut_qty)}}</td><td>{{vnDate(r.harvest_date)}}</td><td class="num">{{num(r.harvest_qty)}}</td><td class="num">{{num(r.pack_qty)}}</td><td class="num">{{num(r.kg)}}</td><td><small>{{r.source_ref}}</small></td></tr></tbody></table>
+  <div class="land-table cutfc-table cutfc-journal"><DataTable :rows="journal.slice(0,journalLimit).map(r=>({...r,__grid_id:(r.entry||r.source_ref)+'-'+r.wave}))" row-key="__grid_id" :columns="journalCols" storage-key="cutfc-journal" empty="Chưa có nhật ký."/>
    <p v-if="!journal.length&&!busy" class="land-empty">Chưa có nhật ký chặt mẹ lần 2.</p></div>
   <UiButton v-if="journal.length>journalLimit" variant="outline" @click="journalLimit+=400">Xem thêm ({{num(journal.length-journalLimit)}} dòng)</UiButton>
  </section>
@@ -149,17 +160,12 @@ useNoticeToast(notice)
   </section>
   <section class="land-card">
    <h3>Các phiên bản thông số</h3>
-   <div class="land-table cutfc-table"><table><thead><tr><th>Phiên bản</th><th>Nguồn</th><th>Người duyệt</th><th>Lúc</th><th class="num">Trổ đợt 1</th><th class="num">Cắt bắp</th><th class="num">Thu</th><th class="num">Đóng gói</th><th class="num">Kg/buồng</th><th>Ghi chú</th></tr></thead>
-    <tbody><tr v-for="p in data?.profiles||[]" :key="p.name"><td><b>{{p.version}}</b><small v-if="p.name===data.profile?.name">đang dùng</small></td><td>{{p.source==='Excel'?'File Excel':'Web'}}</td><td>{{p.approved_by||'—'}}</td><td>{{vnDate(String(p.approved_at||'').slice(0,10))}}</td>
-     <td class="num">{{p.days_to_first_shoot}} ngày</td><td class="num">{{pct(p.cut_rate)}}%</td><td class="num">{{pct(p.harvest_rate)}}%</td><td class="num">{{pct(p.pack_rate)}}%</td><td class="num">{{num(p.kg_per_bunch,1)}}</td><td>{{p.notes||''}}</td></tr></tbody></table>
+   <div class="land-table cutfc-table"><DataTable :rows="data?.profiles||[]" :columns="profileCols" row-key="name" storage-key="cutfc-profiles"/>
     <p v-if="!(data?.profiles||[]).length" class="land-empty">Chưa có phiên bản nào. Nhập file Excel dự thu hoặc lưu thông số ở trên.</p></div>
   </section>
   <section class="land-card">
    <h3>Các lần nhập file</h3>
-   <div class="land-table cutfc-table"><table><thead><tr><th>File</th><th class="num">Dòng mới</th><th class="num">Đã có</th><th class="num">Xung đột / lỗi</th><th class="num">Số cây</th><th>Người nhập</th><th>Lúc</th><th></th></tr></thead>
-    <tbody><tr v-for="b in data?.imports||[]" :key="b.name" :class="{inactive:b.undone_at}"><td><a v-if="b.source_file" :href="b.source_file" target="_blank" rel="noopener">{{b.file_name}}</a><template v-else>{{b.file_name}}</template><small>SHA-256 {{String(b.sha256||'').slice(0,12)}}…</small></td>
-     <td class="num">{{num(b.new_rows)}}</td><td class="num">{{num(b.existing_rows)}}</td><td class="num">{{num(b.conflict_rows)}} / {{num(b.error_rows)}}</td><td class="num">{{num(b.trees)}}</td><td>{{b.imported_by}}</td><td>{{vnDate(String(b.imported_at||'').slice(0,10))}}</td>
-     <td class="land-row-actions"><small v-if="b.undone_at">đã hoàn tác</small><UiButton v-else-if="data.can_edit&&b.new_rows" size="sm" variant="ghost" :disabled="saving" @click="undo(b)">Hoàn tác</UiButton></td></tr></tbody></table>
+   <div class="land-table cutfc-table"><DataTable :rows="importRows" :columns="importCols" row-key="name" storage-key="cutfc-imports"/><div v-for="b in importRows" :key="b.name" class="land-actions"><a v-if="b.source_file" :href="b.source_file" target="_blank" rel="noopener">Mở file {{b.file_name}}</a><UiButton v-if="!b.undone_at&&data?.can_edit&&b.new_rows" variant="ghost" size="sm" :disabled="saving" @click="undo(b)">Hoàn tác {{b.file_name}}</UiButton></div>
     <p v-if="!(data?.imports||[]).length" class="land-empty">Chưa nhập file nào.</p></div>
   </section>
  </template>
@@ -174,12 +180,9 @@ useNoticeToast(notice)
     <div v-if="preview.param_errors.length" class="land-bad"><div v-for="e in preview.param_errors" :key="e">Thông số trong file: {{e}}</div></div>
     <template v-else-if="preview.param_changes.length">
      <label class="cutfc-check"><input v-model="applyParams" type="checkbox">Dùng thông số trong file làm phiên bản mới{{preview.has_profile?' (thay phiên bản đang dùng)':''}}</label>
-     <div class="land-table land-preview"><table><thead><tr><th>Thông số</th><th class="num">Đang dùng</th><th class="num">Trong file</th></tr></thead>
-      <tbody><tr v-for="c in preview.param_changes" :key="c.field"><td>{{c.label}}</td><td class="num">{{c.old??'—'}}</td><td class="num"><b>{{c.new}}</b></td></tr></tbody></table></div>
+     <div class="land-table land-preview"><DataTable :rows="preview.param_changes||[]" :columns="changeCols" row-key="field" storage-key="cutfc-preview-changes"/></div>
     </template>
-    <div v-if="preview.rows.some(r=>r.state!=='new'&&r.state!=='same')" class="land-table land-preview"><table><thead><tr><th>Dòng</th><th>Khu</th><th>Ngày</th><th class="num">Số cây</th><th>Tình trạng</th></tr></thead>
-     <tbody><tr v-for="r in preview.rows.filter(r=>r.state==='conflict'||r.state==='error')" :key="r.line" :class="{bad:r.state==='error'}"><td>{{r.line}}</td><td>{{r.zone||''}}</td><td>{{vnDate(r.cut_date)}}</td><td class="num">{{r.tree_qty!=null?num(r.tree_qty):''}}</td>
-      <td><span v-if="r.state==='conflict'" class="land-warn">Đã nhập {{num(r.old_qty)}} cây, file ghi {{num(r.tree_qty)}} cây — giữ số cũ, kiểm tra lại</span><div v-for="e in r.errors||[]" :key="e" class="land-bad">{{e}}</div></td></tr></tbody></table></div>
+    <div v-if="preview.rows.some(r=>r.state!=='new'&&r.state!=='same')" class="land-table land-preview"><DataTable :rows="conflictRows" :columns="conflictCols" row-key="line" storage-key="cutfc-preview-conflicts"/></div>
     <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="importOpen=false">Hủy</UiButton><UiButton type="button" :disabled="saving||(!preview.new&&!(applyParams&&preview.param_changes.length))" @click="commitImport">{{saving?'Đang nhập…':'Nhập '+num(preview.new)+' dòng'+(applyParams&&preview.param_changes.length?' và thông số':'')}}</UiButton></div>
    </template>
   </div>
