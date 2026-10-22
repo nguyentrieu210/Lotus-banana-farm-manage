@@ -281,6 +281,7 @@ def coa_apply(on_date=None, warehouse_accounts=None):
     voucher = None
     if preview['transfer']:
         voucher = _transfer_journal(company_name, preview['on_date'], preview['transfer'])
+    translate_old_accounts(company_name)
     doc.coa_version = preview['version']
     doc.coa_applied_at = now_datetime()
     doc.coa_applied_by = frappe.session.user
@@ -288,6 +289,22 @@ def coa_apply(on_date=None, warehouse_accounts=None):
     doc.save()
     doc.add_comment('Info', 'Áp dụng %s; thêm %d tài khoản; chuyển số dư: %s' % (preview['version'], len(preview['add']), voucher or 'không có'))
     return dict(added=len(preview['add']), transfer=voucher)
+
+
+def translate_old_accounts(company_name=None):
+    """Vietnamese display names for ERPNext's Standard chart (replaced by TT133). Only account_name changes (the
+    record name and every voucher stay as they are); retired leaf accounts are marked (TK cũ). Safe to rerun."""
+    import json
+    from pathlib import Path
+    company_name = company_name or company()
+    names = json.loads((Path(rules.COA_FILE).parent / 'erpnext_standard_accounts_vi.json').read_text(encoding='utf-8'))
+    changed = 0
+    for a in frappe.get_all('Account', filters={'company': company_name, 'account_number': ['in', ['', None]]}, fields=['name', 'account_name', 'is_group']):
+        vi = names['groups'].get(a.account_name) if a.is_group else names['accounts'].get(a.account_name)
+        if vi:
+            frappe.db.set_value('Account', a.name, 'account_name', vi if a.is_group else vi + ' (TK cũ)', update_modified=False)
+            changed += 1
+    return changed
 
 
 def _transfer_journal(company_name, on_date, transfer):

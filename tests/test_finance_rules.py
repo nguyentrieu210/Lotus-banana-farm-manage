@@ -105,6 +105,15 @@ class FinanceRules(unittest.TestCase):
         self.assertTrue(any('thực nhận' in i for i in issues))
         self.assertTrue(any('Đội T9 chưa gắn vườn' in i for i in issues))
 
+    def test_standard_chart_has_vietnamese_names(self):
+        import json
+        names = json.loads((rules.COA_FILE.parent / 'erpnext_standard_accounts_vi.json').read_text(encoding='utf-8'))
+        for english in ('Stock In Hand', 'Stock Adjustment', 'Temporary Opening', 'Creditors', 'Cash', 'Round Off', 'Stock Received But Not Billed'):
+            self.assertIn(english, names['accounts'])
+        for english in ('Application of Funds (Assets)', 'Source of Funds (Liabilities)', 'Equity', 'Income', 'Expenses'):
+            self.assertIn(english, names['groups'])
+        self.assertFalse(set(names['groups']) & set(names['accounts']), 'a name is either a group or a leaf')
+
     def test_aging(self):
         today = dt.date(2026, 10, 22)
         self.assertEqual(rules.aging(dt.date(2026, 10, 30), today), 'Trong hạn')

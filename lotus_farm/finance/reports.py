@@ -26,6 +26,13 @@ def _balance(company, accounts, on_date):
         and posting_date<=%s and account in %s""", (company, on_date, tuple(accounts)))[0][0])
 
 
+def account_labels(names):
+    """Account record name -> 'number - Vietnamese name' (or the name alone) for display."""
+    names = [n for n in set(names) if n]
+    return {a.name: (a.account_number + ' - ' if a.account_number else '') + a.account_name
+            for a in frappe.get_all('Account', filters={'name': ['in', names or ['']]}, fields=['name', 'account_number', 'account_name'])}
+
+
 def _str(row, *fields):
     for f in fields:
         if row.get(f) is not None:
@@ -105,8 +112,10 @@ def journal(from_date=None, to_date=None, voucher_type=None, account=None, limit
         order by debit desc""" % dim_cols, (tuple(names),), as_dict=True)
     links = {p.voucher_name: p for p in frappe.get_all(posting.POSTING, filters={'voucher_name': ['in', names]},
                                                        fields=['voucher_name', 'source_doctype', 'source_name', 'purpose', 'state'])}
+    labels = account_labels([ln.account for ln in lines])
     by = {}
     for ln in lines:
+        ln['account_label'] = labels.get(ln.account, ln.account)
         by.setdefault(ln.voucher_no, []).append(ln)
     out = []
     for h in heads:
@@ -187,7 +196,8 @@ def ledger(account, from_date=None, to_date=None):
         running += flt(ln.debit) - flt(ln.credit)
         ln['balance'] = running
         ln['posting_date'] = str(ln.posting_date)
-    return dict(account=account, opening=opening, closing=running, lines=lines, from_date=str(start), to_date=str(end))
+    return dict(account=account, account_label=account_labels([account]).get(account, account), opening=opening, closing=running, lines=lines,
+                from_date=str(start), to_date=str(end))
 
 
 COST_GROUPS = (('lotus_farm', 'Vườn'), ('lotus_farm_block', 'Lô'), ('lotus_crop_cycle', 'Vụ'), ('lotus_work_type', 'Công việc'))

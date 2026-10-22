@@ -163,7 +163,7 @@ const receiptRows=computed(()=>(pendingData.value?.receipts||[]).map(r=>({...r,_
 const payrollPendingColumns=[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},{field:'name',headerName:'Kỳ công',minWidth:200},
  {field:'closed_at',headerName:'Đóng lúc',minWidth:120,valueFormatter:p=>vnDate(String(p.value||'').slice(0,10))},{field:'__view',headerName:'',minWidth:170,sortable:false,cellRenderer:cellButton('Xem trước bút toán',r=>previewPayroll(r.name))}]
 const issueColumns=[{field:'name',headerName:'Phiếu xuất',minWidth:170},dateCol('posting_date','Ngày'),{field:'reason',headerName:'Lý do',minWidth:320,flex:3},moneyCol('amount','Giá trị')]
-const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
+const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2,valueGetter:p=>p.data.account_label||p.data.account},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
  {field:'lotus_farm_block',headerName:'Vườn / lô',minWidth:130,valueGetter:p=>[p.data.lotus_farm,dimLabel('lotus_farm_block',p.data.lotus_farm_block)].filter(Boolean).join(' / ')},
  {field:'remarks',headerName:'Diễn giải',minWidth:180,valueGetter:p=>String(p.data.remarks||p.data.note||'').split('\n')[0]}]
 const supplierColumns=computed(()=>[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:220,flex:2},moneyCol('invoiced','Đã nhận hóa đơn'),moneyCol('paid','Đã trả'),moneyCol('owed','Còn nợ'),moneyCol('overdue','Quá hạn'),
@@ -305,7 +305,7 @@ useNoticeToast(notice)
   </section>
   <section v-else-if="report==='ledger'" class="land-card">
    <p v-if="!reportData" class="land-empty">Chọn một tài khoản để xem sổ chi tiết.</p>
-   <template v-else><h3>{{reportData.account}}</h3><p class="land-note">Số dư đầu kỳ {{vnd(reportData.opening)}} · cuối kỳ {{vnd(reportData.closing)}}</p>
+   <template v-else><h3>{{reportData.account_label||reportData.account}}</h3><p class="land-note">Số dư đầu kỳ {{vnd(reportData.opening)}} · cuối kỳ {{vnd(reportData.closing)}}</p>
     <div class="land-table fin-table"><DataTable :rows="ledgerRows" :columns="ledgerColumns" row-key="__key" storage-key="fin-ledger" empty="Không có phát sinh trong kỳ."/></div></template>
   </section>
   <template v-else-if="report==='costs'&&reportData?.rows">
