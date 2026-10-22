@@ -68,6 +68,8 @@ def setup():
     install_shift_fields()
     from lotus_farm.farm_land import install as install_land
     install_land()
+    from lotus_farm.finance.setup import install as install_finance
+    install_finance()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

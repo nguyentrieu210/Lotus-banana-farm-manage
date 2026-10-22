@@ -1,0 +1,43 @@
+/* Tài chính – Kế toán (FinanceApp): builds on land.css, tokens only. */
+.fin{display:flex;flex-direction:column;gap:12px;min-width:0}
+.fin-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fin-title{display:flex;flex-direction:column;gap:2px}
+.fin-title h2{margin:0;font-size:var(--lotus-text-xl,1.25rem)}
+.fin-title span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.fin-state{padding:4px 10px;border-radius:999px;font-size:var(--lotus-text-sm);background:var(--lotus-warning-soft);color:var(--lotus-warning-700)}
+.fin-state.on{background:var(--lotus-success-50,var(--lotus-soft));color:var(--lotus-success-700,var(--lotus-text))}
+.fin-badge{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-size:var(--lotus-text-xs)}
+.fin .fin-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
+.fin-stats>button{cursor:pointer}
+.fin-todo{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fin-todo button{width:100%;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font:inherit;text-align:left;cursor:pointer}
+.fin-todo b{font-size:1.15rem;margin-right:6px;font-variant-numeric:tabular-nums}
+.fin-table{max-height:none}
+.fin-table tbody tr{cursor:default}
+.fin-table tbody tr.clickable{cursor:pointer}
+.fin-table tfoot th{padding:9px 10px;border-top:1px solid var(--lotus-border);background:var(--lotus-soft);text-align:left;white-space:nowrap}
+.fin-table tfoot th.num{text-align:right;font-variant-numeric:tabular-nums}
+.fin-table td small{display:block}
+.fin-entry{border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);padding:0 10px}
+.fin-entry summary{display:grid;grid-template-columns:90px 170px 1fr auto;gap:10px;align-items:center;padding:9px 0;cursor:pointer;font-size:var(--lotus-text-sm)}
+.fin-entry summary strong{font-variant-numeric:tabular-nums}
+.fin-entry .land-mini{margin-bottom:8px}
+.fin-voucher{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.fin-voucher header{display:flex;justify-content:space-between;gap:8px}
+.fin-voucher ul{margin:0;padding-left:18px;font-size:var(--lotus-text-sm)}
+.fin-steps{margin:0;padding-left:18px;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.fin-steps .done{color:var(--lotus-success-700,var(--lotus-text))}
+.fin-steps .now{color:var(--lotus-text);font-weight:600}
+.fin-ok{color:var(--lotus-success-700,var(--lotus-text))}
+.fin .fin-narrow{flex:0 0 auto;width:auto;min-width:140px}
+.fin .fin-wide{flex:0 1 320px;width:auto}
+.fin-left{justify-content:flex-start}
+.fin-check{flex-direction:row!important;align-items:center;gap:8px}
+.fin-check input{width:18px;height:18px}
+.fin-months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.fin-month{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.fin-month small{color:var(--lotus-muted)}
+.fin-month.closed{background:var(--lotus-soft)}
+@media(max-width:1100px){.fin .fin-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.fin-months{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:700px){.fin .fin-stats,.fin-todo{grid-template-columns:repeat(2,minmax(0,1fr))}.fin-months{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .fin-entry summary{grid-template-columns:1fr auto}.fin-entry summary span{display:none}}

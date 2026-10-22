@@ -228,6 +228,8 @@ def reopen_period(company, month, reason):
     if not name:
         frappe.throw('Kỳ chưa khóa.')
     begin, end = _month(month)
+    from lotus_farm.finance.payroll import assert_reopenable
+    assert_reopenable(name)
     # Posted pay must be reversed in HRMS first, so accounting and attendance never disagree.
     posted = frappe.db.count('Salary Slip', {'company': company, 'start_date': begin, 'end_date': end, 'docstatus': 1})
     if posted:

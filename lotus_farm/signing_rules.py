@@ -11,6 +11,7 @@ PURCHASING = ('Lotus Purchasing Buyer', 'Purchase Manager', 'Accounts User', 'Ac
 STOREKEEPERS = ('Lotus Warehouse Manager', 'Lotus Stock Reviewer', 'Stock Manager', 'Lotus Warehouse Receiver')
 HR = ('HR Manager', 'HR User')
 DIRECTORS = ('Lotus Purchase Approver', 'Lotus Farm Manager')
+CHIEF_ACCOUNTANTS = ('Lotus Chief Accountant', 'Accounts Manager')
 
 
 def _step(key, title, roles=()):
@@ -32,6 +33,9 @@ CHAINS = {
         _step('STOREKEEPER', 'Thủ kho / người kiểm tra', STOREKEEPERS))),
     'timekeeping_period': dict(app='hr', gate=True, label='Bảng công & bảng lương', steps=(
         _step('PREPARE', 'Người lập'), _step('HR', 'Phụ trách nhân sự', HR), _step('APPROVE', 'Giám đốc', DIRECTORS))),
+    # Phiếu chi / ủy nhiệm chi (trả nhà cung cấp, chi lương): the last signature submits the voucher.
+    'payment_voucher': dict(app='finance', gate=True, label='Phiếu chi', steps=(
+        _step('PREPARE', 'Kế toán lập phiếu'), _step('CHIEF', 'Kế toán trưởng', CHIEF_ACCOUNTANTS), _step('APPROVE', 'Giám đốc duyệt chi', DIRECTORS))),
 }
 
 WAITING, SIGNED, RETURNED, PENDING = 'Chờ ký', 'Đã ký', 'Trả lại', 'Chưa đến lượt'

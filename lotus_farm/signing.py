@@ -25,12 +25,15 @@ URLS = {
     'stock_document': lambda d: '/warehouse?doc=' + quote(d.name) + '&doctype=' + quote(d.doctype),
     # The period is signed on its print page, which any signer can open (no HR role needed).
     'timekeeping_period': lambda d: '/lotus/in-luong?company=' + quote(d.company) + '&month=' + quote(d.month),
+    'payment_voucher': lambda d: '/lotus/tai-chinh?tab=cash&doctype=' + quote(d.doctype) + '&doc=' + quote(d.name),
 }
 
 
 def chain_for(doc):
     if doc.doctype == 'Material Request':
         return 'purchase_proposal' if doc.material_request_type == 'Purchase' else 'issue_proposal'
+    if doc.doctype == 'Payment Entry' or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind')):
+        return 'payment_voucher'
     return {'Purchase Order': 'purchase_order', 'Stock Entry': 'stock_document', 'Stock Reconciliation': 'stock_document',
             'Purchase Receipt': 'stock_document', 'Lotus Timekeeping Period': 'timekeeping_period'}.get(doc.doctype)
 
@@ -390,6 +393,12 @@ def fingerprint(doc):
     """What a signature covers. The period signs its payroll snapshot; other documents their lines and totals."""
     if doc.doctype == 'Lotus Timekeeping Period':
         return rules.fingerprint(dict(snapshot=doc.get('snapshot_hash') or ''), [])
+    if doc.doctype == 'Payment Entry':
+        return rules.fingerprint(dict(party=doc.party, paid_from=doc.paid_from, paid_amount=doc.paid_amount, posting_date=str(doc.posting_date),
+                                      references=';'.join('%s=%s' % (r.reference_name, r.allocated_amount) for r in doc.get('references') or [])), [])
+    if doc.doctype == 'Journal Entry':
+        return rules.fingerprint(dict(posting_date=str(doc.posting_date), total=doc.total_debit,
+                                      accounts=';'.join('%s:%s:%s' % (a.account, a.debit, a.credit) for a in doc.get('accounts') or [])), [])
     header = {field: doc.get(field) for field in ('company', 'supplier', 'set_warehouse', 'posting_date', 'transaction_date',
                                                    'stock_entry_type', 'grand_total', 'total_qty') if doc.meta.has_field(field)}
     return rules.fingerprint(header, [row.as_dict() for row in doc.get('items') or []])

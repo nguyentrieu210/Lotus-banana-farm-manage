@@ -1,0 +1,192 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Finance Settings",
+  "module": "Lotus Farm",
+  "track_changes": 1,
+  "description": "Cấu hình Tài chính – Kế toán: bật/tắt, ngày bắt đầu ghi sổ và tài khoản cho từng loại nghiệp vụ. Chỉ Kế toán trưởng sửa.",
+  "fields": [
+    {
+      "fieldname": "finance_enabled",
+      "label": "Bật ghi sổ kế toán từ Lotus",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company"
+    },
+    {
+      "fieldname": "cutover_date",
+      "label": "Ngày bắt đầu ghi sổ (cutover)",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "coa_version",
+      "label": "Hệ thống tài khoản đã áp dụng",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "coa_applied_at",
+      "label": "Áp dụng lúc",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "coa_applied_by",
+      "label": "Người áp dụng",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "accounts_section",
+      "label": "Tài khoản theo nghiệp vụ",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "acct_inventory_material",
+      "label": "Kho nguyên liệu, vật liệu",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_finished_goods",
+      "label": "Kho thành phẩm",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_production_cost",
+      "label": "Chi phí sản xuất dở dang",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_admin_expense",
+      "label": "Chi phí quản lý",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_received_not_billed",
+      "label": "Hàng về chưa có hóa đơn",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_payable_supplier",
+      "label": "Phải trả người bán",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_payable_employee",
+      "label": "Phải trả người lao động",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_crew_payable",
+      "label": "Phải trả tiền khoán đội",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_social_insurance",
+      "label": "Bảo hiểm xã hội",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_health_insurance",
+      "label": "Bảo hiểm y tế",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_unemployment_insurance",
+      "label": "Bảo hiểm thất nghiệp",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_cash",
+      "label": "Tiền mặt",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_bank",
+      "label": "Tiền gửi ngân hàng",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_stock_adjustment",
+      "label": "Chênh lệch kiểm kê / điều chỉnh kho",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_opening_equity",
+      "label": "Đối ứng số dư đầu kỳ",
+      "fieldtype": "Link",
+      "options": "Account"
+    },
+    {
+      "fieldname": "acct_round_off",
+      "label": "Làm tròn",
+      "fieldtype": "Link",
+      "options": "Account"
+    }
+  ],
+  "field_order": [
+    "finance_enabled",
+    "company",
+    "cutover_date",
+    "coa_version",
+    "coa_applied_at",
+    "coa_applied_by",
+    "accounts_section",
+    "acct_inventory_material",
+    "acct_finished_goods",
+    "acct_production_cost",
+    "acct_admin_expense",
+    "acct_received_not_billed",
+    "acct_payable_supplier",
+    "acct_payable_employee",
+    "acct_crew_payable",
+    "acct_social_insurance",
+    "acct_health_insurance",
+    "acct_unemployment_insurance",
+    "acct_cash",
+    "acct_bank",
+    "acct_stock_adjustment",
+    "acct_opening_equity",
+    "acct_round_off"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1
+    }
+  ],
+  "issingle": 1
+}

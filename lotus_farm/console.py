@@ -70,6 +70,12 @@ def bootstrap():
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
     from lotus_farm.work_journal import capabilities as journal_capabilities
     session['capabilities'].update(journal_capabilities())
+    from lotus_farm.finance.setup import can_view as finance_view
+    from lotus_farm.signing_rules import CHIEF_ACCOUNTANTS, DIRECTORS
+    installed=bool(frappe.db.exists('DocType','Lotus Finance Settings'))
+    # Ledger readers see the whole finance page; payment approvers open it only to sign their vouchers.
+    session['capabilities']['finance_ledger']=installed and finance_view()
+    session['capabilities']['finance']=session['capabilities']['finance_ledger'] or (installed and has_role(*DIRECTORS, *CHIEF_ACCOUNTANTS))
     if session['capabilities']['work_journal.read']:
         from lotus_farm.work_journal import farm_names
         existing = {f['name'] for f in session['farms']}
