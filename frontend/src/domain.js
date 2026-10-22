@@ -10,7 +10,7 @@ export const navGroups=[
  {label:'Thu hoạch & đóng gói',icon:'basket',items:[['harvest','basket','Thu hoạch'],['measurements','ruler','Đo trái'],['losses','trash','Hủy & tổn thất'],['incoming-qc','shield','QC đầu vào'],['packhouse','package','Đóng gói'],['trace','route','Truy xuất']]},
  // The purchasing PWA is a standalone, real application; do not invent a /lotus route.
  {label:'Kho & mua hàng',icon:'warehouse',items:[['kho','warehouse','Quản lý kho']],links:[{href:'/buying',label:'Mua hàng',icon:'cart',capability:'stock'}]},
- {label:'Nhân sự',icon:'people',items:[['nhan-su','id-card','Hồ sơ nhân sự'],['cham-cong','clock','Chấm công']]},
+ {label:'Nhân sự',icon:'people',kind:'hr',items:[['nhan-su','id-card','Hồ sơ nhân viên'],['cham-cong','clock','Chấm công']]},
  {label:'Thiết lập',icon:'settings',items:[['admin/masters','database','Danh mục'],['plan-norm','sliders','Định mức & chu kỳ'],['admin/imports','upload','Nhập dữ liệu'],['admin/settings','settings','Cấu hình'],['nguoi-dung','user-cog','Người dùng & phân quyền']]},
 ]
 export const moduleKey=p=>p==='plan-norm'?'plans':p==='forecast-onedrive'?'forecast':p.replace('admin/','')

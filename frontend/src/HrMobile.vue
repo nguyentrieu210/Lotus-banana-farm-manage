@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from "./hr-catalog-labels"
 import {computed,onMounted,onBeforeUnmount,reactive,ref} from 'vue'
 import {Icon} from 'vant'
 import LotusMobileShell from './components/LotusMobileShell.vue'
@@ -40,8 +41,8 @@ const filtered=computed(()=>{
 const shortlist=computed(()=>candidates.value.filter(p=>fold([p.applicant_name,p.phone,p.designation].join(' ')).includes(fold(search.value))))
 const genOptions=computed(()=>(catalog.value.genders||[]).map(g=>({value:g.name,label:({Male:'Nam',Female:'Nữ',Other:'Khác'})[g.name]||g.name})))
 const farms=computed(()=>(catalog.value.farms||[]).map(p=>({value:p.name,label:p.farm_name||p.name})))
-const departments=computed(()=>(catalog.value.departments||[]).map(p=>({value:p.name,label:p.department_name||p.name})))
-const titles=computed(()=>(catalog.value.designations||[]).map(p=>({value:p.name,label:p.designation_name||p.name})))
+const departments=computed(()=>(catalog.value.departments||[]).map(p=>({value:p.name,label:hrCatalogLabel(p.department_name||p.name)})))
+const titles=computed(()=>(catalog.value.designations||[]).map(p=>({value:p.name,label:hrCatalogLabel(p.designation_name||p.name)})))
 const teams=computed(()=>(catalog.value.teams||[]).filter(p=>p.farm===employee.lotus_farm&&p.lotus_team_type!=='Contractor').map(p=>({value:p.name,label:p.team_name||p.name})))
 const choices=values=>(values||[]).map(x=>({value:x.name||x,label:x.name||x}))
 const contractTypeNames={Apprentice:'Học việc',Intern:'Thực tập',Piecework:'Khoán theo sản phẩm',Commission:'Theo hoa hồng',Contract:'Hợp đồng',Probation:'Thử việc','Part-time':'Bán thời gian','Full-time':'Toàn thời gian'}
@@ -197,7 +198,7 @@ onMounted(()=>{void init()})
      <h2>Nhân sự cần xử lý</h2>
      <p v-if="!missing.length" class="mobile-empty">Không có nhân viên chờ tiếp nhận.</p>
      <button v-for="person in missing.slice(0,8)" :key="person.name" type="button" class="hr-mobile-row" @click="openEmployee(person)">
-      <span><strong>{{person.employee_name}}</strong><small>{{person.designation||'Chưa có chức danh'}} · {{person.lotus_farm||'Chưa chọn vườn'}}</small></span><Icon name="arrow"/>
+      <span><strong>{{person.employee_name}}</strong><small>{{hrCatalogLabel(person.designation)||'Chưa có chức danh'}} · {{person.lotus_farm||'Chưa chọn vườn'}}</small></span><Icon name="arrow"/>
      </button>
     </section>
    </template>
@@ -209,7 +210,7 @@ onMounted(()=>{void init()})
     <section class="hr-mobile-card">
      <p v-if="!filtered.length" class="mobile-empty">Chưa có nhân viên phù hợp.</p>
      <button v-for="person in filtered" :key="person.name" type="button" class="hr-mobile-row" :disabled="!manager" @click="openEmployee(person)">
-      <span><strong>{{person.employee_name}}</strong><small>{{person.name}} · {{person.designation||'Chưa có chức danh'}}</small>
+      <span><strong>{{person.employee_name}}</strong><small>{{person.name}} · {{hrCatalogLabel(person.designation)||'Chưa có chức danh'}}</small>
        <small>{{person.lotus_farm||'Chưa chọn vườn'}} · {{person.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'}}</small></span>
       <Icon v-if="manager" name="arrow"/>
      </button>
@@ -275,7 +276,7 @@ onMounted(()=>{void init()})
     <section class="hr-mobile-card">
      <p v-if="!shortlist.length" class="mobile-empty">Không có ứng viên.</p>
      <button v-for="item in shortlist" :key="item.name" type="button" class="hr-mobile-row" @click="openCandidate(item)">
-      <span><strong>{{item.applicant_name}}</strong><small>{{item.phone}} · {{item.designation}}</small><small>{{candidateStatuses[item.status]||item.status}}</small></span>
+      <span><strong>{{item.applicant_name}}</strong><small>{{item.phone}} · {{hrCatalogLabel(item.designation)}}</small><small>{{candidateStatuses[item.status]||item.status}}</small></span>
       <Icon name="arrow"/>
      </button>
     </section>

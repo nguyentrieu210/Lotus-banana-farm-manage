@@ -8,16 +8,9 @@ import frappe
 from frappe.sessions import get_csrf_token
 from frappe.utils import cint, validate_email_address
 
-ROLE_LABELS = {
-    'System Manager': 'Quản trị hệ thống', 'HR Manager': 'Quản lý nhân sự', 'HR User': 'Nhân viên nhân sự',
-    'Stock Manager': 'Quản lý kho', 'Stock User': 'Nhân viên kho',
-    'Purchase Manager': 'Quản lý mua hàng', 'Purchase User': 'Nhân viên mua hàng',
-    'Lotus Farm Manager': 'Quản lý vườn', 'Lotus Sales Planner': 'Lập kế hoạch bán hàng',
-    'Lotus QC Manager': 'Quản lý chất lượng', 'Lotus Packing Supervisor': 'Giám sát đóng gói',
-    'Lotus Integration User': 'Tích hợp dữ liệu', 'Lotus Auditor': 'Kiểm tra và đối soát',
-    'Lotus Stock Reviewer': 'Kiểm duyệt kho', 'Lotus Price Approver': 'Duyệt đơn giá',
-    'Lotus Team Leader': 'Tổ trưởng', 'Lotus Field Supervisor': 'Giám sát hiện trường',
-}
+from lotus_farm.localization import ROLE_LABELS
+
+AUTOMATIC_ROLES = {'All', 'Guest', 'Desk User', 'Administrator'}
 PROFILE_FIELDS = ('first_name', 'last_name', 'username', 'phone', 'mobile_no', 'enabled')
 SCOPE_TYPES = ('Farm', 'Work Team')
 
@@ -31,21 +24,59 @@ def require_admin(permission='read'):
 
 
 def role_choices():
-    active = set(frappe.get_all('Role', filters={'disabled': 0}, pluck='name'))
-    return [{'name': name, 'label': label} for name, label in ROLE_LABELS.items() if name in active]
+    rows = frappe.get_all('Role', fields=['name', 'disabled', 'desk_access'], limit_page_length=0)
+    result = [dict(name=r.name, label=ROLE_LABELS.get(r.name, frappe._(r.name, lang='vi')),
+                   disabled=bool(r.disabled), automatic=r.name in AUTOMATIC_ROLES,
+                   assignable=not r.disabled and r.name not in AUTOMATIC_ROLES,
+                   group='Lotus' if r.name.startswith('Lotus ') else 'ERPNext', desk_access=bool(r.desk_access)) for r in rows]
+    return sorted(result, key=lambda r: (r['automatic'], r['disabled'], r['group'] != 'Lotus', r['label'], r['name']))
 
 
 def grants(user):
-    return frappe.get_all('User Permission', filters={'user': user, 'allow': ['in', SCOPE_TYPES]},
+    return frappe.get_all('User Permission', filters={'user': user},
                           fields=['name', 'allow', 'for_value', 'apply_to_all_doctypes', 'applicable_for', 'is_default', 'hide_descendants', 'modified'], order_by='name')
 
 
 def managed(row):
-    return bool(cint(row.get('apply_to_all_doctypes'))) and not row.get('applicable_for') and not cint(row.get('is_default')) and not cint(row.get('hide_descendants'))
+    return row.get('allow') in SCOPE_TYPES and bool(cint(row.get('apply_to_all_doctypes'))) and not row.get('applicable_for') and not cint(row.get('is_default')) and not cint(row.get('hide_descendants'))
 
 
 def scope_version(rows):
     return hashlib.sha256(json.dumps(rows, default=str, sort_keys=True).encode()).hexdigest()
+
+
+def permission_audit(user):
+    """Current saved rights, including controller restrictions; never grants additional access."""
+    from frappe.permissions import get_role_permissions
+    from lotus_farm import signing_rules
+    permissions = []
+    labels = {'Farm': 'Vườn', 'Daily Work Plan': 'Kế hoạch công việc', 'Daily Work Result': 'Kết quả công việc',
+              'Stock Entry': 'Phiếu kho', 'Material Request': 'Đề nghị vật tư', 'Purchase Order': 'Đơn mua hàng',
+              'Purchase Receipt': 'Phiếu nhập mua', 'Employee': 'Nhân sự', 'Attendance': 'Chấm công', 'User': 'Người dùng'}
+    for dt in ('Farm', 'Daily Work Plan', 'Daily Work Result', 'Stock Entry', 'Material Request',
+               'Purchase Order', 'Purchase Receipt', 'Employee', 'Attendance', 'User'):
+        meta = frappe.get_meta(dt)
+        rights = get_role_permissions(meta, user=user)
+        permissions.append(dict(doctype=dt, label=labels.get(dt, frappe._(dt, lang='vi')),
+                                **{key: bool(rights.get(key)) for key in ('read', 'write', 'create', 'submit', 'cancel', 'delete')},
+                                submittable=bool(meta.is_submittable)))
+    farms = []
+    for row in frappe.get_all('Farm', fields=['name', 'farm_name'], order_by='name', limit_page_length=0):
+        doc = frappe.get_doc('Farm', row.name)
+        farms.append(dict(name=row.name, label=row.farm_name or row.name,
+                          read=bool(frappe.has_permission('Farm', 'read', doc=doc, user=user))))
+    employee = frappe.db.get_value('Employee', {'user_id': user, 'status': 'Active'}, ['name', 'company'], as_dict=True)
+    enabled = bool(frappe.db.get_value('User', user, 'enabled'))
+    roles = frappe.get_roles(user)
+    signing = []
+    for chain, config in signing_rules.CHAINS.items():
+        for step in config['steps'][1:]:
+            eligible = signing_rules.eligible(step, roles)
+            signing.append(dict(chain=chain, chain_label=config['label'], step=step['key'], title=step['title'],
+                                roles=[ROLE_LABELS.get(r, r) for r in step['roles']],
+                                role_eligible=eligible, ready=bool(employee and enabled and eligible)))
+    return dict(permissions=permissions, farms=farms, signing=signing, active_employee=employee.name if employee else '',
+                enabled=enabled)
 
 
 def detail_data(user):
@@ -54,11 +85,11 @@ def detail_data(user):
     rows = grants(user)
     return dict(name=doc.name, email=doc.email, modified=str(doc.modified), full_name=doc.full_name,
                 **{key: doc.get(key) for key in PROFILE_FIELDS},
-                roles=[row.role for row in doc.roles], role_profile=doc.role_profile_name or bool(doc.get('role_profiles')),
+                roles=[row.role for row in doc.roles], effective_roles=frappe.get_roles(user), role_profile=doc.role_profile_name or bool(doc.get('role_profiles')),
                 farms=[r.for_value for r in rows if r.allow == 'Farm' and managed(r)],
                 teams=[r.for_value for r in rows if r.allow == 'Work Team' and managed(r)],
-                advanced_grants=[dict(doctype=r.allow, value=r.for_value) for r in rows if not managed(r)],
-                scope_version=scope_version(rows), protected=user in ('Administrator', 'Guest'),
+                advanced_grants=[dict(doctype=r.allow, value=r.for_value, applicable_for=r.applicable_for, is_default=r.is_default, hide_descendants=r.hide_descendants) for r in rows if not managed(r)],
+                scope_version=scope_version(rows), permission_audit=permission_audit(user), protected=user in ('Administrator', 'Guest'),
                 employee=frappe.db.get_value('Employee', {'user_id': user}, 'name') or '')
 
 
@@ -99,8 +130,12 @@ def save(values, user=None):
     values = frappe.parse_json(values)
     if not isinstance(values, dict): frappe.throw('Hồ sơ không hợp lệ.')
     if user in ('Administrator', 'Guest'): frappe.throw('Tài khoản hệ thống được bảo vệ.', frappe.PermissionError)
+    for key in ('roles', 'farms', 'teams'):
+        value = values.get(key, [])
+        if not isinstance(value, list) or any(not isinstance(x, str) or not x for x in value):
+            frappe.throw('Danh sách vai trò, vườn và tổ không hợp lệ.')
     selected = set(values.get('roles') or [])
-    allowed = {r['name'] for r in role_choices()}
+    allowed = {r['name'] for r in role_choices() if r['assignable']}
     if not selected <= allowed: frappe.throw('Vai trò không hợp lệ hoặc đã ngừng sử dụng.')
     farms, teams = set(values.get('farms') or []), set(values.get('teams') or [])
     if len(farms) > 1000 or len(teams) > 2000: frappe.throw('Phạm vi vượt giới hạn.')
@@ -133,7 +168,8 @@ def save(values, user=None):
         old, current = [], set()
     if not str(values.get('first_name') or '').strip(): frappe.throw('Nhập tên người dùng.')
     for key in PROFILE_FIELDS: doc.set(key, cint(values.get(key)) if key == 'enabled' else str(values.get(key) or '').strip())
-    # Keep roles outside this screen and profile-managed roles intact.
+    # Native User.save removes disabled roles. Preserve profile-managed assignments and report that cleanup.
+    disabled_roles = set(frappe.get_all('Role', filters={'disabled': 1}, pluck='name')) & current
     if not (doc.role_profile_name or doc.get('role_profiles')):
         doc.set('roles', [{'role': role} for role in sorted((current - allowed) | selected)])
     doc.send_welcome_email = 0
@@ -148,7 +184,9 @@ def save(values, user=None):
                              apply_to_all_doctypes=1)).insert()
     link_employee(doc.name, values.get('employee'))
     # The request transaction commits profile, grants and the employee link together.
-    return detail_data(doc.name)
+    result = detail_data(doc.name)
+    result['removed_disabled_roles'] = sorted(disabled_roles - set(result['roles']))
+    return result
 
 
 def link_employee(user, employee):
@@ -158,6 +196,7 @@ def link_employee(user, employee):
     if employee == (current or ''):
         return
     if employee:
+        frappe.db.sql('select name from tabEmployee where name=%s for update', (employee,))
         row = frappe.db.get_value('Employee', employee, ['name', 'user_id', 'employee_name'], as_dict=True)
         if not row:
             frappe.throw('Nhân sự không tồn tại: ' + employee)
@@ -165,6 +204,7 @@ def link_employee(user, employee):
             frappe.throw(row.employee_name + ' đã gắn với tài khoản ' + row.user_id + '. Gỡ liên kết đó trước.')
         frappe.get_doc('Employee', employee).check_permission('write')
     if current:
+        frappe.get_doc('Employee', current).check_permission('write')
         frappe.db.set_value('Employee', current, 'user_id', None)
     if employee:
         frappe.db.set_value('Employee', employee, 'user_id', user)

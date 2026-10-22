@@ -1,6 +1,7 @@
 import frappe
 
 ROLES = (
+    "Lotus Work Journal Clerk",
     "Lotus Farm Manager",
     "Lotus Sales Planner",
     "Lotus QC Manager",
@@ -30,6 +31,10 @@ def set_brand():
 
 
 def setup():
+    from lotus_farm.work_journal import install as install_journal
+    install_journal()
+    from lotus_farm.localization import install_translations
+    install_translations()
     create_roles()
     set_brand()
     from frappe.permissions import add_permission, update_permission_property
@@ -75,7 +80,9 @@ def setup():
                     options="Packout Run",
                     no_copy=1,
                     insert_after="purpose",
-                )
+                ),
+                dict(fieldname='lotus_forecast_impacts_json', label='Lotus posted forecast impacts',
+                     fieldtype='Long Text', read_only=1, hidden=1, no_copy=1)
             ]
         }
     )
@@ -106,6 +113,9 @@ def setup():
         "Sucker Selection Batch",
         "Banana Variety",
         "Defect Reason",
+        "Bunch Tag",
+        "Lotus Handover Cohort",
+        "Lotus Process Adoption",
     ):
         for role in ROLES:
             add_permission(doctype, role)
@@ -113,6 +123,9 @@ def setup():
             if role == "Lotus Farm Manager":
                 for action in ("create", "write"):
                     update_permission_property(doctype, role, 0, action, 1)
+    frappe.db.add_unique('Lotus Process Adoption', ['farm', 'version'])
+    for action in ('create',):
+        update_permission_property('Lotus Handover Cohort', 'Lotus Integration User', 0, action, 1)
 
 
 def validate_reference_company(doc, method=None):

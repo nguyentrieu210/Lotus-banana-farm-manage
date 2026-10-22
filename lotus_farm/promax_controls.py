@@ -40,6 +40,10 @@ class ScheduleMaster(Document):
         validate_version(self,'rule_name',('Lotus Farm Manager',))
         if not -365 <= int(self.offset_days or 0) <= 365 or int(self.repeat_days or 0)<0 or getdate(self.valid_to)<getdate(self.valid_from):
             frappe.throw('Schedule offsets and effective period are invalid.')
+        if not -120 <= int(self.get('offset_months') or 0) <= 120 or not 0 <= int(self.get('repeat_months') or 0) <= 120:
+            frappe.throw('Khoảng tháng lịch không hợp lệ.')
+        if self.get('repeat_months') and self.repeat_days:
+            frappe.throw('Chỉ chọn lặp theo ngày hoặc theo tháng lịch.')
         if self.norm_profile:
             profile=frappe.get_doc('Material Norm Profile',self.norm_profile);profile.check_permission('read')
             if profile.farm!=self.farm or profile.work_type!=self.work_type or profile.approval_state!='Approved':
@@ -184,8 +188,12 @@ class InventoryItem(Document):
 
 
 def bunch_tag_guard(doc,method=None):
+    from lotus_farm.onedrive_workspace import tag_lineage
+    tag_lineage(doc, method)
     if doc.bunch_tag:
         tag=frappe.get_doc('Bunch Tag',doc.bunch_tag);tag.check_permission('read')
+        if tag.get('process_adoption'):
+            return
         if not tag.enabled or (tag.valid_from and getdate(doc.operation_date)<getdate(tag.valid_from)) or (tag.valid_to and getdate(doc.operation_date)>getdate(tag.valid_to)):
             frappe.throw('Bunch tag is inactive or outside its effective period.')
 

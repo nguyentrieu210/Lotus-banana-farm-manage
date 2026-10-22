@@ -134,6 +134,9 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
             previous.check_permission('read')
         if previous.payload_hash!=hashed:frappe.throw('Event ID already has a different payload; preserve the original event or use a new ID.')
         return dict(capture=previous.name,document=previous.target_name,replayed=True)
+    target_values = dict(doctype=target_doctype, **values, farm=farm)
+    if frappe.get_meta(target_doctype).has_field('company'):
+        target_values['company'] = frappe.db.get_value('Farm', farm, 'company')
     # Mobile results are drafts pending verification; integration events retain
     # the existing immediate-submit contract for backward compatibility.
     from lotus_farm.mobile_access import scoped_result_capture
@@ -150,8 +153,7 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
         else:
             assert_new_result(values)
             with scoped_result_capture(values['work_plan'], values['work_plan_line']):
-                doc = frappe.get_doc(dict(doctype=target_doctype, **values, farm=farm,
-                                          review_state='Pending'))
+                doc = frappe.get_doc(dict(**target_values, review_state='Pending'))
                 doc.flags.ignore_permissions = scoped
                 doc.insert(ignore_permissions=scoped)
     elif scoped:
@@ -159,7 +161,7 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
     else:
         if revision_of:
             frappe.throw('Không được sửa loại bản ghi này qua hàng chờ.')
-        doc = frappe.get_doc(dict(doctype=target_doctype, **values, farm=farm)).insert()
+        doc = frappe.get_doc(target_values).insert()
         doc.submit()
     evidence=frappe.get_doc(dict(doctype='Field Capture',farm=farm,client_event_id=client_event_id,captured_by=frappe.session.user,
         captured_at=captured_at,latitude=latitude,longitude=longitude,gps_accuracy_m=gps_accuracy_m,photo=photo,
@@ -182,7 +184,7 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
 def suggest_work(farm,posting_date):
     from lotus_farm.reporting import records,scope
     scope(farm);date=getdate(posting_date);suggestions=[]
-    rules=records('Work Schedule Rule',{'farm':farm,'approval_state':'Approved','valid_from':['<=',date],'valid_to':['>=',date]},['name','work_type','anchor','offset_days','repeat_days','quantity_basis','norm_profile'])
+    rules=records('Work Schedule Rule',{'farm':farm,'approval_state':'Approved','valid_from':['<=',date],'valid_to':['>=',date]},['name','work_type','anchor','offset_days','repeat_days','offset_months','repeat_months','quantity_basis','norm_profile'])
     for c in records('Crop Cycle',{'farm':farm,'status':['in',['Active','Harvesting']]},['name','farm_block','farm_plot','cycle_type','planting_date']):
         if not c.farm_plot:continue
         cohorts=records('Sucker Selection Batch',{'crop_cycle':c.name},['name','selection_date','selected_sucker_qty'])
@@ -195,8 +197,9 @@ def suggest_work(farm,posting_date):
                 elif rule.anchor in ('Shooting','Cut Bud'):
                     anchors=[(str(o.operation_date),o.name,o.net_bunch_qty) for o in records('Bunch Operation',{'crop_cycle':c.name,'sucker_selection_batch':cohort.name or '', 'operation_type':rule.anchor,'docstatus':1},['name','operation_date','net_bunch_qty'])]
                 for anchor,key,qty in anchors:
-                    due=getdate(add_days(anchor,rule.offset_days));days=(date-due).days
-                    if days<0 or (days and (not rule.repeat_days or days%rule.repeat_days)):continue
+                    from lotus_farm.onedrive_protocol import scheduled_work_due
+                    if not scheduled_work_due(anchor,date,offset_days=rule.offset_days or 0,offset_months=rule.offset_months or 0,
+                                              repeat_days=rule.repeat_days or 0,repeat_months=rule.repeat_months or 0):continue
                     if rule.quantity_basis=='Area':qty=frappe.db.get_value('Farm Plot',c.farm_plot,'area_ha')
                     elif rule.quantity_basis=='Selected Suckers':qty=cohort.selected_sucker_qty
                     elif rule.quantity_basis=='Trees':
@@ -217,7 +220,7 @@ def make_suggested_plan(farm,posting_date):
     require_role('Lotus Farm Manager');lock('Farm',farm)
     suggestions=suggest_work(farm,posting_date)
     if not suggestions:frappe.throw('No unplanned due tasks for this day.')
-    doc=frappe.get_doc(dict(doctype='Daily Work Plan',farm=farm,posting_date=posting_date,
+    doc=frappe.get_doc(dict(doctype='Daily Work Plan',farm=farm,company=frappe.db.get_value('Farm',farm,'company'),posting_date=posting_date,
         lines=[{k:v for k,v in r.items() if k!='rule'} for r in suggestions])).insert()
     return dict(plan=doc.name,docstatus=doc.docstatus,tasks=len(doc.lines))
 

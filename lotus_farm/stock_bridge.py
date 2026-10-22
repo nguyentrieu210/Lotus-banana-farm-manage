@@ -138,11 +138,15 @@ def make_repack_entry(packout):
 
 
 def validate_entry(doc, method=None):
+    before = doc.get_doc_before_save()
+    if (doc.get('lotus_forecast_impacts_json') or '') != (before.get('lotus_forecast_impacts_json') or '' if before else ''):
+        frappe.throw('Posted forecast impacts are written only by the stock bridge.')
     if not doc.get("lotus_packout_run"):
         return
-    lock("Packout Run", doc.lotus_packout_run)
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
     run.check_permission("read")
+    lock('Farm', run.farm)
+    lock("Packout Run", doc.lotus_packout_run)
     if (
         run.docstatus != 1
         or run.qc_state != "Released"
@@ -204,12 +208,32 @@ def validate_entry(doc, method=None):
         frappe.throw("Stock Entry input/output must exactly match Packout lineage and weights.")
 
 
-def _forecast_outputs(run):
+def _forecast_outputs(run, use_snapshot=True):
+    missing_posted_snapshot = False
+    if use_snapshot and run.stock_entry:
+        saved = frappe.db.get_value('Stock Entry', run.stock_entry, 'lotus_forecast_impacts_json')
+        if saved:
+            import json
+            return json.loads(saved)
+        missing_posted_snapshot = frappe.db.get_value('Stock Entry', run.stock_entry, 'docstatus') == 1
     totals = {}
     for source in run.sources:
         lot = frappe.get_doc("Harvest Lot", source.harvest_lot)
         for contribution in lot.sources:
             actual = frappe.get_doc("Harvest Actual", contribution.harvest_actual)
+            from lotus_farm.onedrive_supply import actual_forecast_shares
+            source_shares = actual_forecast_shares(actual)
+            if source_shares is not None:
+                if missing_posted_snapshot:
+                    frappe.throw('Chứng từ kho OneDrive đã ghi sổ thiếu dấu kiểm ảnh hưởng dự thu; cần đối soát trước khi đảo kho.')
+                for supply, physical_share in source_shares:
+                    planned_items = {row.item for row in supply.output_plan} if supply.output_plan else {supply.item}
+                    share = float(source.input_kg)/float(run.input_kg)*float(contribution.contributed_kg)/float(lot.released_raw_kg)*physical_share
+                    bucket = totals.setdefault(supply.name, {})
+                    for output in run.outputs:
+                        if output.item in planned_items:
+                            bucket[output.item] = bucket.get(output.item, 0)+float(output.net_kg)*share
+                continue
             if not actual.forecast:
                 from lotus_farm.harvest_matching import check_unlinked_stock
                 check_unlinked_stock(actual)
@@ -239,7 +263,10 @@ def stock_posted(doc, method=None):
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
     frappe.db.set_value("Packout Run", run.name, "stock_entry", doc.name)
     # Physical finished stock replaces future supply per Item; no duplicated forecast + stock ATP.
-    for name, item_amounts in sorted(_forecast_outputs(run).items()):
+    impacts = _forecast_outputs(run, use_snapshot=False)
+    import json
+    doc.db_set('lotus_forecast_impacts_json', json.dumps(impacts, sort_keys=True), update_modified=False)
+    for name, item_amounts in sorted(impacts.items()):
         lock("Harvest Forecast", name)
         supply = frappe.get_doc("Harvest Forecast", name)
         if supply.output_plan:
@@ -304,13 +331,15 @@ def stock_reversed(doc, method=None):
 @frappe.whitelist(methods=["POST"])
 def link_stock_reservation(forecast, allocation, stock_reservation, qty_kg=None):
     require_role("Lotus Sales Planner")
+    farm = frappe.db.get_value('Harvest Forecast', forecast, 'farm')
+    if farm: lock('Farm', farm)
     reservation = frappe.get_doc("Stock Reservation Entry", stock_reservation)
     reservation.check_permission("read")
     lock("Sales Order", reservation.voucher_no)
     lock("Stock Reservation Entry", reservation.name)
     lock("Harvest Forecast", forecast)
     reservation.reload()
-    supply = frappe.get_doc("Harvest Forecast", forecast)
+    supply = frappe.get_doc("Harvest Forecast", forecast, for_update=True)
     supply.check_permission("write")
     row = next((r for r in supply.allocations or [] if r.name == allocation), None)
     if not row or reservation.docstatus != 1 or reservation.voucher_type != "Sales Order":

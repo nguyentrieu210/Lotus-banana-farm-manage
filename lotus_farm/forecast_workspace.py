@@ -31,7 +31,7 @@ def _fields():
         "safe_saleable_kg", "committed_qty_kg", "materialized_qty_kg",
         "available_to_promise_kg", "shortage_kg", "availability_status",
         "supply_state", "confidence", "forecast_basis", "revision_no",
-        "supersedes", "released_at", "modified",
+        "supersedes", "released_at", "modified", "process_adoption",
     ]
 
 

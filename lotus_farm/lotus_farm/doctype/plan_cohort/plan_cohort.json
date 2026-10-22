@@ -89,6 +89,12 @@
       "fieldname": "notes",
       "label": "Căn cứ ước tính / ghi chú",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "handover_cohort",
+      "label": "Đợt bàn giao tham chiếu",
+      "fieldtype": "Link",
+      "options": "Lotus Handover Cohort"
     }
   ],
   "field_order": [
@@ -104,7 +110,8 @@
     "version",
     "approval_state",
     "supersedes",
-    "notes"
+    "notes",
+    "handover_cohort"
   ],
   "permissions": [
     {

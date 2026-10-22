@@ -15,7 +15,8 @@
     "committed_qty_kg",
     "available_to_promise_kg",
     "shortage_kg",
-    "availability_status"
+    "availability_status",
+    "source_share_percent"
   ],
   "fields": [
     {
@@ -100,6 +101,11 @@
       "label": "Availability Status",
       "options": "Available\nTight\nOvercommitted",
       "read_only": 1
+    },
+    {
+      "fieldname": "source_share_percent",
+      "label": "Tỷ phần kg sơ chế OneDrive (%)",
+      "fieldtype": "Percent"
     }
   ]
 }

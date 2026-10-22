@@ -21,6 +21,7 @@ MODULES={
  'trace':['Harvest Lot','Packout Run','Farm Plot'],'map':['Plot Geometry'],'settings':['Lotus Farm Settings'],
  'masters':['Plan Cohort','Work Category','Work Type','Work Team','Material Norm Profile','Norm Basis','Harvest Profile','Packout Profile','Cancellation Reason Group','Cancellation Reason','Cancellation Reason Alias','Disease','Defect Reason','Product Grade','Market','Pack Specification','Secondary Product Type','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Plot Geometry','Scale Device'],
  'imports':['Source File Registry','Source Import Mapping','Source Import Batch','Integration Task','Source Inventory Item','OneDrive Feed','Legacy Organization Map','Legacy Cycle Plot Mapping']}
+MODULES['process']=['Lotus Handover Cohort','Lotus Process Adoption','Bunch Tag','Sucker Selection Batch','Plan Cohort']
 ALLOWED={d for names in MODULES.values() for d in names}
 MODULES['masters'].append('Banana Variety')
 ALLOWED.add('Banana Variety')
@@ -64,7 +65,15 @@ def bootstrap():
     session['today']=nowdate()
     session.setdefault('capabilities',{})['user_admin']=has_role('System Manager') and bool(frappe.has_permission('User','read'))
     session.setdefault('capabilities',{})['hr']=has_role('HR Manager','HR User')
+    from lotus_farm.hr_workspace import _is_hr_manager
+    session['capabilities']['hr_manage']=session['capabilities']['hr'] and _is_hr_manager()
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
+    from lotus_farm.work_journal import capabilities as journal_capabilities
+    session['capabilities'].update(journal_capabilities())
+    if session['capabilities']['work_journal.read']:
+        from lotus_farm.work_journal import farm_names
+        existing = {f['name'] for f in session['farms']}
+        session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in farm_names() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
     return session
 
 
@@ -163,11 +172,51 @@ def detail(doctype,name):
 
 
 @frappe.whitelist()
-def link_options(doctype,search='',farm=None,company=None):
+def link_options(doctype,search='',farm=None,company=None,context_field=None,block=None,cycle=None,on_date=None,operation_type=None,item=None,approved_only=False):
     if not frappe.has_permission(doctype,'read'):frappe.throw('Link read permission required.',frappe.PermissionError)
     meta=frappe.get_meta(doctype);filters={}
+    if doctype == 'Packout Profile' and cint(approved_only):
+        if farm:
+            selected=frappe.get_doc('Farm',farm);selected.check_permission('read')
+        filters['approval_state']='Approved'
+        if item:filters['item']=item
+        rows=frappe.get_list(doctype,filters=filters,fields=['name','profile_name','farm','valid_from','valid_to','item'],
+                            limit_page_length=1000,order_by='name')
+        day=getdate(on_date) if on_date else None
+        query=search.casefold()[:80]
+        return [dict(value=r.name,label=f'{r.profile_name} · {r.item}') for r in rows
+                if (not r.farm or r.farm==farm) and (not day or (getdate(r.valid_from)<=day and (not r.valid_to or getdate(r.valid_to)>=day)))
+                and (not query or query in (r.name+' '+(r.profile_name or '')+' '+r.item).casefold())][:30]
     if farm and meta.has_field('farm'):filters['farm']=farm
     if company and meta.has_field('company'):filters['company']=company
+    if block and doctype in ('Farm Plot','Crop Cycle','Sucker Selection Batch'):
+        selected=land_scope(company=company,farm=farm,block=block)
+        filters.update(land_filters(meta,selected))
+    if cycle and doctype=='Sucker Selection Batch':
+        selected=land_scope(company=company,farm=farm,block=block,cycle=cycle)
+        filters.update(land_filters(meta,selected))
+    if doctype=='Bunch Operation' and context_field=='source_cut_operation':
+        selected=land_scope(company=company,farm=farm,block=block,cycle=cycle)
+        filters.update(land_filters(meta,selected));filters.update(operation_type='Cut Bud',docstatus=1)
+        rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%']} if search else None,
+            fields=['name','farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch','operation_date','bunch_tag','net_bunch_qty'],limit_page_length=30,order_by='operation_date desc, name desc')
+        result=[]
+        for r in rows:
+            tag_title=frappe.db.get_value('Bunch Tag',r.bunch_tag,'display_name') if r.bunch_tag and frappe.has_permission('Bunch Tag','read') else r.bunch_tag
+            result.append(dict(value=r.name,label=f"{r.name} · {r.operation_date} · {r.net_bunch_qty} buồng",subtitle=tag_title,
+                context={**{key:r.get(key) for key in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')},'tag':r.bunch_tag,'tag_title':tag_title}))
+        return result
+    if doctype=='Bunch Tag':
+        filters['enabled']=1
+        if on_date and operation_type in ('Cut Bud','Bud Injection'):
+            day=getdate(add_days(on_date,14 if operation_type=='Bud Injection' else 0))
+            filters.update(valid_from=['<=',day],valid_to=['>=',day])
+            if frappe.has_permission('Lotus Process Adoption','read'):
+                adoption_filters={'approval_state':'Approved','valid_from':['<=',day]}
+                if farm:adoption_filters['farm']=farm
+                active=frappe.get_list('Lotus Process Adoption',filters=adoption_filters,fields=['name','valid_to'],limit_page_length=1000)
+                active=[a.name for a in active if not a.valid_to or getdate(a.valid_to)>=day]
+                if active:filters['process_adoption']=['in',active]
     title=meta.title_field or 'name'
     rows=frappe.get_list(doctype,filters=filters,or_filters={'name':['like','%'+search[:80]+'%'],title:['like','%'+search[:80]+'%']} if search else None,fields=list(dict.fromkeys(['name',title])),limit_page_length=500 if doctype=='UOM' else 30,order_by='name')
     return [dict(value=r.name,label=r.get(title) or r.name) for r in rows]
@@ -336,9 +385,9 @@ def material_status(farm,posting_date,block=None,plot=None,cycle=None,zone=None)
         actuals=records('Material Consumption',{'material_requirement':req.name,'docstatus':1},['item','consumed_qty'])
         used={}
         for c in actuals:used[c.item]=used.get(c.item,0)+flt(c.consumed_qty)
-        result=frappe.get_list('Daily Work Result',filters={'work_plan_line':req.work_plan_line,'docstatus':1},fields=['completed_qty'],limit_page_length=1)
+        actual_results=frappe.get_list('Daily Work Result',filters={'work_plan_line':req.work_plan_line,'docstatus':1},fields=['completed_qty'],limit_page_length=1)
         line=frappe.db.get_value('Daily Work Plan Line',req.work_plan_line,['planned_qty'],as_dict=True)
-        ratio=flt(result[0].completed_qty)/flt(line.planned_qty) if result and line and line.planned_qty else None
+        ratio=flt(actual_results[0].completed_qty)/flt(line.planned_qty) if actual_results and line and line.planned_qty else None
         for r in doc.lines:
             expected=flt(r.required_qty)*ratio if ratio is not None else None
             usage.append(dict(requirement=doc.name,item=r.item,uom=r.uom,planned_qty=r.required_qty,used_qty=used.get(r.item,0),expected_for_actual=expected,variance_qty=used.get(r.item,0)-expected if expected is not None else None))

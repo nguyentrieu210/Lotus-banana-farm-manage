@@ -16,7 +16,9 @@
     "team",
     "supervisor",
     "status",
-    "notes"
+    "notes",
+    "handover_cohort",
+    "selection_origin"
   ],
   "fields": [
     {
@@ -93,6 +95,19 @@
       "fieldtype": "Link",
       "options": "Farm Plot",
       "read_only": 1
+    },
+    {
+      "fieldname": "handover_cohort",
+      "label": "Đợt bàn giao tham chiếu",
+      "fieldtype": "Link",
+      "options": "Lotus Handover Cohort"
+    },
+    {
+      "fieldname": "selection_origin",
+      "label": "Nguồn ngày chọn chồi",
+      "fieldtype": "Select",
+      "options": "Observed\nImported Actual",
+      "default": "Observed"
     }
   ],
   "permissions": [

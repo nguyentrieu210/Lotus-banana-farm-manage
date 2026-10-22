@@ -32,6 +32,40 @@
       "fieldname": "valid_to",
       "label": "Valid To",
       "fieldtype": "Date"
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm"
+    },
+    {
+      "fieldname": "process_adoption",
+      "label": "Phiên bản quy trình",
+      "fieldtype": "Link",
+      "options": "Lotus Process Adoption"
+    },
+    {
+      "fieldname": "color_code",
+      "label": "Mã màu",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "period_basis",
+      "label": "Mốc xác định màu",
+      "fieldtype": "Select",
+      "options": "\nCut Bud\nShooting"
+    },
+    {
+      "fieldname": "source_kind",
+      "label": "Loại lịch",
+      "fieldtype": "Select",
+      "options": "\nSource History\nExtended Plan"
+    },
+    {
+      "fieldname": "source_version",
+      "label": "Phiên bản nguồn",
+      "fieldtype": "Data"
     }
   ],
   "field_order": [
@@ -39,7 +73,13 @@
     "display_name",
     "enabled",
     "valid_from",
-    "valid_to"
+    "valid_to",
+    "farm",
+    "process_adoption",
+    "color_code",
+    "period_basis",
+    "source_kind",
+    "source_version"
   ],
   "autoname": "hash",
   "permissions": [

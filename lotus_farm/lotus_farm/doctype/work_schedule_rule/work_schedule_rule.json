@@ -80,6 +80,18 @@
       "options": "Draft\nApproved",
       "reqd": 1,
       "default": "Draft"
+    },
+    {
+      "fieldname": "offset_months",
+      "label": "Lệch mốc (tháng lịch)",
+      "fieldtype": "Int",
+      "default": "0"
+    },
+    {
+      "fieldname": "repeat_months",
+      "label": "Lặp mỗi (tháng lịch)",
+      "fieldtype": "Int",
+      "default": "0"
     }
   ],
   "field_order": [
@@ -94,7 +106,9 @@
     "valid_from",
     "valid_to",
     "version",
-    "approval_state"
+    "approval_state",
+    "offset_months",
+    "repeat_months"
   ],
   "autoname": "hash",
   "permissions": [

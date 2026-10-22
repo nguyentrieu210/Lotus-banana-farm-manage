@@ -48,7 +48,7 @@
 .workspace-modal::backdrop{background:#151c2c66;backdrop-filter:blur(2px)}
 .workspace-modal[open]{animation:lotus-dialog-enter 180ms var(--lotus-ease)}
 .workspace-modal__header{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;background:var(--lotus-surface);border-bottom:1px solid var(--lotus-border)}
-.workspace-modal__header h2{font-size:18px;margin:0;line-height:1.4}
+.workspace-modal__header h2{font-size:18px;margin:0;line-height:1.4;min-width:0;overflow-wrap:anywhere}
 .workspace-modal__header>button{flex-shrink:0}
 .workspace-modal__body{padding:18px 20px}
 .workspace-modal__body>fieldset{border:0;padding:0;margin:0;min-width:0}
@@ -259,3 +259,7 @@
 .lotus-chart-table :is(th,td){padding:6px 10px;border-bottom:1px solid var(--lotus-border);text-align:right;white-space:nowrap}
 .lotus-chart-table :is(thead th,tbody th){text-align:left;color:var(--lotus-muted);font-weight:600}
 .user-admin .user-wide{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
+.workspace-modal .user-check{flex-direction:row!important;align-items:center;justify-content:flex-start}
+.workspace-modal .user-choice-grid{max-height:min(360px,40dvh)}
+.workspace-modal .user-choice,.workspace-modal .user-choice span{min-width:0;overflow-wrap:anywhere}
+.nav-subsection{display:block;margin:var(--lotus-space-3) 0 var(--lotus-space-1);padding:0 var(--lotus-space-3);color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:600}

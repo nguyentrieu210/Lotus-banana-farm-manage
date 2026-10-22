@@ -1,1 +1,1 @@
-recursive-include lotus_farm *.css *.csv *.html *.ico *.js *.json *.md *.png *.py *.svg *.txt
+recursive-include lotus_farm *.css *.csv *.gz *.html *.ico *.js *.json *.md *.png *.py *.svg *.txt

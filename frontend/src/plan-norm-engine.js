@@ -91,11 +91,13 @@ export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false
       if(!dates[rule.anchor])continue;
       const off=number(rule.offset_days);
       if(off===null)continue;
-      const first=day(dates[rule.anchor],off);
+      const monthOffset=number(rule.offset_months)||0;
+      const first=day(month(dates[rule.anchor],monthOffset),off);
       const every=number(rule.repeat_days)||0;
+      const everyMonth=number(rule.repeat_months)||0;
       let occurrence=0;
       while(first&&occurrence<125) {
-        const when=day(first,every*occurrence);
+        const when=everyMonth?day(month(dates[rule.anchor],monthOffset+everyMonth*occurrence),off):day(first,every*occurrence);
         if(!when||when>end||(harvest&&when>harvest))break;
         if((!rule.valid_from||rule.valid_from<=when)&&(!rule.valid_to||rule.valid_to>=when)&&when>=start) {
           let qty=null;
@@ -122,7 +124,7 @@ export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false
               required_workdays:labor,piecework_cost:Number(work.allow_piecework)===1&&number(work.piecework_rate)>0?qty*Number(work.piecework_rate):null,norm_version:norm?.version??null,projected:true});
           }
         }
-        if(!every||every<=0)break;
+        if((!every||every<=0)&&!everyMonth)break;
         occurrence++;
       }
     }

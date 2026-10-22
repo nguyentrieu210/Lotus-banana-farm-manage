@@ -100,9 +100,13 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
         for r in supply.allocations or []
         if r.allocation_state == "Reserved" and r.item == line.item_code
     )
+    # Re-evaluate physical source consumption under the current supply lock.
+    # A harvested slice must not remain reservable while packing is pending.
+    supply._calculate_remaining()
+    remaining_capacity = max(float(_item_atp(supply, line.item_code) or 0)+committed, 0)
     try:
         amount = reserve_limit(
-            max(safe_commit - materialized, 0),
+            remaining_capacity,
             committed,
             qty_kg,
             max(remaining_demand - _active_for_line(line.name), 0),
@@ -158,8 +162,10 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
 @frappe.whitelist(methods=["POST"])
 def release(forecast, allocation):
     require_role("Lotus Sales Planner")
+    farm = frappe.db.get_value('Harvest Forecast', forecast, 'farm')
+    if farm: lock('Farm', farm)
     lock("Harvest Forecast", forecast)
-    supply = frappe.get_doc("Harvest Forecast", forecast)
+    supply = frappe.get_doc("Harvest Forecast", forecast, for_update=True)
     supply.check_permission("write")
     row = next((r for r in supply.allocations or [] if r.name == allocation), None)
     if not row:

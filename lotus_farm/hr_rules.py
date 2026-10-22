@@ -30,17 +30,28 @@ def transition_allowed(old, new):
     return old == new or new in STAGES.get(old, set())
 
 def onboarding_gaps(employee):
-    """No payroll or personal data is returned; only a checklist of missing items."""
+    """Minimum data for basic intake; supporting documents can follow later."""
+    needed = {
+        "employee_name": "Họ tên",
+        "gender": "Giới tính",
+        "date_of_birth": "Ngày sinh",
+        "date_of_joining": "Ngày vào làm",
+        "cell_number": "Số điện thoại",
+        "designation": "Chức danh",
+        "lotus_worker_category": "Loại nhân sự",
+        "lotus_payment_basis": "Hình thức tính công/lương",
+    }
+    return [label for field, label in needed.items() if not employee.get(field)]
+
+
+def dossier_gaps(employee):
+    """Supplementary documents, independent from basic intake approval."""
     needed = {
         "lotus_cccd_hash": "CCCD",
         "lotus_id_issue_on": "Ngày cấp CCCD",
         "lotus_id_issue_at": "Nơi cấp CCCD",
-        "cell_number": "Số điện thoại",
         "current_address": "Địa chỉ hiện tại",
         "lotus_emergency_name": "Người liên hệ khẩn cấp",
         "lotus_emergency_phone": "Điện thoại khẩn cấp",
-        "designation": "Chức danh",
-        "lotus_worker_category": "Loại nhân sự",
-        "lotus_payment_basis": "Hình thức tính công/lương",
     }
     return [label for field, label in needed.items() if not employee.get(field)]

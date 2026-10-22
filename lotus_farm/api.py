@@ -17,7 +17,10 @@ def _insert_idempotent(doctype, key_field, key, payload, submit=False):
         return doc
     frappe.db.savepoint("lotus_event")
     try:
-        doc = frappe.get_doc(dict(doctype=doctype, **deepcopy(payload)))
+        values = deepcopy(payload)
+        if "company" not in values and values.get("farm") and frappe.get_meta(doctype).has_field("company"):
+            values["company"] = frappe.db.get_value("Farm", values["farm"], "company")
+        doc = frappe.get_doc(dict(doctype=doctype, **values))
         doc.set(key_field, key)
         doc.client_payload_hash = payload_hash
         doc.insert()
@@ -50,6 +53,8 @@ def create_operation(
     rejected_qty=0,
     sucker_selection_batch=None,
     harvest_profile=None,
+    bunch_tag=None,
+    source_cut_operation=None,
 ):
     require_role("Lotus Farm Manager", "Lotus Integration User")
     if not client_event_id:
@@ -65,6 +70,9 @@ def create_operation(
         sucker_selection_batch=sucker_selection_batch,
         harvest_profile=harvest_profile,
     )
+    # Preserve the historical payload hash for callers that omit the new fields.
+    if bunch_tag: payload['bunch_tag'] = bunch_tag
+    if source_cut_operation: payload['source_cut_operation'] = source_cut_operation
     doc = _insert_idempotent("Bunch Operation", "client_event_id", client_event_id, payload, submit=True)
     return {
         "document": doc.name,
@@ -127,6 +135,7 @@ def availability(period_start, period_end, farm=None, item=None):
             "available_to_promise_kg",
             "shortage_kg",
             "snapshot_hash",
+            "process_adoption",
         ],
         order_by="period_start_date, farm",
         limit_page_length=10000,

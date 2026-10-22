@@ -9,6 +9,7 @@ import {pages,navGroups} from '../src/domain.js'
 setActivePinia(createPinia())
 const WorkspaceSidebar=await load('components/WorkspaceSidebar.vue')
 const {useSession}=await loadModule('store.js')
+const {sidebarCollapsed}=await loadModule('workspace.js')
 const iconSource=readFileSync(new URL('../src/components/LotusIcon.vue',import.meta.url),'utf8')
 
 test('every page sits in exactly one sidebar group with a real icon',()=>{
@@ -64,4 +65,37 @@ test('unknown permitted pages remain reachable and group changes do not create r
  view.root.querySelector('.nav-parent').click();await tick()
  assert.deepEqual(visited,['work'])
  view.unmount()
+})
+
+test('HR exposes all eight destinations in order with a non-interactive setup label',async()=>{
+ const session=useSession();Object.assign(session,{user:'manager',capabilities:{hr:true,hr_manage:true,attendance:true},commands:{},modules:{}})
+ const visited=[]
+ const view=mount(WorkspaceSidebar,{nav:pages.filter(([p])=>['nhan-su','cham-cong'].includes(p)),page:'nhan-su',hrView:'devices',onGo:(...args)=>visited.push(args)})
+ await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.nav-child .nav-label')].map(n=>n.textContent),['Hồ sơ nhân viên','Tuyển dụng','Tiếp nhận','Chấm công','Kỳ công & bảng lương','Cơ cấu & chức danh','Máy chấm công','Nhập dữ liệu nhân sự'])
+ const heading=view.root.querySelector('.nav-subsection');assert.equal(heading.textContent,'Thiết lập nhân sự');assert.equal(heading.tagName,'SPAN')
+ assert.equal(view.root.querySelectorAll('[aria-current=page]').length,1)
+ assert.equal(view.root.querySelector('[aria-current=page]').getAttribute('aria-label'),'Máy chấm công')
+ view.root.querySelector('[aria-label="Tuyển dụng"]').click();await tick()
+ assert.deepEqual(visited,[['nhan-su',{hr_view:'candidates'}]])
+ view.root.querySelector('.nav-parent').click();await tick()
+ assert.equal(view.root.querySelector('.nav-submenu').style.display,'none');assert.equal(visited.length,1)
+ sidebarCollapsed.value=true;await tick();view.root.querySelector('.nav-parent').click();await tick()
+ assert.equal(sidebarCollapsed.value,false);assert.equal(view.root.querySelector('.nav-submenu').style.display,'')
+ assert.equal(visited.length,1)
+ view.unmount()
+})
+
+test('HR staff, attendance-only and unrelated users get only their permitted HR entries',async()=>{
+ for(const [capabilities,expected] of [
+  [{hr:true},['Hồ sơ nhân viên','Tuyển dụng','Tiếp nhận','Cơ cấu & chức danh','Máy chấm công','Nhập dữ liệu nhân sự']],
+  [{attendance:true},['Chấm công']],
+  [{},[]],
+ ]){
+  Object.assign(useSession(),{capabilities,commands:{},modules:{}})
+  const view=mount(WorkspaceSidebar,{nav:pages.filter(([p])=>['nhan-su','cham-cong'].includes(p)),page:capabilities.hr?'nhan-su':'cham-cong'})
+  await tick()
+  assert.deepEqual([...view.root.querySelectorAll('.nav-child .nav-label')].map(n=>n.textContent),expected)
+  view.unmount()
+ }
 })

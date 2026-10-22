@@ -53,30 +53,35 @@ def seed(company=None):
         farm_name="Lotus 222 ha — DỮ LIỆU MẪU", area_ha=222, active=1,
         notes="TEST ONLY / KHÔNG DÙNG ĐỂ BÁO CÁO HAY THANH TOÁN")).insert()
 
+    def farm_doc(doctype, **values):
+        values["farm"] = farm.name
+        if frappe.get_meta(doctype).has_field("company"):
+            values["company"] = company
+        return frappe.get_doc(dict(doctype=doctype, **values))
+
     blocks, plots, cycles = {}, {}, {}
     for code, area in (("A01", 80), ("A02", 72), ("A03", 70)):
-        b = frappe.get_doc(dict(doctype="Farm Block", farm=farm.name, block_code=code,
-            block_name="Lô "+code+" (mẫu)", area_ha=area, variety=variety, active=1)).insert()
+        b = farm_doc("Farm Block", block_code=code,
+            block_name="Lô "+code+" (mẫu)", area_ha=area, variety=variety, active=1).insert()
         blocks[code] = b.name
         for index in range(1, 5):
             pcode = f"{code}-{index:02d}"
-            p = frappe.get_doc(dict(doctype="Farm Plot", farm=farm.name,
+            p = farm_doc("Farm Plot",
                 farm_block=b.name, plot_code=pcode, plot_name="Thửa "+pcode,
-                area_ha=area / 4, active=1)).insert()
+                area_ha=area / 4, active=1).insert()
             plots[pcode] = p.name
-            c = frappe.get_doc(dict(doctype="Crop Cycle", farm=farm.name,
+            c = farm_doc("Crop Cycle",
                 farm_block=b.name, farm_plot=p.name, cycle_no=1,
                 planting_date=add_days(nowdate(), -240), variety=variety,
-                status="Active")).insert()
+                status="Active").insert()
             cycles[pcode] = c.name
 
     teams = {}
     for idx, name in enumerate(TEAM_NAMES, 1):
-        values = dict(doctype="Work Team", farm=farm.name,
-                      team_code=f"DEMO-T{idx:02d}", team_name=name, active=1)
+        values = dict(team_code=f"DEMO-T{idx:02d}", team_name=name, active=1)
         if frappe.get_meta("Work Team").has_field("foreman_name"):
             values["foreman_name"] = f"Tổ trưởng mẫu {idx:02d}"
-        teams[idx] = frappe.get_doc(values).insert().name
+        teams[idx] = farm_doc("Work Team", **values).insert().name
 
     categories = {}
     for c in ("Chăm sóc buồng", "Chăm sóc cây", "Trồng và chăm sóc"):
@@ -88,9 +93,9 @@ def seed(company=None):
     for code, name, uom, norm, group in WORKS:
         values = dict(doctype="Work Type", work_code="DEMO-"+code,
             work_name=name, uom=uom, category=categories[group],
-            productivity_per_workday=norm, active=1)
-        if frappe.get_meta("Work Type").has_field("payment_basis"):
-            values["payment_basis"] = "Daywork" if code in ("LEAF", "SICK") else "Piece"
+            productivity_per_workday=norm, allow_daywork=1, allow_piecework=0, active=1)
+        # Demo capacity is daywork only. No approved piecework price exists in
+        # this fixture; leave payroll rates unset instead of inventing a rate.
         work_ids[code] = frappe.get_doc(values).insert().name
 
     def make_plan(on_date, work_team, work_rows, completed=None):
@@ -100,17 +105,16 @@ def seed(company=None):
             line_data.append(dict(farm=farm.name, farm_block=p.farm_block, farm_plot=p.name,
                 crop_cycle=cycles[pcode], work_type=work_ids[work], planned_qty=qty,
                 work_team=teams[work_team]))
-        plan = frappe.get_doc(dict(doctype="Daily Work Plan", farm=farm.name,
-            posting_date=on_date, lines=line_data)).insert()
+        plan = farm_doc("Daily Work Plan", posting_date=on_date, lines=line_data).insert()
         plan.submit()
         if completed is not None:
             for row, done in zip(plan.lines, completed):
-                frappe.get_doc(dict(doctype="Daily Work Result", farm=farm.name,
+                farm_doc("Daily Work Result",
                     farm_block=row.farm_block, farm_plot=row.farm_plot,
                     crop_cycle=row.crop_cycle, posting_date=on_date,
                     work_plan=plan.name, work_plan_line=row.name,
                     completed_qty=done, actual_workdays=0,
-                    unfinished_reason="Mưa hoặc thiếu vật tư (mẫu)" if done < row.planned_qty else "")).insert().submit()
+                    unfinished_reason="Mưa hoặc thiếu vật tư (mẫu)" if done < row.planned_qty else "").insert().submit()
         return plan.name
 
     yesterday = add_days(nowdate(), -1)
@@ -119,10 +123,10 @@ def seed(company=None):
     make_plan(nowdate(), 3, [("A03-01", "REPLANT", 250), ("A03-02", "FERT", 600)])
 
     # Labor totals are one separate daily report, not tied to piecework rows.
-    frappe.get_doc(dict(doctype="Daily Labor Summary", farm=farm.name,
+    farm_doc("Daily Labor Summary",
         posting_date=yesterday, work_category=categories["Chăm sóc buồng"],
         work_area="Field", headcount=12, present=10,
-        staffing_target=12, actual_workdays=10, area_ha=80)).insert().submit()
+        staffing_target=12, actual_workdays=10, area_ha=80).insert().submit()
 
     return dict(farm=farm.name, company=company, blocks=len(blocks), plots=len(plots),
                 cycles=len(cycles), teams=len(teams), work_types=len(work_ids),

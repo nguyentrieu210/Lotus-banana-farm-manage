@@ -3,6 +3,7 @@ from frappe.model.document import Document
 from frappe.utils import flt
 from lotus_farm.controls import whole_count
 from lotus_farm.daily_operations import number
+from lotus_farm.inheritance import INHERITED_CYCLE_FIELDS, is_inherited_opening, validate_coverage_date
 
 
 class HarvestActual(Document):
@@ -29,8 +30,9 @@ class HarvestActual(Document):
             forecast = frappe.db.get_value(
                 "Harvest Forecast",
                 self.forecast,
-                ["farm", "farm_block", "crop_cycle", "sucker_selection_batch", "saleable_forecast_kg"],
+                ["farm", "farm_block", "crop_cycle", "sucker_selection_batch", "saleable_forecast_kg", "process_adoption"],
                 as_dict=True,
+                for_update=True,
             )
             if not forecast:
                 frappe.throw("Harvest Forecast does not exist.")
@@ -40,8 +42,13 @@ class HarvestActual(Document):
                 or forecast.crop_cycle != self.crop_cycle
             ):
                 frappe.throw("Harvest Forecast must belong to the same Farm, Block and Crop Cycle.")
-            if forecast.sucker_selection_batch != self.sucker_selection_batch:
+            if (forecast.sucker_selection_batch or '') != (self.sucker_selection_batch or ''):
                 frappe.throw("Harvest Forecast must belong to the same Sucker Selection Batch.")
+            sources = set(frappe.get_all('Forecast Source Claim', filters={
+                'parent': self.forecast, 'parenttype': 'Harvest Forecast',
+            }, pluck='source_cut_operation'))
+            if (sources or forecast.process_adoption) and (not self.get('source_cut_operation') or sources != {self.get('source_cut_operation')}):
+                frappe.throw('Harvest Forecast must claim exactly this source Cut Bud operation.')
 
             self.forecast_saleable_kg = flt(forecast.saleable_forecast_kg or 0, 3)
             self.variance_kg = flt(self.saleable_weight_kg - self.forecast_saleable_kg, 3)
@@ -56,14 +63,15 @@ class HarvestActual(Document):
         cycle = frappe.db.get_value(
             "Crop Cycle",
             self.crop_cycle,
-            ["farm", "farm_block", "cycle_type"],
+            ["farm", "farm_block", *INHERITED_CYCLE_FIELDS],
             as_dict=True,
         )
         if not cycle:
             frappe.throw("Crop Cycle does not exist.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
             frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
-        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch:
+        validate_coverage_date(cycle, self.harvest_date)
+        if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not is_inherited_opening(cycle):
             frappe.throw("Ratoon harvests must select a Sucker Selection Batch.")
 
         if self.sucker_selection_batch:

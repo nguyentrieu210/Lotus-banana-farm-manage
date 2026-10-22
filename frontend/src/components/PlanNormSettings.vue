@@ -156,8 +156,8 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     <div class="pn-table-scroll"><table class="pn-table"><thead><tr><th>Công việc</th><th>Tính từ</th><th>Chênh lệch</th><th>Lặp lại</th><th>Đơn vị tính</th><th>Trạng thái</th></tr></thead>
       <tbody><tr v-for="r in payload.rules||[]" :key="r.name" tabindex="0" role="button" @click="open('Work Schedule Rule',r)" @keydown.enter="open('Work Schedule Rule',r)">
        <td><strong>{{workNames[r.work_type]||r.rule_name}}</strong><small>{{r.rule_name}} · bản {{r.version}}</small></td>
-       <td>{{ANCHORS[r.anchor]||r.anchor}}</td><td>{{Number(r.offset_days)>0?'+':''}}{{r.offset_days}} ngày</td>
-       <td>{{Number(r.repeat_days)>0?'Mỗi '+r.repeat_days+' ngày':'Một lần'}}</td><td>{{quantityLabels[r.quantity_basis]||r.quantity_basis}}</td><td><span class="pn-state" :class="{approved:r.approval_state==='Approved'}">{{state(r)}}</span></td></tr>
+        <td>{{ANCHORS[r.anchor]||r.anchor}}</td><td><template v-if="Number(r.offset_months)">{{r.offset_months}} tháng lịch + </template>{{Number(r.offset_days)>0?'+':''}}{{r.offset_days}} ngày</td>
+        <td>{{Number(r.repeat_months)>0?'Mỗi '+r.repeat_months+' tháng lịch':Number(r.repeat_days)>0?'Mỗi '+r.repeat_days+' ngày':'Một lần'}}</td><td>{{quantityLabels[r.quantity_basis]||r.quantity_basis}}</td><td><span class="pn-state" :class="{approved:r.approval_state==='Approved'}">{{state(r)}}</span></td></tr>
        <tr v-if="!payload.rules?.length"><td colspan="6">Chưa có quy tắc công việc của vườn.</td></tr></tbody></table></div>
    </div>
 

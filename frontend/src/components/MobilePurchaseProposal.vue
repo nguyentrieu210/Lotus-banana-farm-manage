@@ -8,6 +8,7 @@ import LotusMobileInput from './LotusMobileInput.vue'
 import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import MobileLinkField from './MobileLinkField.vue'
 import SignerPicker from './SignerPicker.vue'
+import LotusSignatureTimeline from './LotusSignatureTimeline.vue'
 import {call} from '../api'
 import {unitLabel} from '../units'
 import '../purchase-proposal-mobile.css'
@@ -152,13 +153,7 @@ defineExpose({back,newProposal,open})
    <small>Kho nhận: {{detail.warehouse||'—'}}</small>
   </div>
   <LotusMobileFeedback v-if="detail.state==='Trả lại'&&detail.return_reason" kind="warning">Bị trả lại: {{detail.return_reason}}</LotusMobileFeedback>
-  <ol class="pp-steps" aria-label="Các bước ký">
-   <li v-for="(s,i) in detail.signatures" :key="s.action" :class="{done:!!s.signed_at,current:detail.step===i&&!s.signed_at}">
-    <span class="pp-steps__mark" aria-hidden="true">{{s.signed_at?'✓':i+1}}</span>
-    <div><b>{{s.title}}</b><small>{{s.signed_at?s.name+' · '+vnDate(s.signed_at)+' '+String(s.signed_at).slice(11,16):detail.needs_signers?'Chọn người ký khi gửi':(s.name||'Chưa chọn')+' · '+(detail.step===i?'đang chờ ký':'chưa đến lượt')}}</small></div>
-    <img v-if="s.image" :src="s.image" :alt="'Chữ ký '+s.name" class="pp-steps__sign">
-   </li>
-  </ol>
+  <LotusSignatureTimeline :steps="detail.signatures" :current="detail.state==='Trả lại'?-1:detail.step" title="Các bước ký"/>
   <div v-for="(r,i) in detail.items" :key="r.name" class="buy-card pp-item">
    <div class="buy-line"><strong>{{i+1}}. {{r.item_name}}</strong><b>{{number(r.qty)}} {{unitLabel(r.uom)}}</b></div>
    <small v-if="r.lotus_specification">{{r.lotus_specification}}</small>
@@ -172,7 +167,7 @@ defineExpose({back,newProposal,open})
   <SignerPicker v-if="detail.needs_signers&&detail.can_sign" v-model="signers" :options="signerOptions" :disabled="saving"/>
   <LotusMobileButton v-if="detail.can_sign" class="buy-primary" :disabled="saving||!online||detail.needs_signers&&signersMissing.length>0" @click="act('sign')">{{detail.step===0?'Ký và gửi phụ trách bộ phận':detail.step===3?'Ký phê duyệt (Giám đốc)':'Ký xác nhận: '+detail.step_title}}</LotusMobileButton>
   <div v-if="detail.can_reassign&&reassignOptions.length" class="buy-card">
-   <div class="buy-field"><label>Chuyển bước “{{detail.step_title}}” cho người khác</label><MobileLinkField :model-value="reassignTo" :options="reassignOptions" :searchable="reassignOptions.length>6" placeholder="Chọn người ký thay…" aria-label="Người ký thay" @update:modelValue="reassignTo=$event"/></div>
+   <div class="buy-field"><label>Chuyển bước “{{detail.step_title}}” cho người khác</label><MobileLinkField :model-value="reassignTo" :options="reassignOptions" :searchable="true" placeholder="Chọn người ký thay…" aria-label="Người ký thay" @update:modelValue="reassignTo=$event"/></div>
    <LotusMobileButton class="buy-outline" :disabled="saving||!online||!reassignTo" @click="act('reassign')">Chuyển người ký</LotusMobileButton>
   </div>
   <div v-if="detail.can_return" class="buy-card">

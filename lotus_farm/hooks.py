@@ -34,6 +34,8 @@ has_permission = {name: "lotus_farm.controls.farm_permission" for name in _scope
 permission_query_conditions = {
     name: "lotus_farm.permissions." + name.lower().replace(" ", "_") for name in _scoped_doctypes
 }
+has_permission["Work Daily Journal"] = "lotus_farm.work_journal.permission"
+permission_query_conditions["Work Daily Journal"] = "lotus_farm.work_journal.journal_query"
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
 doc_events["Sales Order"] = {"before_cancel": "lotus_farm.allocations.sales_order_cancel"}
@@ -153,6 +155,10 @@ doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validat
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
 doc_events['Harvest Actual']['on_cancel']='lotus_farm.harvest_matching.refresh_supply'
+for _event in ('on_submit', 'on_cancel'):
+    _existing = doc_events.setdefault('Bunch Cancellation', {}).get(_event, [])
+    if isinstance(_existing, str): _existing = [_existing]
+    doc_events['Bunch Cancellation'][_event] = [*_existing, 'lotus_farm.onedrive_supply.refresh_cut_forecasts']
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
 doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.validate_requirement_warehouse','before_update_after_submit':'lotus_farm.warehouse_planning.validate_requirement_warehouse'}
 doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
@@ -208,3 +214,23 @@ scheduler_events.setdefault('cron', {}).setdefault('*/10 * * * *', []).append('l
 
 # ZKTeco / Ronald Jack / Wise Eye clocks push punches to /iclock/* (lotus_farm.adms).
 page_renderer = [*globals().get('page_renderer', []), 'lotus_farm.adms.ADMSRenderer']
+
+# OneDrive adoption keeps zone history and lot actuals on separate identities.
+for _name in ('Lotus Handover Cohort', 'Lotus Process Adoption'):
+    has_permission[_name] = 'lotus_farm.controls.farm_permission'
+    permission_query_conditions[_name] = 'lotus_farm.permissions.' + _name.lower().replace(' ', '_')
+has_permission['Bunch Tag'] = 'lotus_farm.controls.farm_permission'
+permission_query_conditions['Bunch Tag'] = 'lotus_farm.permissions.bunch_tag'
+for _dt, _event, _handler in (
+    ('Bunch Tag', 'validate', 'lotus_farm.onedrive_workspace.validate_tag_master'),
+    ('Sucker Selection Batch', 'validate', 'lotus_farm.onedrive_workspace.validate_handover_link'),
+    ('Plan Cohort', 'validate', 'lotus_farm.onedrive_workspace.validate_handover_link'),
+    ('Fruit Measurement', 'validate', 'lotus_farm.onedrive_workspace.tag_lineage'),
+    ('Harvest Actual', 'validate', 'lotus_farm.onedrive_workspace.tag_lineage'),
+    ('Bunch Operation', 'validate', 'lotus_farm.onedrive_workspace.preserve_cut_source'),
+    ('Bunch Operation', 'before_cancel', 'lotus_farm.onedrive_workspace.preserve_cut_source'),
+):
+    _existing = doc_events.setdefault(_dt, {}).get(_event, [])
+    if isinstance(_existing, str):
+        _existing = [_existing]
+    doc_events[_dt][_event] = [*_existing, _handler]

@@ -14,11 +14,24 @@ globalThis.fetch=async(url,options={})=>{
  return {ok:true,status:200,json:async()=>({message:typeof handler==='function'?handler(args):handler})}
 }
 const Panel=await load('components/SigningPanel.vue')
+const Picker=await load('components/SignerPicker.vue')
 const S='lotus_farm.signing.'
 const steps=(states,names=['An','Bình','Chi'])=>['Người lập phiếu','Người giao / nhận','Thủ kho / người kiểm tra'].map((title,i)=>({key:['PREPARE','HANDOVER','STOREKEEPER'][i],title,name:names[i],assignee:names[i].toLowerCase()+'@lotus',state:states[i]||'',signed_at:states[i]==='Đã ký'?'2026-10-20 08:00:00':'',note:'',image:''}))
 const status=over=>({chain:'stock_document',label:'Phiếu kho',round:1,returned:false,done:false,current:1,can_sign:false,can_return:false,can_start:false,steps:steps(['Đã ký','Chờ ký','Chưa đến lượt']),...over})
 const button=(root,text)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith(text))
 const text=root=>root.textContent.replace(/\s+/g,' ')
+
+test('signer picker explains a missing role and suggests only the eligible direct manager',async()=>{
+ let selected
+ const options={steps:[{key:'PREPARE',title:'Người lập'},{key:'DEPARTMENT',title:'Phụ trách bộ phận'},{key:'APPROVE',title:'Giám đốc'}],
+  candidates:{DEPARTMENT:[{user:'manager@lotus',name:'An',recommended:true},{user:'other@lotus',name:'Bình'}],APPROVE:[]},
+  suggested:{DEPARTMENT:'manager@lotus',APPROVE:'forged@lotus'},diagnostics:{APPROVE:{message:'Cấp role Người duyệt mua hàng Lotus trong mục Người dùng.'}}}
+ const view=mount(Picker,{options,modelValue:{},'onUpdate:modelValue':v=>selected=v});await tick()
+ assert.deepEqual(selected,{DEPARTMENT:'manager@lotus'})
+ assert.equal(view.root.querySelectorAll('input[role=combobox]').length,2,'named signers remain searchable for short or empty lists')
+ assert.match(text(view.root),/Cấp role Người duyệt mua hàng Lotus/)
+ view.unmount()
+})
 
 test('preparer picks named signers; a step with one eligible person is preselected and empty steps explain why',async()=>{
  calls.length=0

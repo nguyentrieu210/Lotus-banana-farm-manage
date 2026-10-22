@@ -48,22 +48,30 @@ REFERENCE_DOCTYPES=(
 def install_roles():
     """Idempotent role and document-permission installation; no cancellation or delete privilege."""
     from frappe.permissions import add_permission, update_permission_property
+    def ensure(doctype, role, actions, operations):
+        # Re-applying every unchanged flag clears Frappe metadata on each call.
+        # Migrations should only write the permission flags that actually differ.
+        filters={'parent':doctype,'role':role,'permlevel':0}
+        current=frappe.db.get_value('Custom DocPerm',filters,operations,as_dict=True)
+        if current is None:
+            add_permission(doctype,role)
+            current=frappe.db.get_value('Custom DocPerm',filters,operations,as_dict=True) or {}
+        for operation in operations:
+            expected=1 if operation in actions else 0
+            if int(current.get(operation) or 0)!=expected:
+                update_permission_property(doctype,role,0,operation,expected)
     for role, operations in ROLE_OPERATIONS.items():
         if not frappe.db.exists('Role',role):
             frappe.get_doc(dict(doctype='Role',role_name=role,desk_access=1)).insert(ignore_permissions=True)
         for doctype in REFERENCE_DOCTYPES:
             actions=set(operations.get(doctype,('read',)))
             # Purchaser/receiver must not edit another document without the explicit role.
-            add_permission(doctype,role)
-            for operation in ('read','select','create','write','submit','cancel','delete',
-                              'amend','report','export','import','share','print','email'):
-                update_permission_property(doctype,role,0,operation,1 if operation in actions else 0)
+            ensure(doctype,role,actions,('read','select','create','write','submit','cancel','delete',
+                              'amend','report','export','import','share','print','email'))
             if doctype=='File' or 'File' in operations:
                 pass
         if 'File' in operations:
-            add_permission('File',role)
-            for operation in ('read','create','write','delete'):
-                update_permission_property('File',role,0,operation,1 if operation in operations['File'] else 0)
+            ensure('File',role,operations['File'],('read','create','write','delete'))
 
 def provision_operator(email, company):
     """Provision a System User without committing or emailing credentials.

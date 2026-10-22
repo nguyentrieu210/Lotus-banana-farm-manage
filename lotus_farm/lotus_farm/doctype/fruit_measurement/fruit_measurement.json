@@ -25,7 +25,8 @@
     "ribbon_color",
     "measurer",
     "samples",
-    "legacy_aggregate_only"
+    "legacy_aggregate_only",
+    "source_cut_operation"
   ],
   "fields": [
     {
@@ -167,6 +168,12 @@
       "label": "Legacy Aggregate Only",
       "fieldtype": "Check",
       "description": "Historic aggregate without sample evidence; excluded from sample analysis."
+    },
+    {
+      "fieldname": "source_cut_operation",
+      "label": "Đợt cắt bắp gốc",
+      "fieldtype": "Link",
+      "options": "Bunch Operation"
     }
   ],
   "autoname": "hash",

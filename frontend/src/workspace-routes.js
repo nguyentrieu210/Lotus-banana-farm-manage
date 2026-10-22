@@ -1,7 +1,8 @@
 // The desktop modules share the parent shell instead of reloading standalone entrypoints.
 export const workspaceModules={
+ 'nhat-ky-cong-viec':{label:'Nhật ký công việc',capability:'work_journal.read'},
  'nguoi-dung':{label:'Người dùng & phân quyền',capability:'user_admin'},
- 'nhan-su':{label:'Hồ sơ nhân sự',capability:'hr'},
+ 'nhan-su':{label:'Hồ sơ nhân viên',capability:'hr'},
  'cham-cong':{label:'Chấm công',capability:'attendance'},
  'kho':{label:'Quản lý kho',capability:'stock'},
  'cong-viec':{label:'Công việc vườn',module:'work'},

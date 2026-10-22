@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from "../hr-catalog-labels"
 import {computed,onMounted,reactive,ref,watch} from 'vue'
 import {call} from '../api'
 import {stateLabel} from '../labels'
@@ -51,7 +52,13 @@ async function refresh(){
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
 onMounted(refresh)
-defineExpose({refresh})
+const formSnapshots=reactive({machine:'',assignment:''})
+watch(editDevice,value=>{if(value)formSnapshots.machine=JSON.stringify(machine)},{flush:'post'})
+watch(editAssignment,value=>{if(value)formSnapshots.assignment=JSON.stringify(assignment)},{flush:'post'})
+const hasUnsavedChanges=computed(()=>!!(uploadData.value.length||(editDevice.value&&formSnapshots.machine!==JSON.stringify(machine))||(editAssignment.value&&formSnapshots.assignment!==JSON.stringify(assignment))))
+const isSaving=computed(()=>busy.value&&(editDevice.value||editAssignment.value||!!preview.value))
+function discardChanges(){editDevice.value=false;editAssignment.value=false;preview.value=null;uploadData.value=[]}
+defineExpose({refresh,hasUnsavedChanges,isSaving,discardChanges})
 watch(()=>props.company,()=>{org.value=null;hardware.value=null;preview.value=null;uploadData.value=[];farm.value='';refresh()})
 function choose(id){active.value=id;notice.value='';error.value=''}
 function template(){
@@ -172,8 +179,8 @@ async function syncRange(){
    <UiButton v-if="manager" type="button" variant="outline" @click="editAssignment=true">＋ Thêm phân công</UiButton><WorkspaceModal v-if="manager" v-model="editAssignment" title="Phân công nhân viên" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveAssignment">
     <label>Nhân viên<UiSelect v-model="assignment.employee" required><option value="">Chọn nhân viên</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
     <label>Vườn<UiSelect v-model="assignment.farm" required><option value="">Chọn vườn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
-    <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{d.department_name}}</option></UiSelect></label>
-    <label>Chức danh<UiSelect v-model="assignment.designation"><option value="">Chọn</option><option v-for="d in org?.designations||[]" :key="d.name" :value="d.name">{{d.designation_name}}</option></UiSelect></label>
+    <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name)}}</option></UiSelect></label>
+    <label>Chức danh<UiSelect v-model="assignment.designation"><option value="">Chọn</option><option v-for="d in org?.designations||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.designation_name)}}</option></UiSelect></label>
     <label>Tổ/đội<UiSelect v-model="assignment.work_team"><option value="">Chọn</option><option v-for="t in visibleTeams" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect></label>
     <label>Chức vụ thực tế<UiInput v-model="assignment.role_title" placeholder="VD: Đội trưởng, tổ trưởng"/></label>
     <label>Ngày bắt đầu<DatePicker v-model="assignment.valid_from" required aria-label="Ngày bắt đầu"/></label>
@@ -221,7 +228,7 @@ async function syncRange(){
      <td><input v-if="manager&&!['Synced','Ignored'].includes(p.state)" type="checkbox" :value="p.name" v-model="selected" :aria-label="'Chọn log '+p.punched_at"/></td>
      <td>{{p.punched_at}}</td><td>{{p.device}}</td><td>{{p.device_user_id}}</td><td>{{p.employee||'Chưa ghép'}}</td><td>{{stateLabel(p.log_type||'Unknown')}}</td><td>{{stateLabel(p.state)}}</td>
     </tr></tbody></table></div>
-   <p class="hr-ops-tip">Nếu chưa có log, vào tab Nhập Excel → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
+   <p class="hr-ops-tip">Nếu chưa có log, vào mục Nhập dữ liệu nhân sự → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>
  </template>
  <WorkspaceModal v-model="ignoreOpen" title="Bỏ qua log máy chấm công" :busy="busy" width="560px">

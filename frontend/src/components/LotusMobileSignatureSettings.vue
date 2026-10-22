@@ -1,5 +1,5 @@
 <script setup>
-import {ref,watch,onBeforeUnmount} from 'vue'
+import {ref,watch,onMounted,onBeforeUnmount} from 'vue'
 import {Icon} from 'vant'
 import {call} from '../api'
 import LotusMobileButton from './LotusMobileButton.vue'
@@ -15,16 +15,19 @@ const profile=ref(null),error=ref(''),notice=ref(''),selectedFile=ref(''),upload
 const endpoint='lotus_farm.digital_signature.'
 const {dialog:deleteDialog,message:deleteMessage,ask:askDelete,finish:finishDelete}=useMobileConfirm()
 watch(()=>props.user,()=>{cancelEdit();expanded.value=false;loaded.value=false;profile.value=null;error.value='';notice.value='';selectedFile.value='';uploadStep.value=''})
-onBeforeUnmount(cancelEdit)
+function reloadIfOpen(){if(expanded.value&&!saving.value)load()}
+function onVisible(){if(document.visibilityState==='visible')reloadIfOpen()}
+onMounted(()=>{window.addEventListener('focus',reloadIfOpen);document.addEventListener('visibilitychange',onVisible)})
+onBeforeUnmount(()=>{cancelEdit();window.removeEventListener('focus',reloadIfOpen);document.removeEventListener('visibilitychange',onVisible)})
 function cancelEdit(){const old=editorSrc.value;editorSrc.value='';showDraw.value=false;if(old)URL.revokeObjectURL(old)}
 async function load(){
- if(!props.user)return
+ if(!props.user||loading.value)return
  loading.value=true;error.value=''
  try{profile.value=await call(endpoint+'my_signature_profile');loaded.value=true}
  catch(e){error.value=e.message||'Không tải được chữ ký.'}
  finally{loading.value=false}
 }
-async function toggle(){expanded.value=!expanded.value;if(expanded.value&&!loaded.value)await load()}
+async function toggle(){expanded.value=!expanded.value;if(expanded.value)await load()}
 async function chooseFile(event,kind='signature'){
  editingKind.value=kind
  const input=event.target
@@ -92,6 +95,7 @@ async function remove(){
    <p v-if="loading" role="status">Đang tải ảnh chữ ký…</p>
    <p v-if="error" class="lotus-signature-error" role="alert">{{error}}</p>
    <template v-if="profile">
+    <p class="lotus-signature-hint">Mẫu chữ ký lưu theo tài khoản và dùng chung cho mọi ứng dụng Lotus.</p>
     <div class="lotus-signature-row"><span>Người ký</span><strong>{{profile.full_name}}</strong></div>
     <div class="lotus-signature-row"><span>Trạng thái</span><strong :class="profile.has_signature?'lotus-signature-ready':'lotus-signature-pending'">{{profile.has_signature?'Đã lưu ảnh chữ ký':'Chưa có chữ ký'}}</strong></div>
     <div v-if="profile.has_signature" class="lotus-signature-preview">
