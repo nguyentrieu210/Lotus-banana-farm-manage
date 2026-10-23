@@ -126,7 +126,8 @@ def coa_apply(on_date=None, warehouse_accounts=None):
 
 # Opening balances ------------------------------------------------------------------------------------
 
-OPENING_COLUMNS = ('Số tài khoản', 'Mã nhà cung cấp (TK 331)', 'Dư Nợ', 'Dư Có', 'Mã lô (TK 154)', 'Ghi chú')
+# Keep six existing column positions for backwards compatibility.
+OPENING_COLUMNS = ('Số tài khoản', 'Mã nhà cung cấp (TK 331)', 'Dư Nợ', 'Dư Có', 'Mã lô (TK 154)', 'Ghi chú', 'Mã khách hàng (TK 131)')
 
 
 @frappe.whitelist()
@@ -140,9 +141,10 @@ def opening_template():
     ws.append(list(OPENING_COLUMNS))
     for cell in ws[1]:
         cell.font = Font(bold=True)
-    ws.append(['1111', '', 50000000, '', '', 'Tiền mặt tồn quỹ'])
-    ws.append(['331', 'NCC-0001', '', 12000000, '', 'Nợ nhà cung cấp'])
-    ws.append(['4111', '', '', 38000000, '', 'Vốn góp'])
+    ws.append(['1111', '', 50000000, '', '', 'Tiền mặt tồn quỹ', ''])
+    ws.append(['331', 'NCC-0001', '', 12000000, '', 'Nợ nhà cung cấp', ''])
+    ws.append(['131', '', 2000000, '', '', 'Nợ khách hàng', 'KH-0001'])
+    ws.append(['4111', '', '', 40000000, '', 'Vốn góp', ''])
     out = BytesIO()
     book.save(out)
     frappe.local.response.filename = 'so-du-dau-ky.xlsx'
@@ -160,8 +162,8 @@ def _opening_rows(content, company):
                                                                fields=['name', 'account_number', 'is_group', 'account_type', 'root_type'])}
     out = []
     for line_no, row in enumerate(rows[1:], start=2):
-        row = list(row) + [None] * 6
-        number, supplier, debit, credit, block, note = (str(row[0] or '').strip(), str(row[1] or '').strip(), flt(row[2]), flt(row[3]), str(row[4] or '').strip(), row[5])
+        row = list(row) + [None] * 7
+        number, supplier, debit, credit, block, note, customer = (str(row[0] or '').strip(), str(row[1] or '').strip(), flt(row[2]), flt(row[3]), str(row[4] or '').strip(), row[5], str(row[6] or '').strip())
         if not number and not debit and not credit:
             continue
         errors = []
@@ -174,6 +176,8 @@ def _opening_rows(content, company):
             errors.append('Ghi một bên Dư Nợ hoặc Dư Có')
         if a and a.account_type == 'Payable' and not frappe.db.exists('Supplier', supplier):
             errors.append('TK %s cần mã nhà cung cấp có trong danh mục' % number)
+        if a and a.account_type == 'Receivable' and not frappe.db.exists('Customer', customer):
+            errors.append('TK %s cần mã khách hàng có trong danh mục' % number)
         if a and a.root_type in ('Income', 'Expense'):
             errors.append('Số dư đầu kỳ chỉ cho tài khoản tài sản, nợ phải trả, vốn')
         dims = {}
@@ -183,7 +187,7 @@ def _opening_rows(content, company):
                 errors.append('Mã lô %s không có' % block)
             else:
                 dims = dict(lotus_farm=b.farm, lotus_farm_block=b.name)
-        out.append(dict(line=line_no, number=number, account=a.name if a else None, supplier=supplier or None, debit=round(debit), credit=round(credit),
+        out.append(dict(line=line_no, number=number, account=a.name if a else None, supplier=supplier or None, customer=customer or None, debit=round(debit), credit=round(credit),
                         dims=dims, note=note, errors=errors))
     return out
 
@@ -198,8 +202,12 @@ def opening_preview(content):
     good = [r for r in rows if not r['errors']]
     debit, credit = sum(r['debit'] for r in good), sum(r['credit'] for r in good)
     token = frappe.generate_hash(length=20)
-    frappe.cache.set_value('lotus_opening:' + frappe.session.user + ':' + token, json.dumps(good, default=str), expires_in_sec=1800)
-    return dict(token=token, rows=rows, debit=debit, credit=credit, balanced=debit == credit and debit > 0, errors=sum(1 for r in rows if r['errors']),
+    invalid = sum(1 for r in rows if r['errors'])
+    if not invalid and good and debit == credit and debit > 0:
+        frappe.cache.set_value('lotus_opening:' + frappe.session.user + ':' + token, json.dumps(good, default=str), expires_in_sec=1800)
+    else:
+        token = ''  # Do not issue a commit token if ANY row is invalid.
+    return dict(token=token, rows=rows, debit=debit, credit=credit, balanced=debit == credit and debit > 0, errors=invalid,
                 on_date=str(cfg.cutover_date), existing=bool(posting.active('Lotus Finance Settings', setup.SETTINGS, 'Opening Balance')))
 
 
@@ -227,6 +235,8 @@ def opening_commit(token):
                    user_remark=ln['note'] or None, **r['dims'])
         if r.get('supplier'):
             row.update(party_type='Supplier', party=r['supplier'])
+        elif r.get('customer'):
+            row.update(party_type='Customer', party=r['customer'])
         accounts.append(row)
     je = frappe.get_doc(dict(doctype='Journal Entry', voucher_type='Opening Entry', is_opening='Yes', company=company, posting_date=cfg.cutover_date,
                              user_remark='Số dư đầu kỳ tại ngày %s' % getdate(cfg.cutover_date).strftime('%d/%m/%Y'), accounts=accounts))
