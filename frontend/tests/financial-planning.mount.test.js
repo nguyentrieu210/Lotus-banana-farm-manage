@@ -120,6 +120,7 @@ test('approved plans and auditors cannot edit, import or approve',async()=>{
  const approved=await mount()
  assert.equal(button(approved.root,'Lưu kế hoạch'),undefined)
  assert.equal(button(approved.root,'Lấy sản lượng dự thu'),undefined)
+ assert.ok(button(approved.root,'Tính dự phóng').disabled,'approved results remain frozen')
  assert.ok(button(approved.root,'Nhân bản'))
  approved.unmount()
  setup({can_write:false,can_approve:false});const auditor=await mount()

@@ -46,7 +46,7 @@ function accept(doc){current.value=doc;values.value=clone(doc.values);result.val
 async function loadOverview(){overview.value=await call(API+'overview')}
 async function choose(name){if(!name||busy.value||saving.value||name===current.value?.name)return;if(dirty.value&&!await ask('Bỏ các thay đổi chưa lưu để mở kế hoạch khác?'))return;await task(async()=>accept(await call(API+'detail',{name})))}
 async function reload(){if(dirty.value&&!await ask('Tải lại bản đã lưu và bỏ các thay đổi chưa lưu?'))return;await task(async()=>{await loadOverview();accept(await call(API+'detail',{name:current.value.name}))})}
-async function calculate(){const version=++previewVersion,args=json(values.value);await task(async()=>{const output=await call(API+'preview',{values:args},true);if(version===previewVersion&&args===json(values.value)){result.value=output;calculated.value=args}})}
+async function calculate(){if(locked.value)return;const version=++previewVersion,args=json(values.value);await task(async()=>{const output=await call(API+'preview',{values:args},true);if(version===previewVersion&&args===json(values.value)){result.value=output;calculated.value=args}})}
 function openSettings(create=false){form.value=clone(create?newPlan(session.today||new Date().toISOString().slice(0,10)):values.value);if(create)requestKey=crypto.randomUUID();formError.value='';editor.value=create?'create':'settings'}
 async function settingsSubmit(){
  const next={...form.value,month_count:Number(form.value.month_count),collection_delay:Number(form.value.collection_delay),payment_delay:Number(form.value.payment_delay)}
@@ -116,11 +116,11 @@ onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length
    </div>
    <p v-for="warning in fresh?result.scenario.warnings:[]" :key="warning" class="land-warn">{{warning}}</p>
    <template v-if="view==='budget'">
-    <div class="fp-toolbar"><FormField label="Tìm tháng" v-slot="field"><Input v-bind="field" v-model="query" placeholder="mm/yyyy"/></FormField><Button variant="outline" :disabled="busy||saving" @click="calculate">Tính dự phóng</Button></div>
+    <div class="fp-toolbar"><FormField label="Tìm tháng" v-slot="field"><Input v-bind="field" v-model="query" placeholder="mm/yyyy"/></FormField><Button variant="outline" :disabled="busy||saving||locked" @click="calculate">Tính dự phóng</Button></div>
     <DataTable :rows="rows" :columns="budgetColumns" row-key="month" storage-key="financial-plan-budget" :interactive="canWrite" @open="editMonth" empty="Không có tháng phù hợp."/>
    </template>
    <template v-else-if="view==='projection'">
-    <div class="fp-toolbar fp-factors"><FormField v-for="[key,label] in factorFields" :key="key" :label="label" v-slot="field"><Input v-bind="field" v-model.number="values[key]" type="number" min="0" max="300" step="0.1" :disabled="!canWrite"/></FormField><Button variant="outline" :disabled="busy||saving" @click="calculate">Tính dự phóng</Button></div>
+    <div class="fp-toolbar fp-factors"><FormField v-for="[key,label] in factorFields" :key="key" :label="label" v-slot="field"><Input v-bind="field" v-model.number="values[key]" type="number" min="0" max="300" step="0.1" :disabled="!canWrite"/></FormField><Button variant="outline" :disabled="busy||saving||locked" @click="calculate">Tính dự phóng</Button></div>
     <template v-if="fresh"><DataTable :rows="comparison" :columns="comparisonColumns" row-key="key" storage-key="financial-plan-comparison"/><DataTable :rows="result.scenario.rows" :columns="resultColumns" row-key="month" storage-key="financial-plan-projection"/></template>
     <details class="fp-assumptions"><summary>Quy tắc tính và thời điểm thu / chi</summary><p>Giá chưa VAT. Thành phẩm khai báo được bán trong tháng; ngân sách sản xuất tính vào chi phí tháng đó. Chưa mô phỏng tồn kho và dở dang. Cơ sở dùng tỷ lệ 100%; kịch bản đổi sản lượng, giá bán và đơn giá đóng gói / vận chuyển, giữ ngân sách cố định.</p><p>Thu doanh thu chậm {{values.collection_delay}} tháng, trả chi phí hoạt động chậm {{values.payment_delay}} tháng. Lãi vay, thuế, đầu tư và trả gốc chi trong tháng khai báo. Khấu hao không chi tiền; vốn vào không tính doanh thu. Công nợ trước kỳ nhập vào thu / chi khác. Thuế là ngân sách do người lập nhập.</p></details>
    </template>
