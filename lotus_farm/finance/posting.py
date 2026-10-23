@@ -50,8 +50,10 @@ def record(source_doctype, source_name, purpose, voucher, amount=0, source_hash=
 
 
 def drop_draft(voucher):
-    """Delete a voucher that was never submitted. Its posting record (and signing requests) keep pointing at it as history,
-    so the link check that would refuse the delete is skipped; the caller marks the posting Reversed."""
+    """Delete a voucher that was never submitted. Its posting record keeps pointing at it as history (the caller marks it
+    Reversed with the reason), so the link check that would refuse the delete is skipped. Its signing round goes with it:
+    the naming series hands the freed number to the next voucher, which must not inherit a round waiting for signatures."""
+    frappe.db.delete('Lotus Sign Request', {'document_type': voucher.doctype, 'document_name': voucher.name})
     frappe.delete_doc(voucher.doctype, voucher.name, ignore_permissions=True, force=True)
 
 
