@@ -64,7 +64,7 @@ def _rows(doc):
     if not last:
         return [], 0
     rows = frappe.get_all(REQUEST, filters={'document_type': doc.doctype, 'document_name': doc.name, 'round': last},
-                          fields=['name', 'step_index', 'step_key', 'title', 'assignee', 'employee', 'state', 'signed_at', 'signature_file', 'note'],
+                          fields=['name', 'step_index', 'step_key', 'title', 'assignee', 'employee', 'state', 'signed_at', 'signature_file', 'note', 'content_hash'],
                           order_by='step_index asc')
     return rows, cint(last)
 
@@ -262,6 +262,9 @@ def sign(doc, details=None, require_image=False, record=True):
         frappe.throw('Chưa đến lượt bạn ký chứng từ này.', frappe.PermissionError)
     if not _admin() and index:
         _validate_person(frappe.session.user, rules.chain(key)['steps'][index], _company(doc))
+    # Previously signed steps must still match the document being signed now.
+    if any(not r.content_hash or r.content_hash != fingerprint(doc) for r in rows if r.state == rules.SIGNED):
+        frappe.throw('Chứng từ đã đổi nội dung sau chữ ký trước. Trả lại và ký lại từ đầu.')
     if record:
         _record(doc, rows[index], details, require_image)
     else:
