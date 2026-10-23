@@ -263,6 +263,23 @@ for _event in ('validate',):
     doc_events['Asset'][_event] = [*_handlers, 'lotus_farm.finance.assets.native_guard']
 
 # Finance safety also applies when documents are submitted/cancelled through ERPNext Desk or REST.
+_handlers = doc_events.setdefault('Purchase Receipt',{}).get('before_submit',[])
+if isinstance(_handlers,str):
+    _handlers=[_handlers]
+doc_events['Purchase Receipt']['before_submit']=[*_handlers,'lotus_farm.procurement.receipt_guard']
+
+for _funding_event in ('validate', 'before_submit', 'before_cancel', 'before_update_after_submit'):
+    _handlers = doc_events.setdefault('Journal Entry', {}).get(_funding_event, [])
+    if isinstance(_handlers, str):
+        _handlers = [_handlers]
+    doc_events['Journal Entry'][_funding_event] = [*_handlers, 'lotus_farm.purchase_funding.native_guard']
+
+for _purchase_dt in ('Material Request', 'Supplier Quotation', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice'):
+    _handlers = doc_events.setdefault(_purchase_dt, {}).get('validate', [])
+    if isinstance(_handlers, str):
+        _handlers = [_handlers]
+    doc_events[_purchase_dt]['validate'] = [*_handlers, 'lotus_farm.procurement.native_guard']
+
 for _finance_dt in ('Payment Entry', 'Journal Entry', 'Purchase Invoice', 'Sales Invoice',
                     'Stock Entry', 'Stock Reconciliation', 'Purchase Receipt', 'Delivery Note'):
     for _event, _handler in (('before_submit', 'lotus_farm.finance.native_guards.guard'),

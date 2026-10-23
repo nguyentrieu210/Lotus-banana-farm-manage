@@ -1,0 +1,37 @@
+{
+ "doctype":"DocType", "name":"Lotus Purchase Funding", "module":"Lotus Farm",
+ "autoname":"format:PF-{YYYY}-{#####}", "track_changes":1,
+ "field_order":["company","supplier","posting_date","payer_type","payer","classification","amount","evidence","external_reference","duplicate_reason","notes","allocations","funding_account","journal_entry","cancelled","cancel_reason","cancelled_voucher","client_key","payload_hash","evidence_key"],
+ "fields":[
+  {"fieldname":"company","label":"Công ty","fieldtype":"Link","options":"Company","reqd":1,"in_list_view":1},
+  {"fieldname":"supplier","label":"Nhà cung cấp","fieldtype":"Link","options":"Supplier","reqd":1,"in_list_view":1},
+  {"fieldname":"posting_date","label":"Ngày trả NCC","fieldtype":"Date","reqd":1,"in_list_view":1},
+  {"fieldname":"payer_type","label":"Loại người chi","fieldtype":"Select","options":"Employee\nShareholder","reqd":1},
+  {"fieldname":"payer","label":"Người chi","fieldtype":"Dynamic Link","options":"payer_type","reqd":1,"in_list_view":1},
+  {"fieldname":"classification","label":"Phân loại kế toán","fieldtype":"Select","options":"Reimbursable\nEquity","reqd":1},
+  {"fieldname":"amount","label":"Số tiền chi hộ","fieldtype":"Currency","reqd":1,"in_list_view":1},
+  {"fieldname":"evidence","label":"Chứng từ gốc (riêng tư)","fieldtype":"Attach","reqd":1},
+  {"fieldname":"external_reference","label":"Số hóa đơn / giao dịch","fieldtype":"Data","reqd":1},
+  {"fieldname":"duplicate_reason","label":"Giải thích chứng từ trùng","fieldtype":"Small Text"},
+  {"fieldname":"notes","label":"Nội dung chi hộ","fieldtype":"Small Text","reqd":1},
+  {"fieldname":"allocations","label":"Phân bổ nguồn mua","fieldtype":"Table","options":"Lotus Purchase Funding Allocation","reqd":1},
+  {"fieldname":"funding_account","label":"Tài khoản nguồn tiền","fieldtype":"Link","options":"Account","read_only":1},
+  {"fieldname":"journal_entry","label":"Bút toán chi hộ","fieldtype":"Link","options":"Journal Entry","read_only":1,"no_copy":1},
+  {"fieldname":"cancelled","label":"Đã hủy phiếu chưa ghi sổ","fieldtype":"Check","read_only":1,"no_copy":1},
+  {"fieldname":"cancel_reason","label":"Lý do hủy phiếu","fieldtype":"Small Text","read_only":1,"no_copy":1},
+  {"fieldname":"cancelled_voucher","label":"Số phiếu nháp đã hủy","fieldtype":"Data","read_only":1,"no_copy":1},
+  {"fieldname":"client_key","label":"Request key","fieldtype":"Data","unique":1,"hidden":1,"read_only":1,"no_copy":1},
+  {"fieldname":"payload_hash","label":"Request hash","fieldtype":"Data","hidden":1,"read_only":1,"no_copy":1},
+  {"fieldname":"evidence_key","label":"Evidence identity","fieldtype":"Data","hidden":1,"read_only":1,"search_index":1}
+ ],
+ "permissions":[
+  {"role":"System Manager","read":1,"create":1,"write":1,"delete":1,"export":1},
+  {"role":"Lotus Accountant","read":1,"create":1,"write":1,"export":1},
+  {"role":"Lotus Chief Accountant","read":1,"create":1,"write":1,"export":1},
+  {"role":"Accounts User","read":1,"create":1,"write":1,"export":1},
+  {"role":"Accounts Manager","read":1,"create":1,"write":1,"export":1},
+  {"role":"Lotus Auditor","read":1,"export":1},
+  {"role":"Lotus Purchase Approver","read":1},
+  {"role":"Lotus Farm Manager","read":1}
+ ]
+}

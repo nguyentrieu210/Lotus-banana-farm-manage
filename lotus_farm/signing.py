@@ -32,7 +32,7 @@ URLS = {
 def chain_for(doc):
     if doc.doctype == 'Material Request':
         return 'purchase_proposal' if doc.material_request_type == 'Purchase' else 'issue_proposal'
-    if (doc.doctype == 'Payment Entry' and doc.get('payment_type') != 'Receive') or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind') in ('Salary', 'Advance', 'Statutory')):
+    if (doc.doctype == 'Payment Entry' and doc.get('payment_type') != 'Receive') or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind') in ('Salary', 'Advance', 'Statutory', 'PurchaseFunding', 'PurchaseReimbursement')):
         return 'payment_voucher'
     return {'Purchase Order': 'purchase_order', 'Stock Entry': 'stock_document', 'Stock Reconciliation': 'stock_document',
             'Purchase Receipt': 'stock_document', 'Lotus Timekeeping Period': 'timekeeping_period'}.get(doc.doctype)
@@ -392,18 +392,45 @@ def return_document(doctype, name, reason):
 
 # Verification: QR on every print -------------------------------------------------------------------
 
+def _purchase_json(value):
+    def normalize(v):
+        if isinstance(v,dict):
+            return {k:normalize({a:(b or 0) for a,b in frappe.parse_json(x).items()} if k=='item_tax_rate' and x else x) for k,x in v.items()}
+        if isinstance(v,(list,tuple)):
+            return [normalize(x) for x in v]
+        if isinstance(v,(float,int)):
+            return round(float(v),6)
+        return v
+    return json.dumps(normalize(value),sort_keys=True,default=str)
+
+
 def fingerprint(doc):
     """What a signature covers. The period signs its payroll snapshot; other documents their lines and totals."""
     if doc.doctype == 'Lotus Timekeeping Period':
         return rules.fingerprint(dict(snapshot=doc.get('snapshot_hash') or ''), [])
     if doc.doctype == 'Payment Entry':
+        if doc.get('lotus_procurement_key'):
+            return rules.fingerprint(dict(purchase_payment=_purchase_json({k: doc.get(k) for k in (
+                'company', 'party_type', 'party', 'payment_type', 'posting_date', 'paid_from', 'paid_to',
+                'paid_amount', 'received_amount', 'source_exchange_rate', 'target_exchange_rate', 'reference_no', 'reference_date',
+                'lotus_procurement_key')} | {'references': [[r.reference_doctype, r.reference_name, r.allocated_amount] for r in doc.references]})), [])
         return rules.fingerprint(dict(party=doc.party, paid_from=doc.paid_from, paid_amount=doc.paid_amount, posting_date=str(doc.posting_date),
                                       references=';'.join('%s=%s' % (r.reference_name, r.allocated_amount) for r in doc.get('references') or [])), [])
     if doc.doctype == 'Journal Entry':
+        if doc.get('lotus_purchase_funding'):
+            return rules.fingerprint(dict(funding=_purchase_json({k: doc.get(k) for k in ('company', 'posting_date', 'lotus_payment_kind',
+                'lotus_purchase_funding', 'lotus_funding_hash', 'cheque_no', 'cheque_date')} |
+                {'accounts': [[a.account, a.party_type, a.party, a.reference_type, a.reference_name,
+                    a.debit_in_account_currency, a.credit_in_account_currency, a.exchange_rate, a.cost_center] for a in doc.accounts]})), [])
         return rules.fingerprint(dict(posting_date=str(doc.posting_date), total=doc.total_debit,
                                       accounts=';'.join('%s:%s:%s' % (a.account, a.debit, a.credit) for a in doc.get('accounts') or [])), [])
     header = {field: doc.get(field) for field in ('company', 'supplier', 'set_warehouse', 'posting_date', 'transaction_date',
                                                    'stock_entry_type', 'grand_total', 'total_qty') if doc.meta.has_field(field)}
+    if any(r.get('lotus_purchase_kind') for r in doc.get('items') or []):
+        header['procurement'] = _purchase_json(dict(lines=[{k: r.get(k) for k in ('lotus_purchase_kind', 'lotus_line_vat', 'lotus_line_freight',
+            'lotus_quote_reason', 'supplier_quotation', 'supplier_quotation_item', 'material_request', 'material_request_item',
+            'conversion_factor', 'item_tax_template', 'item_tax_rate', 'lotus_farm', 'lotus_farm_block', 'expense_account')} for r in doc.items],
+            taxes=[{k: r.get(k) for k in ('charge_type', 'account_head', 'rate', 'tax_amount', 'category', 'add_deduct_tax')} for r in doc.get('taxes') or []]))
     return rules.fingerprint(header, [row.as_dict() for row in doc.get('items') or []])
 
 

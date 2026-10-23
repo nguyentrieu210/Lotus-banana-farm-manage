@@ -1,0 +1,23 @@
+{
+ "doctype":"DocType","name":"Lotus Purchase Import","module":"Lotus Farm","autoname":"format:PIB-{YYYY}-{#####}","track_changes":1,
+ "field_order":["company","original_file","file_hash","fingerprint","client_key","duplicate_reason","documents_json"],
+ "fields":[
+  {"fieldname":"company","label":"Công ty","fieldtype":"Link","options":"Company","reqd":1,"in_list_view":1},
+  {"fieldname":"original_file","label":"Excel gốc","fieldtype":"Attach","reqd":1},
+  {"fieldname":"file_hash","label":"Dấu file","fieldtype":"Data","reqd":1,"search_index":1},
+  {"fieldname":"fingerprint","label":"Dấu xem trước","fieldtype":"Data","reqd":1},
+  {"fieldname":"client_key","label":"Mã yêu cầu","fieldtype":"Data","unique":1,"reqd":1},
+  {"fieldname":"duplicate_reason","label":"Lý do nhập lại","fieldtype":"Small Text"},
+  {"fieldname":"documents_json","label":"Các chứng từ nháp","fieldtype":"Long Text","reqd":1}
+ ],
+ "permissions":[
+  {"role":"System Manager","read":1,"create":1},
+  {"role":"Lotus Purchasing Buyer","read":1,"create":1},
+  {"role":"Lotus Warehouse Manager","read":1,"create":1},
+  {"role":"Lotus Accountant","read":1,"create":1},
+  {"role":"Lotus Chief Accountant","read":1,"create":1},
+  {"role":"Accounts User","read":1,"create":1},
+  {"role":"Accounts Manager","read":1,"create":1},
+  {"role":"Lotus Auditor","read":1}
+ ]
+}

@@ -8,8 +8,9 @@ import LotusMobileButton from './LotusMobileButton.vue'
 import LotusMobileFile from './LotusMobileFile.vue'
 import {unitLabel} from '../units'
 import {newPurchaseLine,purchaseUnits,purchaseTotal,PURCHASE_MODES} from '../mobile-purchase'
+import {purchaseKind,allowedKinds} from '../procurement'
 const props=defineProps({modelValue:{type:Object,required:true},items:{type:Array,default:()=>[]},conversions:{type:Array,default:()=>[]},
- warehouses:{type:Array,default:()=>[]},suppliers:{type:Array,default:()=>[]},requests:{type:Array,default:()=>[]},selectedRequest:{type:String,default:''},
+ warehouses:{type:Array,default:()=>[]},suppliers:{type:Array,default:()=>[]},farms:{type:Array,default:()=>[]},requests:{type:Array,default:()=>[]},selectedRequest:{type:String,default:''},
  currency:{type:String,default:'VND'},canCreateSupplier:Boolean,saving:Boolean,online:{type:Boolean,default:true},quote:Object,saved:Object})
 const emit=defineEmits(['update:modelValue','update:quote','update:selectedRequest','submit','add-supplier','retry-quote','view-saved','new-order'])
 const order=computed(()=>props.modelValue)
@@ -20,7 +21,7 @@ const requestOptions=computed(()=>[{value:'',label:'Nhập đơn mới'},...prop
 const total=computed(()=>Number(purchaseTotal(order.value)).toLocaleString('vi-VN',{maximumFractionDigits:0})+' '+props.currency)
 function patch(values){emit('update:modelValue',{...order.value,...values})}
 function linePatch(index,values){patch({items:order.value.items.map((r,i)=>i===index?{...r,...values}:r)})}
-function chooseItem(index,code){linePatch(index,{item:code,uom:props.items.find(r=>r.name===code)?.stock_uom||'',material_request:'',material_request_item:''})}
+function chooseItem(index,code){const item=props.items.find(r=>r.name===code);linePatch(index,{item:code,uom:item?.stock_uom||'',kind:purchaseKind(item),material_request:'',material_request_item:''})}
 </script>
 <template>
  <section v-if="saved" class="lotus-purchase-result" aria-live="polite">
@@ -46,6 +47,10 @@ function chooseItem(index,code){linePatch(index,{item:code,uom:props.items.find(
     <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" :model-value="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @update:modelValue="linePatch(index,{qty:$event})"/>
      <LotusMobileSelect label="Đơn vị" :model-value="line.uom" :options="purchaseUnits(line.item,items,conversions).map(u=>({value:u,label:unitLabel(u)}))" required @update:modelValue="linePatch(index,{uom:$event})"/></div>
     <LotusMobileInput label="Đơn giá" :model-value="line.rate" type="number" min="0" step="any" inputmode="decimal" placeholder="Theo báo giá" @update:modelValue="linePatch(index,{rate:$event})"/>
+    <LotusMobileSelect label="Loại mua" :model-value="line.kind||purchaseKind(items.find(r=>r.name===line.item))" :options="allowedKinds(items.find(r=>r.name===line.item))" @update:modelValue="linePatch(index,{kind:$event})"/>
+    <LotusMobileSelect label="VAT" :model-value="line.vat_code||'KCT'" :options="['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))" @update:modelValue="linePatch(index,{vat_code:$event})"/>
+    <LotusMobileInput label="Vận chuyển dòng này" :model-value="line.freight||0" type="number" min="0" step="any" @update:modelValue="linePatch(index,{freight:$event})"/>
+    <MobileLinkField v-if="farms.length" label="Vườn sử dụng" :model-value="line.lotus_farm||''" :options="farms.map(f=>({value:f.name,label:f.farm_name||f.name}))" @update:modelValue="linePatch(index,{lotus_farm:$event})"/>
     <small v-if="line.material_request" class="mobile-subtle">Theo đề nghị {{line.material_request}}</small>
    </section>
    <LotusMobileButton class="mobile-add" @click="patch({items:[...order.items,newPurchaseLine()]})">+ Thêm mặt hàng</LotusMobileButton>

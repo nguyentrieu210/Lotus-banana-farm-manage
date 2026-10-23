@@ -1,0 +1,9 @@
+{
+ "doctype":"DocType","name":"Lotus Purchase Funding Allocation","module":"Lotus Farm","istable":1,
+ "field_order":["reference_type","reference_name","amount"],
+ "fields":[
+  {"fieldname":"reference_type","label":"Loại nguồn","fieldtype":"Select","options":"Purchase Invoice\nPurchase Order","reqd":1,"in_list_view":1},
+  {"fieldname":"reference_name","label":"Chứng từ nguồn","fieldtype":"Dynamic Link","options":"reference_type","reqd":1,"in_list_view":1},
+  {"fieldname":"amount","label":"Số tiền","fieldtype":"Currency","reqd":1,"in_list_view":1}
+ ],"permissions":[]
+}

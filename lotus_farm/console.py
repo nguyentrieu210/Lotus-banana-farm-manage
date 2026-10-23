@@ -76,6 +76,7 @@ def bootstrap():
     # Ledger readers see the whole finance page; payment approvers open it only to sign their vouchers.
     session['capabilities']['finance_ledger']=installed and finance_view()
     session['capabilities']['finance']=session['capabilities']['finance_ledger'] or (installed and has_role(*DIRECTORS, *CHIEF_ACCOUNTANTS))
+    session['capabilities']['purchasing']=bool(frappe.has_permission('Purchase Order','read') or frappe.has_permission('Material Request','read')) and all(frappe.has_permission(dt,'read') for dt in ('Company','Warehouse','Item'))
     if session['capabilities']['work_journal.read']:
         from lotus_farm.work_journal import farm_names
         existing = {f['name'] for f in session['farms']}
