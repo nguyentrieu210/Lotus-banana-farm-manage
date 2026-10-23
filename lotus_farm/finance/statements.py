@@ -232,18 +232,23 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
     to_date = getdate(to_date or nowdate())
     from_date = getdate(from_date or get_first_day(to_date))
     clause, args = ('and sle.warehouse=%s', (warehouse,)) if warehouse else ('', ())
-    rows = frappe.db.sql("""select sle.item_code, i.item_name, i.stock_uom, sle.warehouse,
-            sum(case when sle.posting_date < %%s then sle.actual_qty else 0 end) opening_qty,
-            sum(case when sle.posting_date < %%s then sle.stock_value_difference else 0 end) opening_value,
-            sum(case when sle.posting_date >= %%s and sle.actual_qty > 0 then sle.actual_qty else 0 end) in_qty,
-            sum(case when sle.posting_date >= %%s and (sle.actual_qty > 0 or (sle.actual_qty = 0 and sle.stock_value_difference > 0))
-                then sle.stock_value_difference else 0 end) in_value,
-            sum(case when sle.posting_date >= %%s and sle.actual_qty < 0 then -sle.actual_qty else 0 end) out_qty,
-            sum(case when sle.posting_date >= %%s and (sle.actual_qty < 0 or (sle.actual_qty = 0 and sle.stock_value_difference < 0))
-                then -sle.stock_value_difference else 0 end) out_value
-        from `tabStock Ledger Entry` sle join tabItem i on i.name=sle.item_code
-        where sle.company=%%s and sle.is_cancelled=0 and sle.posting_date <= %%s %s
-        group by sle.item_code, i.item_name, i.stock_uom, sle.warehouse order by i.item_name, sle.warehouse""" % clause,
+    # A stock count writes the quantity after the count, not the change (actual_qty stays 0): the change is the difference
+    # with the line before it for the same item and warehouse.
+    rows = frappe.db.sql("""select m.item_code, i.item_name, i.stock_uom, m.warehouse,
+            sum(case when m.posting_date < %%s then m.qty else 0 end) opening_qty,
+            sum(case when m.posting_date < %%s then m.value else 0 end) opening_value,
+            sum(case when m.posting_date >= %%s and m.qty > 0 then m.qty else 0 end) in_qty,
+            sum(case when m.posting_date >= %%s and (m.qty > 0 or (m.qty = 0 and m.value > 0)) then m.value else 0 end) in_value,
+            sum(case when m.posting_date >= %%s and m.qty < 0 then -m.qty else 0 end) out_qty,
+            sum(case when m.posting_date >= %%s and (m.qty < 0 or (m.qty = 0 and m.value < 0)) then -m.value else 0 end) out_value
+        from (select sle.item_code, sle.warehouse, sle.posting_date, sle.stock_value_difference value,
+                case when sle.voucher_type = 'Stock Reconciliation'
+                     then sle.qty_after_transaction - coalesce(lag(sle.qty_after_transaction) over (partition by sle.item_code, sle.warehouse
+                          order by sle.posting_date, sle.posting_time, sle.creation), 0)
+                     else sle.actual_qty end qty
+              from `tabStock Ledger Entry` sle where sle.company=%%s and sle.is_cancelled=0 and sle.posting_date <= %%s %s) m
+        join tabItem i on i.name=m.item_code
+        group by m.item_code, i.item_name, i.stock_uom, m.warehouse order by i.item_name, m.warehouse""" % clause,
                          (from_date,) * 6 + (company, to_date) + args, as_dict=True)
     from lotus_farm.units import label
     out = []
