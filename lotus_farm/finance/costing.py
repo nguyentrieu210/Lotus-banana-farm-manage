@@ -6,7 +6,8 @@
 2. At month end, after the 621/622/627 → 154 transfer, run() costs each lot's harvest: (work in progress at the start +
    costs of the month) × kg harvested / (kg harvested + kg still expected from the lot's forecast). Farm costs without a
    lot (crews, packing, overheads) form a farm pool costed the same way on the farm's kg. The difference with the
-   provisional rate goes to cost of goods sold (632) — bananas are sold within days — and the month's sheet is kept.
+   provisional rate goes to cost of goods sold (632) only when there is no unsold harvested stock.
+   If inventory remains, do not post a false 632 adjustment: stock valuation must be reconciled first.
 """
 import calendar
 
@@ -171,6 +172,34 @@ def _pools(company, month):
     return [p for p in pools.values() if any(abs(p[f]) > .005 for f in ('wip_open', 'cost_month', 'provisional')) or p['kg_harvested']]
 
 
+def _unsold_inventory_issues(company, month, rows):
+    """Fail closed for cost variances affecting on-hand stock.
+
+    A bare Journal Entry to 155 is NOT a fix: ERPNext's stock ledger valuation
+    remains unchanged. A controlled Stock Reconciliation/revaluation is required.
+    """
+    if not any(abs(flt(r.get('adjustment'))) > 0.005 for r in rows):
+        return []
+    start, end = _bounds(month)
+    receipts = _receipts(company)
+    if not receipts:
+        return []
+    stock = frappe.db.sql("""select distinct d.item_code, d.t_warehouse warehouse
+        from `tabStock Entry Detail` d join `tabStock Entry` e on e.name=d.parent
+        where d.parent in %s and e.docstatus=1 and e.posting_date between %s and %s
+        and d.t_warehouse is not null""", (tuple(receipts), start, end), as_dict=True)
+    issues = []
+    for item in stock:
+        remaining = flt(frappe.db.sql("""select sum(actual_qty) from `tabStock Ledger Entry`
+            where company=%s and item_code=%s and warehouse=%s and posting_date<=%s
+            and is_cancelled=0""", (company, item.item_code, item.warehouse, end))[0][0])
+        if remaining > 0.00001:
+            issues.append('Còn %s %s tại kho %s. Không ghi toàn bộ chênh lệch giá thành của hàng chưa bán vào 632. '
+                          'Phải điều chỉnh giá trị tồn kho trong sổ kho trước khi kết chuyển.'
+                          % (format(remaining, 'g'), item.item_code, item.warehouse))
+    return issues
+
+
 @frappe.whitelist()
 def preview(month):
     setup.require_view()
@@ -181,11 +210,12 @@ def preview(month):
     for r in rows:
         r['label'] = labels.get(r['lotus_farm_block']) or ('Chi phí chung vườn ' + str(r['lotus_farm'] or ''))
     rows.sort(key=lambda r: (r['lotus_farm'] or '', r['lotus_farm_block'] is None, r['label']))
-    lines = rules.costing_entry(rows, setup.mapping())
+    issues = _unsold_inventory_issues(company, month, rows)
+    lines = [] if issues else rules.costing_entry(rows, setup.mapping())
     done = posting.active('Lotus Finance Settings', setup.SETTINGS, 'Costing', month)
     sheet = frappe.db.get_value(RUN, {'company': company, 'month': month, 'state': 'Posted'})
     totals = {k: sum(flt(r[k]) for r in rows) for k in ('wip_open', 'cost_month', 'provisional', 'kg_harvested', 'absorbed', 'adjustment', 'wip_close')}
-    return dict(month=month, posting_date=_bounds(month)[1], rows=rows, lines=lines, totals=totals,
+    return dict(month=month, posting_date=_bounds(month)[1], rows=rows, lines=lines, issues=issues, totals=totals,
                 closed=bool(posting.active('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', month)),
                 posted=dict(voucher=done.voucher_name if done else None, posting=done.name if done else None, run=sheet) if (done or sheet) else None,
                 runs=frappe.get_all(RUN, filters={'company': company}, fields=['name', 'month', 'state', 'voucher', 'kg_harvested', 'absorbed', 'adjustment'],
@@ -210,6 +240,8 @@ def run(month):
     if not posting.active('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', month):
         frappe.throw('Kết chuyển chi phí 621 / 622 / 627 sang 154 của tháng %s trước khi tính giá thành.' % month)
     result = preview(month)
+    if result['issues']:
+        frappe.throw('<br>'.join(result['issues']))
     if not result['rows']:
         frappe.throw('Tháng %s không có chi phí dở dang hay sản lượng thu hoạch.' % month)
     voucher = None
