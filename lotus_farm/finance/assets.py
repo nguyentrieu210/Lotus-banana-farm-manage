@@ -13,6 +13,8 @@ from lotus_farm.finance import asset_rules as ar, posting, rules, setup
 OP = 'Lotus Asset Operation'
 ALLOCATION = 'Lotus Asset Allocation'
 RUN = 'Lotus Asset Depreciation Run'
+CATEGORY_ACCOUNT_TYPES = dict(fixed_asset_account='Fixed Asset', accumulated_depreciation_account='Accumulated Depreciation',
+                              depreciation_expense_account='Depreciation', capital_work_in_progress_account='Capital Work in Progress')
 FIELDS = ('name', 'asset_name', 'asset_category', 'lotus_asset_code', 'lotus_serial_no', 'location',
           'custodian', 'department', 'status', 'docstatus', 'purchase_date', 'available_for_use_date',
           'net_purchase_amount', 'total_asset_cost', 'opening_accumulated_depreciation', 'value_after_depreciation',
@@ -41,6 +43,8 @@ def internal(**context):
 def atomic():
     name = 'assets_' + frappe.generate_hash(length=10)
     frappe.db.savepoint(name)
+    depth = cint(getattr(frappe.flags, 'lotus_asset_atomic_depth', 0))
+    frappe.flags.lotus_asset_atomic_depth = depth + 1
     try:
         yield
     except Exception:
@@ -50,12 +54,17 @@ def atomic():
             # MariaDB rolls the entire transaction back on a deadlock, dropping all savepoints.
             frappe.db.rollback()
         raise
+    finally:
+        frappe.flags.lotus_asset_atomic_depth = depth
 
 
 def retry_approval(function):
     """A raced locking read can invalidate a MariaDB snapshot. Retry the whole atomic approval."""
     @wraps(function)
     def wrapped(*args, **kwargs):
+        # A nested master write must never restart halfway through an enclosing import.
+        if getattr(frappe.flags, 'lotus_asset_atomic_depth', 0):
+            return function(*args, **kwargs)
         for attempt in range(3):
             try:
                 return function(*args, **kwargs)
@@ -97,9 +106,9 @@ def asset_doc(name):
     return doc
 
 
-def _account(name, kind=None):
-    row = frappe.db.get_value('Account', name, ['name', 'company', 'is_group', 'disabled', 'root_type'], as_dict=True)
-    if not row or row.company != setup.company() or row.is_group or row.disabled or (kind and row.root_type != kind):
+def _account(name, kind=None, account_type=None):
+    row = frappe.db.get_value('Account', name, ['name', 'company', 'is_group', 'disabled', 'root_type', 'account_type'], as_dict=True)
+    if not row or row.company != setup.company() or row.is_group or row.disabled or (kind and row.root_type != kind) or (account_type and row.account_type != account_type):
         frappe.throw('Chọn tài khoản chi tiết đang dùng, đúng công ty và đúng loại: %s.' % (name or 'trống'))
     return row.name
 
@@ -249,15 +258,64 @@ def overview(month=None):
     _bounds(month)
     rows = frappe.get_all('Asset', filters={'company': company, 'lotus_managed_asset': 1}, fields=list(FIELDS),
                           order_by='lotus_asset_code', limit_page_length=0)
+    for row in rows:
+        row['accumulated_depreciation'] = flt(row.total_asset_cost or row.net_purchase_amount) - flt(row.value_after_depreciation) if row.docstatus == 1 else None
+    pending = []
+    # Query independently: old pending registrations must not disappear behind the history limit.
+    for op in frappe.get_all(OP, filters={'company': company, 'kind': 'Create', 'state': 'Pending'},
+                             fields=['name', 'modified', 'posting_date', 'payload'], order_by='creation desc', limit_page_length=0):
+        v = _json(op.payload, {})
+        pending.append(dict(name=op.name, operation=op.name, modified=op.modified, posting_date=op.posting_date,
+                            values=v, status='Pending', lotus_asset_code=v.get('code'), asset_name=v.get('asset_name'),
+                            asset_category=v.get('asset_category'), location=v.get('location'), lotus_serial_no=v.get('serial_no'),
+                            available_for_use_date=v.get('available_for_use_date'), total_asset_cost=v.get('amount'),
+                            accumulated_depreciation=None, value_after_depreciation=None,
+                            **{k: v.get(k) for k in ar.DIMENSIONS}))
     operations = frappe.get_all(OP, filters={'company': company}, fields=['name', 'asset', 'kind', 'posting_date', 'state', 'reason', 'modified',
                                                                                       'approved_by', 'approved_at', 'documents', 'payload'],
                                 order_by='creation desc', limit_page_length=500)
     runs = frappe.get_all(RUN, filters={'company': company}, fields=['name', 'month', 'state', 'approved_by', 'approved_at', 'modified'],
                           order_by='month desc, creation desc', limit_page_length=100)
-    return dict(enabled=enabled(), company=company, month=month, assets=rows, operations=operations, runs=runs,
+    return dict(enabled=enabled(), company=company, month=month, assets=rows, pending_assets=pending, operations=operations, runs=runs,
                 permissions=dict(write=setup.can_post(), approve=setup.is_chief()),
                 totals=dict(count=len(rows), original=sum(flt(r.total_asset_cost or r.net_purchase_amount) for r in rows if r.docstatus == 1 and r.status not in ('Sold', 'Scrapped')),
                             remaining=sum(flt(r.value_after_depreciation) for r in rows if r.docstatus == 1 and r.status not in ('Sold', 'Scrapped'))))
+
+
+@frappe.whitelist()
+def catalogs():
+    """Visible masters, company-specific account mappings and permissions for the asset workspace."""
+    setup.require_view()
+    company = setup.company()
+    groups = frappe.get_all('Asset Category', fields=['name', 'asset_category_name', 'non_depreciable_category', 'modified'],
+                             order_by='asset_category_name', limit_page_length=0)
+    account_fields = ('fixed_asset_account', 'accumulated_depreciation_account', 'depreciation_expense_account', 'capital_work_in_progress_account')
+    child_type = frappe.get_meta('Asset Category').get_field('accounts').options
+    mappings = {r.parent: r for r in frappe.get_all(child_type, filters={'company_name': company},
+                fields=['parent'] + list(account_fields), limit_page_length=0)}
+    assets = frappe.get_all('Asset', filters={'company': company, 'docstatus': 1}, fields=['asset_category', 'location'], limit_page_length=0)
+    used = set(frappe.get_all('Asset', filters={'docstatus': 1}, pluck='asset_category', limit_page_length=0))
+    pending = [_json(r.payload, {}) for r in frappe.get_all(OP, filters={'company': company, 'kind': 'Create', 'state': 'Pending'},
+                                                           fields=['payload'], limit_page_length=0)]
+    for row in groups:
+        row.update({k: mappings.get(row.name, {}).get(k) for k in account_fields})
+        row['asset_count'] = sum(a.asset_category == row.name for a in assets)
+        row['pending_count'] = sum(a.get('asset_category') == row.name for a in pending)
+        row['configured'] = all(row.get(k) for k in account_fields)
+        row['can_edit'] = setup.is_chief() and row.name not in used
+    locations = frappe.get_all('Location', filters={'is_group': 0}, fields=['name', 'location_name', 'lotus_display_name', 'modified'],
+                               order_by='location_name', limit_page_length=0)
+    for row in locations:
+        row['location_name'] = row.lotus_display_name or row.location_name
+        row['asset_count'] = sum(a.location == row.name for a in assets)
+        row['pending_count'] = sum(a.get('location') == row.name for a in pending)
+        row['can_edit'] = setup.is_chief()
+    accounts = frappe.get_all('Account', filters={'company': company}, fields=['name', 'account_number', 'account_name', 'parent_account',
+                             'root_type', 'account_type', 'is_group', 'disabled'], order_by='account_number, account_name', limit_page_length=0)
+    for row in accounts:
+        row['categories'] = [g.name for g in groups if row.name in [g.get(k) for k in account_fields]]
+    return dict(categories=groups, locations=locations, accounts=accounts,
+                permissions=dict(create_category=setup.is_chief(), create_location=setup.can_post(), import_accounts=setup.is_chief()))
 
 
 @frappe.whitelist()
@@ -267,7 +325,7 @@ def lookups():
     result = finance_lookups()
     company = setup.company()
     result.update(categories=frappe.get_all('Asset Category', fields=['name', 'asset_category_name', 'non_depreciable_category'], limit_page_length=0),
-                  locations=frappe.get_all('Location', filters={'is_group': 0}, fields=['name', 'location_name'], limit_page_length=0),
+                  locations=frappe.get_all('Location', filters={'is_group': 0}, fields=['name', 'location_name', 'lotus_display_name'], limit_page_length=0),
                   employees=frappe.get_all('Employee', filters={'company': company, 'status': 'Active'}, fields=['name', 'employee_name'], limit_page_length=0),
                   cost_centers=frappe.get_all('Cost Center', filters={'company': company, 'is_group': 0}, fields=['name', 'cost_center_name'], limit_page_length=0),
                   items=frappe.get_all('Item', filters={'is_fixed_asset': 1, 'disabled': 0}, fields=['name', 'item_name', 'asset_category'], limit_page_length=0),
@@ -279,15 +337,22 @@ def lookups():
                                          fields=['name', 'account_number', 'account_name', 'root_type', 'account_type'], order_by='account_number', limit_page_length=0)
     result['farms'] = frappe.get_all('Farm', filters={'company': company}, fields=['name', 'farm_name'], limit_page_length=0)
     result['cycles'] = frappe.get_all('Crop Cycle', fields=['name']+(['farm'] if frappe.get_meta('Crop Cycle').has_field('farm') else []), limit_page_length=0)
+    for row in result['locations']:
+        row['location_name'] = row.lotus_display_name or row.location_name
     return result
 
 
 @frappe.whitelist(methods=['POST'])
+@retry_approval
 def save_category(values):
     setup.require_chief()
     _lock(setup.SETTINGS, setup.SETTINGS)
     v = _json(values, {})
-    doc = frappe.get_doc('Asset Category', v['name']) if v.get('name') else frappe.new_doc('Asset Category')
+    doc = frappe.get_doc('Asset Category', v['name'], for_update=True) if v.get('name') else frappe.new_doc('Asset Category')
+    if v.get('modified') and str(doc.modified) != str(v['modified']):
+        frappe.throw('Nhóm tài sản đã thay đổi. Tải lại trước khi lưu.')
+    if v.get('name') and str(v.get('asset_category_name') or '').strip() != doc.asset_category_name:
+        frappe.throw('Giữ nguyên tên định danh của nhóm đã tạo.')
     doc.asset_category_name = str(v.get('asset_category_name') or '').strip()
     if not doc.asset_category_name:
         frappe.throw('Nhập tên nhóm tài sản.')
@@ -298,8 +363,9 @@ def save_category(values):
     accounts = dict(company_name=setup.company())
     for key, kind in [('fixed_asset_account', 'Asset'), ('accumulated_depreciation_account', 'Asset'),
                       ('depreciation_expense_account', 'Expense'), ('capital_work_in_progress_account', 'Asset')]:
-        accounts[key] = _account(v.get(key), kind)
-    doc.set('accounts', [accounts])
+        accounts[key] = _account(v.get(key), kind, CATEGORY_ACCOUNT_TYPES[key])
+    other_companies = [r.as_dict() for r in doc.accounts if r.company_name != setup.company()]
+    doc.set('accounts', other_companies + [accounts])
     _save(doc)
     return dict(name=doc.name)
 
@@ -320,12 +386,24 @@ def purchase_details(name):
 
 
 @frappe.whitelist(methods=['POST'])
-def save_location(location_name):
+@retry_approval
+def save_location(location_name, name=None, modified=None):
     setup.require_post()
+    if name:
+        setup.require_chief()
+        _lock('Location', name)
     title = str(location_name or '').strip()
     if not title:
         frappe.throw('Nhập tên vị trí.')
-    doc = frappe.get_doc(dict(doctype='Location', location_name=title, is_group=0))
+    doc = frappe.get_doc('Location', name, for_update=True) if name else frappe.get_doc(dict(doctype='Location', is_group=0))
+    if doc.is_group:
+        frappe.throw('Chỉ sửa vị trí chi tiết.')
+    if name and (not modified or str(doc.modified) != str(modified)):
+        frappe.throw('Vị trí đã thay đổi. Tải lại trước khi lưu.')
+    if name:
+        doc.lotus_display_name = title
+    else:
+        doc.location_name = title
     _save(doc)
     return dict(name=doc.name)
 
@@ -338,10 +416,23 @@ def detail(asset):
     for name in frappe.get_all('Asset Depreciation Schedule', filters={'asset': doc.name, 'docstatus': ['<', 2]}, pluck='name'):
         schedule = frappe.get_doc('Asset Depreciation Schedule', name)
         schedules.append(dict(name=name, finance_book=schedule.finance_book, rows=[r.as_dict() for r in schedule.depreciation_schedule]))
-    return dict(asset=doc.as_dict(), schedules=schedules)
+    history = frappe.get_all(OP, filters={'company': setup.company(), 'asset': doc.name},
+                             fields=['name', 'kind', 'posting_date', 'state', 'reason', 'approved_by', 'approved_at', 'documents'],
+                             order_by='posting_date desc, creation desc', limit_page_length=0)
+    documents = []
+    for op in history:
+        op['documents'] = _json(op.documents, [])
+        for link in op['documents']:
+            if link not in documents:
+                documents.append(link)
+    for key, doctype in [('purchase_invoice', 'Purchase Invoice'), ('purchase_receipt', 'Purchase Receipt')]:
+        if doc.get(key) and dict(doctype=doctype, name=doc.get(key)) not in documents:
+            documents.append(dict(doctype=doctype, name=doc.get(key)))
+    return dict(asset=doc.as_dict(), schedules=schedules, history=history, documents=documents)
 
 
 @frappe.whitelist(methods=['POST'])
+@retry_approval
 def save_operation(kind, posting_date, values, asset=None, name=None, modified=None, reason=None):
     setup.require_post()
     require_enabled()
@@ -363,9 +454,10 @@ def save_operation(kind, posting_date, values, asset=None, name=None, modified=N
     if kind != 'Create':
         asset_doc(asset)
     check_period(posting_date)
-    doc = frappe.get_doc(OP, name) if name else frappe.new_doc(OP)
     if name:
         _lock(OP, name)
+    doc = frappe.get_doc(OP, name, for_update=True) if name else frappe.new_doc(OP)
+    if name:
         if doc.company != setup.company() or doc.state != 'Pending':
             frappe.throw('Nghiệp vụ đã xử lý hoặc không thuộc công ty.')
         if str(doc.modified) != str(modified):
@@ -838,6 +930,7 @@ def import_preview(content):
 
 
 @frappe.whitelist(methods=['POST'])
+@retry_approval
 def import_commit(content, fingerprint):
     setup.require_post()
     require_enabled()

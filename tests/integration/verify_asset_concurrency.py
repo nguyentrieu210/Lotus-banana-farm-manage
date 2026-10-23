@@ -74,5 +74,40 @@ if __name__ == '__main__':
     frappe.delete_doc('Asset Category',category,ignore_permissions=True)
     frappe.delete_doc('Account',account,ignore_permissions=True)
     frappe.db.commit()
-    print('PASS: simultaneous asset, depreciation, account and category approvals each write exactly once; fixtures cleaned.')
+    accounts_now=accounts()
+    values=dict(asset_category_name='Nhóm sửa đồng thời '+tag,fixed_asset_account=accounts_now['211'],
+        accumulated_depreciation_account=accounts_now['2141'],depreciation_expense_account=accounts_now['6274'],capital_work_in_progress_account=accounts_now['2411'])
+    category=a.save_category(values)['name']
+    values.update(name=category,modified=str(frappe.db.get_value('Asset Category',category,'modified')),depreciation_expense_account=accounts_now['6424'])
+    frappe.db.commit()
+    race(a.save_category,dict(values=values))
+    location=a.save_location('Vị trí sửa đồng thời '+tag)['name']
+    modified=str(frappe.db.get_value('Location',location,'modified'))
+    frappe.db.commit()
+    race(a.save_location,dict(name=location,modified=modified,location_name='Nhãn mới '+tag))
+    assert frappe.db.get_value('Location',location,'location_name')==location
+    frappe.delete_doc('Location',location,ignore_permissions=True)
+    frappe.delete_doc('Asset Category',category,ignore_permissions=True)
+    frappe.db.commit()
+    from unittest.mock import patch
+    rows=[['Nhóm nhập lại A '+tag,0,'211','2141','6274','2411'],['Nhóm nhập lại B '+tag,0,'211','2141','6274','2411']]
+    content=workbook('categories',rows);preview=mi.preview('categories',content)
+    frappe.db.commit()
+    original=a.save_category;calls=[];injected=[False]
+    def deadlock(values):
+        calls.append(values['asset_category_name'])
+        if values['asset_category_name']==rows[1][0] and not injected[0]:
+            injected[0]=True
+            frappe.db.rollback()  # Model MariaDB aborting the whole transaction and dropping savepoints.
+            raise frappe.QueryDeadlockError('Injected deadlock after the first category')
+        return original(values)
+    with patch.object(a,'save_category',side_effect=deadlock):
+        result=mi.commit('categories',content,preview['fingerprint'])
+    assert result['count']==2,result
+    assert calls==[rows[0][0],rows[1][0],rows[0][0],rows[1][0]],calls
+    for row in rows:
+        assert frappe.db.count('Asset Category',{'name':row[0]})==1
+        frappe.delete_doc('Asset Category',row[0],ignore_permissions=True)
+    frappe.db.commit()
+    print('PASS: six concurrency races and a whole-import deadlock retry; writes occur once and an interrupted import restarts from its first row.')
     frappe.destroy()

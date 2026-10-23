@@ -16,6 +16,7 @@ def install():
                   field('lotus_managed_asset', 'Quản lý qua Lotus', 'Check', read_only=1, default='0'),
                   field('lotus_usage_suspended', 'Tạm ngừng sử dụng', 'Check', read_only=1),
                   field('lotus_usage_reason', 'Lý do ngừng sử dụng', 'Small Text', read_only=1)],
+        'Location': [field('lotus_display_name', 'Tên hiển thị tài sản', read_only=1)],
         'Journal Entry': [field('lotus_asset_operation', 'Nghiệp vụ tài sản', 'Link', 'Lotus Asset Operation', read_only=1, no_copy=1),
                           field('lotus_asset_run', 'Bảng khấu hao Lotus', 'Link', 'Lotus Asset Depreciation Run', read_only=1, no_copy=1),
                           field('lotus_asset_source_journal', 'Bút toán khấu hao gốc', 'Link', 'Journal Entry', read_only=1, no_copy=1)],

@@ -206,7 +206,7 @@ def _category_rows(rows, accounts, lock=False):
         v['non_depreciable_category'] = _flag(v['non_depreciable_category'], 'non_depreciable_category', errors)
         for key, label, root in CATEGORY_ACCOUNTS:
             account = _resolve(v[key], accounts)
-            if not account or account.is_group or account.disabled or account.root_type != root:
+            if not account or account.is_group or account.disabled or account.root_type != root or account.account_type != assets.CATEGORY_ACCOUNT_TYPES[key]:
                 errors[key] = label + ': chọn số TK chi tiết đang dùng, đúng loại và công ty.'
             else:
                 v[key] = account.name

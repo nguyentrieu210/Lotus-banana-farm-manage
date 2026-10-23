@@ -568,7 +568,7 @@ useNoticeToast(notice)
   </section>
  </template>
 
- <FinanceAssets v-else-if="tab==='assets'" @notice="notice=$event"/>
+ <FinanceAssets v-else-if="tab==='assets'" :view="String(route.query.asset_view||'assets')" @view-change="router.replace({query:{...route.query,asset_view:$event}})" @go-settings="go('settings')" @notice="notice=$event"/>
  <FinanceGuide v-else-if="tab==='guide'" @go="go"/>
 
  <template v-else-if="tab==='settings'&&settings">
