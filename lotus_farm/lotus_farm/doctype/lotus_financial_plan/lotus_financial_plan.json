@@ -1,0 +1,168 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Financial Plan",
+  "module": "Lotus Farm",
+  "custom": 0,
+  "autoname": "format:LFP-{YYYY}-{#####}",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "title_field": "title",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "field_order": [
+    "title",
+    "company",
+    "farm",
+    "start_month",
+    "month_count",
+    "state",
+    "plan_data",
+    "formula_version",
+    "approved_result",
+    "source_snapshot",
+    "copied_from",
+    "approved_by",
+    "approved_at",
+    "request_key"
+  ],
+  "fields": [
+    {
+      "fieldname": "formula_version",
+      "label": "Phiên bản công thức",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_result",
+      "label": "Kết quả đã duyệt",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "title",
+      "label": "Tên kế hoạch",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm"
+    },
+    {
+      "fieldname": "start_month",
+      "label": "Tháng bắt đầu",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "month_count",
+      "label": "Số tháng",
+      "fieldtype": "Int",
+      "default": "12"
+    },
+    {
+      "fieldname": "state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "plan_data",
+      "label": "Ngân sách và giả định",
+      "fieldtype": "Long Text",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_snapshot",
+      "label": "Nguồn dự thu đã lấy",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "copied_from",
+      "label": "Nhân bản từ",
+      "fieldtype": "Link",
+      "options": "Lotus Financial Plan",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Người duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_at",
+      "label": "Ngày duyệt",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "request_key",
+      "label": "Mã yêu cầu",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

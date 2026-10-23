@@ -2,6 +2,10 @@
 
 Custom Frappe/ERPNext app for Lotus banana farm operations.
 
+## Kế hoạch tài chính
+
+**Tài chính – Kế toán → Kế hoạch tài chính** (`/lotus/tai-chinh?tab=planning`): lập ngân sách theo tháng, lấy sản lượng dự thu đã phát hành, dự phóng doanh thu / lợi nhuận / dòng tiền, so sánh kịch bản và duyệt khóa kế hoạch. [Quy tắc và cách triển khai](docs/KE_HOACH_TAI_CHINH.md).
+
 ## Một app mobile dùng chung cho nhiều vai trò
 
 Trên điện thoại mở **`/lotus/mobile`**: đăng nhập tài khoản Lotus hiện có, chọn nông trường, xem các công việc theo quyền thực tế (việc, báo kết quả, sâu bệnh, QC, xưởng, vật tư, dự thu…). Người kiêm nhiều nhiệm vụ không phải đổi app. Thanh điều hướng dưới màn hình cũng chỉ hiện phần được phép. **[Cách dùng, quyền và kiểm thử](docs/MOBILE_ONE_APP.md)**.
