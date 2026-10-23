@@ -103,7 +103,7 @@ class FinanceSecurityTests(unittest.TestCase):
         env = dict(chain_for=lambda doc: 'payment_voucher',
                    _rows=lambda doc: ([NS(state='Đã ký', content_hash='50k'), NS(state='Chờ ký')], 1),
                    _admin=lambda: False,
-                   _validate_person=lambda *a: None, fingerprint=lambda doc: '75k',
+                   _validate_person=lambda *a: None, _company=lambda doc: 'LOTUS', fingerprint=lambda doc: '75k',
                    rules=NS(SIGNED='Đã ký', RETURNED='Trả lại', current=lambda rows: 1,
                             may_act=lambda *a: True, chain=lambda *a: {'steps': [None, NS()]}),
                    frappe=NS(session=NS(user='director'),
@@ -165,6 +165,8 @@ class FinanceSecurityTests(unittest.TestCase):
         self.assertIn('tabPayment Ledger Entry', body)
         self.assertIn('posting_date<=%s', body)
         self.assertNotIn('sum(outstanding_amount)', body)
+        # ERPNext PLE uses credit - debit for Payable, so payable PLE sums are positive.
+        self.assertIn("source=as_of_party(m['payable_supplier'], 'Supplier')", body)
 
 
 if __name__ == '__main__':

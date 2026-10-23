@@ -184,19 +184,29 @@ def _unsold_inventory_issues(company, month, rows):
     receipts = _receipts(company)
     if not receipts:
         return []
-    stock = frappe.db.sql("""select distinct d.item_code, d.t_warehouse warehouse
+    stock = frappe.db.sql("""select distinct d.item_code, d.batch_no
         from `tabStock Entry Detail` d join `tabStock Entry` e on e.name=d.parent
         where d.parent in %s and e.docstatus=1 and e.posting_date between %s and %s
         and d.t_warehouse is not null""", (tuple(receipts), start, end), as_dict=True)
     issues = []
     for item in stock:
-        remaining = flt(frappe.db.sql("""select sum(actual_qty) from `tabStock Ledger Entry`
-            where company=%s and item_code=%s and warehouse=%s and posting_date<=%s
-            and is_cancelled=0""", (company, item.item_code, item.warehouse, end))[0][0])
-        if remaining > 0.00001:
-            issues.append('Còn %s %s tại kho %s. Không ghi toàn bộ chênh lệch giá thành của hàng chưa bán vào 632. '
-                          'Phải điều chỉnh giá trị tồn kho trong sổ kho trước khi kết chuyển.'
-                          % (format(remaining, 'g'), item.item_code, item.warehouse))
+        batch = getattr(item, 'batch_no', None)
+        if batch:
+            # A banana batch can be transferred to another warehouse before month end.
+            from erpnext.stock.doctype.batch.batch import get_batch_qty
+            positions = get_batch_qty(batch_no=batch, posting_date=end, posting_time='23:59:59')
+            remaining = sum(flt(x.get('qty')) for x in positions)
+            place = 'mọi kho của batch %s' % batch
+        else:
+            # Untracked stock is checked across ALL warehouses, not just receipt warehouse.
+            remaining = flt(frappe.db.sql("""select sum(actual_qty) from `tabStock Ledger Entry`
+                where company=%s and item_code=%s and posting_date<=%s
+                and is_cancelled=0""", (company, item.item_code, end))[0][0])
+            place = 'tất cả kho'
+        if abs(remaining) > 0.00001:
+            issues.append('Còn %s %s tại %s. Không được ghi toàn bộ chênh lệch vào giá vốn 632. '
+                          'Phải điều chỉnh giá trị tồn kho trước khi kết chuyển.'
+                          % (format(remaining, 'g'), item.item_code, place))
     return issues
 
 

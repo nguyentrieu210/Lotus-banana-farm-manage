@@ -296,7 +296,7 @@ def reconciliation(on_date=None):
             and posting_date<=%s and delinked=0""", (company, account, party_type, on_date))[0][0])
     checks.append(dict(label='Phải trả người bán so với công nợ tại ngày báo cáo',
                        ledger=-_balance(company, [m['payable_supplier']], on_date),
-                       source=-as_of_party(m['payable_supplier'], 'Supplier')))
+                       source=as_of_party(m['payable_supplier'], 'Supplier')))
     if m.get('receivable_customer'):
         checks.append(dict(label='Phải thu khách hàng so với công nợ tại ngày báo cáo',
                            ledger=_balance(company, [m['receivable_customer']], on_date),
