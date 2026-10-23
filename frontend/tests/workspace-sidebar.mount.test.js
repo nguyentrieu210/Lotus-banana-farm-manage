@@ -31,8 +31,7 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
  assert.equal(view.root.querySelectorAll('.nav-parent svg.lotus-icon').length,3,'each area has an icon')
  assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Kho & mua hàng')
  assert.equal(view.root.querySelector('nav button.active').getAttribute('aria-current'),'page')
- assert.equal(view.root.querySelector('.nav-sub-link')?.textContent.trim(),'Mua hàng')
- assert.equal(view.root.querySelector('.nav-sub-link')?.getAttribute('href'),'/buying')
+ assert.equal(view.root.querySelector('.nav-sub-link'),null,'desktop purchasing is now a permission-scoped workspace route')
  view.unmount()
 })
 

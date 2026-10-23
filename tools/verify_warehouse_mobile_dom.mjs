@@ -19,17 +19,18 @@ const generated=new Map()
 function compile(filename){
  const absolute=path.resolve(filename)
  if(generated.has(absolute))return generated.get(absolute)
- const out=path.join(runtime,path.basename(filename).replace(/\.vue$/,'.mjs'))
+ const out=path.join(runtime,path.relative(project,absolute).replace(/[\\/]/g,'__').replace(/\.vue$/,'.mjs').replace(/\.js$/,'.mjs'))
  generated.set(absolute,out)
  let code=fs.readFileSync(filename,'utf8')
+ code=code.replace(/import\.meta\.env/g,'({DEV:false,PROD:true,MODE:"test"})')
  code=code.replace(/^import ['"][^'"]*(?:\.css|register-[^'"]*)['"];?\s*$/gm,'')
  if(filename.endsWith('.vue'))code=compileScript(parse(code).descriptor,{id:path.basename(filename),inlineTemplate:true}).content
- code=code.replace(/from\s+(['"])(\.[^'"]+)\1/g,(match,quote,relative)=>{
-  let target=path.resolve(path.dirname(filename),relative)
-  if(!path.extname(target))target+='.js'
+ code=code.replace(/(from\s+|^import\s+)(['"])(\.[^'"]+|@\/[^'"]+)\2/gm,(match,keyword,quote,relative)=>{
+  let target=relative.startsWith('@/')?path.join(project,'src',relative.slice(2)):path.resolve(path.dirname(filename),relative)
+  if(!path.extname(target))target=fs.existsSync(target+'.js')?target+'.js':path.join(target,'index.js')
   if(path.basename(target)==='api.js')target=runtime+'/api.js'
   else target=compile(target)
-  return 'from '+JSON.stringify(pathToFileURL(target).href)
+  return keyword+JSON.stringify(pathToFileURL(target).href)
  })
  fs.writeFileSync(out,code)
  return out

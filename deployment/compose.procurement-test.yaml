@@ -1,0 +1,47 @@
+# Disposable database and sites. No production networks, volumes, or credentials.
+services:
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_ROOT_PASSWORD: procurement-test-only
+    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--skip-character-set-client-handshake']
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    volumes: ['db:/var/lib/mysql']
+  redis:
+    image: redis:6.2-alpine
+  backend:
+    image: lotus-release:3678dcc
+    entrypoint: ['bash', '-c']
+    command: ['sleep infinity']
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - type: bind
+        source: ..
+        target: /home/frappe/frappe-bench/apps/lotus_farm
+        read_only: true
+  frontend:
+    image: lotus-release:3678dcc
+    command: ['nginx-entrypoint.sh']
+    environment:
+      BACKEND: backend:8000
+      FRAPPE_SITE_NAME_HEADER: procurement.test
+      SOCKETIO: backend:9000
+    ports: ['127.0.0.1:8086:8080']
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - type: bind
+        source: ..
+        target: /home/frappe/frappe-bench/apps/lotus_farm
+        read_only: true
+volumes:
+  db:
+  sites:
+  logs:

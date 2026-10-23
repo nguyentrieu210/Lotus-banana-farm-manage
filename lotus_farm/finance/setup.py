@@ -27,8 +27,8 @@ READ_DOCTYPES = ('Account', 'GL Entry', 'Journal Entry', 'Purchase Invoice', 'Pa
 # The vouchers accountants make (Lotus checks its own rules first; ERPNext's mapper checks these permissions).
 WRITE_DOCTYPES = ('Journal Entry', 'Purchase Invoice', 'Payment Entry', 'Sales Invoice', 'Delivery Note', 'Customer')
 # Journal Entry kinds made by Lotus: signed payment vouchers (Salary, Advance, Statutory) and month-end entries (Closing, Result).
-JE_KINDS = ('Salary', 'Closing', 'Advance', 'Statutory', 'Result')
-SIGNED_JE_KINDS = ('Salary', 'Advance', 'Statutory')
+JE_KINDS = ('Salary', 'Closing', 'Advance', 'Statutory', 'Result', 'PurchaseFunding', 'PurchaseReimbursement')
+SIGNED_JE_KINDS = ('Salary', 'Advance', 'Statutory', 'PurchaseFunding', 'PurchaseReimbursement')
 VAT_OPTIONS = '\nKCT\n0\n5\n8\n10'
 
 

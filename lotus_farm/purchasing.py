@@ -133,7 +133,7 @@ def create_request(company, warehouse, expected_date, items, notes=""):
             frappe.throw("Mặt hàng không hợp lệ.")
         item = frappe.get_doc("Item", row.get("item"))
         item.check_permission("read")
-        if item.disabled or not item.is_stock_item:
+        if item.disabled:
             frappe.throw("Mặt hàng không còn sử dụng.")
         qty = _number(row.get("qty"), "Số lượng")
         uom = row.get("uom") or item.stock_uom
@@ -230,7 +230,7 @@ def orders(company, status=None, search=None):
     if not frappe.has_permission("Purchase Order", "read"):
         return []
     found = frappe.get_list("Purchase Order", filters={"company": company},
-        fields=["name"], order_by="modified desc", limit_page_length=500)
+        fields=["name"], order_by="modified desc", limit_page_length=0)
     result = []
     for row in found:
         doc = _po(row.name, company)
