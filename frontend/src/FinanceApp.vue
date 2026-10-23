@@ -353,7 +353,7 @@ const costTotals=computed(()=>report.value==='costs'&&reportData.value?.totals?[
 const reconColumns=[{field:'label',headerName:'Nội dung',minWidth:320,flex:3},moneyCol('ledger','Sổ kế toán',{valueFormatter:p=>num(p.value)}),moneyCol('source','Nghiệp vụ',{valueFormatter:p=>num(p.value)}),
  {field:'difference',headerName:'Chênh lệch',minWidth:120,valueFormatter:p=>p.data.ok?'Khớp':num(p.value),cellClass:p=>p.data?.ok?'fin-cell-ok':'fin-cell-bad'}]
 const transferColumns=[{field:'old',headerName:'Tài khoản cũ',minWidth:220,flex:2},{field:'new',headerName:'Chuyển sang',minWidth:240,flex:2},moneyCol('balance','Số dư',{valueFormatter:p=>num(p.value)})]
-const openingColumns=[{field:'line',headerName:'Dòng',minWidth:70},{field:'number',headerName:'TK',minWidth:90},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},moneyCol('debit','Dư Nợ'),moneyCol('credit','Dư Có'),
+const openingColumns=[{field:'line',headerName:'Dòng',minWidth:70},{field:'number',headerName:'TK',minWidth:90},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},{field:'customer',headerName:'Khách hàng',minWidth:140},moneyCol('debit','Dư Nợ'),moneyCol('credit','Dư Có'),
  {field:'errors',headerName:'Lỗi',minWidth:260,flex:2,valueGetter:p=>(p.data.errors||[]).join('; '),cellClass:p=>p.value?'fin-cell-bad':''}]
 const payrollLineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'lotus_farm',headerName:'Vườn',minWidth:110},
  {field:'lotus_farm_block',headerName:'Lô',minWidth:90,valueGetter:p=>dimLabel('lotus_farm_block',p.data.lotus_farm_block)},{field:'lotus_work_type',headerName:'Công việc',minWidth:120},{field:'note',headerName:'Diễn giải',minWidth:140}]
@@ -634,7 +634,7 @@ useNoticeToast(notice)
    <div class="land-actions fin-left"><UiButton type="button" variant="outline" @click="adj.lines.push(newAdjLine())">Thêm dòng</UiButton><span class="land-spacer"></span><UiButton :disabled="saving" variant="outline" @click="sendAdjustment(0)">Xem trước</UiButton><UiButton :disabled="saving||adjDebit!==adjCredit||!adjDebit" @click="sendAdjustment(1)">Ghi sổ</UiButton></div>
   </section>
   <section v-if="settings.is_chief" class="land-card"><h3>Số dư đầu kỳ</h3>
-   <p class="land-note">Tải file mẫu, điền số dư từng tài khoản tại ngày bắt đầu ghi sổ (công nợ 331 ghi theo từng nhà cung cấp), rồi tải lên để xem trước. Tổng Dư Nợ phải bằng tổng Dư Có.</p>
+   <p class="land-note">Tải file mẫu, điền số dư từng tài khoản tại ngày bắt đầu ghi sổ (công nợ 331 ghi theo nhà cung cấp, 131 ghi theo từng khách hàng), rồi tải lên để xem trước. Tổng Dư Nợ phải bằng tổng Dư Có.</p>
    <div class="land-actions fin-left"><UiButton variant="outline" @click="downloadOpening"><LotusIcon name="download"/>File mẫu</UiButton><label class="land-file">Tải file số dư<input type="file" accept=".xlsx" :disabled="saving" @change="readOpening"></label></div>
    <template v-if="openingPreview"><p>Dư Nợ {{vnd(openingPreview.debit)}} · Dư Có {{vnd(openingPreview.credit)}} · <span :class="openingPreview.balanced?'fin-ok':'land-bad'">{{openingPreview.balanced?'Cân':'Không cân'}}</span> · {{openingPreview.errors}} dòng lỗi · ngày {{vnDate(openingPreview.on_date)}}</p>
     <div class="land-table land-preview"><DataTable :rows="openingPreview.rows" :columns="openingColumns" row-key="line" storage-key="fin-opening"/></div>
@@ -684,11 +684,12 @@ useNoticeToast(notice)
   <div v-if="costingView" class="land-form">
    <p>Tháng {{costingView.month}} · ngày hạch toán {{vnDate(costingView.posting_date)}} · {{num(costingView.totals.kg_harvested,1)}} kg thu · giá thành sản lượng <b>{{vnd(costingView.totals.absorbed)}}</b> · chênh lệch so với tạm tính <b>{{vnd(costingView.totals.adjustment)}}</b></p>
    <p class="land-note">Mỗi lô: (dở dang đầu kỳ + chi phí tháng) × kg thu ÷ (kg thu + kg dự thu còn lại). Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Chênh lệch dương ghi Nợ 632 / Có 154, âm ghi ngược lại.</p>
+   <p v-for="issue in costingView.issues||[]" :key="issue" class="land-warn">{{issue}}</p>
    <p v-if="!costingView.closed" class="land-warn">Chưa kết chuyển chi phí 621 / 622 / 627 sang 154 của tháng này. Bấm "Kết chuyển CP" trước.</p>
    <p v-if="costingView.posted?.voucher" class="land-warn">Tháng này đã tính giá thành ({{costingView.posted.voucher}}). Đảo bút toán đó nếu cần tính lại.</p>
    <div class="land-table land-preview"><DataTable :rows="costingRows(costingView)" :columns="costingColumns" :pinned-bottom-rows="costingTotals(costingView)" row-key="__key" storage-key="fin-costing-preview" empty="Tháng này không có chi phí dở dang hay sản lượng thu hoạch."/></div>
    <details v-if="costingView.lines.length"><summary>Bút toán chênh lệch ({{costingView.lines.length}} dòng)</summary><DataTable :rows="keyed(costingView.lines)" :columns="payrollLineColumns" row-key="__key" storage-key="fin-costing-lines"/></details>
-   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="costingView=null">Đóng</UiButton><UiButton v-if="settings?.is_chief&&!costingView.posted?.voucher" :disabled="saving||!costingView.closed||!costingView.rows.length||!settings?.enabled" @click="postCosting">Ghi sổ giá thành</UiButton></div>
+   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="costingView=null">Đóng</UiButton><UiButton v-if="settings?.is_chief&&!costingView.posted?.voucher" :disabled="saving||!costingView.closed||!!costingView.issues?.length||!costingView.rows.length||!settings?.enabled" @click="postCosting">Ghi sổ giá thành</UiButton></div>
   </div>
  </WorkspaceModal>
 

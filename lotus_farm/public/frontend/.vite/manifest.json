@@ -1,21 +1,4 @@
 {
-  "../../Lotus-banana-farm-manage/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
-    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
-    "src": "../../Lotus-banana-farm-manage/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
-  },
-  "../../Lotus-banana-farm-manage/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
-    "file": "assets/Inter.var-C9xDBOS3.woff2",
-    "src": "../../Lotus-banana-farm-manage/frontend/node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
-  },
-  "../../Lotus-banana-farm-manage/frontend/node_modules/html5-qrcode/esm/index.js": {
-    "file": "assets/esm-CNv3qjHR.js",
-    "name": "esm",
-    "src": "../../Lotus-banana-farm-manage/frontend/node_modules/html5-qrcode/esm/index.js",
-    "isDynamicEntry": true,
-    "imports": [
-      "_rolldown-runtime-hePW80VL.js"
-    ]
-  },
   "_LotusMobileAction-CCOOkmZA.js": {
     "file": "assets/LotusMobileAction-CCOOkmZA.js",
     "name": "LotusMobileAction",
@@ -83,8 +66,8 @@
       "_LotusMobileAction-CCOOkmZA.js"
     ]
   },
-  "_MonthPicker-CP_u0FS6.js": {
-    "file": "assets/MonthPicker-CP_u0FS6.js",
+  "_MonthPicker-Fz0Zn5yL.js": {
+    "file": "assets/MonthPicker-Fz0Zn5yL.js",
     "name": "MonthPicker",
     "imports": [
       "_use-confirm-core-CSGzh8lT.js",
@@ -175,7 +158,7 @@
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "dynamicImports": [
-      "../../Lotus-banana-farm-manage/frontend/node_modules/html5-qrcode/esm/index.js"
+      "node_modules/html5-qrcode/esm/index.js"
     ],
     "css": [
       "assets/cccd-issuer-KGzZNQul.css"
@@ -330,7 +313,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-Uv_A075G.js",
+    "file": "assets/index-BSD3VNq0.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -374,8 +357,25 @@
     "file": "assets/login-Crv90P8t.css",
     "src": "login.html"
   },
+  "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2": {
+    "file": "assets/Inter-Italic.var-BGHziHgI.woff2",
+    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter-Italic.var.woff2"
+  },
+  "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2": {
+    "file": "assets/Inter.var-C9xDBOS3.woff2",
+    "src": "node_modules/frappe-ui/src/fonts/Inter/Inter.var.woff2"
+  },
+  "node_modules/html5-qrcode/esm/index.js": {
+    "file": "assets/esm-CNv3qjHR.js",
+    "name": "esm",
+    "src": "node_modules/html5-qrcode/esm/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_rolldown-runtime-hePW80VL.js"
+    ]
+  },
   "src/CutForecastApp.vue": {
-    "file": "assets/CutForecastApp-Bu18F_6A.js",
+    "file": "assets/CutForecastApp-DZT3d7Qa.js",
     "name": "CutForecastApp",
     "src": "src/CutForecastApp.vue",
     "isDynamicEntry": true,
@@ -391,7 +391,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-C0tK0J4t.js",
+    "file": "assets/FarmLandApp-c2ZBOMWQ.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -411,7 +411,7 @@
     ]
   },
   "src/FarmWorkApp.vue": {
-    "file": "assets/FarmWorkApp-o2j6pgGs.js",
+    "file": "assets/FarmWorkApp-Bl_FIU6A.js",
     "name": "FarmWorkApp",
     "src": "src/FarmWorkApp.vue",
     "isDynamicEntry": true,
@@ -426,7 +426,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-D_0YmHe6.js",
+    "file": "assets/FinanceApp-C3T2UwGH.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -437,7 +437,7 @@
       "_WorkspaceModal-Djtyee-_.js",
       "index.html",
       "_SignerPicker-BczLP4g5.js",
-      "_MonthPicker-CP_u0FS6.js"
+      "_MonthPicker-Fz0Zn5yL.js"
     ],
     "css": [
       "assets/FinanceApp-BDWU_-2w.css",
@@ -445,7 +445,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-BtUDwVHN.js",
+    "file": "assets/HrApp-Bq1J81qc.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -463,7 +463,7 @@
       "_LotusSignatureTimeline-q-D2a5JO.js",
       "_hr-catalog-labels-CFqBeZJI.js",
       "_cccd-issuer-DInquHWR.js",
-      "_MonthPicker-CP_u0FS6.js",
+      "_MonthPicker-Fz0Zn5yL.js",
       "_WorkspaceListToolbar-DLhqh20M.js"
     ],
     "css": [
@@ -471,7 +471,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-aRxNPA26.js",
+    "file": "assets/StockApp-D-ztQzUe.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -487,7 +487,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-DiuuFl_z.js",
+    "file": "assets/TimekeepingApp-BLSoegYw.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -501,14 +501,14 @@
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "index.html",
       "_hr-catalog-labels-CFqBeZJI.js",
-      "_MonthPicker-CP_u0FS6.js"
+      "_MonthPicker-Fz0Zn5yL.js"
     ],
     "css": [
       "assets/TimekeepingApp-Dygwjlyj.css"
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-DT7U2f0_.js",
+    "file": "assets/UserAdminApp-CPjpKZYu.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
@@ -534,7 +534,7 @@
     ]
   },
   "src/components/ForecastWorkspace.vue": {
-    "file": "assets/ForecastWorkspace-CYrYgXNY.js",
+    "file": "assets/ForecastWorkspace-NT7X_5t_.js",
     "name": "ForecastWorkspace",
     "src": "src/components/ForecastWorkspace.vue",
     "isDynamicEntry": true,
@@ -563,7 +563,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-CG6eu3wg.js",
+    "file": "assets/OneDriveProcessWorkspace-BB9OmvqU.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -580,7 +580,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CMTfaLoC.js",
+    "file": "assets/OpsList-BKUTdqWu.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,

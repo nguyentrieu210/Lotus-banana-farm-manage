@@ -99,15 +99,20 @@ def reverse(posting, reason):
                 frappe.throw('Đảo bút toán giá thành trước khi đảo kết chuyển chi phí.')
             no_voucher_sheets.append(sheet.name)
     voucher.flags.ignore_permissions = True
-    if voucher.docstatus == 1:
-        if doc.purpose in ('Cost Closing', 'Result Closing'):
-            from lotus_farm.finance.assets import internal
-            with internal(cost_closing_reverse=doc.name):
+    previous_reverse = getattr(frappe.flags, 'lotus_finance_reverse', False)
+    frappe.flags.lotus_finance_reverse = True
+    try:
+        if voucher.docstatus == 1:
+            if doc.purpose in ('Cost Closing', 'Result Closing'):
+                from lotus_farm.finance.assets import internal
+                with internal(cost_closing_reverse=doc.name):
+                    voucher.cancel()
+            else:
                 voucher.cancel()
-        else:
-            voucher.cancel()
-    elif voucher.docstatus == 0:
-        drop_draft(voucher)
+        elif voucher.docstatus == 0:
+            drop_draft(voucher)
+    finally:
+        frappe.flags.lotus_finance_reverse = previous_reverse
     doc.db_set(dict(state='Reversed', active_key=None, reversed_by=frappe.session.user, reversed_at=now_datetime(), reason=reason[:500]))
     for name in no_voucher_sheets:
         frappe.db.set_value('Lotus Costing Run', name, 'state', 'Reversed')
@@ -137,6 +142,12 @@ def close_month(month):
     ensure_settled(month)
     company = setup.company()
     start, end, label = _month_bounds(month)
+    from lotus_farm.finance.closing import result_preview
+    result = result_preview(month)
+    if result['issues']:
+        frappe.throw('Chưa khóa tháng được: ' + '; '.join(result['issues']))
+    if result['lines'] and not result['posted']:
+        frappe.throw('Chưa kết chuyển kết quả kinh doanh tháng %s. Không được khóa sổ.' % month)
     name = frappe.db.get_value('Accounting Period', {'company': company, 'start_date': start, 'end_date': end})
     doc = frappe.get_doc('Accounting Period', name) if name else frappe.get_doc(dict(doctype='Accounting Period', company=company, start_date=start, end_date=end,
                                                                                        period_name=label))  # ERPNext appends the company abbreviation

@@ -259,3 +259,16 @@ for _event in ('validate',):
     if isinstance(_handlers, str):
         _handlers = [_handlers]
     doc_events['Asset'][_event] = [*_handlers, 'lotus_farm.finance.assets.native_guard']
+
+# Finance safety also applies when documents are submitted/cancelled through ERPNext Desk or REST.
+for _finance_dt in ('Payment Entry', 'Journal Entry', 'Purchase Invoice', 'Sales Invoice',
+                    'Stock Entry', 'Stock Reconciliation', 'Purchase Receipt', 'Delivery Note'):
+    for _event, _handler in (('before_submit', 'lotus_farm.finance.native_guards.guard'),
+                             ('before_cancel', 'lotus_farm.finance.native_guards.guard'),
+                             ('before_update_after_submit', 'lotus_farm.finance.native_guards.guard'),
+                             ('on_cancel', 'lotus_farm.finance.native_guards.sync_cancel')):
+        _old = doc_events.setdefault(_finance_dt, {}).get(_event, [])
+        if isinstance(_old, str):
+            _old = [_old]
+        if _handler not in _old:
+            doc_events[_finance_dt][_event] = [*_old, _handler]

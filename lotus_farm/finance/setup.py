@@ -142,13 +142,19 @@ def install():
         for role in (ACCOUNTANT, CHIEF):
             operations = ['read', 'report', 'print', 'export']
             if doctype in WRITE_DOCTYPES:
-                operations += ['create', 'write', 'submit'] + (['cancel'] if role == CHIEF else [])
+                operations += ['create', 'write'] + (['cancel'] if role == CHIEF else [])
+                # Server checks every payment signature, even when using native ERPNext API.
+                if role == CHIEF or doctype not in ('Payment Entry', 'Journal Entry'):
+                    operations.append('submit')
             if not frappe.db.exists('Custom DocPerm', {'parent': doctype, 'role': role, 'permlevel': 0}):
                 add_permission(doctype, role)
             current = frappe.db.get_value('Custom DocPerm', {'parent': doctype, 'role': role, 'permlevel': 0}, operations, as_dict=True) or {}
             for operation in operations:
                 if not int(current.get(operation) or 0):
                     update_permission_property(doctype, role, 0, operation, 1)
+            if role == ACCOUNTANT and doctype in ('Payment Entry', 'Journal Entry'):
+                if frappe.db.get_value('Custom DocPerm', {'parent': doctype, 'role': role, 'permlevel': 0}, 'submit'):
+                    update_permission_property(doctype, role, 0, 'submit', 0)
     # The director signs the last step of a payment voucher, which submits it: ERPNext/HRMS then read the paid
     # invoices and accounts as that person, so approvers may read (not change) what they approve.
     from lotus_farm.signing_rules import DIRECTORS
