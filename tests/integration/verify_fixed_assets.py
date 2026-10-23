@@ -22,6 +22,7 @@ assert frappe.local.site == SITE
 frappe.set_user('Administrator')
 
 from lotus_farm.finance import assets as a, asset_rules as ar, closing, posting, setup  # noqa: E402
+from lotus_farm.finance import master_imports as mi  # noqa: E402
 
 
 def insert(dt, **values):
@@ -32,6 +33,14 @@ def insert(dt, **values):
 
 def accounts():
     return {r.account_number:r.name for r in frappe.get_all('Account', filters={'company':'Lotus Agritech'}, fields=['name','account_number'])}
+
+
+def workbook(kind, rows, labels=True):
+    from openpyxl import Workbook
+    book=Workbook();book.active.append(mi.KINDS[kind][1 if labels else 0])
+    for row in rows:book.active.append(row)
+    out=BytesIO();book.save(out)
+    return base64.b64encode(out.getvalue()).decode()
 
 
 def seed():
@@ -447,6 +456,131 @@ class FixedAssetsIntegration(unittest.TestCase):
         self.assertEqual(len(registered['documents']),1)
         again=a.save_asset(dict(values,code='DUP-'+self.tag,serial_no='DUP-'+self.tag))
         self.assertTrue(a.operation_preview(again['name'])['errors'])
+
+
+    def category_row(self, title=None):
+        return [title or 'Nhóm nhập '+self.tag, 0, '211', '2141', '6274', '2411']
+
+    def test_21_import_account_tree_then_category_by_account_numbers(self):
+        root=frappe.db.get_value('Account',{'company':setup.company(),'root_type':'Asset','parent_account':['is','not set']},'name')
+        content=workbook('accounts',[[987001,'Chi tiết '+self.tag,'9870',0,'Fixed Asset'],['9870','Nhóm '+self.tag,root,1,'']])
+        preview=mi.preview('accounts',content)
+        self.assertTrue(preview['valid'],preview)
+        self.assertEqual(preview['order'],[3,2])
+        self.assertEqual(mi.commit('accounts',content,preview['fingerprint'])['count'],2)
+        leaf=frappe.db.get_value('Account',{'company':setup.company(),'account_number':'987001'},['name','parent_account','root_type'],as_dict=True)
+        self.assertEqual(leaf.root_type,'Asset')
+        self.assertEqual(frappe.db.get_value('Account',leaf.parent_account,'account_number'),'9870')
+        row=self.category_row();row[2]='987001'
+        content=workbook('categories',[row]);preview=mi.preview('categories',content)
+        self.assertTrue(preview['valid'],preview)
+        self.assertEqual(preview['rows'][0]['values']['fixed_asset_account'],leaf.name)
+        mi.commit('categories',content,preview['fingerprint'])
+        category=frappe.get_doc('Asset Category',row[0])
+        self.assertEqual(category.accounts[0].fixed_asset_account,leaf.name)
+
+    def test_22_import_errors_are_per_row_and_field(self):
+        content=workbook('accounts',[
+            ['98801','A','98802',1,''],['98802','B','98801',1,''],
+            ['9890','Missing parent','missing',0,'Wrong Type'],['9890','Duplicate','211',3,''],
+            ['=1+2','Formula','211',0,'']])
+        preview=mi.preview('accounts',content)
+        self.assertFalse(preview['valid'])
+        self.assertIn('parent_account',preview['rows'][0]['errors'])
+        self.assertIn('account_type',preview['rows'][2]['errors'])
+        self.assertIn('account_number',preview['rows'][3]['errors'])
+        self.assertIn('is_group',preview['rows'][3]['errors'])
+        self.assertIn('account_number',preview['rows'][4]['errors'])
+        row=self.category_row();row[2]='6274';row[3]='missing';row[4]='211'
+        preview=mi.preview('categories',workbook('categories',[row,row]))
+        self.assertFalse(preview['valid'])
+        self.assertTrue(set(('fixed_asset_account','accumulated_depreciation_account','depreciation_expense_account')) <= set(preview['rows'][0]['errors']))
+        self.assertIn('asset_category_name',preview['rows'][1]['errors'])
+
+    def test_23_repeated_import_skips_identical_and_refuses_overwrite(self):
+        account=frappe.get_doc('Account',self.acc['211'])
+        content=workbook('accounts',[[account.get(k) for k in mi.ACCOUNT_FIELDS]])
+        preview=mi.preview('accounts',content)
+        self.assertTrue(preview['valid'],preview)
+        self.assertEqual(preview['skip_count'],1)
+        self.assertEqual(mi.commit('accounts',content,preview['fingerprint'])['count'],0)
+        content=workbook('categories',[self.category_row()]);preview=mi.preview('categories',content)
+        mi.commit('categories',content,preview['fingerprint'])
+        self.refused(mi.commit,'categories',content,preview['fingerprint'],contains='Xem trước')
+        preview=mi.preview('categories',content)
+        self.assertEqual(preview['skip_count'],1)
+        self.assertTrue(preview['valid'])
+        changed=self.category_row();changed[4]='6414'
+        preview=mi.preview('categories',workbook('categories',[changed]))
+        self.assertFalse(preview['valid'])
+        self.assertEqual(frappe.get_doc('Asset Category',changed[0]).accounts[0].depreciation_expense_account,self.acc['6274'])
+
+    def test_24_import_rechecks_account_state_before_confirmation(self):
+        content=workbook('categories',[self.category_row()]);preview=mi.preview('categories',content)
+        frappe.db.set_value('Account',self.acc['211'],'disabled',1)
+        self.refused(mi.commit,'categories',content,preview['fingerprint'],contains='Xem trước')
+        self.assertFalse(frappe.db.exists('Asset Category',self.category_row()[0]))
+        frappe.db.set_value('Account',self.acc['211'],'disabled',0)
+        preview=mi.preview('categories',content)
+        frappe.db.set_value('Account',self.acc['211'],'account_name','Tên thay đổi')
+        self.refused(mi.commit,'categories',content,preview['fingerprint'],contains='Xem trước')
+
+    def test_25_category_import_rolls_back_every_row_after_native_error(self):
+        from unittest.mock import patch
+        rows=[self.category_row('Nhóm A '+self.tag),self.category_row('Nhóm B '+self.tag)]
+        content=workbook('categories',rows);preview=mi.preview('categories',content)
+        original=a.save_category
+        def failing(values):
+            if values['asset_category_name']==rows[1][0]:frappe.throw('Injected native error')
+            return original(values)
+        with patch.object(a,'save_category',side_effect=failing):
+            self.refused(mi.commit,'categories',content,preview['fingerprint'],contains='Injected')
+        self.assertFalse(any(frappe.db.exists('Asset Category',r[0]) for r in rows))
+
+    def test_26_setup_import_works_with_assets_disabled_and_never_posts(self):
+        from openpyxl import load_workbook
+        a.activate(0)
+        before={dt:frappe.db.count(dt) for dt in ('Asset','GL Entry','Journal Entry')}
+        content=workbook('categories',[self.category_row()])
+        for user in ('asset-accountant@example.invalid','asset-auditor@example.invalid'):
+            frappe.set_user(user)
+            self.refused(mi.preview,'categories',content)
+            self.refused(mi.commit,'categories',content,'x')
+            self.refused(mi.template,'accounts')
+        frappe.set_user('asset-chief@example.invalid')
+        preview=mi.preview('categories',content)
+        mi.commit('categories',content,preview['fingerprint'])
+        for kind in ('accounts','categories'):
+            mi.template(kind)
+            template=load_workbook(BytesIO(frappe.local.response.filecontent))
+            self.assertEqual(tuple(c.value for c in template.active[1]),mi.KINDS[kind][1])
+            self.assertIn('Tai khoan hien co',template.sheetnames)
+        self.assertEqual(before,{dt:frappe.db.count(dt) for dt in before})
+        self.assertFalse(a.enabled())
+
+    def test_27_import_refuses_empty_broken_formula_and_oversized_files(self):
+        self.assertFalse(mi.preview('categories',workbook('categories',[]))['valid'])
+        self.refused(mi.preview,'categories',base64.b64encode(b'broken').decode(),contains='không hợp lệ')
+        self.refused(mi.preview,'categories','x'*6_700_001,contains='5 MB')
+        self.refused(mi.preview,'other','',contains='Chọn nhập')
+        content=workbook('categories',[[*self.category_row(),'Extra column']])
+        self.refused(mi.preview,'categories',content,contains='cột thừa')
+        content=workbook('accounts', [['98801','Leaf','211',0,'Fixed Asset']])
+        self.assertIn('parent_account',mi.preview('accounts',content)['rows'][0]['errors'])
+
+    def test_28_account_import_rolls_back_tree_on_native_failure(self):
+        from unittest.mock import patch
+        from frappe.model.document import Document
+        root=frappe.db.get_value('Account',{'company':setup.company(),'root_type':'Asset','parent_account':['is','not set']},'name')
+        content=workbook('accounts',[['9870','Nhóm '+self.tag,root,1,''],['987001','Con '+self.tag,'9870',0,'Fixed Asset']])
+        preview=mi.preview('accounts',content);self.assertTrue(preview['valid'])
+        original=Document.insert
+        def failing(doc,*args,**kwargs):
+            if doc.doctype=='Account' and doc.account_number=='987001':frappe.throw('Injected account error')
+            return original(doc,*args,**kwargs)
+        with patch.object(Document,'insert',failing):
+            self.refused(mi.commit,'accounts',content,preview['fingerprint'],contains='Injected')
+        self.assertFalse(frappe.db.exists('Account',{'company':setup.company(),'account_number':'9870'}))
 
 
 if __name__=='__main__':

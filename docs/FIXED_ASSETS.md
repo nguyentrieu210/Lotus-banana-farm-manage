@@ -12,6 +12,14 @@ Mở **Tài chính – Kế toán → Tài sản cố định**. Nền dữ li�
 
 ## Thiết lập và nhập đầu kỳ
 
+Kế toán trưởng có thể nhập hai danh mục bằng Excel trước khi bật quản lý tài sản:
+
+- **Thiết lập → Hệ thống tài khoản → Nhập tài khoản Excel**: tải mẫu, điền số tài khoản, tên, tài khoản cha, là nhóm (0/1), loại tài khoản. Tài khoản cha nhận số TK hoặc mã đầy đủ trong sheet `Tai khoan hien co`; có thể là một nhóm mới trong cùng file, không cần xếp cha trước con. Loại tài khoản lấy đúng giá trị trong sheet `Loai tai khoan`; để trống khi không cần phân loại riêng. Không tạo thêm tài khoản gốc.
+- **Tài sản cố định → Nhập nhóm Excel**: tải mẫu, điền tên nhóm, không khấu hao (0/1) và bốn TK nguyên giá, hao mòn, chi phí khấu hao, mua sắm chờ ghi tăng. Nhận số TK hoặc mã đầy đủ của tài khoản chi tiết đang dùng đúng công ty và loại. Nhập tài khoản còn thiếu trước, sau đó tải lại mẫu nhóm.
+- Chọn file `.xlsx` tối đa 5 MB / 2.000 dòng, **Xem trước**, sửa hết lỗi rồi **Xác nhận nhập**. Sheet đầu tiên chứa dữ liệu nhập; các sheet còn lại chỉ để tham chiếu. Giữ số TK ở dạng văn bản để giữ số 0 đầu; không dùng công thức Excel.
+- Chỉ thêm mới. Dòng đã tồn tại và khớp hoàn toàn được bỏ qua; khác thông tin sẽ báo lỗi, không đổi tên, loại, cấu trúc hay tài khoản của danh mục đang có. Không ghi số dư, không chuyển số dư và không tạo bút toán. Thay đổi hệ thống tài khoản chuẩn vẫn theo luồng áp dụng Thông tư 99 hiện có.
+- Lần xác nhận kiểm tra lại dữ liệu và quyền kế toán trưởng trong một giao dịch. Nếu danh mục thay đổi sau khi xem trước, phải xem trước lại; lỗi ở bất kỳ dòng nào hoàn tác toàn bộ lần nhập. Lịch sử thêm tài khoản/nhóm và ghi chú xác nhận được giữ trong hệ thống.
+
 1. Kế toán trưởng tạo nhóm với tài khoản nguyên giá, hao mòn, chi phí khấu hao và mua sắm chờ ghi tăng. Chọn tài khoản chi tiết đúng công ty. Nhóm đã có tài sản được duyệt không được đổi chính sách tài khoản.
 2. Tạo vị trí quản lý tài sản. Hồ sơ có mã riêng, serial, người quản lý và farm/lô.
 3. Tài sản đầu kỳ: nhập ngày mua/ngày sử dụng thực tế, nguyên giá, hao mòn đầu kỳ, tổng số tháng và số kỳ đã trích; không điền dữ liệu giả. Tải mẫu Excel ở Nhập Excel, xem lỗi từng dòng rồi tạo hồ sơ chờ duyệt.
@@ -51,6 +59,7 @@ Phát triển riêng ở nhánh `codex/fixed-assets`, tích hợp nền kế to�
 
 - Ghi tăng, đầu kỳ, tháng lẻ, khấu hao hết, nhiều farm, VAT mua/bán, nâng cấp, điều chuyển, tạm ngừng, thay đổi chính sách, bán/thanh lý và phục hồi được đối chiếu chứng từ thật.
 - Duyệt đồng thời chạy hai kết nối DB: một lần ghi tăng và một lần khấu hao thành công; yêu cầu trùng bị từ chối. Đảo và ghi lại không làm tăng khấu hao hai lần.
+- Nhập Excel tài khoản/nhóm được kiểm chứng trên ERPNext thật: cây cha/con đảo thứ tự, gắn theo số TK, bỏ qua bản ghi khớp, lỗi theo trường, dữ liệu thay đổi sau xem trước, quyền, hoàn tác khi lỗi giữa file và xác nhận đồng thời chỉ ghi một lần. Kiểm thử giao diện và Chromium đi qua xem trước → xác nhận cho cả hai danh mục.
 - Phiên bản ERPNext hiện dùng ghi giảm theo `net_purchase_amount`, trong khi sửa chữa vốn hóa tăng `total_asset_cost`. Lotus đối chiếu GL của chứng từ giảm gốc và tạo JE liên kết để ghi giảm phần vốn hóa còn thiếu, không sửa chứng từ gốc.
 - Phục hồi bán/thanh lý giữa tháng giữ bút toán đảo chuẩn ERPNext vào ngày phục hồi; cả kỳ gốc và ngày phục hồi phải mở. Bút toán phân bổ được đảo trước. Chứng từ gốc và lịch sử vẫn còn để đối chiếu.
 - ERPNext không vốn hóa Asset Repair khi tài sản đã khấu hao hết; xem trước chặn trường hợp này và yêu cầu hồ sơ ghi tăng phần đầu tư mới. Không âm thầm coi nâng cấp là chi phí sửa chữa.

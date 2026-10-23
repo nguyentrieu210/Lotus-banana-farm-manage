@@ -2,6 +2,7 @@
 import {computed,onMounted,ref,watch} from 'vue'
 import DataTable from '../DataTable.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
+import FinanceMasterImport from './FinanceMasterImport.vue'
 import MonthPicker from '../MonthPicker.vue'
 import {Button} from '../ui/button'
 import {Input} from '../ui/input'
@@ -17,6 +18,7 @@ const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Ho_Chi_Minh'})
 const month=ref(today.slice(0,7)),section=ref('assets'),search=ref(''),data=ref(null),lookups=ref({}),error=ref(''),busy=ref(false),saving=ref(false)
 const editor=ref(''),form=ref({}),errors=ref({}),selected=ref(null),review=ref(null),schedule=ref(null),report=ref(null),allocation=ref([]),purchaseRows=ref([])
 const reportFarm=ref(''),importContent=ref(''),importPreview=ref(null),reason=ref(''),cancelTarget=ref(null)
+const categoryImportOpen=ref(false)
 const kinds=[['Move','Điều chuyển / bàn giao'],['Repair','Sửa chữa'],['Upgrade','Nâng cấp / vốn hóa'],['Suspend','Tạm ngừng sử dụng'],['Resume','Sử dụng lại'],['Sell','Bán tài sản'],['Scrap','Thanh lý / loại bỏ'],['Restore','Phục hồi thanh lý']]
 const kindLabel=v=>v==='Create'?'Ghi tăng tài sản':v==='Profile'?'Cập nhật hồ sơ':kinds.find(k=>k[0]===v)?.[1]||v
 const stateLabel=v=>({Pending:'Chờ duyệt',Posted:'Đã duyệt',Cancelled:'Đã hủy',Submitted:'Đang sử dụng',Draft:'Nháp',Sold:'Đã bán',Scrapped:'Đã thanh lý','Partially Depreciated':'Đang khấu hao','Fully Depreciated':'Đã khấu hao hết'})[v]||v
@@ -72,6 +74,7 @@ const allocationTotal=computed(()=>allocation.value.reduce((s,r)=>s+Number(r.per
 async function saveAllocation(){await mutate(()=>call(API+'save_allocation',{asset:selected.value.name,month:month.value,rows:JSON.stringify(allocation.value),modified:form.value.modified},true),'Đã lưu tỷ lệ phân bổ tháng.')}
 function openCategory(){form.value={asset_category_name:'',non_depreciable_category:'0'};editor.value='category'}
 async function saveCategory(){await mutate(()=>call(API+'save_category',{values:JSON.stringify(form.value)},true),'Đã lưu nhóm tài sản.')}
+async function importedCategories(result){emit('notice',`Đã nhập ${result.count} nhóm tài sản; bỏ qua ${result.skipped} nhóm đã có.`);await load()}
 async function saveLocation(){await mutate(()=>call(API+'save_location',{location_name:form.value.location_name},true),'Đã lưu vị trí tài sản.')}
 async function loadReport(){report.value=await call(API+'report',{farm:reportFarm.value||undefined,on_date:month.value+'-'+new Date(Number(month.value.slice(0,4)),Number(month.value.slice(5,7)),0).getDate()})}
 function download(method){window.location.href='/api/method/'+API+method+(method==='export'?'?on_date='+encodeURIComponent(month.value+'-'+new Date(Number(month.value.slice(0,4)),Number(month.value.slice(5,7)),0).getDate())+(reportFarm.value?'&farm='+encodeURIComponent(reportFarm.value):''):'')}
@@ -95,10 +98,11 @@ defineExpose({load})
   <template v-if="data?.enabled&&canWrite">
    <Button v-if="section==='assets'" :disabled="saving" @click="openAsset()">Thêm tài sản</Button>
    <Button v-if="section==='assets'" variant="outline" @click="editor='import';importPreview=null;importContent=''">Nhập Excel</Button>
-   <Button v-if="section==='assets'&&canApprove" variant="outline" @click="openCategory">Nhóm tài sản</Button>
    <Button v-if="section==='assets'" variant="outline" @click="form={location_name:''};editor='location'">Thêm vị trí</Button>
    <Button v-if="section==='depreciation'" :disabled="busy" @click="reviewDepreciation">Lập bảng khấu hao</Button>
   </template>
+  <Button v-if="section==='assets'&&canApprove" variant="outline" @click="openCategory">Nhóm tài sản</Button>
+  <Button v-if="section==='assets'&&canApprove" variant="outline" @click="categoryImportOpen=true">Nhập nhóm Excel</Button>
   <Combobox v-if="section==='report'" v-model="reportFarm" :options="options('farms','farm_name')" label="Vườn báo cáo tài sản" placeholder="Tất cả vườn"/>
   <Button v-if="section==='report'" variant="outline" @click="download('export')">Xuất Excel</Button>
  </div>
@@ -193,6 +197,7 @@ defineExpose({load})
  <WorkspaceModal :model-value="editor==='location'" title="Vị trí tài sản" :busy="saving" @update:model-value="v=>{if(!v)editor=''}"><form @submit.prevent="saveLocation"><p v-if="error" class="hr-ops-error fin-assets__footer" role="alert">{{error}}</p><FormField label="Tên vị trí" required v-slot="field"><Input v-bind="field" v-model="form.location_name"/></FormField><Button type="submit" :disabled="saving">Lưu vị trí</Button></form></WorkspaceModal>
  <WorkspaceModal :model-value="editor==='import'" title="Nhập tài sản đầu kỳ từ Excel" width="950px" :busy="saving" @update:model-value="v=>{if(!v)editor=''}"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><div class="fin-assets__actions"><Button variant="outline" @click="download('import_template')">Tải mẫu</Button><input type="file" accept=".xlsx" aria-label="File tài sản đầu kỳ" @change="readFile"/><Button :disabled="!importContent||busy" @click="previewImport">Xem trước</Button></div><template v-if="importPreview"><DataTable :rows="importPreview.rows" :columns="importColumns" row-key="line" storage-key="fin-assets-import"/><Button :disabled="saving||!importPreview.valid" @click="commitImport">Tạo hồ sơ chờ duyệt</Button></template></WorkspaceModal>
  <WorkspaceModal :model-value="editor==='reason'" title="Hủy / đảo nghiệp vụ tài sản" :busy="saving" @update:model-value="v=>{if(!v)editor=''}"><form @submit.prevent="cancel"><p v-if="error" class="hr-ops-error fin-assets__footer" role="alert">{{error}}</p><FormField label="Lý do" required v-slot="field"><Input v-bind="field" v-model="reason" minlength="5"/></FormField><Button type="submit" :disabled="saving||reason.trim().length<5">Xác nhận hủy / đảo</Button></form></WorkspaceModal>
+ <FinanceMasterImport v-model="categoryImportOpen" kind="categories" @imported="importedCategories"/>
  <p v-if="editor&&error" class="hr-ops-error" role="alert">{{error}}</p>
 </section>
 </template>

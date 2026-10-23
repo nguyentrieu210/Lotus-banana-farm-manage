@@ -43,6 +43,16 @@ test('activation is available only to the chief and explicitly switches to revie
  readonly.unmount()
 })
 
+test('chief can import category setup before activation; accountants cannot open it',async()=>{
+ const view=await open(base({enabled:false,permissions:{write:true,approve:true}}))
+ button(view.root,'Nhập nhóm Excel').click();await tick()
+ assert.match(document.querySelector('dialog[open]').textContent,/Nhập nhóm tài sản từ Excel/)
+ view.unmount()
+ const accountant=await open(base())
+ assert.equal(button(accountant.root,'Nhập nhóm Excel'),undefined)
+ assert.equal(button(accountant.root,'Nhóm tài sản'),undefined)
+})
+
 test('new asset supports purchasing and server field errors stay inside the modal',async()=>{
  const view=await open(base(),{[API+'save_asset']:{errors:{code:'Mã tài sản bị trùng.'}}})
  button(view.root,'Thêm tài sản').click();await tick()

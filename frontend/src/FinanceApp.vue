@@ -12,6 +12,7 @@ import SignerPicker from './components/SignerPicker.vue'
 import DataTable from './components/DataTable.vue'
 import FinanceGuide from './components/finance/FinanceGuide.vue'
 import FinanceAssets from './components/finance/FinanceAssets.vue'
+import FinanceMasterImport from './components/finance/FinanceMasterImport.vue'
 import {DatePicker} from './components/ui/date-picker'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -25,6 +26,7 @@ import './finance.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
+const accountImportOpen=ref(false)
 const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
 const REPORTS=[['b01','B01 Tình hình tài chính'],['b02','B02 Kết quả kinh doanh'],['b03','B03 Lưu chuyển tiền tệ'],['trial_balance','Bảng cân đối phát sinh'],
  ['general_journal','Nhật ký chung'],['ledger','Sổ cái / sổ quỹ / tiền gửi'],['party','Công nợ theo đối tượng'],['stock','Nhập – xuất – tồn'],
@@ -47,6 +49,7 @@ const dimLabel=(field,value)=>{if(!value)return '';if(field==='lotus_farm_block'
 function go(next){router.push({path:'/tai-chinh',query:{...route.query,tab:next}})}
 async function run(fn){busy.value=true;error.value='';try{return await fn()}catch(e){error.value=e.message}finally{busy.value=false}}
 async function ensureLookups(){if(!lookups.value)lookups.value=await call(F+'reports.lookups')}
+async function importedAccounts(result){notice.value=`Đã nhập ${result.count} tài khoản; bỏ qua ${result.skipped} tài khoản đã có.`;await run(async()=>{[settings.value,lookups.value]=await Promise.all([call(F+'api.settings'),call(F+'reports.lookups')])})}
 async function load(){
  if(tab.value==='sign')return run(async()=>{mine.value=await call(F+'payments.my_vouchers')})
  return run(async()=>{
@@ -571,7 +574,8 @@ useNoticeToast(notice)
   <section class="land-card"><h3>Hệ thống tài khoản</h3>
    <p v-if="settings.coa_version" class="land-note">Đã áp dụng {{settings.coa_version}} lúc {{vnDate(settings.coa_applied_at.slice(0,10))}} ({{settings.coa_applied_by}}).</p>
    <p v-else class="land-note">Chưa áp dụng. Xem trước để kiểm tra danh mục tài khoản Thông tư 99, tài khoản kho và bút toán chuyển số dư từ hệ thống tài khoản cũ.</p>
-   <div class="land-actions fin-left"><UiButton variant="outline" @click="previewCoa">Xem trước áp dụng Thông tư 99</UiButton></div>
+   <div class="land-actions fin-left"><UiButton variant="outline" @click="previewCoa">Xem trước áp dụng Thông tư 99</UiButton><UiButton v-if="settings.is_chief" variant="outline" @click="accountImportOpen=true">Nhập tài khoản Excel</UiButton></div>
+   <FinanceMasterImport v-model="accountImportOpen" kind="accounts" @imported="importedAccounts"/>
    <template v-if="coa">
     <p>{{coa.name}} — thêm <b>{{coa.add.length}}</b>, sửa tên / loại <b>{{coa.update.length}}</b>, xóa <b>{{coa.retire.filter(r=>r.action==='delete').length}}</b>, ngừng dùng <b>{{coa.retire.filter(r=>r.action==='disable').length}}</b> tài khoản (tài khoản đã có bút toán không xóa được, chỉ ngừng dùng).</p>
     <details v-if="coa.update.length"><summary>Tài khoản đổi tên theo Thông tư 99</summary><ul class="fin-list"><li v-for="u in coa.update" :key="u.account">{{u.number}}: {{u.old_name}} → <b>{{u.name}}</b></li></ul></details>

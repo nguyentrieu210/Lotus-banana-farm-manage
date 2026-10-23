@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 import uuid
 
-from verify_fixed_assets import SITE, a, accounts, frappe, seed
+from verify_fixed_assets import SITE, a, accounts, frappe, seed, mi, workbook
 
 
 def race(method, args):
@@ -58,5 +58,21 @@ if __name__ == '__main__':
     a.depreciation_reverse(run['name'], 'Dọn dữ liệu kiểm thử đồng thời')
     a.operation_cancel(result['name'], 'Dọn tài sản kiểm thử đồng thời')
     frappe.db.commit()
-    print('PASS: simultaneous operation and month approvals each post exactly once; both reversed cleanly.')
+    number=str(int(tag,16)+9000000000)
+    root=frappe.db.get_value('Account',{'company':'Lotus Agritech','root_type':'Asset','parent_account':['is','not set']},'name')
+    content=workbook('accounts',[[number,'Tài khoản kiểm thử đồng thời '+tag,root,0,'Fixed Asset']])
+    preview=mi.preview('accounts',content);assert preview['valid'],preview
+    frappe.db.commit()
+    account=race(mi.commit,dict(kind='accounts',content=content,fingerprint=preview['fingerprint']))['names'][0]
+    title='Nhóm kiểm thử đồng thời '+tag
+    content=workbook('categories',[[title,0,number,'2141','6274','2411']])
+    preview=mi.preview('categories',content);assert preview['valid'],preview
+    frappe.db.commit()
+    category=race(mi.commit,dict(kind='categories',content=content,fingerprint=preview['fingerprint']))['names'][0]
+    assert frappe.db.count('Account',{'account_number':number,'company':'Lotus Agritech'})==1
+    assert frappe.db.count('Asset Category',{'name':category})==1
+    frappe.delete_doc('Asset Category',category,ignore_permissions=True)
+    frappe.delete_doc('Account',account,ignore_permissions=True)
+    frappe.db.commit()
+    print('PASS: simultaneous asset, depreciation, account and category approvals each write exactly once; fixtures cleaned.')
     frappe.destroy()
