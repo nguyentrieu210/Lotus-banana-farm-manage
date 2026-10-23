@@ -228,9 +228,11 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
             sum(case when sle.posting_date < %%s then sle.actual_qty else 0 end) opening_qty,
             sum(case when sle.posting_date < %%s then sle.stock_value_difference else 0 end) opening_value,
             sum(case when sle.posting_date >= %%s and sle.actual_qty > 0 then sle.actual_qty else 0 end) in_qty,
-            sum(case when sle.posting_date >= %%s and sle.actual_qty > 0 then sle.stock_value_difference else 0 end) in_value,
+            sum(case when sle.posting_date >= %%s and (sle.actual_qty > 0 or (sle.actual_qty = 0 and sle.stock_value_difference > 0))
+                then sle.stock_value_difference else 0 end) in_value,
             sum(case when sle.posting_date >= %%s and sle.actual_qty < 0 then -sle.actual_qty else 0 end) out_qty,
-            sum(case when sle.posting_date >= %%s and sle.actual_qty < 0 then -sle.stock_value_difference else 0 end) out_value
+            sum(case when sle.posting_date >= %%s and (sle.actual_qty < 0 or (sle.actual_qty = 0 and sle.stock_value_difference < 0))
+                then -sle.stock_value_difference else 0 end) out_value
         from `tabStock Ledger Entry` sle join tabItem i on i.name=sle.item_code
         where sle.company=%%s and sle.is_cancelled=0 and sle.posting_date <= %%s %s
         group by sle.item_code, i.item_name, i.stock_uom, sle.warehouse order by i.item_name, sle.warehouse""" % clause,
