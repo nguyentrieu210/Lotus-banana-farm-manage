@@ -45,6 +45,7 @@ import WorkspaceModal from './components/WorkspaceModal.vue'
 import MobileHome from './components/MobileHome.vue'
 import WorkspaceLoading from './components/WorkspaceLoading.vue'
 const workspaceComponents={
+ 'mua-hang':defineAsyncComponent({loader:()=>import('./components/ProcurementWorkspace.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'nhat-ky-cong-viec':defineAsyncComponent({loader:()=>import('./WorkJournalApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'nguoi-dung':defineAsyncComponent({loader:()=>import('./UserAdminApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'nhan-su':defineAsyncComponent({loader:()=>import('./HrApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),

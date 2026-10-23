@@ -336,8 +336,9 @@ def receive_order(name,posting_date,quantities,client_event_id):
     available={r['line']:r for r in info['items']}
     for line,qty in selected.items():
         if line not in available or qty>available[line]['remaining_qty']+0.000001:frappe.throw('Lượng nhận vượt phần còn nhận hoặc đang giữ trên phiếu nháp.')
-        row=available[line];_warehouse(row['warehouse'],original.company)
+        row=available[line]
         item=frappe.get_doc('Item',row['item'])
+        if item.is_stock_item:_warehouse(row['warehouse'],original.company)
         if item.has_batch_no or item.has_serial_no:frappe.throw('Nhận theo lô/serial cần quy trình nhận hàng chuyên dụng.')
     doc=make_purchase_receipt(name)
     kept=[]
@@ -347,9 +348,23 @@ def receive_order(name,posting_date,quantities,client_event_id):
         if factor<=0:frappe.throw('Đơn mua thiếu quy đổi đơn vị.')
         row.qty=selected[row.purchase_order_item]/factor
         row.received_qty=row.qty;row.rejected_qty=0;row.stock_qty=selected[row.purchase_order_item]
-        kept.append(row)
-    if len(kept)!=len(selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
+        source=next(r for r in original.items if r.name==row.purchase_order_item)
+        ratio=flt(row.qty)/flt(source.qty)
+        row.lotus_line_freight=flt(source.get('lotus_line_freight'))*ratio
+        item=frappe.get_cached_doc('Item',row.item_code)
+        if item.is_fixed_asset:
+            if abs(flt(row.qty)-round(flt(row.qty)))>0.000001 or factor!=1:
+                frappe.throw('Tài sản nhận theo từng chiếc, quy đổi bằng 1.')
+            for _ in range(round(flt(row.qty))):
+                piece=frappe._dict(row.as_dict())
+                piece.pop('name',None)
+                piece.update(qty=1,received_qty=1,stock_qty=1,lotus_line_freight=flt(row.lotus_line_freight)/flt(row.qty))
+                kept.append(piece)
+        else:kept.append(row)
+    if {r.get('purchase_order_item') for r in kept}!=set(selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
     doc.set('items',kept);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
+    from lotus_farm.procurement import apply_line_taxes
+    apply_line_taxes(doc)
     doc.lotus_client_key=key;doc.lotus_payload_hash=digest
     doc.insert()
     return dict(name=doc.name)
@@ -371,7 +386,7 @@ def receipt_action(name,modified,action):
     lock('Company',doc.company)
     for order in sorted({r.purchase_order for r in doc.items if r.purchase_order}):lock('Purchase Order',order)
     lock('Purchase Receipt',name);doc.reload()
-    if str(doc.modified)!=modified or doc.is_return:
+    if str(doc.modified)!=modified:
         frappe.throw('Phiếu đã thay đổi hoặc không hợp lệ. Tải lại trước khi thao tác.')
     if action=='cancel':
         if doc.docstatus!=1:
@@ -383,8 +398,12 @@ def receipt_action(name,modified,action):
         frappe.throw('Phiếu nhận không còn là bản nháp.')
     if action=='submit':
         doc.check_permission('submit')
+        if doc.is_return:
+            doc.submit()  # Native return validation and ledger reversal; no second stock document.
+            return dict(name=name,action=action)
         from lotus_farm.warehouse import _warehouse
-        for row in doc.items:_warehouse(row.warehouse,doc.company)
+        for row in doc.items:
+            if frappe.get_cached_value('Item',row.item_code,'is_stock_item'):_warehouse(row.warehouse,doc.company)
         # Keep the same no-overreceipt rule at posting, after reloading the order.
         totals=defaultdict(float)
         for row in doc.items:

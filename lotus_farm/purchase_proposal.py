@@ -133,6 +133,8 @@ def _apply_lines(doc, rows, allowed):
             frappe.throw('Chọn kho nhận cho ' + item.item_name)
         frappe.get_doc('Warehouse', warehouse).check_permission('read')
         line = {field: row.get(field) for field in EDIT_ALL}
+        from lotus_farm.procurement import line_fields
+        line.update(line_fields(item, row))
         line.update(item_code=item.name, uom=uom, stock_uom=item.stock_uom, conversion_factor=factor, warehouse=warehouse,
                     qty=flt(row['qty']), rate=flt(row.get('rate')), schedule_date=getdate(row['schedule_date']))
         for field in ('lotus_specification', 'lotus_supplier_hint', 'lotus_purpose'):

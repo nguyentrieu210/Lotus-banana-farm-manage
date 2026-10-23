@@ -1,5 +1,6 @@
 <script setup>
 import BuyingOrderCard from './components/BuyingOrderCard.vue'
+import ProcurementWorkspace from './components/ProcurementWorkspace.vue'
 import {Icon} from 'vant'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
@@ -34,6 +35,7 @@ function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const session=ref(null),company=ref(''),catalog=ref(null),orders=ref([]),requests=ref([]),suppliers=ref([])
 const tab=ref('home'),view=ref(''),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const proposal=ref(null),proposalTitle=ref('Đề xuất mua vật tư'),proposalTodo=ref(0)
+const procurement=ref(null)
 const filter=ref(''),status=ref('Tất cả'),detail=ref(null),draft=ref(null),quote=ref(null),rejectReason=ref('')
 const savedPurchase=ref(null)
 const qrChallenge=ref(null),qrDialog=ref(null),qrSignToken=ref(''),qrSignPending=ref(false)
@@ -44,6 +46,7 @@ const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave
 let initialDraft='',initialSupplier=''
 function dirtyPurchase(){return !!draft.value&&(savedPurchase.value?!!savedPurchase.value.quoteError:JSON.stringify(draft.value)!==initialDraft||!!quote.value)}
 function confirmLeave(target=''){
+ if(view.value==='procurement'&&procurement.value?.hasChanges())return askLeave('Rời màn hình sẽ mất phần mua hàng chưa lưu.')
  const dirtySupplier=view.value==='supplier'&&!!supplierForm.value&&JSON.stringify(supplierForm.value)!==initialSupplier
  const dirtyOrder=(view.value==='form'||view.value==='supplier'&&supplierReturn==='form'&&target!=='form')&&dirtyPurchase()
  return dirtySupplier||dirtyOrder?askLeave(purchaseLeaveMessage(!!savedPurchase.value?.quoteError)):Promise.resolve(true)
@@ -322,6 +325,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <LotusMobileAction icon="notes-o" title="Đề nghị mua chờ đặt hàng" @select="openView('requests')"/>
     <LotusMobileAction v-if="session?.can_approve" icon="passed" title="Duyệt đơn" @select="status='Chờ duyệt';changeTab('orders')"/>
     <LotusMobileAction icon="shop-o" title="Nhà cung cấp" @select="changeTab('suppliers')"/>
+    <LotusMobileAction icon="balance-list-o" title="Báo giá, nghiệm thu & thanh toán" @select="openView('procurement')"/>
    </div>
    <h2>Đơn gần đây</h2>
    <BuyingOrderCard v-for="r in orders.slice(0,5)" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" @select="openOrder"/>
@@ -417,6 +421,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
   </template>
 
   <MobilePurchaseProposal v-if="view==='proposals'" ref="proposal" :company="company" :online="online" :today="session?.today||''" @title="proposalTitle=$event" @notice="notice=$event;error=''" @error="error=$event;notice=''"/>
+  <ProcurementWorkspace v-if="view==='procurement'" ref="procurement" :company="company" :today="session?.today||''" mobile/>
   <MobileSupplierForm v-if="view==='supplier'&&supplierForm" v-model="supplierForm" :saving="saving" :online="online" @submit="saveSupplier"/>
  </main>
  <LotusMobileDialog ref="qrDialog" class="mobile-leave-dialog">

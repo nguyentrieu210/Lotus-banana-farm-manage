@@ -87,13 +87,16 @@ def _lines(company, warehouse, raw, expected_date):
     if not isinstance(raw, list) or not raw or len(raw) > 100:
         frappe.throw('Cần chọn từ 1 đến 100 dòng vật tư.')
     result = []
+    requested = {}
     for row in raw:
         if not isinstance(row, dict):
             frappe.throw('Dòng vật tư không hợp lệ.')
         item = frappe.get_doc('Item', row.get('item'))
         item.check_permission('read')
-        if item.disabled or not item.is_stock_item:
-            frappe.throw('Chỉ được mua vật tư kho đang sử dụng.')
+        if item.disabled:
+            frappe.throw('Mặt hàng đã ngừng sử dụng.')
+        from lotus_farm.procurement import line_fields
+        extra = line_fields(item, row)
         qty = _number(row.get('qty'), 'Số lượng mua')
         unit = row.get('uom') or item.stock_uom
         if unit == item.stock_uom:
@@ -118,10 +121,19 @@ def _lines(company, warehouse, raw, expected_date):
             if not original or original.item_code!=item.name or original.warehouse!=store.name:
                 frappe.throw('Đề nghị mua và vật tư/kho nhận không khớp.')
             remaining=max(0,flt(original.stock_qty)-flt(original.ordered_qty))
-            if qty*factor>remaining+0.000001:
+            source_key=(doc.name,original.name)
+            requested[source_key]=requested.get(source_key,0)+qty*factor
+            if requested[source_key]>remaining+0.000001:
                 frappe.throw('Số lượng vượt phần đề nghị mua còn lại.')
             source=dict(material_request=doc.name,material_request_item=original.name)
-        result.append(dict(**source,item_code=item.name, item_name=item.item_name, qty=qty,
+        if row.get('supplier_quotation'):
+            from lotus_farm.procurement import document
+            quote = document('Supplier Quotation', row['supplier_quotation'], company)
+            quoted = next((r for r in quote.items if r.name == row.get('supplier_quotation_item')), None)
+            if quote.docstatus != 1 or not quoted or quoted.item_code != item.name:
+                frappe.throw('Báo giá nguồn không hợp lệ.')
+            source.update(supplier_quotation=quote.name, supplier_quotation_item=quoted.name)
+        result.append(dict(**source,**extra,item_code=item.name, item_name=item.item_name, qty=qty,
                            uom=unit, stock_uom=item.stock_uom, conversion_factor=factor,
                            rate=price, warehouse=store.name, schedule_date=schedule))
     return result
@@ -180,8 +192,8 @@ def setup(company):
                 if frappe.has_permission('Supplier','read') else [],
         warehouses=frappe.get_list('Warehouse', filters={'company':company,'is_group':0,'disabled':0},
                                     fields=['name','warehouse_name'],limit_page_length=0),
-        items=frappe.get_list('Item',filters={'is_stock_item':1,'disabled':0},
-                              fields=['name','item_name','stock_uom'],order_by='item_name asc',limit_page_length=2000),
+        items=frappe.get_list('Item',filters={'disabled':0},
+                              fields=['name','item_name','stock_uom','is_stock_item','is_fixed_asset','asset_category'],order_by='item_name asc',limit_page_length=0),
         conversions=frappe.get_all('UOM Conversion Detail',fields=['parent','uom','conversion_factor'], filters={'parenttype':'Item'},limit_page_length=0),
         currency=frappe.get_cached_value('Company',company,'default_currency'),
         can_create=frappe.has_permission('Purchase Order','create'),
@@ -233,6 +245,8 @@ def _payload(company, data):
 def save_order(company, data, name=None, modified=None):
     _access()
     _company(company)
+    from lotus_farm.controls import lock
+    lock('Company',company)
     info=_payload(company,data)
     if name:
         doc=_po(name, company)
@@ -256,6 +270,8 @@ def save_order(company, data, name=None, modified=None):
     doc.lotus_purchase_mode=info['mode']
     doc.lotus_delivery_note=info['notes']
     doc.set('items',info['lines'])
+    from lotus_farm.procurement import apply_line_taxes
+    apply_line_taxes(doc)
     if name:
         doc.save()
     else:
@@ -343,6 +359,9 @@ def order_detail(name):
                             remaining_qty=max(0,flt(r.qty)-flt(r.received_qty)),
                             uom=r.uom,stock_uom=r.stock_uom,conversion_factor=flt(r.conversion_factor) or 1,
                             rate=flt(r.rate),expected_date=str(r.schedule_date),
+                            kind=r.get('lotus_purchase_kind') or '',vat_code=r.get('lotus_line_vat') or 'KCT',
+                            freight=flt(r.get('lotus_line_freight')),reason=r.get('lotus_quote_reason') or '',
+                            supplier_quotation=r.get('supplier_quotation') or '',supplier_quotation_item=r.get('supplier_quotation_item') or '',
                             material_request=r.material_request or '',
                             material_request_item=r.material_request_item or '') for r in doc.items])
 

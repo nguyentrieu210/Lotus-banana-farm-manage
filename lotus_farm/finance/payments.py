@@ -187,6 +187,7 @@ def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, pos
     setup.check_cutover(posting_date)
     posting.check_open(company, posting_date, PI)
     pi = frappe.get_doc(dict(doctype=PI, company=company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
+                             currency=frappe.get_cached_value('Company',company,'default_currency'),conversion_rate=1,
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
     apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.flags.ignore_permissions = True
@@ -233,18 +234,28 @@ def prepare_supplier_payment(supplier, allocations, mode, posting_date, signers,
         frappe.throw('Chọn hóa đơn và số tiền trả.')
     company = setup.company()
     m = setup.mapping()
+    from lotus_farm.controls import lock
+    lock('Company', company)
+    if mode not in ('cash', 'bank') or len({a['invoice'] for a in allocations}) != len(allocations):
+        frappe.throw('Phương thức chi hoặc phân bổ hóa đơn không hợp lệ.')
     if mode == 'bank' and not reference_no:
         frappe.throw('Chuyển khoản cần số ủy nhiệm chi / số giao dịch ngân hàng.')
     setup.check_cutover(posting_date)
     posting.check_open(company, posting_date, PE)
     refs, total = [], 0
     for a in allocations:
+        from lotus_farm.procurement import document
+        source = document(PI, a['invoice'], company)
+        lock(PI, source.name)
         inv = frappe.db.get_value(PI, a['invoice'], ['supplier', 'docstatus', 'outstanding_amount', 'grand_total', 'due_date', 'bill_no'], as_dict=True)
         if not inv or inv.docstatus != 1 or inv.supplier != supplier:
             frappe.throw('Hóa đơn %s không thuộc nhà cung cấp này hoặc chưa ghi sổ.' % a['invoice'])
         pending = flt(frappe.db.sql("""select sum(r.allocated_amount) from `tabPayment Entry Reference` r join `tabPayment Entry` p on p.name=r.parent
             where p.docstatus=0 and r.reference_doctype='Purchase Invoice' and r.reference_name=%s""", a['invoice'])[0][0])
         amount = flt(a['amount'])
+        from lotus_farm.purchase_funding import _remaining_source
+        if amount > _remaining_source(PI, a['invoice']) + .5:
+            frappe.throw('Hóa đơn đã có phiếu thanh toán hoặc chi hộ đang chờ ký; tải lại số còn trả.')
         if amount > flt(inv.outstanding_amount) - pending + 0.5:
             frappe.throw('Hóa đơn %s chỉ còn nợ %s (đã có phiếu chi chờ ký %s).' % (inv.bill_no or a['invoice'], _vnd(flt(inv.outstanding_amount)), _vnd(pending)))
         refs.append(dict(reference_doctype=PI, reference_name=a['invoice'], total_amount=inv.grand_total, outstanding_amount=inv.outstanding_amount,
@@ -314,6 +325,9 @@ def cancel_draft(doctype, name, reason):
     doc = _voucher(doctype, name)
     if doc.docstatus != 0:
         frappe.throw('Chỉ hủy được phiếu chi chưa ghi sổ. Phiếu đã ghi sổ thì Kế toán trưởng đảo bút toán.')
+    if doctype=='Journal Entry' and doc.get('lotus_purchase_funding'):
+        from lotus_farm.purchase_funding import cancel_voucher
+        return cancel_voucher(doc,reason)
     p = frappe.db.get_value(posting.POSTING, {'voucher_type': doctype, 'voucher_name': name})
     if p:
         return posting.reverse(p, reason) if setup.is_chief() else _drop(p, doc, reason)
@@ -351,10 +365,17 @@ def _voucher_info(doc, signing=None):
         lines = [dict(label=a.account, amount=flt(a.debit) or -flt(a.credit)) for a in doc.accounts]
         kind = doc.get('lotus_payment_kind')
         party = doc.get('lotus_employee')
+        funding=None
+        if doc.get('lotus_purchase_funding'):
+            funding=frappe.get_doc('Lotus Purchase Funding',doc.lotus_purchase_funding)
+            party=funding.payer
         party_name = (frappe.db.get_value('Employee', party, 'employee_name') if party else None) or \
             ('Cơ quan BHXH / thuế / công đoàn' if kind == 'Statutory' else 'Người lao động')
+        if funding:
+            party_name=frappe.db.get_value(funding.payer_type,party,'employee_name' if funding.payer_type=='Employee' else 'title') or party
         info = dict(party=party or '', party_name=party_name, amount=flt(doc.total_debit), money=next((a.account for a in doc.accounts if a.credit), ''),
-                    reference=doc.cheque_no or '', kind={'Advance': 'Tạm ứng lương', 'Statutory': 'Nộp BH, KPCĐ, thuế'}.get(kind, 'Chi lương'))
+                    reference=doc.cheque_no or '', kind={'Advance': 'Tạm ứng lương', 'Statutory': 'Nộp BH, KPCĐ, thuế',
+                        'PurchaseFunding':'Cá nhân chi hộ NCC','PurchaseReimbursement':'Hoàn tiền người chi hộ'}.get(kind, 'Chi lương'))
     return dict(info, doctype=doc.doctype, name=doc.name, posting_date=str(doc.posting_date), remark=doc.get('remarks') or doc.get('user_remark') or '',
                 docstatus=doc.docstatus, lines=lines, signing=signing.status(doc))
 
