@@ -1,4 +1,5 @@
 <script setup>
+import {unitLabel} from '../../units'
 // One lot: overview (facts, plots, map, planned dates), work & materials, yield & losses, disease & bunch
 // care, and the change history. Each tab loads its section of lotus_farm.farm_land.block_detail on open.
 import {computed,defineAsyncComponent,reactive,ref,watch} from 'vue'
@@ -63,7 +64,7 @@ const teamsCols=[dcol('team','Đội'),dcol('workdays','Tổng công',v=>num(v,2
 const materialsCols=[dcol('item_name','Vật tư',(_,r)=>r.item_name+' · '+r.uom),dnum('required','Định mức',2),dnum('consumed','Đã dùng',2),dcol('variance','Chênh',(_,r)=>r.required?num(r.consumed-r.required,2):'—')]
 const forecastCols=[dcol('period_start_date','Kỳ',(_,r)=>vnDate(r.period_start_date)+' – '+vnDate(r.period_end_date)),dnum('expected_harvest_bunch_qty','Buồng'),dnum('saleable_forecast_kg','Đạt bán (kg)'),dcol('supply_state','Trạng thái')]
 const cancelledCols=[dcol('reason','Nguyên nhân'),dcol('bunches','Số buồng',v=>num(v)+' buồng')]
-const measuredCols=[ddate('posting_date','Ngày'),dnum('sample_count','Mẫu'),dcol('average_length','Dài TB',(v,r)=>num(v,1)+' '+r.uom),dnum('average_diameter','Đường kính TB',1)]
+const measuredCols=[ddate('posting_date','Ngày'),dnum('sample_count','Mẫu'),dcol('average_length','Dài TB',(v,r)=>num(v,1)+' '+unitLabel(r.uom)),dnum('average_diameter','Đường kính TB',1)]
 const diseaseCols=[dcol('disease','Bệnh'),dnum('observations','Lần'),dnum('plants','Cây bị'),dcol('severity','Mức gần nhất'),ddate('last','Gần nhất')]
 const operationsCols=[ddate('week','Tuần từ'),dcol('operation','Thao tác',v=>OPERATIONS[v]||v),dnum('bunches','Buồng')]
 const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>PLANTING[v]||v),dnum('plant_qty','Số cây'),dcol('area_ha','Diện tích',v=>num(v,2)+' ha'),dcol('notes','Ghi chú')]

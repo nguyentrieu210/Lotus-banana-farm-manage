@@ -20,6 +20,7 @@ import UiSelect from './components/ui/select/Select.vue'
 import {useWorkspaceConfirm} from './use-workspace-confirm'
 import {useNoticeToast} from './use-toast'
 import {call} from './api'
+import {unitLabel} from './units'
 import {useSession} from './store'
 import './land.css'
 import './finance.css'
@@ -131,13 +132,13 @@ const statementColumns=computed(()=>{const value=(field,headerName)=>({field,hea
  if(report.value==='b02')return [name,code,value('current','Kỳ này'),value('previous','Cùng kỳ năm trước')]
  return [name,code,value('current','Kỳ này')]})
 const checkColumns=computed(()=>[{field:'label',headerName:'Kiểm tra',minWidth:360,flex:3},{field:'difference',headerName:'Chênh lệch',minWidth:120,valueFormatter:p=>p.data.ok?'Khớp':num(p.value),cellClass:p=>p.data?.ok?'fin-cell-ok':'fin-cell-bad'}])
-const journalBookColumns=computed(()=>[{field:'line',headerName:'STT',minWidth:70,maxWidth:80},dateCol('posting_date','Ngày'),{field:'voucher_no',headerName:'Chứng từ',minWidth:170},
+const journalBookColumns=computed(()=>[{field:'line',headerName:'STT',minWidth:70,maxWidth:80},dateCol('posting_date','Ngày'),{field:'voucher_type',headerName:'Loại chứng từ',minWidth:130},{field:'voucher_no',headerName:'Số chứng từ',minWidth:170},
  {field:'remarks',headerName:'Diễn giải',minWidth:220,flex:2},{field:'number',headerName:'TK',minWidth:80},{field:'party',headerName:'Đối tượng',minWidth:120},moneyCol('debit','Nợ'),moneyCol('credit','Có')])
 const partyColumns=computed(()=>[{field:'party_name',headerName:'Đối tượng',minWidth:220,flex:2},moneyCol('opening_debit','Dư Nợ đầu kỳ'),moneyCol('opening_credit','Dư Có đầu kỳ'),moneyCol('debit','Phát sinh Nợ'),
  moneyCol('credit','Phát sinh Có'),moneyCol('closing_debit','Dư Nợ cuối kỳ'),moneyCol('closing_credit','Dư Có cuối kỳ')])
 const partyTotals=computed(()=>report.value==='party'&&reportData.value?.totals?[{party:'__total',party_name:'Cộng',...reportData.value.totals}]:[])
 const qty=p=>p.value?num(p.value,3):''
-const stockColumns=computed(()=>[{field:'item_name',headerName:'Hàng',minWidth:200,flex:2},{field:'warehouse',headerName:'Kho',minWidth:160},{field:'stock_uom',headerName:'ĐVT',minWidth:70},
+const stockColumns=computed(()=>[{field:'item_name',headerName:'Hàng',minWidth:200,flex:2},{field:'warehouse',headerName:'Kho',minWidth:160},{field:'stock_uom',headerName:'ĐVT',minWidth:70,valueFormatter:p=>p.data?.uom_label||unitLabel(p.value)},
  {field:'opening_qty',headerName:'Tồn đầu',minWidth:100,type:'numericColumn',valueFormatter:qty},moneyCol('opening_value','Giá trị đầu'),{field:'in_qty',headerName:'Nhập',minWidth:90,type:'numericColumn',valueFormatter:qty},
  moneyCol('in_value','Giá trị nhập'),{field:'out_qty',headerName:'Xuất',minWidth:90,type:'numericColumn',valueFormatter:qty},moneyCol('out_value','Giá trị xuất'),
  {field:'closing_qty',headerName:'Tồn cuối',minWidth:100,type:'numericColumn',valueFormatter:qty},moneyCol('closing_value','Giá trị cuối')])
@@ -340,7 +341,7 @@ const voucherColumns=computed(()=>[{field:'name',headerName:'Phiếu',minWidth:1
 const tbColumns=[{field:'number',headerName:'Số TK',minWidth:90},{field:'name',headerName:'Tên tài khoản',minWidth:240,flex:2},moneyCol('opening_debit','Dư Nợ đầu kỳ'),moneyCol('opening_credit','Dư Có đầu kỳ'),
  moneyCol('debit','Phát sinh Nợ'),moneyCol('credit','Phát sinh Có'),moneyCol('closing_debit','Dư Nợ cuối kỳ'),moneyCol('closing_credit','Dư Có cuối kỳ')]
 const tbTotals=computed(()=>reportData.value?.totals&&report.value==='trial_balance'?[{account:'__total',number:'',name:'Tổng cộng',...reportData.value.totals}]:[])
-const ledgerColumns=[dateCol('posting_date','Ngày'),{field:'voucher_no',headerName:'Chứng từ',minWidth:170},{field:'party',headerName:'Đối tượng',minWidth:120},
+const ledgerColumns=[dateCol('posting_date','Ngày'),{field:'voucher_type',headerName:'Loại chứng từ',minWidth:130},{field:'voucher_no',headerName:'Số chứng từ',minWidth:170},{field:'party',headerName:'Đối tượng',minWidth:120},
  {field:'remarks',headerName:'Diễn giải',minWidth:200,flex:2,valueGetter:p=>String(p.data.remarks||'').split('\n')[0]},{field:'contra',headerName:'TK đối ứng',minWidth:110},
  moneyCol('debit','Nợ'),moneyCol('credit','Có'),moneyCol('balance','Số dư',{valueFormatter:p=>num(p.value)})]
 const ledgerRows=computed(()=>(reportData.value?.lines||[]).map((l,i)=>({...l,__key:i})))
@@ -445,7 +446,7 @@ useNoticeToast(notice)
 
  <section v-else-if="tab==='journal'" class="land-card">
   <div class="land-filters"><label>Từ<DatePicker v-model="range.from"/></label><label>Đến<DatePicker v-model="range.to"/></label><UiButton variant="outline" @click="load">Xem</UiButton><span class="land-spacer"></span><span class="land-count">{{journalRows.length}} chứng từ</span></div>
-  <details v-for="v in journalRows" :key="v.voucher_no" class="fin-entry"><summary><span>{{vnDate(v.posting_date)}}</span><b>{{v.voucher_no}}</b><span>{{v.source.purpose?v.source.doctype+' '+v.source.name:v.voucher_type}}</span><strong>{{vnd(v.amount)}}</strong></summary>
+  <details v-for="v in journalRows" :key="v.voucher_no" class="fin-entry"><summary><span>{{vnDate(v.posting_date)}}</span><b>{{v.voucher_no}}</b><span>{{v.voucher_label||v.voucher_type}} · {{v.description}}</span><strong>{{vnd(v.amount)}}</strong></summary>
    <DataTable :rows="keyed(v.lines)" :columns="lineColumns" row-key="__key" storage-key="fin-journal-lines"/></details>
   <p v-if="!journalRows.length&&!busy" class="land-empty">Không có chứng từ trong khoảng ngày này.</p>
  </section>
@@ -726,7 +727,7 @@ useNoticeToast(notice)
    <div class="fin-form-rows" role="list"><div class="fin-form-row fin-form-row--sale fin-form-row--head" aria-hidden="true"><span>Hàng · kho</span><span class="num">Tồn</span><span>Số lượng</span><span>Đơn giá</span><span>Lô hàng (batch)</span><span></span></div>
     <div v-for="(l,i) in sale.lines" :key="i" class="fin-form-row fin-form-row--sale" role="listitem">
      <UiSelect v-model="l.stock" :aria-label="'Hàng dòng '+(i+1)"><option value="">Chọn…</option><option v-for="s in saleStock" :key="stockKey(s)" :value="stockKey(s)">{{s.item_name}} · {{s.warehouse}}</option></UiSelect>
-     <span class="num">{{stockOf(l)?num(stockOf(l).actual_qty,2)+' '+stockOf(l).stock_uom:'—'}}</span>
+     <span class="num">{{stockOf(l)?num(stockOf(l).actual_qty,2)+' '+unitLabel(stockOf(l).stock_uom):'—'}}</span>
      <UiInput v-model="l.qty" type="number" min="0" step="any" :aria-label="'Số lượng dòng '+(i+1)"/><UiInput v-model="l.rate" type="number" min="0" :aria-label="'Đơn giá dòng '+(i+1)"/>
      <UiSelect v-if="stockOf(l)?.has_batch_no" v-model="l.batch_no" :aria-label="'Batch dòng '+(i+1)"><option value="">Chọn…</option><option v-for="b in stockOf(l).batches||[]" :key="b.name" :value="b.name">{{b.name}} ({{num(b.qty,2)}})</option></UiSelect><span v-else>—</span>
      <UiButton type="button" size="sm" variant="ghost" :disabled="sale.lines.length<2" @click="sale.lines.splice(i,1)">Xóa</UiButton></div></div>

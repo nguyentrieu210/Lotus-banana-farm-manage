@@ -122,12 +122,17 @@ def journal(from_date=None, to_date=None, voucher_type=None, account=None, limit
     for ln in lines:
         ln['account_label'] = labels.get(ln.account, ln.account)
         by.setdefault(ln.voucher_no, []).append(ln)
+    from lotus_farm.finance.describe import vouchers
+    said = vouchers((h.voucher_type, h.voucher_no) for h in heads)
     out = []
     for h in heads:
         link = links.get(h.voucher_no)
         source = dict(doctype=link.source_doctype, name=link.source_name, purpose=link.purpose) if link else dict(doctype=h.voucher_type, name=h.voucher_no, purpose='')
-        out.append(dict(voucher_type=h.voucher_type, voucher_no=h.voucher_no, posting_date=str(h.posting_date), amount=flt(h.amount), source=source,
-                        lines=by.get(h.voucher_no, [])))
+        info = said.get(h.voucher_no, {})
+        for ln in by.get(h.voucher_no, []):
+            ln['remarks'] = info.get('description') or ln.remarks
+        out.append(dict(voucher_type=h.voucher_type, voucher_label=info.get('label') or h.voucher_type, description=info.get('description') or '',
+                        voucher_no=h.voucher_no, posting_date=str(h.posting_date), amount=flt(h.amount), source=source, lines=by.get(h.voucher_no, [])))
     return out
 
 
@@ -199,11 +204,16 @@ def ledger(account, from_date=None, to_date=None):
     dim_cols = ''.join(', ' + f for f in rules.DIM_FIELDS if frappe.get_meta('GL Entry').has_field(f))
     lines = frappe.db.sql("""select posting_date, voucher_type, voucher_no, party, remarks, debit, credit, against%s from `tabGL Entry`
         where account=%%s and is_cancelled=0 and posting_date between %%s and %%s order by posting_date, creation""" % dim_cols, (account, start, end), as_dict=True)
+    from lotus_farm.finance.describe import vouchers
+    said = vouchers((ln.voucher_type, ln.voucher_no) for ln in lines)
     running = opening
     for ln in lines:
         running += flt(ln.debit) - flt(ln.credit)
         ln['balance'] = running
         ln['posting_date'] = str(ln.posting_date)
+        info = said.get(ln.voucher_no, {})
+        ln['voucher_type'] = info.get('label') or ln.voucher_type
+        ln['remarks'] = info.get('description') or ln.remarks
     return dict(account=account, account_label=account_labels([account]).get(account, account), opening=opening, closing=running, lines=lines,
                 from_date=str(start), to_date=str(end))
 

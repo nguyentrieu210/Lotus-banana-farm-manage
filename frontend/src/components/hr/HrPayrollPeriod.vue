@@ -1,6 +1,7 @@
 <script setup>
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusIcon from '../LotusIcon.vue'
+import {unitLabel} from '../../units'
 import DataTable from '../DataTable.vue'
 import MonthPicker from '../MonthPicker.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
@@ -98,7 +99,7 @@ const slipCols=[
  pmoney('net_pay','Thực lĩnh'),pmoney('difference','Lệch bảng Lotus'),
  pcol('docstatus','Trạng thái',(_,r)=>r.docstatus===1?(r.journal_entry?'Đã hạch toán':'Đã duyệt'):'Nháp')
 ]
-const crewCols=[pcol('team_name','Đội'),pcol('foreman','Đầu câu'),pcol('work_name','Công việc'),pcol('completed_qty','Khối lượng',(_,r)=>num(r.completed_qty)+' '+r.uom),
+const crewCols=[pcol('team_name','Đội'),pcol('foreman','Đầu câu'),pcol('work_name','Công việc'),pcol('completed_qty','Khối lượng',(_,r)=>num(r.completed_qty)+' '+unitLabel(r.uom)),
  pmoney('unit_rate','Đơn giá'),pmoney('amount','Thành tiền'),pnum('workdays','Tổng công')]
 const issueCols=[pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee),pcol('issue','Vấn đề')]
 

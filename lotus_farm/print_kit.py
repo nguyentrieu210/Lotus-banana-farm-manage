@@ -37,7 +37,8 @@ def money(value, currency='VND'):
 
 
 def unit(name):
-    return UNITS.get(name, name or '')
+    from lotus_farm.units import label
+    return UNITS.get(name) or label(name)
 
 
 def _as_date(value):

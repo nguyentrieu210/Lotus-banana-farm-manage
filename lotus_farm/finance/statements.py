@@ -147,11 +147,15 @@ def general_journal(from_date=None, to_date=None):
     accounts = _accounts(company)
     rows = frappe.db.sql("""select name, posting_date, voucher_type, voucher_no, account, party, debit, credit, remarks from `tabGL Entry`
         where company=%s and is_cancelled=0 and posting_date between %s and %s order by posting_date, creation, name""", (company, from_date, to_date), as_dict=True)
+    from lotus_farm.finance.describe import vouchers
+    said = vouchers((r.voucher_type, r.voucher_no) for r in rows)
     out = []
     for i, r in enumerate(rows, start=1):
         a = accounts.get(r.account)
-        out.append(dict(line=i, posting_date=str(r.posting_date), voucher_type=r.voucher_type, voucher_no=r.voucher_no, number=a.account_number if a else '',
-                        account=r.account, party=r.party or '', debit=flt(r.debit), credit=flt(r.credit), remarks=str(r.remarks or '').split('\n')[0][:200]))
+        info = said.get(r.voucher_no, {})
+        out.append(dict(line=i, posting_date=str(r.posting_date), voucher_type=info.get('label') or r.voucher_type, voucher_no=r.voucher_no,
+                        number=a.account_number if a else '', account=r.account, party=r.party or '', debit=flt(r.debit), credit=flt(r.credit),
+                        remarks=info.get('description') or str(r.remarks or '').split('\n')[0][:200]))
     return dict(from_date=str(from_date), to_date=str(to_date), rows=out, debit=sum(r['debit'] for r in out), credit=sum(r['credit'] for r in out))
 
 
@@ -176,13 +180,17 @@ def general_ledger(account, from_date=None, to_date=None, party=None):
     for o in frappe.db.sql("""select voucher_no, account, sum(debit) debit, sum(credit) credit from `tabGL Entry` where company=%s and is_cancelled=0 and voucher_no in %s
             and account != %s group by voucher_no, account""", (company, vouchers, account), as_dict=True):
         others.setdefault(o.voucher_no, []).append(o)
+    from lotus_farm.finance.describe import vouchers
+    said = vouchers((r.voucher_type, r.voucher_no) for r in rows)
     balance, out = opening, []
     for r in rows:
         balance += flt(r.debit) - flt(r.credit)
         side = 'credit' if flt(r.debit) else 'debit'
         contra = sorted({accounts[o.account].account_number or o.account for o in others.get(r.voucher_no, []) if flt(o[side]) and o.account in accounts})
-        out.append(dict(posting_date=str(r.posting_date), voucher_type=r.voucher_type, voucher_no=r.voucher_no, party=r.party or '', debit=flt(r.debit), credit=flt(r.credit),
-                        contra=', '.join(contra), balance=balance, remarks=str(r.remarks or '').split('\n')[0][:200]))
+        info = said.get(r.voucher_no, {})
+        out.append(dict(posting_date=str(r.posting_date), voucher_type=info.get('label') or r.voucher_type, voucher_no=r.voucher_no, party=r.party or '',
+                        debit=flt(r.debit), credit=flt(r.credit), contra=', '.join(contra), balance=balance,
+                        remarks=info.get('description') or str(r.remarks or '').split('\n')[0][:200]))
     a = accounts[account]
     return dict(account=account, label=(a.account_number + ' - ' if a.account_number else '') + a.account_name, party=party or '', from_date=str(from_date),
                 to_date=str(to_date), opening=opening, closing=balance, debit=sum(r['debit'] for r in out), credit=sum(r['credit'] for r in out), lines=out)
@@ -237,9 +245,11 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
         where sle.company=%%s and sle.is_cancelled=0 and sle.posting_date <= %%s %s
         group by sle.item_code, i.item_name, i.stock_uom, sle.warehouse order by i.item_name, sle.warehouse""" % clause,
                          (from_date,) * 6 + (company, to_date) + args, as_dict=True)
+    from lotus_farm.units import label
     out = []
     for r in rows:
         r = {k: (flt(v) if k.endswith(('_qty', '_value')) else v) for k, v in r.items()}
+        r['uom_label'] = label(r['stock_uom'])
         r['closing_qty'] = r['opening_qty'] + r['in_qty'] - r['out_qty']
         r['closing_value'] = r['opening_value'] + r['in_value'] - r['out_value']
         if any(abs(r[k]) > 0.0005 for k in ('opening_qty', 'in_qty', 'out_qty', 'closing_qty', 'closing_value')):
@@ -379,7 +389,7 @@ def export(kind, from_date=None, to_date=None, account=None, party=None):
         header('BẢNG TỔNG HỢP NHẬP – XUẤT – TỒN', '', 'Từ ngày %s đến ngày %s' % (data['from_date'], data['to_date']))
         ws.append(['Mã hàng', 'Tên hàng', 'ĐVT', 'Kho', 'Tồn đầu SL', 'Tồn đầu GT', 'Nhập SL', 'Nhập GT', 'Xuất SL', 'Xuất GT', 'Tồn cuối SL', 'Tồn cuối GT'])
         for r in data['rows']:
-            ws.append([r['item_code'], r['item_name'], r['stock_uom'], r['warehouse'], r['opening_qty'], r['opening_value'], r['in_qty'], r['in_value'],
+            ws.append([r['item_code'], r['item_name'], r['uom_label'], r['warehouse'], r['opening_qty'], r['opening_value'], r['in_qty'], r['in_value'],
                        r['out_qty'], r['out_value'], r['closing_qty'], r['closing_value']])
     else:
         frappe.throw('Loại báo cáo không hợp lệ.')

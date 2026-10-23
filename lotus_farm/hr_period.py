@@ -12,6 +12,7 @@ import frappe
 from frappe.utils import cint, flt, getdate, now_datetime, nowdate
 
 from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay, params_on, tax_method
+from lotus_farm.units import label as unit_label
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
@@ -512,7 +513,7 @@ def export_payroll(company, month):
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
     sheet(book.create_sheet(), 'Đội khoán',
           ['Đội', 'Đầu câu', 'Điện thoại', 'Công việc', 'Khối lượng', 'Đơn vị', 'Đơn giá', 'Thành tiền', 'Tổng công', 'Người-ngày'],
-          [[c['team_name'], c['foreman'], c['foreman_phone'], c['work_name'], c['completed_qty'], c['uom'], c['unit_rate'],
+          [[c['team_name'], c['foreman'], c['foreman_phone'], c['work_name'], c['completed_qty'], unit_label(c['uom']), c['unit_rate'],
             c['amount'], c['workdays'], c['person_days']] for c in data['crews']])
     sheet(book.create_sheet(), 'Kiểm tra', ['Mã NV', 'Họ tên', 'Vấn đề'],
           [[i['employee'], i['employee_name'], i['issue']] for i in data['issues']])
