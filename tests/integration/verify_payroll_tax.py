@@ -104,7 +104,11 @@ try:
     assert amount(lines, m['union_fee'], 'credit') == a['union_fee']
     assert abs(sum(flt(x.debit) for x in lines) - sum(flt(x.credit) for x in lines)) < 1
 
-    # 3. Advance -> deducted from the salary payment
+    # 3. Advance -> deducted from the salary payment; an unsigned advance can be dropped (its posting record links to it)
+    mistake = as_user(accountant, payroll.prepare_advance, staff, 300_000, month, 'cash', today, signers)
+    as_user(accountant, payments.cancel_draft, 'Journal Entry', mistake['voucher'], 'Lập nhầm số tiền')
+    assert not frappe.db.exists('Journal Entry', mistake['voucher'])
+    assert frappe.db.get_value(posting.POSTING, {'voucher_name': mistake['voucher']}, 'state') == 'Reversed'
     adv = as_user(accountant, payroll.prepare_advance, staff, 2_000_000, month, 'cash', today, signers)
     refused(as_user, accountant, payroll.prepare_salary_payment, period.name, 'bank', today, signers, text='chưa ký xong')
     as_user(chief, payments.sign_payment, 'Journal Entry', adv['voucher'])

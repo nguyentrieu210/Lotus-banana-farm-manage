@@ -49,6 +49,12 @@ def record(source_doctype, source_name, purpose, voucher, amount=0, source_hash=
     return doc
 
 
+def drop_draft(voucher):
+    """Delete a voucher that was never submitted. Its posting record (and signing requests) keep pointing at it as history,
+    so the link check that would refuse the delete is skipped; the caller marks the posting Reversed."""
+    frappe.delete_doc(voucher.doctype, voucher.name, ignore_permissions=True, force=True)
+
+
 def mark_posted(voucher):
     """A draft voucher (payment waiting for signatures) was submitted: its posting becomes Posted."""
     name = frappe.db.get_value(POSTING, {'voucher_type': voucher.doctype, 'voucher_name': voucher.name, 'state': 'Draft'})
@@ -85,7 +91,7 @@ def reverse(posting, reason):
     if voucher.docstatus == 1:
         voucher.cancel()
     elif voucher.docstatus == 0:
-        voucher.delete()
+        drop_draft(voucher)
     doc.db_set(dict(state='Reversed', active_key=None, reversed_by=frappe.session.user, reversed_at=now_datetime(), reason=reason[:500]))
     doc.add_comment('Info', 'Đảo bút toán %s %s: %s' % (doc.voucher_type, doc.voucher_name, reason[:300]))
     return dict(state='Reversed', voucher=doc.voucher_name)
