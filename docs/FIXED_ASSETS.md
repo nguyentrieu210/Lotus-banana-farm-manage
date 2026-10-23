@@ -64,7 +64,7 @@ Trước triển khai sao lưu DB và cấu hình, ghi nhận image đang chạy
 Phát triển riêng ở nhánh `codex/fixed-assets`, tích hợp nền kế toán P5 (`807d3c1`). Bộ kiểm thử chạy ERPNext/HRMS/Lotus trên site `assets-test.localhost`, MariaDB và Redis riêng, không gắn dữ liệu production.
 
 - Ghi tăng, đầu kỳ, tháng lẻ, khấu hao hết, nhiều farm, VAT mua/bán, nâng cấp, điều chuyển, tạm ngừng, thay đổi chính sách, bán/thanh lý và phục hồi được đối chiếu chứng từ thật.
-- Duyệt đồng thời chạy hai kết nối DB: một lần ghi tăng và một lần khấu hao thành công; yêu cầu trùng bị từ chối. Đảo và ghi lại không làm tăng khấu hao hai lần.
+- Sáu tình huống đồng thời chạy hai kết nối DB: ghi tăng, khấu hao, nhập tài khoản, nhập nhóm, sửa nhóm và sửa tên vị trí. Mỗi lần chỉ có một yêu cầu ghi thành công; yêu cầu trùng/cũ nhận lỗi nghiệp vụ. Giả lập deadlock giữa file hai nhóm xác nhận toàn bộ lần nhập chạy lại từ dòng đầu, không chỉ ghi phần còn lại. Đảo và ghi lại không làm tăng khấu hao hai lần.
 - Nhập Excel tài khoản/nhóm được kiểm chứng trên ERPNext thật: cây cha/con đảo thứ tự, gắn theo số TK, bỏ qua bản ghi khớp, lỗi theo trường, dữ liệu thay đổi sau xem trước, quyền, hoàn tác khi lỗi giữa file và xác nhận đồng thời chỉ ghi một lần. Kiểm thử giao diện và Chromium đi qua xem trước → xác nhận cho cả hai danh mục.
 - Phiên bản ERPNext hiện dùng ghi giảm theo `net_purchase_amount`, trong khi sửa chữa vốn hóa tăng `total_asset_cost`. Lotus đối chiếu GL của chứng từ giảm gốc và tạo JE liên kết để ghi giảm phần vốn hóa còn thiếu, không sửa chứng từ gốc.
 - Phục hồi bán/thanh lý giữa tháng giữ bút toán đảo chuẩn ERPNext vào ngày phục hồi; cả kỳ gốc và ngày phục hồi phải mở. Bút toán phân bổ được đảo trước. Chứng từ gốc và lịch sử vẫn còn để đối chiếu.
@@ -73,4 +73,4 @@ Phát triển riêng ở nhánh `codex/fixed-assets`, tích hợp nền kế to�
 
 Kiểm thử độc lập: `tests/test_asset_rules.py`, `frontend/tests/fixed-assets.mount.test.js`, `tests/integration/verify_fixed_assets.py`, `tests/integration/verify_asset_concurrency.py`. Kiểm thử tích hợp từ chối site production và yêu cầu `LOTUS_ASSET_TEST_ONLY=1` trong container test.
 
-Kết quả bàn giao: 409 kiểm thử frontend qua; 227 kiểm thử Python hoàn tất (226 qua, 1 bỏ qua theo điều kiện có sẵn); 20 kịch bản ERPNext và hai cuộc đua duyệt đồng thời qua; build frontend thành công. Tính năng chưa bật và chưa triển khai lên production.
+Kết quả kiểm chứng bản hoàn thiện: 430 kiểm thử frontend qua; 227 kiểm thử Python hoàn tất (226 qua, 1 bỏ qua theo điều kiện có sẵn); 34 kịch bản ERPNext, sáu tình huống đồng thời và thử lại toàn bộ file khi deadlock qua; build frontend thành công. Chromium kiểm tra nhập Excel → sửa hồ sơ chờ duyệt → duyệt thành tài sản → lịch sử/chứng từ, quyền kiểm soát và ba PWA Kho/Mua hàng/Công việc ở màn hẹp. Khi cập nhật hệ thống đang vận hành, giữ nguyên trạng thái kích hoạt và tự động khấu hao đã cấu hình, đối chiếu số bản ghi trước/sau migration; không tạo hồ sơ hay bút toán thử trên production.
