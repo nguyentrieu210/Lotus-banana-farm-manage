@@ -309,11 +309,11 @@ def purchase_order(name):
         items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,warehouse=r.warehouse,
             ordered_qty=flt(r.stock_qty),received_qty=flt(r.received_qty)*flt(r.conversion_factor),
             draft_qty=held.get(r.name,0),remaining_qty=max(0,flt(r.stock_qty)-flt(r.received_qty)*flt(r.conversion_factor)-held.get(r.name,0)),
-            uom=r.stock_uom,date=str(r.schedule_date)) for r in doc.items])
+            uom=r.stock_uom,rate=flt(r.base_net_rate)/(flt(r.conversion_factor) or 1),date=str(r.schedule_date)) for r in doc.items])
 
 
 @frappe.whitelist(methods=['POST'])
-def receive_order(name,posting_date,quantities,client_event_id):
+def receive_order(name,posting_date,quantities,client_event_id,additional_costs=None):
     from lotus_farm.controls import lock
     from lotus_farm.warehouse import _number,_text,_warehouse
     from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
@@ -323,9 +323,11 @@ def receive_order(name,posting_date,quantities,client_event_id):
     selected=frappe.parse_json(quantities)
     if not isinstance(selected,dict) or not selected or len(selected)>100:frappe.throw('Chọn từ 1 đến 100 dòng nhận hàng.')
     selected={line:_number(qty,'Số thực nhận') for line,qty in selected.items()}
+    extra_costs=frappe.parse_json(additional_costs) if additional_costs else []
+    if not isinstance(extra_costs,list):frappe.throw('Chi phí nhập hàng phải là danh sách.')
     event=_text(client_event_id,'Mã yêu cầu')
     key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-    digest=hashlib.sha256(json.dumps(dict(order=name,date=str(posting_date),quantities=selected),sort_keys=True).encode()).hexdigest()
+    digest=hashlib.sha256(json.dumps(dict(order=name,date=str(posting_date),quantities=selected,additional_costs=extra_costs),sort_keys=True).encode()).hexdigest()
     lock('Company',original.company);lock('Purchase Order',name)
     existing=frappe.db.get_value('Purchase Receipt',{'lotus_client_key':key},['name','lotus_payload_hash'],as_dict=True)
     if existing:
@@ -350,6 +352,16 @@ def receive_order(name,posting_date,quantities,client_event_id):
         kept.append(row)
     if len(kept)!=len(selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
     doc.set('items',kept);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
+    if extra_costs:
+        from lotus_farm.warehouse import _receipt_costs
+        currency=frappe.get_cached_value('Company',doc.company,'default_currency')
+        if doc.currency!=currency:
+            frappe.throw('Chi phí cộng vào giá vốn theo VND chỉ hỗ trợ đơn mua VND. Dùng chứng từ phân bổ chi phí cho đơn ngoại tệ.')
+        basic_total=sum(flt(row.qty)*flt(row.rate) for row in kept)
+        for extra in _receipt_costs(doc.company,extra_costs,basic_total):
+            doc.append('taxes',dict(charge_type='Actual',add_deduct_tax='Add',category='Valuation',
+                                    account_head=extra['expense_account'],tax_amount=extra['amount'],
+                                    description='Chi phí nhận hàng: '+extra['description']))
     doc.lotus_client_key=key;doc.lotus_payload_hash=digest
     doc.insert()
     return dict(name=doc.name)
@@ -358,8 +370,14 @@ def receive_order(name,posting_date,quantities,client_event_id):
 @frappe.whitelist()
 def purchase_receipt(name):
     doc=_purchase_doc('Purchase Receipt',name)
+    added_costs=[dict(description=(row.description or '')[len('Chi phí nhận hàng: '):],amount=flt(row.tax_amount),
+                      expense_account=row.account_head)
+                 for row in doc.taxes if (row.description or '').startswith('Chi phí nhận hàng: ')]
+    valuation_charges=sum(flt(row.tax_amount) for row in doc.taxes if row.category in ('Valuation','Valuation and Total'))
+    goods_total=sum(flt(row.base_net_amount) for row in doc.items)
     return dict(name=doc.name,doctype=doc.doctype,company=doc.company,supplier=doc.supplier,currency=frappe.get_cached_value('Company',doc.company,'default_currency'),docstatus=doc.docstatus,
         modified=str(doc.modified),can_submit=doc.docstatus==0 and doc.has_permission('submit'),can_delete=doc.docstatus==0 and doc.has_permission('delete'),
+          goods_total=goods_total,added_costs=added_costs,valuation_charges=valuation_charges,incoming_total=goods_total+valuation_charges,
         items=[dict(item=r.item_code,item_name=r.item_name,qty=r.stock_qty,uom=r.stock_uom,warehouse=r.warehouse,
             purchase_order=r.purchase_order,rate=r.valuation_rate,amount=flt(r.stock_qty)*flt(r.valuation_rate),date=str(doc.posting_date)) for r in doc.items])
 
