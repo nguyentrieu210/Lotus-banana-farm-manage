@@ -317,12 +317,12 @@ def cancel_draft(doctype, name, reason):
     p = frappe.db.get_value(posting.POSTING, {'voucher_type': doctype, 'voucher_name': name})
     if p:
         return posting.reverse(p, reason) if setup.is_chief() else _drop(p, doc, reason)
-    doc.delete(ignore_permissions=True)
+    posting.drop_draft(doc)
     return dict(state='Deleted')
 
 
 def _drop(p, doc, reason):
-    doc.delete(ignore_permissions=True)
+    posting.drop_draft(doc)
     from frappe.utils import now_datetime
     frappe.db.set_value(posting.POSTING, p, dict(state='Reversed', active_key=None, reversed_by=frappe.session.user, reversed_at=now_datetime(),
                                                  reason=str(reason or 'Hủy phiếu chi chưa ký')[:500]))

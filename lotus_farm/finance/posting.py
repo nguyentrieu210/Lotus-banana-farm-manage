@@ -49,6 +49,14 @@ def record(source_doctype, source_name, purpose, voucher, amount=0, source_hash=
     return doc
 
 
+def drop_draft(voucher):
+    """Delete a voucher that was never submitted. Its posting record keeps pointing at it as history (the caller marks it
+    Reversed with the reason), so the link check that would refuse the delete is skipped. Its signing round goes with it:
+    the naming series hands the freed number to the next voucher, which must not inherit a round waiting for signatures."""
+    frappe.db.delete('Lotus Sign Request', {'document_type': voucher.doctype, 'document_name': voucher.name})
+    frappe.delete_doc(voucher.doctype, voucher.name, ignore_permissions=True, force=True)
+
+
 def mark_posted(voucher):
     """A draft voucher (payment waiting for signatures) was submitted: its posting becomes Posted."""
     name = frappe.db.get_value(POSTING, {'voucher_type': voucher.doctype, 'voucher_name': voucher.name, 'state': 'Draft'})
@@ -99,7 +107,7 @@ def reverse(posting, reason):
         else:
             voucher.cancel()
     elif voucher.docstatus == 0:
-        voucher.delete()
+        drop_draft(voucher)
     doc.db_set(dict(state='Reversed', active_key=None, reversed_by=frappe.session.user, reversed_at=now_datetime(), reason=reason[:500]))
     for name in no_voucher_sheets:
         frappe.db.set_value('Lotus Costing Run', name, 'state', 'Reversed')

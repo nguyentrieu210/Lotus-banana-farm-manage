@@ -12,7 +12,7 @@ from lotus_farm.finance import api  # noqa: E402
 try:
     result = api.month_checklist(nowdate()[:7])
     keys = [s['key'] for s in result['steps']]
-    assert keys == ['invoices', 'lots', 'payroll', 'vouchers', 'statutory', 'cost_closing', 'costing', 'result', 'reconciliation', 'lock'], keys
+    assert keys == ['invoices', 'lots', 'payroll', 'vouchers', 'assets', 'statutory', 'cost_closing', 'costing', 'result', 'reconciliation', 'lock'], keys
     assert all(s['state'] in ('done', 'todo', 'na') for s in result['steps'])
     print(json.dumps(dict(done=result['done'], total=result['total'], steps=[(s['key'], s['state'], s['detail'][:60]) for s in result['steps']]), ensure_ascii=False))
 finally:
