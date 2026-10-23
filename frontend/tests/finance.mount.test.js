@@ -64,6 +64,22 @@ test('settings exposes account import only to the chief accountant',async()=>{
  accountant.unmount()
 })
 
+test('asset workspace remembers its section in the URL and follows back navigation',async()=>{
+ routes={[F+'reports.overview']:overview(),[F+'assets.overview']:{enabled:true,assets:[],pending_assets:[],operations:[],runs:[],permissions:{write:false,approve:false}},
+  [F+'assets.lookups']:{...lookups,categories:[],locations:[]},[F+'assets.catalogs']:{categories:[],locations:[],accounts:[]}}
+ const view=await open('/tai-chinh?tab=assets&asset_view=categories&company=Lotus')
+ const active=()=>view.root.querySelector('nav[aria-label="Các mục tài sản cố định"] button[aria-current="page"]')
+ assert.equal(active().getAttribute('aria-label'),'Nhóm tài sản')
+ view.root.querySelector('nav button[aria-label="Vị trí"]').click();for(let i=0;i<6;i++)await tick()
+ assert.equal(view.router.currentRoute.value.query.asset_view,'locations')
+ assert.equal(view.router.currentRoute.value.query.company,'Lotus')
+ await view.router.push('/tai-chinh?tab=assets&asset_view=accounts');for(let i=0;i<4;i++)await tick()
+ assert.equal(active().getAttribute('aria-label'),'Tài khoản')
+ view.router.back();for(let i=0;i<6;i++)await tick()
+ assert.equal(active().getAttribute('aria-label'),'Vị trí')
+ view.unmount()
+})
+
 test('receipts of one supplier become one invoice; mixing suppliers is not allowed',async()=>{
  calls.length=0
  routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'payments.make_goods_invoice']:{invoice:'PINV-1',amount:1500000},[F+'sales.vat_options']:vat}

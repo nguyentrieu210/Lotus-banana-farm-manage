@@ -12,6 +12,12 @@ Mở **Tài chính – Kế toán → Tài sản cố định**. Nền dữ li�
 
 ## Thiết lập và nhập đầu kỳ
 
+Màn TSCĐ có các mục **Tài sản, Nhóm tài sản, Vị trí, Tài khoản, Khấu hao, Biến động, Báo cáo**. Số trên mỗi mục là số hồ sơ/danh mục đang có; mục đã chọn nằm trong URL `asset_view` để tải lại hoặc quay lại đúng màn. Bảng Nhóm hiển thị tài khoản đã gắn, số tài sản và số hồ sơ chờ duyệt; có thể mở danh sách tài sản theo nhóm hoặc vị trí. Tài khoản mặc định hiện các TK có mã đang dùng, gồm cả tổng hợp và chi tiết; chọn “Tất cả tài khoản” để xem thêm các TK không mã/ngừng dùng.
+
+Hồ sơ vừa thêm hoặc nhập Excel hiện ngay trong bảng **Tài sản** với trạng thái **Chờ duyệt**, có thể sửa/xem trước/hủy qua menu thao tác. Chỉ khi kế toán trưởng duyệt mới trở thành tài sản chính thức; dòng chờ duyệt được thay thế, không lặp. Tổng giá trị sổ sách không cộng các hồ sơ chờ duyệt. Khi chưa có hồ sơ, màn hình giữ bảng và các nút tạo/nhập, đồng thời hiển thị số nhóm/vị trí đã sẵn sàng. Tìm/lọc không có kết quả có nút xóa bộ lọc riêng.
+
+Chi tiết tài sản có **Hồ sơ – Lịch khấu hao – Lịch sử biến động – Chứng từ**. Nhóm chưa có tài sản được duyệt có thể sửa cấu hình bởi kế toán trưởng; nhóm đã dùng giữ chính sách tài khoản. Vị trí giữ nguyên mã khi sửa tên hiển thị: bản cập nhật chỉ thêm trường nhãn `Location.lotus_display_name` vì ERPNext tự đồng bộ `location_name` theo mã. Trường mới để trống cho dữ liệu cũ và lấy tên gốc để hiển thị; không đổi liên kết hay tạo dữ liệu tài sản khi migrate.
+
 Kế toán trưởng có thể nhập hai danh mục bằng Excel trước khi bật quản lý tài sản:
 
 - **Thiết lập → Hệ thống tài khoản → Nhập tài khoản Excel**: tải mẫu, điền số tài khoản, tên, tài khoản cha, là nhóm (0/1), loại tài khoản. Tài khoản cha nhận số TK hoặc mã đầy đủ trong sheet `Tai khoan hien co`; có thể là một nhóm mới trong cùng file, không cần xếp cha trước con. Loại tài khoản lấy đúng giá trị trong sheet `Loai tai khoan`; để trống khi không cần phân loại riêng. Không tạo thêm tài khoản gốc.

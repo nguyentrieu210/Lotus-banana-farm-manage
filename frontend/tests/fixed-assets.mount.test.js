@@ -19,18 +19,20 @@ globalThis.fetch=async(url,options={})=>{
 }
 const Component=await load('components/finance/FinanceAssets.vue')
 const base=(overrides={})=>({enabled:true,permissions:{write:true,approve:false},assets:[],operations:[],runs:[],...overrides})
+const catalog={categories:[],locations:[],accounts:[]}
 const lookups={categories:[],locations:[],accounts:[],cost_centers:[],employees:[],farms:[],blocks:[],suppliers:[],customers:[],cycles:[],work_types:[]}
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
-async function open(data=base(),extra={}){
+async function open(data=base(),extra={},props={}){
  calls.length=0
- routes={[API+'overview']:data,[API+'lookups']:lookups,...extra}
- const view=mount(Component)
+ routes={[API+'overview']:data,[API+'lookups']:lookups,[API+'catalogs']:catalog,...extra}
+ const view=mount(Component,props)
  views.push(view)
  for(let i=0;i<5;i++)await tick()
  return view
 }
-async function select(root,value){const el=root.querySelector('[aria-label="Mục tài sản"]');el.value=value;el.dispatchEvent(new window.Event('change',{bubbles:true}));for(let i=0;i<3;i++)await tick()}
+async function select(root,value){const labels={assets:'Tài sản',categories:'Nhóm tài sản',locations:'Vị trí',accounts:'Tài khoản',depreciation:'Khấu hao',operations:'Biến động',report:'Báo cáo'};root.querySelector('nav[aria-label="Các mục tài sản cố định"] button[aria-label="'+labels[value]+'"]').click();for(let i=0;i<3;i++)await tick()}
+async function menu(trigger,label){trigger.dispatchEvent(new window.MouseEvent('click',{bubbles:true,button:0,ctrlKey:false}));for(let i=0;i<3;i++)await tick();const item=[...document.querySelectorAll('[role="menuitem"]')].find(b=>b.textContent.trim()===label);assert.ok(item,'menu item '+label);item.click();for(let i=0;i<3;i++)await tick()}
 
 test('activation is available only to the chief and explicitly switches to reviewed depreciation',async()=>{
  const view=await open(base({enabled:false,permissions:{write:true,approve:true}}),{[API+'activate']:base()})
@@ -45,12 +47,12 @@ test('activation is available only to the chief and explicitly switches to revie
 
 test('chief can import category setup before activation; accountants cannot open it',async()=>{
  const view=await open(base({enabled:false,permissions:{write:true,approve:true}}))
- button(view.root,'Nhập nhóm Excel').click();await tick()
+ await select(view.root,'categories');button(view.root,'Nhập nhóm Excel').click();await tick()
  assert.match(document.querySelector('dialog[open]').textContent,/Nhập nhóm tài sản từ Excel/)
  view.unmount()
- const accountant=await open(base())
+ const accountant=await open(base());await select(accountant.root,'categories')
  assert.equal(button(accountant.root,'Nhập nhóm Excel'),undefined)
- assert.equal(button(accountant.root,'Nhóm tài sản'),undefined)
+ assert.equal(button(accountant.root,'Thêm nhóm'),undefined)
 })
 
 test('new asset supports purchasing and server field errors stay inside the modal',async()=>{
@@ -112,4 +114,69 @@ test('Excel preview uploads in a POST body and shows row errors inside the modal
   assert.match(upload.args.content,/base64,YXNzZXQ=/)
   assert.match(document.querySelector('dialog[open]').textContent,/Mã đã có/)
  }finally{globalThis.FileReader=previous}
+})
+
+test('catalogs are visible independently of an empty asset register',async()=>{
+ const groups=Array.from({length:8},(_,i)=>({name:'G'+i,asset_category_name:'Nhóm '+i,asset_count:0,pending_count:0,can_edit:false}))
+ const view=await open(base({permissions:{write:false,approve:false}}),{[API+'catalogs']:{categories:groups,locations:[{name:'FARM 222',location_name:'FARM 222',asset_count:0,pending_count:0}],accounts:[]}})
+ assert.match(text(view.root),/Đã có 8 nhóm và 1 vị trí/)
+ assert.equal(view.root.querySelectorAll('nav[aria-label="Các mục tài sản cố định"] button').length,7)
+ await select(view.root,'categories');assert.match(text(view.root),/Nhóm 7/)
+ assert.equal(button(view.root,'Thêm nhóm'),undefined)
+ await select(view.root,'locations');assert.match(text(view.root),/FARM 222/)
+ assert.equal(button(view.root,'Thêm vị trí'),undefined)
+})
+
+test('pending assets edit through their operation and never call native asset detail',async()=>{
+ const pending={name:'OP1',operation:'OP1',modified:'v1',posting_date:'2026-10-01',lotus_asset_code:'TS1',asset_name:'Máy bơm chờ duyệt',status:'Pending',values:{code:'TS1',asset_name:'Máy bơm chờ duyệt',existing:true}}
+ const view=await open(base({pending_assets:[pending],totals:{original:0,remaining:0}}),{[API+'save_asset']:{name:'OP1'}})
+ assert.match(text(view.root),/Máy bơm chờ duyệt/)
+ assert.match(text(view.root),/1 chờ duyệt/)
+ await menu(view.root.querySelector('[aria-label="Thao tác TS1"]'),'Sửa hồ sơ')
+ const form=document.querySelector('dialog[open] form');assert.match(form.textContent,/Giá trị đầu kỳ/)
+ form.dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));for(let i=0;i<5;i++)await tick()
+ const saved=JSON.parse(calls.find(c=>c.method===API+'save_asset').args.values)
+ assert.equal(saved.operation,'OP1');assert.equal(saved.modified,'v1');assert.equal(saved.name,undefined)
+ assert.ok(!calls.some(c=>c.method===API+'detail'))
+})
+
+test('chief can review a pending registration directly from the register',async()=>{
+ const pending={operation:'OP1',name:'OP1',lotus_asset_code:'TS1',asset_name:'Máy bơm',values:{existing:true},status:'Pending'}
+ const view=await open(base({pending_assets:[pending],permissions:{write:true,approve:true}}),{[API+'operation_preview']:{name:'OP1',kind:'Create',state:'Pending',summary:{values:{}},errors:[],fingerprint:'v1'}})
+ await menu(view.root.querySelector('[aria-label="Thao tác TS1"]'),'Xem trước')
+ assert.ok(button(document.body,'Duyệt và ghi sổ'))
+ assert.equal(calls.find(c=>c.method===API+'operation_preview').args.name,'OP1')
+})
+
+test('group detail shows existing mappings and blocks policy editing after assets are posted',async()=>{
+ const group={name:'Máy',asset_category_name:'Máy',configured:true,can_edit:false,asset_count:1,pending_count:0,fixed_asset_account:'211',accumulated_depreciation_account:'2141',depreciation_expense_account:'6274',capital_work_in_progress_account:'2411'}
+ const view=await open(base({permissions:{write:true,approve:true}}),{[API+'catalogs']:{...catalog,categories:[group]}})
+ await select(view.root,'categories')
+ await menu(view.root.querySelector('[aria-label="Thao tác nhóm Máy"]'),'Chi tiết')
+ const detail=document.querySelector('dialog[open]')
+ assert.match(detail.textContent,/2141/);assert.match(detail.textContent,/Nhóm đã có tài sản được duyệt/)
+ assert.equal(button(detail,'Chỉnh sửa'),undefined)
+})
+
+test('account list includes groups and hides retired accounts until explicitly requested',async()=>{
+ const view=await open(base(),{[API+'catalogs']:{...catalog,accounts:[{name:'2',account_number:'2',account_name:'Tài sản dài hạn',is_group:1,disabled:0},{name:'211',account_number:'211',account_name:'Tài sản cố định',is_group:0,disabled:0},{name:'old',account_number:'',account_name:'Tài khoản cũ',disabled:1}]}})
+ await select(view.root,'accounts');assert.match(text(view.root),/Tài sản dài hạn/);assert.doesNotMatch(text(view.root),/Tài khoản cũ/)
+ const scope=view.root.querySelector('[aria-label="Phạm vi tài khoản"]');scope.value='all';scope.dispatchEvent(new window.Event('change',{bubbles:true}));await tick()
+ assert.match(text(view.root),/Tài khoản cũ/)
+ assert.equal(button(view.root,'Nhập tài khoản Excel'),undefined)
+})
+
+test('empty filter results can be reset and do not suggest that the register has no records',async()=>{
+ const view=await open(base({assets:[{name:'A1',lotus_asset_code:'TS1',asset_name:'Máy bơm',docstatus:1,status:'Submitted'}]}))
+ const input=view.root.querySelector('[aria-label="Tìm tài sản"]');input.value='không có';input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick()
+ assert.match(text(view.root),/Không có tài sản khớp bộ lọc/)
+ assert.doesNotMatch(text(view.root),/Đã có 0 nhóm và 0 vị trí/)
+ button(view.root,'Xóa bộ lọc').click();await tick();assert.match(text(view.root),/Máy bơm/)
+})
+
+test('requested section initializes correctly and navigation emits URL state',async()=>{
+ const changes=[]
+ const view=await open(base(),{}, {view:'locations',onViewChange:value=>changes.push(value)})
+ assert.equal(view.root.querySelector('nav button[aria-current="page"]').getAttribute('aria-label'),'Vị trí')
+ await select(view.root,'accounts');assert.deepEqual(changes,['accounts'])
 })

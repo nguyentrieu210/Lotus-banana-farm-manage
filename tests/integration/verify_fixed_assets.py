@@ -45,7 +45,7 @@ def workbook(kind, rows, labels=True):
 
 def seed():
     frappe.flags.mute_emails = True
-    if not frappe.db.get_value('Custom DocPerm', {'parent':'Asset Depreciation Schedule','role':'Lotus Chief Accountant'}, 'create'):
+    if not frappe.db.get_value('Custom DocPerm', {'parent':'Asset Depreciation Schedule','role':'Lotus Chief Accountant'}, 'create') or not frappe.get_meta('Location').has_field('lotus_display_name'):
         from lotus_farm.finance.asset_setup import install
         install()
     if not setup.settings().coa_version:
@@ -581,6 +581,104 @@ class FixedAssetsIntegration(unittest.TestCase):
         with patch.object(Document,'insert',failing):
             self.refused(mi.commit,'accounts',content,preview['fingerprint'],contains='Injected')
         self.assertFalse(frappe.db.exists('Account',{'company':setup.company(),'account_number':'9870'}))
+
+    def test_29_pending_register_edits_posts_once_and_preserves_financial_totals(self):
+        values=self.values();pending=a.save_asset(values)
+        overview=a.overview('2026-09')
+        self.assertEqual(len(overview['pending_assets']),1)
+        self.assertFalse(any(r.lotus_asset_code==values['code'] for r in overview['assets']))
+        self.assertEqual(overview['totals']['original'],0)
+        row=overview['pending_assets'][0]
+        self.assertEqual(row['lotus_asset_code'],values['code'])
+        self.assertIsNone(row['value_after_depreciation'])
+        changed=dict(row['values'],operation=row['operation'],modified=str(row['modified']),asset_name='Tên sửa '+self.tag)
+        self.assertEqual(a.save_asset(changed)['name'],row['operation'])
+        self.refused(a.save_asset,changed,contains='thay đổi')
+        posted=self.approve(row['operation'])
+        overview=a.overview('2026-09')
+        self.assertFalse(overview['pending_assets'])
+        registered=next(r for r in overview['assets'] if r.lotus_asset_code==values['code'])
+        self.assertEqual(registered['name'],posted['asset'])
+        self.assertEqual(registered['accumulated_depreciation'],0)
+        self.assertEqual(overview['totals']['original'],120000000)
+        detail=a.detail(posted['asset'])
+        self.assertEqual(detail['history'][0]['name'],row['operation'])
+        self.assertTrue(any(d['doctype']=='Purchase Invoice' for d in detail['documents']))
+
+    def test_30_catalogs_show_mappings_usage_accounts_and_role_permissions(self):
+        pending=a.save_asset(self.values())
+        catalogs=a.catalogs()
+        category=next(r for r in catalogs['categories'] if r.name=='Máy tài sản kiểm thử')
+        self.assertTrue(category['configured'])
+        self.assertEqual(category['fixed_asset_account'],self.acc['211'])
+        self.assertEqual(category['pending_count'],1)
+        self.assertTrue(category['can_edit'])
+        self.assertTrue(any(r.is_group for r in catalogs['accounts']))
+        self.assertTrue(all(frappe.db.get_value('Account',r.name,'company')==setup.company() for r in catalogs['accounts']))
+        self.approve(pending['name'])
+        category=next(r for r in a.catalogs()['categories'] if r.name==category.name)
+        self.assertFalse(category['can_edit']);self.assertEqual(category['asset_count'],1);self.assertEqual(category['pending_count'],0)
+        self.refused(a.save_category,dict(name=category.name,asset_category_name=category.name,modified=str(category.modified)),contains='được duyệt')
+        for user in ('asset-accountant@example.invalid','asset-auditor@example.invalid'):
+            frappe.set_user(user);catalogs=a.catalogs()
+            self.assertFalse(catalogs['permissions']['create_category'])
+            self.assertFalse(any(r['can_edit'] for r in catalogs['categories']))
+            self.assertFalse(any(r['can_edit'] for r in catalogs['locations']))
+            self.refused(a.save_category,dict(asset_category_name='Unauthorized'))
+        frappe.set_user('Guest')
+        with self.assertRaises(frappe.AuthenticationError):a.catalogs()
+
+    def test_31_category_edits_check_version_and_preserve_other_company_accounts(self):
+        other=insert('Company',company_name='Asset Other '+self.tag,abbr='A'+self.tag[:4],country='Vietnam',default_currency='VND',chart_of_accounts='Standard')
+        other_accounts={}
+        for field,kind,root in [('fixed_asset_account','Fixed Asset','Asset'),('accumulated_depreciation_account','Accumulated Depreciation','Asset'),('depreciation_expense_account','Depreciation','Expense'),('capital_work_in_progress_account','Capital Work in Progress','Asset')]:
+            parent=frappe.db.get_value('Account',{'company':other.name,'root_type':root,'parent_account':['is','not set']},'name')
+            other_accounts[field]=insert('Account',company=other.name,account_name=field,parent_account=parent,account_type=kind,is_group=0).name
+        name='Nhóm sửa '+self.tag
+        row=self.category_row(name);content=workbook('categories',[row]);preview=mi.preview('categories',content);mi.commit('categories',content,preview['fingerprint'])
+        category=frappe.get_doc('Asset Category',name)
+        category.append('accounts',dict(company_name=other.name,**other_accounts))
+        a._save(category)
+        values=dict(name=name,modified=str(category.modified),asset_category_name=name,non_depreciable_category=0,
+                    fixed_asset_account=self.acc['211'],accumulated_depreciation_account=self.acc['2141'],depreciation_expense_account=self.acc['6424'],capital_work_in_progress_account=self.acc['2411'])
+        a.save_category(values)
+        updated=frappe.get_doc('Asset Category',name)
+        self.assertEqual(len(updated.accounts),2)
+        self.assertEqual(next(r for r in updated.accounts if r.company_name==other.name).fixed_asset_account,other_accounts['fixed_asset_account'])
+        self.refused(a.save_category,values,contains='thay đổi')
+        values.update(modified=str(updated.modified),asset_category_name='Đổi tên')
+        self.refused(a.save_category,values,contains='định danh')
+
+    def test_32_location_display_name_keeps_asset_references_and_checks_versions(self):
+        asset,_=self.create()
+        old=frappe.get_doc('Location',asset.location)
+        frappe.set_user('asset-accountant@example.invalid')
+        self.refused(a.save_location,'Đổi tên',name=old.name,modified=str(old.modified))
+        frappe.set_user('asset-chief@example.invalid')
+        new_title='Kho hiển thị '+self.tag
+        result=a.save_location(new_title,name=old.name,modified=str(old.modified))
+        self.assertEqual(result['name'],old.name)
+        self.assertEqual(frappe.db.get_value('Asset',asset.name,'location'),old.name)
+        self.assertEqual(frappe.db.get_value('Location',old.name,'lotus_display_name'),new_title)
+        self.assertEqual(frappe.db.get_value('Location',old.name,'location_name'),old.name)
+        self.refused(a.save_location,'Ghi đè',name=old.name,modified=str(old.modified),contains='thay đổi')
+        self.assertEqual(next(r for r in a.catalogs()['locations'] if r.name==old.name).asset_count,1)
+        self.assertEqual(next(r for r in a.lookups()['locations'] if r.name==old.name).location_name,new_title)
+
+    def test_33_pending_register_is_not_cut_off_by_recent_operation_history(self):
+        pending=a.save_asset(self.values())
+        frappe.db.bulk_insert(a.OP,fields=['name','company','kind','state','posting_date','creation','modified','payload'],values=[
+            ['H-'+self.tag+'-'+str(i),setup.company(),'Create','Cancelled','2026-09-01','2099-01-01 00:00:00','2099-01-01 00:00:00','{}'] for i in range(501)])
+        overview=a.overview('2026-09')
+        self.assertEqual(len(overview['operations']),500)
+        self.assertFalse(any(r.name==pending['name'] for r in overview['operations']))
+        self.assertEqual(overview['pending_assets'][0]['operation'],pending['name'])
+
+    def test_34_cancelled_pending_record_leaves_register_and_keeps_history(self):
+        pending=a.save_asset(self.values());a.operation_cancel(pending['name'],'Hủy hồ sơ trước khi ghi tăng')
+        overview=a.overview('2026-09')
+        self.assertFalse(overview['pending_assets']);self.assertFalse(any(r.lotus_asset_code=='TS-'+self.tag for r in overview['assets']))
+        self.assertEqual(next(r for r in overview['operations'] if r.name==pending['name']).state,'Cancelled')
 
 
 if __name__=='__main__':
