@@ -6,6 +6,7 @@ import {unitLabel,stockItemUomOptions} from '../units'
 import {updateColumnFilter} from '../stock-filter-state'
 import {dismissOnBackdrop} from '../dialogs'
 import DataTable from './DataTable.vue'
+import PurchaseReceiptCosts from './PurchaseReceiptCosts.vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
@@ -28,6 +29,9 @@ const formDialog=ref(null),detailDialog=ref(null),formError=ref(''),detailError=
 const draft=ref(null),current=ref(null),quote=ref(null),newSupplier=ref('')
 const confirmSubmit=ref(false),confirmDelete=ref(false)
 const receiveDate=ref(props.today||''),receiving=ref({}),receiveKey=ref('')
+const receiveCosts=ref([]),receiveAccounts=ref([]),receiveDefaultAccount=ref('')
+const receiveBaseTotal=computed(()=>(current.value?.items||[]).reduce((sum,r)=>sum+Number(receiving.value[r.line]||0)*Number(r.rate||0),0))
+async function loadReceiveAccounts(){try{const r=await call('lotus_farm.warehouse.receipt_accounts',{company:props.company});receiveAccounts.value=r.accounts||[];receiveDefaultAccount.value=r.default_account||''}catch{receiveAccounts.value=[];receiveDefaultAccount.value=''}}
 const receipt=ref(null),receiptConfirm=ref(false),cancelReceiptConfirm=ref('')
 const modeOptions=['Chủ đầu tư chỉ định','Kho tự mua']
 const fmtn=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
@@ -111,7 +115,7 @@ async function addOrder(){
 }
 async function showOrder(name){
  try{
-  current.value=await api('order_detail',{name});current.value.receipts=await api('order_receipts',{name});cancelReceiptConfirm.value='';detailError.value='';confirmSubmit.value=false;confirmDelete.value=false;receipt.value=null;receiving.value={};receiveKey.value=crypto.randomUUID()
+  current.value=await api('order_detail',{name});current.value.receipts=await api('order_receipts',{name});cancelReceiptConfirm.value='';detailError.value='';confirmSubmit.value=false;confirmDelete.value=false;receipt.value=null;receiving.value={};receiveCosts.value=[];receiveKey.value=crypto.randomUUID();await loadReceiveAccounts()
   receiveDate.value=props.today||setup.value?.today||''
   await nextTick();detailDialog.value.showModal()
  }catch(e){error.value=e.message}
@@ -186,7 +190,7 @@ async function makeReceipt(){
  saving.value=true;detailError.value=''
  try{
   const result=await receivingAPI('receive_order',{name:current.value.name,
-    posting_date:receiveDate.value,quantities:chosenReceipts.value,client_event_id:receiveKey.value},true)
+    posting_date:receiveDate.value,quantities:chosenReceipts.value,client_event_id:receiveKey.value,additional_costs:receiveCosts.value},true)
   receipt.value=await receivingAPI('purchase_receipt',{name:result.name})
   notice.value='Đã tạo phiếu nhận nháp '+result.name+'. Chỉ tăng tồn khi ghi sổ.'
  }catch(e){detailError.value=e.message}
@@ -295,11 +299,12 @@ defineExpose({refresh:()=>load(true),startReceiving,createOrder:async()=>{await 
     <div v-if="current.can_receive&&current.remaining_lines>0" class="stock-buying-receive">
      <h3>Nhận hàng</h3><label>Ngày nhận <UiInput type="date" v-model="receiveDate"/></label>
      <div v-for="r in current.items.filter(x=>x.remaining_qty>0)" :key="r.line" class="stock-buying-receive-row">
-      <span>{{r.item_name}} — còn {{fmtn(r.remaining_qty)}} {{unitLabel(r.uom)}}</span>
+      <span>{{r.item_name}} — còn {{fmtn(r.remaining_qty)}} {{unitLabel(r.uom)}} · Đơn giá {{money(r.rate)}} / {{unitLabel(r.uom)}}</span>
       <UiInput :model-value="receiving[r.line]||''" @update:model-value="v=>receiving[r.line]=v" type="number" min="0" :max="r.remaining_qty" step="any" :placeholder="'Nhận ('+unitLabel(r.uom)+')'"/>
      </div>
+     <PurchaseReceiptCosts v-if="!receipt" v-model="receiveCosts" :accounts="receiveAccounts" :default-account="receiveDefaultAccount" :base-total="receiveBaseTotal" :currency="current.currency||'VND'" :disabled="saving"/>
      <UiButton v-if="!receipt" variant="outline" :disabled="saving||!Object.keys(chosenReceipts).length" @click="makeReceipt">Tạo phiếu nhận nháp</UiButton>
-     <div v-if="receipt" class="stock-buying-receipt"><strong>Phiếu {{receipt.name}} (chưa ghi sổ)</strong><label><input v-model="receiptConfirm" type="checkbox"/> Xác nhận số thực nhận đúng</label><UiButton :disabled="saving||!receiptConfirm" @click="postReceipt">Ghi sổ nhận hàng</UiButton></div>
+     <div v-if="receipt" class="stock-buying-receipt"><strong>Phiếu {{receipt.name}} (chưa ghi sổ)</strong><p>Tiền hàng {{money(receipt.goods_total)}} · Phí vào giá vốn {{money(receipt.valuation_charges)}} · Tổng {{money(receipt.incoming_total)}}</p><label><input v-model="receiptConfirm" type="checkbox"/> Xác nhận số thực nhận đúng</label><UiButton :disabled="saving||!receiptConfirm" @click="postReceipt">Ghi sổ nhận hàng</UiButton></div>
     </div>
     <footer>
      <UiButton v-if="current.can_write" variant="outline" @click="editOrder">Sửa nháp</UiButton>

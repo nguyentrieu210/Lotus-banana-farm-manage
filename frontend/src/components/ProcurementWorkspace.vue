@@ -7,6 +7,7 @@ import {Input} from './ui/input'
 import {FormField} from './ui/form-field'
 import DataTable from './DataTable.vue'
 import ProcurementField from './ProcurementField.vue'
+import PurchaseReceiptCosts from './PurchaseReceiptCosts.vue'
 import ProcurementSigners from './ProcurementSigners.vue'
 import ProcurementDocumentForm from './ProcurementDocumentForm.vue'
 import MobilePurchaseOrderForm from './MobilePurchaseOrderForm.vue'
@@ -33,6 +34,8 @@ const period=ref((props.today||new Date().toISOString().slice(0,10)).slice(0,7))
 const sourceType=ref('Purchase Invoice'),source=ref(''),amount=ref(''),mode=ref('bank'),reference=ref(''),date=ref(asof.value)
 const payerType=ref('Employee'),payer=ref(''),classification=ref('Reimbursable'),notes=ref(''),evidence=ref(null),duplicateReason=ref(''),allocations=ref([])
 const bill=ref(''),billdate=ref(asof.value),quantities=ref({}),receiveInfo=ref(null),fundingName=ref('')
+const receiveCosts=ref([]),receiveAccounts=ref([]),receiveDefaultAccount=ref('')
+const receiveBaseTotal=computed(()=>(receiveInfo.value?.items||[]).reduce((sum,r)=>sum+Number(quantities.value[r.line]||0)*Number(r.rate||0),0))
 const file=ref(null),fileUrl=ref(''),preview=ref(null),mappings=ref({}),importWarehouse=ref(props.warehouse||'')
 const workspaceConfirm=useWorkspaceConfirm(),mobileConfirm=useMobileConfirm()
 const confirmOpen=workspaceConfirm.open,confirmTitle=workspaceConfirm.title,confirmMessage=workspaceConfirm.message
@@ -117,10 +120,12 @@ async function act(name,module='purchasing',extra={}){await run(async()=>{
  success('Đã cập nhật '+d.name);if(detailType.value==='quotes')current.value=null;else await open({name:d.name},detailType.value);await load();return result
 })}
 async function prepareReceipt(type){
- key.value=newKey();date.value=asof.value;quantities.value={}
+ key.value=newKey();date.value=asof.value;quantities.value={};receiveCosts.value=[]
  if(type==='receive'){
   receiveInfo.value=await method('warehouse_planning','purchase_order',{name:current.value.name})
   for(const r of receiveInfo.value.items)quantities.value[r.line]=r.remaining_qty
+  try{const a=await method('warehouse','receipt_accounts',{company:company.value});receiveAccounts.value=a.accounts||[];receiveDefaultAccount.value=a.default_account||''}
+  catch{receiveAccounts.value=[];receiveDefaultAccount.value=''}
  }else{
   receiveInfo.value={name:current.value.name,items:current.value.items}
   for(const r of current.value.items)quantities.value[r.line]=r.qty
@@ -130,7 +135,7 @@ async function prepareReceipt(type){
 async function submitStage(){await run(async()=>{
  const selected=Object.fromEntries(Object.entries(quantities.value).filter(([,q])=>Number(q)>0))
  let result
- if(form.value==='receive')result=await method('warehouse_planning','receive_order',{name:receiveInfo.value.name,posting_date:date.value,quantities:JSON.stringify(selected),client_event_id:key.value},true)
+ if(form.value==='receive')result=await method('warehouse_planning','receive_order',{name:receiveInfo.value.name,posting_date:date.value,quantities:JSON.stringify(selected),client_event_id:key.value,additional_costs:receiveCosts.value},true)
  if(form.value==='return')result=await api('return_receipt',{name:receiveInfo.value.name,posting_date:date.value,quantities:selected,client_key:key.value},true)
  if(form.value==='invoice')result=await api('invoice_receipt',{name:receiveInfo.value.name,bill_no:bill.value,bill_date:billdate.value,posting_date:date.value,quantities:selected,client_key:key.value},true)
  form.value='';current.value=null;tab.value='receipts';await load();success('Đã tạo '+(result.name||result.invoice))
@@ -213,7 +218,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <section v-if="form" class="procurement-editor"><div class="procurement-actions"><strong>{{formTitle}}</strong><component :is="button" :disabled="saving" @click="closeForm">Đóng</component></div>
   <MobilePurchaseOrderForm v-if="mobile&&form==='order'" v-model="draft" :items="catalog.items" :conversions="catalog.conversions" :suppliers="catalog.suppliers" :farms="catalog.farms" :warehouses="catalog.warehouses" :saving="saving" @submit="saveDocument"/>
   <ProcurementDocumentForm v-else-if="['order','quote','need'].includes(form)" v-model="draft" :mobile="mobile" :catalog="catalog" :type="form" :saving="saving" @submit="saveDocument" @cancel="closeForm" @request="fromRequest"/>
-  <form v-else-if="['receive','return','invoice'].includes(form)" @submit.prevent="submitStage"><fieldset :disabled="saving"><ProcurementField :mobile="mobile" v-model="date" label="Ngày ghi sổ" type="date" required/><template v-if="form==='invoice'"><ProcurementField :mobile="mobile" v-model="bill" label="Số hóa đơn" required/><ProcurementField :mobile="mobile" v-model="billdate" label="Ngày hóa đơn" type="date" required/></template><ProcurementField v-for="r in receiveInfo?.items||[]" :key="r.line" :mobile="mobile" v-model="quantities[r.line]" :label="r.item_name+' ('+r.uom+')'" type="number" min="0" :max="r.remaining_qty??r.qty" step="any"/><component :is="button" type="submit" :disabled="saving">{{form==='invoice'?'Ghi nhận hóa đơn':'Tạo phiếu nháp'}}</component></fieldset></form>
+  <form v-else-if="['receive','return','invoice'].includes(form)" @submit.prevent="submitStage"><fieldset :disabled="saving"><ProcurementField :mobile="mobile" v-model="date" label="Ngày ghi sổ" type="date" required/><template v-if="form==='invoice'"><ProcurementField :mobile="mobile" v-model="bill" label="Số hóa đơn" required/><ProcurementField :mobile="mobile" v-model="billdate" label="Ngày hóa đơn" type="date" required/></template><ProcurementField v-for="r in receiveInfo?.items||[]" :key="r.line" :mobile="mobile" v-model="quantities[r.line]" :label="r.item_name+' ('+r.uom+')'+(form==='receive'?' · '+money(r.rate)+' / '+r.uom:'')" type="number" min="0" :max="r.remaining_qty??r.qty" step="any"/><PurchaseReceiptCosts v-if="form==='receive'" v-model="receiveCosts" :mobile="mobile" :accounts="receiveAccounts" :default-account="receiveDefaultAccount" :base-total="receiveBaseTotal" :currency="receiveInfo?.currency||'VND'" :disabled="saving"/><component :is="button" type="submit" :disabled="saving">{{form==='invoice'?'Ghi nhận hóa đơn':'Tạo phiếu nháp'}}</component></fieldset></form>
   <form v-else-if="['payment','funding','reimburse'].includes(form)" @submit.prevent="pay"><fieldset :disabled="saving"><div class="procurement-fields">
    <template v-if="form!=='reimburse'"><ProcurementField :mobile="mobile" v-model="sourceType" label="Nguồn mua" :options="['Purchase Invoice','Purchase Order'].map(v=>({value:v,label:v==='Purchase Order'?'Đơn mua (tạm ứng)':'Hóa đơn'}))" :searchable="false" @update:model-value="source=''"/><ProcurementField :mobile="mobile" v-model="source" label="Chứng từ nguồn" :options="sourceOptions" :required="form==='payment'"/></template>
    <ProcurementField :mobile="mobile" v-model="amount" label="Số tiền" type="number" min="1" step="any" required/><ProcurementField :mobile="mobile" v-model="date" :label="form==='funding'?'Ngày thực trả NCC':'Ngày công ty chi'" type="date" required/>

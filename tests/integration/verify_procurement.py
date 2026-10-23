@@ -371,6 +371,34 @@ class ProcurementIntegration(unittest.TestCase):
         self.assertEqual(flt(inv.grand_total),187500)
         self.assertEqual(frappe.db.count('Stock Ledger Entry',{'voucher_no':receipt.name,'is_cancelled':0}),2)
 
+    def test_17_receipt_landed_costs_enter_stock_once(self):
+        order=self.order('Material',4,100000,vat='10',freight=5000)
+        expense=frappe.db.get_value('Account',
+            {'company':C,'root_type':'Expense','is_group':0,'disabled':0},'name')
+        self.assertTrue(expense)
+        extra=[dict(description='Bốc xếp tại kho',amount=20000,expense_account=expense)]
+        args=(order.name,DAY,json.dumps({order.items[0].name:2}),self.tag+'costs',extra)
+        result=receiving.receive_order(*args)
+        duplicate=receiving.receive_order(*args)
+        self.assertEqual(result['name'],duplicate['name'])
+        receipt=frappe.get_doc('Purchase Receipt',result['name'])
+        self.assertEqual(receipt.docstatus,0)
+        self.assertEqual(frappe.db.count('Stock Ledger Entry',{'voucher_no':receipt.name,'is_cancelled':0}),0)
+        data=receiving.purchase_receipt(receipt.name)
+        self.assertEqual(round(data['goods_total']),200000)
+        self.assertEqual(round(data['valuation_charges']),20000)
+        self.assertEqual(round(data['incoming_total']),220000)
+        self.assertEqual(len(data['added_costs']),1)
+        self.assertEqual(len([t for t in receipt.taxes if t.category=='Valuation']),1)
+        self.assertTrue(any(t.category=='Total' for t in receipt.taxes))
+        with self.assertRaises(frappe.ValidationError):
+            receiving.receive_order(order.name,DAY,json.dumps({order.items[0].name:2}),
+                self.tag+'costs',[dict(extra[0],amount=30000)])
+        receiving.receipt_action(receipt.name,str(receipt.modified),'submit')
+        receipt.reload()
+        self.assertEqual(frappe.db.count('Stock Ledger Entry',{'voucher_no':receipt.name,'is_cancelled':0}),1)
+        self.assertAlmostEqual(flt(receipt.items[0].valuation_rate),110000,delta=1)
+
     def test_16_cancel_unposted_funding_keeps_evidence_and_releases_reservation(self):
         inv=self.invoice(self.receive(self.order(),10))
         result,_=self.fund(inv,400000)
