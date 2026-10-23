@@ -1,0 +1,67 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Asset Allocation Row",
+  "module": "Lotus Farm",
+  "custom": 0,
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "istable": 1,
+  "track_changes": false,
+  "fields": [
+    {
+      "fieldname": "percent",
+      "label": "Tỷ lệ (%)",
+      "fieldtype": "Float",
+      "precision": "6",
+      "reqd": 1
+    },
+    {
+      "fieldname": "expense_account",
+      "label": "Tài khoản chi phí",
+      "fieldtype": "Link",
+      "options": "Account",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cost_center",
+      "label": "Trung tâm chi phí",
+      "fieldtype": "Link",
+      "options": "Cost Center",
+      "reqd": 1
+    },
+    {
+      "fieldname": "lotus_farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm"
+    },
+    {
+      "fieldname": "lotus_farm_block",
+      "label": "Lô",
+      "fieldtype": "Link",
+      "options": "Farm Block"
+    },
+    {
+      "fieldname": "lotus_crop_cycle",
+      "label": "Vụ",
+      "fieldtype": "Link",
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "lotus_work_type",
+      "label": "Công việc",
+      "fieldtype": "Link",
+      "options": "Work Type"
+    }
+  ],
+  "field_order": [
+    "percent",
+    "expense_account",
+    "cost_center",
+    "lotus_farm",
+    "lotus_farm_block",
+    "lotus_crop_cycle",
+    "lotus_work_type"
+  ],
+  "permissions": []
+}

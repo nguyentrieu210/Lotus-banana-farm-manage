@@ -70,6 +70,8 @@ def setup():
     install_land()
     from lotus_farm.finance.setup import install as install_finance
     install_finance()
+    from lotus_farm.finance.asset_setup import install as install_assets
+    install_assets()
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
     create_custom_fields(

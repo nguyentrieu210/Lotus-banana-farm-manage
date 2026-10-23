@@ -41,7 +41,7 @@ def _balances(company, month):
     dims = ', '.join(f for f in rules.DIM_FIELDS if frappe.get_meta('GL Entry').has_field(f))
     return frappe.db.sql("""select account, %s, sum(debit) - sum(credit) net from `tabGL Entry`
         where company=%%s and is_cancelled=0 and posting_date between %%s and %%s and account in %%s
-        group by account, %s having abs(sum(debit) - sum(credit)) > 0.5""" % (dims, dims), (company, start, end, tuple(accounts)), as_dict=True)
+        group by account, %s having abs(sum(debit) - sum(credit)) > 0.005""" % (dims, dims), (company, start, end, tuple(accounts)), as_dict=True)
 
 
 @frappe.whitelist()
@@ -60,6 +60,8 @@ def post(month):
     """Kết chuyển chi phí sản xuất tháng -> 154 (chief accountant), before the month is locked."""
     setup.require_chief()
     setup.require_enabled()
+    from lotus_farm.finance.assets import ensure_settled
+    ensure_settled(month)
     company = setup.company()
     if posting.active('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', month):
         frappe.throw('Tháng %s đã kết chuyển. Đảo bút toán kết chuyển trước nếu cần làm lại.' % month)
@@ -73,8 +75,10 @@ def post(month):
     setup.check_cutover(result['posting_date'])
     posting.check_open(company, result['posting_date'])
     from lotus_farm.finance.payroll import journal
-    je = journal(company, result['posting_date'], result['lines'], 'Kết chuyển chi phí sản xuất tháng %s sang 154' % month, kind='Closing')
-    je.submit()
+    from lotus_farm.finance.assets import internal
+    with internal(cost_closing=month):
+        je = journal(company, result['posting_date'], result['lines'], 'Kết chuyển chi phí sản xuất tháng %s sang 154' % month, kind='Closing')
+        je.submit()
     posting.record('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', je, amount=result['total'], source_hash=month, key_suffix=month)
     return dict(voucher=je.name, amount=result['total'])
 
@@ -99,7 +103,7 @@ def _pl_balances(company, month):
     return frappe.db.sql("""select g.account, a.account_number, a.root_type, sum(g.debit) - sum(g.credit) net from `tabGL Entry` g
         join tabAccount a on a.name=g.account where g.company=%s and g.is_cancelled=0 and g.posting_date between %s and %s
         and a.root_type in ('Income', 'Expense') and g.voucher_no not in %s and g.voucher_type != 'Period Closing Voucher'
-        group by g.account, a.account_number, a.root_type having abs(sum(g.debit) - sum(g.credit)) > 0.5 order by a.account_number""",
+        group by g.account, a.account_number, a.root_type having abs(sum(g.debit) - sum(g.credit)) > 0.005 order by a.account_number""",
                          (company, start, end, excluded), as_dict=True)
 
 
@@ -133,6 +137,8 @@ def result_post(month):
     """Kết chuyển doanh thu, chi phí tháng sang 911 và 911 sang 4212 (chief accountant)."""
     setup.require_chief()
     setup.require_enabled()
+    from lotus_farm.finance.assets import ensure_settled, internal
+    ensure_settled(month)
     company = setup.company()
     require_no_result(month)
     result = result_preview(month)
@@ -146,7 +152,8 @@ def result_post(month):
     setup.check_cutover(result['posting_date'])
     posting.check_open(company, result['posting_date'])
     from lotus_farm.finance.payroll import journal
-    je = journal(company, result['posting_date'], result['lines'], 'Kết chuyển kết quả kinh doanh tháng %s (911 → 4212)' % month, kind='Result')
-    je.submit()
+    with internal(result_closing=month):
+        je = journal(company, result['posting_date'], result['lines'], 'Kết chuyển kết quả kinh doanh tháng %s (911 → 4212)' % month, kind='Result')
+        je.submit()
     posting.record('Lotus Finance Settings', setup.SETTINGS, 'Result Closing', je, amount=abs(result['profit']), source_hash=month, key_suffix=month)
     return dict(voucher=je.name, profit=result['profit'])

@@ -1,0 +1,134 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Asset Operation",
+  "module": "Lotus Farm",
+  "custom": 0,
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "istable": 0,
+  "track_changes": true,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "asset",
+      "label": "Tài sản",
+      "fieldtype": "Link",
+      "options": "Asset"
+    },
+    {
+      "fieldname": "kind",
+      "label": "Nghiệp vụ",
+      "fieldtype": "Select",
+      "options": "Create\nProfile\nMove\nRepair\nUpgrade\nSuspend\nResume\nSell\nScrap\nRestore",
+      "reqd": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "label": "Ngày nghiệp vụ",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "payload",
+      "label": "Nội dung",
+      "fieldtype": "Long Text",
+      "reqd": 1
+    },
+    {
+      "fieldname": "documents",
+      "label": "Chứng từ liên kết",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reason",
+      "label": "Lý do",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Pending\nPosted\nCancelled",
+      "default": "Pending",
+      "read_only": 1
+    },
+    {
+      "fieldname": "preview_hash",
+      "label": "Dấu kiểm tra",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Người duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_at",
+      "label": "Ngày duyệt",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "active_key",
+      "label": "Khóa chống trùng",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "field_order": [
+    "company",
+    "asset",
+    "kind",
+    "posting_date",
+    "payload",
+    "documents",
+    "reason",
+    "state",
+    "preview_hash",
+    "approved_by",
+    "approved_at",
+    "active_key"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

@@ -46,6 +46,12 @@ def month_checklist(month):
          go='pending')
     drafts = [p for p in frappe.get_all(posting.POSTING, filters={'state': 'Draft', 'posting_date': ['between', [start, end]]}, pluck='voucher_name')]
     step('vouchers', 'Phiếu chi trong tháng đã ký xong hoặc hủy', not drafts, '%d phiếu chi đang chờ ký' % len(drafts) if drafts else '', go='cash')
+    from lotus_farm.finance import assets
+    if assets.enabled():
+        due = assets.due_rows(month)
+        pending_assets = frappe.db.count(assets.OP, {'company': company, 'state': 'Pending', 'posting_date': ['<=', end]})
+        step('assets', 'Khấu hao và nghiệp vụ tài sản đã duyệt', not due and not pending_assets,
+             '%d kỳ khấu hao, %d nghiệp vụ chờ xử lý' % (len(due), pending_assets), go='assets')
     insured = [m[k] for k in ('social_insurance', 'health_insurance', 'unemployment_insurance', 'union_fee', 'pit_payable') if m.get(k)]
     owed = -flt(frappe.db.sql("""select sum(debit-credit) from `tabGL Entry` where company=%s and is_cancelled=0 and posting_date<=%s and account in %s""",
                               (company, end, tuple(insured) or ('',)))[0][0])

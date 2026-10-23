@@ -1,7 +1,7 @@
 """Tài chính – Kế toán: pure rules (no Frappe), unit-tested in tests/test_finance_rules.py.
 
 The ledger is ERPNext's GL Entry; these rules only decide which accounts and dimensions a Lotus document
-posts to, split amounts in whole đồng, and check that every entry balances. Account numbers come from the
+posts to, preserve native ledger fractions in transfers, and check that every entry balances. Account numbers come from the
 company's configuration (Lotus Finance Settings), never from code.
 """
 import json
@@ -144,7 +144,8 @@ def dims_key(dims):
 
 
 def line(account, debit=0, credit=0, dims=None, note=''):
-    return dict(account=account, debit=int(round(debit)), credit=int(round(credit)), **{f: (dims or {}).get(f) or None for f in DIM_FIELDS}, note=note)
+    # ERPNext depreciation can contain fractional VND; transfers must preserve its ledger amount.
+    return dict(account=account, debit=round(float(debit), 2), credit=round(float(credit), 2), **{f: (dims or {}).get(f) or None for f in DIM_FIELDS}, note=note)
 
 
 def merge(lines):
@@ -172,7 +173,7 @@ def check_entry(lines):
             errors.append('Dòng %d phải ghi một bên Nợ hoặc Có' % i)
         if not ln.get('account'):
             errors.append('Dòng %d chưa có tài khoản' % i)
-    debit, credit = sum(ln['debit'] for ln in lines), sum(ln['credit'] for ln in lines)
+    debit, credit = round(sum(ln['debit'] for ln in lines), 2), round(sum(ln['credit'] for ln in lines), 2)
     if debit != credit:
         errors.append('Tổng Nợ %s khác tổng Có %s' % (format(debit, ',').replace(',', '.'), format(credit, ',').replace(',', '.')))
     if not debit:
@@ -185,7 +186,7 @@ def result_entry(balances, summary_account, retained_account):
     then 911 goes to 4212 (profit Nợ 911 / Có 4212, loss Nợ 4212 / Có 911). balances: dict(account, net = debit - credit)."""
     lines, total = [], 0
     for b in balances:
-        net = int(round(b.get('net') or 0))
+        net = round(float(b.get('net') or 0), 2)
         if not net:
             continue
         total += net
@@ -193,7 +194,7 @@ def result_entry(balances, summary_account, retained_account):
             lines += [line(summary_account, debit=net, note='Kết chuyển ' + str(b['account'])), line(b['account'], credit=net, note='Kết chuyển sang 911')]
         else:
             lines += [line(b['account'], debit=-net, note='Kết chuyển sang 911'), line(summary_account, credit=-net, note='Kết chuyển ' + str(b['account']))]
-    profit = -total
+    profit = round(-total, 2)
     if profit > 0:
         lines += [line(summary_account, debit=profit, note='Lợi nhuận'), line(retained_account, credit=profit, note='Lợi nhuận')]
     elif profit < 0:
@@ -433,7 +434,7 @@ def closing_entry(rows, wip_account):
     621 / 622 / 627x per dimension set -> Nợ 154 (same dimensions) / Có each cost account. Zero balances are skipped."""
     lines = []
     for r in rows:
-        net = int(round(r.get('net') or 0))
+        net = round(float(r.get('net') or 0), 2)
         if not net:
             continue
         dims = {f: r.get(f) for f in DIM_FIELDS}
@@ -471,13 +472,14 @@ def costing_rows(pools):
     """
     out = []
     for p in pools:
-        wip_open, cost = int(round(p.get('wip_open') or 0)), int(round(p.get('cost_month') or 0))
-        provisional = int(round(p.get('provisional') or 0))
+        wip_open, cost = round(float(p.get('wip_open') or 0), 2), round(float(p.get('cost_month') or 0), 2)
+        provisional = round(float(p.get('provisional') or 0), 2)
         kg, remaining = float(p.get('kg_harvested') or 0), max(0.0, float(p.get('kg_remaining') or 0))
-        pool = wip_open + cost
-        absorbed = int(round(pool * kg / (kg + remaining))) if kg > 0 else 0
+        pool = round(wip_open + cost, 2)
+        precision = 2 if any(v != int(v) for v in (wip_open, cost, provisional)) else 0
+        absorbed = round(pool * kg / (kg + remaining), precision) if kg > 0 else 0
         out.append(dict(p, wip_open=wip_open, cost_month=cost, provisional=provisional, kg_harvested=kg, kg_remaining=remaining,
-                        absorbed=absorbed, adjustment=absorbed - provisional, wip_close=pool - absorbed,
+                        absorbed=absorbed, adjustment=round(absorbed - provisional, 2), wip_close=round(pool - absorbed, 2),
                         cost_per_kg=round(absorbed / kg, 2) if kg > 0 else None,
                         basis='Toàn bộ chi phí còn lại (không có dự thu)' if kg > 0 and not remaining else
                         ('Theo kg thu / (kg thu + kg dự thu còn lại)' if kg > 0 else 'Chưa thu hoạch: giữ dở dang')))
@@ -489,7 +491,7 @@ def costing_entry(rows, accounts):
     (Nợ 632 / Có 154), below it comes back (Nợ 154 / Có 632), lot by lot."""
     lines = []
     for r in rows:
-        adj = int(r.get('adjustment') or 0)
+        adj = round(float(r.get('adjustment') or 0), 2)
         if not adj:
             continue
         dims = {f: r.get(f) for f in DIM_FIELDS}

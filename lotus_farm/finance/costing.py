@@ -168,7 +168,7 @@ def _pools(company, month):
             p['kg_harvested'] = kg_by_farm.get(p['lotus_farm'], 0)
         closed = p['lotus_crop_cycle'] and frappe.db.get_value('Crop Cycle', p['lotus_crop_cycle'], 'status') == 'Closed'
         p['kg_remaining'] = 0 if closed else remaining.get(k, 0)
-    return [p for p in pools.values() if any(round(p[f]) for f in ('wip_open', 'cost_month', 'provisional')) or p['kg_harvested']]
+    return [p for p in pools.values() if any(abs(p[f]) > .005 for f in ('wip_open', 'cost_month', 'provisional')) or p['kg_harvested']]
 
 
 @frappe.whitelist()
@@ -197,6 +197,8 @@ def run(month):
     """Post the month's costing (chief accountant), after the cost transfer to 154 and before locking the month."""
     setup.require_chief()
     setup.require_enabled()
+    from lotus_farm.finance.assets import ensure_settled
+    ensure_settled(month)
     company = setup.company()
     if posting.active('Lotus Finance Settings', setup.SETTINGS, 'Costing', month):
         frappe.throw('Tháng %s đã tính giá thành. Đảo bút toán giá thành trước nếu cần tính lại.' % month)

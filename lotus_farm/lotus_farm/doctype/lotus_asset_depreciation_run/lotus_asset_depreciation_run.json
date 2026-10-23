@@ -1,0 +1,119 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Asset Depreciation Run",
+  "module": "Lotus Farm",
+  "custom": 0,
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "istable": 0,
+  "track_changes": true,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "month",
+      "label": "Tháng (yyyy-mm)",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "snapshot",
+      "label": "Bảng xem trước",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "results",
+      "label": "Chứng từ và kết quả",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reason",
+      "label": "Lý do đảo",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "state",
+      "label": "Trạng thái",
+      "fieldtype": "Select",
+      "options": "Pending\nPosted\nCancelled",
+      "default": "Pending",
+      "read_only": 1
+    },
+    {
+      "fieldname": "preview_hash",
+      "label": "Dấu kiểm tra",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Người duyệt",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_at",
+      "label": "Ngày duyệt",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "active_key",
+      "label": "Khóa chống trùng",
+      "fieldtype": "Data",
+      "unique": 1,
+      "read_only": 1,
+      "no_copy": 1
+    }
+  ],
+  "field_order": [
+    "company",
+    "month",
+    "snapshot",
+    "results",
+    "reason",
+    "state",
+    "preview_hash",
+    "approved_by",
+    "approved_at",
+    "active_key"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Chief Accountant",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

@@ -50,6 +50,20 @@ test('overview shows money, payables and what waits for the accountant',async()=
  view.unmount()
 })
 
+test('settings exposes account import only to the chief accountant',async()=>{
+ const settings={is_chief:true,enabled:true,coa_version:'',mapping:{},keys:[],accounts:[],errors:[],periods:[]}
+ routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'api.settings']:settings,
+  [F+'api.people']:{people:[]},[F+'api.month_checklist']:{done:0,total:0,steps:[]}}
+ const chief=await open('/tai-chinh?tab=settings')
+ button(chief.root,'Nhập tài khoản Excel').click();await tick()
+ assert.match(document.querySelector('dialog[open]').textContent,/Nhập hệ thống tài khoản từ Excel/)
+ chief.unmount()
+ routes[F+'api.settings']={...settings,is_chief:false}
+ const accountant=await open('/tai-chinh?tab=settings')
+ assert.equal(button(accountant.root,'Nhập tài khoản Excel'),undefined)
+ accountant.unmount()
+})
+
 test('receipts of one supplier become one invoice; mixing suppliers is not allowed',async()=>{
  calls.length=0
  routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'payments.make_goods_invoice']:{invoice:'PINV-1',amount:1500000},[F+'sales.vat_options']:vat}

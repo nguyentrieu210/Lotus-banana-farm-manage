@@ -87,12 +87,28 @@ def reverse(posting, reason):
         frappe.throw('Bút toán này đã được đảo.')
     voucher = frappe.get_doc(doc.voucher_type, doc.voucher_name)
     check_open(voucher.company, voucher.posting_date, voucher.doctype)
+    no_voucher_sheets = []
+    if doc.purpose == 'Cost Closing':
+        month = str(voucher.posting_date)[:7]
+        from lotus_farm.finance.closing import require_no_result
+        require_no_result(month)
+        for sheet in frappe.get_all('Lotus Costing Run', filters={'company': voucher.company, 'month': month, 'state': 'Posted'}, fields=['name', 'voucher']):
+            if sheet.voucher and frappe.db.get_value('Journal Entry', sheet.voucher, 'docstatus') == 1:
+                frappe.throw('Đảo bút toán giá thành trước khi đảo kết chuyển chi phí.')
+            no_voucher_sheets.append(sheet.name)
     voucher.flags.ignore_permissions = True
     if voucher.docstatus == 1:
-        voucher.cancel()
+        if doc.purpose in ('Cost Closing', 'Result Closing'):
+            from lotus_farm.finance.assets import internal
+            with internal(cost_closing_reverse=doc.name):
+                voucher.cancel()
+        else:
+            voucher.cancel()
     elif voucher.docstatus == 0:
         drop_draft(voucher)
     doc.db_set(dict(state='Reversed', active_key=None, reversed_by=frappe.session.user, reversed_at=now_datetime(), reason=reason[:500]))
+    for name in no_voucher_sheets:
+        frappe.db.set_value('Lotus Costing Run', name, 'state', 'Reversed')
     doc.add_comment('Info', 'Đảo bút toán %s %s: %s' % (doc.voucher_type, doc.voucher_name, reason[:300]))
     return dict(state='Reversed', voucher=doc.voucher_name)
 
@@ -115,6 +131,8 @@ def periods(company, year=None):
 def close_month(month):
     """Lock one month for every voucher type Lotus posts (chief accountant)."""
     setup.require_chief()
+    from lotus_farm.finance.assets import ensure_settled
+    ensure_settled(month)
     company = setup.company()
     start, end, label = _month_bounds(month)
     name = frappe.db.get_value('Accounting Period', {'company': company, 'start_date': start, 'end_date': end})

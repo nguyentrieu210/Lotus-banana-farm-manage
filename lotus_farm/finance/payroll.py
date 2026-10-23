@@ -111,7 +111,8 @@ def journal(company, posting_date, lines, remark, kind=None):
                    user_remark=ln.get('note') or None)
         row.update({f: ln.get(f) for f in rules.DIM_FIELDS if ln.get(f)})
         accounts.append(row)
-    je = frappe.get_doc(dict(doctype='Journal Entry', voucher_type='Journal Entry', company=company, posting_date=posting_date, user_remark=remark,
+    voucher_type = 'Depreciation Entry' if any(frappe.get_cached_value('Account', row['account'], 'account_type') == 'Depreciation' for row in accounts) else 'Journal Entry'
+    je = frappe.get_doc(dict(doctype='Journal Entry', voucher_type=voucher_type, company=company, posting_date=posting_date, user_remark=remark,
                              accounts=accounts, **({'lotus_payment_kind': kind} if kind else {})))
     je.flags.ignore_permissions = True
     je.insert()

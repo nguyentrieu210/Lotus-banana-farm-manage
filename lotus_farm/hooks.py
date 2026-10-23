@@ -240,3 +240,22 @@ doc_events["Stock Reconciliation"]["before_submit"] = "lotus_farm.finance.stock.
 
 doc_events.setdefault("Journal Entry", {})
 doc_events["Journal Entry"]["on_cancel"] = "lotus_farm.finance.costing.costing_reversed"
+
+# Fixed assets are reviewed in Lotus, including writes made through native Desk/API endpoints.
+for _dt in ('Asset', 'Asset Movement', 'Asset Repair', 'Asset Capitalization', 'Asset Value Adjustment', 'Asset Depreciation Schedule',
+            'Journal Entry', 'Purchase Invoice', 'Sales Invoice'):
+    for _event in ('before_submit', 'before_cancel', 'before_update_after_submit'):
+        _handlers = doc_events.setdefault(_dt, {}).get(_event, [])
+        if isinstance(_handlers, str):
+            _handlers = [_handlers]
+        doc_events[_dt][_event] = [*_handlers, 'lotus_farm.finance.assets.native_guard']
+for _dt in ('Accounts Settings', 'Lotus Finance Settings', 'Asset Category', 'Asset Depreciation Schedule'):
+    _handlers = doc_events.setdefault(_dt, {}).get('validate', [])
+    if isinstance(_handlers, str):
+        _handlers = [_handlers]
+    doc_events[_dt]['validate'] = [*_handlers, 'lotus_farm.finance.assets.native_guard']
+for _event in ('validate',):
+    _handlers = doc_events.setdefault('Asset', {}).get(_event, [])
+    if isinstance(_handlers, str):
+        _handlers = [_handlers]
+    doc_events['Asset'][_event] = [*_handlers, 'lotus_farm.finance.assets.native_guard']

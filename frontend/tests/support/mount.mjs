@@ -6,7 +6,8 @@ import {pathToFileURL,fileURLToPath} from 'node:url'
 import {Window} from 'happy-dom'
 
 const project=fileURLToPath(new URL('../../',import.meta.url))
-const runtime=path.join(project,'node_modules/.lotus-mount')
+// Test files run in separate Node processes. Do not let concurrent SFC compilation truncate a shared module.
+const runtime=path.join(project,'node_modules/.lotus-mount',String(process.pid))
 fs.mkdirSync(runtime,{recursive:true})
 
 export const window=new Window({url:'http://localhost:8080/lotus',width:1440,height:900})
