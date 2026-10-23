@@ -12,6 +12,7 @@ import SignerPicker from './components/SignerPicker.vue'
 import DataTable from './components/DataTable.vue'
 import FinanceGuide from './components/finance/FinanceGuide.vue'
 import FinanceAssets from './components/finance/FinanceAssets.vue'
+import FinancePlanning from './components/finance/FinancePlanning.vue'
 import FinanceMasterImport from './components/finance/FinanceMasterImport.vue'
 import {DatePicker} from './components/ui/date-picker'
 import {Button as UiButton} from './components/ui/button'
@@ -28,7 +29,7 @@ import './finance.css'
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
 const accountImportOpen=ref(false)
-const TABS=[['overview','Tổng quan'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
+const TABS=[['overview','Tổng quan'],['planning','Kế hoạch tài chính'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
 const REPORTS=[['b01','B01 Tình hình tài chính'],['b02','B02 Kết quả kinh doanh'],['b03','B03 Lưu chuyển tiền tệ'],['trial_balance','Bảng cân đối phát sinh'],
  ['general_journal','Nhật ký chung'],['ledger','Sổ cái / sổ quỹ / tiền gửi'],['party','Công nợ theo đối tượng'],['stock','Nhập – xuất – tồn'],
  ['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['vat','Thuế GTGT'],['bank','Đối chiếu ngân hàng'],['reconciliation','Đối chiếu']]
@@ -568,6 +569,7 @@ useNoticeToast(notice)
   </section>
  </template>
 
+ <FinancePlanning v-else-if="tab==='planning'" @notice="notice=$event"/>
  <FinanceAssets v-else-if="tab==='assets'" :view="String(route.query.asset_view||'assets')" @view-change="router.replace({query:{...route.query,asset_view:$event}})" @go-settings="go('settings')" @notice="notice=$event"/>
  <FinanceGuide v-else-if="tab==='guide'" @go="go"/>
 

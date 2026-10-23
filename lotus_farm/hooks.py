@@ -221,6 +221,8 @@ for _name in ('Lotus Handover Cohort', 'Lotus Process Adoption'):
     permission_query_conditions[_name] = 'lotus_farm.permissions.' + _name.lower().replace(' ', '_')
 has_permission['Bunch Tag'] = 'lotus_farm.controls.farm_permission'
 permission_query_conditions['Bunch Tag'] = 'lotus_farm.permissions.bunch_tag'
+has_permission['Lotus Financial Plan'] = 'lotus_farm.finance.planning.permission'
+permission_query_conditions['Lotus Financial Plan'] = 'lotus_farm.finance.planning.query_condition'
 for _dt, _event, _handler in (
     ('Bunch Tag', 'validate', 'lotus_farm.onedrive_workspace.validate_tag_master'),
     ('Sucker Selection Batch', 'validate', 'lotus_farm.onedrive_workspace.validate_handover_link'),

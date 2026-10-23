@@ -68,7 +68,9 @@ jobs:
           bench --site lotus.test migrate
       - name: Run real document and permission tests
         working-directory: /tmp/lotus-bench
-        run: bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+        run: |
+          bench --site lotus.test run-tests --module lotus_farm.tests.test_brd
+          bench --site lotus.test run-tests --module lotus_farm.tests.test_financial_planning
       - name: Build and test browser against the running site
         run: |
           npm ci --prefix frontend --no-audit --no-fund
