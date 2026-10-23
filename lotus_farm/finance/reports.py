@@ -289,11 +289,18 @@ def reconciliation(on_date=None):
     from lotus_farm.finance.payments import receipts_to_bill
     checks.append(dict(label='Hàng về chưa có hóa đơn so với phiếu nhận chưa lập hóa đơn', ledger=-_balance(company, [m['received_not_billed']], on_date),
                        source=sum(flt(r['to_bill']) for r in receipts_to_bill())))
-    outstanding = flt(frappe.db.sql("""select sum(outstanding_amount) from `tabPurchase Invoice` where company=%s and docstatus=1""", company)[0][0])
-    checks.append(dict(label='Phải trả người bán so với hóa đơn còn nợ', ledger=-_balance(company, [m['payable_supplier']], on_date), source=outstanding))
+    # Invoice.outstanding_amount is today's amount; use dated payment ledger entries instead.
+    def as_of_party(account, party_type):
+        return flt(frappe.db.sql("""select sum(amount) from `tabPayment Ledger Entry`
+            where company=%s and account=%s and party_type=%s
+            and posting_date<=%s and delinked=0""", (company, account, party_type, on_date))[0][0])
+    checks.append(dict(label='Phải trả người bán so với công nợ tại ngày báo cáo',
+                       ledger=-_balance(company, [m['payable_supplier']], on_date),
+                       source=-as_of_party(m['payable_supplier'], 'Supplier')))
     if m.get('receivable_customer'):
-        owed = flt(frappe.db.sql("""select sum(outstanding_amount) from `tabSales Invoice` where company=%s and docstatus=1""", company)[0][0])
-        checks.append(dict(label='Phải thu khách hàng so với hóa đơn bán còn phải thu', ledger=_balance(company, [m['receivable_customer']], on_date), source=owed))
+        checks.append(dict(label='Phải thu khách hàng so với công nợ tại ngày báo cáo',
+                           ledger=_balance(company, [m['receivable_customer']], on_date),
+                           source=as_of_party(m['receivable_customer'], 'Customer')))
     for p in frappe.get_all(posting.POSTING, filters={'source_doctype': 'Lotus Timekeeping Period', 'purpose': 'Payroll', 'state': 'Posted'},
                             fields=['source_name', 'voucher_name', 'amount']):
         snap = json.loads(frappe.db.get_value('Lotus Timekeeping Period', p.source_name, 'snapshot') or '{}')
