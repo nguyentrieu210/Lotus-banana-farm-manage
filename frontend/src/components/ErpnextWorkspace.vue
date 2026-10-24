@@ -10,7 +10,7 @@ const props=defineProps({company:String,warehouse:String,embedded:Boolean})
 const route=inject(routeLocationKey,null),router=inject(routerKey,null)
 const query=()=>route?.query||Object.fromEntries(new URLSearchParams(location.search))
 const data=ref({modules:[],rows:[],companies:[],warehouses:[]}),busy=ref(false),error=ref('')
-const module=ref(query().module||''),kind=ref(query().kind||''),search=ref(query().erp_search||'')
+const module=ref(query().module||'Stock'),kind=ref(query().kind||''),search=ref(query().erp_search||'')
 const company=ref(props.company||query().company||''),warehouse=ref(props.warehouse||query().warehouse||'')
 const to=ref(query().to_date||''),from=ref(query().from_date||'')
 let version=0
@@ -19,9 +19,9 @@ const kinds=[{value:'',label:'Tất cả chức năng'},...Object.entries(erpKin
 const rows=computed(()=>erpFeatures(data.value.rows,{module:module.value,kind:kind.value,search:search.value}))
 const columns=[{field:'title',headerName:'Chức năng',minWidth:230},{field:'module_title',headerName:'Phân hệ',minWidth:140},{field:'kind_title',headerName:'Loại',minWidth:150},{field:'group',headerName:'Nhóm',minWidth:130},{field:'name',headerName:'Tên ERPNext',minWidth:200}]
 function saveQuery(){if(route&&route.path!=='/erpnext')return;const next={...query()};for(const [k,v] of Object.entries({module:module.value,kind:kind.value,erp_search:search.value,company:company.value,warehouse:warehouse.value,from_date:from.value,to_date:to.value})){if(v)next[k]=v;else delete next[k]}if(router)router.replace({path:'/erpnext',query:next});else history.replaceState(history.state,'',location.pathname+(new URLSearchParams(next).size?'?'+new URLSearchParams(next):''))}
-async function load(){if(route&&route.path!=='/erpnext')return;const id=++version;busy.value=true;error.value='';try{const result=await call('lotus_farm.erpnext_workspace.catalog',{company:company.value||undefined,warehouse:warehouse.value||undefined,from_date:from.value||undefined,to_date:to.value||undefined});if(id!==version)return;data.value=result;if(module.value&&!result.modules.some(m=>m.value===module.value)){module.value='';saveQuery()}}catch(e){if(id===version){data.value.rows=[];error.value=e.message}}finally{if(id===version)busy.value=false}}
-watch([company,warehouse,from,to],()=>{saveQuery();load()})
-watch([module,kind,search],saveQuery)
+async function load(){if(route&&route.path!=='/erpnext')return;const id=++version;busy.value=true;error.value='';try{const result=await call('lotus_farm.erpnext_workspace.catalog',{module:module.value||undefined,company:company.value||undefined,warehouse:warehouse.value||undefined,from_date:from.value||undefined,to_date:to.value||undefined});if(id!==version)return;data.value=result;if(module.value&&!result.modules.some(m=>m.value===module.value)){module.value='';saveQuery()}}catch(e){if(id===version){data.value.rows=[];error.value=e.message}}finally{if(id===version)busy.value=false}}
+watch([module,company,warehouse,from,to],()=>{saveQuery();load()})
+watch([kind,search],saveQuery)
 watch(()=>props.company,v=>{company.value=v||''})
 watch(()=>props.warehouse,v=>{warehouse.value=v||''})
 watch(()=>route?.query, q=>{if(!q||route.path!=='/erpnext')return;module.value=q.module||'';kind.value=q.kind||'';search.value=q.erp_search||'';company.value=q.company||'';warehouse.value=q.warehouse||'';from.value=q.from_date||'';to.value=q.to_date||''})

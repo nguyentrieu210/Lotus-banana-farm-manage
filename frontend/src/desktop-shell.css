@@ -1,4 +1,10 @@
 /* Common desktop navigation: Kho-inspired terracotta header and calm sidebar. */
+/* Phones use the existing module switcher in WorkspaceBar. The desktop sidebar
+   must not occupy an entire screen above the workspace on narrow displays. */
+@media(max-width:900px){
+ .app-shell.workspace-shell>.sidebar{display:none}
+ .app-shell.workspace-shell>main{width:100%;min-width:0;margin-left:0}
+}
 @media(min-width:901px){
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar,

@@ -22,7 +22,7 @@ class NativeWorkspace(unittest.TestCase):
         return doc
 
     def test_installed_modules_and_stock_lifecycle_are_reachable(self):
-        result = hub.catalog(company=base.C, warehouse=base.WH if hasattr(base, 'WH') else None, from_date='2026-10-01', to_date='2026-10-31')
+        result = hub.catalog(module='Stock', company=base.C, warehouse=base.WH if hasattr(base, 'WH') else None, from_date='2026-10-01', to_date='2026-10-31')
         modules = {r['value'] for r in result['modules']}
         self.assertTrue({'Stock', 'Buying', 'Accounts', 'Assets', 'Selling', 'Payroll', 'Manufacturing'} <= modules)
         stock = {r['name']: r for r in result['rows'] if r['module'] == 'Stock'}

@@ -24,7 +24,7 @@ def _filters(value):
     return {r[-3]: r[-1] if r[-2] == '=' else r[-2:] for r in value if isinstance(r, list) and len(r) in (3, 4)} if isinstance(value, list) else {}
 
 
-def _route(row, company, warehouse, from_date, to_date):
+def _route(row, company, warehouse, from_date, to_date, reports):
     kind, name = row.get('link_type'), row.get('link_to')
     filters = _filters(row.get('filters') or row.get('route_options'))
     if kind == 'DocType':
@@ -42,10 +42,10 @@ def _route(row, company, warehouse, from_date, to_date):
             if warehouse and meta.has_field('warehouse'):
                 filters['warehouse'] = warehouse
     elif kind == 'Report':
-        if not frappe.db.exists('Report', name):
+        report = reports.get(name)
+        if not report:
             return None
-        report = frappe.get_doc('Report', name)
-        if report.disabled or not report.is_permitted() or (report.ref_doctype and not frappe.has_permission(report.ref_doctype, 'report')):
+        if report.disabled or (report.ref_doctype and not frappe.has_permission(report.ref_doctype, 'report')):
             return None
         from frappe.utils import get_url_to_report
         route = urlsplit(get_url_to_report(name, report.report_type, report.ref_doctype)).path
@@ -77,7 +77,7 @@ def _route(row, company, warehouse, from_date, to_date):
 
 
 @frappe.whitelist()
-def catalog(company=None, warehouse=None, from_date=None, to_date=None):
+def catalog(company=None, warehouse=None, from_date=None, to_date=None, module=None):
     if not can_access():
         frappe.throw('Bạn không có quyền mở ERPNext.', frappe.PermissionError)
     companies = frappe.get_list('Company', fields=['name'], limit_page_length=0) if frappe.has_permission('Company', 'read') else []
@@ -98,17 +98,30 @@ def catalog(company=None, warehouse=None, from_date=None, to_date=None):
     owned = set(frappe.get_all('Module Def', filters={'app_name': ['in', list(installed)]}, pluck='name'))
     modules = [name for name in get_navigable_modules() if name in owned]
     context = SidebarContext.for_modules(modules, frappe.session.user)
+    # The canonical native report directory already applies standard/custom roles,
+    # Report permissions and user restrictions. Batch metadata rather than loading
+    # each Report with its child tables during navigation.
+    permitted_reports = list(context.perm_ctx.allowed_reports)
+    reports = {r.name: r for r in frappe.get_all('Report',
+        filters={'name': ['in', permitted_reports or ['__none__']]},
+        fields=['name', 'report_type', 'ref_doctype', 'disabled'], limit_page_length=0)}
     result, groups = [], []
     for shell in context.bases:
         sidebar = resolve_sidebar(shell, frappe.session.user, context)
         if not sidebar or sidebar.app not in installed:
+            continue
+        # Resolve the directory for every module, but expand the long report/setup
+        # lists only for the selected module. A stock user must not wait for every
+        # payroll and accounting form's metadata before opening the warehouse.
+        if module and module != shell:
+            groups.append(dict(value=shell, label=sidebar.label, app=sidebar.app, count=None))
             continue
         rows, seen = [], set()
 
         def append(row, section=''):
             if not row.get('link_to') or not is_item_allowed(row['link_to'], row.get('link_type') or '', context.perm_ctx):
                 return
-            href = _route(row, company, warehouse, from_date, to_date)
+            href = _route(row, company, warehouse, from_date, to_date, reports)
             if not href or href in seen:
                 return
             seen.add(href)
