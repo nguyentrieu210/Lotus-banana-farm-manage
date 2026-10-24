@@ -14,7 +14,7 @@ globalThis.fetch=async(url,options={})=>{
  const target=new URL(url,'http://localhost:8080'),method=target.pathname.replace('/api/method/','')
  const args=options.body?JSON.parse(options.body):Object.fromEntries(target.searchParams)
  calls.push({method,args})
- try{const handler=handlers[method];if(!handler)throw Error('Unexpected API '+method);return {ok:true,status:200,json:async()=>({message:typeof handler==='function'?handler(args):handler})}}
+ try{const handler=handlers[method];if(!handler)throw Error('Unexpected API '+method);const value=typeof handler==='function'?handler(args):handler;return {ok:true,status:200,json:async()=>({message:value})}}
  catch(e){return {ok:false,status:409,json:async()=>({_server_messages:JSON.stringify([JSON.stringify({message:e.message})])})}}
 }
 const totals={gross_kg:1000,sales_kg:800,revenue:8000000,operating_cost:5000000,profit:3000000,closing_cash:-2000000,funding_gap:2000000,receivables_after_horizon:0,payables_after_horizon:0}

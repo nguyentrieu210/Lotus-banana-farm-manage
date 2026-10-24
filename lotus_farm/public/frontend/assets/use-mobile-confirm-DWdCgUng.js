@@ -1,1 +1,0 @@
-import{At as e,Y as t,t as n}from"./use-confirm-core-6XO3fxSs.js";function r(){let r=e(null);return{dialog:r,...n({onShow:()=>t(()=>r.value?.showModal()),onHide:()=>r.value?.close()})}}export{r as t};
