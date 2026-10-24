@@ -12,6 +12,7 @@ const props=defineProps({
   currency:{type:String,default:'VND'},
   disabled:{type:Boolean,default:false},
   mobile:{type:Boolean,default:false},
+  direct:Boolean,
 })
 const emit=defineEmits(['update:modelValue'])
 const actionButton=computed(()=>props.mobile?LotusMobileButton:UiButton)
@@ -27,7 +28,7 @@ function remove(index){emit('update:modelValue',props.modelValue.filter((_,i)=>i
   <div class="receipt-costs-title"><strong>Chi phí nhập kho phát sinh</strong>
    <component :is="actionButton" type="button" variant="outline" :disabled="disabled||!accounts.length||modelValue.length>=30" @click="add">Thêm chi phí</component>
   </div>
-  <p class="stock-muted">Đơn giá lấy từ đơn mua. Không nhập lại phí đã tính trong đơn.</p>
+  <p v-if="!direct" class="stock-muted">Đơn giá lấy từ đơn mua. Không nhập lại phí đã tính trong đơn.</p>
   <p v-if="!accounts.length" class="stock-muted">Chưa có tài khoản chi phí phù hợp hoặc chưa được cấp quyền xem. Có thể nhận hàng không kèm chi phí.</p>
   <div v-for="(cost,index) in modelValue" :key="index" class="receipt-cost-row">
    <ProcurementField :mobile="mobile" :model-value="cost.description" :disabled="disabled" maxlength="140" required label="Khoản chi phí" placeholder="Bốc xếp, vận chuyển…" @update:model-value="v=>patch(index,'description',v)"/>
@@ -40,7 +41,7 @@ function remove(index){emit('update:modelValue',props.modelValue.filter((_,i)=>i
    <span>Chi phí phát sinh <strong>{{money(costsTotal)}}</strong></span>
    <span>Giá trị nhập tạm tính <strong>{{money(baseTotal+costsTotal)}}</strong></span>
   </div>
-  <small class="stock-muted">Chưa gồm thuế và phí đã ghi trên đơn mua. Phí này cộng vào giá trị tồn kho; không tự phát sinh công nợ nhà cung cấp.</small>
+  <small class="stock-muted">{{direct?'Chi phí phân bổ theo giá trị vật tư.':'Chưa gồm thuế và phí đã ghi trên đơn mua.'}} Phí này cộng vào giá trị tồn kho; không tự phát sinh công nợ nhà cung cấp.</small>
  </section>
 </template>
 <style scoped>

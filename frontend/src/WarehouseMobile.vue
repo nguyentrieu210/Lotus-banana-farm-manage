@@ -6,7 +6,8 @@ import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
 import MobileSupplierForm from './components/MobileSupplierForm.vue'
-import StockReceiptReason from './components/StockReceiptReason.vue'
+import StockDocumentForm from './components/StockDocumentForm.vue'
+import {stockDraft,stockDraftRequest} from './stock-document'
 import {newPurchaseDraft,purchaseFromRequest,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
 import LotusMobileCheck from './components/LotusMobileCheck.vue'
 import LotusMobileFile from './components/LotusMobileFile.vue'
@@ -26,9 +27,10 @@ import MobileLiveSearch from './components/MobileLiveSearch.vue'
 import SigningPanel from './components/SigningPanel.vue'
 import {useMobileViewport} from './use-mobile-viewport'
 import {createTabSwipe} from './mobile-swipe'
-import {validateReceiptInputs} from './warehouse-mobile-helpers'
+import {erpHref} from './erpnext-navigation'
+import WarehouseReceiving from './components/WarehouseReceiving.vue'
 
-const receiptReasonFields=ref(null)
+const receivingView=ref(null)
 
 const stockAPI=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const buyingAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_buying_lite.'+name,args,write)
@@ -43,10 +45,8 @@ const error=ref(''),message=ref(''),online=ref(navigator.onLine)
 const installed=ref(false),form=ref(null),order=ref(null),quote=ref(null)
 const requestForm=ref(null),supplierForm=ref(null),savedPurchase=ref(null),purchaseRequests=ref([]),selectedPurchaseRequest=ref('')
 let supplierInitial=''
-const pending=ref([]),pendingQuery=ref(''),pendingStart=ref(0),pendingMore=ref(false)
-const selectedOrder=ref(null),receiveQty=ref({}),receiveDate=ref(''),receiveKey=ref('')
-const postedReceipt=ref(null),confirmed=ref(false),createdDoc=ref(null),createdDocDetails=ref(null),lastPostedDocument=ref(null)
-const failedQuote=ref(false),updateReady=ref(false),loadingPending=ref(false),loadingHistory=ref(false),loadingInventory=ref(false)
+const confirmed=ref(false),createdDoc=ref(null),createdDocDetails=ref(null),lastPostedDocument=ref(null)
+const failedQuote=ref(false),updateReady=ref(false),loadingHistory=ref(false),loadingInventory=ref(false)
 const historyRows=ref([]),historySearch=ref(''),historyWarehouse=ref(''),historyMode=ref('stock'),historyStart=ref(0),historyMore=ref(false),historyDetail=ref(null)
 const inventoryMode=ref('stock'),inventorySearch=ref(''),inventoryWarehouse=ref(''),inventoryStart=ref(0)
 const inventoryRows=ref([]),inventoryMore=ref(false),inventoryTotal=ref(0)
@@ -61,15 +61,13 @@ const mobileTabs=[
 const mobileTitle=computed(()=>({home:'Kho Lotus',history:'Lịch sử',inventory:'Xuất nhập tồn',profile:'Tôi',
  'stock-form':titles[kind.value], 'stock-review':'Kiểm tra phiếu',
  'request-form':'Đề nghị mua','buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
- 'choose-order':'Chọn đơn chờ hàng','receive-form':'Nhận hàng',
- 'receive-review':'Kiểm tra hàng nhận','history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
+ receiving:'Nhận hàng theo đơn','history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
 
 const activeTab=computed(()=>screen.value==='history-detail'?'history':baseTabs.includes(screen.value)?screen.value:'home')
 const storeOptions=computed(()=>warehouses.value.map(w=>({value:w.name,label:w.warehouse_name})))
 const itemOptions=computed(()=>items.value.map(i=>({value:i.name,label:i.item_name})))
 const employeeOptions=computed(()=>employees.value.map(i=>({value:i.value,label:i.label})))
 const companyOptions=computed(()=>session.value?.companies?.map(c=>({value:c.name,label:c.name}))||[])
-const pendingSuggestions=computed(()=>(pending.value||[]).map(r=>({value:r.name,label:r.supplier_name||r.supplier||r.name,description:r.name+' · '+(r.status||'')})))
 const historySuggestions=computed(()=>(historyRows.value||[]).map(r=>({value:r.name,label:r.doctype==='Purchase Order'?(r.supplier_name||r.name):r.name,description:(r.doctype==='Purchase Order'?'Đơn mua':'Phiếu kho')+' · '+r.name})))
 const inventorySuggestions=computed(()=>{
  const pool=inventoryMode.value==='stock'?items.value:(movementRows.value||[]).map(r=>({name:r.item_code,item_name:r.item_name}))
@@ -79,22 +77,19 @@ const inventorySuggestions=computed(()=>{
 function pickHistorySuggestion(row){const match=historyRows.value.find(r=>r.name===row.value);if(match)inspectHistory(match)}
 function pickInventorySuggestion(row){inventorySearch.value=row.value;loadInventory(true)}
 let eventNumber=0, pendingRequest=0, historyRequest=0, inventoryRequest=0, detailRequest=0
-const isLoading=computed(()=>busy.value||(screen.value==='choose-order'&&loadingPending.value)||(screen.value==='history'&&loadingHistory.value)||(screen.value==='inventory'&&loadingInventory.value))
+const isLoading=computed(()=>busy.value||!!receivingView.value?.isBusy()||(screen.value==='history'&&loadingHistory.value)||(screen.value==='inventory'&&loadingInventory.value))
 let searchTimer=null
 function delayedSearch(type){
  if(type==='history')++historyRequest
  if(type==='inventory')++inventoryRequest
- if(type==='pending')++pendingRequest
  clearTimeout(searchTimer)
  searchTimer=setTimeout(()=>{
   if(type==='history'&&screen.value==='history')loadHistory(true)
   if(type==='inventory'&&screen.value==='inventory')loadInventory(true)
-  if(type==='pending'&&screen.value==='choose-order')loadPending(true)
  },320)
 }
 watch(historySearch,()=>delayedSearch('history'))
 watch(inventorySearch,()=>delayedSearch('inventory'))
-watch(pendingQuery,()=>delayedSearch('pending'))
 watch(error,value=>{if(value)nextTick(()=>document.querySelector('.mobile-message.danger')?.scrollIntoView({block:'nearest',behavior:'smooth'}))})
 const key=()=>globalThis.crypto?.randomUUID?.()||'m-'+Date.now()+'-'+(++eventNumber)
 const today=()=>session.value?.today||setup.value?.today||new Date().toISOString().slice(0,10)
@@ -102,13 +97,10 @@ const fmt=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const warehouses=computed(()=>setup.value?.warehouses||[])
 const items=computed(()=>setup.value?.items||[])
 const suppliers=computed(()=>setup.value?.suppliers||[])
-const titles={receipt:'Nhập không theo đơn',issue:'Xuất kho',transfer:'Chuyển kho'}
+const titles={receipt:'Nhập không theo đơn',issue:'Xuất kho',transfer:'Chuyển kho',count:'Kiểm kê kho'}
 const wname=n=>warehouses.value.find(w=>w.name===n)?.warehouse_name||n||'—'
 const iname=n=>items.value.find(i=>i.name===n)?.item_name||n||'—'
 const allowed=type=>!!session.value?.permissions?.[type]
-const selectedLines=computed(()=>selectedOrder.value?.items?.filter(r=>Number(r.remaining_qty)>0)||[])
-const receiptCheck=computed(()=>validateReceiptInputs(selectedLines.value,receiveQty.value))
-const receivedQuantities=computed(()=>receiptCheck.value.quantities)
 const blank=()=>({_key:key(),item:'',query:'',uom:'',qty:1,rate:'',area:''})
 function clear(){error.value='';message.value=''}
 function safeError(e){
@@ -119,7 +111,7 @@ function safeError(e){
 }
 function home(){screen.value='home';clear()}
 const rootScreens=new Set(['home','history','inventory','profile'])
-const formScreens=new Set(['stock-form','buy-form','receive-form','request-form','supplier-form'])
+const formScreens=new Set(['stock-form','buy-form','receiving','request-form','supplier-form'])
 const {start:swipeStart,move:swipeMove,end:swipeEnd,cancel:swipeCancel}=createTabSwipe({enabled:()=>rootScreens.has(screen.value)&&!saving.value,ignore:'input,textarea,select,a,.mobile-link-field,.mobile-live-search,.lotus-pwa-bottom,.mobile-leave-dialog',tabs:()=>baseTabs,current:()=>screen.value,go:goTab})
 let restoreFromBrowser=false, navigationReady=false
 let initialFormValue=''
@@ -129,7 +121,7 @@ function dirtyForm(){
  if(screen.value==='supplier-form')return !!supplierForm.value&&JSON.stringify(supplierForm.value)!==supplierInitial
  if(screen.value==='buy-form')return order.value?.name?failedQuote.value:JSON.stringify(order.value)!==initialFormValue||!!quote.value
  if(screen.value==='request-form')return JSON.stringify(requestForm.value)!==initialFormValue
- if(screen.value==='receive-form')return Object.values(receiveQty.value).some(v=>String(v).trim()!=='')||receiveDate.value!==today()
+ if(screen.value==='receiving')return !!receivingView.value?.hasChanges()
  return false
 }
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
@@ -140,7 +132,8 @@ async function confirmLeave(target=''){
 }
 function beforeUnload(event){if(saving.value||formScreens.has(screen.value)&&dirtyForm()||screen.value==='supplier-form'&&!!order.value&&(JSON.stringify(order.value)!==initialFormValue||!!quote.value)){event.preventDefault();event.returnValue=''}}
 async function goTab(tab){
- if(saving.value||screen.value===tab||!await confirmLeave())return
+ if(saving.value||receivingView.value?.isBusy()||screen.value===tab||!await confirmLeave())return
+ if(screen.value==='receiving')receivingView.value?.discardChanges()
  document.dispatchEvent(new Event('warehouse-dismiss-picker'))
  clearTimeout(searchTimer)
  clear();screen.value=tab
@@ -154,7 +147,7 @@ function appBack(){
  window.history.back()
 }
 // Pull-to-refresh reloads the list of the tab on screen.
-async function pullRefresh(){if(screen.value==='history')await loadHistory(true);else if(screen.value==='inventory')await loadInventory(true);else await loadPending(true)}
+async function pullRefresh(){if(screen.value==='history')await loadHistory(true);else if(screen.value==='inventory')await loadInventory(true);else if(company.value)setup.value=await buyingAPI('setup',{company:company.value})}
 async function refreshApp(){if(await confirmLeave())window.location.reload()}
 let hadWorker=!!navigator.serviceWorker?.controller
 function onWorkerChange(){if(hadWorker)updateReady.value=true;hadWorker=true}
@@ -165,11 +158,12 @@ function dismissPicker(){
 }
 async function onSystemBack(event){
  if(leavePending.value){finishLeave(false);window.history.pushState({lotusWarehouse:true,screen:screen.value},'',window.location.href);return}
- if(saving.value||dismissPicker()){
+ if(saving.value||receivingView.value?.isBusy()||dismissPicker()){
   window.history.pushState({lotusWarehouse:true,screen:screen.value},'',window.location.href)
   return
  }
- const desired=event.state?.lotusWarehouse?event.state.screen:'home'
+ let desired=event.state?.lotusWarehouse?event.state.screen:'home'
+ if(['choose-order','receive-form','receive-review'].includes(desired))desired='home'
  // A saved draft must not reopen the original form with the same request ID:
  // changing the form and submitting again could display a receipt unlike the server draft.
  if((screen.value==='stock-review'&&desired==='stock-form')||(screen.value==='receive-review'&&desired==='receive-form')){
@@ -185,8 +179,9 @@ async function onSystemBack(event){
   window.history.pushState({lotusWarehouse:true,screen:screen.value},'',window.location.href)
   return
  }
+ if(screen.value==='receiving'&&desired!=='receiving')receivingView.value?.discardChanges()
  restoreFromBrowser=true
- const available=desired==='supplier-form'?!!supplierForm.value:desired==='stock-form'?!!form.value:desired==='buy-form'?!!order.value&&!order.value.name:desired==='request-form'?!!requestForm.value:desired==='receive-form'?!!selectedOrder.value:desired==='stock-review'?!!createdDocDetails.value:desired==='receive-review'?!!postedReceipt.value:desired==='history-detail'?!!historyDetail.value:true
+ const available=desired==='supplier-form'?!!supplierForm.value:desired==='stock-form'?!!form.value:desired==='buy-form'?!!order.value&&!order.value.name:desired==='request-form'?!!requestForm.value:desired==='receiving'?!!receivingView.value?.isOpen():desired==='stock-review'?!!createdDocDetails.value:desired==='history-detail'?!!historyDetail.value:true
  screen.value=screen.value==='done'?'home':available?desired:'home'
  clear()
  // Root guard: back gestures never leave the PWA for the previous browser page.
@@ -202,7 +197,6 @@ watch(screen,(next,previous)=>{
  clearTimeout(searchTimer)
  if(previous==='history'){++historyRequest;loadingHistory.value=false}
  if(previous==='inventory'){++inventoryRequest;loadingInventory.value=false}
- if(previous==='choose-order'){++pendingRequest;loadingPending.value=false}
  if(!navigationReady||restoreFromBrowser)return
  window.history.replaceState({...window.history.state,scroll:window.scrollY},'',window.location.href)
  window.history.pushState({lotusWarehouse:true,screen:next},'',window.location.href)
@@ -237,7 +231,7 @@ async function changeCompany(next){
   company.value=next;setup.value=data;employees.value=nextEmployees
   warehouse.value=data.warehouses?.[0]?.name||''
   historyWarehouse.value=warehouse.value;inventoryWarehouse.value=warehouse.value
-  historyRows.value=[];inventoryRows.value=[];movementRows.value=[];pending.value=[]
+  historyRows.value=[];inventoryRows.value=[];movementRows.value=[]
   screen.value='home'
  }catch(e){company.value=old;error.value=e.message}finally{busy.value=false}
 }
@@ -247,17 +241,16 @@ function changeWorkWarehouse(value){
  warehouseChanged()
 }
 function start(kindName){
- clear();lastPostedDocument.value=null;order.value=null;selectedOrder.value=null
+ clear();lastPostedDocument.value=null;order.value=null
  if(!setup.value)return
  kind.value=kindName
- form.value={kind:kindName,posting_date:today(),source:warehouse.value,target:kindName==='transfer'?'':warehouse.value,
-  receiver_employee:'',notes:'',receipt_reason:'',supplier:'',lines:[blank()],client_event_id:key()}
+ form.value=stockDraft(kindName,{date:today(),warehouse:warehouse.value,event:key()})
  rememberForm(form.value)
  screen.value='stock-form'
 }
 function startRequest(){
   lastPostedDocument.value=null
- clear();form.value=null;order.value=null;selectedOrder.value=null
+ clear();form.value=null;order.value=null
  requestForm.value={warehouse:warehouse.value,expected_date:today(),notes:'',items:[blank()]}
  rememberForm(requestForm.value)
  screen.value='request-form'
@@ -275,7 +268,7 @@ async function saveRequest(){
  }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function startBuying(){
- clear();lastPostedDocument.value=null;form.value=null;selectedOrder.value=null
+ clear();lastPostedDocument.value=null;form.value=null
  order.value=newPurchaseDraft(warehouse.value,today())
  quote.value=null;failedQuote.value=false;savedPurchase.value=null;selectedPurchaseRequest.value='';purchaseRequests.value=[]
  rememberForm(order.value);screen.value='buy-form'
@@ -306,26 +299,15 @@ function unitsFor(item){
  return [base,...(setup.value?.conversions||[]).filter(i=>i.parent===item).map(i=>i.uom)].filter((x,i,a)=>x&&a.indexOf(x)===i)
 }
 function validLines(lines){return lines.length>0&&lines.every(r=>r.item&&unitsFor(r.item).includes(r.uom)&&String(r.qty).trim()!==''&&Number.isFinite(Number(r.qty))&&Number(r.qty)>0&&(!String(r.rate).trim()||Number.isFinite(Number(r.rate))&&Number(r.rate)>=0))}
+async function fetchStockItems(search){const result=await stockAPI('overview',{company:company.value,warehouse:warehouse.value,search});return (result.items||[]).map(i=>({...i,value:i.name,label:i.item_name,uom:i.stock_uom}))}
 async function saveStock(){
  if(!online.value||saving.value||!form.value)return
- const f=form.value
- if(!validLines(f.lines)){error.value='Chọn đúng tên hàng và số lượng lớn hơn 0.';return}
- if(f.kind==='transfer'&&(!f.target||f.source===f.target)){error.value='Kho nhận phải khác kho xuất.';return}
- if(f.kind==='issue'&&(!f.receiver_employee||f.lines.some(r=>!String(r.area).trim()))){error.value='Chọn người nhận và nhập lô hoặc nơi sử dụng.';return}
  error.value='';saving.value=true
  try{
-  if(f.kind==='receipt'){const message=await receiptReasonFields.value.validate(f.lines);if(message)throw Error(message)}
-  const result=await stockAPI('create_draft',{
-   company:company.value,kind:f.kind,posting_date:f.posting_date,source:f.source,target:f.target,
-   issue_mode:'Manual',receiver_employee:f.receiver_employee,notes:f.notes,client_event_id:f.client_event_id,
-   receipt_reason:f.kind==='receipt'?f.receipt_reason:undefined,supplier:f.kind==='receipt'?f.supplier:undefined,
-   lines:f.lines.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom,rate:Number(r.rate||0),area:r.area}))
-  },true)
-  createdDoc.value=result
-  createdDocDetails.value=await stockAPI('document',{doctype:result.doctype,name:result.name})
+  const result=await stockAPI('create_draft',stockDraftRequest(company.value,form.value),true)
+  createdDoc.value=result;createdDocDetails.value=await stockAPI('document',{doctype:result.doctype,name:result.name})
   confirmed.value=false;screen.value='stock-review'
- }catch(e){error.value=safeError(e)}
- finally{saving.value=false}
+ }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function postStock(){
  if(!confirmed.value||!online.value||saving.value||!createdDocDetails.value)return
@@ -367,64 +349,14 @@ async function retryQuote(){
 }
 async function startReceiving(){
  if(!setup.value)return
- clear();lastPostedDocument.value=null;form.value=null;order.value=null;pendingQuery.value='';pendingStart.value=0;selectedOrder.value=null
- screen.value='choose-order';await loadPending()
+ clear();lastPostedDocument.value=null;form.value=null;order.value=null;screen.value='receiving'
+ await nextTick();await receivingView.value.openPicker()
 }
-async function loadPending(reset=false){
- if(!company.value)return
- if(reset)pendingStart.value=0
- const request=++pendingRequest
- loadingPending.value=true;error.value=''
- try{
-  const result=await buyingAPI('orders',{company:company.value,warehouse:warehouse.value,
-   status:'pending',search:pendingQuery.value,start:pendingStart.value})
-  if(request!==pendingRequest)return
-  pending.value=result.rows||[];pendingMore.value=!!result.has_more
- }catch(e){if(request===pendingRequest){error.value=e.message||'Chưa tải được đơn chờ hàng.';pending.value=[]}}
- finally{if(request===pendingRequest)loadingPending.value=false}
-}
-async function showOrder(name){
- if(busy.value||saving.value)return
- const request=++detailRequest,origin=screen.value,scope=company.value
- busy.value=true;error.value=''
- try{
-  const detail=await buyingAPI('order_detail',{name})
-  if(request!==detailRequest||screen.value!==origin||company.value!==scope)return
-  selectedOrder.value=detail
-  receiveQty.value={};receiveDate.value=today();receiveKey.value=key()
-  postedReceipt.value=null;confirmed.value=false
-  screen.value='receive-form'
- }catch(e){if(screen.value===origin&&company.value===scope)error.value=e.message}finally{if(request===detailRequest)busy.value=false}
-}
-async function createReceipt(){
- if(!online.value||saving.value)return
- if(!receiveDate.value){error.value='Chọn ngày hàng về.';return}
- if(!receiptCheck.value.valid){error.value=receiptCheck.value.reason;return}
- if(!Object.keys(receivedQuantities.value).length){error.value='Nhập số thực nhận của ít nhất một mặt hàng.';return}
- saving.value=true;error.value=''
- try{
-  const result=await receivingAPI('receive_order',{
-   name:selectedOrder.value.name,posting_date:receiveDate.value,
-   quantities:receivedQuantities.value,client_event_id:receiveKey.value
-  },true)
-  postedReceipt.value=await receivingAPI('purchase_receipt',{name:result.name})
-  confirmed.value=false;screen.value='receive-review'
- }catch(e){error.value=safeError(e)}
- finally{saving.value=false}
-}
-async function postReceipt(){
- if(!confirmed.value||!postedReceipt.value||!online.value||saving.value)return
- saving.value=true;error.value=''
- try{
-  await receivingAPI('receipt_action',{name:postedReceipt.value.name,modified:postedReceipt.value.modified,action:'submit'},true)
-  lastPostedDocument.value={doctype:'Purchase Receipt',name:postedReceipt.value.name}
-   screen.value='done';message.value='Đã nhập kho '+postedReceipt.value.name+'. Số còn chờ được cập nhật.'
- }catch(e){error.value=safeError(e)}finally{saving.value=false}
-}
+async function showOrder(name){clear();screen.value='receiving';await nextTick();await receivingView.value.openOrder(name)}
+function receiptChanged(doc){if(doc?.docstatus===1)lastPostedDocument.value={doctype:'Purchase Receipt',name:doc.name}}
 function again(){
  clear()
  if(order.value?.name&&screen.value==='done'){startBuying();return}
- if(selectedOrder.value&&screen.value==='done'){startReceiving();return}
  if(form.value&&screen.value==='done'){start(kind.value);return}
  home()
 }
@@ -545,6 +477,7 @@ onUnmounted(()=>{
     
     <div v-if="(session?.companies?.length||0)>1" class="mobile-field"><label>Công ty</label><MobileLinkField :model-value="company" :options="companyOptions" :searchable="false" placeholder="Chọn công ty" @update:modelValue="v=>changeCompany(v)"/></div>
     <div class="mobile-field"><label>Kho đang làm việc</label><MobileLinkField :model-value="warehouse" :options="storeOptions" :searchable="false" :disabled="!setup" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/></div>
+    <a class="lotus-pwa-print-link" :href="erpHref('Stock',company,warehouse)" target="_blank" rel="noopener">Chức năng ERPNext</a>
     <div class="mobile-actions" aria-label="Thao tác Kho">
      <LotusMobileAction v-if="setup?.can_create" primary icon="cart-o" title="Tạo đơn mua" :disabled="!setup" @select="startBuying"/>
      <LotusMobileAction v-if="setup?.can_request" icon="notes-o" title="Đề nghị mua" @select="startRequest"/>
@@ -552,31 +485,12 @@ onUnmounted(()=>{
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="upgrade" title="Xuất kho" :disabled="!setup" @select="start('issue')"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="exchange" title="Chuyển kho" :disabled="!setup" @select="start('transfer')"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="down" title="Nhập không theo đơn" :disabled="!setup" @select="start('receipt')"/>
+     <LotusMobileAction v-if="allowed('Stock Reconciliation')" icon="passed" title="Kiểm kê kho" :disabled="!setup" @select="start('count')"/>
     </div>
     <div class="mobile-install"><LotusMobileButton v-if="!installed" type="button" @click="openSetup">＋ Thêm Kho Lotus lên màn hình chính</LotusMobileButton></div>
    </template>
 
-   <template v-if="screen==='stock-form'&&form">
-    <p v-if="kind==='receipt'" class="mobile-subtle">Chỉ dùng khi hàng về không có đơn mua. Hàng đặt mua hãy dùng Nhập theo đơn.</p>
-    <form @submit.prevent="saveStock"><fieldset class="mobile-form-fields" :disabled="saving">
-     <StockReceiptReason v-if="kind==='receipt'" ref="receiptReasonFields" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier" mobile/>
-     <div class="mobile-field"><label>Ngày</label><LotusMobileInput aria-label="Ngày" type="date" v-model="form.posting_date" required/></div>
-     <div v-if="kind!=='receipt'" class="mobile-field"><label>Kho xuất</label><MobileLinkField v-model="form.source" :options="storeOptions" :searchable="false" placeholder="Chọn kho xuất…" required/></div>
-     <div v-if="kind!=='issue'" class="mobile-field"><label>{{kind==='transfer'?'Kho nhận':'Kho nhập'}}</label><MobileLinkField v-model="form.target" :options="storeOptions" :searchable="false" placeholder="Chọn kho nhận…" required/></div>
-     <div v-if="kind==='issue'" class="mobile-field"><label>Người nhận hàng</label><MobileLinkField v-model="form.receiver_employee" :options="employeeOptions" placeholder="Gõ tên người nhận…" required/></div>
-     <h2>Hàng cần {{kind==='issue'?'xuất':kind==='transfer'?'chuyển':'nhập'}}</h2>
-     <div class="mobile-line" v-for="(r,i) in form.lines" :key="r._key">
-      <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="form.lines.length>1" type="button" @click="form.lines.splice(i,1)">Xóa</LotusMobileButton></div>
-      <div class="mobile-field"><label>Tên hàng</label><MobileLinkField :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/></div>
-      <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput aria-label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/></label><label class="mobile-field">Đơn vị<LotusMobileSelect aria-label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
-      <div v-if="kind==='receipt'" class="mobile-field"><label>Đơn giá (nếu có)</label><LotusMobileInput aria-label="Đơn giá (nếu có)" v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/></div>
-      <div v-if="kind==='issue'||kind==='receipt'&&form.receipt_reason==='Recovery'" class="mobile-field"><label>{{kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng'}}</label><LotusMobileInput :aria-label="kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng'" v-model="r.area" placeholder="Ví dụ: Lô A01" required/></div>
-     </div>
-     <LotusMobileButton type="button" class="mobile-add" @click="form.lines.push(blank())">＋ Thêm hàng</LotusMobileButton>
-     <LotusMobileInput v-model="form.notes" label="Ghi chú (không bắt buộc)" type="textarea" placeholder="Ghi thêm nếu cần…"/>
-     <LotusMobileButton type="submit" class="mobile-submit" :disabled="saving||!online">{{saving?'Đang lưu…':'Lưu phiếu →'}}</LotusMobileButton>
-    </fieldset></form>
-   </template>
+   <StockDocumentForm v-if="screen==='stock-form'&&form" v-model="form" :company="company" :items="items" :conversions="setup?.conversions||[]" :warehouses="warehouses" :employees="employeeOptions" :fetch-items="fetchStockItems" :currency="setup?.currency||'VND'" :saving="saving" :online="online" mobile @submit="saveStock" @error="error=$event"/>
 
    <template v-if="screen==='stock-review'&&createdDocDetails">
     
@@ -585,28 +499,7 @@ onUnmounted(()=>{
     <div class="mobile-confirm"><p>Phiếu mới chỉ là nháp. Bấm xác nhận để cập nhật tồn kho.</p><LotusMobileCheck v-model="confirmed" :disabled="saving">Đã kiểm tra đúng hàng và số lượng</LotusMobileCheck><LotusMobileButton class="mobile-submit" type="button" :disabled="!online||saving||!confirmed" @click="postStock">Ghi sổ phiếu</LotusMobileButton></div>
    </template>
 
-   <template v-if="screen==='choose-order'">
-    <p class="mobile-subtle">Chỉ hiện đơn đã xác nhận và chưa nhận đủ.</p>
-    <MobileLiveSearch v-model="pendingQuery" :options="pendingSuggestions" :loading="loadingPending" placeholder="Gõ tên nhà cung cấp hoặc số đơn…" @select="r=>showOrder(r.value)"/>
-    <LotusMobileButton v-for="r in pending" :key="r.name" class="mobile-list-card clickable" type="button" @click="showOrder(r.name)"><strong>{{r.supplier_name}}</strong><small>{{r.name}} · Hẹn {{r.expected_date}}</small><div class="mobile-inline"><span>{{r.remaining_lines}} mặt hàng còn chờ</span><b>Nhận hàng <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></div></LotusMobileButton>
-    <p v-if="!loadingPending&&!pending.length&&!error" class="mobile-empty">Chưa có đơn nào đang chờ hàng.</p>
-    <div class="mobile-pages"><LotusMobileButton type="button" :disabled="pendingStart===0||loadingPending" @click="pendingStart-=50;loadPending()">← Trước</LotusMobileButton><LotusMobileButton type="button" :disabled="!pendingMore||loadingPending" @click="pendingStart+=50;loadPending()">Sau →</LotusMobileButton></div>
-   </template>
-
-   <template v-if="screen==='receive-form'&&selectedOrder">
-    <div class="mobile-summary"><span>Nhà cung cấp <b>{{selectedOrder.supplier_name}}</b></span><span>Đơn <b>{{selectedOrder.name}}</b></span></div>
-    <div class="mobile-field"><label>Ngày hàng về</label><LotusMobileInput aria-label="Ngày hàng về" v-model="receiveDate" type="date" :disabled="saving" required/></div>
-    <div v-for="r in selectedLines" :key="r.line" class="mobile-line"><strong>{{r.item_name}}</strong><small>Chưa nhận: {{fmt(r.remaining_qty)}} {{unitLabel(r.uom)}}</small><label class="mobile-field">Số lượng thực nhận ({{unitLabel(r.uom)}})<LotusMobileInput v-model="receiveQty[r.line]" :disabled="saving" type="number" inputmode="decimal" min="0" :max="r.remaining_qty" step="any" placeholder="0"/></label></div>
-    <p v-if="!receiptCheck.valid" class="mobile-message danger" role="alert">{{receiptCheck.reason}}</p>
-    <LotusMobileButton type="button" class="mobile-submit" :disabled="!online||saving||!receiptCheck.valid||!Object.keys(receivedQuantities).length" @click="createReceipt">{{saving?'Đang lưu…':'Lưu hàng đã nhận →'}}</LotusMobileButton>
-   </template>
-
-   <template v-if="screen==='receive-review'&&postedReceipt">
-    
-    <div class="mobile-summary"><span>Phiếu <b>{{postedReceipt.name}}</b></span><span>Đơn mua <b>{{selectedOrder?.name}}</b></span></div>
-    <div class="mobile-list-card" v-for="r in selectedLines.filter(r=>Number(receiveQty[r.line])>0)" :key="r.line"><strong>{{r.item_name}}</strong><div class="mobile-inline"><span>Thực nhận</span><b>{{fmt(receiveQty[r.line])}} {{unitLabel(r.uom)}}</b></div></div>
-    <div class="mobile-confirm"><p>Phiếu đang là nháp, tồn kho chưa tăng.</p><LotusMobileCheck v-model="confirmed" :disabled="saving">Đã kiểm tra số thực nhận</LotusMobileCheck><LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online||!confirmed" @click="postReceipt">Ghi sổ nhập kho</LotusMobileButton></div>
-   </template>
+   <WarehouseReceiving v-show="screen==='receiving'" ref="receivingView" :company="company" :warehouse="warehouse" :today="today()" :online="online" :confirm="askLeave" mobile inline @close="home" @changed="receiptChanged"/>
 
    <template v-if="screen==='request-form'&&requestForm">
     <form @submit.prevent="saveRequest"><fieldset class="mobile-form-fields" :disabled="saving">

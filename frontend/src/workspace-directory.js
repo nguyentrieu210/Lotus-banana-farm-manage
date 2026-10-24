@@ -8,6 +8,7 @@ export function workspaceDirectory(session){
  if(session?.modules?.labor?.length)links.push({id:'global-labor',label:'Bố trí nhân công',href:'/lotus/labor'})
  if(session?.modules?.plans?.length)links.push({id:'global-plan-norm',label:'Cấu hình kế hoạch & định mức',href:'/lotus/plan-norm'})
  if(session?.capabilities?.stock)links.push({id:'global-stock',label:'Quản lý kho',href:'/lotus/kho'})
+ if(session?.capabilities?.native_erp)links.push({id:'global-erpnext',label:'ERPNext',href:'/lotus/erpnext'})
  return links.map(link=>({...link,navigation:true}))
 }
 let pending
