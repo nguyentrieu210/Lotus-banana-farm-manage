@@ -286,8 +286,8 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 
 <template>
  <div class="stock-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed,'warehouse-pwa':warehousePwa,'lotus-desktop':desktop,'desktop-compact':density==='compact'}">
-  
-  
+
+
   <component :is="embedded?'section':'main'" class="stock-main"><div class="stock-navigation"><WorkspaceTabs v-if="embedded" :items="Object.entries(stockTabs).map(([id,label])=>({id,label}))" :model-value="tab" @update:model-value="chooseStockTab"/><UiButton v-if="canSetup" variant="outline" @click="chooseStockTab(tab==='setup'?'stock':'setup')">{{tab==='setup'?'Về tồn kho':'Thiết lập kho'}}</UiButton></div><WarehouseInstall v-if="warehousePwa"/>
 
    <p v-if="error&&!dialog?.open" class="stock-error" role="alert">{{error}}</p>
