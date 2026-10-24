@@ -276,6 +276,28 @@ def chain(name):
     return result
 
 
+@frappe.whitelist()
+def billing_source(company, name, kind='invoice'):
+    from lotus_farm.finance import setup
+    setup.require_post()
+    if company!=setup.company() or kind not in ('invoice','credit'):
+        frappe.throw('Nguồn hóa đơn không hợp lệ.')
+    if kind=='invoice':
+        from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
+        source=document('Purchase Receipt',name,company)
+        if source.docstatus!=1 or source.is_return: frappe.throw('Chọn phiếu nhận đã xác nhận.')
+        mapped=make_purchase_invoice(name)
+        field='pr_detail'
+    else:
+        from erpnext.controllers.sales_and_purchase_return import make_return_doc
+        source=document('Purchase Invoice',name,company)
+        if source.docstatus!=1 or source.is_return: frappe.throw('Chọn hóa đơn gốc đã ghi sổ.')
+        mapped=make_return_doc('Purchase Invoice',name)
+        field='purchase_invoice_item'
+    return dict(name=name,items=[dict(line=r.get(field),item_name=r.item_name,uom=r.uom,
+                qty=abs(flt(r.qty)),remaining_qty=abs(flt(r.qty))) for r in mapped.items if abs(flt(r.qty))>.000001])
+
+
 @frappe.whitelist(methods=['POST'])
 def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantities=None, due_date=None):
     """Partial invoices stay linked to the actual PR lines. Old header-VAT API is unchanged."""

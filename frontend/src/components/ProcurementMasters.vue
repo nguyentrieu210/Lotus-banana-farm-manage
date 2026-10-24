@@ -1,4 +1,5 @@
 <script setup>
+import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
 import {Cell,CellGroup} from 'vant'
 import {call} from '../api'

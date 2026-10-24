@@ -37,7 +37,15 @@ def credit_note(company, name, posting_date, quantities, client_key, bill_no=Non
     d.set('items',kept)
     d.update(dict(posting_date=posting_date,set_posting_time=1,update_stock=0,bill_no=bill_no or source.bill_no,
                   bill_date=bill_date or posting_date,lotus_procurement_key=key,lotus_procurement_hash=fingerprint))
-    apply_line_taxes(d); d.insert(); d.submit()
+    if any(r.get('lotus_purchase_kind') or r.get('lotus_line_vat') for r in source.items):
+        apply_line_taxes(d)
+    else:
+        # Legacy invoices keep their native header tax rules, including partial
+        # credit notes. They must not silently become exempt line-tax invoices.
+        ratio=sum(abs(flt(r.qty)*flt(r.rate)) for r in kept)/abs(flt(source.net_total)) if source.net_total else 0
+        for tax, original in zip(d.taxes,source.taxes):
+            if tax.charge_type=='Actual': tax.tax_amount=-abs(flt(original.tax_amount))*ratio
+    d.insert(); d.submit()
     posting.record('Purchase Invoice',d.name,'Purchase Invoice',d,amount=d.grand_total,source_hash=source.name)
     return dict(invoice=d.name)
 

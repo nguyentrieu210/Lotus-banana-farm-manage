@@ -1,4 +1,5 @@
 <script setup>
+import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
 import {newKey,purchaseKinds,purchaseRequest} from '../procurement'
