@@ -4,12 +4,17 @@ import {useSession} from './store'
 import {hasMobileAccess} from './mobile-menu'
 import {workspaceModules} from './workspace-routes'
 import {normalizeHrView,hrViewAllowed} from './hr-navigation.js'
+import {procurementNavigation,normalizeBuyingView} from './procurement-navigation'
 const placeholder={template:'<span />'}
 export function permittedRoute(path,session,query={}){
  const page=path.replace(/^\//,'')
  if(page==='denied')return true
  if(page==='mobile')return hasMobileAccess(session)
  if(page==='nhan-su')return hrViewAllowed(query.hr_view,session)
+ if(page==='mua-hang'){
+  const item=procurementNavigation.find(r=>r.id===normalizeBuyingView(query.buying_view))
+  return !!session.capabilities?.purchasing&&(!item.finance||!!session.capabilities?.purchasing_finance)&&(!item.invoice||!!session.capabilities?.purchasing_invoice_read)
+ }
  if(workspaceModules[page]){const module=workspaceModules[page];return module.capability?!!session.capabilities?.[module.capability]:!!session.modules?.[module.module]?.length}
  if(['today','reports'].includes(page))return !!session.capabilities.home
  if(/^(farms|farm|blocks|block|plots|plot|cycles|cycle)\//.test(page))return !!session.modules.farms?.length

@@ -15,7 +15,7 @@ const emit=defineEmits(['update:modelValue'])
 const control=computed(()=>props.options?(props.searchable?MobileLinkField:LotusMobileSelect):LotusMobileInput)
 </script>
 <template>
- <component v-if="mobile" :is="control" v-bind="$attrs" :model-value="modelValue" :label="label" :options="options" :searchable="searchable" :type="type" :required="required" :disabled="disabled" :hint="hint" :error="error" @update:model-value="emit('update:modelValue',$event)"/>
+ <component v-if="mobile" :is="control" v-bind="$attrs" :model-value="modelValue" :label="label" :options="options" :searchable="searchable" :type="options?undefined:type" :required="required" :disabled="disabled" :hint="hint" :error="error" @update:model-value="emit('update:modelValue',$event)"/>
  <FormField v-else :label="label" :required="required" :hint="hint" :error="error" v-slot="field">
   <Combobox v-if="options&&searchable" v-bind="{...field,...$attrs}" :model-value="modelValue" :options="options" :disabled="disabled" @update:model-value="emit('update:modelValue',$event)"/>
   <Select v-else-if="options" v-bind="{...field,...$attrs}" :model-value="modelValue" :disabled="disabled" @update:model-value="emit('update:modelValue',$event)"><option value="">Chọn…</option><option v-for="r in options" :key="r.value" :value="r.value">{{r.label}}</option></Select>

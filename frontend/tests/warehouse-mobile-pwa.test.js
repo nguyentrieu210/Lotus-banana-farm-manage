@@ -19,8 +19,8 @@ test('dedicated /warehouse manifest has two square icons; desktop stock stays se
 })
 test('supplier receiving quick action defaults to purchase order instead of duplicating Stock Entry',()=>{
  assert.match(app,/if\(kind==='receipt'\)/)
- assert.match(app,/tab\.value='buying'/)
- assert.match(app,/buyingView\.value\?\.startReceiving\(\)/)
+ assert.match(app,/receivingView\.value\.openPicker\(\)/)
+ assert.doesNotMatch(app,/<WarehouseBuyingLite/)
  assert.match(purchase,/function startReceiving\(\)/)
  assert.match(purchase,/status\.value='pending'/)
  assert.match(purchase,/receivingAPI\('receive_order'/)

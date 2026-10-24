@@ -114,6 +114,7 @@ def bootstrap(company=None):
                 can_view_finance=(finance.can_view() or bool(set(frappe.get_roles()) & {'Lotus Purchase Approver', 'Lotus Farm Manager'})) and company == finance.company(),
                 can_quote=frappe.has_permission('Supplier Quotation','create'),
                 can_need=frappe.has_permission('Material Request','create'),
+                can_invoice=frappe.has_permission('Purchase Invoice','read'),
                 farms=frappe.get_list('Farm',filters={'company':company},fields=['name'],limit_page_length=0) if frappe.has_permission('Farm','read') else [])
     return data
 

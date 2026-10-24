@@ -77,6 +77,8 @@ def bootstrap():
     session['capabilities']['finance_ledger']=installed and finance_view()
     session['capabilities']['finance']=session['capabilities']['finance_ledger'] or (installed and has_role(*DIRECTORS, *CHIEF_ACCOUNTANTS))
     session['capabilities']['purchasing']=bool(frappe.has_permission('Purchase Order','read') or frappe.has_permission('Material Request','read')) and all(frappe.has_permission(dt,'read') for dt in ('Company','Warehouse','Item'))
+    session['capabilities']['purchasing_finance']=installed and (finance_view() or has_role('Lotus Purchase Approver','Lotus Farm Manager'))
+    session['capabilities']['purchasing_invoice_read']=session['capabilities']['purchasing_finance'] and frappe.has_permission('Purchase Invoice','read')
     if session['capabilities']['work_journal.read']:
         from lotus_farm.work_journal import farm_names
         existing = {f['name'] for f in session['farms']}

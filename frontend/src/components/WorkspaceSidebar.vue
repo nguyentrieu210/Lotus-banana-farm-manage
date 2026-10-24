@@ -6,9 +6,10 @@ import {useSession,useScope} from '../store'
 import {navGroups} from '../domain'
 import {sidebarCollapsed} from '../workspace'
 import {visibleHrNavigation,normalizeHrView,hrQuery} from '../hr-navigation.js'
+import {visibleBuyingNavigation,normalizeBuyingView,buyingQuery} from '../procurement-navigation.js'
 
 // Preserve permissions from the app router. Menu grouping never grants page access.
-const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'}})
+const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'},buyingView:String})
 const emit=defineEmits(['go'])
 const session=useSession(),scope=useScope()
 const groups=computed(()=>{
@@ -19,6 +20,11 @@ const groups=computed(()=>{
    for(const [path] of group.items)placed.add(path)
    const items=visibleHrNavigation(session).filter(item=>allowed.has(item.path)).map(item=>({...item,query:hrQuery(item.id)}))
    return {id:'group-'+index,kind:'hr',label:group.label,icon:group.icon,items,links:[],expandable:true}
+  }
+  if(group.kind==='buying'){
+   placed.add('mua-hang')
+   const items=allowed.has('mua-hang')?visibleBuyingNavigation(session).map(item=>({...item,query:buyingQuery(item.id)})):[]
+   return {id:'group-'+index,kind:'buying',label:group.label,icon:group.icon,items,links:[],expandable:true}
   }
   const items=group.items.filter(([path])=>allowed.has(path)).map(([path,icon,label])=>{
    placed.add(path)
@@ -33,12 +39,12 @@ const groups=computed(()=>{
  return result.filter(group=>group.items.length)
 })
 const openGroup=ref(null)
-watch([()=>props.page,()=>props.hrView,groups],([page,view,visibleGroups])=>{
+watch([()=>props.page,()=>props.hrView,()=>props.buyingView,groups],([page,view,buyingView,visibleGroups])=>{
  const active=visibleGroups.find(group=>group.items.some(item=>itemActive(item)))
  if(active)openGroup.value=active.label
 },{immediate:true})
 function openPrimary(group){
- if(group.kind==='hr'){
+ if(['hr','buying'].includes(group.kind)){
   if(sidebarCollapsed.value){sidebarCollapsed.value=false;localStorage.setItem('lotus-sidebar','open');openGroup.value=group.label}
   else toggleGroup(group)
   return
@@ -48,7 +54,7 @@ function openPrimary(group){
 }
 function toggleGroup(group){openGroup.value=openGroup.value===group.label?null:group.label}
 const isOpen=group=>openGroup.value===group.label
-function itemActive(item){return item.path===props.page&&(item.path!=='nhan-su'||item.id===normalizeHrView(props.hrView))}
+function itemActive(item){return item.path===props.page&&(item.path!=='nhan-su'||item.id===normalizeHrView(props.hrView))&&(item.path!=='mua-hang'||item.id===normalizeBuyingView(props.buyingView))}
 const isActive=group=>group.items.some(item=>itemActive(item))
 </script>
 <template>
@@ -57,7 +63,7 @@ const isActive=group=>group.items.some(item=>itemActive(item))
   <nav aria-label="Điều hướng chính">
    <section v-for="group in groups" :key="group.id" class="nav-group" :class="{'nav-group-current':isActive(group)}" :aria-label="group.label">
     <div class="nav-group-row">
-     <UiButton variant="outline" class="nav-parent" :title="group.label" :aria-label="group.label" :class="{active:group.kind!=='hr'&&props.page===group.items[0].path,'group-selected':isActive(group)}" :aria-current="group.kind!=='hr'&&props.page===group.items[0].path?'page':undefined" :aria-expanded="group.kind==='hr'?isOpen(group):undefined" @click="openPrimary(group)">
+     <UiButton variant="outline" class="nav-parent" :title="group.label" :aria-label="group.label" :class="{active:!['hr','buying'].includes(group.kind)&&props.page===group.items[0].path,'group-selected':isActive(group)}" :aria-current="!['hr','buying'].includes(group.kind)&&props.page===group.items[0].path?'page':undefined" :aria-expanded="['hr','buying'].includes(group.kind)?isOpen(group):undefined" @click="openPrimary(group)">
       <LotusIcon :name="group.icon" class="nav-icon"/>
       <span class="nav-label">{{group.label}}</span>
      </UiButton>
@@ -67,8 +73,8 @@ const isActive=group=>group.items.some(item=>itemActive(item))
     </div>
     <div v-if="group.expandable" v-show="isOpen(group)&&!sidebarCollapsed" :id="group.id" class="nav-submenu">
      <template v-for="(item,index) in group.items" :key="item.id||item.path">
-      <span v-if="group.kind==='hr'&&item.setup&&!group.items.slice(0,index).some(i=>i.setup)" class="nav-subsection">Thiết lập nhân sự</span>
-      <UiButton v-if="group.kind==='hr'||group.items.length>1" variant="outline" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:itemActive(item)}" :aria-current="itemActive(item)?'page':undefined" @click="emit('go',item.path,group.kind==='hr'?item.query:undefined)">
+      <span v-if="['hr','buying'].includes(group.kind)&&item.setup&&!group.items.slice(0,index).some(i=>i.setup)" class="nav-subsection">{{group.kind==='buying'?'Danh mục mua hàng':'Thiết lập nhân sự'}}</span>
+      <UiButton v-if="['hr','buying'].includes(group.kind)||group.items.length>1" variant="outline" class="nav-child" :title="item.label" :aria-label="item.label" :class="{active:itemActive(item)}" :aria-current="itemActive(item)?'page':undefined" @click="emit('go',item.path,['hr','buying'].includes(group.kind)?item.query:undefined)">
        <LotusIcon :name="item.icon" class="nav-icon"/>
        <span class="nav-label">{{item.label}}</span>
       </UiButton>

@@ -360,7 +360,7 @@ def _voucher_info(doc, signing=None):
     if doc.doctype == PE:
         lines = [dict(label=frappe.db.get_value(PI, r.reference_name, 'bill_no') or r.reference_name, amount=flt(r.allocated_amount)) for r in doc.references]
         info = dict(party=doc.party, party_name=frappe.db.get_value('Supplier', doc.party, 'supplier_name') or doc.party, amount=flt(doc.paid_amount),
-                    money=doc.paid_from, reference=doc.reference_no or '', kind='Trả nhà cung cấp')
+                    money=doc.paid_to if doc.payment_type=='Receive' else doc.paid_from, reference=doc.reference_no or '', kind='Hoàn tiền từ NCC' if doc.payment_type=='Receive' else 'Trả nhà cung cấp')
     else:
         lines = [dict(label=a.account, amount=flt(a.debit) or -flt(a.credit)) for a in doc.accounts]
         kind = doc.get('lotus_payment_kind')

@@ -30,7 +30,7 @@ ERPNext cần bật `Buying Settings.allow_multiple_items` để cùng một tà
 
 ## Kiểm chứng trước phát hành
 
-- Frontend: 446 test qua, build Vite qua; kiểm tra DOM form mua chung của Kho/Mua hàng qua.
+- Frontend: 448 test qua, build Vite qua; kiểm tra DOM form mua chung của Kho/Mua hàng qua. Thao tác Tạo đơn / Nhập theo đơn từ thanh Kho chờ catalogue sẵn sàng, rồi mở cùng form hoặc lọc các đơn chờ nhận.
 - Python: 255 test, một test không áp dụng được bỏ qua theo bộ kiểm tra hiện hữu.
 - ERPNext thật trên `procurement.test`: 16 ca qua, có bốn loại mua, VAT trộn, vận chuyển, dịch vụ, tài sản từng chiếc, tạm ứng tiền công ty/chi hộ, công nợ quá khứ, hoàn ứng, trả/hủy, chứng từ native cũ và Excel đầy đủ.
 - Ba ca đồng thời qua: khóa trùng yêu cầu, giữ chỗ công nợ, giữ chỗ hoàn ứng. MariaDB 11.8 có snapshot conflict; client thử lại toàn bộ request với cùng idempotency key.

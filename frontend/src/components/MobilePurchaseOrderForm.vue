@@ -11,8 +11,8 @@ import {newPurchaseLine,purchaseUnits,purchaseTotal,PURCHASE_MODES} from '../mob
 import {purchaseKind,allowedKinds} from '../procurement'
 const props=defineProps({modelValue:{type:Object,required:true},items:{type:Array,default:()=>[]},conversions:{type:Array,default:()=>[]},
  warehouses:{type:Array,default:()=>[]},suppliers:{type:Array,default:()=>[]},farms:{type:Array,default:()=>[]},requests:{type:Array,default:()=>[]},selectedRequest:{type:String,default:''},
- currency:{type:String,default:'VND'},canCreateSupplier:Boolean,saving:Boolean,online:{type:Boolean,default:true},quote:Object,saved:Object})
-const emit=defineEmits(['update:modelValue','update:quote','update:selectedRequest','submit','add-supplier','retry-quote','view-saved','new-order'])
+ currency:{type:String,default:'VND'},canCreateSupplier:Boolean,canCreateItem:Boolean,saving:Boolean,online:{type:Boolean,default:true},quote:Object,saved:Object})
+const emit=defineEmits(['update:modelValue','update:quote','update:selectedRequest','submit','add-supplier','add-item','retry-quote','view-saved','new-order'])
 const order=computed(()=>props.modelValue)
 const warehouseOptions=computed(()=>props.warehouses.map(r=>({value:r.name,label:r.warehouse_name||r.name})))
 const supplierOptions=computed(()=>props.suppliers.filter(r=>!r.disabled).map(r=>({value:r.name,label:r.supplier_name||r.name})))
@@ -44,6 +44,7 @@ function chooseItem(index,code){const item=props.items.find(r=>r.name===code);li
    <section v-for="(line,index) in order.items" :key="line.id||line._key" class="lotus-purchase-line mobile-line">
     <div class="mobile-line-title"><strong>Hàng {{index+1}}</strong><LotusMobileButton v-if="order.items.length>1" :aria-label="'Xóa hàng '+(index+1)" @click="patch({items:order.items.filter((_,i)=>i!==index)})">Xóa</LotusMobileButton></div>
     <MobileLinkField label="Tên hàng" :model-value="line.item" :options="itemOptions" :searchable="true" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="chooseItem(index,$event)"/>
+    <LotusMobileButton v-if="canCreateItem" @click="emit('add-item',index)">Thêm mặt hàng</LotusMobileButton>
     <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" :model-value="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @update:modelValue="linePatch(index,{qty:$event})"/>
      <LotusMobileSelect label="Đơn vị" :model-value="line.uom" :options="purchaseUnits(line.item,items,conversions).map(u=>({value:u,label:unitLabel(u)}))" required @update:modelValue="linePatch(index,{uom:$event})"/></div>
     <LotusMobileInput label="Đơn giá" :model-value="line.rate" type="number" min="0" step="any" inputmode="decimal" placeholder="Theo báo giá" @update:modelValue="linePatch(index,{rate:$event})"/>
