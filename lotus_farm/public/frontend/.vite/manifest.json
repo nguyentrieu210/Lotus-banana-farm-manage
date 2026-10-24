@@ -159,11 +159,13 @@
       "assets/SignerPicker-D4hKvs9g.css"
     ]
   },
-  "_SigningPanel-DGa709u1.js": {
-    "file": "assets/SigningPanel-DGa709u1.js",
+  "_SigningPanel-CJPT5Q0Q.js": {
+    "file": "assets/SigningPanel-CJPT5Q0Q.js",
     "name": "SigningPanel",
     "imports": [
       "_use-confirm-core-xXDgEQOs.js",
+      "_LotusMobileButton-Cnm7bJb7.js",
+      "_ProcurementField-BitmZJeq.js",
       "_SignerPicker-DbAO0MOU.js",
       "_LotusSignatureTimeline-CT5QAN6t.js"
     ]
@@ -427,7 +429,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CIVeZ0IV.js",
+    "file": "assets/index-CBfmOj9d.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -492,7 +494,7 @@
     ]
   },
   "src/CutForecastApp.vue": {
-    "file": "assets/CutForecastApp-DVoX4gB_.js",
+    "file": "assets/CutForecastApp-DogoumTo.js",
     "name": "CutForecastApp",
     "src": "src/CutForecastApp.vue",
     "isDynamicEntry": true,
@@ -512,7 +514,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-Dhoe9HdA.js",
+    "file": "assets/FarmLandApp-BFAj6zWY.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -535,7 +537,7 @@
     ]
   },
   "src/FarmWorkApp.vue": {
-    "file": "assets/FarmWorkApp-B0d1JlXe.js",
+    "file": "assets/FarmWorkApp-CM8LovnW.js",
     "name": "FarmWorkApp",
     "src": "src/FarmWorkApp.vue",
     "isDynamicEntry": true,
@@ -550,7 +552,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-CZ22igZI.js",
+    "file": "assets/FinanceApp-EHoO1Qic.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -600,7 +602,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-DZ1SkSrt.js",
+    "file": "assets/StockApp-BREEwHZH.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -614,12 +616,12 @@
       "_workspace-Ssq7sTFJ.js",
       "_format-B_EEKp98.js",
       "index.html",
-      "_SigningPanel-DGa709u1.js",
+      "_SigningPanel-CJPT5Q0Q.js",
       "_WarehouseReceiving-DFPPB9Gc.js"
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-DpsGw_QC.js",
+    "file": "assets/TimekeepingApp-DqJObIy-.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -642,7 +644,7 @@
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-DbZp0ZyP.js",
+    "file": "assets/UserAdminApp-hERmH5k7.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
@@ -671,7 +673,7 @@
     ]
   },
   "src/components/ForecastWorkspace.vue": {
-    "file": "assets/ForecastWorkspace-CQHFPNC9.js",
+    "file": "assets/ForecastWorkspace-SuU2uG4G.js",
     "name": "ForecastWorkspace",
     "src": "src/components/ForecastWorkspace.vue",
     "isDynamicEntry": true,
@@ -701,7 +703,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-CGh--DmF.js",
+    "file": "assets/OneDriveProcessWorkspace-DGWVyiyM.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -719,7 +721,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CPUTlHN4.js",
+    "file": "assets/OpsList-Bb2RB6jq.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -764,7 +766,7 @@
     ]
   },
   "warehouse.html": {
-    "file": "assets/warehouse-Dk4iAxqa.js",
+    "file": "assets/warehouse-BEOmfY53.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
@@ -780,9 +782,9 @@
       "_LotusMobileFeedback-DwYUzi9n.js",
       "_MobileSupplierForm-EnI8jUaB.js",
       "_use-mobile-confirm-DPP_0O5d.js",
+      "_SigningPanel-CJPT5Q0Q.js",
       "_LotusMobileAction-B3kn6o_w.js",
-      "_mobile-swipe-B79t-080.js",
-      "_SigningPanel-DGa709u1.js"
+      "_mobile-swipe-B79t-080.js"
     ],
     "css": [
       "assets/warehouse-aAFuAqJN.css"
