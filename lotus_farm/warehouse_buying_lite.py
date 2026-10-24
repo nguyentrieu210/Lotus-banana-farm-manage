@@ -193,12 +193,13 @@ def setup(company):
         warehouses=frappe.get_list('Warehouse', filters={'company':company,'is_group':0,'disabled':0},
                                     fields=['name','warehouse_name'],limit_page_length=0),
         items=frappe.get_list('Item',filters={'disabled':0},
-                              fields=['name','item_name','stock_uom','is_stock_item','is_fixed_asset','asset_category'],order_by='item_name asc',limit_page_length=0),
+                              fields=['name','item_name','stock_uom','is_stock_item','is_fixed_asset','asset_category','lotus_default_purchase_kind'],order_by='item_name asc',limit_page_length=0),
         conversions=frappe.get_all('UOM Conversion Detail',fields=['parent','uom','conversion_factor'], filters={'parenttype':'Item'},limit_page_length=0),
         currency=frappe.get_cached_value('Company',company,'default_currency'),
         can_create=frappe.has_permission('Purchase Order','create'),
         can_request=frappe.has_permission('Material Request','create') and frappe.has_permission('Material Request','submit'),
         can_create_supplier=frappe.has_permission('Supplier','create'),
+        can_create_item=frappe.has_permission('Item','create'),
         today=nowdate())
 
 

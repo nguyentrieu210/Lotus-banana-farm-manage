@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {load,mount,tick,window,document} from './support/mount.mjs'
+import {load,mount,tick,window,document,h,ref} from './support/mount.mjs'
 import {allowedKinds,quoteChoices,purchaseRequest} from '../src/procurement.js'
 const Workspace=await load('components/ProcurementWorkspace.vue')
 const DocumentForm=await load('components/ProcurementDocumentForm.vue')
@@ -59,4 +59,27 @@ test('snapshot conflict retries reuse the exact idempotency key and payload',asy
  const payload={client_key:'same',amount:100};let attempts=0
  const result=await purchaseRequest(async(method,args)=>{assert.equal(args,payload);if(++attempts===1){const error=Error('snapshot');error.code='QueryDeadlockError';throw error}return {voucher:'PE1'}},'write',payload,true)
  assert.equal(attempts,2);assert.equal(result.voucher,'PE1')
+})
+
+test('warehouse create-order action waits for catalogue initialization before opening the shared form',async()=>{
+ let ready;const gate=new Promise(resolve=>{ready=resolve})
+ const usual=handler;handler=async(method,args)=>method.endsWith('.bootstrap')&&args.company?gate:usual(method,args)
+ const handle=ref(null)
+ view=mount({render:()=>h(Workspace,{ref:handle,company:'C',today:'2026-10-23'})});await tick()
+ let complete=false;const action=handle.value.createOrder().then(()=>{complete=true})
+ await tick();assert.equal(complete,false);assert.equal(view.root.querySelector('form'),null)
+ ready(catalogue);await action;await tick()
+ assert.ok(view.root.querySelector('form'));assert.match(view.root.textContent,/Đơn giá chưa VAT/)
+})
+
+test('warehouse receiving action opens only submitted orders that still await delivery',async()=>{
+ const usual=handler;handler=async(method,args)=>method.endsWith('.orders')?[
+  {name:'PO-PENDING',docstatus:1,status:'Về một phần',remaining_lines:1},
+  {name:'PO-DRAFT',docstatus:0,status:'Nháp',remaining_lines:1},
+  {name:'PO-DONE',docstatus:1,status:'Đã nhận đủ',remaining_lines:0}]:usual(method,args)
+ const handle=ref(null)
+ view=mount({render:()=>h(Workspace,{ref:handle,company:'C',mobile:true})});await tick()
+ await handle.value.startReceiving();await tick()
+ assert.match(view.root.textContent,/PO-PENDING/);assert.doesNotMatch(view.root.textContent,/PO-DRAFT|PO-DONE/)
+ await click('Xem tất cả đơn');assert.match(view.root.textContent,/PO-DRAFT/)
 })

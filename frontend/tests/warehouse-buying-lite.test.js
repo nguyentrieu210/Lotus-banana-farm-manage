@@ -8,8 +8,8 @@ const backend=readFileSync(new URL('../../lotus_farm/warehouse_buying_lite.py',i
 const install=readFileSync(new URL('../../lotus_farm/install.py',import.meta.url),'utf8')
 
 test('purchase lite is separate from demand and uses same filtered Stock table',()=>{
- assert.match(stock,/planning:'Nhu cầu vật tư',buying:'Mua hàng'/)
- assert.match(stock,/<WarehouseBuyingLite v-if="tab==='buying'"/)
+ assert.match(stock,/const stockTabs=stockViews/)
+ assert.doesNotMatch(stock,/<WarehouseBuyingLite/)
  assert.match(buying,/<DataTable :rows="rows" :columns="columns" show-empty-headers server-sort/)
  assert.match(buying,/:filter-values="choices"/)
  assert.match(buying,/@filter="changeFilter"/)

@@ -96,7 +96,9 @@ def report(company, month=None, as_of=None, farm=None, supplier=None, kind=None)
                 if r.reference_doctype not in ('Purchase Order', 'Purchase Invoice'):
                     continue
                 p = parts(r.reference_doctype, r.reference_name)
-                amount = sign*flt(r.allocated_amount)
+                # Supplier allocations already carry the payable sign: a refund
+                # against a credit note is negative. Do not invert it twice.
+                amount = flt(r.allocated_amount)
                 emit('supplier_paid', d.doctype, d.name, d.posting_date, p, amount)
                 emit('company_cash', d.doctype, d.name, d.posting_date, p, amount)
                 allocated += amount

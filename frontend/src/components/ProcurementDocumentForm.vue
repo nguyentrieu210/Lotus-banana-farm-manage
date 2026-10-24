@@ -6,7 +6,7 @@ import LotusMobileButton from './LotusMobileButton.vue'
 import {newPurchaseLine,purchaseUnits} from '../mobile-purchase'
 import {allowedKinds,purchaseKind} from '../procurement'
 const props=defineProps({mobile:Boolean,modelValue:Object,catalog:Object,type:String,saving:Boolean})
-const emit=defineEmits(['update:modelValue','submit','cancel','request'])
+const emit=defineEmits(['update:modelValue','submit','cancel','request','add-supplier','add-item'])
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const options=(rows,label)=>rows?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
 function patch(v){emit('update:modelValue',{...props.modelValue,...v})}
@@ -17,6 +17,7 @@ function choose(i,code){const item=props.catalog.items.find(r=>r.name===code);li
  <div class="procurement-fields">
   <ProcurementField v-if="type!=='need'&&catalog.requests?.length" :mobile="mobile" label="Lấy dòng từ đề nghị đã duyệt" :options="options(catalog.requests)" @update:model-value="emit('request',$event)"/>
   <ProcurementField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
+  <component :is="button" v-if="type!=='need'&&catalog.can_create_supplier" type="button" @click="emit('add-supplier')">Thêm NCC</component>
   <ProcurementField :mobile="mobile" v-model="modelValue.warehouse" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
   <ProcurementField :mobile="mobile" v-model="modelValue.expected_date" label="Ngày cần hàng / nghiệm thu" type="date" required/>
   <ProcurementField v-if="type==='quote'" :mobile="mobile" v-model="modelValue.valid_till" label="Hiệu lực báo giá đến" type="date" required/>
@@ -26,6 +27,7 @@ function choose(i,code){const item=props.catalog.items.find(r=>r.name===code);li
   <div class="procurement-actions"><strong>Dòng {{i+1}}</strong><component :is="button" v-if="modelValue.items.length>1" type="button" @click="patch({items:modelValue.items.filter((_,n)=>n!==i)})">Xóa dòng</component></div>
   <div class="procurement-fields">
    <ProcurementField :mobile="mobile" :model-value="r.item" label="Mặt hàng" :options="options(catalog.items,'item_name')" required @update:model-value="choose(i,$event)"/>
+   <component :is="button" v-if="catalog.can_create_item" type="button" @click="emit('add-item',i)">Thêm mặt hàng</component>
    <ProcurementField :mobile="mobile" v-model="r.kind" label="Loại mua" :options="allowedKinds(catalog.items.find(x=>x.name===r.item))" :searchable="false" required/>
    <ProcurementField v-if="catalog.farms?.length" :mobile="mobile" v-model="r.lotus_farm" label="Vườn sử dụng" :options="options(catalog.farms)"/>
    <ProcurementField :mobile="mobile" v-model="r.qty" label="Số lượng" type="number" min="0.000001" step="any" required/>

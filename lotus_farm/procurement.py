@@ -114,6 +114,7 @@ def bootstrap(company=None):
                 can_view_finance=(finance.can_view() or bool(set(frappe.get_roles()) & {'Lotus Purchase Approver', 'Lotus Farm Manager'})) and company == finance.company(),
                 can_quote=frappe.has_permission('Supplier Quotation','create'),
                 can_need=frappe.has_permission('Material Request','create'),
+                can_invoice=frappe.has_permission('Purchase Invoice','read'),
                 farms=frappe.get_list('Farm',filters={'company':company},fields=['name'],limit_page_length=0) if frappe.has_permission('Farm','read') else [])
     return data
 
@@ -273,6 +274,28 @@ def chain(name):
         from lotus_farm.purchase_funding import list_funding
         result['funding'] = [f for f in list_funding(order.company) if any(a['reference_name'] in [name, *invoices] for a in f['allocations'])]
     return result
+
+
+@frappe.whitelist()
+def billing_source(company, name, kind='invoice'):
+    from lotus_farm.finance import setup
+    setup.require_post()
+    if company!=setup.company() or kind not in ('invoice','credit'):
+        frappe.throw('Nguồn hóa đơn không hợp lệ.')
+    if kind=='invoice':
+        from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
+        source=document('Purchase Receipt',name,company)
+        if source.docstatus!=1 or source.is_return: frappe.throw('Chọn phiếu nhận đã xác nhận.')
+        mapped=make_purchase_invoice(name)
+        field='pr_detail'
+    else:
+        from erpnext.controllers.sales_and_purchase_return import make_return_doc
+        source=document('Purchase Invoice',name,company)
+        if source.docstatus!=1 or source.is_return: frappe.throw('Chọn hóa đơn gốc đã ghi sổ.')
+        mapped=make_return_doc('Purchase Invoice',name)
+        field='purchase_invoice_item'
+    return dict(name=name,items=[dict(line=r.get(field),item_name=r.item_name,uom=r.uom,
+                qty=abs(flt(r.qty)),remaining_qty=abs(flt(r.qty))) for r in mapped.items if abs(flt(r.qty))>.000001])
 
 
 @frappe.whitelist(methods=['POST'])
@@ -453,11 +476,14 @@ def receipts(company):
 @frappe.whitelist()
 def receipt(name):
     d = document('Purchase Receipt', name)
+    from lotus_farm.warehouse_planning import receipt_totals
     return dict(name=d.name, company=d.company, supplier=d.supplier, date=str(d.posting_date), docstatus=d.docstatus,
+        **receipt_totals(d),
         is_return=d.is_return, modified=str(d.modified), can_submit=d.docstatus==0 and d.has_permission('submit'),
         can_cancel=d.docstatus==1 and d.has_permission('cancel'),
         items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,qty=flt(r.qty),uom=r.uom,
             rate=flt(r.rate),amount=flt(r.amount),kind=r.get('lotus_purchase_kind'),warehouse=r.warehouse,
+            vat_code=r.get('lotus_line_vat'),freight=flt(r.get('lotus_line_freight')),valuation_rate=flt(r.valuation_rate),
             order=r.purchase_order) for r in d.items])
 
 
