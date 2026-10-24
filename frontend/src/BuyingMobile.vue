@@ -1,4 +1,5 @@
 <script setup>
+import {erpHref} from './erpnext-navigation'
 import BuyingOrderCard from './components/BuyingOrderCard.vue'
 import ProcurementWorkspace from './components/ProcurementWorkspace.vue'
 import ProcurementMasters from './components/ProcurementMasters.vue'
@@ -322,7 +323,9 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <LotusMobileButton @click="openView('proposals')"><b>{{proposalTodo}}</b><small>Đề xuất chờ ký</small></LotusMobileButton>
     <LotusMobileButton @click="openView('requests')"><b>{{counts.requests}}</b><small>Chờ đặt hàng</small></LotusMobileButton>
    </div>
-   <div class="mobile-actions" aria-label="Thao tác Mua hàng">
+   <a class="lotus-pwa-print-link" :href="erpHref('Buying',company)" target="_blank" rel="noopener">Chức năng ERPNext</a>
+    <div class="mobile-actions" aria-label="Thao tác Mua hàng">
+
     <LotusMobileAction v-if="canCreate" primary icon="cart-o" title="Tạo đơn mua" @select="newOrder()"/>
     <LotusMobileAction icon="description" title="Đề xuất mua vật tư" @select="openView('proposals')"/>
     <LotusMobileAction icon="notes-o" title="Đề nghị mua chờ đặt hàng" @select="openView('requests')"/>

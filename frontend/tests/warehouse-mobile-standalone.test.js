@@ -15,7 +15,7 @@ test('PWA Kho uses independent mobile entry with simple forms and four mobile ta
  assert.doesNotMatch(app,/DataTable|AGGrid|UiButton|frappe-ui/)
  assert.match(app,/<LotusMobileShell/)
  assert.match(app,/class="mobile-switcher"/)
- assert.doesNotMatch(app,/Kiểm kê/)
+ assert.match(app,/allowed\('Stock Reconciliation'\)/)
 })
 test('Mobile PWA uses compact shared logo, Vant navigation and tappable forms',()=>{
  const shared=readFileSync(new URL('../src/components/LotusMobileShell.vue',import.meta.url),'utf8')
@@ -35,9 +35,10 @@ test('Purchases and receipts reuse existing ERP APIs; mobile confirmation before
  assert.match(app,/buyingAPI\('save_order'/)
  assert.match(app,/stockAPI\('create_draft'/)
  assert.match(app,/stockAPI\('submit_document'/)
- assert.match(app,/receivingAPI\('receive_order'/)
- assert.match(app,/receivingAPI\('receipt_action'/)
- assert.match(app,/client_event_id/)
+ const receiving=readFileSync(new URL('../src/components/WarehouseReceiving.vue',import.meta.url),'utf8')
+ assert.match(receiving,/api\('receive_order'/)
+ assert.match(receiving,/api\('receipt_action'/)
+ assert.match(receiving,/client_event_id/)
  assert.match(app,/v-model="confirmed"/)
 })
 test('all link fields open options on focus and filter while typing',()=>{
@@ -48,7 +49,8 @@ test('all link fields open options on focus and filter while typing',()=>{
  assert.match(link,/\.filter\(r=>matchesOption\(r,q\)\)/)
  const purchase=readFileSync(new URL('../src/components/MobilePurchaseOrderForm.vue',import.meta.url),'utf8')
  assert.match(app,/<MobilePurchaseOrderForm/)
- for(const kind of [':options="storeOptions"',':options="employeeOptions"',':options="supplierOptions"',':options="itemOptions"'])assert.ok((app+purchase).includes(kind),kind)
+ const form=readFileSync(new URL('../src/components/StockDocumentForm.vue',import.meta.url),'utf8')
+ for(const kind of [':options="storeOptions"',':options="employees"',':options="supplierOptions"',':options="itemOptions"'])assert.ok((app+purchase+form).includes(kind),kind)
 })
 test('purchase is first action and native browser back stays inside PWA',()=>{
  const actions=app.slice(app.indexOf('class="mobile-actions"'),app.indexOf('class="mobile-install"'))

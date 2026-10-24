@@ -49,7 +49,7 @@ if(name==='orders'&&method.includes('.purchasing.'))return [];
 if(name==='employee_choices'||name==='requests')return [];
 if(name==='documents')return {rows:[{name:'DOC1',doctype:'Stock Entry',kind:'Nhập kho',posting_date:'2026-10-16',docstatus:0}],has_more:false};
 if(name==='document')return new Promise(resolve=>releaseDetail=()=>resolve({name:'DOC1',items:[],docstatus:0}));
-if(name==='overview')return {items:[],total_count:0};if(name==='orders')return {rows:[{name:'PO1',supplier_name:'NCC 1',remaining_lines:1,expected_date:'2026-10-16'}]};if(name==='order_detail')return {name:'PO1',supplier_name:'NCC 1',items:[{line:'L1',item_name:'Dây cột buồng',remaining_qty:5,conversion_factor:1,uom:'Kg'}]};if(name==='movements')return {rows:[]};throw Error('Unexpected API '+name)};`)
+if(name==='receipt_accounts')return {accounts:[]};if(name==='receipt_options')return {enabled:false};if(name==='overview')return {items,total_count:items.length};if(name==='orders')return {rows:[{name:'PO1',supplier_name:'NCC 1',remaining_lines:1,expected_date:'2026-10-16'}]};if(name==='order_detail'||name==='purchase_order')return {name:'PO1',supplier_name:'NCC 1',can_receive:true,items:[{line:'L1',item_name:'Dây cột buồng',remaining_qty:5,conversion_factor:1,uom:'Kg'}]};if(name==='movements')return {rows:[]};throw Error('Unexpected API '+name)};`)
 const Link=(await import(pathToFileURL(compile(project+'/src/components/MobileLinkField.vue')))).default
 const Main=(await import(pathToFileURL(compile(project+'/src/WarehouseMobile.vue')))).default
 const api=await import(pathToFileURL(runtime+'/api.js'))
@@ -92,16 +92,16 @@ await check('vertical touch scroll and OS edge gesture never switch tabs',async(
 await check('all three stock entry forms open with native warehouse controls',async()=>{
  for(const label of ['⬆Xuất kho›','⇄Chuyển kho›','⬇Nhập không theo đơn›']){
   button(mounted.root,'Trang chủ').click();await tick();button(mounted.root,label).click();await tick()
-  assert.ok(mounted.root.querySelector('form'));assert.ok(mounted.root.querySelector('.mobile-link-native-box select'))
+  assert.ok(mounted.root.querySelector('form'));assert.ok(mounted.root.querySelector('.lotus-pwa-select select'))
   button(mounted.root,'Quay lại').click();await tick();await tick()
  }
 })
 await check('receipt input rejects an empty date before making a write request',async()=>{
  button(mounted.root,'Trang chủ').click();await tick();button(mounted.root,'📦Nhập theo đơn›').click();await tick()
- button(mounted.root,'NCC 1PO1 · Hẹn 2026-10-161 mặt hàng còn chờNhận hàng ›').click();await tick()
+ mounted.root.querySelector('input[aria-label="Đơn mua chờ nhận"]').focus();await tick();document.querySelector('[role=option]').click();await tick();button(mounted.root,'Mở đơn nhận hàng').click();await tick()
  input(mounted.root.querySelector('input[inputmode=decimal]'),'2');input(mounted.root.querySelector('input[type=date]'),'');await tick()
  const before=api.calls.filter(c=>c.write).length
- button(mounted.root,'Lưu hàng đã nhận →').click();await tick()
+ mounted.root.querySelector('.warehouse-receiving form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await tick()
  assert.equal(api.calls.filter(c=>c.write).length,before);assert.match(mounted.root.querySelector('[role=alert]').textContent,/Chọn ngày/)
 })
 mounted.app.unmount();mounted.root.remove()

@@ -27,6 +27,7 @@ test('receipt document does not display valuation rate as a grid column',()=>{
  // Keep the operational receipt costs and rate inputs: hiding a grid
  // column must not alter calculations or the persisted accounting values.
  assert.match(columns,/field:'rate'/)
- assert.match(source,/const receiptBasic=computed/)
- assert.match(source,/v-model\.number="row\.rate"/)
+ assert.match(source,/<StockDocumentForm/)
+ const form=readFileSync(new URL('../src/components/StockDocumentForm.vue',import.meta.url),'utf8')
+ assert.match(form,/:model-value="row\.rate"/)
 })

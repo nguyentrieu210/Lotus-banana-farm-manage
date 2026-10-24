@@ -1,4 +1,5 @@
 <script setup>
+import {erpHref} from './erpnext-navigation'
 // /lotus/tai-chinh — Tài chính – Kế toán on ERPNext's ledger: overview, documents waiting for an accountant,
 // journal, payables, payment vouchers (signed accountant → chief accountant → director), reports and settings.
 // Data: lotus_farm.finance.*. Payment approvers without ledger access see only the vouchers waiting for them.
@@ -390,7 +391,7 @@ useNoticeToast(notice)
 <section class="fin lotus-ui">
  <header class="fin-head">
   <div class="fin-title"><h2>Tài chính – Kế toán</h2><span v-if="overview">{{overview.company}} · {{overview.coa_version?'Hệ thống tài khoản '+overview.coa_version:'Chưa áp dụng hệ thống tài khoản Thông tư 99'}}</span></div>
-  <span class="land-spacer"></span>
+  <span class="land-spacer"></span><UiButton v-if="ledgerUser" as="a" variant="outline" :href="erpHref(tab==='assets'?'Assets':'Accounts',overview?.company||'')">ERPNext</UiButton>
   <span v-if="overview" class="fin-state" :class="{on:overview.enabled}">{{overview.enabled?'Đang ghi sổ từ '+vnDate(overview.cutover_date):'Ghi sổ từ Lotus đang tắt'}}</span>
  </header>
  <p v-if="error" class="stock-error" role="alert">{{error}}</p>

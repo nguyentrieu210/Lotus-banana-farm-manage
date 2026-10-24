@@ -1,4 +1,5 @@
 <script setup>
+import {erpHref} from './erpnext-navigation'
 const props=defineProps({embedded:Boolean,navigationKey:String,hrView:{type:String,default:'employees'}})
 import {computed,onMounted,onBeforeUnmount,onDeactivated,nextTick,reactive,ref,watch} from 'vue'
 import {useRouter} from 'vue-router'
@@ -210,8 +211,8 @@ useNoticeToast(notice)
    <template v-if="tab!=='candidates'"><label>Phòng ban<UiSelect v-model="employeeFilters.department"><option value="">Tất cả phòng ban</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{d.department_name||d.name}}</option></UiSelect></label><label>Tổ/đội<UiSelect v-model="employeeFilters.team"><option value="">Tất cả tổ/đội</option><option v-for="t in catalog.teams.filter(t=>!employeeFilters.farm||t.farm===employeeFilters.farm)" :key="t.name" :value="t.name">{{t.team_name||t.name}}</option></UiSelect></label><label>Loại lao động<UiSelect v-model="employeeFilters.category"><option value="">Tất cả</option><option v-for="(label,key) in cats" :key="key" :value="key">{{label}}</option></UiSelect></label><label>Trạng thái<UiSelect v-model="employeeFilters.status"><option value="">Tất cả</option><option v-for="s in ['Active','Inactive','Suspended','Left']" :key="s" :value="s">{{stateLabel(s)}}</option></UiSelect></label></template>
    <label v-else>Trạng thái ứng viên<UiSelect v-model="employeeFilters.stage"><option value="">Tất cả</option><option v-for="(label,key) in stages" :key="key" :value="key">{{label}}</option></UiSelect></label></template>
    </template>
-   <template v-if="['employees','onboarding'].includes(tab)"><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/app/employee-transfer">Điều chuyển ↗</a><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee"><LotusIcon name="plus"/>Thêm nhân viên</UiButton></template>
-   <template v-if="tab==='candidates'"><a class="workspace-secondary-link" href="/app/job-opening">Tin tuyển dụng ↗</a><UiButton :disabled="saving" @click="emptyCandidate"><LotusIcon name="plus"/>Thêm ứng viên</UiButton></template>
+   <template v-if="['employees','onboarding'].includes(tab)"><UiButton as="a" variant="outline" :href="erpHref('HR Setup',company)">ERPNext Nhân sự</UiButton><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/desk/employee-transfer">Điều chuyển ↗</a><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee"><LotusIcon name="plus"/>Thêm nhân viên</UiButton></template>
+   <template v-if="tab==='candidates'"><a class="workspace-secondary-link" href="/desk/job-opening">Tin tuyển dụng ↗</a><UiButton :disabled="saving" @click="emptyCandidate"><LotusIcon name="plus"/>Thêm ứng viên</UiButton></template>
    <template v-if="tab==='organization'&&isManager"><UiButton variant="outline" :disabled="saving" @click="seed">Tạo chức danh Lotus còn thiếu</UiButton></template>
   </WorkspaceListToolbar>
   <WorkspaceSummaryStrip v-if="listTab" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>

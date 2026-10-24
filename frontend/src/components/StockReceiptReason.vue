@@ -34,8 +34,13 @@ defineExpose({validate})
 <template>
  <p v-if="busy" role="status">Đang tải lý do nhập kho…</p>
  <template v-if="error"><p role="alert" :class="mobile?'mobile-message danger':'stock-alert'">{{error}}</p><component :is="button" type="button" :disabled="busy" @click="load">Thử lại lý do nhập kho</component></template>
- <div v-if="options" :class="mobile?'mobile-form-fields':'stock-form-grid'">
+ <div v-if="options" class="warehouse-receipt-reason" :class="{'warehouse-receipt-reason--mobile':mobile}">
   <ProcurementField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" :required="options.enabled" @update:model-value="emit('update:reason',$event)"/>
   <ProcurementField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
  </div>
 </template>
+<style scoped>
+.warehouse-receipt-reason{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--lotus-space-3);min-width:0}
+.warehouse-receipt-reason--mobile{grid-template-columns:minmax(0,1fr)}
+@media(max-width:640px){.warehouse-receipt-reason{grid-template-columns:minmax(0,1fr)}}
+</style>

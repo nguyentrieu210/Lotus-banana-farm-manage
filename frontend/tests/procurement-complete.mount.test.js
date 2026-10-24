@@ -52,14 +52,14 @@ test('warehouse shows four operational destinations and opens supplier receiving
  const usual=handler;handler=async(m,a)=>{
   if(m==='lotus_farm.warehouse.bootstrap')return {companies:[{name:'C'}],today:'2026-10-24',permissions:{'Item':true,'Warehouse':true,'Purchase Order':true,'Purchase Receipt':true,'Stock Entry':true}}
   if(m==='lotus_farm.warehouse.overview')return {warehouses:[{name:'K',warehouse_name:'Kho'}],items:[],total_count:0,catalogue_count:1,has_more:false,currency:'VND'}
-  if(m==='lotus_farm.warehouse_planning.overview')return {orders:[{name:'PO',supplier:'N'}]}
+  if(m==='lotus_farm.warehouse_buying_lite.orders')return {rows:[{name:'PO',supplier:'N'}]}
   if(m==='lotus_farm.warehouse.documents')return {rows:[],total_count:0,has_more:false}
   return usual(m,a)
  }
  view=mount(Stock,{embedded:true,stockView:'history'});await tick();await tick()
  assert.deepEqual([...view.root.querySelectorAll('[role=tab]')].map(x=>x.textContent),Object.values(stockViews))
  assert.equal(view.root.querySelector('[role=tab][aria-selected=true]').textContent,'Phiếu kho')
- await click('Nhập theo đơn');assert.ok(calls.some(c=>c.method==='lotus_farm.warehouse_planning.overview'))
+ await click('Nhập theo đơn');assert.ok(calls.some(c=>c.method==='lotus_farm.warehouse_buying_lite.orders'&&c.args.status==='pending'&&!c.args.from_date&&!c.args.to_date))
  assert.ok(!calls.some(c=>c.method==='lotus_farm.procurement.bootstrap'))
 })
 test('shared receiving includes actual receipt costs in the native draft request',async()=>{
@@ -76,5 +76,13 @@ test('shared receiving includes actual receipt costs in the native draft request
  fill('Thực nhận','1');await click('Thêm chi phí');fill('Khoản chi phí','Bốc xếp thử');fill('Số tiền','3000');await tick()
  await click('Lập phiếu nhận nháp')
  const request=calls.find(c=>c.method.endsWith('.receive_order'));assert.ok(request);assert.equal(Number(request.args.quantities.L),1);assert.equal(request.args.additional_costs[0].amount,3000);assert.equal(request.args.additional_costs[0].expense_account,'E')
- assert.match(view.root.textContent,/Giá trị nhập 103000/)
+ assert.match(view.root.textContent,/Giá trị nhập 103.000 VND/)
+})
+
+test('desktop direct receipt uses the same mandatory reason component without requiring a purchase order',async()=>{
+ const usual=handler;handler=async(m,a)=>m.endsWith('warehouse.bootstrap')?{companies:[{name:'C'}],today:'2026-10-24',permissions:{'Stock Entry':true}}:m.endsWith('warehouse.overview')?{warehouses:[{name:'K'}],items:[{name:'I'}],catalogue_count:1}:m.endsWith('receipt_options')?{enabled:true,reasons:[{value:'Purchase',label:'Mua ngoài',supplier:true},{value:'Recovery',label:'Thu hồi từ lô',lot:true},{value:'Surplus',label:'Thừa kiểm kê'}],suppliers:[]}:usual(m,a)
+ view=mount(Stock,{embedded:true});await tick();await tick();await click('Nhập không theo đơn')
+ assert.ok(view.root.querySelector('.warehouse-document-form'))
+ assert.ok([...view.root.querySelectorAll('label')].some(e=>e.textContent.includes('Lý do nhập kho')))
+ assert.ok(!calls.some(c=>c.method.endsWith('.purchase_order')))
 })

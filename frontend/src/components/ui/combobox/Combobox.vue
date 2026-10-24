@@ -29,10 +29,11 @@ async function load(text){
 }
 watch(search,text=>{
  if(props.allowCustom&&open.value)emit('update:modelValue',text)
- if(!props.fetchOptions)return
- clearTimeout(timer);timer=setTimeout(()=>load(query.value),150)
+ if(!props.fetchOptions||!open.value)return
+ clearTimeout(timer);version++;remote.value=[];loading.value=true;timer=setTimeout(()=>load(query.value),150)
 })
 watch(open,value=>{if(value&&props.fetchOptions)load(query.value);if(!value){clearTimeout(timer);version++;loading.value=false}})
+watch(()=>props.fetchOptions,()=>{clearTimeout(timer);version++;remote.value=[];if(open.value&&props.fetchOptions)load(query.value)})
 onBeforeUnmount(()=>{clearTimeout(timer);version++})
 function select(value){
  if(value==null)return

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
 const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+const form=readFileSync(new URL('../src/components/StockDocumentForm.vue',import.meta.url),'utf8')
 const picker=readFileSync(new URL('../src/components/LinkPicker.vue',import.meta.url),'utf8')
 const centered=readFileSync(new URL('../src/warehouse-table-center.css',import.meta.url),'utf8')
 
 test('warehouse managers and issue receivers use HRMS Employee links',()=>{
  assert.match(stock,/v-model="master\.lotus_contact_employee"/)
- assert.match(stock,/v-model="form\.receiver_employee"/)
+ assert.match(form,/:model-value="d\.receiver_employee"/)
  assert.doesNotMatch(stock,/v-model="master\.lotus_contact_name"/)
  assert.doesNotMatch(stock,/v-model="form\.receiver"[^_]/)
  assert.match(stock,/employee\.label/)
@@ -25,7 +26,7 @@ test('selected link shows display label instead of stored identifier',()=>{
  assert.match(picker,/<Combobox /)
  assert.match(combobox,/chosen\.value=row/)
  assert.match(combobox,/const shown=\(\)=>props\.displayValue\|\|current\.value\?\.label/)
- assert.match(stock,/:display-value="row\.item_name/)
+ assert.match(form,/:display-value="row\.item_name/)
 })
 
 test('all StockApp table cells and headers are center-aligned',()=>{

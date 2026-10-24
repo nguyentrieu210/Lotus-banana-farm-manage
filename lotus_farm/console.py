@@ -63,6 +63,8 @@ def bootstrap():
         'qc':has_role('Lotus QC Manager'),
     }
     session['today']=nowdate()
+    from lotus_farm.erpnext_workspace import can_access as native_erp_access
+    session.setdefault('capabilities',{})['native_erp']=native_erp_access()
     session.setdefault('capabilities',{})['user_admin']=has_role('System Manager') and bool(frappe.has_permission('User','read'))
     session.setdefault('capabilities',{})['hr']=has_role('HR Manager','HR User')
     from lotus_farm.hr_workspace import _is_hr_manager
