@@ -54,3 +54,9 @@ Mở `/lotus/mua-hang` trên máy tính; Kho có bốn mục Tồn kho, Nhu cầ
 - Kiểm chứng: 454 frontend tests; 255 Python tests (một skip cũ); 27 ca integration, gồm 25 ca chạy toàn bộ và hai ca bổ sung về cả bốn loại Item mới và lịch sử phiếu đã hủy. Ca hoàn tiền được chạy lại sau khi siết kiểm tra chữ ký native. Build và kiểm tra DOM form mua dùng chung qua.
 - Browser trên site test: lưu NCC đầy đủ từ đơn vẫn giữ vật tư và số lượng 2; hủy chuyển màn giữ form; Sổ kho giữ đúng sau reload; cả ba PWA ở 320/390/844px không tràn ngang, hồ sơ NCC ở 320px cũng đạt. Dữ liệu UAT chỉ ở `procurement.test`, không ghi vào live.
 - GitHub Actions từng bị chặn trước khi chạy do billing/spending limit của tài khoản; không coi đây là CI xanh. Phát hành chỉ từ commit đã merge, có backup và so sánh số chứng từ, dữ liệu danh mục và hash GL/SLE trước/sau.
+
+## Sửa nhập không theo đơn ngày 24/10/2026
+
+Form Kho PWA trước đây không có lý do nhập và NCC nên không gửi được hai trường này; khi tài chính đã bật, máy chủ chặn lưu để tránh ghi sai tài khoản. Máy tính và điện thoại nay dùng chung `StockReceiptReason`: mua ngoài chọn NCC, thu hồi chọn lô theo từng dòng, thừa kiểm kê không cần NCC/đơn mua. Không bỏ kiểm tra tài khoản ở máy chủ. Nếu không tải được danh mục, form báo lỗi và cho thử lại; lưu chờ tải xong và kiểm tra các trường bắt buộc.
+
+Khóa chống gửi trùng phiếu nhập bao gồm lý do và NCC. Kiểm chứng: 458 frontend tests, 255 Python tests (một skip cũ), ba ca ERPNext lưu/ghi sổ và đối chiếu tài khoản đối ứng, UI lưu nháp mua ngoài thành công trên site test. Ba PWA ở 320/390/844px và form thu hồi ở 320px không tràn ngang. Không tạo phiếu thử trên live.

@@ -6,6 +6,7 @@ import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
 import MobileSupplierForm from './components/MobileSupplierForm.vue'
+import StockReceiptReason from './components/StockReceiptReason.vue'
 import {newPurchaseDraft,purchaseFromRequest,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
 import LotusMobileCheck from './components/LotusMobileCheck.vue'
 import LotusMobileFile from './components/LotusMobileFile.vue'
@@ -26,6 +27,8 @@ import SigningPanel from './components/SigningPanel.vue'
 import {useMobileViewport} from './use-mobile-viewport'
 import {createTabSwipe} from './mobile-swipe'
 import {validateReceiptInputs} from './warehouse-mobile-helpers'
+
+const receiptReasonFields=ref(null)
 
 const stockAPI=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const buyingAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_buying_lite.'+name,args,write)
@@ -248,7 +251,7 @@ function start(kindName){
  if(!setup.value)return
  kind.value=kindName
  form.value={kind:kindName,posting_date:today(),source:warehouse.value,target:kindName==='transfer'?'':warehouse.value,
-  receiver_employee:'',notes:'',lines:[blank()],client_event_id:key()}
+  receiver_employee:'',notes:'',receipt_reason:'',supplier:'',lines:[blank()],client_event_id:key()}
  rememberForm(form.value)
  screen.value='stock-form'
 }
@@ -311,9 +314,11 @@ async function saveStock(){
  if(f.kind==='issue'&&(!f.receiver_employee||f.lines.some(r=>!String(r.area).trim()))){error.value='Chọn người nhận và nhập lô hoặc nơi sử dụng.';return}
  error.value='';saving.value=true
  try{
+  if(f.kind==='receipt'){const message=await receiptReasonFields.value.validate(f.lines);if(message)throw Error(message)}
   const result=await stockAPI('create_draft',{
    company:company.value,kind:f.kind,posting_date:f.posting_date,source:f.source,target:f.target,
    issue_mode:'Manual',receiver_employee:f.receiver_employee,notes:f.notes,client_event_id:f.client_event_id,
+   receipt_reason:f.kind==='receipt'?f.receipt_reason:undefined,supplier:f.kind==='receipt'?f.supplier:undefined,
    lines:f.lines.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom,rate:Number(r.rate||0),area:r.area}))
   },true)
   createdDoc.value=result
@@ -554,6 +559,7 @@ onUnmounted(()=>{
    <template v-if="screen==='stock-form'&&form">
     <p v-if="kind==='receipt'" class="mobile-subtle">Chỉ dùng khi hàng về không có đơn mua. Hàng đặt mua hãy dùng Nhập theo đơn.</p>
     <form @submit.prevent="saveStock"><fieldset class="mobile-form-fields" :disabled="saving">
+     <StockReceiptReason v-if="kind==='receipt'" ref="receiptReasonFields" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier" mobile/>
      <div class="mobile-field"><label>Ngày</label><LotusMobileInput aria-label="Ngày" type="date" v-model="form.posting_date" required/></div>
      <div v-if="kind!=='receipt'" class="mobile-field"><label>Kho xuất</label><MobileLinkField v-model="form.source" :options="storeOptions" :searchable="false" placeholder="Chọn kho xuất…" required/></div>
      <div v-if="kind!=='issue'" class="mobile-field"><label>{{kind==='transfer'?'Kho nhận':'Kho nhập'}}</label><MobileLinkField v-model="form.target" :options="storeOptions" :searchable="false" placeholder="Chọn kho nhận…" required/></div>
@@ -564,7 +570,7 @@ onUnmounted(()=>{
       <div class="mobile-field"><label>Tên hàng</label><MobileLinkField :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/></div>
       <div class="mobile-qty-grid"><label class="mobile-field">Số lượng<LotusMobileInput aria-label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/></label><label class="mobile-field">Đơn vị<LotusMobileSelect aria-label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></label></div>
       <div v-if="kind==='receipt'" class="mobile-field"><label>Đơn giá (nếu có)</label><LotusMobileInput aria-label="Đơn giá (nếu có)" v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/></div>
-      <div v-if="kind==='issue'" class="mobile-field"><label>Lô / nơi sử dụng</label><LotusMobileInput v-model="r.area" placeholder="Ví dụ: Lô A01" required/></div>
+      <div v-if="kind==='issue'||kind==='receipt'&&form.receipt_reason==='Recovery'" class="mobile-field"><label>{{kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng'}}</label><LotusMobileInput :aria-label="kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng'" v-model="r.area" placeholder="Ví dụ: Lô A01" required/></div>
      </div>
      <LotusMobileButton type="button" class="mobile-add" @click="form.lines.push(blank())">＋ Thêm hàng</LotusMobileButton>
      <LotusMobileInput v-model="form.notes" label="Ghi chú (không bắt buộc)" type="textarea" placeholder="Ghi thêm nếu cần…"/>

@@ -453,7 +453,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         from lotus_farm.controls import lock
         event=_text(client_event_id,'Mã yêu cầu')
         client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,**(dict(receipt_reason=receipt_reason,supplier=supplier) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
         lock('Company',company)
         existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
         if existing:
