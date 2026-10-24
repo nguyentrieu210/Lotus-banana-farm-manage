@@ -383,17 +383,21 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
     return dict(name=doc.name)
 
 
-@frappe.whitelist()
-def purchase_receipt(name):
-    doc=_purchase_doc('Purchase Receipt',name)
+def receipt_totals(doc):
     added_costs=[dict(description=(row.description or '')[len('Chi phí nhận hàng: '):],amount=flt(row.tax_amount),
                       expense_account=row.account_head)
                  for row in doc.taxes if (row.description or '').startswith('Chi phí nhận hàng: ')]
     valuation_charges=sum(flt(row.tax_amount) for row in doc.taxes if row.category in ('Valuation','Valuation and Total'))
     goods_total=sum(flt(row.base_net_amount) for row in doc.items)
+    return dict(goods_total=goods_total,added_costs=added_costs,valuation_charges=valuation_charges,incoming_total=goods_total+valuation_charges)
+
+
+@frappe.whitelist()
+def purchase_receipt(name):
+    doc=_purchase_doc('Purchase Receipt',name)
     return dict(name=doc.name,doctype=doc.doctype,company=doc.company,supplier=doc.supplier,currency=frappe.get_cached_value('Company',doc.company,'default_currency'),docstatus=doc.docstatus,
         modified=str(doc.modified),can_submit=doc.docstatus==0 and doc.has_permission('submit'),can_delete=doc.docstatus==0 and doc.has_permission('delete'),
-          goods_total=goods_total,added_costs=added_costs,valuation_charges=valuation_charges,incoming_total=goods_total+valuation_charges,
+        **receipt_totals(doc),
         items=[dict(item=r.item_code,item_name=r.item_name,qty=r.stock_qty,uom=r.stock_uom,warehouse=r.warehouse,
             purchase_order=r.purchase_order,rate=r.valuation_rate,amount=flt(r.stock_qty)*flt(r.valuation_rate),date=str(doc.posting_date)) for r in doc.items])
 

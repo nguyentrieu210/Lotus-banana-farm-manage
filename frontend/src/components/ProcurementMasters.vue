@@ -28,13 +28,13 @@ watch(()=>[props.company,props.kind],()=>{close();group.value='';reset()})
 defineExpose({hasChanges:()=>dirty.value,close})
 </script>
 <template><p v-if="error" role="alert" class="procurement-error">{{error}}</p>
- <template v-if="!editing"><div class="procurement-toolbar">
+ <template v-if="!editing"><div class="procurement-toolbar"><slot name="scope"/>
   <ProcurementField v-model="search" :mobile="mobile" label="Tìm kiếm" placeholder="Tên, mã, MST, điện thoại…" @update:model-value="reset"/>
   <ProcurementField v-model="state" :mobile="mobile" label="Trạng thái" :searchable="false" :options="[{value:'active',label:'Đang dùng'},{value:'disabled',label:'Ngừng dùng'},{value:'all',label:'Tất cả'}]" @update:model-value="reset"/>
   <ProcurementField v-model="group" :mobile="mobile" label="Nhóm" :options="[{value:'',label:'Tất cả'},...(kind==='suppliers'?options.supplier_groups||[]:options.item_groups||[]).map(r=>({value:r.name,label:r.name}))]" @update:model-value="reset"/>
   <component :is="button" :disabled="busy" @click="load">Làm mới</component>
-  <component :is="button" v-if="kind==='suppliers'?options.can_create_supplier:options.can_create_item" @click="open()">{{kind==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'}}</component>
- </div><DataTable v-if="!mobile" :rows="rows" :columns="columns" :loading="busy" interactive @open="open" empty="Chưa có hồ sơ phù hợp."/>
+  <component :is="button" v-if="!mobile&&(kind==='suppliers'?options.can_create_supplier:options.can_create_item)" @click="open()">{{kind==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'}}</component>
+ </div><component :is="button" v-if="mobile&&(kind==='suppliers'?options.can_create_supplier:options.can_create_item)" @click="open()">{{kind==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'}}</component><DataTable v-if="!mobile" :rows="rows" :columns="columns" :loading="busy" interactive @open="open" empty="Chưa có hồ sơ phù hợp."/>
  <CellGroup v-else :border="false"><Cell v-for="r in rows" :key="r.name" :title="r.supplier_name||r.item_name" :label="r.tax_id||r.name" is-link @click="open(r)"/><Cell v-if="!rows.length" :title="busy?'Đang tải…':'Chưa có hồ sơ phù hợp.'"/></CellGroup>
  <div class="procurement-actions"><span>{{total?start+1:0}}–{{start+rows.length}} / {{total}}</span><component :is="button" :disabled="!start||busy" @click="start-=50;load()">Trước</component><component :is="button" :disabled="!more||busy" @click="start+=50;load()">Sau</component></div></template>
  <template v-else><component :is="button" @click="emit('navigate','close-master')">Đóng hồ sơ</component>

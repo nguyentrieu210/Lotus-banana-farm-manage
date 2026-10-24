@@ -39,4 +39,18 @@ ERPNext cần bật `Buying Settings.allow_multiple_items` để cùng một tà
 
 ## Vận hành
 
-Mở `/lotus/mua-hang` trên máy tính; tab Mua hàng trong Kho dùng cùng component. PWA `/buying` mở các bước mới qua “Báo giá, nghiệm thu & thanh toán”. Kế toán trưởng chọn hai tài khoản chi hộ tại Thanh toán › Tài khoản chi hộ trước khoản chi hộ đầu tiên. Khoản vốn góp không được hoàn ứng. Hủy phiếu chưa ghi sổ giữ file gốc/lịch sử chi hộ và giải phóng số tiền đang giữ.
+Mở `/lotus/mua-hang` trên máy tính; Kho có bốn mục Tồn kho, Nhu cầu vật tư, Phiếu kho, Sổ kho; Thiết lập kho là thao tác riêng. Mua hàng nằm ở menu riêng, không lồng trong Kho. PWA `/buying` mở các bước mới qua “Báo giá, nghiệm thu & thanh toán”. Kế toán trưởng chọn hai tài khoản chi hộ tại Thanh toán › Tài khoản chi hộ trước khoản chi hộ đầu tiên. Khoản vốn góp không được hoàn ứng. Hủy phiếu chưa ghi sổ giữ file gốc/lịch sử chi hộ và giải phóng số tiền đang giữ.
+
+
+## Hoàn thiện phân hệ ngày 24/10/2026
+
+- Menu Mua hàng riêng: đề nghị, báo giá, đơn, nhận/nghiệm thu, hóa đơn, thanh toán, công nợ, báo cáo; danh mục NCC và hàng mua. `buying_view`/`stock_view` giữ màn khi tải lại; công ty/kho được chuyển cùng thao tác. Rời biểu mẫu chưa lưu cần xác nhận.
+- NCC dùng Supplier/Contact/Address/Bank Account native; nhóm, loại, MST, liên hệ, địa chỉ, điều khoản thanh toán, ngừng dùng. Chỉ kế toán cập nhật ngân hàng; tài khoản mua hàng không đọc được số tài khoản qua API. Lưu có kiểm tra phiên bản, khóa và khóa chống tạo trùng.
+- Hàng mua dùng Item/Item Group/UOM/Asset Category native; bảo toàn mã, loại và đơn vị gốc đã tạo; giữ quy đổi khi đã phát sinh sổ kho. Loại mua gợi ý cho mã mới không đổi cờ Item cũ.
+- Thêm nhanh NCC/hàng từ đơn/báo giá không làm mất dòng đang nhập. Nhập theo đơn trong Kho dùng WarehouseReceiving, giữ phần chi phí thực nhận của PR #54 và quyền nhận hàng độc lập với quyền quản lý mua.
+- Hóa đơn và các loại thanh toán có danh sách/chi tiết, lọc và phân trang máy chủ. Lập hóa đơn lấy phần chưa lập hóa đơn; có hạn trả, liên kết phiếu nhận/đơn, VAT và vận chuyển. Phiếu chi hộ đã hủy giữ chứng từ gốc; lần chi NCC đã hủy giữ mã lịch sử riêng kể cả khi số phiếu nháp được dùng lại.
+- Công nợ tại ngày chốt từ Payment Ledger Entry, tách phải trả, quá hạn và tạm ứng. Hóa đơn điều chỉnh không ghi thêm tồn; hoàn tiền NCC dùng Payment Entry Receive có chuỗi ký, khóa số còn hoàn và chống gửi trùng. Báo cáo nguyên vật liệu trừ đúng tiền NCC hoàn về.
+- API bổ sung: `procurement_masters.options/listing/detail/save`; `procurement_queries.invoices/invoice/payments/payables/supplier_history`; `procurement.billing_source`; `procurement_adjustments.credit_note/refund`. Các endpoint cũ giữ tương thích.
+- Kiểm chứng: 454 frontend tests; 255 Python tests (một skip cũ); 27 ca integration, gồm 25 ca chạy toàn bộ và hai ca bổ sung về cả bốn loại Item mới và lịch sử phiếu đã hủy. Ca hoàn tiền được chạy lại sau khi siết kiểm tra chữ ký native. Build và kiểm tra DOM form mua dùng chung qua.
+- Browser trên site test: lưu NCC đầy đủ từ đơn vẫn giữ vật tư và số lượng 2; hủy chuyển màn giữ form; Sổ kho giữ đúng sau reload; cả ba PWA ở 320/390/844px không tràn ngang, hồ sơ NCC ở 320px cũng đạt. Dữ liệu UAT chỉ ở `procurement.test`, không ghi vào live.
+- GitHub Actions từng bị chặn trước khi chạy do billing/spending limit của tài khoản; không coi đây là CI xanh. Phát hành chỉ từ commit đã merge, có backup và so sánh số chứng từ, dữ liệu danh mục và hash GL/SLE trước/sau.

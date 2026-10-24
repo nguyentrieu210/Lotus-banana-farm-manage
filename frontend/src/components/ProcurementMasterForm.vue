@@ -19,7 +19,7 @@ onMounted(async()=>{try{
  options.value=await api('options',{company:props.company})
  const d=props.name?await api('detail',{company:props.company,kind:props.kind,name:props.name}):null
  data.value=props.kind==='suppliers'?{type:'Company',group:options.value.supplier_groups?.[0]?.name||'',country:'Vietnam',name:'',contact:'',phone:'',notes:'',...d,...(d?{name:d.supplier_name}:{})}:
-  {item_code:'',item_name:'',kind:'Material',uom:options.value.uoms?.[0]?.name||'',group:options.value.item_groups?.[0]?.name||'',conversions:[],...d}
+  {item_code:'',item_name:'',kind:'Material',uom:options.value.uoms?.find(r=>r.name==='Kg')?.name||options.value.uoms?.find(r=>r.name==='Nos')?.name||'',group:options.value.item_groups?.[0]?.name||'',conversions:[],...d}
  snapshot=JSON.stringify(data.value);ready.value=true
 }catch(e){error.value=e.message}})
 function dirty(){if(ready.value)emit('dirty',true)}

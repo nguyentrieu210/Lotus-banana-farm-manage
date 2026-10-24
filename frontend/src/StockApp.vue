@@ -271,7 +271,7 @@ const canSetup=computed(()=>['Item','Item Group','Warehouse'].some(dt=>session.v
 async function chooseStockTab(value){if(hasChanges()&&!await confirm.ask('Bỏ phần chưa lưu và chuyển mục?'))return;discardChanges();tab.value=normalizeStockView(value);if(router)await router.push({path:'/kho',query:{...route.query,stock_view:tab.value,company:company.value,warehouse:warehouse.value||undefined}})}
 function hasChanges(){return !!dialog.value?.open||!!masterDialog.value?.open||!!receivingView.value?.hasChanges()}
 function discardChanges(){dialog.value?.close();masterDialog.value?.close();receivingView.value?.discardChanges()}
-defineExpose({hasChanges,discardChanges})
+defineExpose({hasChanges,discardChanges,scopeParams:()=>({company:company.value,warehouse:warehouse.value||undefined})})
 watch(()=>props.stockView,value=>{const next=normalizeStockView(value);if(next!==tab.value)tab.value=next})
 watch(()=>props.company,value=>{if(value&&value!==company.value){company.value=value;companyChanged()}})
 watch(()=>props.warehouse,value=>{if((value||'')!==warehouse.value){warehouse.value=value||'';refresh(true)}})

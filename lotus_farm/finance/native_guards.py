@@ -49,7 +49,7 @@ def guard(doc, method=None):
                 frappe.throw('Phải đảo kết chuyển qua quy trình Tài chính – Kế toán.')
     if method != 'before_submit':
         return
-    if doc.doctype == 'Payment Entry' and (doc.get('payment_type') == 'Pay' or doc.get('lotus_procurement_key') and doc.get('party_type')=='Supplier'):
+    if doc.doctype == 'Payment Entry' and (doc.get('payment_type') == 'Pay' or doc.get('payment_type')=='Receive' and doc.get('party_type')=='Supplier'):
         if not payment_approved(doc):
             frappe.throw('Phiếu chi chưa ký đủ hoặc đã đổi nội dung sau khi ký. Không được ghi sổ.')
     if doc.doctype == 'Journal Entry':

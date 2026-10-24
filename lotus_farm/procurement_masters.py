@@ -205,7 +205,7 @@ def save(company, kind, values, client_key, name=None, modified=None):
         d=get_master(kind, name, 'write'); version(d, modified)
     else:
         token=digest([frappe.session.user, dt, client_key]); fingerprint=digest(v)
-        old=frappe.db.get_value(dt, {'lotus_procurement_key': token}, ['name', 'lotus_procurement_hash'], as_dict=True)
+        old=frappe.db.get_value(dt, {'lotus_procurement_key': token}, ['name', 'lotus_procurement_hash'], as_dict=True, for_update=True)
         if old:
             get_master(kind, old.name)
             if old.lotus_procurement_hash != fingerprint:
@@ -248,7 +248,7 @@ def save(company, kind, values, client_key, name=None, modified=None):
         if not d.item_name:
             frappe.throw('Nhập tên hàng.')
         set_link(d, 'item_group', v.get('group'), 'Item Group')
-        d.description=text(v.get('description'), 2000)
+        d.description=str(v.get('description') or '').strip()
         conversions=v.get('conversions') or []
         if not isinstance(conversions, list) or any(flt(r.get('conversion_factor'))<=0 for r in conversions):
             frappe.throw('Hệ số quy đổi phải lớn hơn 0.')

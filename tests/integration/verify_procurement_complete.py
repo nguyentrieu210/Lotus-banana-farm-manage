@@ -73,6 +73,8 @@ class CompleteProcurement(base.ProcurementIntegration):
         refund=base.as_user(base.ACC,adjustments.refund,base.C,cn.name,200000,'cash',base.DAY,'',{'CHIEF':base.CHIEF,'APPROVE':base.DIR},self.tag+'refund')
         d=frappe.get_doc('Payment Entry',refund['voucher'])
         self.assertEqual(d.payment_type,'Receive')
+        d.lotus_procurement_key=None
+        d.lotus_procurement_hash=None
         with self.assertRaises(frappe.ValidationError): d.submit()
         base.signed(refund)
         self.assertEqual(flt(frappe.db.get_value('Purchase Invoice',cn.name,'outstanding_amount')),0)
@@ -84,6 +86,52 @@ class CompleteProcurement(base.ProcurementIntegration):
         actor=base.user('receiver',['Lotus Warehouse Receiver'])
         result=base.as_user(actor,base.receiving.receive_order,order.name,base.DAY,{order.items[0].name:1},self.tag+'receiver')
         self.assertTrue(result['name'])
+
+    def test_23_accountant_bank_profile_and_buyer_redaction(self):
+        bank='PCT Bank'
+        if not frappe.db.exists('Bank',bank): base.insert('Bank',bank_name=bank)
+        original=masters.detail(base.C,'suppliers',self.supplier)
+        values={**original,'bank':bank,'bank_account_no':str(int(self.tag,16)).zfill(10),'bank_account_name':'PCT Account '+self.tag}
+        saved=base.as_user(base.ACC,masters.save,base.C,'suppliers',values,self.tag+'bank',name=self.supplier,modified=original['modified'])
+        self.assertEqual(saved['bank_account_no'],values['bank_account_no'])
+        buyer=base.as_user(base.BUYER,masters.detail,base.C,'suppliers',self.supplier)
+        self.assertNotIn('bank_account_no',buyer)
+
+    def test_24_billing_source_exposes_only_unbilled_quantity(self):
+        receipt=self.receive(self.order(qty=4),4)
+        base.as_user(base.ACC,base.p.invoice_receipt,receipt.name,'PART-'+self.tag,base.DAY,base.DAY,self.tag,
+            quantities={receipt.items[0].name:1})
+        source=base.as_user(base.ACC,base.p.billing_source,base.C,receipt.name)
+        self.assertEqual(source['items'][0]['remaining_qty'],3)
+
+    def test_25_new_master_items_complete_all_four_purchase_flows(self):
+        for kind in ('Material','Tool','Asset','Service'):
+            with self.subTest(kind=kind):
+                self.tag=uuid.uuid4().hex[:8]
+                values=dict(item_code='PCT-Flow-'+self.tag,item_name='PCT '+kind,kind=kind,uom='Nos',
+                    group=frappe.db.get_value('Item','PCT-M','item_group'),conversions=[dict(uom='Nos',conversion_factor=1)])
+                if kind=='Asset':values['asset_category']=frappe.db.get_value('Item','PCT-A','asset_category')
+                item=base.as_user(base.BUYER,masters.save,base.C,'items',values,self.tag+'item')
+                data=dict(supplier=self.supplier,warehouse=base.WH,expected_date=base.DAY,mode='Kho tự mua',
+                    items=[dict(item=item['name'],qty=1,rate=100000,uom='Nos',kind=kind,vat_code='KCT')])
+                created=base.as_user(base.BUYER,base.buying.save_order,base.C,data)
+                order=frappe.get_doc('Purchase Order',created['name'])
+                base.as_user(base.BUYER,base.purchasing.request_approval,order.name,str(order.modified),base.DIR)
+                order.reload();base.as_user(base.DIR,base.purchasing.approve_order,order.name,str(order.modified))
+                order.reload();invoice=self.invoice(self.receive(order,1))
+                self.assertEqual(invoice.docstatus,1)
+                self.assertEqual(invoice.items[0].item_code,item['name'])
+
+    def test_26_cancelled_payment_remains_visible_after_new_attempt(self):
+        invoice=self.invoice(self.receive(self.order(),10))
+        first=base.as_user(base.ACC,base.p.supplier_payment,base.C,'Purchase Invoice',invoice.name,100000,'cash',base.DAY,{'CHIEF':base.CHIEF,'APPROVE':base.DIR},self.tag+'old')
+        base.as_user(base.ACC,base.payments.cancel_draft,'Payment Entry',first['voucher'],'PCT cancel attempt')
+        base.as_user(base.ACC,base.p.supplier_payment,base.C,'Purchase Invoice',invoice.name,100000,'cash',base.DAY,{'CHIEF':base.CHIEF,'APPROVE':base.DIR},self.tag+'new')
+        history=base.as_user(base.ACC,queries.payments,base.C,supplier=self.supplier,state='2')
+        cancelled=[r for r in history['rows'] if r.get('voucher_name')==first['voucher']]
+        self.assertEqual(len(cancelled),1)
+        self.assertTrue(cancelled[0]['audit_only'])
+        self.assertEqual(cancelled[0]['reason'],'PCT cancel attempt')
 
 
 if __name__=='__main__':

@@ -112,10 +112,12 @@ def payments(company, supplier=None, search=None, state=None, from_date=None, to
         f=filters_for(company,None,None,from_date,to_date); f.update(state='Reversed',purpose='Supplier Payment')
         if frappe.has_permission(posting.POSTING,'read'):
             for audit in frappe.get_list(posting.POSTING,filters=f,fields=['name','voucher_type','voucher_name','posting_date','amount','source_hash','reason'],limit_page_length=0):
-                if frappe.db.exists(audit.voucher_type,audit.voucher_name): continue
+                # Native naming series may reuse a deleted draft's number.
+                # Keep the cancelled attempt under its immutable posting ID.
+                if frappe.db.get_value(audit.voucher_type,audit.voucher_name,'docstatus')==2: continue
                 party=frappe.db.get_value('Purchase Invoice',audit.source_hash,'supplier') or frappe.db.get_value('Purchase Order',audit.source_hash,'supplier')
                 if supplier and supplier!=party or search and text(search).casefold() not in (audit.voucher_name+' '+(party or '')).casefold(): continue
-                entries.append(dict(name=audit.voucher_name,doctype=audit.voucher_type,date=str(audit.posting_date),amount=flt(audit.amount),
+                entries.append(dict(name=audit.name,voucher_name=audit.voucher_name,doctype=audit.voucher_type,date=str(audit.posting_date),amount=flt(audit.amount),
                     supplier=party,kind='Phiếu đã hủy',status='Đã hủy',docstatus=2,audit_only=1,reason=audit.reason)); total+=1
     entries.sort(key=lambda r:(str(r['date']),r['name']),reverse=True)
     return dict(rows=entries[start:start+length],total_count=total,has_more=total>start+length)

@@ -101,7 +101,7 @@ const cards=computed(()=>{const sum=k=>summary.value.reduce((n,f)=>n+Number(f[k]
 async function refresh(){await run(async()=>{await session.load(true);online.value=!session.offline;cached.value=!!session.offline;await load()})}
 function newEventID(){return crypto.randomUUID()}
 async function run(fn){error.value='';try{return await fn()}catch(e){if(!e.stale)error.value=e.message;return null}}
-function go(path,extra={}){router.push({path:'/'+path,query:scope.query({...(moduleKey(path)!==key.value?{status:'',view:'list'}:{}),...extra})})}
+function go(path,extra={}){router.push({path:'/'+path,query:scope.query({...(moduleKey(path)!==key.value?{status:'',view:'list'}:{}),...(['mua-hang','kho'].includes(path)?workspaceChild.value?.scopeParams?.()||{}:{}),...extra})})}
 function navigateWorkspace(href){const target=internalWorkspaceTarget(href,location.origin);if(target&&permittedRoute(target.path,session,target.query)){go(target.path.slice(1),target.query);return}location.assign(href)}
 function consumeWorkspaceAction(){if(route.query.action){const query={...route.query};delete query.action;router.replace({path:route.path,query})}}
 function followWorkspaceLink(event){if(event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;const anchor=event.target.closest?.('a[href]');if(!anchor||anchor.target||anchor.hasAttribute('download'))return;const target=internalWorkspaceTarget(anchor.href,location.origin);if(target&&permittedRoute(target.path,session,target.query)){event.preventDefault();event.stopPropagation();go(target.path.slice(1),target.query)}}

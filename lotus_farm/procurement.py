@@ -476,11 +476,14 @@ def receipts(company):
 @frappe.whitelist()
 def receipt(name):
     d = document('Purchase Receipt', name)
+    from lotus_farm.warehouse_planning import receipt_totals
     return dict(name=d.name, company=d.company, supplier=d.supplier, date=str(d.posting_date), docstatus=d.docstatus,
+        **receipt_totals(d),
         is_return=d.is_return, modified=str(d.modified), can_submit=d.docstatus==0 and d.has_permission('submit'),
         can_cancel=d.docstatus==1 and d.has_permission('cancel'),
         items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,qty=flt(r.qty),uom=r.uom,
             rate=flt(r.rate),amount=flt(r.amount),kind=r.get('lotus_purchase_kind'),warehouse=r.warehouse,
+            vat_code=r.get('lotus_line_vat'),freight=flt(r.get('lotus_line_freight')),valuation_rate=flt(r.valuation_rate),
             order=r.purchase_order) for r in d.items])
 
 
