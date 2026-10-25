@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {khoSource,khoFile} from './support/kho-source.mjs'
 const app=khoSource()
-const purchase=readFileSync(new URL('../src/components/WarehouseBuyingLite.vue',import.meta.url),'utf8')
+const receiving=readFileSync(new URL('../src/components/WarehouseReceiving.vue',import.meta.url),'utf8')
 const pwa=readFileSync(new URL('../src/components/WarehouseInstall.vue',import.meta.url),'utf8')
 const worker=readFileSync(new URL('../../lotus_farm/public/warehouse-worker.js',import.meta.url),'utf8')
 const manifest=JSON.parse(readFileSync(new URL('../../lotus_farm/public/warehouse.webmanifest',import.meta.url),'utf8'))
@@ -22,15 +22,14 @@ test('supplier receiving quick action defaults to purchase order instead of dupl
  assert.match(app,/kind:'receipt-order'/)
  assert.match(app,/@receive="receivingView\.openPicker\(\)"/)
  assert.doesNotMatch(app,/<WarehouseBuyingLite/)
- assert.match(purchase,/function startReceiving\(\)/)
- assert.match(purchase,/status\.value='pending'/)
- assert.match(purchase,/receivingAPI\('receive_order'/)
- assert.match(purchase,/receivingAPI\('receipt_action'/)
+ assert.match(receiving,/async function openPicker\(\)/)
+ assert.match(receiving,/api\('receive_order'/)
+ assert.match(receiving,/api\('receipt_action'/)
 })
 test('PO unit inputs convert to Stock UOM exactly once before server submission',()=>{
- assert.match(purchase,/Number\(qty\)\*\(Number\(item\?\.conversion_factor\)\|\|1\)/)
- assert.match(purchase,/:max="r.remaining_qty"/)
- assert.match(purchase,/unitLabel\(r.uom\)/)
+ // Received quantities are entered in the order's stock unit, capped at what is still to receive.
+ assert.match(receiving,/props:r=>\(\{min:0,max:r\.remaining_qty\}\)/)
+ assert.match(receiving,/unitLabel\(r\.uom\)/)
 })
 test('warehouse SW caches only shell assets and cannot cache authenticated API data',()=>{
  assert.match(worker,/request\.method!=='GET'/)

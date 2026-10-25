@@ -1,4 +1,6 @@
 <script setup>
+import LotusField from './components/form/LotusField.vue'
+import {FormField} from './components/ui/form-field'
 // /lotus/farms — Vườn & lô: every lot of the permitted farms with area, plots, trees, density and data gaps,
 // the zones of a farm, a map coloured by zone / variety / density / flowering month, the Excel round-trip,
 // and one lot's page (?block=). Data: lotus_farm.farm_land; map: lotus_farm.field.map_block_data.
@@ -169,15 +171,15 @@ useNoticeToast(notice)
 
  <WorkspaceModal v-model="bulkOpen" :title="'Sửa '+picked.size+' lô'" :busy="saving" width="520px">
   <form class="land-form" @submit.prevent="applyBulk"><p class="land-note">Chỉ đổi các ô có nhập; ô trống giữ nguyên.</p>
-   <label>Khu<UiInput v-model="bulk.farm_zone" placeholder="VD: A" maxlength="20"/></label>
-   <label>Giống<UiSelect v-model="bulk.variety"><option value="">Giữ nguyên</option><option v-for="v in data?.varieties||[]" :key="v" :value="v">{{v}}</option></UiSelect></label>
+   <FormField label="Khu" v-slot="f"><UiInput v-bind="f" v-model="bulk.farm_zone" placeholder="VD: A" maxlength="20"/></FormField>
+   <FormField label="Giống" v-slot="f"><UiSelect v-bind="f" v-model="bulk.variety"><option value="">Giữ nguyên</option><option v-for="v in data?.varieties||[]" :key="v" :value="v">{{v}}</option></UiSelect></FormField>
    <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="bulkOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!(bulk.farm_zone||bulk.variety)">{{saving?'Đang lưu…':'Lưu'}}</UiButton></div></form>
  </WorkspaceModal>
 
  <WorkspaceModal v-model="importOpen" title="Nhập lô từ Excel" :busy="saving" width="980px">
   <div class="land-form">
    <ol class="land-steps"><li>Bấm <b>Xuất Excel</b> để tải danh sách lô hiện tại.</li><li>Sửa các cột cần đổi (để trống ô nào thì giữ nguyên ô đó). Đổi số cây thì ghi cả <b>Nguồn số cây</b>.</li><li>Chọn file đã sửa để xem trước, rồi bấm Cập nhật.</li></ol>
-   <label class="land-file">File Excel đã sửa<input type="file" accept=".xlsx" :disabled="saving" @change="readFile"></label>
+   <LotusField label="File Excel đã sửa" type="file" accept=".xlsx" :disabled="saving" @change="readFile"/>
    <template v-if="preview">
     <p><b>{{preview.ready}}</b> lô sẽ cập nhật · {{preview.unchanged}} lô không đổi · <span :class="{'land-bad':preview.errors}">{{preview.errors}} dòng lỗi</span></p>
     <div class="land-table land-preview"><DataTable :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>

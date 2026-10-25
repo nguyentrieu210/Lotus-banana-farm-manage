@@ -2,7 +2,9 @@
 import {hrCatalogLabel} from "./hr-catalog-labels"
 const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,nextTick,onMounted,reactive,ref} from 'vue'
-import WorkspaceModal from './components/WorkspaceModal.vue'
+import ModalForm from './components/form/ModalForm.vue'
+import FormGrid from './components/form/FormGrid.vue'
+import LotusField from './components/form/LotusField.vue'
 import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import DataTable from './components/DataTable.vue'
 import TimekeepingGridCell from './components/TimekeepingGridCell.vue'
@@ -12,11 +14,6 @@ import TkMonthSheet from './components/timekeeping/TkMonthSheet.vue'
 import TkSetup from './components/timekeeping/TkSetup.vue'
 import TkCorrection from './components/timekeeping/TkCorrection.vue'
 import {Button as UiButton} from './components/ui/button'
-import {Input as UiInput} from './components/ui/input'
-import UiSelect from './components/ui/select/Select.vue'
-import {Textarea as UiTextarea} from './components/ui/textarea'
-import {DatePicker} from './components/ui/date-picker'
-import {FormField} from './components/ui/form-field'
 import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuSeparator} from './components/ui/dropdown-menu'
 import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
@@ -32,7 +29,9 @@ const busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],teams:[],shifts:[],employees:[],works:[],genders:[],departments:[],uoms:[]})
 const staff=ref([]),crews=ref([]),availableTeams=ref([]),monthData=ref(null),crewMonth=ref(null),eventId=ref(crypto.randomUUID())
 const dayInfo=ref({holiday:null,has_calendar:true,period_closed:false,counts:{matching:0,review:0,manual:0},synced:null})
-const crewDialog=ref(null),masterDialog=ref(null),confirmDialog=ref(null),setup=ref(null)
+// Dialog handles keep the native-dialog calls (showModal / close) while ModalForm binds to .open.
+function dialogHandle(){const open=ref(false);return reactive({open,showModal(){open.value=true},close(){open.value=false}})}
+const crewDialog=ref(dialogHandle()),masterDialog=ref(dialogHandle()),confirmDialog=ref(dialogHandle()),setup=ref(null)
 const masterKind=ref('employee'),confirmation=ref(null),reason=ref('')
 const correcting=ref(null),correctionOpen=ref(false)
 const canCorrect=computed(()=>!!session.value?.can_manage_shifts&&!locked.value)
@@ -190,12 +189,12 @@ useNoticeToast(notice)
  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" label="Chấm công" @update:model-value="chooseTab($event)"/>
   <p v-if="error" class="stock-error" role="alert">{{error}}</p>
   <div v-if="tab!=='setup'||(session?.companies?.length||0)>1" class="stock-scope tk-filters">
-   <label v-if="(session?.companies?.length||0)>1">Công ty<UiSelect v-model="company" :disabled="busy||saving||dirty" @change="changeCompany"><option v-for="c in session?.companies" :key="c.name">{{c.name}}</option></UiSelect></label>
-   <label v-if="['staff','crew'].includes(tab)">Ngày công<DatePicker v-model="date" :max="session?.today" :clearable="false" aria-label="Ngày công" :disabled="busy||saving||dirty" @change="load"/></label>
-   <label v-else-if="tab==='month'">Tháng<MonthPicker v-model="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @change="load"/></label>
-   <label v-if="tab==='staff'">Ca làm việc<UiSelect v-model="shift" :disabled="busy||saving||dirty" @change="load"><option value="">Theo lịch ca</option><option v-for="s in catalog.shifts" :key="s.name">{{s.name}}</option></UiSelect></label>
-   <label v-if="['crew','month'].includes(tab)">Vườn<UiSelect v-model="farm" :disabled="busy||saving" @change="load"><option value="">Tất cả được phân quyền</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
-   <label v-if="tab==='staff'" class="stock-search">Tìm nhân viên<UiInput v-model="search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/></label>
+   <LotusField v-if="(session?.companies?.length||0)>1" v-model="company" label="Công ty" :options="(session?.companies||[]).map(c=>c.name)" :searchable="false" :empty-option="null" :disabled="busy||saving||dirty" @update:model-value="changeCompany"/>
+   <LotusField v-if="['staff','crew'].includes(tab)" v-model="date" label="Ngày công" type="date" :max="session?.today" :clearable="false" :disabled="busy||saving||dirty" @update:model-value="load"/>
+   <LotusField v-else-if="tab==='month'" v-model="month" label="Tháng" type="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @update:model-value="load"/>
+   <LotusField v-if="tab==='staff'" v-model="shift" label="Ca làm việc" :options="catalog.shifts.map(s=>s.name)" :searchable="false" empty-option="Theo lịch ca" :disabled="busy||saving||dirty" @update:model-value="load"/>
+   <LotusField v-if="['crew','month'].includes(tab)" v-model="farm" label="Vườn" :options="catalog.farms.map(f=>({value:f.name,label:f.farm_name}))" :searchable="false" empty-option="Tất cả được phân quyền" :disabled="busy||saving" @update:model-value="load"/>
+   <LotusField v-if="tab==='staff'" v-model="search" label="Tìm nhân viên" class="stock-search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/>
    <UiButton v-if="tab!=='setup'" variant="outline" :disabled="busy||saving||dirty" aria-label="Làm mới" @click="load"><LotusIcon name="refresh"/>{{busy?'Đang tải…':'Làm mới'}}</UiButton>
   </div>
 
@@ -203,7 +202,7 @@ useNoticeToast(notice)
    <p v-if="locked" class="tk-banner is-lock" role="status"><LotusIcon name="lock"/>Tháng {{date.slice(0,7)}} đã khóa công. Chỉ xem; HR Manager mở lại kỳ ở Hồ sơ nhân sự › Kỳ công & bảng lương.</p>
    <p v-else-if="dayInfo.holiday" class="tk-banner is-holiday" role="status"><LotusIcon name="flag"/>{{dayInfo.holiday.weekly_off?'Ngày nghỉ hằng tuần':'Ngày lễ: '+dayInfo.holiday.description}}. Giờ làm ngày này tính hệ số {{dayInfo.holiday.weekly_off?'200%':'300%'}}.</p>
    <p v-else-if="!dayInfo.has_calendar" class="tk-banner is-info" role="status"><LotusIcon name="calendar"/>Chưa có lịch nghỉ năm nay. Tạo ở tab Thiết lập › Lịch nghỉ năm để tính lễ và khóa kỳ.</p>
-   <div class="tk-views" role="tablist" aria-label="Lọc theo trạng thái công"><button v-for="[id,label] in views" :key="id" type="button" role="tab" :aria-selected="view===id?'true':'false'" :class="['is-'+id,{active:view===id}]" @click="view=id">{{label}}<strong>{{counts[id]}}</strong></button></div>
+   <div class="tk-views" role="tablist" aria-label="Lọc theo trạng thái công"><UiButton v-for="[id,label] in views" :key="id" type="button" variant="ghost" role="tab" :aria-selected="view===id?'true':'false'" :class="['is-'+id,{active:view===id}]" @click="view=id">{{label}}<strong>{{counts[id]}}</strong></UiButton></div>
    <div class="attendance-toolbar tk-actions">
     <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" :disabled="saving||busy" @click="askMatching"><LotusIcon name="tick"/>Duyệt {{dayInfo.counts.matching}} dòng khớp máy</UiButton>
     <span v-if="dayInfo.synced" class="tk-hint tk-synced">Máy chấm: đã cập nhật {{dayInfo.synced.synced}} lượt mới{{dayInfo.synced.needs_review?', '+dayInfo.synced.needs_review+' lượt chưa ghép được':''}}</span>
@@ -222,7 +221,7 @@ useNoticeToast(notice)
     </DropdownMenu>
    </div>
    <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
-    <label class="tk-check"><input type="checkbox" :checked="allChecked" aria-label="Chọn tất cả nhân viên đang hiện" @change="toggleAll"/> Chọn tất cả nhân viên đang hiện</label>
+    <LotusField :model-value="allChecked" type="checkbox" label="Chọn tất cả nhân viên đang hiện" @update:model-value="toggleAll"/>
      <DataTable :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
@@ -253,54 +252,53 @@ useNoticeToast(notice)
   <TkSetup v-if="tab==='setup'" ref="setup" :company="company" :session="session" :catalog="catalog" :cap="cap" :month="month" @open-master="openMaster" @changed="loadCatalog" @notice="notice=$event" @error="error=$event"/>
  </component>
 
- <WorkspaceModal bare title="Phiếu công đội khoán" :busy="saving" ref="crewDialog" class="stock-dialog"><form @submit.prevent="saveCrew"><header><h2>Phiếu công đội khoán</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng phiếu công đội" @click="crewDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
-  <div class="attendance-form">
-   <FormField label="Đội khoán" required v-slot="f"><UiSelect v-bind="f" v-model="crew.work_team" :disabled="!!crew.name||saving" @change="setTeam"><option value="">Chọn đội</option><option v-for="team in catalog.teams" :key="team.name" :value="team.name">{{team.team_name}} · {{team.lotus_foreman}}</option></UiSelect></FormField>
-   <FormField label="Ngày công" required v-slot="f"><DatePicker v-bind="f" v-model="crew.posting_date" :max="session?.today" :disabled="!!crew.name||saving" aria-label="Ngày công đội"/></FormField>
-   <FormField label="Công việc khoán" v-slot="f"><UiSelect v-bind="f" v-model="crew.work_type" :disabled="!!crew.name||crew.docstatus===1||saving" @change="setWork"><option value="">Chọn công việc</option><option v-for="w in catalog.works||[]" :key="w.name" :value="w.name">{{w.work_name}}</option></UiSelect></FormField>
-   <FormField label="Tổng người" required v-slot="f"><UiInput v-bind="f" v-model.number="crew.headcount" type="number" min="0" step="1" :disabled="crew.docstatus===1||saving"/></FormField>
-   <FormField label="Có mặt" required v-slot="f"><UiInput v-bind="f" v-model.number="crew.present" type="number" min="0" :max="crew.headcount" step="1" :disabled="crew.docstatus===1||saving"/></FormField>
-   <FormField label="Tổng công" required v-slot="f"><UiInput v-bind="f" v-model.number="crew.workdays" type="number" min="0" :max="crew.present" step="0.25" :disabled="crew.docstatus===1||saving"/></FormField>
-   <FormField label="Khối lượng khoán" v-slot="f"><UiInput v-bind="f" v-model.number="crew.completed_qty" type="number" min="0" step="any" :disabled="crew.docstatus===1||saving"/></FormField>
-   <FormField label="Đơn vị khoán" :required="crew.completed_qty>0" v-slot="f"><UiSelect v-bind="f" v-model="crew.uom" :disabled="crew.docstatus===1||saving||!!crew.work_type"><option value="">Chọn đơn vị</option><option v-for="unit in catalog.uoms" :key="unit.name" :value="unit.name">{{unitLabel(unit.name)}}</option></UiSelect></FormField>
-   <FormField :label="'Đơn giá khoán ('+currency+')'" :hint="crew.work_type?'Niêm yết '+cash(crew.listed_piecework_rate)+' / '+unitLabel(crew.uom):''" v-slot="f"><UiInput v-bind="f" v-model.number="crew.unit_rate" type="number" min="0" step="any" :disabled="crew.docstatus===1||saving"/></FormField>
-   <FormField v-if="crew.work_type&&Number(crew.unit_rate)!==Number(crew.listed_piecework_rate)" label="Lý do điều chỉnh đơn giá" required v-slot="f"><UiTextarea v-bind="f" v-model="crew.rate_override_reason" :disabled="crew.docstatus===1||saving"/></FormField>
-  </div>
-  <FormField label="Ghi chú" v-slot="f"><UiTextarea v-bind="f" v-model="crew.notes" :disabled="crew.docstatus===1||saving" maxlength="2000"/></FormField>
+ <ModalForm v-model="crewDialog.open" title="Phiếu công đội khoán" :busy="saving" :error="error" width="960px" :readonly="!(crew.docstatus!==1&&(crew.name?cap['Lotus Crew Attendance']?.write:cap['Lotus Crew Attendance']?.create))" submit-label="Lưu nháp" @submit="saveCrew">
+  <FormGrid :columns="3">
+   <LotusField v-model="crew.work_team" label="Đội khoán" :options="catalog.teams.map(team=>({value:team.name,label:team.team_name+' · '+team.lotus_foreman}))" required :disabled="!!crew.name||saving" @update:model-value="setTeam"/>
+   <LotusField v-model="crew.posting_date" label="Ngày công" type="date" :max="session?.today" required :disabled="!!crew.name||saving"/>
+   <LotusField v-model="crew.work_type" label="Công việc khoán" :options="(catalog.works||[]).map(w=>({value:w.name,label:w.work_name}))" :disabled="!!crew.name||crew.docstatus===1||saving" @update:model-value="setWork"/>
+   <LotusField v-model="crew.headcount" label="Tổng người" type="number" min="0" step="1" required :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-model="crew.present" label="Có mặt" type="number" min="0" :max="crew.headcount" step="1" required :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-model="crew.workdays" label="Tổng công" type="number" min="0" :max="crew.present" step="0.25" required :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-model="crew.completed_qty" label="Khối lượng khoán" type="number" min="0" :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-model="crew.uom" label="Đơn vị khoán" :options="catalog.uoms.map(unit=>({value:unit.name,label:unitLabel(unit.name)}))" :required="crew.completed_qty>0" :disabled="crew.docstatus===1||saving||!!crew.work_type"/>
+   <LotusField v-model="crew.unit_rate" :label="'Đơn giá khoán ('+currency+')'" type="money" :currency="currency" min="0" :hint="crew.work_type?'Niêm yết '+cash(crew.listed_piecework_rate)+' / '+unitLabel(crew.uom):''" :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-if="crew.work_type&&Number(crew.unit_rate)!==Number(crew.listed_piecework_rate)" v-model="crew.rate_override_reason" label="Lý do điều chỉnh đơn giá" type="textarea" wide required :disabled="crew.docstatus===1||saving"/>
+   <LotusField v-model="crew.notes" label="Ghi chú" type="textarea" wide maxlength="2000" :disabled="crew.docstatus===1||saving"/>
+  </FormGrid>
   <p class="tk-total">Giá trị khoán <strong>{{cash(Number(crew.completed_qty||0)*Number(crew.unit_rate||0))}}</strong></p>
-  <footer><UiButton v-if="crew.name&&crew.docstatus===0&&cap['Lotus Crew Attendance']?.delete" type="button" variant="destructive" :disabled="saving" @click="askCrew(crew,'delete')">Xóa nháp</UiButton><UiButton v-if="crew.name&&crew.docstatus===1&&cap['Lotus Crew Attendance']?.cancel" type="button" variant="outline" :disabled="saving" @click="askCrew(crew,'cancel')">Hủy đã duyệt</UiButton><UiButton v-if="crew.name&&crew.docstatus===0&&cap['Lotus Crew Attendance']?.submit" type="button" variant="outline" :disabled="saving" @click="askCrew(crew,'submit')">Duyệt phiếu</UiButton><UiButton v-if="crew.docstatus!==1&&(crew.name?cap['Lotus Crew Attendance']?.write:cap['Lotus Crew Attendance']?.create)" type="submit" :disabled="saving">Lưu nháp</UiButton></footer>
- </form></WorkspaceModal>
+  <template #secondary><UiButton v-if="crew.name&&crew.docstatus===0&&cap['Lotus Crew Attendance']?.delete" type="button" variant="destructive" :disabled="saving" @click="askCrew(crew,'delete')">Xóa nháp</UiButton><UiButton v-if="crew.name&&crew.docstatus===1&&cap['Lotus Crew Attendance']?.cancel" type="button" variant="outline" :disabled="saving" @click="askCrew(crew,'cancel')">Hủy đã duyệt</UiButton></template>
+  <template #actions><UiButton v-if="crew.name&&crew.docstatus===0&&cap['Lotus Crew Attendance']?.submit" type="button" variant="outline" :disabled="saving" @click="askCrew(crew,'submit')">Duyệt phiếu</UiButton></template>
+ </ModalForm>
 
- <WorkspaceModal bare title="Danh mục chấm công" :busy="saving" ref="masterDialog" class="stock-dialog"><form @submit.prevent="saveMaster"><header><h2>{{masterTitle[masterKind]}}</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng thiết lập" @click="masterDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
-  <div class="attendance-form">
+ <ModalForm v-model="masterDialog.open" :title="masterTitle[masterKind]" :busy="saving" :error="error" width="760px" submit-label="Tạo mới" @submit="saveMaster">
+  <FormGrid>
    <template v-if="masterKind==='employee'">
-    <FormField label="Họ tên" required v-slot="f"><UiInput v-bind="f" v-model="master.employee_name" maxlength="140"/></FormField>
-    <FormField label="Giới tính" required v-slot="f"><UiSelect v-bind="f" v-model="master.gender"><option value="">Chọn giới tính</option><option v-for="gender in catalog.genders" :key="gender.name" :value="gender.name">{{genderLabel(gender.name)}}</option></UiSelect></FormField>
-    <FormField label="Ngày sinh" required v-slot="f"><DatePicker v-bind="f" v-model="master.date_of_birth" :max="session?.today" aria-label="Ngày sinh"/></FormField>
-    <FormField label="Ngày vào làm" required v-slot="f"><DatePicker v-bind="f" v-model="master.date_of_joining" aria-label="Ngày vào làm"/></FormField>
-    <FormField label="Chức vụ" v-slot="f"><UiInput v-bind="f" v-model="master.designation" maxlength="140" placeholder="VD: Quản lý vườn, kế toán…"/></FormField>
-    <FormField label="Bộ phận" v-slot="f"><UiSelect v-bind="f" v-model="master.department"><option value="">Chưa phân bộ phận</option><option v-for="department in catalog.departments" :key="department.name" :value="department.name">{{hrCatalogLabel(department.department_name)}}</option></UiSelect></FormField>
+    <LotusField v-model="master.employee_name" label="Họ tên" required maxlength="140"/>
+    <LotusField v-model="master.gender" label="Giới tính" :options="catalog.genders.map(g=>({value:g.name,label:genderLabel(g.name)}))" :searchable="false" empty-option="Chọn giới tính" required/>
+    <LotusField v-model="master.date_of_birth" label="Ngày sinh" type="date" :max="session?.today" required/>
+    <LotusField v-model="master.date_of_joining" label="Ngày vào làm" type="date" required/>
+    <LotusField v-model="master.designation" label="Chức vụ" maxlength="140" placeholder="VD: Quản lý vườn, kế toán…"/>
+    <LotusField v-model="master.department" label="Bộ phận" :options="catalog.departments.map(d=>({value:d.name,label:hrCatalogLabel(d.department_name)}))" placeholder="Chưa phân bộ phận"/>
    </template>
    <template v-else-if="masterKind==='team'">
-    <FormField label="Vườn" required v-slot="f"><UiSelect v-bind="f" v-model="master.farm"><option value="">Chọn vườn</option><option v-for="f2 in catalog.farms" :key="f2.name" :value="f2.name">{{f2.farm_name}}</option></UiSelect></FormField>
-    <FormField label="Mã đội" required v-slot="f"><UiInput v-bind="f" v-model="master.code" maxlength="140"/></FormField>
-    <FormField label="Tên đội" required v-slot="f"><UiInput v-bind="f" v-model="master.name" maxlength="140"/></FormField>
-    <FormField label="Đầu câu / người phụ trách" required v-slot="f"><UiInput v-bind="f" v-model="master.foreman" maxlength="140"/></FormField>
-    <FormField label="Điện thoại" v-slot="f"><UiInput v-bind="f" v-model="master.phone" maxlength="40"/></FormField>
+    <LotusField v-model="master.farm" label="Vườn" :options="catalog.farms.map(f2=>({value:f2.name,label:f2.farm_name}))" :searchable="false" empty-option="Chọn vườn" required/>
+    <LotusField v-model="master.code" label="Mã đội" required maxlength="140"/>
+    <LotusField v-model="master.name" label="Tên đội" required maxlength="140"/>
+    <LotusField v-model="master.foreman" label="Đầu câu / người phụ trách" required maxlength="140"/>
+    <LotusField v-model="master.phone" label="Điện thoại" maxlength="40"/>
    </template>
    <template v-else>
-    <FormField label="Mã vườn" required v-slot="f"><UiInput v-bind="f" v-model="master.code" maxlength="140" placeholder="FARM-222"/></FormField>
-    <FormField label="Tên vườn" required v-slot="f"><UiInput v-bind="f" v-model="master.name" maxlength="140" placeholder="Vườn 222 Thuận Phú"/></FormField>
+    <LotusField v-model="master.code" label="Mã vườn" required maxlength="140" placeholder="FARM-222"/>
+    <LotusField v-model="master.name" label="Tên vườn" required maxlength="140" placeholder="Vườn 222 Thuận Phú"/>
    </template>
-  </div>
-  <footer><UiButton type="button" variant="outline" :disabled="saving" @click="masterDialog.close()">Hủy</UiButton><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Tạo mới'}}</UiButton></footer>
- </form></WorkspaceModal>
+  </FormGrid>
+ </ModalForm>
 
  <TkCorrection v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
- <WorkspaceModal bare title="Xác nhận bảng công" :busy="saving" ref="confirmDialog" class="stock-dialog"><form @submit.prevent="act"><header><h2>{{confirmation?.type==='matching'?'Duyệt công khớp máy chấm':confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'}}</h2><UiButton type="button" variant="outline" :disabled="saving" aria-label="Đóng xác nhận công" @click="confirmDialog.close()"><LotusIcon name="x"/></UiButton></header><p v-if="error" class="stock-error" role="alert">{{error}}</p>
+ <ModalForm v-model="confirmDialog.open" :title="confirmation?.type==='matching'?'Duyệt công khớp máy chấm':confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'" :busy="saving" :error="error" width="560px" cancel-label="Quay lại" submit-label="Xác nhận" @submit="act">
   <p v-if="confirmation?.type==='staff'">{{confirmation.rows.length}} phiếu công đã chọn.</p>
   <p v-if="confirmation?.type==='matching'">Lưu và duyệt {{confirmation.count}} người có đủ giờ vào/ra trên máy, chưa bị chỉnh tay. Tăng ca lấy theo đề xuất (ra quá ca từ 30 phút, làm tròn 15 phút). Các dòng cần kiểm tra hoặc đã chỉnh tay giữ nguyên để bạn xem.</p>
-  <FormField v-if="confirmation?.action==='cancel'" label="Lý do hủy" required v-slot="f"><UiTextarea v-bind="f" v-model="reason" maxlength="2000"/></FormField>
-  <footer><UiButton type="button" variant="outline" :disabled="saving" @click="confirmDialog.close()">Quay lại</UiButton><UiButton type="submit" :variant="confirmation?.action==='submit'?'default':'destructive'" :disabled="saving">Xác nhận</UiButton></footer>
- </form></WorkspaceModal>
+  <LotusField v-if="confirmation?.action==='cancel'" v-model="reason" label="Lý do hủy" type="textarea" required maxlength="2000"/>
+ </ModalForm>
 </div></template>

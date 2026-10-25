@@ -1,4 +1,5 @@
 <script setup>
+import {FormField} from './ui/form-field'
 import {computed,defineAsyncComponent,ref,watch} from 'vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
@@ -65,7 +66,7 @@ function pickMonth(key){selectedMonth.value=selectedMonth.value===key?'':key}
     </div>
     <div class="calendar-toolbar">
       <WorkspaceTabs label="Chọn năm" :items="years.map(y=>({id:y,label:y}))" :model-value="year" @update:model-value="y=>{year=y;selectedMonth=''}"/>
-      <label>Tìm lô <UiInput v-model="search" type="search" placeholder="Tên lô, số vụ, nguồn tính…" /></label>
+      <FormField label="Tìm lô" v-slot="f"><UiInput v-bind="f" v-model="search" type="search" placeholder="Tên lô, số vụ, nguồn tính…" /></FormField>
       <span class="calendar-total">Năm {{year}}: <b>{{ton(yearTotal)}} tấn buồng</b></span>
     </div>
     <section class="calendar-panel">

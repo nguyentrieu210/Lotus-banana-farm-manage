@@ -112,7 +112,7 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
 <template>
 <div class="hr-pay">
  <div class="stock-scope tk-filters">
-  <label>Tháng<MonthPicker v-model="month" :max="today?.slice(0,7)" label="Tháng công" :disabled="busy||saving" @change="load"/></label>
+  <FormField label="Tháng" v-slot="f"><MonthPicker v-bind="f" v-model="month" :max="today?.slice(0,7)" label="Tháng công" :disabled="busy||saving" @change="load"/></FormField>
   <UiButton variant="outline" :disabled="busy||saving" @click="load"><LotusIcon name="refresh"/>{{busy?'Đang tải…':'Làm mới'}}</UiButton>
   <span class="tk-actions__spacer"></span>
   <a v-if="period" class="stock-button" :href="period.print_url" target="_blank" rel="noopener"><LotusIcon name="printer"/>In bảng lương</a>

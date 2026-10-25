@@ -76,11 +76,11 @@ test('compact live search aligned right of warehouse scope, no submit button',()
 test('Company scope filters hidden when user has only one authorized company',()=>{
  for(const name of ['HrApp.vue','TimekeepingApp.vue']){
   const src=readFileSync(new URL('../src/'+name,import.meta.url),'utf8')
-  assert.match(src,/v-if="\(session\?\.companies\?\.length\|\|0\)>1">Công ty/)
+  assert.match(src,/v-if="\(session\?\.companies\?\.length\|\|0\)>1"[^>]*label="Công ty"/)
  }
  assert.match(khoFile('components/stock/StockScope.vue'),/v-if="companies\.length>1"[^>]*aria-label="Công ty"/)
  const app=readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
- assert.match(readFileSync(new URL("../src/components/WorkspaceScopeBar.vue",import.meta.url),"utf8"),/v-if="companies.length>1">Công ty/)
+ assert.match(readFileSync(new URL("../src/components/WorkspaceScopeBar.vue",import.meta.url),"utf8"),/v-if="companies.length>1" label="Công ty"/)
  assert.match(app,/if\(companies.value.length===1\)scope.company=companies.value\[0\]/)
 })
 

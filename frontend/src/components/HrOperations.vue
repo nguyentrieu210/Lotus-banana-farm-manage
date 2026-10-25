@@ -4,11 +4,12 @@ import {computed,onMounted,reactive,ref,watch} from 'vue'
 import {call} from '../api'
 import {stateLabel} from '../labels'
 import {Button as UiButton} from './ui/button'
-import {Input as UiInput} from './ui/input'
-import UiSelect from './ui/select/Select.vue'
-import {DatePicker} from './ui/date-picker'
+import {DateRangePicker} from './ui/date-picker'
 import '../hr-operations.css'
-import WorkspaceModal from './WorkspaceModal.vue'
+import WorkspaceTabs from './WorkspaceTabs.vue'
+import ModalForm from './form/ModalForm.vue'
+import FormGrid from './form/FormGrid.vue'
+import LotusField from './form/LotusField.vue'
 import DataTable from './DataTable.vue'
 import LotusGridEditCell from './LotusGridEditCell.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
@@ -88,6 +89,7 @@ function discardChanges(){editAssignment.value=false;preview.value=null;uploadDa
 defineExpose({refresh,hasUnsavedChanges,isSaving,discardChanges})
 watch(()=>props.company,()=>{org.value=null;hardware.value=null;preview.value=null;uploadData.value=[];farm.value='';refresh()})
 function choose(id){selectedTab.value=id;notice.value='';error.value=''}
+const options=(rows,label,format=v=>v)=>(rows||[]).map(r=>({value:r.name,label:format(r[label])}))
 function template(){
  const header=columns[kind.value]||[]
  const csv='\ufeff'+header.join(',')+'\r\n'
@@ -176,9 +178,7 @@ async function syncRange(){
 </script>
 <template>
 <div class="hr-ops">
- <nav v-if="!view" class="hr-ops-tabs" aria-label="Quản trị nhân sự bổ sung">
-  <button type="button" v-for="t in tabs" :key="t.id" :class="{active:active===t.id}" @click="choose(t.id)">{{t.label}}</button>
- </nav>
+ <WorkspaceTabs v-if="!view" :items="tabs" :model-value="active" label="Quản trị nhân sự bổ sung" @update:model-value="choose"/>
  <p v-if="error" class="hr-ops-error" role="alert">{{error}}</p>
  <p v-if="notice" class="hr-ops-notice" role="status">{{notice}}</p>
  <div v-if="!manager||!view" class="hr-ops-actions"><span v-if="!manager">Tài khoản chỉ có quyền xem. Liên hệ HR Manager để thay đổi.</span>
@@ -186,7 +186,7 @@ async function syncRange(){
  </div>
  <template v-if="active==='organization'">
   <div class="hr-ops-head"><h3>Cơ cấu vườn</h3>
-   <label>Vườn<UiSelect v-model="farm"><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label></div>
+   <LotusField v-model="farm" aria-label="Vườn" :options="options(farmChoices,'farm_name')" :searchable="false" :empty-option="null"/></div>
   <section class="hr-ops-panel">
    <div class="hr-ops-tree">
     <div class="hr-ops-tree-root"><strong>Giám đốc / Ban quản lý</strong><small>Điều hành chung và phân công</small></div>
@@ -203,18 +203,19 @@ async function syncRange(){
   </section>
   <section class="hr-ops-panel">
    <h3>Lịch sử phân công nhân viên</h3>
-   <UiButton v-if="manager" type="button" variant="outline" @click="editAssignment=true">＋ Thêm phân công</UiButton><WorkspaceModal v-if="manager" v-model="editAssignment" title="Phân công nhân viên" :busy="busy"><p v-if="error" class="hr-ops-error" role="alert">{{error}}</p><form class="hr-ops-form" @submit.prevent="saveAssignment">
-    <label>Nhân viên<UiSelect v-model="assignment.employee" required><option value="">Chọn nhân viên</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}} · {{e.name}}</option></UiSelect></label>
-    <label>Vườn<UiSelect v-model="assignment.farm" required><option value="">Chọn vườn</option><option v-for="f in farmChoices" :key="f.name" :value="f.name">{{f.farm_name}}</option></UiSelect></label>
-    <label>Bộ phận<UiSelect v-model="assignment.department"><option value="">Chọn</option><option v-for="d in org?.departments||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name)}}</option></UiSelect></label>
-    <label>Chức danh<UiSelect v-model="assignment.designation"><option value="">Chọn</option><option v-for="d in org?.designations||[]" :key="d.name" :value="d.name">{{hrCatalogLabel(d.designation_name)}}</option></UiSelect></label>
-    <label>Tổ/đội<UiSelect v-model="assignment.work_team"><option value="">Chọn</option><option v-for="t in visibleTeams" :key="t.name" :value="t.name">{{t.team_name}}</option></UiSelect></label>
-    <label>Chức vụ thực tế<UiInput v-model="assignment.role_title" placeholder="VD: Đội trưởng, tổ trưởng"/></label>
-    <label>Ngày bắt đầu<DatePicker v-model="assignment.valid_from" required aria-label="Ngày bắt đầu"/></label>
-    <label>Ngày kết thúc (nếu có)<DatePicker v-model="assignment.valid_to" :min="assignment.valid_from" aria-label="Ngày kết thúc"/></label>
-    <label>Cấp trên<UiSelect v-model="assignment.approver"><option value="">Chưa chọn</option><option v-for="e in org?.employees||[]" :key="e.name" :value="e.name">{{e.employee_name}}</option></UiSelect></label>
-    <UiButton type="submit" :disabled="busy">Lưu phân công</UiButton>
-   </form></WorkspaceModal>
+   <UiButton v-if="manager" type="button" variant="outline" @click="editAssignment=true">＋ Thêm phân công</UiButton><ModalForm v-if="manager" v-model="editAssignment" title="Phân công nhân viên" :busy="busy" :error="error" width="960px" submit-label="Lưu phân công" @submit="saveAssignment">
+    <FormGrid :columns="3">
+     <LotusField v-model="assignment.employee" label="Nhân viên" :options="(org?.employees||[]).map(e=>({value:e.name,label:e.employee_name+' · '+e.name}))" required/>
+     <LotusField v-model="assignment.farm" label="Vườn" :options="options(farmChoices,'farm_name')" :searchable="false" empty-option="Chọn vườn" required/>
+     <LotusField v-model="assignment.department" label="Bộ phận" :options="options(org?.departments,'department_name',hrCatalogLabel)"/>
+     <LotusField v-model="assignment.designation" label="Chức danh" :options="options(org?.designations,'designation_name',hrCatalogLabel)"/>
+     <LotusField v-model="assignment.work_team" label="Tổ/đội" :options="options(visibleTeams,'team_name')"/>
+     <LotusField v-model="assignment.role_title" label="Chức vụ thực tế" placeholder="VD: Đội trưởng, tổ trưởng"/>
+     <LotusField v-model="assignment.valid_from" label="Ngày bắt đầu" type="date" required/>
+     <LotusField v-model="assignment.valid_to" label="Ngày kết thúc (nếu có)" type="date" :min="assignment.valid_from"/>
+     <LotusField v-model="assignment.approver" label="Cấp trên" :options="options(org?.employees,'employee_name')" placeholder="Chưa chọn"/>
+    </FormGrid>
+   </ModalForm>
    <div class="hr-ops-scroll"><DataTable :rows="org?.assignments||[]" :columns="assignmentColumns" row-key="name" storage-key="hr-assignments" /></div>
   </section>
  </template>
@@ -223,11 +224,11 @@ async function syncRange(){
    <h3>Nhập nhân sự và danh mục từ Excel/CSV</h3>
    <p>Thứ tự: Bộ phận → Chức danh → Đội/tổ → Nhân viên → Chức vụ/phân công → Loại ca → Xếp ca → Mã máy. Log nhập cuối cùng.</p>
    <div class="hr-ops-actions"><a href="/app/shift-type">Quản lý loại ca HRMS ↗</a><a href="/app/shift-assignment">Phê duyệt xếp ca ↗</a><a href="/app/leave-application">Nghỉ phép ↗</a><a href="/lotus/cham-cong">Bảng công Lotus ↗</a></div>
-   <div class="hr-ops-form">
-    <label>Loại dữ liệu<UiSelect v-model="kind" @change="preview=null;uploadData=[]"><option v-for="k in kinds" :key="k" :value="k">{{kindLabels[k]}}</option></UiSelect></label>
+   <FormGrid :columns="3">
+    <LotusField v-model="kind" label="Loại dữ liệu" :options="kinds.map(k=>({value:k,label:kindLabels[k]}))" :searchable="false" :empty-option="null" @update:model-value="preview=null;uploadData=[]"/>
+    <LotusField label="Chọn tệp Excel hoặc CSV" type="file" accept=".csv,.xlsx" :disabled="!manager||busy" @change="fileChanged"/>
     <div class="hr-ops-form-actions"><UiButton variant="outline" type="button" @click="template">Tải file mẫu CSV</UiButton></div>
-    <label>Chọn tệp Excel hoặc CSV<input type="file" accept=".csv,.xlsx" :disabled="!manager||busy" @change="fileChanged"/></label>
-   </div>
+   </FormGrid>
    <p class="hr-ops-tip">Giữ mã máy và mã nhân viên dạng chữ trong Excel để không mất số 0 đầu. Chỉ nhập danh sách thật sau khi đã đối chiếu; không nhập vân tay/khuôn mặt.</p>
    <div v-if="preview" class="hr-ops-panel">
     <strong>{{uploadName}}: {{preview.ready}} dòng hợp lệ, {{preview.errors.length}} dòng lỗi.</strong>
@@ -247,17 +248,15 @@ async function syncRange(){
    <div class="hr-ops-actions"><a href="/app/employee-checkin">Xem log HRMS ↗</a><a href="/app/shift-assignment">Xem lịch ca ↗</a><a href="/app/attendance">Chấm công đã duyệt ↗</a></div>
    <div class="hr-ops-metrics"><span>Chưa ghép: <strong>{{hardware?.counts?.Unmapped||0}}</strong></span><span>Chờ chuyển: <strong>{{hardware?.counts?.Ready||0}}</strong></span><span>Đã chuyển: <strong>{{hardware?.counts?.Synced||0}}</strong></span><span>Cần kiểm tra: <strong>{{hardware?.counts?.['Needs Review']||0}}</strong></span><span>Đã bỏ qua: <strong>{{hardware?.counts?.Ignored||0}}</strong></span></div>
    <div class="hr-ops-actions"><UiButton v-if="manager" type="button" :disabled="busy||!selectedPunches.length" @click="sync">Chuyển {{selectedPunches.length}} log sang HRMS</UiButton><UiButton v-if="manager" type="button" variant="outline" :disabled="busy||!selectedPunches.length" @click="ignoreReason='';ignoreOpen=true">Bỏ qua {{selectedPunches.length}} log…</UiButton><a href="/lotus/cham-cong">Mở bảng công để duyệt ↗</a></div>
-   <div v-if="manager" class="hr-ops-actions"><label>Từ ngày<DatePicker v-model="syncFrom" :disabled="busy" aria-label="Chuyển log từ ngày"/></label><label>Đến ngày<DatePicker v-model="syncTo" :min="syncFrom" :disabled="busy" aria-label="Chuyển log đến ngày"/></label><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hệ thống tự chuyển log hôm nay và hôm qua mỗi 10 phút; mở Chấm công cũng cập nhật ngày đang xem.</span></div>
-   <label v-if="manager&&openPunches.length" class="tk-check"><input type="checkbox" :checked="allOpen" aria-label="Chọn mọi log chưa xử lý" @change="toggleOpen"/> Chọn mọi log chưa xử lý</label>
+   <div v-if="manager" class="hr-ops-actions"><DateRangePicker v-model:from="syncFrom" v-model:to="syncTo" :disabled="busy" label="Chuyển log trong khoảng" :presets="false"/><UiButton type="button" variant="outline" :disabled="busy||!syncFrom||!syncTo" @click="syncRange">Chuyển tất cả log trong khoảng</UiButton><span class="hr-ops-tip">Hệ thống tự chuyển log hôm nay và hôm qua mỗi 10 phút; mở Chấm công cũng cập nhật ngày đang xem.</span></div>
+   <LotusField v-if="manager&&openPunches.length" :model-value="allOpen" type="checkbox" label="Chọn mọi log chưa xử lý" @update:model-value="toggleOpen"/>
    <div class="hr-ops-scroll"><DataTable :rows="hardware?.punches||[]" :columns="punchColumns" row-key="name" storage-key="hr-hardware-punches" /></div>
    <p class="hr-ops-tip">Nếu chưa có log, vào mục Nhập dữ liệu nhân sự → Mã máy ↔ nhân viên, sau đó Nhập log máy. Log trùng sẽ được bỏ qua.</p>
   </section>
  </template>
- <WorkspaceModal v-model="ignoreOpen" title="Bỏ qua log máy chấm công" :busy="busy" width="560px">
-  <form class="hr-ops-form" @submit.prevent="ignore"><p>{{selectedPunches.length}} log đã chọn sẽ không tính công và không chặn khóa kỳ. Log gốc vẫn được lưu để đối soát.</p>
-   <label>Lý do<UiInput v-model="ignoreReason" required minlength="5" maxlength="300" placeholder="VD: thẻ thử máy, mã không thuộc nhân viên nào"/></label>
-   <div class="hr-ops-actions"><UiButton type="button" variant="outline" :disabled="busy" @click="ignoreOpen=false">Quay lại</UiButton><UiButton type="submit" :disabled="busy||ignoreReason.trim().length<5">Bỏ qua log</UiButton></div></form>
- </WorkspaceModal>
+ <ModalForm v-model="ignoreOpen" title="Bỏ qua log máy chấm công" :busy="busy" width="560px" cancel-label="Quay lại" submit-label="Bỏ qua log" :submit-disabled="ignoreReason.trim().length<5" :description="selectedPunches.length+' log đã chọn sẽ không tính công và không chặn khóa kỳ. Log gốc vẫn được lưu để đối soát.'" @submit="ignore">
+  <LotusField v-model="ignoreReason" label="Lý do" type="textarea" required minlength="5" maxlength="300" placeholder="VD: thẻ thử máy, mã không thuộc nhân viên nào"/>
+ </ModalForm>
  <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
 </div>
 </template>
