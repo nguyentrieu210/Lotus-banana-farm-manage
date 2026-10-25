@@ -1,6 +1,6 @@
 
 /* Consistent warehouse tables, filters and editable forms across all tabs. */
-.stock-shell .stock-date-filters,.stock-shell .warehouse-planning .stock-planning-toolbar{display:flex;align-items:end;gap:8px;flex-wrap:nowrap;overflow-x:auto;min-width:0}
+.stock-shell .stock-date-filters,.stock-shell .warehouse-planning .stock-planning-toolbar{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
 .stock-shell .stock-date-filters>label{display:flex;flex-direction:column;gap:4px;flex:0 0 146px;min-width:125px;font-size:11px}
 .stock-shell .stock-date-filters input[type=date]{height:36px;width:100%;padding:6px 8px}
 .stock-shell .warehouse-planning .stock-planning-toolbar{margin:4px 0 12px;padding-bottom:11px;border-bottom:1px solid var(--lotus-border)}
@@ -37,7 +37,3 @@
  .stock-shell .stock-dialog .stock-line label{flex:1 1 125px}
  .stock-shell .stock-setup-toolbar>button{flex:1 1 140px}
 }
-
-.stock-shell .stock-document-dialog>header{padding:16px 22px;border-bottom:1px solid var(--lotus-border)}
-.stock-shell .stock-document-dialog>.stock-error{margin:12px 22px}
-.stock-shell .stock-document-dialog>.warehouse-document-form{padding:16px 22px}

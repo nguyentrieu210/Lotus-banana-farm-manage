@@ -28,7 +28,7 @@ test('history includes purchase orders and shortcut to receiving',()=>{
  assert.match(app,/inventoryWarehouse/)
 })
 test('stale list results cannot replace fresh list results',()=>{
- for(const flag of ['historyRequest','inventoryRequest'])assert.ok(app.includes('request!=='+flag),flag)
+ for(const flag of ['pendingRequest','historyRequest','inventoryRequest'])assert.ok(app.includes('request!=='+flag),flag)
 })
 test('purchase order is saved once if quote upload fails and quote can retry separately',()=>{
  const shared=readFileSync(new URL('../src/mobile-purchase.js',import.meta.url),'utf8')
@@ -54,7 +54,7 @@ test('quick search opens suggestions immediately and never needs Enter or a Tìm
  assert.match(picker, /emit\('update:modelValue',event.target.value\)/)
  assert.match(picker, /role="listbox"/)
  assert.match(picker, /emit\('select',row\)/)
- for(const query of ['historySearch','inventorySearch'])assert.match(app,new RegExp('v-model="'+query+'"'))
+ for(const query of ['pendingQuery','historySearch','inventorySearch'])assert.match(app,new RegExp('v-model="'+query+'"'))
  assert.doesNotMatch(app,/<button type="submit">Tìm<\/button>/)
 })
 test('header and icon-only bottom navigation reuse shared Vant components',()=>{

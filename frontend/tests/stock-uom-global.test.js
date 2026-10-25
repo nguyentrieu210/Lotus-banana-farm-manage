@@ -24,9 +24,8 @@ test('new item uses ERPNext Item UOM Conversion Detail',()=>{
 })
 
 test('receipt permits package quantities and correctly scales entered unit prices',()=>{
- const form=readFileSync(new URL('../src/components/StockDocumentForm.vue',import.meta.url),'utf8')
- assert.match(form,/Đơn vị nhập hàng/)
- assert.match(form,/row\.stock_uom/)
+ assert.match(ui,/Đơn vị nhập hàng/)
+ assert.match(ui,/row\.stock_uom/)
  assert.match(api,/entry_uom=str\(row\.get\('uom'\)/)
  assert.match(api,/values\['basic_rate'\] = rate\/factor/)
  assert.match(api,/basic_total \+= qty \* rate/)
