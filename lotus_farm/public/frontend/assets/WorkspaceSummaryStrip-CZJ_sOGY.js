@@ -1,0 +1,1 @@
+import{M as e,T as t,Ut as n,k as r,rt as i,tt as a}from"./use-confirm-core-xXDgEQOs.js";var o={class:`workspace-summary-strip`},s={__name:`WorkspaceSummaryStrip`,props:{items:{type:Array,default:()=>[]}},setup(s){return(c,l)=>(a(),e(`dl`,o,[(a(!0),e(t,null,i(s.items,t=>(a(),e(`div`,{key:t.label},[r(`dt`,null,n(t.label),1),r(`dd`,null,n(t.value),1)]))),128))]))}};export{s as t};
