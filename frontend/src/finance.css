@@ -78,3 +78,15 @@
 .fin-guide__row--head{background:var(--lotus-soft);color:var(--lotus-muted);font-weight:600;font-size:var(--lotus-text-xs)}
 .fin-guide__row code{font-family:inherit;color:var(--lotus-primary-text)}
 @media(max-width:700px){.fin-guide__pairs,.fin-guide__row{grid-template-columns:1fr}.fin-guide__row--head{display:none}.fin-form-row--adj{grid-template-columns:1fr 1fr}}
+/* Shared form standard (2026-10): action rows, numeric cells, report toolbar, to-do buttons. */
+.fin .fin-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fin .fin-actions--end{justify-content:flex-end}
+.fin .fin-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.fin .fin-inline-link{height:auto;padding:0;vertical-align:baseline}
+.fin .fin-report-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;overflow:visible}
+.fin .fin-report-toolbar .workspace-list-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex:1 1 auto;min-width:0}
+.fin .fin-report-toolbar .workspace-list-actions{display:flex;gap:8px;margin-left:auto}
+.fin .fin-todo{display:flex;flex-wrap:wrap;gap:8px}
+.fin .fin-todo b{margin-right:4px;font-variant-numeric:tabular-nums}
+.fin .fin-checklist__mark .lotus-icon{width:14px;height:14px}
+.fin>.lotus-form-section{padding:16px;margin-top:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}

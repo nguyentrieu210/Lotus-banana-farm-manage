@@ -11,7 +11,7 @@ export const navGroups=[
  {label:'Thu hoạch & đóng gói',icon:'basket',items:[['harvest','basket','Thu hoạch'],['measurements','ruler','Đo trái'],['losses','trash','Hủy & tổn thất'],['incoming-qc','shield','QC đầu vào'],['packhouse','package','Đóng gói'],['trace','route','Truy xuất']]},
  {label:'Kho',icon:'warehouse',kind:'stock',items:[['kho','warehouse','Quản lý kho']]},
  {label:'Mua hàng',icon:'cart',kind:'buying',items:[['mua-hang','cart','Mua hàng']]},
- {label:'Tài chính – Kế toán',icon:'wallet',items:[['tai-chinh','wallet','Tài chính – Kế toán']]},
+ {label:'Tài chính – Kế toán',icon:'wallet',kind:'finance',items:[['tai-chinh','wallet','Tài chính – Kế toán']]},
  {label:'Nhân sự',icon:'people',kind:'hr',items:[['nhan-su','id-card','Hồ sơ nhân viên'],['cham-cong','clock','Chấm công']]},
  {label:'Thiết lập',icon:'settings',items:[['admin/masters','database','Danh mục'],['plan-norm','sliders','Định mức & chu kỳ'],['admin/imports','upload','Nhập dữ liệu'],['admin/settings','settings','Cấu hình'],['nguoi-dung','user-cog','Người dùng & phân quyền']]},
 ]

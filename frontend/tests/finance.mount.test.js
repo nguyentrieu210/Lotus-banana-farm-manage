@@ -27,6 +27,7 @@ const pending={receipts:[{name:'PR-1',supplier:'S1',supplier_name:'NCC Phân bó
  payroll:[{name:'LT-2026-09',month:'2026-09',closed_at:'2026-10-02 10:00:00'}],issues:[],vouchers:[]}
 const vat={note:'',rates:[{code:'KCT',label:'Không chịu thuế / không có thuế GTGT',rate:0},{code:'8',label:'8%',rate:0.08},{code:'10',label:'10%',rate:0.1}]}
 const lookups={suppliers:[],customers:[],employees:[],farms:[{name:'LOTUS-222',farm_name:'Vườn 222'}],blocks:[{name:'B1',block_code:'A-1',farm:'LOTUS-222'}],work_types:[],accounts:[]}
+async function chooseReport(root,id){const select=root.querySelector('select[aria-label="Báo cáo"]');select.value=id;select.dispatchEvent(new window.Event('change'));for(let i=0;i<5;i++)await tick()}
 async function open(path,caps={finance:true,finance_ledger:true}){
  Object.assign(useSession(),{user:'acc@lotus',today:'2026-10-22',ready:true,farms:[],modules:{},capabilities:caps,commands:{}})
  const router=createRouter({history:createMemoryHistory('/lotus'),routes:[{path:'/:p(.*)*',component:{render:()=>null}}]})
@@ -84,12 +85,12 @@ test('receipts of one supplier become one invoice; mixing suppliers is not allow
  calls.length=0
  routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'payments.make_goods_invoice']:{invoice:'PINV-1',amount:1500000},[F+'sales.vat_options']:vat}
  const view=await open('/tai-chinh?tab=pending')
- const pick=async name=>{const box=view.root.querySelector('.ag-row[row-id="'+name+'"] input[aria-label="Chọn '+name+'"]');box.checked=!box.checked;box.dispatchEvent(new window.Event('change'));for(let i=0;i<3;i++)await tick()}
+ const pick=async name=>{view.root.querySelector('.ag-row[row-id="'+name+'"] [role=checkbox][aria-label="Chọn '+name+'"]').click();for(let i=0;i<3;i++)await tick()}
  await pick('PR-1');await pick('PR-2')
  assert.ok(button(view.root,'Lập hóa đơn (2)').disabled,'two suppliers cannot share one invoice')
  await pick('PR-2')
  const make=button(view.root,'Lập hóa đơn (1)');assert.ok(!make.disabled);make.click();await tick()
- const modal=document.body.querySelector('.land-form')
+ const modal=document.body.querySelector('dialog[open] form')
  const input=modal.querySelector('input');input.value='HD-001';input.dispatchEvent(new window.Event('input'));await tick()
  modal.dispatchEvent(new window.Event('submit',{cancelable:true}));for(let i=0;i<4;i++)await tick()
  const sent=calls.find(c=>c.method===F+'payments.make_goods_invoice')
@@ -104,7 +105,7 @@ test('B01 shows the TT99 lines with negative (*) figures in brackets and the bal
    rows:[{code:'221',name:'1. Tài sản cố định hữu hình',level:2,total:true,closing:20000000,opening:0},{code:'223',name:'- Giá trị hao mòn lũy kế (*)',level:3,total:false,closing:-5000000,opening:0},
     {code:'280',name:'TỔNG CỘNG TÀI SẢN (280 = 100 + 200)',level:0,total:true,closing:2530450000,opening:0}]}}
  const view=await open('/tai-chinh?tab=reports')
- ;[...view.root.querySelectorAll('.land-views button')].find(b=>b.textContent.includes('B01')).click();for(let i=0;i<5;i++)await tick()
+ await chooseReport(view.root,'b01')
  const page=text(view.root)
  assert.match(page,/BÁO CÁO TÌNH HÌNH TÀI CHÍNH/)
  assert.match(page,/\(5\.000\.000\)/)
@@ -119,7 +120,7 @@ test('sales tab lists customers with what they still owe and the open invoices b
    recent:[]}}
  const view=await open('/tai-chinh?tab=sales')
  const page=text(view.root)
- assert.match(page,/Sổ cái 131: 11\.480\.000 đ/)
+ assert.match(page,/Sổ cái 131\s*11\.480\.000 đ/)
  assert.match(page,/Công ty Xuất khẩu A/)
  assert.match(page,/1C26TLT 0000123/)
  assert.ok(button(view.root,'Lập hóa đơn bán'),'the accountant can bill a customer')
@@ -136,7 +137,8 @@ test('payroll preview shows the lines by lot and posts with the previewed hash',
  const view=await open('/tai-chinh?tab=pending')
  button(view.root,'Xem trước bút toán').click();for(let i=0;i<4;i++)await tick()
  assert.match(text(document.body),/154 - Chi phí SXKD dở dang - LT\s*14\.000\.000\s*LOTUS-222\s*A-1/)
- ;[...document.body.querySelectorAll('button')].find(b=>b.textContent.trim()==='Ghi sổ').click();for(let i=0;i<4;i++)await tick()
+ const post=[...document.body.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Ghi sổ');assert.ok(post&&!post.disabled,'Ghi sổ is offered')
+ document.body.querySelector('dialog[open] form').dispatchEvent(new window.Event('submit',{cancelable:true}));for(let i=0;i<4;i++)await tick()
  assert.deepEqual(calls.find(c=>c.method===F+'payroll.post').args,{period:'LT-2026-09',source_hash:'H1'})
  view.unmount()
 })
@@ -160,7 +162,7 @@ test('cost report by lot lists materials, labour and services',async()=>{
   [F+'reports.costs']:{group_by:'lotus_farm_block',rows:[{dim:'B1',farm:'LOTUS-222',label:'A-1',materials:300000,labour:2000000,crews:500000,services:100000,total:2900000,per_ha:1000000}],
    totals:{materials:300000,labour:2000000,crews:500000,services:100000,total:2900000}}}
  const view=await open('/tai-chinh?tab=reports')
- button(view.root,'Chi phí theo vườn / lô').click();for(let i=0;i<4;i++)await tick()
+ await chooseReport(view.root,'costs')
  assert.match(text(view.root),/A-1 · LOTUS-222\s*300\.000\s*2\.000\.000\s*500\.000\s*100\.000\s*2\.900\.000\s*1\.000\.000/)
  view.unmount()
 })
