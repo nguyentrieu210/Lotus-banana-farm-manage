@@ -28,8 +28,9 @@ test('new purchase route loads company scope and keeps finance actions hidden fo
  assert.ok(calls.some(c=>c.method.endsWith('.needs')&&c.args.company==='C'))
  assert.ok(![...view.root.querySelectorAll('nav button')].some(b=>b.textContent==='Thanh toán'))
  await click('Đơn mua');await click('Thêm đơn mua')
- assert.match(view.root.textContent,/Đơn giá chưa VAT/)
- assert.ok(view.root.querySelector('form'))
+ // Desktop forms open in the standard dialog, rendered on <body>.
+ assert.match(document.body.textContent,/Đơn giá chưa VAT/)
+ assert.ok(document.querySelector('dialog[open] form'))
 })
 
 test('unknown quote has no selectable payment price and confirmation targets original quotation',async()=>{
@@ -45,7 +46,7 @@ test('unknown quote has no selectable payment price and confirmation targets ori
 test('purchase editor classifies service from existing Item and removes extra lines',async()=>{
  let draft={supplier:'N',warehouse:'K',expected_date:'2026-10-23',notes:'',items:[{id:'1',item:'S',qty:1,uom:'Nos',rate:10,kind:'Service'},{id:'2',item:'I',qty:2,uom:'Kg',rate:20,kind:'Material'}]}
  view=mount(DocumentForm,{mobile:true,modelValue:draft,catalog:catalogue,type:'order','onUpdate:modelValue':next=>{draft=next}})
- await tick();const deleteButton=[...view.root.querySelectorAll('button')].find(b=>b.textContent==='Xóa dòng');deleteButton.click();await tick()
+ await tick();const deleteButton=view.root.querySelector('button[aria-label="Xóa dòng 1"]');deleteButton.click();await tick()
  assert.equal(draft.items.length,1);assert.equal(draft.items[0].item,'I')
  assert.deepEqual(allowedKinds(catalogue.items[1]).map(k=>k.value),['Service'])
 })
@@ -67,9 +68,9 @@ test('warehouse create-order action waits for catalogue initialization before op
  const handle=ref(null)
  view=mount({render:()=>h(Workspace,{ref:handle,company:'C',today:'2026-10-23'})});await tick()
  let complete=false;const action=handle.value.createOrder().then(()=>{complete=true})
- await tick();assert.equal(complete,false);assert.equal(view.root.querySelector('form'),null)
+ await tick();assert.equal(complete,false);assert.equal(document.querySelector('dialog[open] form'),null)
  ready(catalogue);await action;await tick()
- assert.ok(view.root.querySelector('form'));assert.match(view.root.textContent,/Đơn giá chưa VAT/)
+ assert.ok(document.querySelector('dialog[open] form'));assert.match(document.body.textContent,/Đơn giá chưa VAT/)
 })
 
 test('warehouse receiving action opens only submitted orders that still await delivery',async()=>{

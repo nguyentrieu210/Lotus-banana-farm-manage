@@ -3,7 +3,9 @@ import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
 import {newKey,purchaseKinds,purchaseRequest} from '../procurement'
-import ProcurementField from './ProcurementField.vue'
+import LotusField from './form/LotusField.vue'
+import FormGrid from './form/FormGrid.vue'
+import LineItemsEditor from './form/LineItemsEditor.vue'
 import MobileSupplierForm from './MobileSupplierForm.vue'
 import {Button} from './ui/button'
 import LotusMobileButton from './LotusMobileButton.vue'
@@ -31,20 +33,24 @@ async function save(){if(saving.value)return;saving.value=true;error.value='';tr
 }catch(e){error.value=e.message}finally{saving.value=false}}
 defineExpose({isSaving:()=>saving.value})
 </script>
-<template><p v-if="error" role="alert" class="procurement-error">{{error}}</p><div v-if="data" @input="dirty" @change="dirty">
+<template><p v-if="error" role="alert" class="lotus-modal-form__error">{{error}}</p><div v-if="data" @input="dirty" @change="dirty">
  <MobileSupplierForm v-if="kind==='suppliers'" v-model="data" :mobile="mobile" extended :options="options" :saving="saving||data.can_write===false" @submit="save"/>
- <form v-else @submit.prevent="save"><fieldset :disabled="saving||data.can_write===false"><div class="procurement-fields">
-  <ProcurementField v-model="data.item_code" :mobile="mobile" label="Mã hàng" :disabled="!!name" required/>
-  <ProcurementField v-model="data.item_name" :mobile="mobile" label="Tên hàng" required/>
-  <ProcurementField v-model="data.kind" :mobile="mobile" label="Loại mua" :options="purchaseKinds" :searchable="false" :disabled="!!name" required/>
-  <ProcurementField v-model="data.group" :mobile="mobile" label="Nhóm hàng" :options="opts(options.item_groups)" required/>
-  <ProcurementField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="opts(options.uoms)" :disabled="!!name" required/>
-  <ProcurementField v-if="data.kind==='Asset'" v-model="data.asset_category" :mobile="mobile" label="Nhóm tài sản" :options="opts(options.asset_categories)" :disabled="!!name" required/>
-  <ProcurementField v-model="data.description" :mobile="mobile" label="Mô tả" type="textarea"/>
-  <ProcurementField :model-value="String(data.disabled||0)" :mobile="mobile" label="Trạng thái" :options="[{value:'0',label:'Đang dùng'},{value:'1',label:'Ngừng dùng'}]" :searchable="false" @update:model-value="data.disabled=Number($event)"/>
- </div><section v-for="(r,i) in data.conversions" :key="i" class="procurement-actions">
-  <ProcurementField v-model="r.uom" :mobile="mobile" label="Đơn vị quy đổi" :options="opts(options.uoms)" required/>
-  <ProcurementField v-model="r.conversion_factor" :mobile="mobile" label="Hệ số về đơn vị gốc" type="number" min="0.000001" step="any" required/>
-  <component :is="button" type="button" @click="data.conversions.splice(i,1);emit('dirty',true)">Bỏ quy đổi</component>
- </section><div class="procurement-actions"><component :is="button" type="button" @click="data.conversions.push({uom:'',conversion_factor:1});emit('dirty',true)">Thêm quy đổi</component><component :is="button" type="submit" :disabled="saving">Lưu hàng mua</component></div></fieldset></form>
+ <form v-else class="lotus-inline-form" @submit.prevent="save"><fieldset :disabled="saving||data.can_write===false">
+  <FormGrid :columns="mobile?1:3">
+   <LotusField v-model="data.item_code" :mobile="mobile" label="Mã hàng" :disabled="!!name" required/>
+   <LotusField v-model="data.item_name" :mobile="mobile" label="Tên hàng" required/>
+   <LotusField v-model="data.kind" :mobile="mobile" label="Loại mua" :options="purchaseKinds" :searchable="false" :disabled="!!name" required/>
+   <LotusField v-model="data.group" :mobile="mobile" label="Nhóm hàng" :options="opts(options.item_groups)" required/>
+   <LotusField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="opts(options.uoms)" :disabled="!!name" required/>
+   <LotusField v-if="data.kind==='Asset'" v-model="data.asset_category" :mobile="mobile" label="Nhóm tài sản" :options="opts(options.asset_categories)" :disabled="!!name" required/>
+   <LotusField :model-value="String(data.disabled||0)" :mobile="mobile" label="Trạng thái" :options="[{value:'0',label:'Đang dùng'},{value:'1',label:'Ngừng dùng'}]" :searchable="false" :empty-option="null" @update:model-value="data.disabled=Number($event)"/>
+   <LotusField v-model="data.description" :mobile="mobile" label="Mô tả" type="textarea" wide/>
+  </FormGrid>
+  <LineItemsEditor v-model="data.conversions" title="Đơn vị quy đổi" add-label="Thêm quy đổi" empty-text="Chưa có đơn vị quy đổi." :min="0" :mobile="mobile" :columns="[{field:'uom',label:'Đơn vị quy đổi',required:true,options:opts(options.uoms)},{field:'conversion_factor',label:'Hệ số về đơn vị gốc',type:'number',required:true,props:{min:0.000001}}]" :new-row="()=>({uom:'',conversion_factor:1})" @update:model-value="emit('dirty',true)"/>
+  <div class="lotus-inline-form__footer"><component :is="button" type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu hàng mua'}}</component></div>
+ </fieldset></form>
 </div></template>
+<style>
+.lotus-inline-form>fieldset{display:grid;gap:16px;border:0;margin:0;padding:0;min-width:0}
+.lotus-inline-form__footer{display:flex;justify-content:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--lotus-border)}
+</style>
