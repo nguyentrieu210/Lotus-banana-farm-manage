@@ -9,7 +9,7 @@ export const navGroups=[
  {label:'Điều hành công việc',icon:'check',items:[['cong-viec','check','Công việc ngoài vườn'],['work','list','Tiến độ & kết quả'],['labor','people','Bố trí nhân công'],['materials','boxes','Vật tư theo việc'],['daily-close','lock','Chốt ngày']]},
  {label:'Dự thu',icon:'trending',items:[['forecast','trending','Dự thu'],['forecast-onedrive','route','Dự thu OneDrive']]},
  {label:'Thu hoạch & đóng gói',icon:'basket',items:[['harvest','basket','Thu hoạch'],['measurements','ruler','Đo trái'],['losses','trash','Hủy & tổn thất'],['incoming-qc','shield','QC đầu vào'],['packhouse','package','Đóng gói'],['trace','route','Truy xuất']]},
- {label:'Kho',icon:'warehouse',items:[['kho','warehouse','Quản lý kho']]},
+ {label:'Kho',icon:'warehouse',kind:'stock',items:[['kho','warehouse','Quản lý kho']]},
  {label:'Mua hàng',icon:'cart',kind:'buying',items:[['mua-hang','cart','Mua hàng']]},
  {label:'Tài chính – Kế toán',icon:'wallet',items:[['tai-chinh','wallet','Tài chính – Kế toán']]},
  {label:'Nhân sự',icon:'people',kind:'hr',items:[['nhan-su','id-card','Hồ sơ nhân viên'],['cham-cong','clock','Chấm công']]},

@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {load,mount,tick,document,window,h,ref} from './support/mount.mjs'
-import {visibleBuyingNavigation,normalizeBuyingView,stockViews} from '../src/procurement-navigation.js'
+import {visibleBuyingNavigation,normalizeBuyingView} from '../src/procurement-navigation.js'
+import {stockNavigation,normalizeStockView} from '../src/stock-navigation.js'
 const MasterForm=await load('components/ProcurementMasterForm.vue')
 const Masters=await load('components/ProcurementMasters.vue')
 const Workspace=await load('components/ProcurementWorkspace.vue')
@@ -20,8 +21,11 @@ test.beforeEach(()=>{calls=[];handler=async(m,a)=>{
  return []
 }})
 test.afterEach(()=>view?.unmount())
-test('purchase menu separates finance and masters and warehouse has exactly four operational tabs',()=>{
- assert.deepEqual(Object.values(stockViews),['Tồn kho','Nhu cầu vật tư','Phiếu kho','Sổ kho'])
+test('purchase menu separates finance and masters and warehouse lists its operations before its catalogues',()=>{
+ assert.deepEqual(stockNavigation.filter(x=>!x.setup).map(x=>x.label),['Tồn kho','Nhập kho','Xuất kho','Chuyển kho','Kiểm kê','Sổ kho','Nhu cầu vật tư','Báo cáo nhập – xuất – tồn'])
+ assert.deepEqual(stockNavigation.filter(x=>x.setup).map(x=>x.label),['Kho','Vật tư','Nhóm vật tư','Đơn vị tính'])
+ assert.equal(normalizeStockView('history'),'receipts','old links to Phiếu kho open Nhập kho')
+ assert.equal(normalizeStockView('setup'),'warehouses')
  const buyer=visibleBuyingNavigation({capabilities:{purchasing:true}})
  assert.ok(buyer.some(x=>x.id==='suppliers'));assert.ok(buyer.some(x=>x.id==='items'));assert.ok(!buyer.some(x=>x.finance))
  assert.equal(normalizeBuyingView('unknown'),'orders')
@@ -48,7 +52,7 @@ test('invoice inquiry is visible to reader, pages on server and opens original i
  await click('Sau');assert.equal(calls.filter(c=>c.method.endsWith('.invoices')).at(-1).args.start,'50')
  const row=[...view.root.querySelectorAll('.van-cell')].find(x=>x.textContent.includes('PI'));assert.ok(row);row.click();await tick();assert.match(view.root.textContent,/Hóa đơn HD-1/);assert.match(view.root.textContent,/Còn nợ 80/)
 })
-test('warehouse shows four operational destinations and opens supplier receiving through shared picker',async()=>{
+test('warehouse receipts list opens supplier receiving through the shared picker',async()=>{
  const usual=handler;handler=async(m,a)=>{
   if(m==='lotus_farm.warehouse.bootstrap')return {companies:[{name:'C'}],today:'2026-10-24',permissions:{'Item':true,'Warehouse':true,'Purchase Order':true,'Purchase Receipt':true,'Stock Entry':true}}
   if(m==='lotus_farm.warehouse.overview')return {warehouses:[{name:'K',warehouse_name:'Kho'}],items:[],total_count:0,catalogue_count:1,has_more:false,currency:'VND'}
@@ -57,9 +61,10 @@ test('warehouse shows four operational destinations and opens supplier receiving
   return usual(m,a)
  }
  view=mount(Stock,{embedded:true,stockView:'history'});await tick();await tick()
- assert.deepEqual([...view.root.querySelectorAll('[role=tab]')].map(x=>x.textContent),Object.values(stockViews))
- assert.equal(view.root.querySelector('[role=tab][aria-selected=true]').textContent,'Phiếu kho')
- await click('Nhập theo đơn');assert.ok(calls.some(c=>c.method==='lotus_farm.warehouse_planning.overview'))
+ assert.equal(view.root.querySelector('[role=tab]'),null,'embedded Kho is navigated from the sidebar')
+ assert.equal(view.root.querySelector('section.lotus-list-page').getAttribute('aria-label'),'Phiếu nhập kho')
+ assert.equal(calls.find(c=>c.method==='lotus_farm.warehouse.documents').args.kind,'receipts')
+ await click('Nhập theo đơn mua');assert.ok(calls.some(c=>c.method==='lotus_farm.warehouse_planning.overview'))
  assert.ok(!calls.some(c=>c.method==='lotus_farm.procurement.bootstrap'))
 })
 test('shared receiving includes actual receipt costs in the native draft request',async()=>{

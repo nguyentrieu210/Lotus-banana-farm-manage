@@ -2,62 +2,66 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const stock=khoSource()
 const planning=readFileSync(new URL('../src/components/WarehousePlanning.vue',import.meta.url),'utf8')
 const css=readFileSync(new URL('../src/warehouse-workspace-audit.css',import.meta.url),'utf8')
 const planningAPI=readFileSync(new URL('../../lotus_farm/warehouse_planning.py',import.meta.url),'utf8')
 
 test('all operational stock lists share the compact filter bar and Excel table headers',()=>{
- assert.match(stock,/class="stock-scope"/)
- assert.match(stock,/class="stock-date-filters"/)
+ for(const name of ['StockInventory.vue','StockDocumentList.vue','StockLedger.vue','StockReport.vue','StockMasterList.vue']){
+  const view=khoFile('components/stock/'+name)
+  assert.match(view,/<ListPage /,name+' uses the shared list page')
+  assert.match(view,/show-empty-headers/,name)
+ }
+ for(const name of ['StockDocumentList.vue','StockLedger.vue']){
+  const view=khoFile('components/stock/'+name)
+  assert.match(view,/<StockScope dates /,name+' filters by date range')
+  assert.match(view,/:filter-values="data\?\.filter_values"/,name)
+  assert.match(view,/function clearFilters\(\)/,name)
+ }
  assert.doesNotMatch(stock,/class="movement-filters"/)
- assert.match(stock,/<DataTable :rows="historyRows" :columns="historyColumns" show-empty-headers/)
- assert.match(stock,/<DataTable :rows="movementData\?\.rows\|\|\[\]" :columns="movementColumns" show-empty-headers/)
- assert.match(stock,/v-if="\['stock','history'\]\.includes\(tab\)" class="stock-quick-actions"/)
- assert.match(stock,/function clearTabFilters\(\)/)
- assert.match(stock,/:filter-values="documentData\?\.filter_values"/)
- assert.match(stock,/:filter-values="movementData\?\.filter_values"/)
 })
 
 test('document & movement columns use readable concise Vietnamese labels',()=>{
- const section=stock.slice(stock.indexOf('const historyColumns='),stock.indexOf('const receiptDetailColumns='))
+ const columns=khoFile('stock-columns.js'),section=columns.slice(columns.indexOf('export function documentColumns'),columns.indexOf('export function receiptDetailColumns'))
  for(const label of ['Số phiếu','Loại phiếu','Kho liên quan','Tồn trước','Tồn sau','Tên hàng','ĐVT']){
   assert.ok(section.includes(label),'Missing clear header: '+label)
  }
- assert.match(stock,/dateLabel=value=>/)
- assert.match(stock,/String\(p\.value\|\|''\)\.split\(' → '\)\.map\(warehouseLabel\)/)
+ assert.match(columns,/valueFormatter:p=>formatDate\(p\.value\)/)
+ assert.match(columns,/String\(p\.value\|\|''\)\.split\(' · '\)\.map\(warehouseLabel\)/)
 })
 
 test('purchase and demand use same live search and Excel-style table filters',()=>{
  assert.match(planning,/watch\(searchDraft,value=>/)
  assert.match(planning,/\},220\)/)
- assert.match(planning,/stock-date-filters stock-planning-toolbar/)
- assert.match(planning,/class="stock-search stock-search--instant"/)
+ // One shared list page for demand, purchase requests and orders: live search, date range and Excel-style filters.
+ assert.match(planning,/<ListPage /)
+ assert.match(planning,/v-model:search="searchDraft"/)
+ assert.match(planning,/<DateRangePicker v-model:from="from" v-model:to="to"\/>/)
  assert.match(planning,/function resetFilters\(\)/)
- assert.match(planning,/:filter-values="data\?\.filter_values"/)
- assert.match(planning,/show-empty-headers :loading="busy" interactive @open="row=>openRequest/)
- assert.match(planning,/show-empty-headers :loading="busy" interactive @open="row=>openOrder/)
+ assert.match(planning,/:filter-values="view==='coverage'\?data\?\.filter_values:undefined"/)
+ assert.match(planning,/else if\(view\.value==='requests'\)openRequest\(row\.name\);else openOrder\(row\.name\)/)
  assert.match(planning,/const unit=unitLabel/)
  assert.match(planningAPI,/faceted_distinct\(rows,fields,selected/)
 })
 
 test('warehouse setup is table-first with small action buttons, not onboarding cards',()=>{
- assert.match(stock,/class="stock-setup-toolbar"/)
- assert.match(stock,/class="stock-setup-grids"/)
- assert.match(stock,/>\+ Thêm nhóm hàng</)
- assert.match(stock,/>\+ Thêm vật tư</)
- assert.match(stock,/>\+ Thêm kho</)
- assert.match(stock,/show-empty-headers interactive @open="row=>editMaster\('warehouse'/)
+ const masters=khoFile('components/stock/StockMasterList.vue')
+ assert.match(masters,/<ListPage /)
+ for(const label of ['Thêm kho','Thêm vật tư','Thêm nhóm vật tư','Thêm đơn vị tính'])assert.ok(masters.includes(label),label)
+ assert.match(masters,/interactive [^>]*@open="row=>emit\('edit-master',info\.master,row\.name\)"/)
  assert.doesNotMatch(stock,/<UiCard>/)
 })
 
 test('stock voucher forms retain required details and group their controls',()=>{
- assert.match(stock,/class="stock-form-help"/)
- assert.match(stock,/class="stock-form-section-title"/)
- assert.match(stock,/@submit\.prevent="save"/)
- assert.match(stock,/@submit\.prevent="postDocument"/)
- assert.match(stock,/v-model="form\.receiver_employee"/)
- assert.match(stock,/v-model\.number="row\.rate"/)
- assert.match(css,/\.stock-dialog \.stock-form-grid/)
- assert.match(css,/\.stock-setup-grids/)
+ const form=khoFile('components/stock/StockDocumentForm.vue'),detail=khoFile('components/stock/StockDocumentDetail.vue')
+ assert.match(form,/<ModalForm /)
+ assert.match(form,/@submit="save"/)
+ assert.match(detail,/@submit="post"/)
+ assert.match(form,/<FormSection title="Thông tin phiếu">/)
+ assert.match(form,/<LineItemsEditor v-model="form\.lines" title="Hàng hóa trên phiếu"/)
+ assert.match(form,/v-model="form\.receiver_employee"/)
+ assert.match(form,/field:'rate'/)
+ assert.match(form,/class="lotus-modal-form__description"/)
 })

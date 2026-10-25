@@ -13,5 +13,5 @@ export const procurementNavigation=[
 export const normalizeBuyingView=value=>procurementNavigation.some(r=>r.id===value)?value:'orders'
 export function visibleBuyingNavigation(session){return procurementNavigation.filter(r=>!r.finance||session.capabilities?.purchasing_finance).filter(r=>!r.invoice||session.capabilities?.purchasing_invoice_read)}
 export const buyingQuery=id=>({buying_view:id})
-export const stockViews={stock:'Tồn kho',planning:'Nhu cầu vật tư',history:'Phiếu kho',movements:'Sổ kho'}
-export const normalizeStockView=value=>value==='setup'||Object.hasOwn(stockViews,value)?value:'stock'
+// Kho navigation moved to stock-navigation.js; re-exported for older imports.
+export {normalizeStockView,stockNavigation} from './stock-navigation.js'

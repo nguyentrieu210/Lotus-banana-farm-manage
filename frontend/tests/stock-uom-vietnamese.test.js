@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {unitLabel,stockItemUomOptions} from '../src/units.js'
 
-const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const stock=khoSource()
 
 test('unused technical English UOMs are not listed for farm stock items',()=>{
  const rows=['Abampere','Atmosphere','Kg','Bao','Box','Nos','Chai','Gói','Bunch','Tree'].map(name=>({name}))
@@ -29,11 +30,11 @@ test('editing historical item retains custom unit but never exposes unrelated od
 })
 
 test('both stock and packaging UOM selectors are curated and conversion is a visible stock column',()=>{
- assert.match(stock,/const visibleUoms=computed\(\(\)=>stockItemUomOptions/)
- assert.match(stock,/v-for="u in visibleUoms"/)
- assert.match(stock,/v-for="u in selectablePackUoms"/)
+ assert.match(stock,/const uomOptions=computed\(\(\)=>stockItemUomOptions/)
+ assert.match(stock,/v-model="master\.uom" label="Đơn vị tồn kho gốc" :options="uomOptions"/)
+ assert.match(stock,/v-model="master\.pack_uom" label="Đơn vị đóng gói \/ quy đổi" :options="packOptions"/)
  assert.doesNotMatch(stock,/catalog\.uoms\.filter\(u=>u\.name!==master\.uom\)/)
  assert.match(stock,/field:'pack_actual_qty',headerName:'Tồn quy đổi'/)
  assert.match(stock,/minWidth:132,tooltipValueGetter:/)
- assert.ok(stock.indexOf("field:'pack_actual_qty'")>stock.indexOf("stockNumber('actual_qty'"))
+ assert.ok(stock.indexOf("field:'pack_actual_qty'")>stock.indexOf("number('actual_qty'"))
 })

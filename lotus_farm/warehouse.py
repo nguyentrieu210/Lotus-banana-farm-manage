@@ -46,7 +46,7 @@ def bootstrap():
     return dict(user=frappe.session.user, csrf_token=get_csrf_token(), today=nowdate(),
                 companies=frappe.get_list('Company', fields=['name', 'abbr', 'default_currency'], limit_page_length=1000),
                 permissions={dt: frappe.has_permission(dt, 'create') for dt in
-                             ('Item', 'Item Group', 'Warehouse', 'Stock Entry', 'Stock Reconciliation', 'Company', 'Purchase Receipt', 'Purchase Order')})
+                             ('Item', 'Item Group', 'Warehouse', 'UOM', 'Stock Entry', 'Stock Reconciliation', 'Company', 'Purchase Receipt', 'Purchase Order')})
 
 
 @frappe.whitelist()
@@ -83,12 +83,18 @@ def create_master(company, kind, values):
     _access()
     _company(company)
     values = frappe.parse_json(values)
-    if not isinstance(values, dict) or kind not in ('item', 'group', 'warehouse'):
+    if not isinstance(values, dict) or kind not in ('item', 'group', 'warehouse', 'uom'):
         frappe.throw('Thông tin danh mục không hợp lệ.')
-    doctype = {'item': 'Item', 'group': 'Item Group', 'warehouse': 'Warehouse'}[kind]
+    doctype = {'item': 'Item', 'group': 'Item Group', 'warehouse': 'Warehouse', 'uom': 'UOM'}[kind]
     if not frappe.has_permission(doctype, 'create'):
         frappe.throw('Bạn chưa có quyền thêm danh mục này.', frappe.PermissionError)
-    if kind == 'group':
+    if kind == 'uom':
+        label = _text(values.get('name'), 'Tên đơn vị tính')
+        if frappe.db.exists('UOM', label):
+            frappe.throw('Đơn vị tính đã tồn tại.')
+        doc = frappe.get_doc(dict(doctype='UOM', uom_name=label, enabled=1,
+                                  must_be_whole_number=cint(values.get('must_be_whole_number')))).insert()
+    elif kind == 'group':
         doc = _create_group(values.get('name'), values.get('parent'))
     elif kind == 'warehouse':
         parent = frappe.get_doc('Warehouse', values.get('parent'))
@@ -220,7 +226,7 @@ def delete_draft(doctype,name,modified):
 
 
 @frappe.whitelist()
-def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None):
+def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None,kind=None):
     from lotus_farm.table_filters import faceted_distinct,selections,matches
     _access();_company(company)
     stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
@@ -234,10 +240,16 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     elif from_date:filters['posting_date']=['>=',getdate(from_date)]
     elif to_date:filters['posting_date']=['<=',getdate(to_date)]
     kinds={'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói'}
+    # Kho menu: one list per kind of document (Nhập kho · Xuất kho · Chuyển kho · Kiểm kê); no kind = every stock document.
+    scopes={'receipts':{'Purchase Receipt':None,'Stock Entry':['Material Receipt']},'issues':{'Stock Entry':['Material Issue']},
+            'transfers':{'Stock Entry':['Material Transfer']},'counts':{'Stock Reconciliation':None}}
+    if kind and kind not in scopes:frappe.throw('Loại phiếu không hợp lệ.')
+    scope=scopes.get(kind) or {dt:None for dt in ('Stock Entry','Stock Reconciliation','Purchase Receipt')}
     rows=[]
-    for dt in ('Stock Entry','Stock Reconciliation','Purchase Receipt'):
+    for dt,entry_types in scope.items():
         if not frappe.has_permission(dt,'read'):continue
-        for entry in frappe.get_list(dt,filters=filters,fields=['name','posting_date','posting_time','docstatus','modified'],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0):
+        dt_filters=dict(filters,stock_entry_type=['in',entry_types]) if entry_types else filters
+        for entry in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified'],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0):
             if search and str(search).casefold() not in entry.name.casefold():continue
             doc=frappe.get_doc(dt,entry.name)
             names={r.get(f) for r in doc.items for f in ('s_warehouse','t_warehouse','warehouse') if r.get(f)}
@@ -252,6 +264,31 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     rows=sorted_rows(rows,sort_model,fields)
     start=max(0,cint(start))
     return dict(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50,filter_values=choices)
+
+
+@frappe.whitelist()
+def stock_summary(company,warehouse=None,from_date=None,to_date=None,search=None):
+    """Nhập – xuất – tồn theo số lượng cho màn Kho (giá trị chỉ xem ở Kế toán), chỉ trong các kho người dùng được đọc."""
+    from frappe.utils import get_first_day
+    from lotus_farm.finance.statements import ledger_summary
+    _access();_company(company)
+    if not frappe.has_permission('Stock Ledger Entry','read'):
+        frappe.throw('Bạn chưa có quyền xem lịch sử nhập xuất.',frappe.PermissionError)
+    to_date=getdate(to_date or nowdate());from_date=getdate(from_date or get_first_day(to_date))
+    if from_date>to_date:frappe.throw('Từ ngày phải trước hoặc bằng đến ngày.')
+    stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
+    if warehouse:
+        if warehouse not in stores:frappe.throw('Kho không thuộc công ty hoặc bạn chưa có quyền xem.')
+        stores=[warehouse]
+    query=str(search or '').strip().casefold()[:100]
+    quantities=('opening_qty','in_qty','out_qty','closing_qty')
+    rows=[]
+    for r in ledger_summary(company,from_date,to_date,stores):
+        if query and not any(query in str(r.get(k) or '').casefold() for k in ('item_code','item_name','item_group')):continue
+        r={k:v for k,v in r.items() if not k.endswith('_value')}
+        if any(abs(r[k])>0.0005 for k in quantities):rows.append(r)
+    totals={k:sum(r[k] for r in rows) for k in quantities}
+    return dict(from_date=str(from_date),to_date=str(to_date),rows=rows,totals=totals,item_count=len({r['item_code'] for r in rows}))
 
 
 @frappe.whitelist()

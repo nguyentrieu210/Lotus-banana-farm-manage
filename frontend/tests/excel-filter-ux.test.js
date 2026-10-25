@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {excelKey,filterExcelChoices,toggleExcelVisible,excelAppliedValues,excelDefaultSelection} from '../src/excel-filter-state.js'
 
-const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const stock=khoSource()
 const header=readFileSync(new URL('../src/components/ExcelHeader.vue',import.meta.url),'utf8')
 const style=readFileSync(new URL('../src/stock-overview.css',import.meta.url),'utf8')
 
@@ -60,25 +61,24 @@ test('Excel dropdown is anchored outside AG Grid clipping and supports keyboard 
 })
 
 test('compact live search aligned right of warehouse scope, no submit button',()=>{
+ // Every Kho list searches while typing in the shared toolbar; the list reloads 220 ms after typing stops.
  assert.match(stock,/watch\(searchDraft,value=>/)
  assert.match(stock,/setTimeout\(\(\)=>/)
  assert.match(stock,/\},220\)/)
- const scopeStart=stock.indexOf('class="stock-scope"')
- const scope=stock.slice(scopeStart,stock.indexOf('<section v-if="tab===\'stock\'"',scopeStart))
- assert.ok(scope.indexOf('>Kho<UiSelect')<scope.indexOf('stock-search--instant'))
- assert.match(style,/\.stock-search--instant\{[\s\S]*?margin-left:auto/)
- assert.match(style,/flex:0 0 180px/)
- assert.ok(!scope.includes('type="submit"'))
+ const toolbar=readFileSync(new URL('../src/components/WorkspaceListToolbar.vue',import.meta.url),'utf8')
+ assert.ok(toolbar.indexOf('workspace-list-filters')<toolbar.indexOf('workspace-list-search'),'scope filters come before the search box')
+ assert.ok(!toolbar.includes('type="submit"'))
  assert.match(style,/\.ag-header-cell/)
  assert.match(style,/\.ag-cell/)
  assert.match(style,/border-right:1px solid/)
 })
 
 test('Company scope filters hidden when user has only one authorized company',()=>{
- for(const name of ['StockApp.vue','HrApp.vue','TimekeepingApp.vue']){
+ for(const name of ['HrApp.vue','TimekeepingApp.vue']){
   const src=readFileSync(new URL('../src/'+name,import.meta.url),'utf8')
   assert.match(src,/v-if="\(session\?\.companies\?\.length\|\|0\)>1">Công ty/)
  }
+ assert.match(khoFile('components/stock/StockScope.vue'),/v-if="companies\.length>1"[^>]*aria-label="Công ty"/)
  const app=readFileSync(new URL('../src/App.vue',import.meta.url),'utf8')
  assert.match(readFileSync(new URL("../src/components/WorkspaceScopeBar.vue",import.meta.url),"utf8"),/v-if="companies.length>1">Công ty/)
  assert.match(app,/if\(companies.value.length===1\)scope.company=companies.value\[0\]/)

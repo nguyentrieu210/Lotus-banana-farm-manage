@@ -231,10 +231,20 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
     company = setup.company()
     to_date = getdate(to_date or nowdate())
     from_date = getdate(from_date or get_first_day(to_date))
-    clause, args = ('and sle.warehouse=%s', (warehouse,)) if warehouse else ('', ())
+    out = ledger_summary(company, from_date, to_date, [warehouse] if warehouse else None)
+    totals = {k: sum(r[k] for r in out) for k in ('opening_value', 'in_value', 'out_value', 'closing_value')}
+    return dict(from_date=str(from_date), to_date=str(to_date), rows=out, totals=totals)
+
+
+def ledger_summary(company, from_date, to_date, warehouses=None):
+    """Opening, in, out and closing (quantity and value) per item and warehouse; shared by Kế toán and Kho.
+    `warehouses`: restrict to these warehouses (None = all). Callers check permissions."""
+    if warehouses is not None and not warehouses:
+        return []
+    clause, args = ('and sle.warehouse in %s', (tuple(warehouses),)) if warehouses else ('', ())
     # A stock count writes the quantity after the count, not the change (actual_qty stays 0): the change is the difference
     # with the line before it for the same item and warehouse.
-    rows = frappe.db.sql("""select m.item_code, i.item_name, i.stock_uom, m.warehouse,
+    rows = frappe.db.sql("""select m.item_code, i.item_name, i.stock_uom, i.item_group, m.warehouse,
             sum(case when m.posting_date < %%s then m.qty else 0 end) opening_qty,
             sum(case when m.posting_date < %%s then m.value else 0 end) opening_value,
             sum(case when m.posting_date >= %%s and m.qty > 0 then m.qty else 0 end) in_qty,
@@ -248,7 +258,7 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
                      else sle.actual_qty end qty
               from `tabStock Ledger Entry` sle where sle.company=%%s and sle.is_cancelled=0 and sle.posting_date <= %%s %s) m
         join tabItem i on i.name=m.item_code
-        group by m.item_code, i.item_name, i.stock_uom, m.warehouse order by i.item_name, m.warehouse""" % clause,
+        group by m.item_code, i.item_name, i.stock_uom, i.item_group, m.warehouse order by i.item_name, m.warehouse""" % clause,
                          (from_date,) * 6 + (company, to_date) + args, as_dict=True)
     from lotus_farm.units import label
     out = []
@@ -259,8 +269,7 @@ def stock_summary(from_date=None, to_date=None, warehouse=None):
         r['closing_value'] = r['opening_value'] + r['in_value'] - r['out_value']
         if any(abs(r[k]) > 0.0005 for k in ('opening_qty', 'in_qty', 'out_qty', 'closing_qty', 'closing_value')):
             out.append(r)
-    totals = {k: sum(r[k] for r in out) for k in ('opening_value', 'in_value', 'out_value', 'closing_value')}
-    return dict(from_date=str(from_date), to_date=str(to_date), rows=out, totals=totals)
+    return out
 
 
 # Bank statement match -------------------------------------------------------------------------------------

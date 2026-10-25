@@ -2,9 +2,11 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const source=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const source=khoFile('stock-columns.js')
+const form=khoFile('components/stock/StockDocumentForm.vue')
 function columnsOf(name){
- const start=source.indexOf('const '+name+'=')
+ const start=source.search(new RegExp('(const|function) '+name+'\\b'))
  assert.ok(start>=0,'Missing table '+name)
  const end=source.indexOf('\n\n',start)
  return source.slice(start,end)
@@ -27,6 +29,6 @@ test('receipt document does not display valuation rate as a grid column',()=>{
  // Keep the operational receipt costs and rate inputs: hiding a grid
  // column must not alter calculations or the persisted accounting values.
  assert.match(columns,/field:'rate'/)
- assert.match(source,/const receiptBasic=computed/)
- assert.match(source,/v-model\.number="row\.rate"/)
+ assert.match(form,/const basic=computed/)
+ assert.match(form,/field:'rate',label:'Đơn giá \('\+money\.value\+'\)',type:'money'/)
 })
