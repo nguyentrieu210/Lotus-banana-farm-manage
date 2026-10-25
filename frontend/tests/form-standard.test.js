@@ -34,3 +34,11 @@ test('Kho views are list pages driven by the sidebar, with one view per menu ent
  assert.match(shell,/<WorkspaceTabs v-if="!embedded&&!warehousePwa"/,'embedded Kho has no in-page tabs: the sidebar navigates')
  assert.match(read('module-navigation.js'),/stock:\{paths:\['kho'\]/)
 })
+
+test('phone screens label their controls through the shared mobile fields, not hand-made wrappers',()=>{
+ for(const name of ['WarehouseMobile.vue','WorkMobile.vue','components/MobilePurchaseOrderForm.vue']){
+  const markup=template(read(name))
+  assert.doesNotMatch(markup,/class="mobile-field"[^>]*>\s*<label>[^<]*<\/label>\s*<(MobileLinkField|LotusMobileInput|LotusMobileSelect|LotusMobileFile)/,name+': give the control its label prop')
+  assert.doesNotMatch(markup,/<label class="mobile-field">/,name)
+ }
+})
