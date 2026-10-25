@@ -19,7 +19,6 @@ import './hr-workspace.css'
 import './warehouse-table-center.css'
 import './stock-overview.css'
 import './warehouse-workspace-audit.css'
-import './warehouse-buying-lite.css'
 createApp(App).use(createPinia()).use(createLotusRouter()).mount('#app')
 import './desktop-system.css'
 import './desktop-components.css'

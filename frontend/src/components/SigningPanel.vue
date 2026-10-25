@@ -1,4 +1,6 @@
 <script setup>
+import {Button as UiButton} from './ui/button'
+import LotusField from './form/LotusField.vue'
 // Named signatures on a posted document (phiếu kho, …): the preparer picks who signs each step,
 // each one is notified on their turn and signs here; the print shows every signature (lotus_farm.signing).
 import {computed,onMounted,ref,watch} from 'vue'
@@ -49,9 +51,8 @@ onMounted(load)
   <button type="button" class="signing-panel__primary" :disabled="busy||!online" @click="sign">Ký: {{info.steps[info.current].title}}</button>
   <button v-if="info.can_return&&!returning" type="button" class="signing-panel__ghost" :disabled="busy" @click="returning=true">Trả lại người lập</button>
   <div v-if="returning" class="signing-panel__return">
-   <label for="signing-return">Lý do trả lại</label>
-   <textarea id="signing-return" v-model="reason" rows="2" maxlength="500" placeholder="Nêu rõ cần kiểm tra gì…"></textarea>
-   <button type="button" class="signing-panel__danger" :disabled="busy||!online||reason.trim().length<3" @click="sendBack">Trả lại</button>
+   <LotusField v-model="reason" label="Lý do trả lại" type="textarea" rows="2" maxlength="500" placeholder="Nêu rõ cần kiểm tra gì…"/>
+   <UiButton type="button" variant="destructive" class="signing-panel__danger" :disabled="busy||!online||reason.trim().length<3" @click="sendBack">Trả lại</UiButton>
   </div>
  </template>
 </section>

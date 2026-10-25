@@ -39,12 +39,13 @@ const moneyHint=computed(()=>kind.value==='money'&&props.modelValue!==''&&props.
 const hintText=computed(()=>props.hint||moneyHint.value||undefined)
 const mobileControl=computed(()=>kind.value==='combobox'?MobileLinkField:kind.value==='select'?LotusMobileSelect:LotusMobileInput)
 const mobileType=computed(()=>numeric.value?'number':['date','month','textarea'].includes(kind.value)?kind.value:props.type==='combobox'?'text':props.type)
-function set(value){emit('update:modelValue',value);emit('change',value)}
+// A file field's @change carries the native event (callers read event.target.files); other fields pass the new value.
+function set(value){emit('update:modelValue',value);if(kind.value!=='file')emit('change',value)}
 </script>
 
 <template>
  <LotusMobileCheck v-if="mobile&&kind==='checkbox'" v-bind="$attrs" class="lotus-mobile-check-field" :model-value="!!modelValue" :disabled="disabled||readonly" @update:model-value="set">{{label}}</LotusMobileCheck>
- <div v-else-if="mobile&&kind==='file'" class="lotus-mobile-file-field"><span class="lotus-mobile-file-field__label">{{label}}<span v-if="required" class="lotus-field__required" aria-hidden="true">*</span></span><LotusMobileFile v-bind="$attrs" :aria-label="label" :required="required" :disabled="disabled" @change="event=>set(event.target.files?.[0]||null)"/><small v-if="error||hint" class="lotus-pwa-field-hint">{{error||hint}}</small></div>
+ <div v-else-if="mobile&&kind==='file'" class="lotus-mobile-file-field"><span class="lotus-mobile-file-field__label">{{label}}<span v-if="required" class="lotus-field__required" aria-hidden="true">*</span></span><LotusMobileFile v-bind="$attrs" :aria-label="label" :required="required" :disabled="disabled" @change="event=>{set(event.target.files?.[0]||null);emit('change',event)}"/><small v-if="error||hint" class="lotus-pwa-field-hint">{{error||hint}}</small></div>
  <component v-else-if="mobile&&!fetchOptions" :is="mobileControl" v-bind="$attrs" :model-value="modelValue" :label="label" :options="kind==='combobox'||kind==='select'?choices:undefined" :type="mobileControl===LotusMobileInput?mobileType:undefined" :placeholder="placeholder" :required="required" :disabled="disabled||readonly" :hint="hintText" :error="error" @update:model-value="value=>set(numeric&&value!==''?Number(value):value)"/>
  <div v-else-if="kind==='checkbox'" class="lotus-field lotus-field--check" :class="{'lotus-field--invalid':!!error,'lotus-field--wide':wide}">
   <div class="lotus-field--check__row"><Checkbox v-bind="$attrs" :id="id" :model-value="!!modelValue" :disabled="disabled||readonly" :required="required" :aria-invalid="error?'true':undefined" :aria-describedby="error?id+'-error':hint?id+'-hint':undefined" @update:model-value="set"/><label :for="id" class="lotus-field__label">{{label}}<span v-if="required" class="lotus-field__required" aria-hidden="true">*</span></label></div>

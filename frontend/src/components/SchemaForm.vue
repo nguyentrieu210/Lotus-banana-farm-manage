@@ -1,4 +1,5 @@
 <script setup>
+import {Checkbox} from './ui/checkbox'
 import {unitLabel,unitOptions} from '../units'
 import LinkPicker from './LinkPicker.vue'
 import UiSelect from './ui/select/Select.vue'
@@ -41,7 +42,7 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
      <option value="">Chọn…</option>
      <option v-for="option in (field.options||'').split('\n').filter(Boolean)" :key="option" :value="option">{{stateLabel(option)}}</option>
     </UiSelect>
-    <input v-else-if="field.fieldtype==='Check'" v-bind="attrs" :checked="model[field.fieldname]===true||Number(model[field.fieldname])===1" type="checkbox" @change="model[field.fieldname]=$event.target.checked?1:0"/>
+    <Checkbox v-else-if="field.fieldtype==='Check'" v-bind="attrs" :model-value="model[field.fieldname]===true||Number(model[field.fieldname])===1" @update:model-value="value=>model[field.fieldname]=value?1:0"/>
     <UiInput v-else-if="['Int','Float','Currency','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
     <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)" @select="selectLink(field,$event)"/>
     <DatePicker v-else-if="field.fieldtype==='Date'" v-bind="attrs" v-model="model[field.fieldname]" :label="fieldCaption(field)"/>

@@ -1,4 +1,5 @@
 <script setup>
+import LotusField from './form/LotusField.vue'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call,upload} from '../api'
 import DataTable from './DataTable.vue'
@@ -131,7 +132,7 @@ function inheritedCycle(){emit('edit','Crop Cycle',null,{farm:props.farm,farm_bl
    <template v-if="referenceRows"><p class="notice">{{fmt(referenceRows.total,0)}} dòng tham chiếu nguồn · dữ liệu của đơn vị nguồn được giữ riêng.</p><DataTable :rows="referenceRows.rows" :columns="referenceRows.columns.map(field=>col(field,field==='_source_row'?'Dòng nguồn':field))"/><Pagination :start="referenceStart" :count="referenceRows.rows.length" :has-more="referenceRows.has_more" :page-size="100" @update:start="loadReference"/></template>
   </template>
   <template v-else-if="tab==='forecast'">
-   <div class="process-toolbar"><UiButton :disabled="busy" @click="loadForecast">Tính 36 tháng</UiButton><UiButton variant="outline" :disabled="!cutSources.length" @click="forecastDetail={}">Nguồn buồng cắt bắp</UiButton><label class="process-check"><input v-model="scenario" type="checkbox" @change="loadForecast"/> Mô phỏng riêng từ cây cũ bàn giao</label></div>
+   <div class="process-toolbar"><UiButton :disabled="busy" @click="loadForecast">Tính 36 tháng</UiButton><UiButton variant="outline" :disabled="!cutSources.length" @click="forecastDetail={}">Nguồn buồng cắt bắp</UiButton><LotusField type="checkbox" label="Mô phỏng riêng từ cây cũ bàn giao" v-model="scenario"  @change="loadForecast"/></div>
    <p v-if="!adopted.length" class="notice">Chưa có bộ hệ số đã duyệt cho phạm vi này. Áp dụng phiên bản tại Thông số trước khi tính.</p>
    <p v-for="issue in forecast?.issues||[]" :key="issue.farm+issue.message" class="notice">{{issue.farm}}: {{issue.message}}</p>
    <DataTable :rows="filter(forecast?.rows)" :columns="forecastCols" :loading="busy" empty="Chưa có đợt thực tế đủ dữ liệu để dự phóng" interactive @open="forecastDetail=$event"/>

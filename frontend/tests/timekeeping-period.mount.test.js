@@ -48,7 +48,7 @@ test('the board shows the device reading with minutes, and approves only matchin
  assert.equal(row(view.root,'An').querySelector('select').value,'','nothing is filled without a click')
  button(view.root.querySelector('.attendance-toolbar'),'Duyệt 1 dòng khớp máy').click();await tick()
  assert.match(document.body.textContent,/Tăng ca lấy theo đề xuất/)
- view.root.querySelector('dialog[aria-label="Xác nhận bảng công"] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
+ /* the confirmation is the standard dialog, rendered on <body> */document.querySelector('dialog[open] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
  assert.ok(calls.some(c=>c.method==='lotus_farm.attendance_day.approve_matching'&&c.args.date==='2026-10-14'))
  view.unmount()
 })

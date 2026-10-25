@@ -1,4 +1,6 @@
 <script setup>
+import LotusField from './components/form/LotusField.vue'
+import {FormField} from './components/ui/form-field'
 // /lotus/forecast — Dự thu theo nhật ký chặt mẹ lần 2: tiles, tonnes by harvest month, stage table
 // (trổ buồng → chích bắp → cắt bắp → thu hoạch → đóng gói), zones, the journal with each wave's dates,
 // the parameter versions and the Excel upload. Data: lotus_farm.cut_forecast. The previous forecast page
@@ -154,7 +156,7 @@ useNoticeToast(notice)
    <form class="land-form--grid cutfc-params" @submit.prevent="saveProfile">
     <label v-for="[field,label,kind] in params" :key="field">{{label}}<span class="cutfc-input"><UiInput type="number" :step="kind==='days'?1:kind==='rate'?0.01:0.1" min="0" :disabled="!data?.can_edit||saving" :model-value="formValue(field,kind)" @update:model-value="setForm(field,kind,$event)"/><em>{{kind==='days'?'ngày':kind==='rate'?'%':kind==='kg'?'kg':'chồi'}}</em></span></label>
     <p class="land-form__full" :class="Math.abs(waveTotal-1)>1e-6?'land-bad':'land-note'">Tổng 4 đợt trổ: {{num(waveTotal*100,2)}}%</p>
-    <label v-if="data?.can_edit" class="land-form__full">Ghi chú thay đổi<UiInput v-model="formNote" placeholder="VD: đổi mốc trổ đợt 1 thành 180 ngày theo khảo sát khu A"/></label>
+    <FormField v-if="data?.can_edit" class="land-form__full" label="Ghi chú thay đổi" v-slot="f"><UiInput v-bind="f" v-model="formNote" placeholder="VD: đổi mốc trổ đợt 1 thành 180 ngày theo khảo sát khu A"/></FormField>
     <div v-if="data?.can_edit" class="land-actions land-form__full"><UiButton type="button" variant="outline" :disabled="saving" @click="resetForm">Đặt lại</UiButton><UiButton type="submit" :disabled="saving||Math.abs(waveTotal-1)>1e-6">{{saving?'Đang lưu…':'Lưu thành phiên bản mới'}}</UiButton></div>
    </form>
   </section>
@@ -173,13 +175,13 @@ useNoticeToast(notice)
  <WorkspaceModal v-model="importOpen" title="Nhập file dự thu" :busy="saving" width="980px">
   <div class="land-form">
    <ol class="land-steps"><li>Chọn file Excel dự thu có sheet <b>NHẬT KÝ GỐC</b> (Khu | Ngày chặt mẹ lần 2 | Số cây | Dòng trên file nguồn) và sheet <b>THÔNG SỐ</b>.</li><li>Xem trước: dòng mới được thêm, dòng đã nhập trước đây bỏ qua, dòng khác số cây so với lần trước được báo để kiểm tra.</li><li>Bấm Nhập. File gốc được lưu lại làm chứng cứ.</li></ol>
-   <label class="land-file">File Excel<input type="file" accept=".xlsx" :disabled="saving" @change="readFile"></label>
+   <LotusField label="File Excel" type="file" accept=".xlsx" :disabled="saving" @change="readFile"/>
    <template v-if="preview">
     <p><b>{{num(preview.new)}}</b> dòng mới ({{num(preview.new_trees)}} cây) · {{num(preview.same)}} dòng đã có · <span :class="{'land-bad':preview.conflict}">{{num(preview.conflict)}} dòng khác số cây</span> · <span :class="{'land-bad':preview.errors}">{{num(preview.errors)}} dòng lỗi</span></p>
     <p v-if="preview.file_totals" class="land-note">Theo thông số trong file: {{num(preview.file_totals.trees)}} cây → {{num(preview.file_totals.pack)}} buồng đóng gói → <b>{{num(preview.file_totals.tonnes,1)}} tấn sơ chế</b>.</p>
     <div v-if="preview.param_errors.length" class="land-bad"><div v-for="e in preview.param_errors" :key="e">Thông số trong file: {{e}}</div></div>
     <template v-else-if="preview.param_changes.length">
-     <label class="cutfc-check"><input v-model="applyParams" type="checkbox">Dùng thông số trong file làm phiên bản mới{{preview.has_profile?' (thay phiên bản đang dùng)':''}}</label>
+     <LotusField v-model="applyParams" type="checkbox" :label="'Dùng thông số trong file làm phiên bản mới'+(preview.has_profile?' (thay phiên bản đang dùng)':'')"/>
      <div class="land-table land-preview"><DataTable :rows="preview.param_changes||[]" :columns="changeCols" row-key="field" storage-key="cutfc-preview-changes"/></div>
     </template>
     <div v-if="preview.rows.some(r=>r.state!=='new'&&r.state!=='same')" class="land-table land-preview"><DataTable :rows="conflictRows" :columns="conflictCols" row-key="line" storage-key="cutfc-preview-conflicts"/></div>

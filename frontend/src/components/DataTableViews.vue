@@ -1,4 +1,5 @@
 <script setup>
+import {FormField} from './ui/form-field'
 import {computed,ref} from 'vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput} from './ui/input'
@@ -26,7 +27,7 @@ function remove(view){views.value=deleteView(props.storageKey,view.name)}
   <div class="lotus-table-views__actions">
    <Popover v-model:open="saving">
     <PopoverTrigger as-child><UiButton v-if="active.length||sort.length" type="button" variant="outline" size="sm">Lưu chế độ xem</UiButton></PopoverTrigger>
-    <PopoverContent align="end"><form class="lotus-table-views__save" @submit.prevent="store"><label>Tên chế độ xem<UiInput v-model="name" maxlength="60" placeholder="VD: Hàng thiếu tuần này" required/></label><UiButton type="submit" size="sm">Lưu</UiButton></form></PopoverContent>
+    <PopoverContent align="end"><form class="lotus-table-views__save" @submit.prevent="store"><FormField label="Tên chế độ xem" v-slot="f"><UiInput v-bind="f" v-model="name" maxlength="60" placeholder="VD: Hàng thiếu tuần này" required/></FormField><UiButton type="submit" size="sm">Lưu</UiButton></form></PopoverContent>
    </Popover>
    <DropdownMenu v-if="views.length">
     <DropdownMenuTrigger as-child><UiButton type="button" variant="outline" size="sm">Chế độ xem<LotusIcon name="chevron-down"/></UiButton></DropdownMenuTrigger>

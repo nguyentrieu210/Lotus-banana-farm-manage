@@ -1,4 +1,5 @@
 <script setup>
+import LotusField from './form/LotusField.vue'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
 import DataTable from './DataTable.vue'
@@ -52,8 +53,8 @@ const rows=computed(()=>data.value?.rows?.filter(r=>
         <article v-for="g in data.groups" :key="g.zone"><b>Khu {{g.zone}}</b><span>{{g.counted_lots}}/{{g.lots}} lô có số cây</span><strong>{{amount(g.known_trees)}} cây</strong><small>{{amount(g.area_ha)}} ha</small></article>
       </div>
       <div class="lotus-import__filters">
-        <label>Tìm lô <input v-model="search" type="search" placeholder="A5, B12…" /></label>
-        <label class="lotus-import__check"><input type="checkbox" v-model="missingOnly"/> Chỉ hiện lô thiếu số cây</label>
+        <LotusField label="Tìm lô" v-model="search" type="search" placeholder="A5, B12…"/>
+        <LotusField type="checkbox" label="Chỉ hiện lô thiếu số cây"  v-model="missingOnly"/>
       </div>
       <div class="lotus-import__scroll">
         <DataTable :rows="rows" :columns="tableColumns" row-key="block" storage-key="import-lot-preview"/>

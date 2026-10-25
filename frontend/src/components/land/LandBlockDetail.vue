@@ -6,11 +6,13 @@ import {computed,defineAsyncComponent,reactive,ref,watch} from 'vue'
 import {useRouter} from 'vue-router'
 import LotusIcon from '../LotusIcon.vue'
 import DataTable from '../DataTable.vue'
-import WorkspaceModal from '../WorkspaceModal.vue'
+import ModalForm from '../form/ModalForm.vue'
+import FormGrid from '../form/FormGrid.vue'
+import LotusField from '../form/LotusField.vue'
+import {DateRangePicker} from '../ui/date-picker'
 import {Button as UiButton} from '../ui/button'
-import {Input as UiInput} from '../ui/input'
-import UiSelect from '../ui/select/Select.vue'
 import {call} from '../../api'
+const activeOptions=[{value:1,label:'Đang dùng'},{value:0,label:'Ngừng'}]
 import {useSession} from '../../store'
 
 const props=defineProps({block:{type:String,required:true},today:String,editable:{type:Array,default:()=>[]},varieties:{type:Array,default:()=>[]}})
@@ -87,7 +89,7 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
   <div><span>Giống</span><strong>{{b.variety||'Chưa có'}}</strong><small>{{b.planting_date?'trồng '+vnDate(b.planting_date):b.lotus_inferred_planting_date?'trồng ~'+vnDate(b.lotus_inferred_planting_date)+' (suy ngược)':'chưa có ngày trồng'}}</small></div>
  </div>
  <nav class="workspace-tabs" aria-label="Thông tin lô"><button v-for="[id,label] in TABS" :key="id" type="button" :class="{active:tab===id}" :aria-current="tab===id?'page':undefined" @click="tab=id">{{label}}</button></nav>
- <div v-if="!['overview','history'].includes(tab)" class="land-filters"><label>Từ<UiInput v-model="range.from" type="date" :max="range.to"/></label><label>Đến<UiInput v-model="range.to" type="date" :min="range.from"/></label><UiButton variant="outline" @click="applyRange"><LotusIcon name="refresh"/>Xem</UiButton></div>
+ <div v-if="!['overview','history'].includes(tab)" class="land-filters"><DateRangePicker v-model:from="range.from" v-model:to="range.to"/><UiButton variant="outline" @click="applyRange"><LotusIcon name="refresh"/>Xem</UiButton></div>
 
  <section v-if="tab==='overview'&&info" class="land-grid">
   <div class="land-card">
@@ -157,24 +159,23 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
   <p v-else class="land-empty">Chưa có thay đổi nào được ghi lại.</p>
  </section>
 
- <WorkspaceModal v-model="editOpen" :title="'Sửa lô '+b.block_code" :busy="saving" width="720px">
-  <form class="land-form land-form--grid" @submit.prevent="saveEdit">
-   <label v-for="f in editable.filter(f=>f.field!=='lotus_tree_count_source')" :key="f.field">{{f.label}}
-    <UiSelect v-if="f.field==='variety'" v-model="form.variety"><option value="">Chưa có</option><option v-for="v in varieties" :key="v" :value="v">{{v}}</option><option v-if="form.variety&&!varieties.includes(form.variety)" :value="form.variety">{{form.variety}}</option></UiSelect>
-    <UiSelect v-else-if="f.field==='active'" v-model.number="form.active"><option :value="1">Đang dùng</option><option :value="0">Ngừng</option></UiSelect>
-    <UiInput v-else v-model="form[f.field]" :type="kindOf(f)" :step="f.kind==='float'?'any':undefined" min="0"/></label>
-   <label v-if="String(form.lotus_tree_count??'')!==String(b.lotus_tree_count??'')" class="land-form__full">Nguồn số cây (bắt buộc khi đổi số cây)<UiInput v-model="form.lotus_tree_count_source" required placeholder="VD: Đếm 20/10/2026 · tổ trưởng khu A"/></label>
-   <div class="land-actions land-form__full"><UiButton type="button" variant="outline" :disabled="saving" @click="editOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu lô'}}</UiButton></div>
-  </form>
- </WorkspaceModal>
- <WorkspaceModal v-model="plotOpen" :title="plot.name?'Sửa thửa '+plot.plot_code:'Thêm thửa vào lô '+b.block_code" :busy="saving" width="520px">
-  <form class="land-form" @submit.prevent="savePlot">
-   <label>Mã thửa<UiInput v-model="plot.plot_code" required maxlength="140"/></label>
-   <label>Tên thửa<UiInput v-model="plot.plot_name" maxlength="140"/></label>
-   <label>Diện tích (ha)<UiInput v-model="plot.area_ha" type="number" step="any" min="0"/></label>
-   <label>Trạng thái<UiSelect v-model.number="plot.active"><option :value="1">Đang dùng</option><option :value="0">Ngừng</option></UiSelect></label>
-   <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="plotOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!plot.plot_code">{{saving?'Đang lưu…':'Lưu thửa'}}</UiButton></div>
-  </form>
- </WorkspaceModal>
+ <ModalForm v-model="editOpen" :title="'Sửa lô '+b.block_code" :busy="saving" width="860px" submit-label="Lưu lô" @submit="saveEdit">
+  <FormGrid>
+   <template v-for="f in editable.filter(f=>f.field!=='lotus_tree_count_source')" :key="f.field">
+    <LotusField v-if="f.field==='variety'" v-model="form.variety" :label="f.label" :options="[...varieties,...(form.variety&&!varieties.includes(form.variety)?[form.variety]:[])]" :searchable="false" empty-option="Chưa có"/>
+    <LotusField v-else-if="f.field==='active'" :model-value="form.active" :label="f.label" :options="activeOptions" :searchable="false" :empty-option="null" @update:model-value="value=>form.active=Number(value)"/>
+    <LotusField v-else v-model="form[f.field]" :label="f.label" :type="kindOf(f)" :step="f.kind==='float'?'any':undefined" min="0"/>
+   </template>
+   <LotusField v-if="String(form.lotus_tree_count??'')!==String(b.lotus_tree_count??'')" v-model="form.lotus_tree_count_source" label="Nguồn số cây (bắt buộc khi đổi số cây)" wide required placeholder="VD: Đếm 20/10/2026 · tổ trưởng khu A"/>
+  </FormGrid>
+ </ModalForm>
+ <ModalForm v-model="plotOpen" :title="plot.name?'Sửa thửa '+plot.plot_code:'Thêm thửa vào lô '+b.block_code" :busy="saving" width="640px" submit-label="Lưu thửa" :submit-disabled="!plot.plot_code" @submit="savePlot">
+  <FormGrid>
+   <LotusField v-model="plot.plot_code" label="Mã thửa" required maxlength="140"/>
+   <LotusField v-model="plot.plot_name" label="Tên thửa" maxlength="140"/>
+   <LotusField v-model="plot.area_ha" label="Diện tích (ha)" type="number" min="0"/>
+   <LotusField :model-value="plot.active" label="Trạng thái" :options="activeOptions" :searchable="false" :empty-option="null" @update:model-value="value=>plot.active=Number(value)"/>
+  </FormGrid>
+ </ModalForm>
 </article>
 </template>

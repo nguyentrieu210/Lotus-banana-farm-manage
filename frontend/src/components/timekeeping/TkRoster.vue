@@ -1,4 +1,5 @@
 <script setup>
+import LotusField from '../form/LotusField.vue'
 // Lịch ca: employees x days. Shift managers tap or drag cells, then pick a shift (or no shift); a weekly
 // rotation fills Ca 1 → 2 → 3. Changes go through lotus_farm.shift_admin.set_roster, which splits HRMS
 // Shift Assignments and refuses closed months. Everyone else sees the grid read-only.
@@ -107,7 +108,7 @@ defineExpose({load})
    <FormField label="Áp dụng cho"><UiSelect v-model="rotation.scope" aria-label="Người áp dụng"><option value="selected" :disabled="!pickedPeople.length">{{pickedPeople.length}} người đã chọn ô</option><option value="shown">Tất cả {{data?.rows?.length||0}} người đang hiện</option></UiSelect></FormField>
    <div class="tk-pair"><FormField label="Từ tuần có ngày" v-slot="f"><UiInput v-bind="f" v-model="rotation.start" type="date"/></FormField><FormField label="Số tuần" v-slot="f"><UiInput v-bind="f" v-model.number="rotation.weeks" type="number" min="1" max="12"/></FormField></div>
    <FormField label="Thứ tự ca mỗi tuần"><div class="tk-pattern"><UiSelect v-for="(p,i) in rotation.pattern" :key="i" v-model="rotation.pattern[i]" :aria-label="'Tuần thứ '+(i+1)+' trong vòng'"><option v-for="s in ordered" :key="s.name" :value="s.name">{{s.name}}</option></UiSelect><UiButton v-if="rotation.pattern.length<4" type="button" variant="ghost" size="sm" @click="rotation.pattern.push(ordered[0]?.name)">＋</UiButton><UiButton v-if="rotation.pattern.length>1" type="button" variant="ghost" size="sm" @click="rotation.pattern.pop()">－</UiButton></div></FormField>
-   <label class="tk-check"><input v-model="rotation.stagger" type="checkbox">So le giữa các người, để tuần nào ca nào cũng có người</label>
+   <LotusField type="checkbox" label="So le giữa các người, để tuần nào ca nào cũng có người" v-model="rotation.stagger"/>
    <p class="tk-hint">Bắt đầu thứ Hai {{dm(mondayOf(rotation.start||start))}} · {{rotationPlan.length}} khối tuần sẽ được xếp. Ngày đã khóa công bị bỏ qua và báo lỗi.</p>
    <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="rotationOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!rotationPlan.length">{{saving?'Đang xếp…':'Xếp '+rotationPlan.length+' tuần ca'}}</UiButton></div>
   </form>

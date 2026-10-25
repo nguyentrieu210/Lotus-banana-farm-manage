@@ -1,4 +1,5 @@
 <script setup>
+import LotusField from './form/LotusField.vue'
 import {computed,nextTick,ref,watch} from 'vue'
 import WorkspaceModal from './WorkspaceModal.vue'
 import DataTable from './DataTable.vue'
@@ -225,12 +226,12 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     <div class="pn-section pn-preview">
       <div class="pn-section-head"><div><h3>Xem trước 36 tháng</h3><p>Không tạo công việc thật hoặc giữ sản lượng bán.</p></div></div>
       <div class="pn-controls">
-       <label>Từ tháng<input type="month" v-model="from"/></label>
-       <label>Trổ đợt 1 (%)<input type="number" min="0" max="100" step="1" v-model.number="splits[0]"/></label>
-       <label>Trổ đợt 2 (%)<input type="number" min="0" max="100" step="1" v-model.number="splits[1]"/></label>
-       <label>Trổ đợt 3 (%)<input type="number" min="0" max="100" step="1" v-model.number="splits[2]"/></label>
-       <label class="pn-check"><input type="checkbox" v-model="drafts"/> Bao gồm bản nháp để thử</label>
-       <label class="pn-check"><input type="checkbox" v-model="ratoons"/> Hiện vụ chồi tương lai</label>
+       <LotusField label="Từ tháng" type="month" v-model="from"/>
+       <LotusField label="Trổ đợt 1 (%)" type="number" min="0" max="100" step="1" v-model="splits[0]"/>
+       <LotusField label="Trổ đợt 2 (%)" type="number" min="0" max="100" step="1" v-model="splits[1]"/>
+       <LotusField label="Trổ đợt 3 (%)" type="number" min="0" max="100" step="1" v-model="splits[2]"/>
+       <LotusField type="checkbox" label="Bao gồm bản nháp để thử"  v-model="drafts"/>
+       <LotusField type="checkbox" label="Hiện vụ chồi tương lai"  v-model="ratoons"/>
       </div>
       <p class="pn-hint">20%–60%–20% là kịch bản thử có thể chỉnh tại đây; chưa được lưu thành tỷ lệ kỹ thuật chính thức. Chỉ phân 3 đợt cho số BUỒNG dự kiến chưa có mốc trổ thật.</p>
       <p v-if="summary?.error" class="pn-error" role="alert">{{summary.error}}</p>
@@ -264,10 +265,9 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     </div>
    </template>
   </template>
-  <Teleport to="body"><WorkspaceModal bare :title="modalTitle" :busy="saving" ref="dialog" class="pn-dialog" :aria-label="modalTitle" @cancel="saving&&$event.preventDefault()">
+  <Teleport to="body"><WorkspaceModal :title="modalTitle" :busy="saving" ref="dialog" class="pn-dialog" :aria-label="modalTitle" @cancel="saving&&$event.preventDefault()">
     <form v-if="editor&&schema" @submit.prevent="save">
-      <header><div><h2>{{modalTitle}}</h2><small>{{editor.name?'Xem hoặc cập nhật bản ghi':'Tạo cấu hình mới'}} · {{farm}}</small></div>
-       <UiButton type="button" variant="outline" :disabled="saving" @click="dialog.close()">Đóng ✕</UiButton></header>
+      
       <p v-if="error" class="pn-error" role="alert">{{error}}</p>
       <p v-if="isApproved" class="pn-hint">Bản đã duyệt được giữ nguyên lịch sử. Muốn đổi thì tạo phiên bản mới.</p>
       <HarvestProfileSettings v-if="editor.doctype==='Harvest Profile'" :schema="schema" :model="editor" :scope="{farm}" :readonly="!canWrite||saving"/>

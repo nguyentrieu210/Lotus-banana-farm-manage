@@ -1,4 +1,6 @@
 <script setup>
+import {Checkbox} from './ui/checkbox'
+import LotusField from './form/LotusField.vue'
 import {computed,ref} from 'vue'
 import {Input as UiInput} from './ui/input'
 import UiSelect from './ui/select/Select.vue'
@@ -16,9 +18,9 @@ function toggle(role,checked){if(props.disabled||!role.assignable)return;const n
   <FormField label="Tìm vai trò" v-slot="f"><UiInput v-bind="f" v-model="query" type="search" placeholder="Tên tiếng Việt hoặc mã vai trò…"/></FormField>
   <FormField label="Nhóm vai trò" v-slot="f"><UiSelect v-bind="f" v-model="group" :searchable="false"><option value="">Tất cả nhóm</option><option value="Lotus">Lotus</option><option value="ERPNext">ERPNext</option></UiSelect></FormField>
  </div>
- <label class="user-check"><input v-model="onlySelected" type="checkbox">Chỉ vai trò đã gán</label>
+ <LotusField type="checkbox" label="Chỉ vai trò đã gán" v-model="onlySelected"/>
  <p class="user-hint" role="status">Hiển thị {{visible.length}} / {{roles.length}} vai trò · {{modelValue.length}} vai trò đã gán</p>
  <p v-if="roles.some(r=>r.disabled&&modelValue.includes(r.name))" class="user-hint">ERPNext sẽ gỡ các vai trò đã khóa khỏi hồ sơ khi lưu; các vai trò này không còn cấp quyền.</p>
- <div class="user-choice-grid"><label v-for="role in visible" :key="role.name" class="user-choice"><input type="checkbox" :checked="chosen(role)" :disabled="disabled||!role.assignable" @change="toggle(role,$event.target.checked)"><span>{{role.label}}<small>{{role.name}} · {{role.group}}{{role.automatic?' · Tự động theo hệ thống':role.disabled?' · Đã khóa':''}}</small></span></label></div>
+ <div class="user-choice-grid"><label v-for="role in visible" :key="role.name" class="user-choice"><Checkbox :model-value="chosen(role)" :disabled="disabled||!role.assignable" @update:model-value="value=>toggle(role,value)"/><span>{{role.label}}<small>{{role.name}} · {{role.group}}{{role.automatic?' · Tự động theo hệ thống':role.disabled?' · Đã khóa':''}}</small></span></label></div>
  <p v-if="!visible.length" class="stock-empty">Không có vai trò phù hợp.</p>
 </section></template>

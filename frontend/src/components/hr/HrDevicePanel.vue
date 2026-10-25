@@ -7,8 +7,9 @@ import DataTable from '../DataTable.vue'
 import LotusGridEditCell from '../LotusGridEditCell.vue'
 import LotusIcon from '../LotusIcon.vue'
 import {Button as UiButton} from '../ui/button'
-import {Input as UiInput} from '../ui/input'
-import UiSelect from '../ui/select/Select.vue'
+import ModalForm from '../form/ModalForm.vue'
+import FormGrid from '../form/FormGrid.vue'
+import LotusField from '../form/LotusField.vue'
 import {call} from '../../api'
 
 const props=defineProps({company:String,farms:{type:Array,default:()=>[]}})
@@ -81,18 +82,17 @@ defineExpose({load})
   <p v-else class="tk-empty">Mọi mã trên máy đã gắn nhân viên.</p>
  </section>
 
- <WorkspaceModal v-model="formOpen" :title="form.name?'Sửa máy '+form.device_code:'Khai báo máy chấm công'" :busy="saving" width="640px">
-  <form class="hr-ops-form" @submit.prevent="saveForm">
-   <label>Vườn<UiSelect v-model="form.farm" required><option value="">Chọn vườn</option><option v-for="f in farms" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect></label>
-   <label>Mã máy<UiInput v-model="form.device_code" required placeholder="VD: CONG-A"/></label>
-   <label>Tên máy<UiInput v-model="form.device_name" required placeholder="VD: Cổng đội khu A"/></label>
-   <label>Cách kết nối<UiSelect v-model="form.connection_mode"><option v-for="[v,l] in MODES" :key="v" :value="v">{{l}}</option></UiSelect></label>
-   <label>Số serial (SN)<UiInput v-model="form.serial_number" :required="form.connection_mode==='ADMS'" placeholder="Menu › Thông tin hệ thống › Serial"/></label>
-   <label>Dòng máy / hãng<UiInput v-model="form.model" placeholder="VD: ZKTeco MB360, Ronald Jack X628"/></label>
-   <label class="tk-check"><input v-model="form.active" type="checkbox" :true-value="1" :false-value="0">Đang sử dụng</label>
-   <div class="hr-ops-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="formOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu máy'}}</UiButton></div>
-  </form>
- </WorkspaceModal>
+ <ModalForm v-model="formOpen" :title="form.name?'Sửa máy '+form.device_code:'Khai báo máy chấm công'" :busy="saving" width="760px" submit-label="Lưu máy" @submit="saveForm">
+  <FormGrid>
+   <LotusField v-model="form.farm" label="Vườn" :options="farms.map(f=>({value:f.name,label:f.farm_name||f.name}))" :searchable="false" empty-option="Chọn vườn" required/>
+   <LotusField v-model="form.device_code" label="Mã máy" required placeholder="VD: CONG-A"/>
+   <LotusField v-model="form.device_name" label="Tên máy" required placeholder="VD: Cổng đội khu A"/>
+   <LotusField v-model="form.connection_mode" label="Cách kết nối" :options="MODES.map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null"/>
+   <LotusField v-model="form.serial_number" label="Số serial (SN)" :required="form.connection_mode==='ADMS'" placeholder="Menu › Thông tin hệ thống › Serial"/>
+   <LotusField v-model="form.model" label="Dòng máy / hãng" placeholder="VD: ZKTeco MB360, Ronald Jack X628"/>
+   <LotusField :model-value="!!form.active" label="Đang sử dụng" type="checkbox" @update:model-value="value=>form.active=value?1:0"/>
+  </FormGrid>
+ </ModalForm>
 
  <WorkspaceModal :model-value="!!guideFor" :title="'Cài máy '+(guideFor?.device_code||'')+' gửi dữ liệu lên Lotus'" width="640px" @update:model-value="guideFor=null">
   <ol v-if="guideFor&&data" class="hr-devices__guide">

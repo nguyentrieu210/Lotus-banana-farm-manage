@@ -1,4 +1,5 @@
 <script setup>
+import {FormField} from './ui/form-field'
 import {computed,ref,watch} from 'vue'
 import DataTable from './DataTable.vue'
 import {Button as UiButton} from './ui/button'
@@ -77,9 +78,9 @@ function create(){emit('create',{farm_block:block.value||undefined,period_start_
     </div>
 
     <div class="forecast-filterbar">
-      <label>Lô<UiSelect v-model="block" aria-label="Lọc lô"><option value="">Tất cả lô</option><option v-for="value in blocks" :key="value" :value="value">{{value}}</option></UiSelect></label>
-      <label>Trạng thái<UiSelect v-model="state" aria-label="Lọc trạng thái"><option value="">Tất cả</option><option v-for="(text,value) in forecastStates" :key="value" :value="value">{{text}}</option></UiSelect></label>
-      <label class="forecast-search">Tìm nhanh<UiInput v-model="query" placeholder="Mã dự thu, lô, vụ…" aria-label="Tìm dự thu"/></label>
+      <FormField label="Lô" v-slot="f"><UiSelect v-bind="f" v-model="block" aria-label="Lọc lô"><option value="">Tất cả lô</option><option v-for="value in blocks" :key="value" :value="value">{{value}}</option></UiSelect></FormField>
+      <FormField label="Trạng thái" v-slot="f"><UiSelect v-bind="f" v-model="state" aria-label="Lọc trạng thái"><option value="">Tất cả</option><option v-for="(text,value) in forecastStates" :key="value" :value="value">{{text}}</option></UiSelect></FormField>
+      <FormField class="forecast-search" label="Tìm nhanh" v-slot="f"><UiInput v-bind="f" v-model="query" placeholder="Mã dự thu, lô, vụ…" aria-label="Tìm dự thu"/></FormField>
       <span class="forecast-row-count">{{rows.length}} / {{allRows.length}} phiếu</span>
       <UiButton variant="outline" type="button" @click="emit('plan')">Kế hoạch công việc ↗</UiButton>
       <UiButton variant="outline" type="button" @click="emit('reports')">Đối chiếu dự thu ↗</UiButton>

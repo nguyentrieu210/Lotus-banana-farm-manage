@@ -1,4 +1,5 @@
 <script setup>
+import {FileInput} from '../ui/file-input'
 import {computed,ref,watch} from 'vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import DataTable from '../DataTable.vue'
@@ -54,7 +55,7 @@ async function confirm(){
   <p v-if="error" class="hr-ops-error" role="alert">{{error}}</p>
   <div class="fin-master-import__actions">
    <Button variant="outline" :disabled="saving" @click="download">Tải mẫu</Button>
-   <input :key="kind+'-'+(modelValue?'open':'closed')" type="file" accept=".xlsx" :aria-label="categories?'File nhóm tài sản':'File hệ thống tài khoản'" :disabled="busy||saving" @change="readFile"/>
+   <FileInput :key="kind+'-'+(modelValue?'open':'closed')" accept=".xlsx" :aria-label="categories?'File nhóm tài sản':'File hệ thống tài khoản'" :disabled="busy||saving" @change="readFile"/>
    <Button :disabled="!content||busy||saving" @click="inspect">{{busy?'Đang kiểm tra…':'Xem trước'}}</Button>
   </div>
   <p v-if="categories">Nhập số tài khoản hoặc mã đầy đủ từ sheet tham chiếu. Nhập tài khoản còn thiếu trước khi nhập nhóm.</p>

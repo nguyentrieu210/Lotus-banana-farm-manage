@@ -1,4 +1,6 @@
 <script setup>
+import LotusField from './components/form/LotusField.vue'
+import {FormField} from './components/ui/form-field'
 import {unitLabel} from './units'
 import WorkspaceBar from './components/WorkspaceBar.vue'
 import {sidebarCollapsed} from './workspace'
@@ -93,7 +95,7 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
      <SearchSelect v-model="farm" :options="farmOptions" label="Vườn" placeholder="Chọn vườn" :disabled="busy||submitting||embedded" @change="loadCatalog"/>
     </label>
     <div class="fields" style="grid-template-columns:1fr 1.25fr">
-     <label>Ngày <UiInput type="date" :disabled="busy||submitting" v-model="date" @change="invalidate"/></label>
+     <FormField label="Ngày" v-slot="f"><UiInput v-bind="f" type="date" :disabled="busy||submitting" v-model="date" @change="invalidate"/></FormField>
      <label>Giao cho tổ
       <SearchSelect v-model="team" :options="teamOptions" label="Giao cho tổ" placeholder="Chọn tổ" :disabled="busy||submitting" @change="invalidate"/>
      </label>
@@ -110,9 +112,7 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
     <label>Công việc
      <SearchSelect v-model="item.work_type" :options="workOptions" label="Công việc" placeholder="Chọn hoặc gõ tìm công việc" :disabled="busy||submitting" @change="invalidate"/>
     </label>
-    <label v-if="modes(item.work_type).length">Hình thức tính công
-     <select v-model="item.payment_mode" :disabled="busy||submitting" @change="invalidate"><option value="">Theo cấu hình công việc</option><option v-for="m in modes(item.work_type)" :key="m.value" :value="m.value">{{m.label}}</option></select>
-    </label>
+    <LotusField v-if="modes(item.work_type).length" v-model="item.payment_mode" label="Hình thức tính công" :options="modes(item.work_type)" :searchable="false" empty-option="Theo cấu hình công việc" :disabled="busy||submitting" @update:model-value="invalidate"/>
     <label v-if="canSetRate(item)">Đơn giá khoán đề xuất (đ/{{unit(item.work_type)}})
      <UiInput v-model="item.piecework_rate" type="number" min="0" step="any" inputmode="decimal" :disabled="busy||submitting" :placeholder="String(listedRate(item))" @input="invalidate"/>
      <span class="hint">Giá niêm yết: {{number(listedRate(item))}} đ. Bỏ trống để lấy giá chuẩn; vượt giá sẽ cần duyệt.</span>
@@ -126,9 +126,7 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
     <div class="panel-title"><span>Xem trước {{previewTotal}} dòng giao</span><UiBadge variant="secondary" class="pill">Chưa giao</UiBadge></div>
     <p class="note">{{preview.note}}</p>
     <p v-if="preview.approval_required" role="status" class="hint"><strong>Giá khoán cao hơn niêm yết.</strong> Khi xác nhận, phiếu chỉ lưu chờ duyệt; chưa giao xuống tổ cho đến khi được duyệt.</p>
-    <label v-if="preview.approval_required">Lý do đề nghị tăng giá
-     <textarea v-model="approvalReason" maxlength="500" rows="2" placeholder="Ví dụ: lô khó làm, cần thêm nhân lực…" :disabled="submitting" class="form-control"></textarea>
-    </label>
+    <LotusField v-if="preview.approval_required" v-model="approvalReason" label="Lý do đề nghị tăng giá" type="textarea" maxlength="500" rows="2" placeholder="Ví dụ: lô khó làm, cần thêm nhân lực…" :disabled="submitting"/>
     <p class="hint"><strong>Tổng dự kiến:</strong> {{number(previewWorkdays)}} công lao động (khoảng {{Math.ceil(previewWorkdays)}} người nếu hoàn thành trong 1 ngày) · {{number(previewPiecework)}} đ tiền khoán (nếu có). Hai số này không phải hai khoản lương cộng lại.</p>
     <div v-if="preview.materials?.length" class="preview-materials"><strong>Vật tư cần theo định mức:</strong><div v-for="m in preview.materials" :key="m.item+'-'+m.uom" class="preview-row"><span>{{m.item}}</span><strong>{{number(m.required_qty)}} {{unitLabel(m.uom)}}</strong></div><p class="hint">Đây là lượng cần dùng, chưa trừ tồn kho và chưa tạo phiếu xuất/mua.</p></div>
     <p v-if="preview.missing_norms?.length" class="hint" role="status">Chưa có định mức vật tư đã duyệt cho: {{preview.missing_norms.join(', ')}}. Chưa thể kết luận các công việc này không cần vật tư.</p>

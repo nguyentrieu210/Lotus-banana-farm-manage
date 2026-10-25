@@ -1,4 +1,7 @@
 <script setup>
+import UiSelect from './ui/select/Select.vue'
+import {FormField} from './ui/form-field'
+import LotusField from './form/LotusField.vue'
 import {computed,defineAsyncComponent,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
 import DataTable from './DataTable.vue'
@@ -117,10 +120,10 @@ function clearTrial(){appliedTrial.value=null;load()}
  </div>
  <div v-if="mode==='trial'" class="vip126-timeline__trial-box">
   <div><strong>Giả lập mốc sinh trưởng của một lô</strong><p>Chỉ tính trên màn hình, không sửa hồ sơ lô.</p></div>
-  <label>Lô<select v-model="trialBlock"><option value="">Chọn lô thử</option><option v-for="lot in availableLots" :key="lot" :value="lot">{{lot}}</option></select></label>
-  <label>Mốc mới<select v-model="trialStage"><option v-for="s in stageChoices" :key="s.value" :value="s.value">{{s.name}}</option></select></label>
-  <label>Ngày<input v-model="trialDate" type="date" /></label>
-  <label>Số cây/buồng (tùy chọn)<input v-model="trialQty" type="number" min="1" placeholder="Lấy theo lô" /></label>
+  <FormField label="Lô" v-slot="f"><UiSelect v-bind="f" v-model="trialBlock"><option value="">Chọn lô thử</option><option v-for="lot in availableLots" :key="lot" :value="lot">{{lot}}</option></UiSelect></FormField>
+  <FormField label="Mốc mới" v-slot="f"><UiSelect v-bind="f" v-model="trialStage"><option v-for="s in stageChoices" :key="s.value" :value="s.value">{{s.name}}</option></UiSelect></FormField>
+  <LotusField label="Ngày" v-model="trialDate" type="date"/>
+  <LotusField label="Số cây/buồng (tùy chọn)" v-model="trialQty" type="number" min="1" placeholder="Lấy theo lô"/>
   <UiButton type="button" size="sm" :disabled="loading||!trialBlock||!trialDate" @click="runTrial">Tính lại 36 tháng</UiButton>
   <UiButton v-if="appliedTrial" type="button" variant="outline" size="sm" @click="clearTrial">Bỏ mốc thử</UiButton>
  </div>
