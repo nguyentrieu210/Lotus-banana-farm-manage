@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs'
 import {load,loadModule,mount,tick,h} from './support/mount.mjs'
 import {createPinia,setActivePinia} from 'pinia'
 import {pages,navGroups} from '../src/domain.js'
+import {stockNavigation} from '../src/stock-navigation.js'
 
 setActivePinia(createPinia())
 const WorkspaceSidebar=await load('components/WorkspaceSidebar.vue')
@@ -26,10 +27,14 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
  const view=mount(WorkspaceSidebar,{nav,page:'kho'});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Tổng quan','Điều hành công việc','Kho'])
- const labels=[...view.root.querySelectorAll('nav button .nav-label')].map(node=>node.textContent)
- assert.deepEqual(labels,parents,'single-item groups do not duplicate their screens')
  assert.equal(view.root.querySelectorAll('.nav-parent svg.lotus-icon').length,3,'each area has an icon')
- assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Kho')
+ // Kho lists its own screens like Nhân sự and Mua hàng; single-screen groups still have no submenu.
+ const groups=[...view.root.querySelectorAll('.nav-group')]
+ const kho=groups.find(g=>g.querySelector('.nav-parent .nav-label').textContent==='Kho')
+ assert.deepEqual([...kho.querySelectorAll('.nav-submenu .nav-child .nav-label')].map(n=>n.textContent),stockNavigation.map(x=>x.label))
+ assert.deepEqual([...kho.querySelectorAll('.nav-subsection')].map(n=>n.textContent),['Danh mục kho'])
+ assert.equal(groups.filter(g=>g.querySelector('.nav-submenu .nav-child')).length,1,'single-item groups do not duplicate their screens')
+ assert.equal(view.root.querySelector('nav button.active .nav-label').textContent,'Tồn kho')
  assert.equal(view.root.querySelector('nav button.active').getAttribute('aria-current'),'page')
  assert.equal(view.root.querySelector('.nav-sub-link'),null,'desktop purchasing is now a permission-scoped workspace route')
  view.unmount()

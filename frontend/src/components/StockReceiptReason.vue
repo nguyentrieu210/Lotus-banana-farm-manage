@@ -1,7 +1,8 @@
 <script setup>
 import {computed,onMounted,ref} from 'vue'
 import {call} from '../api'
-import ProcurementField from './ProcurementField.vue'
+import LotusField from './form/LotusField.vue'
+import FormGrid from './form/FormGrid.vue'
 import LotusMobileButton from './LotusMobileButton.vue'
 import {Button} from './ui/button'
 const props=defineProps({reason:String,supplier:String,mobile:Boolean})
@@ -34,8 +35,8 @@ defineExpose({validate})
 <template>
  <p v-if="busy" role="status">Đang tải lý do nhập kho…</p>
  <template v-if="error"><p role="alert" :class="mobile?'mobile-message danger':'stock-alert'">{{error}}</p><component :is="button" type="button" :disabled="busy" @click="load">Thử lại lý do nhập kho</component></template>
- <div v-if="options" :class="mobile?'mobile-form-fields':'stock-form-grid'">
-  <ProcurementField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" :required="options.enabled" @update:model-value="emit('update:reason',$event)"/>
-  <ProcurementField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
- </div>
+ <component :is="mobile?'div':FormGrid" v-if="options" :class="mobile?'mobile-form-fields':undefined">
+  <LotusField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" :required="options.enabled" @update:model-value="emit('update:reason',$event)"/>
+  <LotusField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
+ </component>
 </template>

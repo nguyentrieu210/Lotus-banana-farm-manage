@@ -2,7 +2,8 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const ui=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const ui=khoSource()
 const api=readFileSync(new URL('../../lotus_farm/warehouse.py',import.meta.url),'utf8')
 const config=readFileSync(new URL('../../lotus_farm/warehouse_masters.py',import.meta.url),'utf8')
 
@@ -16,7 +17,7 @@ test('new item has global minimum without choosing a warehouse',()=>{
 
 test('new item uses ERPNext Item UOM Conversion Detail',()=>{
  assert.match(ui,/v-model="master\.pack_uom"/)
- assert.match(ui,/v-model\.number="master\.pack_factor"/)
+ assert.match(ui,/v-model="master\.pack_factor"[^>]*type="number"/)
  assert.match(config,/item\.append\('uoms'/)
  assert.match(config,/conversion_factor=factor/)
  assert.match(config,/for name in \('Bao', 'Can'\):/)

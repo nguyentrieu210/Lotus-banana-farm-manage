@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
 const buying=readFileSync(new URL('../src/components/WarehouseBuyingLite.vue',import.meta.url),'utf8')
-const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const stock=khoSource()
 const backend=readFileSync(new URL('../../lotus_farm/warehouse_buying_lite.py',import.meta.url),'utf8')
 const install=readFileSync(new URL('../../lotus_farm/install.py',import.meta.url),'utf8')
 
 test('purchase lite is separate from demand and uses same filtered Stock table',()=>{
- assert.match(stock,/const stockTabs=stockViews/)
+ assert.match(stock,/stockNavigation/)
  assert.doesNotMatch(stock,/<WarehouseBuyingLite/)
  assert.match(buying,/<DataTable :rows="rows" :columns="columns" show-empty-headers server-sort/)
  assert.match(buying,/:filter-values="choices"/)

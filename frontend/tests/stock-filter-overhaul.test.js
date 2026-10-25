@@ -3,15 +3,17 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} from '../src/stock-filter-state.js'
 
-const app=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const app=khoSource()
 const header=readFileSync(new URL('../src/components/ExcelHeader.vue',import.meta.url),'utf8')
 const backend=readFileSync(new URL('../../lotus_farm/warehouse.py',import.meta.url),'utf8')
 
 test('Stock screen contains only compact scope filters and its inventory table',()=>{
- assert.match(app,/<div v-if="tab!=='buying'[^\"]*" class="stock-scope">/)
- assert.match(app,/<section v-if="tab==='stock'" class="stock-panel stock-inventory-table">/)
- assert.match(app,/@filter="filterStock"/)
- assert.match(app,/v-if="\['stock','history','movements'\]\.includes\(tab\)&&activeTabFilters"/)
+ const inventory=khoFile('components/stock/StockInventory.vue')
+ assert.match(inventory,/<ListPage title="Tồn kho" class="stock-inventory-table"/)
+ assert.match(inventory,/<template #filters><StockScope /)
+ assert.match(inventory,/@filter="\(\{field,values\}\)=>/)
+ assert.match(inventory,/v-if="hasFilters" variant="outline" @click="clearFilters">Bỏ lọc/)
  // One topbar for every module: the /lotus shell owns it, Stock renders none of its own.
  assert.match(readFileSync(new URL('../src/App.vue',import.meta.url),'utf8'),/<WorkspaceBar [^>]*:actions="workspaceActions"/)
  assert.equal(app.includes('<WorkspaceBar'),false)
@@ -50,14 +52,18 @@ test('server uses independent catalogue and stock quantities',()=>{
 test('table search works while typing without requiring Enter',()=>{
  assert.match(app,/watch\(searchDraft,value=>/)
  assert.match(app,/\},220\)/)
- assert.match(app,/v-model="searchDraft"/)
+ assert.match(app,/v-model:search="searchDraft"/)
  assert.doesNotMatch(app,/@submit\.prevent="applySearch"/)
 })
 
 test('document history and stock ledger keep independent pagination',()=>{
- assert.match(app,/start:documentStart\.value/)
- assert.match(app,/@click="documentStart-=50;refresh\(\)"/)
- assert.match(app,/@click="movementStart-=50;refresh\(\)"/)
+ // Each list owns its offset, so paging one list never moves another.
+ for(const name of ['StockInventory.vue','StockDocumentList.vue','StockLedger.vue']){
+  const view=khoFile('components/stock/'+name)
+  assert.match(view,/start=ref\(0\)/,name)
+  assert.match(view,/@update:start="value=>\{start=value;load\(\)\}"/,name)
+  assert.match(view,/start:start\.value/,name)
+ }
 })
 
 test('internal demand default handles date boundaries even without extra UI',()=>{

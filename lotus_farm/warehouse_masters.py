@@ -174,7 +174,7 @@ def configure_pack(item, values):
 def _doc(company,kind,name):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
-    types={'item':'Item','group':'Item Group','warehouse':'Warehouse'}
+    types={'item':'Item','group':'Item Group','warehouse':'Warehouse','uom':'UOM'}
     if kind not in types:frappe.throw('Loại danh mục không hợp lệ.')
     doc=frappe.get_doc(types[kind],name);doc.check_permission('read')
     if kind=='warehouse' and (doc.company!=company or doc.is_group):frappe.throw('Chỉ sửa kho thuộc công ty đã chọn.')
@@ -185,7 +185,8 @@ def _doc(company,kind,name):
 @frappe.whitelist()
 def read_master(company,kind,name):
     doc=_doc(company,kind,name)
-    return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name'),code=doc.name,
+    return dict(id=doc.name,modified=str(doc.modified),name=doc.get('item_name') or doc.get('warehouse_name') or doc.get('item_group_name') or doc.get('uom_name'),code=doc.name,
+                enabled=doc.get('enabled'),must_be_whole_number=doc.get('must_be_whole_number'),disabled=doc.get('disabled'),
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
                 **(warehouse_details(doc) if kind=='warehouse' else {}),
@@ -200,7 +201,16 @@ def read_master(company,kind,name):
 def master_lists(company):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
-    return dict(groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
+    items=frappe.get_list('Item',fields=['name','item_name','item_group','stock_uom','disabled','lotus_minimum_stock_global'],order_by='item_name',limit_page_length=0)
+    packs={}
+    for row in frappe.get_all('UOM Conversion Detail',filters={'parenttype':'Item','parent':['in',[r.name for r in items] or ['__none__']]},fields=['parent','uom','conversion_factor']):
+        packs.setdefault(row.parent,row)
+    for row in items:
+        pack=packs.get(row.name)
+        row.pack_uom,row.pack_factor=((pack.uom,float(pack.conversion_factor or 0)) if pack and pack.uom!=row.stock_uom else ('',0))
+        row.minimum_stock=row.pop('lotus_minimum_stock_global') or 0
+    return dict(items=items,uoms=frappe.get_list('UOM',fields=['name','enabled','must_be_whole_number'],order_by='name',limit_page_length=0),
+                groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
                 warehouses=[dict(row, **warehouse_contact(row)) for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
                     fields=['name','company','warehouse_name','lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_default_lead_days'],limit_page_length=0)])
 
@@ -233,6 +243,13 @@ def save_master(company,kind,name,modified,values):
         if rename_needed:
             frappe.rename_doc('Warehouse',doc.name,expected,merge=False,force=True)
             doc=frappe.get_doc('Warehouse',expected)
+    elif kind=='uom':
+        # Unit names are referenced by every item and document: only the flags change here, never the name.
+        doc.enabled=1 if frappe.utils.cint(values.get('enabled',1)) else 0
+        doc.must_be_whole_number=1 if frappe.utils.cint(values.get('must_be_whole_number')) else 0
+        if not doc.enabled and frappe.db.exists('Item',{'stock_uom':doc.name,'disabled':0}):
+            frappe.throw('Đơn vị đang là đơn vị tồn kho của vật tư đang dùng, không thể ngừng sử dụng.')
+        doc.save()
     else:
         new_name=_text(values.get('name'),'Tên nhóm')
         if new_name!=doc.name:

@@ -2,7 +2,8 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const stock=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const stock=khoSource()
 const picker=readFileSync(new URL('../src/components/LinkPicker.vue',import.meta.url),'utf8')
 const centered=readFileSync(new URL('../src/warehouse-table-center.css',import.meta.url),'utf8')
 
@@ -25,7 +26,7 @@ test('selected link shows display label instead of stored identifier',()=>{
  assert.match(picker,/<Combobox /)
  assert.match(combobox,/chosen\.value=row/)
  assert.match(combobox,/const shown=\(\)=>props\.displayValue\|\|current\.value\?\.label/)
- assert.match(stock,/:display-value="row\.item_name/)
+ assert.match(stock,/displayValue:r=>r\.item_name/)
 })
 
 test('all StockApp table cells and headers are center-aligned',()=>{

@@ -1,7 +1,8 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-const app=readFileSync(new URL('../src/StockApp.vue',import.meta.url),'utf8')
+import {khoSource,khoFile} from './support/kho-source.mjs'
+const app=khoSource()
 const purchase=readFileSync(new URL('../src/components/WarehouseBuyingLite.vue',import.meta.url),'utf8')
 const pwa=readFileSync(new URL('../src/components/WarehouseInstall.vue',import.meta.url),'utf8')
 const worker=readFileSync(new URL('../../lotus_farm/public/warehouse-worker.js',import.meta.url),'utf8')
@@ -18,8 +19,8 @@ test('dedicated /warehouse manifest has two square icons; desktop stock stays se
  assert.match(pwa,/beforeinstallprompt/)
 })
 test('supplier receiving quick action defaults to purchase order instead of duplicating Stock Entry',()=>{
- assert.match(app,/if\(kind==='receipt'\)/)
- assert.match(app,/receivingView\.value\.openPicker\(\)/)
+ assert.match(app,/kind:'receipt-order'/)
+ assert.match(app,/@receive="receivingView\.openPicker\(\)"/)
  assert.doesNotMatch(app,/<WarehouseBuyingLite/)
  assert.match(purchase,/function startReceiving\(\)/)
  assert.match(purchase,/status\.value='pending'/)
