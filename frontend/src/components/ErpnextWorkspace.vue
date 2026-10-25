@@ -2,7 +2,7 @@
 import {computed,defineAsyncComponent,inject,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {routerKey,routeLocationKey} from 'vue-router'
 import {call} from '../api'
-import {erpFeatureLabels,erpModuleLabels} from '../erpnext-navigation'
+import {erpFeatureLabels,erpModuleLabels,erpNavigationText} from '../erpnext-navigation'
 import {erpDestination,erpLegacyQuery} from '../erp-locations'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import ProcurementField from './ProcurementField.vue'
@@ -37,7 +37,7 @@ const nativeRows=computed(()=>catalogue.value.rows.filter(r=>r.module===module.v
 const purchasingFinance=computed(()=>catalogue.value.rows.some(r=>r.kind==='DocType'&&r.name==='Payment Entry'))
 const customRows=computed(()=>module.value==='Accounts'?[...[['planning','Kế hoạch tài chính'],['cash','Chi hộ · hoàn ứng · phiếu chi'],['reports','Báo cáo kế toán Việt Nam'],['settings','Thiết lập kế toán Lotus']].map(([name,label])=>({id:'lotus-'+name,kind:'Lotus',name,label,group:'Lotus',module:module.value}))]:module.value==='Buying'?[['quote_comparison','Chọn báo giá và chia đơn'],...(purchasingFinance.value?[['purchase_funding','Chi hộ · hoàn ứng mua hàng'],['purchase_payables','Đối chiếu công nợ ngày chốt'],['purchase_reports','Thu chi nguyên vật liệu']]:[])].map(([name,label])=>({id:'lotus-'+name,kind:'Lotus',name,label,group:'Lotus',module:module.value})):module.value==='Stock'?[{id:'lotus-material-demand',kind:'Lotus',name:'demand',label:'Nhu cầu vật tư vườn',group:'Lotus',module:module.value}]:module.value==='HR Setup'?[{id:'lotus-hr',kind:'Lotus',name:'hr',label:'Kỳ công · nhập dữ liệu · thiết bị',group:'Lotus',module:module.value}]:module.value.includes('Attendance')?[{id:'lotus-team-attendance',kind:'Lotus',name:'attendance',label:'Chấm công đội vườn',group:'Lotus',module:module.value}]:[])
 const rows=computed(()=>[...nativeRows.value,...customRows.value])
-const title=computed(()=>heading.value||erpFeatureLabels[selected.value.name]||customRows.value.find(r=>r.name===selected.value.name)?.label||erpModuleLabels[selected.value.name]||selected.value.name)
+const title=computed(()=>heading.value||erpFeatureLabels[selected.value.name]||customRows.value.find(r=>r.name===selected.value.name)?.label||erpModuleLabels[selected.value.name]||erpNavigationText(selected.value.name))
 const icons={Stock:'warehouse',Buying:'cart',Accounts:'calculator',Selling:'cart',Assets:'building',Manufacturing:'settings',Projects:'list','HR Setup':'users',Payroll:'wallet','Shift & Attendance':'calendar'}
 function parse(value){try{return JSON.parse(value||'{}')}catch{return {}}}
 function readQuery(){const q=query();module.value=q.module||props.defaultModule;company.value=q.company||props.company||'';warehouse.value=q.warehouse||props.warehouse||'';initialFilters.value=q.erp_filters?parse(q.erp_filters):{};initialSearch.value=q.erp_search||'';const destination=erpDestination(path,q,module.value);newDoc.value=!!destination.isNew;docName.value=destination.document||'';selected.value={kind:destination.kind,name:destination.name};if(destination.kind==='Report'&&!q.erp_filters)initialFilters.value=Object.fromEntries(['from_date','to_date','warehouse'].filter(k=>q[k]).map(k=>[k,q[k]]));heading.value=''}
@@ -82,7 +82,7 @@ defineExpose({hasChanges:()=>(editor.value||extension.value)?.hasChanges?.()||fa
    </div>
   </div>
   <Sheet v-model:open="navigationOpen" side="left" width="280px" :title="erpModuleLabels[module]||module"><ProcurementField :model-value="module" :display-value="erpModuleLabels[module]||module" label="Phân hệ" :options="catalogue.modules.map(m=>({value:m.value,label:erpModuleLabels[m.value]||m.label}))" @update:model-value="changeModule"/><ErpModuleNav :module="module" :rows="rows" :selected="selected" @open="feature"/></Sheet>
-  <WorkspaceModal :model-value="!!quick" :title="'Thêm '+(quick?.doctype||'')" width="1100px" @update:model-value="!$event&&closeQuick()"><ErpDocumentEditor v-if="quick" ref="quickEditor" :doctype="quick.doctype" :company="company" @saved="quickSaved"/></WorkspaceModal>
+  <WorkspaceModal :model-value="!!quick" :title="'Thêm '+erpNavigationText(quick?.doctype||'')" width="1100px" @update:model-value="!$event&&closeQuick()"><ErpDocumentEditor v-if="quick" ref="quickEditor" :doctype="quick.doctype" :company="company" @saved="quickSaved"/></WorkspaceModal>
   <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" @answer="confirm.finish"/>
  </section>
 </template>

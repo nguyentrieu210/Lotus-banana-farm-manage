@@ -78,6 +78,7 @@ def _route(row, company, warehouse, from_date, to_date, reports):
 
 @frappe.whitelist()
 def catalog(company=None, warehouse=None, from_date=None, to_date=None, module=None):
+    frappe.local.lang = 'vi'
     if not can_access():
         frappe.throw('Bạn không có quyền mở ERPNext.', frappe.PermissionError)
     companies = frappe.get_list('Company', fields=['name'], limit_page_length=0) if frappe.has_permission('Company', 'read') else []

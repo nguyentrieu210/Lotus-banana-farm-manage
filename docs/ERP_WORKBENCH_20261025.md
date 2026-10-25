@@ -34,7 +34,13 @@ Các ca integration chỉ chạy trên `procurement.test`, có chặn site và d
 
 Bản này là nền giao diện và các luồng mua/kho/kế toán đã nêu, chưa phải bản sao hoàn chỉnh mọi hành vi Desk. Không thực thi tự động client script native. Các Page/công cụ chuyên biệt, custom button và wizard riêng từng DocType (sản xuất, đối chiếu ngân hàng, nghiệp vụ tài sản và nhân sự nâng cao), dashboard native và kiểm thử toàn bộ từng phân hệ chưa được chuyển hết. Không đưa các Page chưa triển khai vào menu như một chức năng đã hoạt động.
 
-Giữ PR ở dạng draft và chưa phát hành thay thế toàn bộ cho đến khi hoàn thiện và nghiệm thu phần này. Image của PR trước vẫn bị giữ ở trạng thái `withheld_user_scope_change`; không dùng script rollout cũ cho thay đổi mới.
+Bản phát hành hiện tại gồm nền workbench và các luồng đã nêu trong phạm vi trên. Các chức năng chuyên biệt còn thiếu tiếp tục được theo dõi riêng. Image của PR trước vẫn ở trạng thái `withheld_user_scope_change`; bản này cần image từ commit mới và quy trình triển khai có sao lưu, đồng bộ schema, kiểm tra dữ liệu và phương án quay lại.
+
+## Tiếng Việt
+
+Danh mục hiển thị được xuất từ PO tiếng Việt của Frappe/ERPNext/HRMS đang cài bằng `tools/export_erp_vietnamese.py`, kết hợp thuật ngữ Lotus trong `lotus_farm/erp_vi_overrides.tsv`. Menu, nhãn trường, lựa chọn, trạng thái và phần tổng hợp báo cáo dùng chung danh mục. File Excel dùng nhãn tiếng Việt và tên trang tính tiếng Việt.
+
+Chỉ chuyển ngữ nội dung hiển thị; mã DocType, enum, liên kết và dữ liệu lưu/API giữ nguyên. Các bản dịch nguồn còn thiếu được liệt kê trong audit khi xuất danh mục; bản này chưa dịch hết mọi gợi ý và thuật ngữ của toàn bộ ERPNext/HRMS.
 
 ## Dữ liệu và schema
 

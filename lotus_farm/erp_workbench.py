@@ -32,6 +32,7 @@ MAPPERS = {
 
 
 def _access():
+    frappe.local.lang = 'vi'
     if not can_access():
         frappe.throw('Bạn không có quyền sử dụng phân hệ này.', frappe.PermissionError)
 
@@ -46,7 +47,7 @@ def _meta(doctype, permission='read'):
     if meta.istable or (app not in ('erpnext', 'hrms') and doctype not in SHARED_TYPES):
         frappe.throw('Loại chứng từ không thuộc phân hệ ERP.', frappe.PermissionError)
     if not frappe.has_permission(doctype, permission):
-        frappe.throw('Bạn chưa có quyền ' + permission + ' ' + doctype, frappe.PermissionError)
+        frappe.throw('Bạn chưa có quyền ' + {'read':'xem','write':'sửa','create':'tạo','submit':'ghi sổ','cancel':'hủy','amend':'sửa đổi','delete':'xóa','print':'in','export':'xuất dữ liệu'}.get(permission,permission) + ' ' + frappe._(doctype), frappe.PermissionError)
     return meta
 
 
@@ -728,7 +729,7 @@ def export_report(name, filters=None, company=None):
         rows.append([row.get(k) for k in keys] if isinstance(row, dict) else row)
     from frappe.utils.csvutils import escape_formula_injection
     from frappe.utils.xlsxutils import make_xlsx
-    content = make_xlsx([[escape_formula_injection(v) for v in row] for row in rows], 'Report')
+    content = make_xlsx([[escape_formula_injection(v) for v in row] for row in rows], 'Báo cáo')
     frappe.response.update(type='binary', filename=frappe.scrub(name) + '.xlsx', filecontent=content.getvalue())
 
 
@@ -744,7 +745,7 @@ def export_list(doctype, company=None, search=None, filters=None, sort='modified
     from frappe.utils.csvutils import escape_formula_injection
     from frappe.utils.xlsxutils import make_xlsx
     values = [[c['label'] for c in columns]] + [[escape_formula_injection(row.get(c['fieldname'])) for c in columns] for row in rows]
-    content = make_xlsx(values, 'Documents')
+    content = make_xlsx(values, 'Danh sách')
     frappe.response.update(type='binary', filename=frappe.scrub(doctype) + '.xlsx', filecontent=content.getvalue())
 
 

@@ -6,12 +6,22 @@ import {routerKey,routeLocationKey} from 'vue-router'
 const Workspace=await load('components/ErpnextWorkspace.vue')
 const Editor=await load('components/erp/ErpDocumentEditor.vue')
 const Form=await load('components/erp/ErpForm.vue')
+const Field=await load('components/erp/ErpField.vue')
 const Report=await load('components/erp/ErpReportView.vue')
 const {erpDestination,erpLegacyQuery}=await loadModule('erp-locations.js')
 const {erpFeatures,erpHref}=await loadModule('erpnext-navigation.js')
 const rows=[{id:'s',module:'Buying',name:'Supplier',label:'Supplier',kind:'DocType',href:'/desk/supplier'},{id:'p',module:'Buying',name:'Purchase Order',label:'Purchase Order',kind:'DocType',href:'/desk/purchase-order'},{id:'r',module:'Accounts',name:'Consolidated Financial Statement',label:'Consolidated Financial Statement',kind:'Report'}]
 const schema={doctype:'Supplier',title:'Supplier',fields:[{fieldname:'supplier_name',label:'Tên nhà cung cấp',fieldtype:'Data',reqd:1}],tables:{},permissions:{read:true,write:true,create:true}}
 const response=message=>({ok:true,json:async()=>({message})})
+test('Vietnamese ERP choices display labels while form models retain native enum values',async()=>{
+ const values=[],view=mount(Field,{field:{fieldname:'status',label:'Status',fieldtype:'Select',options:'Active\nInactive'},modelValue:'Active','onUpdate:modelValue':value=>values.push(value)})
+ try{
+  await tick();const field=view.root.querySelector('input[role=combobox]')
+  assert.equal(field.value,'Đang hoạt động');view.root.querySelector('.lotus-combobox__trigger').click();await tick()
+  const option=[...document.querySelectorAll('[role=option]')].find(o=>o.textContent.includes('Không hoạt động'))
+  assert.ok(option);option.dispatchEvent(new window.PointerEvent('pointerup',{bubbles:true}));option.click();await tick();assert.deepEqual(values,['Inactive'])
+ }finally{view.unmount()}
+})
 const button=(root,text)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===text)
 const input=(root,value)=>{const field=root.querySelector('input');field.value=value;field.dispatchEvent(new window.Event('input',{bubbles:true}))}
 function server(calls=[]){globalThis.fetch=async(url,options={})=>{const method=String(url).split('/').pop().split('?')[0].split('.').pop(),args=options.body?JSON.parse(options.body):Object.fromEntries(new URL(url,'http://localhost').searchParams);calls.push({method,args});if(method==='catalog')return response({modules:[{value:'Buying'},{value:'Accounts'}],rows,companies:[{name:'C'}],warehouses:[]});if(method==='schema')return response(schema);if(method==='listing')return response({rows:[{name:'SUP-1',supplier_name:'Test'}],columns:[{fieldname:'name',label:'Mã'}],total_count:1});if(method==='document')return response({doc:{doctype:'Supplier',name:args.name||'new-supplier',supplier_name:args.name?'Test':'',modified:'v1',__islocal:args.name?undefined:1,docstatus:0},is_new:!args.name,permissions:schema.permissions});if(method==='approval')return response(null);if(method==='supplier_connections')return response([]);throw Error('Unexpected '+method)}}

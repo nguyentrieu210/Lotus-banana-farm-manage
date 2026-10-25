@@ -1,5 +1,6 @@
 <script setup>
 import {onMounted,ref,watch} from 'vue'
+import {erpText,erpValue} from '../../erp-language'
 import {call} from '../../api'
 import {erpFeatureLabels} from '../../erpnext-navigation'
 import {Button} from '../ui/button'
@@ -11,4 +12,4 @@ async function load(){const id=++generation;error.value='';try{const r=await cal
 watch(()=>[props.name,props.company],load)
 onMounted(load)
 </script>
-<template><section class="erp-connections"><h3>Giao dịch liên quan</h3><p v-if="error" role="alert" class="erp-error">{{error}}</p><div class="erp-overview-reports"><div v-for="group in rows" :key="group.doctype"><Button variant="outline" @click="emit('open-list',{kind:'DocType',name:group.doctype,filters:group.filters})">{{erpFeatureLabels[group.doctype]||group.doctype}} · {{group.count}}</Button><div v-for="row in group.rows" :key="row.name"><Button variant="link" size="sm" @click="emit('open-document',{doctype:group.doctype,name:row.name})">{{row.name}}</Button></div></div></div><Button v-if="rows.some(r=>r.doctype==='Purchase Invoice')" variant="link" @click="emit('open-report',{name:'Accounts Payable',filters:{company,party_type:'Supplier',party:[name]}})">Công nợ và quá hạn theo ngày chốt</Button></section></template>
+<template><section class="erp-connections"><h3>Giao dịch liên quan</h3><p v-if="error" role="alert" class="erp-error">{{error}}</p><div class="erp-overview-reports"><div v-for="group in rows" :key="group.doctype"><Button variant="outline" @click="emit('open-list',{kind:'DocType',name:group.doctype,filters:group.filters})">{{erpFeatureLabels[group.doctype]||erpText(group.doctype)}} · {{group.count}}</Button><div v-for="row in group.rows" :key="row.name"><Button variant="link" size="sm" @click="emit('open-document',{doctype:group.doctype,name:row.name})">{{row.name}}</Button></div></div></div><Button v-if="rows.some(r=>r.doctype==='Purchase Invoice')" variant="link" @click="emit('open-report',{name:'Accounts Payable',filters:{company,party_type:'Supplier',party:[name]}})">Công nợ và quá hạn theo ngày chốt</Button></section></template>
