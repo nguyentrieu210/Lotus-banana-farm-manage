@@ -43,14 +43,15 @@ test('supplier profile exposes full identity but no bank editor to buyer and sav
 test('supplier listing pages and filters on server rather than truncating the local catalog',async()=>{
  view=mount(Masters,{company:'C',kind:'suppliers',mobile:true});await tick();await tick()
  await click('Sau');assert.equal(calls.filter(c=>c.method.endsWith('.listing')).at(-1).args.start,'50')
- const input=view.root.querySelector('input');input.value='0123456789';input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();await tick()
+ // Search waits until typing pauses (220 ms) before asking the server.
+ const input=view.root.querySelector('input');input.value='0123456789';input.dispatchEvent(new window.Event('input',{bubbles:true}));await new Promise(r=>setTimeout(r,300));await tick()
  const last=calls.filter(c=>c.method.endsWith('.listing')).at(-1);assert.equal(last.args.start,'0');assert.equal(last.args.search,'0123456789')
 })
 test('invoice inquiry is visible to reader, pages on server and opens original invoice inside workspace',async()=>{
  view=mount(Workspace,{company:'C',buyingView:'invoices',mobile:true,today:'2026-10-24'});await tick();await tick()
  assert.ok(calls.some(c=>c.method.endsWith('.invoices')));assert.ok(![...view.root.querySelectorAll('button')].some(x=>x.textContent==='Chi / tạm ứng NCC'))
  await click('Sau');assert.equal(calls.filter(c=>c.method.endsWith('.invoices')).at(-1).args.start,'50')
- const row=[...view.root.querySelectorAll('.van-cell')].find(x=>x.textContent.includes('PI'));assert.ok(row);row.click();await tick();assert.match(view.root.textContent,/Hóa đơn HD-1/);assert.match(view.root.textContent,/Còn nợ 80/)
+ const row=[...view.root.querySelectorAll('.van-cell')].find(x=>x.textContent.includes('PI'));assert.ok(row);row.click();await tick();assert.match(view.root.textContent,/Hóa đơn\s*HD-1/);assert.match(view.root.textContent,/Còn nợs*80/)
 })
 test('warehouse receipts list opens supplier receiving through the shared picker',async()=>{
  const usual=handler;handler=async(m,a)=>{

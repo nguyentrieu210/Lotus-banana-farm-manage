@@ -1,41 +1,52 @@
 <script setup>
-import {computed} from 'vue'
-import ProcurementField from './ProcurementField.vue'
+import {computed,watch} from 'vue'
+import FormGrid from './form/FormGrid.vue'
+import FormSection from './form/FormSection.vue'
+import LotusField from './form/LotusField.vue'
+import LineItemsEditor from './form/LineItemsEditor.vue'
 import {Button} from './ui/button'
 import LotusMobileButton from './LotusMobileButton.vue'
-import {newPurchaseLine,purchaseUnits} from '../mobile-purchase'
-import {allowedKinds,purchaseKind} from '../procurement'
+import {newPurchaseLine,purchaseUnits,purchaseTotal} from '../mobile-purchase'
+import {allowedKinds,purchaseKind,money} from '../procurement'
+// Fields of Đề nghị mua / Báo giá / Đơn mua. The surrounding ResponsiveForm owns submit and close.
 const props=defineProps({mobile:Boolean,modelValue:Object,catalog:Object,type:String,saving:Boolean})
-const emit=defineEmits(['update:modelValue','submit','cancel','request','add-supplier','add-item'])
+const emit=defineEmits(['update:modelValue','request','add-supplier','add-item'])
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const options=(rows,label)=>rows?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
-function patch(v){emit('update:modelValue',{...props.modelValue,...v})}
-function line(i,v){patch({items:props.modelValue.items.map((r,n)=>n===i?{...r,...v}:r)})}
-function choose(i,code){const item=props.catalog.items.find(r=>r.name===code);line(i,{item:code,uom:item?.stock_uom||'',kind:purchaseKind(item),material_request:'',material_request_item:''})}
+const itemOf=code=>props.catalog.items.find(r=>r.name===code)
+const vatOptions=['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))
+const lineColumns=computed(()=>[
+ {field:'item',label:'Mặt hàng',required:true,options:options(props.catalog.items,'item_name'),width:'minmax(200px,2.2fr)'},
+ {field:'kind',label:'Loại mua',required:true,options:row=>allowedKinds(itemOf(row.item)),searchable:false,width:'minmax(130px,1fr)'},
+ ...(props.catalog.farms?.length?[{field:'lotus_farm',label:'Vườn sử dụng',options:options(props.catalog.farms),width:'minmax(140px,1fr)'}]:[]),
+ {field:'qty',label:'Số lượng',type:'number',required:true,props:{min:0.000001},width:'minmax(100px,.8fr)'},
+ {field:'uom',label:'Đơn vị',required:true,options:row=>purchaseUnits(row.item,props.catalog.items,props.catalog.conversions).map(u=>({value:u,label:u})),searchable:false,width:'minmax(100px,.8fr)'},
+ {field:'rate',label:'Đơn giá chưa VAT',type:'money',props:{min:0},width:'minmax(130px,1fr)'},
+ {field:'vat_code',label:'VAT',options:vatOptions,searchable:false,props:{emptyOption:null},width:'minmax(120px,.9fr)'},
+ {field:'freight',label:'Vận chuyển',type:'money',props:{min:0},width:'minmax(120px,.9fr)'}
+])
+// Choosing another item resets its unit and purchase kind (desktop picker and phone list alike).
+const chosen=new WeakMap()
+watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of props.modelValue?.items||[]){if(!chosen.has(row)){chosen.set(row,row.item);continue}if(chosen.get(row)!==row.item){chosen.set(row,row.item);const item=itemOf(row.item);Object.assign(row,{uom:item?.stock_uom||'',kind:purchaseKind(item),material_request:'',material_request_item:''})}}},{immediate:true})
 </script>
-<template><form class="procurement-form" @submit.prevent="emit('submit')"><fieldset :disabled="saving">
- <div class="procurement-fields">
-  <ProcurementField v-if="type!=='need'&&catalog.requests?.length" :mobile="mobile" label="Lấy dòng từ đề nghị đã duyệt" :options="options(catalog.requests)" @update:model-value="emit('request',$event)"/>
-  <ProcurementField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
-  <component :is="button" v-if="type!=='need'&&catalog.can_create_supplier" type="button" @click="emit('add-supplier')">Thêm NCC</component>
-  <ProcurementField :mobile="mobile" v-model="modelValue.warehouse" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
-  <ProcurementField :mobile="mobile" v-model="modelValue.expected_date" label="Ngày cần hàng / nghiệm thu" type="date" required/>
-  <ProcurementField v-if="type==='quote'" :mobile="mobile" v-model="modelValue.valid_till" label="Hiệu lực báo giá đến" type="date" required/>
-  <ProcurementField :mobile="mobile" v-model="modelValue.notes" :label="type==='need'?'Lý do đề nghị':'Nội dung giao hàng / dịch vụ'" type="textarea" :required="type==='need'"/>
- </div>
- <section v-for="(r,i) in modelValue.items" :key="r.id||i" class="procurement-line">
-  <div class="procurement-actions"><strong>Dòng {{i+1}}</strong><component :is="button" v-if="modelValue.items.length>1" type="button" @click="patch({items:modelValue.items.filter((_,n)=>n!==i)})">Xóa dòng</component></div>
-  <div class="procurement-fields">
-   <ProcurementField :mobile="mobile" :model-value="r.item" label="Mặt hàng" :options="options(catalog.items,'item_name')" required @update:model-value="choose(i,$event)"/>
-   <component :is="button" v-if="catalog.can_create_item" type="button" @click="emit('add-item',i)">Thêm mặt hàng</component>
-   <ProcurementField :mobile="mobile" v-model="r.kind" label="Loại mua" :options="allowedKinds(catalog.items.find(x=>x.name===r.item))" :searchable="false" required/>
-   <ProcurementField v-if="catalog.farms?.length" :mobile="mobile" v-model="r.lotus_farm" label="Vườn sử dụng" :options="options(catalog.farms)"/>
-   <ProcurementField :mobile="mobile" v-model="r.qty" label="Số lượng" type="number" min="0.000001" step="any" required/>
-   <ProcurementField :mobile="mobile" v-model="r.uom" label="Đơn vị" :options="purchaseUnits(r.item,catalog.items,catalog.conversions).map(u=>({value:u,label:u}))" :searchable="false" required/>
-   <ProcurementField :mobile="mobile" v-model="r.rate" label="Đơn giá chưa VAT" type="number" min="0" step="any"/>
-   <ProcurementField :mobile="mobile" v-model="r.vat_code" label="VAT" :options="['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))" :searchable="false"/>
-   <ProcurementField :mobile="mobile" v-model="r.freight" label="Vận chuyển dòng này" type="number" min="0" step="any"/>
-  </div>
- </section>
- <div class="procurement-actions"><component :is="button" type="button" @click="patch({items:[...modelValue.items,newPurchaseLine()]})">Thêm dòng</component><component :is="button" type="submit" :disabled="saving">Lưu nháp</component><component :is="button" type="button" @click="emit('cancel')">Đóng</component></div>
-</fieldset></form></template>
+<template>
+ <FormSection title="Thông tin chung">
+  <FormGrid :columns="3">
+   <LotusField v-if="type!=='need'&&catalog.requests?.length" :mobile="mobile" label="Lấy dòng từ đề nghị đã duyệt" :options="options(catalog.requests)" @update:model-value="emit('request',$event)"/>
+   <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.warehouse" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.expected_date" label="Ngày cần hàng / nghiệm thu" type="date" required/>
+   <LotusField v-if="type==='quote'" :mobile="mobile" v-model="modelValue.valid_till" label="Hiệu lực báo giá đến" type="date" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.notes" :label="type==='need'?'Lý do đề nghị':'Nội dung giao hàng / dịch vụ'" type="textarea" wide :required="type==='need'"/>
+  </FormGrid>
+ </FormSection>
+ <FormSection>
+  <LineItemsEditor v-model="modelValue.items" title="Mặt hàng" add-label="Thêm dòng" :columns="lineColumns" :new-row="newPurchaseLine" :mobile="mobile" :readonly="saving">
+   <template #footer>
+    <component :is="button" v-if="type!=='need'&&catalog.can_create_supplier" type="button" variant="outline" size="sm" @click="emit('add-supplier')">Thêm nhà cung cấp mới</component>
+    <component :is="button" v-if="catalog.can_create_item" type="button" variant="outline" size="sm" @click="emit('add-item',modelValue.items.length-1)">Thêm mặt hàng mới</component>
+    <span v-if="type!=='need'" class="lotus-form-note lotus-lines__total">Tổng tạm tính {{money(purchaseTotal(modelValue))}} đ</span>
+   </template>
+  </LineItemsEditor>
+ </FormSection>
+</template>

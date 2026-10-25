@@ -5,7 +5,7 @@ import {readFileSync,readdirSync} from 'node:fs'
 // Screens rebuilt on the shared form standard. Add a file here once it is converted; it must then stay on the standard.
 const src=new URL('../src/',import.meta.url)
 const dir=name=>readdirSync(new URL(name,src)).filter(f=>f.endsWith('.vue')).map(f=>name+f)
-const standard=['StockApp.vue','components/ListPage.vue','components/ProcurementField.vue','components/StockReceiptReason.vue','components/WarehousePlanning.vue','components/PurchaseReceiptCosts.vue',...dir('components/form/'),...dir('components/stock/')]
+const standard=['StockApp.vue','components/ListPage.vue','components/ProcurementField.vue','components/StockReceiptReason.vue','components/WarehousePlanning.vue','components/PurchaseReceiptCosts.vue','components/ProcurementWorkspace.vue','components/ProcurementDocumentForm.vue','components/ProcurementMasters.vue',...dir('components/form/'),...dir('components/stock/')]
 const read=name=>readFileSync(new URL(name,src),'utf8')
 const template=text=>text.slice(text.indexOf('<template'))
 
@@ -23,7 +23,7 @@ test('standard screens use the shared dialog, confirm and reason prompts',()=>{
   const text=read(name)
   assert.doesNotMatch(text,/window\.(prompt|confirm|alert)\(/,name+': use WorkspaceConfirm / ReasonDialog')
   assert.doesNotMatch(text,/<WorkspaceModal[^>]*\bbare\b/,name+': data entry uses ModalForm')
-  if(/<form[\s>]/.test(template(text)))assert.equal(name,'components/form/ModalForm.vue',name+': forms are ModalForm')
+  if(/<form[\s>]/.test(template(text)))assert.ok(['components/form/ModalForm.vue','components/form/ResponsiveForm.vue'].includes(name),name+': forms are ModalForm / ResponsiveForm')
  }
 })
 

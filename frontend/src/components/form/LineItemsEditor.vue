@@ -54,7 +54,8 @@ function select(column,row,option){column.onSelect?.(row,option);emit('select',{
 .lotus-lines__head{padding:0 0 2px;font-size:var(--lotus-text-sm);font-weight:550;color:var(--lotus-muted)}
 .lotus-lines__cell{min-width:0}
 .lotus-lines__remove{align-self:start;width:36px;height:36px;padding:0}
-.lotus-lines__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lotus-lines__footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lotus-lines__total{margin-left:auto}
 .lotus-lines--mobile .lotus-lines__grid{gap:12px;overflow:visible}
 .lotus-lines--mobile .lotus-lines__row{grid-template-columns:minmax(0,1fr);position:relative;padding:12px 0;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);min-width:0}
 .lotus-lines--mobile .lotus-lines__number{padding:0 var(--lotus-space-4);font-weight:600;font-size:var(--lotus-text-sm)}
