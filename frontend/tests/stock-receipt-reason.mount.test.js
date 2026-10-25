@@ -22,7 +22,7 @@ test.afterEach(()=>view?.unmount())
 async function click(text){const button=[...document.querySelectorAll('button')].find(e=>e.textContent.includes(text));assert.ok(button,text);button.click();await tick();await tick()}
 function select(label,value){const e=document.querySelector(`select[aria-label="${label}"]`);assert.ok(e,label);e.value=value;e.dispatchEvent(new window.Event('change',{bubbles:true}))}
 async function choose(label,text){const input=document.querySelector(`input[aria-label="${label}"]`);assert.ok(input,label);input.focus();await tick();const option=[...document.querySelectorAll('[role=option]')].find(e=>e.textContent.includes(text));assert.ok(option,text);option.click();await tick()}
-async function start(){view=mount(Warehouse);await tick();await tick();await click('Nhập không theo đơn');await choose('Gõ tên hoặc mã hàng…','Vật tư thử')}
+async function start(){view=mount(Warehouse);await tick();await tick();await click('Nhập không theo đơn');await choose('Tên hàng','Vật tư thử')}
 async function submit(){view.root.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()}
 const writes=()=>calls.filter(c=>c.method.endsWith('.create_draft'))
 test('mobile direct receipt requires a reason and supplier, then sends both to the native draft',async()=>{

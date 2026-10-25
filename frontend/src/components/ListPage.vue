@@ -28,6 +28,8 @@ const cellSlots=computed(()=>Object.keys(slots).filter(name=>name.startsWith('ce
  </section>
 </template>
 <style>
-.lotus-list-page{display:grid;gap:10px;min-width:0}
+.lotus-list-page{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+/* Narrow screens: filters and actions wrap onto new lines instead of widening the page. */
+@media(max-width:720px){.lotus-list-page .workspace-list-toolbar{flex-wrap:wrap;overflow:visible}.lotus-list-page .workspace-list-filters,.lotus-list-page .workspace-list-actions{flex-wrap:wrap;max-width:100%}}
 .lotus-list-page__error{margin:0;padding:10px 12px;border-radius:var(--lotus-radius-md);background:var(--lotus-danger-soft);color:var(--lotus-danger);font-size:var(--lotus-text-sm)}
 </style>

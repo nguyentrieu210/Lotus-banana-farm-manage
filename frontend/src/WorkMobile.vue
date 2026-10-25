@@ -1,4 +1,5 @@
 <script setup>
+import LotusField from './components/form/LotusField.vue'
 import {formatDate} from './format'
 import WorkJournalApp from './WorkJournalApp.vue'
 import FieldTodoApp from './FieldTodoApp.vue'
@@ -484,12 +485,8 @@ onBeforeUnmount(()=>{
     <template v-if="screen==='home'">
      <h1>Chọn công việc</h1>
      <div class="work-scope">
-      <div class="mobile-field"><label>Vườn đang làm việc</label>
-       <MobileLinkField :model-value="farm" :options="farms" :searchable="false" placeholder="Chọn vườn" @update:modelValue="changeFarm"/>
-      </div>
-      <div class="mobile-field"><label>Ngày làm việc</label>
-       <LotusMobileInput aria-label="Ngày làm việc" v-model="date" type="date" @change="changeDate"/>
-      </div>
+      <MobileLinkField label="Vườn đang làm việc" :model-value="farm" :options="farms" :searchable="false" placeholder="Chọn vườn" @update:modelValue="changeFarm"/>
+      <LotusMobileInput label="Ngày làm việc" v-model="date" type="date" @change="changeDate"/>
      </div>
      <div class="mobile-actions" aria-label="Thao tác Công việc ngoài vườn">
       <LotusMobileAction v-if="session?.capabilities?.['work_journal.read']" icon="notes-o" title="Nhật ký công việc" @select="go('journal')"/>
@@ -526,8 +523,8 @@ onBeforeUnmount(()=>{
     <template v-else-if="screen==='tasks'">
      <h1>Công việc đã giao</h1>
      <div class="work-date-row">
-      <div class="mobile-field"><label>Vườn</label><MobileLinkField aria-label="Vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/></div>
-      <div class="mobile-field"><label>Ngày</label><LotusMobileInput aria-label="Ngày" v-model="date" type="date" @change="changeDate"/></div>
+      <MobileLinkField label="Vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/>
+      <LotusMobileInput label="Ngày" v-model="date" type="date" @change="changeDate"/>
      </div>
      <MobileLiveSearch v-model="search" :options="taskSuggestions" placeholder="Gõ tên việc, lô hoặc tổ…" @select="chooseSuggestion"/>
      <div class="work-chips" role="group" aria-label="Lọc trạng thái">
@@ -545,8 +542,8 @@ onBeforeUnmount(()=>{
     <template v-else-if="screen==='history'">
      <h1>Lịch sử kết quả</h1>
      <div class="work-date-row">
-      <div class="mobile-field"><label>Vườn</label><MobileLinkField aria-label="Vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/></div>
-      <div class="mobile-field"><label>Đến ngày</label><LotusMobileInput aria-label="Đến ngày" v-model="date" type="date" @change="changeDate"/></div>
+      <MobileLinkField label="Vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/>
+      <LotusMobileInput label="Đến ngày" v-model="date" type="date" @change="changeDate"/>
      </div>
      <MobileLiveSearch v-model="historySearch" :options="histSuggestions" :loading="loadingHistory" placeholder="Gõ tên việc hoặc lô…" @select="chooseHistorical"/>
      <p class="work-summary">Kết quả 14 ngày đến {{shortDate(date)}}</p>
@@ -566,9 +563,7 @@ onBeforeUnmount(()=>{
       <div class="mobile-profile-row"><span>Vườn</span><strong>{{summaryName}}</strong></div>
       <div class="mobile-profile-row"><span>Báo cáo chưa gửi</span><strong>{{pendingCount}}</strong></div>
      </div>
-     <div class="mobile-field"><label>Đổi vườn</label>
-      <MobileLinkField aria-label="Đổi vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/>
-     </div>
+     <MobileLinkField label="Đổi vườn" :model-value="farm" :options="farms" :searchable="false" @update:modelValue="changeFarm"/>
      <LotusMobileButton type="button" class="work-outline" @click="go('queue')">Hàng chờ báo cáo <b>{{pendingCount}} <Icon name="arrow" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></LotusMobileButton>
      <a class="work-outline" href="/lotus/cong-viec">Mở trên máy tính <b><Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></a>
      <a class="work-outline" href="/warehouse">Kho Lotus <b><Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></b></a>
@@ -610,12 +605,12 @@ onBeforeUnmount(()=>{
       <p v-if="selected.result" class="mobile-message" :class="selected.result_state==='Approved'?'success':'work-warning'">Phiếu {{selected.result}} · {{labelState(selected.status)}}.</p>
       <p v-if="selected.review_note" class="mobile-message work-warning">Nhận xét: {{selected.review_note}}</p>
       <div v-if="canVerify&&selected.result_state==='Pending'">
-       <div class="mobile-field"><label>Nhận xét kiểm tra (nếu có)</label><LotusMobileInput aria-label="Nhận xét kiểm tra (nếu có)" type="textarea" v-model="reviewNote" rows="2"/></div>
+       <LotusMobileInput label="Nhận xét kiểm tra (nếu có)" type="textarea" v-model="reviewNote" rows="2"/>
        <LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Verify')">Kiểm tra đạt → Chờ quản lý duyệt</LotusMobileButton>
        <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu tổ trưởng sửa</LotusMobileButton>
       </div>
       <div v-if="canVerify&&selected.result_state==='Verified'">
-       <div class="mobile-field"><label>Nhận xét duyệt (nếu có)</label><LotusMobileInput aria-label="Nhận xét duyệt (nếu có)" type="textarea" v-model="reviewNote" rows="2"/></div>
+       <LotusMobileInput label="Nhận xét duyệt (nếu có)" type="textarea" v-model="reviewNote" rows="2"/>
        <LotusMobileButton v-if="canFinalize" type="button" class="mobile-submit" :disabled="saving||!online" @click="decideResult('Approve')">Duyệt kết quả chính thức</LotusMobileButton>
        <LotusMobileButton type="button" class="work-outline" :disabled="saving||!online||!reviewNote.trim()" @click="decideResult('Request Changes')">Yêu cầu kiểm tra lại</LotusMobileButton>
       </div>
@@ -629,10 +624,10 @@ onBeforeUnmount(()=>{
       <span>Được giao <b>{{fmt(selected.planned_qty)}} {{unit(selected.uom)}}</b></span>
      </div>
      <form @submit.prevent="saveResult"><fieldset class="mobile-form-fields" :disabled="saving">
-      <div class="mobile-field"><label>Số lượng thực tế ({{unit(selected.uom)}})</label><LotusMobileInput v-model="resultForm.completed_qty" type="number" min="0" step="any" inputmode="decimal" placeholder="Nhập số đã làm" required/></div>
-      <div class="mobile-field"><label>Tổng số công thực tế</label><LotusMobileInput v-model="resultForm.actual_workdays" type="number" min="0" step="any" inputmode="decimal" placeholder="Ví dụ: 10" required/></div>
-      <div class="mobile-field"><label>Lý do chưa đạt chỉ tiêu (nếu có)</label><LotusMobileInput type="textarea" v-model="resultForm.unfinished_reason" rows="2" placeholder="Ví dụ: trời mưa, thiếu vật tư…"/></div>
-      <div class="mobile-field"><label>Ảnh hiện trường (nếu có)</label><LotusMobileFile aria-label="Ảnh hiện trường (nếu có)" accept="image/*" capture="environment" @change="pickPhoto"/></div>
+      <LotusMobileInput :label="'Số lượng thực tế ('+(unit(selected.uom))+')'" v-model="resultForm.completed_qty" type="number" min="0" step="any" inputmode="decimal" placeholder="Nhập số đã làm" required/>
+      <LotusMobileInput label="Tổng số công thực tế" v-model="resultForm.actual_workdays" type="number" min="0" step="any" inputmode="decimal" placeholder="Ví dụ: 10" required/>
+      <LotusMobileInput label="Lý do chưa đạt chỉ tiêu (nếu có)" type="textarea" v-model="resultForm.unfinished_reason" rows="2" placeholder="Ví dụ: trời mưa, thiếu vật tư…"/>
+      <LotusField mobile label="Ảnh hiện trường (nếu có)" type="file" accept="image/*" capture="environment" @change="pickPhoto"/>
       <p v-if="photo" class="mobile-message success">Đã chọn ảnh: {{photo.name}}</p>
       <p class="work-muted">Ghi công theo tổng công của tổ, không tự chia cho từng người. Báo cáo gửi lên sẽ chờ đội trưởng kiểm tra và quản lý duyệt; chưa tính công chính thức. Khi mất mạng, báo cáo được giữ trong Hàng chờ.</p>
       <LotusMobileButton type="submit" class="mobile-submit">{{saving?'Đang lưu…':'Lưu báo cáo →'}}</LotusMobileButton>
@@ -642,25 +637,24 @@ onBeforeUnmount(()=>{
     <template v-else-if="screen==='block'&&selected">
      <div class="mobile-summary"><span>Việc <b>{{selected.work_name||selected.work_type}}</b></span><span>Lô <b>{{selected.block_code||selected.farm_block||selected.plot_code||selected.farm_plot}}</b></span></div>
      <form @submit.prevent="changeState('Blocked',blockReason.trim())"><fieldset class="mobile-form-fields" :disabled="saving">
-      <div class="mobile-field"><label>Lý do vướng mắc</label><LotusMobileInput type="textarea" v-model="blockReason" rows="3" required placeholder="Ví dụ: thiếu người, thiếu vật tư hoặc trời mưa…"/></div>
+      <LotusMobileInput label="Lý do vướng mắc" type="textarea" v-model="blockReason" rows="3" required placeholder="Ví dụ: thiếu người, thiếu vật tư hoặc trời mưa…"/>
       <LotusMobileButton type="submit" class="mobile-submit" :disabled="!online||!blockReason.trim()">Lưu vướng mắc →</LotusMobileButton>
      </fieldset></form>
     </template>
 
     <template v-else-if="screen==='assign'">
      <form @submit.prevent="previewAssign"><fieldset class="mobile-form-fields" :disabled="saving">
-      <div class="mobile-field"><label>Vườn</label><MobileLinkField aria-label="Vườn" :model-value="farm" :options="farms" :searchable="false" :disabled="true"/></div>
-      <div class="mobile-field"><label>Ngày thực hiện</label><LotusMobileInput aria-label="Ngày thực hiện" v-model="date" type="date" required @change="editAssign"/></div>
-      <div class="mobile-field"><label>Giao cho tổ</label><MobileLinkField v-model="assignTeam" :options="teamOptions" :searchable="true" placeholder="Gõ tên tổ" required @update:modelValue="editAssign"/></div>
+      <MobileLinkField label="Vườn" :model-value="farm" :options="farms" :searchable="false" :disabled="true"/>
+      <LotusMobileInput label="Ngày thực hiện" v-model="date" type="date" required @change="editAssign"/>
+      <MobileLinkField label="Giao cho tổ" v-model="assignTeam" :options="teamOptions" :searchable="true" placeholder="Gõ tên tổ" required @update:modelValue="editAssign"/>
       <h2>Danh sách công việc</h2>
       <div v-for="(line,i) in assignLines" :key="i" class="mobile-line">
        <div class="mobile-line-title"><strong>Việc {{i+1}}</strong><LotusMobileButton v-if="assignLines.length>1" type="button" @click="assignLines.splice(i,1);editAssign()">Xóa</LotusMobileButton></div>
-       <div class="mobile-field"><label>Lô lớn</label><MobileLinkField v-model="line.location" :options="locationOptions" :searchable="true" placeholder="Gõ mã Lô…" required @update:modelValue="editAssign"/></div>
-       <div class="mobile-field"><label>Loại công việc</label><MobileLinkField v-model="line.work_type" :options="workOptions" :searchable="true" placeholder="Gõ tên công việc…" required @update:modelValue="line.payment_mode='';line.piecework_rate='';editAssign()"/></div>
-       <div class="mobile-field"><label>Số lượng giao</label><LotusMobileInput aria-label="Số lượng giao" v-model="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @input="editAssign"/></div>
-       <div v-if="line.work_type" class="mobile-field"><label>Hình thức công</label><MobileLinkField aria-label="Hình thức công" v-model="line.payment_mode" :options="modeOptions(line.work_type)" :searchable="false" @update:modelValue="editAssign"/></div>
-       <div v-if="line.work_type&&modeOptions(line.work_type).some(m=>['Piece','Both'].includes(m.value))" class="mobile-field"><label>Đơn giá khoán (đ/đơn vị, giá chuẩn {{fmt(currentRate(line.work_type))}})</label>
-        <LotusMobileInput v-model="line.piecework_rate" type="number" min="0" step="any" inputmode="decimal" :placeholder="'Giá chuẩn '+fmt(currentRate(line.work_type))" @input="editAssign"/></div>
+       <MobileLinkField label="Lô lớn" v-model="line.location" :options="locationOptions" :searchable="true" placeholder="Gõ mã Lô…" required @update:modelValue="editAssign"/>
+       <MobileLinkField label="Loại công việc" v-model="line.work_type" :options="workOptions" :searchable="true" placeholder="Gõ tên công việc…" required @update:modelValue="line.payment_mode='';line.piecework_rate='';editAssign()"/>
+       <LotusMobileInput label="Số lượng giao" v-model="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @input="editAssign"/>
+       <MobileLinkField v-if="line.work_type" label="Hình thức công" v-model="line.payment_mode" :options="modeOptions(line.work_type)" :searchable="false" @update:modelValue="editAssign"/>
+       <LotusMobileInput v-if="line.work_type&&modeOptions(line.work_type).some(m=>['Piece','Both'].includes(m.value))" :label="'Đơn giá khoán (đ/đơn vị, giá chuẩn '+(fmt(currentRate(line.work_type)))+')'" v-model="line.piecework_rate" type="number" min="0" step="any" inputmode="decimal" :placeholder="'Giá chuẩn '+fmt(currentRate(line.work_type))" @input="editAssign"/>
       </div>
       <LotusMobileButton type="button" class="mobile-add" :disabled="assignLines.length>=50" @click="assignLines.push(blankLine());editAssign()">＋ Thêm công việc</LotusMobileButton>
       <LotusMobileButton type="submit" class="mobile-submit" :disabled="!online">{{saving?'Đang kiểm tra…':'Xem lại kế hoạch →'}}</LotusMobileButton>
@@ -684,7 +678,7 @@ onBeforeUnmount(()=>{
      <h2 v-if="preview.materials?.length">Vật tư dự tính</h2>
      <div v-for="m in preview.materials" :key="m.item" class="mobile-list-card"><strong>{{m.item}}</strong><div class="mobile-inline"><span>Nhu cầu</span><b>{{fmt(m.required_qty)}} {{unit(m.uom)}}</b></div></div>
      <p v-if="preview.missing_norms?.length" class="mobile-message work-warning">Chưa có định mức vật tư: {{preview.missing_norms.join(', ')}}.</p>
-     <div v-if="preview.approval_required" class="mobile-field"><label>Lý do xin giá cao hơn mức chuẩn</label><LotusMobileInput type="textarea" v-model="rateReason" rows="3" required placeholder="Ghi lý do đề nghị…"/></div>
+     <LotusMobileInput v-if="preview.approval_required" label="Lý do xin giá cao hơn mức chuẩn" type="textarea" v-model="rateReason" rows="3" required placeholder="Ghi lý do đề nghị…"/>
      <LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online" @click="createAssign">{{saving?'Đang lưu…':preview.approval_required?'Gửi chờ duyệt giá →':'Xác nhận giao việc →'}}</LotusMobileButton>
      <LotusMobileButton type="button" class="mobile-add" :disabled="saving" @click="go('assign')">‹ Sửa kế hoạch</LotusMobileButton>
     </template>
@@ -712,7 +706,7 @@ onBeforeUnmount(()=>{
      <div v-for="p in planRows.filter(p=>p.rate_approval_state==='Pending')" :key="p.name" class="mobile-list-card">
       <strong>{{p.name}}</strong><small>{{shortDate(p.posting_date)}} · {{p.owner}}</small>
       <div class="work-queue-actions"><LotusMobileButton :disabled="saving||!online" @click="approve(p,'Approve')">Duyệt và giao</LotusMobileButton><LotusMobileButton @click="rejection=rejection===p.name?'':p.name">Từ chối</LotusMobileButton></div>
-      <div v-if="rejection===p.name" class="mobile-field"><label>Lý do từ chối</label><LotusMobileInput aria-label="Lý do từ chối" type="textarea" v-model="rejectReason" rows="2"/><LotusMobileButton class="work-outline" @click="approve(p,'Reject')">Xác nhận</LotusMobileButton></div>
+      <div v-if="rejection===p.name" class="mobile-reject"><LotusMobileInput label="Lý do từ chối" type="textarea" v-model="rejectReason" rows="2"/><LotusMobileButton class="work-outline" @click="approve(p,'Reject')">Xác nhận</LotusMobileButton></div>
      </div>
     </section>
    </template>
@@ -724,7 +718,7 @@ onBeforeUnmount(()=>{
   <LotusMobileDialog ref="discardDialog" class="mobile-leave-dialog" @cancel.prevent="closeDiscard">
    <form class="mobile-leave-content" @submit.prevent="confirmDiscard">
     <h2>Bỏ báo cáo chưa nhận?</h2><p>Máy chủ phải được kiểm tra trước khi bỏ. Nhập lý do để ghi nhận.</p>
-    <div class="mobile-field"><label>Lý do bỏ</label><LotusMobileInput aria-label="Lý do bỏ" type="textarea" v-model="discardReason" rows="3" required/></div>
+    <LotusMobileInput label="Lý do bỏ" type="textarea" v-model="discardReason" rows="3" required/>
     <div><LotusMobileButton type="button" @click="closeDiscard">Ở lại</LotusMobileButton><LotusMobileButton class="danger" type="submit" :disabled="!discardReason.trim()||saving">Xác nhận bỏ</LotusMobileButton></div>
    </form>
   </LotusMobileDialog>

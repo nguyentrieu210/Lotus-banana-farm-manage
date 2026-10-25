@@ -134,11 +134,11 @@ async function action(a){
   <template v-else-if="page==='create'&&form">
    <div class="field-todo-toolbar"><strong>Giao việc mới</strong><LotusMobileButton type="button" @click="page='board'">Đóng</LotusMobileButton></div>
    <form class="field-todo-form" @submit.prevent="create">
-    <div class="mobile-field"><label>Nhóm công việc</label><MobileLinkField v-model="form.group_code" :options="stages" :searchable="false" @update:modelValue="form.section_code='';form.work_type=''"/></div>
-    <div class="mobile-field"><label>Hạng mục</label><MobileLinkField v-model="form.section_code" :options="sections" searchable placeholder="Chọn hạng mục" @update:modelValue="form.work_type=''"/></div>
-    <div class="mobile-field"><label>Công việc</label><MobileLinkField v-model="form.work_type" :options="works" searchable placeholder="Gõ tìm công việc" required/></div>
-    <div class="mobile-field"><label>Lô lớn</label><MobileLinkField v-model="form.farm_block" :options="blocks" searchable placeholder="Chọn lô" required/></div>
-    <div class="mobile-field"><label>Tổ phụ trách</label><MobileLinkField v-model="form.work_team" :options="teams" searchable placeholder="Chọn tổ" required/></div>
+    <MobileLinkField label="Nhóm công việc" v-model="form.group_code" :options="stages" :searchable="false" @update:modelValue="form.section_code='';form.work_type=''"/>
+    <MobileLinkField label="Hạng mục" v-model="form.section_code" :options="sections" searchable placeholder="Chọn hạng mục" @update:modelValue="form.work_type=''"/>
+    <MobileLinkField label="Công việc" v-model="form.work_type" :options="works" searchable placeholder="Gõ tìm công việc" required/>
+    <MobileLinkField label="Lô lớn" v-model="form.farm_block" :options="blocks" searchable placeholder="Chọn lô" required/>
+    <MobileLinkField label="Tổ phụ trách" v-model="form.work_team" :options="teams" searchable placeholder="Chọn tổ" required/>
     <LotusMobileInput v-model="form.start_date" type="date" label="Ngày bắt đầu" required/>
     <LotusMobileInput v-model="form.due_date" type="date" label="Hạn hoàn thành" required/>
     <div class="mobile-field"><label>Cách báo cáo</label>
@@ -170,7 +170,7 @@ async function action(a){
     <p v-if="selected.review_note">Ý kiến nghiệm thu: {{selected.review_note}}</p>
    </div>
    <div v-if="canAssign&&['Open','Doing','Rework'].includes(selected.status)&&teams.length>1" class="field-todo-form">
-    <div class="mobile-field"><label>Điều chuyển sang tổ khác</label><MobileLinkField v-model="reassignTeam" :options="teams" searchable placeholder="Chọn tổ"/></div>
+    <MobileLinkField label="Điều chuyển sang tổ khác" v-model="reassignTeam" :options="teams" searchable placeholder="Chọn tổ"/>
     <LotusMobileButton :disabled="busy||!reassignTeam||reassignTeam===selected.work_team" @click="action('reassign')">Đổi tổ phụ trách</LotusMobileButton>
    </div>
    <LotusMobileButton v-if="canAssign&&['Open','Rework'].includes(selected.status)" class="mobile-add" :disabled="busy" @click="action('start')">Bắt đầu làm</LotusMobileButton>
