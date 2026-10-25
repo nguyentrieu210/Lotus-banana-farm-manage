@@ -83,7 +83,6 @@ function exportCsv(){const blob=new Blob([resultCsv(result.value.scenario)],{typ
 const stopGuard=router.beforeEach(async(to,from)=>{if(from.path==='/tai-chinh'&&from.query.tab==='planning'&&(to.path!==from.path||to.query.tab!=='planning')&&dirty.value)return await ask('Kế hoạch còn thay đổi chưa lưu. Rời trang và bỏ thay đổi?');return true})
 onBeforeUnmount(()=>{stopGuard();previewVersion++})
 onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length)accept(await call(API+'detail',{name:overview.value.plans[0].name}))}))
-defineExpose({hasChanges:()=>dirty.value,discardChanges:()=>{if(values.value)saved.value=json(values.value)}})
 </script>
 
 <template>

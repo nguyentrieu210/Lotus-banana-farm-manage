@@ -16,7 +16,7 @@ test('Kho phone offers print for ALL posted stock vouchers in history, including
 test('Kho shows print after regular stock posting and after purchase-order receiving',()=>{
  const ui=read('src/WarehouseMobile.vue')
  assert.match(ui,/lastPostedDocument\.value=\{doctype:d\.doctype,name:d\.name\}/)
- assert.match(ui,/lastPostedDocument\.value=\{doctype:'Purchase Receipt',name:doc\.name\}/)
+ assert.match(ui,/lastPostedDocument\.value=\{doctype:'Purchase Receipt',name:postedReceipt\.value\.name\}/)
  assert.match(ui,/v-if="lastPostedDocument"/)
  assert.match(ui,/stockPrintURL\(lastPostedDocument\.doctype,lastPostedDocument\.name\)/)
  assert.match(ui,/function startRequest\(\)\{\s+lastPostedDocument\.value=null/)

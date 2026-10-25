@@ -350,7 +350,6 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
         item.shortage_qty=max(0,item.minimum_stock-global_qty)
         item.company_actual_qty=global_qty
         pack=next((r for r in conversions if r.parent==item.name and r.uom!=item.stock_uom),None)
-        item.uoms=[dict(uom=r.uom,conversion_factor=flt(r.conversion_factor)) for r in conversions if r.parent==item.name]
         item.pack_uom=pack.uom if pack else ''
         item.pack_factor=flt(pack.conversion_factor) if pack else 0
         item.pack_actual_qty=item.actual_qty/item.pack_factor if item.pack_factor else None

@@ -51,13 +51,13 @@ test('warehouse setup is table-first with small action buttons, not onboarding c
  assert.doesNotMatch(stock,/<UiCard>/)
 })
 
-test('stock voucher forms share fields and validation on desktop and mobile',()=>{
- const form=readFileSync(new URL('../src/components/StockDocumentForm.vue',import.meta.url),'utf8')
- assert.match(stock,/<StockDocumentForm/)
- assert.match(stock,/@submit="save"/)
+test('stock voucher forms retain required details and group their controls',()=>{
+ assert.match(stock,/class="stock-form-help"/)
+ assert.match(stock,/class="stock-form-section-title"/)
+ assert.match(stock,/@submit\.prevent="save"/)
  assert.match(stock,/@submit\.prevent="postDocument"/)
- assert.match(form,/d\.receiver_employee/)
- assert.match(form,/:model-value="row\.rate"/)
- assert.match(form,/validateStockDraft/)
+ assert.match(stock,/v-model="form\.receiver_employee"/)
+ assert.match(stock,/v-model\.number="row\.rate"/)
+ assert.match(css,/\.stock-dialog \.stock-form-grid/)
  assert.match(css,/\.stock-setup-grids/)
 })

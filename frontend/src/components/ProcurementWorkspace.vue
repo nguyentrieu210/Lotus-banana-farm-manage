@@ -1,5 +1,4 @@
 <script setup>
-import {erpHref} from '../erpnext-navigation'
 import '../procurement.css'
 import {computed,inject,onMounted,onUnmounted,ref,watch} from 'vue'
 import {routerKey,routeLocationKey} from 'vue-router'
@@ -236,7 +235,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <template v-else><ProcurementField v-model="fromDate" :mobile="mobile" type="date" label="Từ ngày" @update:model-value="queryReset"/><ProcurementField v-model="toDate" :mobile="mobile" type="date" label="Đến ngày" @update:model-value="queryReset"/><ProcurementField v-model="queryState" :mobile="mobile" label="Trạng thái" :searchable="false" :options="[{value:'',label:'Tất cả'},{value:'0',label:'Nháp / chờ ký'},{value:'1',label:'Đã ghi sổ'},{value:'2',label:'Đã hủy'}]" @update:model-value="queryReset"/></template>
   </template>
   <ProcurementField v-if="!isMaster" v-model="search" :mobile="mobile" label="Tìm kiếm" placeholder="Tìm trong danh sách…"/>
-  <component :is="button" :disabled="busy||saving" @click="load">Làm mới</component><a :href="erpHref('Buying',company,warehouse)" target="_blank" rel="noopener">ERPNext Mua hàng</a>
+  <component :is="button" :disabled="busy||saving" @click="load">Làm mới</component>
   <component :is="button" v-if="tab==='needs'&&catalog.can_need" @click="start('need')">Thêm đề nghị</component>
   <component :is="button" v-if="tab==='quotes'&&catalog.can_quote" @click="start('quote')">Thêm báo giá</component>
   <component :is="button" v-if="tab==='quotes'&&catalog.can_create" :disabled="!Object.values(selections).some(r=>r.selected)||saving" @click="chooseQuotes">Tạo đơn từ dòng chọn</component>

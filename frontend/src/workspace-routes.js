@@ -1,6 +1,5 @@
 // The desktop modules share the parent shell instead of reloading standalone entrypoints.
 export const workspaceModules={
- erpnext:{label:'ERPNext',capability:'native_erp'},
  'mua-hang':{label:'Mua hàng',capability:'purchasing'},
  'nhat-ky-cong-viec':{label:'Nhật ký công việc',capability:'work_journal.read'},
  'nguoi-dung':{label:'Người dùng & phân quyền',capability:'user_admin'},

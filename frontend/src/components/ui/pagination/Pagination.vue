@@ -17,7 +17,7 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
    <PaginationList v-slot="{items}" class="lotus-pagination__list">
     <PaginationPrev class="lotus-pagination__button" aria-label="Trang trước"><LotusIcon name="chevron-left"/></PaginationPrev>
     <template v-for="(item,index) in items" :key="index">
-     <PaginationListItem v-if="item.type==='page'" :value="item.value" :aria-label="'Trang '+item.value" class="lotus-pagination__button lotus-pagination__page">{{item.value}}</PaginationListItem>
+     <PaginationListItem v-if="item.type==='page'" :value="item.value" class="lotus-pagination__button lotus-pagination__page">{{item.value}}</PaginationListItem>
      <PaginationEllipsis v-else :index="index" class="lotus-pagination__ellipsis">…</PaginationEllipsis>
     </template>
     <PaginationNext class="lotus-pagination__button" aria-label="Trang sau"><LotusIcon name="chevron"/></PaginationNext>

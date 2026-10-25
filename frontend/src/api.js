@@ -1,19 +1,18 @@
 import {activeUser,setActiveUser,cachedMethod,saveRead,cachedRead} from './offline-cache'
-import {requestJSON} from './request-timeout.js'
 let csrf=''
 export function setCSRF(value){csrf=value||''}
 function failure(data){let message=data.message||data.exc_type||'Không kết nối được máy chủ';try{message=JSON.parse(data._server_messages).map(s=>JSON.parse(s).message.replace(/<[^>]*>/g,'')).join('; ')}catch{}return new Error(typeof message==='string'?message:JSON.stringify(message))}
-export async function call(method,args={},write=false,requestOptions={}){
+export async function call(method,args={},write=false){
  const options={credentials:'same-origin',headers:{Accept:'application/json'}}
  let url='/api/method/'+method
  if(write){options.method='POST';options.headers['Content-Type']='application/json';options.headers['X-Frappe-CSRF-Token']=csrf;options.body=JSON.stringify(args)}
  else url+='?'+new URLSearchParams(Object.fromEntries(Object.entries(args).filter(([,v])=>v!=null&&v!=='')))
- let response,data
- try{({response,data}=await requestJSON(url,options,requestOptions.timeoutMs??(write?90000:30000)))}catch(error){
+ let response
+ try{response=await fetch(url,options)}catch(error){
   if(!write&&cachedMethod(method)){const value=await cachedRead(activeUser(),method,args);if(value!==null){window.dispatchEvent(new Event('lotus-cached-read'));return method==='lotus_farm.console.bootstrap'?{...value,offline:true}:value}}
-  if(error.code==='RequestTimeout')throw Object.assign(new Error(write?'Máy chủ phản hồi quá lâu; chưa rõ chứng từ đã được lưu hay chưa. Kiểm tra lại chứng từ trước khi gửi tiếp.':'Máy chủ phản hồi quá lâu. Bấm Làm mới để thử lại.'),{code:error.code})
   throw new Error(write?'Chưa gửi được. Giữ bản ghi trong hàng chờ rồi thử lại khi có mạng.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
  }
+ const data=await response.json()
  if(!response.ok||data.exc_type){if(response.status===401||data.exc_type==='AuthenticationError')setActiveUser('');const error=failure(data);error.status=response.status;error.code=data.exc_type;throw error}
  const value=data.message
  if(method==='lotus_farm.console.bootstrap'&&value?.user)setActiveUser(value.user)
