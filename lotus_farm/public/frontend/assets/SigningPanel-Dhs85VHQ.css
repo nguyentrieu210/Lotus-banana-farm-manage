@@ -1,1 +1,0 @@
-.lotus-form-grid{grid-template-columns:repeat(var(--lotus-form-columns,2),minmax(0,1fr));align-items:start;gap:14px 16px;min-width:0;display:grid}.lotus-form-grid>.lotus-form-grid__wide{grid-column:1/-1}@media (width<=720px){.lotus-form-grid{grid-template-columns:minmax(0,1fr)}}
