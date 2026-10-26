@@ -9,6 +9,6 @@ const input=ref(null)
 function changed(event){const files=[...(event.target.files||[])];event.target.value='';if(files.length)emit('files',files)}
 </script>
 <template>
- <input ref="input" class="sr-only" type="file" :accept="accept" :multiple="multiple" :capture="capture||undefined" :disabled="disabled" :aria-label="label" @change="changed">
+ <input ref="input" class="sr-only" hidden type="file" :accept="accept" :multiple="multiple" :capture="capture||undefined" :disabled="disabled" :aria-label="label" @change="changed">
  <component :is="as" type="button" :variant="variant" :size="size" :disabled="disabled" @click="input?.click()"><slot/></component>
 </template>

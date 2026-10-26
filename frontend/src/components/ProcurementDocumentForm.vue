@@ -1,4 +1,5 @@
 <script setup>
+import {workFarm} from '../work-farm'
 import {computed,watch} from 'vue'
 import FormGrid from './form/FormGrid.vue'
 import FormSection from './form/FormSection.vue'
@@ -31,7 +32,7 @@ const farmOptions=computed(()=>(props.catalog.farms||[]).map(f=>({value:f.name,l
 const lineFarms=computed(()=>[...new Set((props.modelValue?.items||[]).map(r=>r.lotus_farm||''))])
 watch(()=>props.modelValue,draft=>{
  if(!draft)return
- if(draft.order_farm===undefined)draft.order_farm=lineFarms.value.length===1?lineFarms.value[0]:''
+ if(draft.order_farm===undefined){const work=workFarm();draft.order_farm=lineFarms.value.length===1&&lineFarms.value[0]?lineFarms.value[0]:!draft.name&&props.catalog.farms?.some(f=>f.name===work)?work:''}
  if(draft.order_freight===undefined)draft.order_freight=(draft.items||[]).reduce((sum,r)=>sum+Number(r.freight||0),0)
 },{immediate:true})
 function chooseFarm(value){const draft=props.modelValue;draft.order_farm=value||'';for(const row of draft.items||[])row.lotus_farm=draft.order_farm}

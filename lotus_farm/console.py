@@ -30,7 +30,7 @@ DATES={'Harvest Forecast':'period_start_date','Harvest Actual':'harvest_date','H
 
 def allowed(doctype,permission='read'):
     if doctype not in ALLOWED:frappe.throw('Chứng từ Lotus không được hỗ trợ.')
-    if not frappe.has_permission(doctype,permission):frappe.throw('Không có quyền với '+frappe._(doctype),frappe.PermissionError)
+    if not frappe.has_permission(doctype,permission):frappe.throw('Không có quyền với '+getattr(frappe, "_", str)(doctype),frappe.PermissionError)
     return frappe.get_meta(doctype)
 
 

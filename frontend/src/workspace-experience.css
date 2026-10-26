@@ -269,3 +269,10 @@
 .workspace-modal .user-choice-grid{max-height:min(360px,40dvh)}
 .workspace-modal .user-choice,.workspace-modal .user-choice span{min-width:0;overflow-wrap:anywhere}
 .nav-subsection{display:block;margin:var(--lotus-space-3) 0 var(--lotus-space-1);padding:0 var(--lotus-space-3);color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:600}
+
+/* Vườn làm việc in the top bar: compact select on the red bar, after the page title. */
+.workspace-farm{display:inline-flex;align-items:center;gap:6px;margin-left:8px;color:#fff;min-width:0}
+.workspace-farm .lotus-icon{width:16px;height:16px;flex:0 0 auto}
+.workspace-farm select{height:32px;min-height:32px;max-width:220px;padding:0 28px 0 10px;border:1px solid rgba(255,255,255,.35);border-radius:8px;background-color:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:600}
+.workspace-farm select option{color:var(--lotus-text);background:var(--lotus-surface)}
+@media(max-width:720px){.workspace-farm select{max-width:130px}}
