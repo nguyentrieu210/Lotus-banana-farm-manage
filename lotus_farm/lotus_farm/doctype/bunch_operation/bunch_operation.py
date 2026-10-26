@@ -21,7 +21,7 @@ class BunchOperation(Document):
     def _validate_scope(self):
         block_farm = frappe.db.get_value("Farm Block", self.farm_block, "farm")
         if block_farm and block_farm != self.farm:
-            frappe.throw("Farm Block must belong to the selected Farm.")
+            frappe.throw("Lô phải thuộc vườn đã chọn.")
 
         cycle = frappe.db.get_value(
             "Crop Cycle",
@@ -30,12 +30,12 @@ class BunchOperation(Document):
             as_dict=True,
         )
         if not cycle:
-            frappe.throw("Crop Cycle does not exist.")
+            frappe.throw("Vụ không tồn tại.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
-            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+            frappe.throw("Vụ phải thuộc vườn và lô đã chọn.")
         validate_coverage_date(cycle, self.operation_date)
         if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not is_inherited_opening(cycle):
-            frappe.throw("Ratoon operations must select a Sucker Selection Batch.")
+            frappe.throw("Thao tác vụ chồi (lưu gốc) phải chọn đợt chọn chồi.")
 
         if self.sucker_selection_batch:
             batch = frappe.db.get_value(
@@ -45,21 +45,21 @@ class BunchOperation(Document):
                 as_dict=True,
             )
             if not batch:
-                frappe.throw("Sucker Selection Batch does not exist.")
+                frappe.throw("Đợt chọn chồi không tồn tại.")
             if (
                 batch.farm != self.farm
                 or batch.farm_block != self.farm_block
                 or batch.crop_cycle != self.crop_cycle
             ):
-                frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+                frappe.throw("Đợt chọn chồi phải thuộc vụ đã chọn.")
 
     def _validate_quantities(self):
         bunch_qty = cint(self.bunch_qty)
         rejected_qty = cint(self.rejected_qty)
         if bunch_qty < 0 or rejected_qty < 0:
-            frappe.throw("Bunch quantities cannot be negative.")
+            frappe.throw("Số buồng không được âm.")
         if rejected_qty > bunch_qty:
-            frappe.throw("Rejected Bunch Qty cannot exceed Bunch Qty.")
+            frappe.throw("Số buồng loại không được vượt số buồng.")
 
     def _set_expected_harvest(self):
         if self.expected_harvest_date:
@@ -94,5 +94,5 @@ class BunchOperation(Document):
     def before_cancel(self):
         if frappe.db.exists("Harvest Forecast", {"crop_cycle": self.crop_cycle, "supply_state": "Released"}):
             frappe.throw(
-                "Supersede/close affected released forecasts before cancelling their source operations."
+                "Thay thế/đóng các dự thu đã phát hành bị ảnh hưởng trước khi hủy thao tác nguồn của chúng."
             )

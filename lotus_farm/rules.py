@@ -9,13 +9,13 @@ class RuleError(ValueError):
     pass
 
 
-def quantity(value, label="Quantity", *, positive=False):
+def quantity(value, label="Số lượng", *, positive=False):
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
-        raise RuleError(f"{label} must be numeric.") from None
+        raise RuleError(f"{label} phải là số.") from None
     if not result.is_finite() or result < 0 or (positive and result == 0):
-        raise RuleError(f"{label} must be finite and {'positive' if positive else 'non-negative'}.")
+        raise RuleError(f"{label} phải là số hữu hạn và {'lớn hơn 0' if positive else 'không âm'}.")
     return result
 
 
@@ -25,27 +25,27 @@ def canonical_hash(value):
 
 
 def reconcile_mass(inputs, outputs, reject, loss, tolerance):
-    incoming = sum((quantity(v, "Input kg", positive=True) for v in inputs), Decimal(0))
-    finished = sum((quantity(v, "Output kg", positive=True) for v in outputs), Decimal(0))
+    incoming = sum((quantity(v, "Số kg đầu vào", positive=True) for v in inputs), Decimal(0))
+    finished = sum((quantity(v, "Số kg đầu ra", positive=True) for v in outputs), Decimal(0))
     variance = incoming - finished - quantity(reject) - quantity(loss)
-    if abs(variance) > quantity(tolerance, "Tolerance"):
-        raise RuleError(f"Mass balance differs by {variance} kg; correct weights before release.")
+    if abs(variance) > quantity(tolerance, "Dung sai"):
+        raise RuleError(f"Cân bằng khối lượng lệch {variance} kg; sửa khối lượng trước khi phát hành.")
     return {"input_kg": float(incoming), "output_kg": float(finished), "mass_variance_kg": float(variance)}
 
 
 def reserve_limit(safe, reserved, requested, remaining_demand):
-    requested = quantity(requested, "Reserved kg", positive=True)
+    requested = quantity(requested, "Số kg giữ hàng", positive=True)
     if requested > quantity(safe) - quantity(reserved):
-        raise RuleError("Reservation exceeds forecast ATP.")
+        raise RuleError("Số giữ hàng vượt lượng dự thu còn có thể cam kết.")
     if requested > quantity(remaining_demand):
-        raise RuleError("Reservation exceeds remaining Sales Order Item demand.")
+        raise RuleError("Số giữ hàng vượt nhu cầu còn lại của dòng đơn bán hàng.")
     return float(requested)
 
 
 def scale_net(gross, tare):
     gross, tare = quantity(gross), quantity(tare)
     if tare > gross:
-        raise RuleError("Tare cannot exceed gross weight.")
+        raise RuleError("Khối lượng bì không được vượt khối lượng cân tổng.")
     return float(gross - tare)
 
 
@@ -53,14 +53,14 @@ def calibration(rows, minimum_samples):
     """Weighted kg/bunch and field release; never average per-row averages."""
     clean = []
     for r in rows:
-        bunches = quantity(r["harvested_bunch_qty"], "Bunches", positive=True)
-        gross = quantity(r["gross_weight_kg"], "Gross", positive=True)
-        released = quantity(r["saleable_weight_kg"], "Released")
+        bunches = quantity(r["harvested_bunch_qty"], "Số buồng", positive=True)
+        gross = quantity(r["gross_weight_kg"], "Khối lượng cân tổng", positive=True)
+        released = quantity(r["saleable_weight_kg"], "Số kg phát hành")
         if released > gross:
-            raise RuleError("Released kg cannot exceed gross kg.")
+            raise RuleError("Số kg phát hành không được vượt số kg cân tổng.")
         clean.append((bunches, gross, released))
     if len(clean) < int(minimum_samples) or int(minimum_samples) < 1:
-        raise RuleError("Not enough matched actual samples for calibration.")
+        raise RuleError("Chưa đủ mẫu thực tế đã đối chiếu để hiệu chỉnh.")
     bunches, gross, released = [sum((r[i] for r in clean), Decimal(0)) for i in range(3)]
     return dict(
         sample_count=len(clean),
@@ -83,8 +83,8 @@ def forecast_accuracy(pairs):
     }
 
 
-def integer_quantity(value, label="Count"):
+def integer_quantity(value, label="Số đếm"):
     result = quantity(value, label)
     if result != result.to_integral_value():
-        raise RuleError(f"{label} must be a whole number.")
+        raise RuleError(f"{label} phải là số nguyên.")
     return int(result)

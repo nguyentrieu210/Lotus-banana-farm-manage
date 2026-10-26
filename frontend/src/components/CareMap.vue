@@ -80,7 +80,8 @@ function background(){
 }
 onMounted(()=>{
  map=L.map(canvas.value,{minZoom:12,maxZoom:22,zoomControl:false}).setView([11.602,106.79],15)
- L.control.zoom({position:'bottomright'}).addTo(map)
+ L.control.zoom({position:'bottomright',zoomInTitle:'Phóng to',zoomOutTitle:'Thu nhỏ'}).addTo(map)
+ map.attributionControl?.setPrefix('<a href="https://leafletjs.com" title="Thư viện bản đồ Leaflet">Leaflet</a>')
  sketches=L.featureGroup().addTo(map);preview=L.featureGroup().addTo(map);map.on('click',addPoint)
  restore()
  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'Ảnh vệ tinh © Esri'}).addTo(map)

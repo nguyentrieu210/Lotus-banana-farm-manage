@@ -11,16 +11,16 @@ def _number(value, default=0):
     try:
         result = float(value)
     except (TypeError, ValueError):
-        raise ForecastInputError("Forecast quantities must be numeric.") from None
+        raise ForecastInputError("Số lượng dự thu phải là số.") from None
     if not math.isfinite(result):
-        raise ForecastInputError("Forecast quantities must be finite.")
+        raise ForecastInputError("Số lượng dự thu phải là số hữu hạn.")
     return result
 
 
 def _rate(value, label, default):
     value = _number(value, default)
     if not 0 <= value <= 100:
-        raise ForecastInputError(f"{label} must be between 0 and 100.")
+        raise ForecastInputError(f"{label} phải từ 0 đến 100.")
     return value
 
 
@@ -39,17 +39,17 @@ def calculate_availability(
     committed_qty_kg = _number(committed_qty_kg)
 
     if source_bunch_qty < 0 or avg_bunch_weight_kg < 0 or committed_qty_kg < 0:
-        raise ForecastInputError("Forecast quantities cannot be negative.")
+        raise ForecastInputError("Số lượng dự thu không được âm.")
 
-    survival_rate = _rate(bunch_survival_rate_percent, "Bunch Survival Rate", 100)
-    safety_buffer = _rate(safety_buffer_percent, "Safety Buffer", 0)
-    packout_rate = _rate(packout_rate_percent, "Packout Rate", 100)
+    survival_rate = _rate(bunch_survival_rate_percent, "Tỷ lệ buồng sống", 100)
+    safety_buffer = _rate(safety_buffer_percent, "Hệ số an toàn", 0)
+    packout_rate = _rate(packout_rate_percent, "Tỷ lệ đóng gói", 100)
 
     if quality_pass_rate_percent is None or quality_pass_rate_percent == "":
-        defect_rate = _rate(expected_defect_rate_percent, "Expected Defect Rate", 0)
+        defect_rate = _rate(expected_defect_rate_percent, "Tỷ lệ lỗi dự kiến", 0)
         quality_pass_rate = 100 - defect_rate
     else:
-        quality_pass_rate = _rate(quality_pass_rate_percent, "Quality Pass Rate", 100)
+        quality_pass_rate = _rate(quality_pass_rate_percent, "Tỷ lệ đạt chất lượng", 100)
 
     expected_harvest_bunch_qty = source_bunch_qty * survival_rate / 100
     gross = expected_harvest_bunch_qty * avg_bunch_weight_kg

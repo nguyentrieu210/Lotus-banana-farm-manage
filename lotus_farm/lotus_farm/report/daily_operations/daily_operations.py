@@ -5,7 +5,7 @@ from lotus_farm.daily_api import daily_overview
 def execute(filters=None):
     filters=frappe._dict(filters or {})
     if not filters.farm or not filters.posting_date:
-        frappe.throw('Select a Farm and a posting date.')
+        frappe.throw('Chọn vườn và ngày ghi sổ.')
     result=daily_overview(filters.farm,filters.posting_date)
     columns=[dict(fieldname=n,label=label,fieldtype=t,options=o,width=w) for n,label,t,o,w in [
         ('farm_plot','Thửa','Link','Farm Plot',130),('work_type','Công việc','Link','Work Type',150),

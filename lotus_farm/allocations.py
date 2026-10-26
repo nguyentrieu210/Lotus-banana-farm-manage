@@ -37,10 +37,10 @@ def _item_supply(supply, item):
     if supply.output_plan:
         output = next((row for row in supply.output_plan if row.item == item), None)
         if not output:
-            frappe.throw("Sales Order Item is not included in this forecast output plan.")
+            frappe.throw("Dòng đơn bán hàng không nằm trong kế hoạch xuất hàng của dự thu này.")
         return output, float(output.safe_commit_kg or 0), float(output.materialized_qty_kg or 0)
     if item != supply.item:
-        frappe.throw("Select the exact Sales Order Item matching forecast supply.")
+        frappe.throw("Chọn đúng dòng đơn bán hàng khớp với nguồn cung dự thu.")
     return None, float(supply.safe_saleable_kg or 0), float(supply.materialized_qty_kg or 0)
 
 
@@ -62,7 +62,7 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
     lock("Sales Order", sales_order)
     lock("Harvest Forecast", forecast)
     if not client_event_id:
-        frappe.throw("client_event_id is required for allocation retries.")
+        frappe.throw("Thiếu mã sự kiện (client_event_id) để thử lại phân bổ.")
     event_key = canonical_hash(["allocation", frappe.session.user, client_event_id])
     payload_hash = canonical_hash([forecast, sales_order, sales_order_item, str(qty_kg)])
     existing = frappe.db.get_value("Integration Event", {"event_key": event_key}, "name")
@@ -70,12 +70,12 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
         event = frappe.get_doc("Integration Event", existing)
         event.check_permission("read")
         if event.payload_hash != payload_hash:
-            frappe.throw("Allocation event ID already has a different payload.")
+            frappe.throw("Mã sự kiện phân bổ này đã gắn với dữ liệu khác.")
         return json.loads(event.result_json)
     supply = frappe.get_doc("Harvest Forecast", forecast)
     supply.check_permission("write")
     if supply.supply_state != "Released":
-        frappe.throw("Only released future supply can be reserved.")
+        frappe.throw("Chỉ được giữ hàng cho nguồn cung tương lai đã phát hành.")
     order = frappe.get_doc("Sales Order", sales_order)
     order.check_permission("read")
     if (
@@ -83,10 +83,10 @@ def reserve(forecast, sales_order, sales_order_item, qty_kg, client_event_id):
         or order.status in ("Closed", "Cancelled")
         or order.company != frappe.db.get_value("Farm", supply.farm, "company")
     ):
-        frappe.throw("Sales Order must be open, submitted and belong to the Farm Company.")
+        frappe.throw("Đơn bán hàng phải đang mở, đã duyệt và thuộc công ty của vườn.")
     line = next((r for r in order.items if r.name == sales_order_item), None)
     if not line:
-        frappe.throw("Select an exact Sales Order Item row.")
+        frappe.throw("Chọn đúng một dòng đơn bán hàng.")
     output, safe_commit, materialized = _item_supply(supply, line.item_code)
     from lotus_farm.daily_operations import live_loss_fraction
     safe_commit *= 1-live_loss_fraction(supply)
@@ -169,9 +169,9 @@ def release(forecast, allocation):
     supply.check_permission("write")
     row = next((r for r in supply.allocations or [] if r.name == allocation), None)
     if not row:
-        frappe.throw("Allocation does not belong to this forecast.")
+        frappe.throw("Phân bổ này không thuộc dự thu này.")
     if row.allocation_state == "Materialized":
-        frappe.throw("Release physical reservations through ERPNext.")
+        frappe.throw("Giải phóng hàng giữ thực tế trong ERPNext.")
     item = row.item
     row.allocation_state = "Released"
     with command(supply, "allocation"):
@@ -182,4 +182,4 @@ def release(forecast, allocation):
 def sales_order_cancel(doc, method=None):
     # Block before ERP cancellation; historical commitments remain auditable.
     if frappe.db.exists("Forecast Allocation", {"sales_order": doc.name, "allocation_state": "Reserved"}):
-        frappe.throw("Release Lotus forecast allocations before cancelling this Sales Order.")
+        frappe.throw("Giải phóng các phân bổ dự thu Lotus trước khi hủy đơn bán hàng này.")

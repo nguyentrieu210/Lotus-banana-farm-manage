@@ -29,8 +29,8 @@ DATES={'Harvest Forecast':'period_start_date','Harvest Actual':'harvest_date','H
 
 
 def allowed(doctype,permission='read'):
-    if doctype not in ALLOWED:frappe.throw('Unsupported Lotus document.')
-    if not frappe.has_permission(doctype,permission):frappe.throw('Permission denied for '+doctype,frappe.PermissionError)
+    if doctype not in ALLOWED:frappe.throw('Chứng từ Lotus không được hỗ trợ.')
+    if not frappe.has_permission(doctype,permission):frappe.throw('Không có quyền với '+frappe._(doctype),frappe.PermissionError)
     return frappe.get_meta(doctype)
 
 
@@ -107,7 +107,7 @@ def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,statu
     # Source-linked xưởng records have no direct Plot/Cycle field.
     if doctype not in ('Farm','Farm Block') and (zone or plot or cycle or block) and meta.has_field('farm') and not any(meta.has_field(f) for f in ('farm_plot','farm_block','crop_cycle')):
         names=_source_scope_names(doctype,selected)
-        if names is None:frappe.throw('This document supports Farm scope only; clear Block/Plot/Cycle filters.')
+        if names is None:frappe.throw('Chứng từ này chỉ lọc theo vườn; hãy bỏ lọc lô/thửa/vụ.')
         filters['name']=['in',names or ['__no_matching_source__']]
     date_field=DATES.get(doctype,'posting_date')
     if doctype=='Harvest Forecast':
@@ -118,16 +118,16 @@ def listing(doctype,farm=None,company=None,block=None,plot=None,cycle=None,statu
         elif from_date:filters[date_field]=['>=',getdate(from_date)]
         elif to_date:filters[date_field]=['<=',getdate(to_date)]
         elif date:filters[date_field]=getdate(date)
-    if from_date and to_date and getdate(from_date)>getdate(to_date):frappe.throw('From date cannot follow To date.')
+    if from_date and to_date and getdate(from_date)>getdate(to_date):frappe.throw('Từ ngày không được sau Đến ngày.')
     status_field=next((f for f in ('supply_state','approval_state','status') if meta.has_field(f)), 'docstatus')
     if status not in (None,''):
         choices=(meta.get_field(status_field).options or '').split('\n') if status_field!='docstatus' else ['0','1','2']
-        if str(status) not in choices:frappe.throw('Unsupported status for this document.')
+        if str(status) not in choices:frappe.throw('Trạng thái không hợp lệ với chứng từ này.')
         filters[status_field]=cint(status) if status_field=='docstatus' else status
     if search:filters=[[k,*(v if isinstance(v,list) else ['=',v])] for k,v in filters.items()]+[['name','like','%'+search[:100]+'%']]
     candidates=['name','docstatus','modified',meta.title_field,'company','farm','farm_block','farm_plot','crop_cycle',date_field,'supply_state','approval_state','status','shift_code','bunch_qty','harvested_bunch_qty','gross_weight_kg','completed_qty','present','absent','required_workdays','accepted_kg','rejected_kg','finished_kg','packout_percent','input_kg','output_kg','stock_entry','source_status','row_count','resolved_percent','retry_count','sync_error','area_ha','variety','planting_date','plot_code','block_code']
     columns=list(dict.fromkeys(f for f in candidates if f and (f in ('name','docstatus','modified') or meta.has_field(f))))
-    if sort not in ('modified desc','modified asc','name asc','name desc'):frappe.throw('Unsupported sort.')
+    if sort not in ('modified desc','modified asc','name asc','name desc'):frappe.throw('Kiểu sắp xếp không được hỗ trợ.')
     from lotus_farm.table_filters import selections, distinct, matches
     selected_columns=selections(column_filters,columns)
     all_rows=frappe.get_list(doctype,filters=filters,fields=columns,order_by=sort+', name',limit_page_length=0) if cint(include_filter_values) or selected_columns else None
@@ -182,7 +182,7 @@ def detail(doctype,name):
 
 @frappe.whitelist()
 def link_options(doctype,search='',farm=None,company=None,context_field=None,block=None,cycle=None,on_date=None,operation_type=None,item=None,approved_only=False):
-    if not frappe.has_permission(doctype,'read'):frappe.throw('Link read permission required.',frappe.PermissionError)
+    if not frappe.has_permission(doctype,'read'):frappe.throw('Cần quyền đọc dữ liệu liên kết.',frappe.PermissionError)
     meta=frappe.get_meta(doctype);filters={}
     if doctype == 'Packout Profile' and cint(approved_only):
         if farm:
@@ -232,15 +232,15 @@ def link_options(doctype,search='',farm=None,company=None,context_field=None,blo
 
 
 def payload_fields(meta,values):
-    if not isinstance(values,dict):frappe.throw('Document fields must be an object.')
+    if not isinstance(values,dict):frappe.throw('Dữ liệu trường của chứng từ phải là một đối tượng.')
     editable={f.fieldname:f for f in meta.fields if not f.read_only and f.fieldtype not in ('Section Break','Column Break','Tab Break','HTML','Button')}
-    if set(values)-set(editable):frappe.throw('Payload includes protected or unsupported fields.')
+    if set(values)-set(editable):frappe.throw('Dữ liệu gửi lên có trường được bảo vệ hoặc không được hỗ trợ.')
     result={}
     for key,value in values.items():
         field=editable[key]
         if field.fieldtype=='Table':
-            if not isinstance(value,list):frappe.throw('Child table must be a list.')
-            if len(value)>1000:frappe.throw('Split child tables above 1,000 rows.')
+            if not isinstance(value,list):frappe.throw('Bảng con phải là một danh sách.')
+            if len(value)>1000:frappe.throw('Bảng con quá 1.000 dòng; hãy tách nhỏ.')
             result[key]=[payload_fields(frappe.get_meta(field.options),v) for v in value]
         else:result[key]=value
     return result
@@ -269,7 +269,7 @@ def save_settings(values,base_token=None):
     frappe.db.sql("select field from tabSingles where doctype=%s for update",('Lotus Farm Settings',))
     doc.reload()
     current=_settings_result(doc,meta)
-    if base_token and current['_settings_token']!=base_token:frappe.throw('Settings changed. Reload before saving; your input has not overwritten it.')
+    if base_token and current['_settings_token']!=base_token:frappe.throw('Thiết lập vừa được người khác thay đổi. Tải lại trước khi lưu; dữ liệu bạn nhập chưa ghi đè lên.')
     doc.update(clean);doc.save()
     return _settings_result(doc,meta)
 
@@ -283,8 +283,8 @@ def save(doctype,values,name=None,base_modified=None):
         doc=frappe.get_doc(doctype,name);doc.check_permission('write')
         if doc.get('farm'):lock('Farm',doc.farm)
         lock(doctype,name);doc.reload()
-        if str(doc.modified)!=str(base_modified):frappe.throw('Document changed. Reload before saving; your input has not overwritten it.')
-        if doc.docstatus!=0:frappe.throw('Submitted documents require cancel/amend with a reason.')
+        if str(doc.modified)!=str(base_modified):frappe.throw('Chứng từ vừa thay đổi. Tải lại trước khi lưu; dữ liệu bạn nhập chưa ghi đè lên.')
+        if doc.docstatus!=0:frappe.throw('Chứng từ đã duyệt phải hủy rồi lập bản sửa, kèm lý do.')
         doc.update(clean);doc.save()
     else:
         doc=frappe.get_doc(dict(doctype=doctype,**clean));doc.insert()
@@ -296,25 +296,25 @@ def document_action(doctype,name,action,reason=None,base_modified=None):
     allowed(doctype);doc=frappe.get_doc(doctype,name);doc.check_permission('read')
     if doc.get('farm'):lock('Farm',doc.farm)
     lock(doctype,name);doc.reload()
-    if base_modified and str(doc.modified)!=str(base_modified):frappe.throw('Document changed. Reload before taking this action.')
+    if base_modified and str(doc.modified)!=str(base_modified):frappe.throw('Chứng từ vừa thay đổi. Tải lại trước khi thao tác.')
     if action=='submit':doc.check_permission('submit');doc.submit()
     elif action=='cancel':
         doc.check_permission('cancel')
-        if not (reason or '').strip():frappe.throw('Cancellation/reopening requires a reason.')
+        if not (reason or '').strip():frappe.throw('Hủy hoặc mở lại phải có lý do.')
         if doc.meta.has_field('reopen_reason'):doc.reopen_reason=reason
         doc.add_comment('Comment',text='Cancel/reopen reason: '+frappe.utils.escape_html(reason))
         if doc.meta.has_field('reopen_reason'):doc.save()
         doc.cancel()
     elif action=='amend':
         doc.check_permission('amend')
-        if doc.docstatus!=2 or not (reason or '').strip():frappe.throw('Cancel the document and provide an amendment reason first.')
+        if doc.docstatus!=2 or not (reason or '').strip():frappe.throw('Hủy chứng từ và nhập lý do sửa đổi trước.')
         amended=frappe.copy_doc(doc);amended.docstatus=0;amended.amended_from=doc.name
         if amended.meta.has_field('amendment_reason'):amended.amendment_reason=reason
         # Never copy idempotency/capture identifiers from a cancelled actual.
         for field in ('client_event_id','client_payload_hash','field_capture','legacy_source_key','source_import_batch'):
             if amended.meta.has_field(field):amended.set(field,None)
         amended.insert();return amended.as_dict()
-    else:frappe.throw('Unsupported document action.')
+    else:frappe.throw('Thao tác không được hỗ trợ với chứng từ này.')
     return doc.as_dict()
 
 
@@ -336,24 +336,24 @@ def work_state(plan,line,state,reason=None):
     else:
         require_farm(doc.farm)
     day_guard(doc);lock('Daily Work Plan',plan);doc.reload()
-    if doc.docstatus!=1:frappe.throw('Submit the work plan first.')
+    if doc.docstatus!=1:frappe.throw('Hãy duyệt kế hoạch công việc trước.')
     row=next((r for r in doc.lines if r.name==line),None)
-    if not row:frappe.throw('Task does not belong to this plan.')
+    if not row:frappe.throw('Công việc không thuộc kế hoạch này.')
     if not is_manager():
         require_team(doc.farm, row.work_team)
         doc.flags.ignore_permissions = True
-    if frappe.db.exists('Daily Work Result',{'work_plan_line':line,'docstatus':1}):frappe.throw('Completed actual requires cancel/amend.')
+    if frappe.db.exists('Daily Work Result',{'work_plan_line':line,'docstatus':1}):frappe.throw('Kết quả đã hoàn thành phải hủy rồi lập bản sửa.')
     transitions={'Planned':{'Ready','Blocked'},'Ready':{'In Progress','Blocked'},'In Progress':{'Blocked'},'Blocked':{'Ready','In Progress'}}
-    if state not in transitions.get(row.execution_state or 'Planned',set()):frappe.throw('Unsupported task transition.')
-    if state=='Blocked' and not (reason or '').strip():frappe.throw('Blocked work requires a reason.')
+    if state not in transitions.get(row.execution_state or 'Planned',set()):frappe.throw('Không được chuyển trạng thái công việc như vậy.')
+    if state=='Blocked' and not (reason or '').strip():frappe.throw('Công việc bị chặn phải có lý do.')
     if state=='Ready':
         allocated=sum(flt(v) for v in frappe.get_all('Labor Allocation',filters={'work_plan_line':line,'docstatus':1},pluck='allocated_workdays'))
-        if allocated+0.000001<flt(row.required_workdays):frappe.throw('Allocate required labor before marking Ready.')
-        if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Submit material requirements before marking Ready.')
+        if allocated+0.000001<flt(row.required_workdays):frappe.throw('Bố trí đủ nhân công trước khi chuyển sang Sẵn sàng.')
+        if row.norm_profile and not frappe.db.exists('Material Requirement',{'work_plan_line':line,'docstatus':1}):frappe.throw('Duyệt nhu cầu vật tư trước khi chuyển sang Sẵn sàng.')
         if row.norm_profile:
             materials=material_status(doc.farm,doc.posting_date)
             if not materials['warehouses'] or any(r['shortage_qty'] is None or r['shortage_qty']>0.000001 for r in materials['rows']):
-                frappe.throw('Resolve Farm material shortages and map Field Store stock before marking Ready.')
+                frappe.throw('Xử lý thiếu vật tư của vườn và gắn tồn kho hiện trường trước khi chuyển sang Sẵn sàng.')
     before=deepcopy(doc)
     version_filters={'ref_doctype':doc.doctype,'docname':doc.name}
     version_count=frappe.db.count('Version',version_filters)
@@ -373,13 +373,13 @@ def work_state_guard(doc,method=None):
         for row in doc.lines:
             prior=old.get(row.name)
             if prior and any(row.get(f)!=prior.get(f) for f in ('execution_state','blocked_reason')) and not command_allowed(doc,'work_state'):
-                frappe.throw('Use the work transition command.')
+                frappe.throw('Dùng lệnh chuyển trạng thái công việc.')
     for row in doc.lines:
-        if doc.docstatus==0 and (row.execution_state or 'Planned')!='Planned':frappe.throw('Draft task state starts Planned; use transitions after submitting the plan.')
+        if doc.docstatus==0 and (row.execution_state or 'Planned')!='Planned':frappe.throw('Công việc nháp bắt đầu ở trạng thái Đã lên kế hoạch; chuyển trạng thái sau khi duyệt kế hoạch.')
         if row.work_team:
             team=frappe.get_doc('Work Team',row.work_team);team.check_permission('read')
-            if team.farm!=doc.farm:frappe.throw('Responsible team must belong to this Farm.')
-        if row.start_at and row.due_at and frappe.utils.get_datetime(row.due_at)<frappe.utils.get_datetime(row.start_at):frappe.throw('Due time cannot precede start.')
+            if team.farm!=doc.farm:frappe.throw('Đội phụ trách phải thuộc vườn này.')
+        if row.start_at and row.due_at and frappe.utils.get_datetime(row.due_at)<frappe.utils.get_datetime(row.start_at):frappe.throw('Giờ hạn không được trước giờ bắt đầu.')
 
 
 @frappe.whitelist()
@@ -447,7 +447,7 @@ def evidence(doctype,name):
     allowed(doctype);doc=frappe.get_doc(doctype,name);doc.check_permission('read')
     if not doc.get('field_capture'):return None
     capture=frappe.get_doc('Field Capture',doc.field_capture);capture.check_permission('read')
-    if capture.target_doctype!=doctype or capture.target_name!=name:frappe.throw('Capture lineage mismatch.')
+    if capture.target_doctype!=doctype or capture.target_name!=name:frappe.throw('Nguồn ghi nhận không khớp.')
     return {k:capture.get(k) for k in ('captured_by','captured_at','latitude','longitude','gps_accuracy_m','photo')}
 
 

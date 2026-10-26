@@ -12,17 +12,17 @@ class AlertDocument(Document):
         if command_allowed(self,'alert_compute'):return
         require_role('Lotus Farm Manager')
         before=self.get_doc_before_save()
-        if not before:frappe.throw('Alerts are generated from farm metrics.')
+        if not before:frappe.throw('Cảnh báo được tạo tự động từ số liệu của vườn.')
         for field in ('farm','posting_date','event_key','kind','severity','metric_value','message'):
-            if self.get(field)!=before.get(field):frappe.throw('Computed alert evidence is immutable.')
+            if self.get(field)!=before.get(field):frappe.throw('Bằng chứng của cảnh báo do hệ thống tính, không được sửa.')
         if self.status!=before.status:
             if self.status!='Acknowledged' or before.status!='Open' or not (self.acknowledgement_reason or '').strip():
-                frappe.throw('Acknowledge an open alert with a reason; resolution follows reconciled source metrics.')
+                frappe.throw('Xác nhận cảnh báo đang mở kèm lý do; cảnh báo chỉ được đóng khi số liệu nguồn đã khớp.')
             self.acknowledged_by=frappe.session.user;self.acknowledged_at=now_datetime()
         elif self.acknowledged_by!=before.acknowledged_by or self.acknowledged_at!=before.acknowledged_at:
-            frappe.throw('Acknowledgement identity is server controlled.')
+            frappe.throw('Thông tin người xác nhận do máy chủ ghi, không được sửa.')
 
-    def on_trash(self):frappe.throw('Alert audit history cannot be deleted.')
+    def on_trash(self):frappe.throw('Không được xóa lịch sử cảnh báo.')
 
 
 def refresh_alerts():

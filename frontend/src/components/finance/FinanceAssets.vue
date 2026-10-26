@@ -183,7 +183,7 @@ defineExpose({load})
   <form class="fin-assets__form" @submit.prevent="saveAsset"><p v-if="error" class="hr-ops-error fin-assets__footer" role="alert">{{error}}</p>
    <fieldset class="fin-assets__group"><legend>Hồ sơ và nguồn hình thành</legend>
    <FormField label="Nguồn tài sản"><Select v-model="form.existing" :disabled="!!form.name" aria-label="Nguồn tài sản"><option value="1">Tài sản đầu kỳ</option><option value="0">Mua mới</option></Select></FormField>
-   <FormField v-for="[key,label] in [['code','Mã tài sản'],['asset_name','Tên tài sản'],['serial_no','Serial']]" :key="key" :label="label" :error="errors[key]" :required="key!=='serial_no'" v-slot="field"><Input v-bind="field" v-model="form[key]"/></FormField>
+   <FormField v-for="[key,label] in [['code','Mã tài sản'],['asset_name','Tên tài sản'],['serial_no','Số sê-ri']]" :key="key" :label="label" :error="errors[key]" :required="key!=='serial_no'" v-slot="field"><Input v-bind="field" v-model="form[key]"/></FormField>
    <FormField label="Nhóm tài sản" required :error="errors.asset_category"><Combobox v-model="form.asset_category" :options="options('categories','asset_category_name')" label="Nhóm tài sản" :disabled="!!form.name"/></FormField>
    <FormField label="Vị trí" required :error="errors.location"><Combobox v-model="form.location" :options="options('locations','location_name')" label="Vị trí tài sản" :disabled="!!form.name"/></FormField>
    <FormField label="Người quản lý"><Combobox v-model="form.custodian" :options="options('employees','employee_name')" label="Người quản lý tài sản" :disabled="!!form.name"/></FormField>

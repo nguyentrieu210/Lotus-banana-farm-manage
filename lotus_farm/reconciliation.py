@@ -23,16 +23,16 @@ def _linked_materialized_allocations(stock_reservation):
 
 def _stock_entry_effect(request):
     if not request.stock_entry or request.stock_reservation:
-        frappe.throw("Stock Entry Reversal requires exactly one Stock Entry target.")
+        frappe.throw("Đảo phiếu kho cần đúng một phiếu kho đích.")
     lock("Stock Entry", request.stock_entry)
     entry = frappe.get_doc("Stock Entry", request.stock_entry)
     entry.check_permission("read")
     if entry.docstatus != 1 or not entry.get("lotus_packout_run"):
-        frappe.throw("Select a submitted Lotus Repack Stock Entry.")
+        frappe.throw("Chọn một phiếu kho đóng gói lại (Repack) của Lotus đã ghi sổ.")
     run = frappe.get_doc("Packout Run", entry.lotus_packout_run)
     run.check_permission("read")
     if run.farm != request.farm:
-        frappe.throw("Reconciliation Farm must match the Packout Run.")
+        frappe.throw("Vườn của phiếu đối soát phải khớp đợt đóng gói.")
 
     forecast_totals = _forecast_outputs(run)
     impacts = []
@@ -46,9 +46,9 @@ def _stock_entry_effect(request):
             materialized = {row.item: flt(row.materialized_qty_kg, 3) for row in supply.output_plan}
             for item, item_amount in item_amounts.items():
                 if materialized.get(item, 0) + 0.0005 < flt(item_amount, 3):
-                    frappe.throw("Per-Item forecast materialized quantity is smaller than the proposed reversal.")
+                    frappe.throw("Số lượng dự thu đã hiện thực theo từng vật tư nhỏ hơn số đề xuất đảo.")
         elif flt(supply.materialized_qty_kg, 3) + 0.0005 < amount:
-            frappe.throw("Forecast materialized quantity is smaller than the proposed reversal.")
+            frappe.throw("Số lượng dự thu đã hiện thực nhỏ hơn số đề xuất đảo.")
         impacts.append(
             {
                 "forecast": forecast,
@@ -74,7 +74,7 @@ def _stock_entry_effect(request):
                 active_reservations.add(row.stock_reservation)
     if active_reservations:
         frappe.throw(
-            "Cancel linked physical Stock Reservations through reconciliation first: "
+            "Hủy giữ hàng thực tế đã liên kết qua phiếu đối soát trước: "
             + ", ".join(sorted(active_reservations))
         )
     return {
@@ -88,18 +88,18 @@ def _stock_entry_effect(request):
 
 def _stock_reservation_effect(request):
     if not request.stock_reservation or request.stock_entry:
-        frappe.throw("Stock Reservation Cancellation requires exactly one Stock Reservation Entry.")
+        frappe.throw("Hủy giữ hàng cần đúng một phiếu giữ hàng.")
     lock("Stock Reservation Entry", request.stock_reservation)
     reservation = frappe.get_doc("Stock Reservation Entry", request.stock_reservation)
     reservation.check_permission("read")
     if reservation.docstatus != 1 or reservation.voucher_type != "Sales Order":
-        frappe.throw("Select a submitted Sales Order Stock Reservation Entry.")
+        frappe.throw("Chọn một phiếu giữ hàng của đơn bán hàng đã duyệt.")
     if flt(reservation.delivered_qty) or flt(reservation.consumed_qty) or flt(reservation.transferred_qty):
-        frappe.throw("Delivered, consumed or transferred reservations must be reconciled downstream first.")
+        frappe.throw("Hàng giữ đã giao, đã dùng hoặc đã chuyển phải được đối soát ở khâu sau trước.")
 
     rows = _linked_materialized_allocations(reservation.name)
     if not rows:
-        frappe.throw("This physical reservation has no active Lotus allocation.")
+        frappe.throw("Phiếu giữ hàng thực tế này không có phân bổ Lotus đang hiệu lực.")
     effects = []
     farms = set()
     for row in rows:
@@ -112,7 +112,7 @@ def _stock_reservation_effect(request):
             or row.sales_order_item != reservation.voucher_detail_no
             or row.item != reservation.item_code
         ):
-            frappe.throw("Linked Lotus allocation no longer matches the physical reservation.")
+            frappe.throw("Phân bổ Lotus đã liên kết không còn khớp với phiếu giữ hàng thực tế.")
         effects.append(
             {
                 "forecast": row.parent,
@@ -121,7 +121,7 @@ def _stock_reservation_effect(request):
             }
         )
     if farms != {request.farm}:
-        frappe.throw("One reconciliation can only cover physical reservations from one Farm.")
+        frappe.throw("Một phiếu đối soát chỉ áp dụng cho hàng giữ thực tế của một vườn.")
     return {
         "type": "Stock Reservation Cancellation",
         "farm": request.farm,
@@ -139,7 +139,7 @@ def build_effect(request):
         return _stock_entry_effect(request)
     if request.reconciliation_type == "Stock Reservation Cancellation":
         return _stock_reservation_effect(request)
-    frappe.throw("Unsupported reconciliation type.")
+    frappe.throw("Loại đối soát không được hỗ trợ.")
 
 
 def approve(request):
@@ -161,7 +161,7 @@ def execute(reconciliation):
     request = frappe.get_doc("Supply Reconciliation", reconciliation, for_update=True)
     request.check_permission("read")
     if request.docstatus != 1 or request.state != "Approved":
-        frappe.throw("Only submitted, approved reconciliations can be applied.")
+        frappe.throw("Chỉ áp dụng được phiếu đối soát đã duyệt.")
     if request.reconciliation_type == "Stock Entry Reversal":
         require_role("Lotus Packing Supervisor", "Lotus Auditor")
     else:
@@ -169,7 +169,7 @@ def execute(reconciliation):
 
     effect = build_effect(request)
     if canonical_hash(effect) != request.effect_hash:
-        frappe.throw("Target changed after approval; review and approve a new reconciliation.")
+        frappe.throw("Chứng từ đích đã thay đổi sau khi duyệt; hãy kiểm tra và duyệt phiếu đối soát mới.")
 
     if request.reconciliation_type == "Stock Entry Reversal":
         target = frappe.get_doc("Stock Entry", request.stock_entry)

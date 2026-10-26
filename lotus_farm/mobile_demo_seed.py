@@ -25,9 +25,9 @@ WORKS = [
 
 def seed(company=None):
     if not frappe.conf.get("allow_tests"):
-        frappe.throw("Demo seed is restricted to an allow_tests site; production is not allowed.")
+        frappe.throw("Dữ liệu mẫu chỉ chạy trên site cho phép kiểm thử (allow_tests); không chạy trên hệ thống thật.")
     if frappe.session.user != "Administrator":
-        frappe.throw("Run demo seed as Administrator.")
+        frappe.throw("Chạy dữ liệu mẫu bằng tài khoản Administrator.")
     if frappe.db.exists("Farm", FARM_CODE):
         return dict(farm=FARM_CODE, already_seeded=True,
                     note="Demo farm already exists. No existing data was changed.")
@@ -35,11 +35,11 @@ def seed(company=None):
     companies = frappe.get_all("Company", pluck="name", limit_page_length=1000)
     if company:
         if company not in companies:
-            frappe.throw("Select a valid existing Company on this TEST site.")
+            frappe.throw("Chọn một công ty có sẵn hợp lệ trên site THỬ này.")
     elif len(companies) == 1:
         company = companies[0]
     else:
-        frappe.throw("Specify company=... for an existing test Company (none or multiple found).")
+        frappe.throw("Chỉ rõ company=... cho một công ty thử có sẵn (không tìm thấy hoặc có nhiều công ty).")
 
     for unit in ("Bunch", "Tree", "Ha"):
         if not frappe.db.exists("UOM", unit):

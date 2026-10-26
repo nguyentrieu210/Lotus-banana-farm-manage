@@ -39,7 +39,7 @@ class HarvestForecast(Document):
         if self.supply_state == "Released":
             self._release()
         elif self.supply_state != "Draft":
-            frappe.throw("Only Draft forecasts can be released.")
+            frappe.throw("Chỉ phát hành được dự thu ở trạng thái nháp.")
 
     def _snapshot(self):
         values = {
@@ -111,19 +111,19 @@ class HarvestForecast(Document):
 
     def _validate_frozen(self, before):
         if (self.planning_granularity or "Custom") != (before.planning_granularity or "Custom"):
-            frappe.throw("Released forecast planning grain is immutable.")
+            frappe.throw("Mức chi tiết kế hoạch của dự thu đã phát hành không được sửa.")
         if (
             self.snapshot_hash != before.snapshot_hash
             or self.released_by != before.released_by
             or get_datetime(self.released_at) != get_datetime(before.released_at)
         ):
-            frappe.throw("Release audit fields cannot be edited.")
+            frappe.throw("Không được sửa các trường kiểm toán phát hành.")
         if self._snapshot() != before._snapshot():
-            frappe.throw("Released forecast snapshots cannot be edited. Create a new revision.")
+            frappe.throw("Không được sửa ảnh chụp dự thu đã phát hành. Hãy tạo bản điều chỉnh mới.")
         if self.supply_state != before.supply_state and not command_allowed(self, "supply"):
-            frappe.throw("Use the Lotus supply command to close or supersede forecasts.")
+            frappe.throw("Dùng lệnh cung ứng Lotus để đóng hoặc thay thế dự thu.")
         if self.materialized_qty_kg != before.materialized_qty_kg and not command_allowed(self, "supply"):
-            frappe.throw("Materialized quantity can only change through stock reconciliation.")
+            frappe.throw("Số lượng đã hiện thực chỉ thay đổi qua đối soát kho.")
 
         def output_materialized(doc):
             return [
@@ -132,7 +132,7 @@ class HarvestForecast(Document):
             ]
 
         if output_materialized(self) != output_materialized(before) and not command_allowed(self, "supply"):
-            frappe.throw("Per-Item materialized quantity can only change through stock reconciliation.")
+            frappe.throw("Số lượng đã hiện thực theo vật tư chỉ thay đổi qua đối soát kho.")
 
         def allocations(doc):
             return [
@@ -156,7 +156,7 @@ class HarvestForecast(Document):
             ]
 
         if allocations(self) != allocations(before) and not command_allowed(self, "allocation"):
-            frappe.throw("Use the allocation API to change reservations on a released forecast.")
+            frappe.throw("Dùng chức năng phân bổ để đổi hàng giữ trên dự thu đã phát hành.")
 
     def _release(self):
         require_role("Lotus Farm Manager")
@@ -165,23 +165,23 @@ class HarvestForecast(Document):
         if adopted(self.farm) and not onedrive:
             frappe.throw('Vườn áp dụng OneDrive chỉ phát hành nguồn cung từ đợt cắt bắp có truy xuất. Dùng Xem trước / Tạo nháp trong Dự thu OneDrive.')
         if self.allocations:
-            frappe.throw("Release an unallocated forecast first; reserve through the allocation command.")
+            frappe.throw("Phát hành dự thu chưa phân bổ trước; giữ hàng bằng lệnh phân bổ.")
         if not self.harvest_profile and not onedrive:
-            frappe.throw("Release requires an approved Harvest Profile.")
+            frappe.throw("Phát hành cần hệ số dự thu đã duyệt.")
         if self.output_plan:
             if self.item or self.packout_profile:
-                frappe.throw("Use either Expected Finished Items or the legacy single Item/Profile fields, not both.")
+                frappe.throw("Chỉ dùng hoặc danh sách thành phẩm dự kiến, hoặc các trường vật tư/hệ số kiểu cũ, không dùng cả hai.")
         else:
             if not self.item or not self.packout_profile:
-                frappe.throw("Release requires an Item and approved Packout Profile.")
+                frappe.throw("Phát hành cần vật tư và hệ số đóng gói đã duyệt.")
             validate_item(self.item)
         if not self.source_bunch_qty:
-            frappe.throw("A forecast with no source supply cannot be released.")
+            frappe.throw("Không phát hành được dự thu không có nguồn cung.")
         # Serialize publication for this biological cycle across all Items and bases.
         lock("Crop Cycle", self.crop_cycle)
         for actual in ([] if onedrive else frappe.get_all('Harvest Actual', filters={'crop_cycle': self.crop_cycle, 'sucker_selection_batch': blank_filter(self.sucker_selection_batch), 'docstatus': 1, 'harvest_date': ['between', [self.period_start_date, self.period_end_date]]}, fields=['name', 'forecast'])):
             if not actual.forecast:
-                frappe.throw('Unlinked actual harvest exists in this period. Reconcile harvested supply before releasing a new forecast.')
+                frappe.throw('Có thu hoạch thực tế chưa liên kết trong kỳ này. Đối soát nguồn cung đã thu hoạch trước khi phát hành dự thu mới.')
         table = frappe.qb.DocType('Harvest Forecast')
         others = (frappe.qb.from_(table).select(table.name, table.sucker_selection_batch, table.process_adoption)
                   .where((table.crop_cycle == self.crop_cycle) & (table.supply_state == 'Released') & (table.name != self.name)
@@ -189,7 +189,7 @@ class HarvestForecast(Document):
                   .for_update().run(as_dict=True))
         for other in others:
             if (other.sucker_selection_batch or '') == (self.sucker_selection_batch or '') and other.name != self.supersedes and not (onedrive and other.process_adoption):
-                frappe.throw("Overlapping released supply would count the same cohort twice.")
+                frappe.throw("Nguồn cung đã phát hành bị chồng chéo sẽ tính cùng một đợt cây hai lần.")
         if onedrive:
             assert_source_ownership(self)
         if self.supersedes:
@@ -200,12 +200,12 @@ class HarvestForecast(Document):
                 "Harvest Actual", {"forecast": previous.name, "docstatus": 1}
             )):
                 frappe.throw(
-                    "Already harvested supply cannot be re-released as a full forecast. Reconcile residual supply first."
+                    "Nguồn cung đã thu hoạch không được phát hành lại như một dự thu đầy đủ. Đối soát phần còn lại trước."
                 )
             if previous.supply_state != "Released" or any(
                 r.allocation_state in ("Reserved", "Materialized") for r in previous.allocations or []
             ):
-                frappe.throw("Release or reconcile previous reservations before superseding the forecast.")
+                frappe.throw("Giải phóng hoặc đối soát các hàng giữ trước đó trước khi thay thế dự thu.")
             scope_fields = (
                 "farm",
                 "crop_cycle",
@@ -215,11 +215,11 @@ class HarvestForecast(Document):
                 getdate(self.get(f)) != getdate(previous.get(f))
                 for f in ("period_start_date", "period_end_date")
             )):
-                frappe.throw("Revision must retain the same supply scope and period.")
+                frappe.throw("Bản điều chỉnh phải giữ nguyên phạm vi nguồn cung và kỳ.")
             if onedrive and (not previous.process_adoption or {r.source_cut_operation for r in self.source_claims} != {r.source_cut_operation for r in previous.source_claims}):
                 frappe.throw('Bản thay thế phải giữ cùng nguồn cắt bắp; kỳ mới chỉ nhận phần buồng còn lại.')
             if not self.revision_reason:
-                frappe.throw("Revision reason is required.")
+                frappe.throw("Phải nhập lý do điều chỉnh.")
             self.revision_no = int(previous.revision_no or 1) + 1
             previous.supply_state = "Superseded"
             with command(previous, "supply"):
@@ -307,7 +307,7 @@ class HarvestForecast(Document):
 
     def on_trash(self):
         if self.supply_state != "Draft":
-            frappe.throw("Released supply cannot be deleted.")
+            frappe.throw("Không được xóa nguồn cung đã phát hành.")
 
     def _validate_period(self):
         if (
@@ -315,15 +315,15 @@ class HarvestForecast(Document):
             and self.period_end_date
             and getdate(self.period_end_date) < getdate(self.period_start_date)
         ):
-            frappe.throw("Harvest Period End cannot be before Harvest Period Start.")
+            frappe.throw("Ngày kết thúc thu hoạch không được trước ngày bắt đầu thu hoạch.")
 
     def _validate_scope(self):
         from lotus_farm.inheritance import INHERITED_CYCLE_FIELDS, is_inherited_opening
         block = frappe.db.get_value("Farm Block", self.farm_block, ["farm", "variety"], as_dict=True)
         if not block:
-            frappe.throw("Farm Block does not exist.")
+            frappe.throw("Lô không tồn tại.")
         if block.farm != self.farm:
-            frappe.throw("Farm Block must belong to the selected Farm.")
+            frappe.throw("Lô phải thuộc vườn đã chọn.")
 
         cycle = frappe.db.get_value(
             "Crop Cycle",
@@ -332,12 +332,12 @@ class HarvestForecast(Document):
             as_dict=True,
         )
         if not cycle:
-            frappe.throw("Crop Cycle does not exist.")
+            frappe.throw("Vụ không tồn tại.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
-            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+            frappe.throw("Vụ phải thuộc vườn và lô đã chọn.")
         inherited_physical = is_inherited_opening(cycle) and self.forecast_basis in ('Cut Bud Operations','Shooting Operations')
         if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not inherited_physical:
-            frappe.throw("Ratoon forecasts must select a Sucker Selection Batch.")
+            frappe.throw("Dự thu vụ chồi (lưu gốc) phải chọn đợt chọn chồi.")
 
         if self.sucker_selection_batch:
             batch = frappe.db.get_value(
@@ -347,13 +347,13 @@ class HarvestForecast(Document):
                 as_dict=True,
             )
             if not batch:
-                frappe.throw("Sucker Selection Batch does not exist.")
+                frappe.throw("Đợt chọn chồi không tồn tại.")
             if (
                 batch.farm != self.farm
                 or batch.farm_block != self.farm_block
                 or batch.crop_cycle != self.crop_cycle
             ):
-                frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+                frappe.throw("Đợt chọn chồi phải thuộc vụ đã chọn.")
 
     @staticmethod
     def _is_blank(value):
@@ -385,29 +385,29 @@ class HarvestForecast(Document):
             as_dict=True,
         )
         if not profile:
-            frappe.throw("Harvest Profile does not exist.")
+            frappe.throw("Hệ số dự thu không tồn tại.")
         if profile.approval_state != "Approved":
-            frappe.throw("Harvest Profile must be approved.")
+            frappe.throw("Hệ số dự thu phải được duyệt.")
         cycle = frappe.get_doc("Crop Cycle", self.crop_cycle)
         if profile.cycle_type and profile.cycle_type != cycle.cycle_type:
-            frappe.throw("Harvest Profile does not apply to this cycle type.")
+            frappe.throw("Hệ số dự thu không áp dụng cho loại vụ này.")
         self.profile_version = profile.version
         if not profile.active:
-            frappe.throw("Harvest Profile is inactive.")
+            frappe.throw("Hệ số dự thu đang ngừng dùng.")
         if profile.farm and profile.farm != self.farm:
-            frappe.throw("Harvest Profile does not apply to the selected Farm.")
+            frappe.throw("Hệ số dự thu không áp dụng cho vườn đã chọn.")
         if profile.farm_block and profile.farm_block != self.farm_block:
-            frappe.throw("Harvest Profile does not apply to the selected Farm Block.")
+            frappe.throw("Hệ số dự thu không áp dụng cho lô đã chọn.")
 
         block_variety = cycle.variety
         if profile.variety and block_variety and profile.variety != block_variety:
-            frappe.throw("Harvest Profile does not apply to the Farm Block variety.")
+            frappe.throw("Hệ số dự thu không áp dụng cho giống của lô.")
 
         on_date = getdate(self.period_start_date)
         if profile.valid_from and on_date < getdate(profile.valid_from):
-            frappe.throw("Harvest Profile is not valid yet for this forecast period.")
+            frappe.throw("Hệ số dự thu chưa có hiệu lực trong kỳ dự thu này.")
         if profile.valid_to and getdate(self.period_end_date) > getdate(profile.valid_to):
-            frappe.throw("Harvest Profile has expired for this forecast period.")
+            frappe.throw("Hệ số dự thu đã hết hiệu lực trong kỳ dự thu này.")
 
         for fieldname in (
             "avg_bunch_weight_kg",
@@ -423,16 +423,16 @@ class HarvestForecast(Document):
             profile = frappe.get_doc("Packout Profile", self.packout_profile)
             profile.check_permission("read")
             if profile.approval_state != "Approved" or profile.item != self.item:
-                frappe.throw("Packout Profile must be approved for the forecast Item.")
+                frappe.throw("Hệ số đóng gói phải được duyệt cho vật tư của dự thu.")
             if profile.farm and profile.farm != self.farm:
-                frappe.throw("Packout Profile belongs to another Farm.")
+                frappe.throw("Hệ số đóng gói thuộc vườn khác.")
             cycle_variety = frappe.db.get_value("Crop Cycle", self.crop_cycle, "variety")
             if profile.variety and profile.variety != cycle_variety:
-                frappe.throw("Packout Profile belongs to another variety.")
+                frappe.throw("Hệ số đóng gói thuộc giống khác.")
             if getdate(self.period_start_date) < getdate(profile.valid_from) or (
                 profile.valid_to and getdate(self.period_end_date) > getdate(profile.valid_to)
             ):
-                frappe.throw("Packout Profile is not valid for the full forecast period.")
+                frappe.throw("Hệ số đóng gói không có hiệu lực trong toàn bộ kỳ dự thu.")
             self.packout_rate_percent = profile.yield_percent
             self.packout_profile_version = profile.version
         settings = frappe.get_single("Lotus Farm Settings")
@@ -457,7 +457,7 @@ class HarvestForecast(Document):
         if not self.output_plan:
             return
         if self.item or self.packout_profile:
-            frappe.throw("Expected Finished Items cannot be combined with legacy Item/Packout Profile fields.")
+            frappe.throw("Không dùng chung danh sách thành phẩm dự kiến với các trường vật tư/hệ số đóng gói kiểu cũ.")
 
         cycle_variety = frappe.db.get_value("Crop Cycle", self.crop_cycle, "variety")
         seen_items = set()
@@ -465,23 +465,23 @@ class HarvestForecast(Document):
         total_source_share = 0
         for row in self.output_plan:
             if row.item in seen_items:
-                frappe.throw("Each forecast output Item can appear only once.")
+                frappe.throw("Mỗi vật tư đầu ra của dự thu chỉ được xuất hiện một lần.")
             seen_items.add(row.item)
             validate_item(row.item)
             profile = frappe.get_doc("Packout Profile", row.packout_profile)
             profile.check_permission("read")
             if profile.approval_state != "Approved" or profile.item != row.item:
-                frappe.throw("Each forecast output needs an approved Packout Profile matching its Item.")
+                frappe.throw("Mỗi đầu ra của dự thu cần hệ số đóng gói đã duyệt khớp vật tư.")
             if profile.farm and profile.farm != self.farm:
-                frappe.throw("Forecast output Packout Profile belongs to another Farm.")
+                frappe.throw("Hệ số đóng gói của đầu ra thuộc vườn khác.")
             if profile.variety and profile.variety != cycle_variety:
-                frappe.throw("Forecast output Packout Profile belongs to another variety.")
+                frappe.throw("Hệ số đóng gói của đầu ra thuộc giống khác.")
             if getdate(self.period_start_date) < getdate(profile.valid_from) or (
                 profile.valid_to and getdate(self.period_end_date) > getdate(profile.valid_to)
             ):
-                frappe.throw("Forecast output Packout Profile is not valid for the full period.")
+                frappe.throw("Hệ số đóng gói của đầu ra không có hiệu lực trong toàn bộ kỳ.")
             if flt(profile.yield_percent) <= 0:
-                frappe.throw("Forecast output yield must be positive.")
+                frappe.throw("Tỷ lệ thành phẩm của đầu ra phải lớn hơn 0.")
             row.profile_version = profile.version
             row.quality_standard = profile.quality_standard
             row.yield_percent = flt(profile.yield_percent, 6)
@@ -496,16 +496,16 @@ class HarvestForecast(Document):
         if self.get('process_adoption') and total_source_share > 100.000001:
             frappe.throw('Tổng tỷ phần thành phẩm không vượt 100% kg sơ chế OneDrive.')
         if not self.get('process_adoption') and total_yield > 100.000001:
-            frappe.throw("Combined forecast output yield cannot exceed 100%.")
+            frappe.throw("Tổng tỷ lệ thành phẩm của dự thu không được vượt 100%.")
         self.packout_rate_percent = flt(total_yield, 6)
         self.packout_profile_version = 0
 
     def _profile_days(self, fieldname, label):
         if not self.harvest_profile:
-            frappe.throw(f"{label} forecast requires an approved Harvest Profile.")
+            frappe.throw(f"Dự thu {label} cần hệ số dự thu đã duyệt.")
         days = frappe.db.get_value("Harvest Profile", self.harvest_profile, fieldname)
         if days in (None, "") or cint(days) <= 0:
-            frappe.throw(f"Harvest Profile must define a positive {label} day offset.")
+            frappe.throw(f"Hệ số dự thu phải khai báo số ngày lệch {label} lớn hơn 0.")
         return cint(days)
 
     def _pull_source_qty(self):
@@ -519,13 +519,13 @@ class HarvestForecast(Document):
                 sort_keys=True,
             )
             if self.supply_state == "Released" and not self.notes:
-                frappe.throw("Manual supply requires a source/reconciliation explanation.")
+                frappe.throw("Nguồn cung nhập tay phải có giải thích nguồn/đối soát.")
             return
 
         if self.forecast_basis == "Sucker Selection":
             if not self.sucker_selection_batch:
-                frappe.throw("Sucker Selection forecast requires a Sucker Selection Batch.")
-            days = self._profile_days("sucker_to_harvest_days", "Sucker-to-Harvest")
+                frappe.throw("Dự thu theo chọn chồi cần đợt chọn chồi.")
+            days = self._profile_days("sucker_to_harvest_days", "từ chọn chồi đến thu hoạch")
             batch = frappe.db.get_value(
                 "Sucker Selection Batch",
                 self.sucker_selection_batch,
@@ -533,10 +533,10 @@ class HarvestForecast(Document):
                 as_dict=True,
             )
             if not batch:
-                frappe.throw("Sucker Selection Batch does not exist.")
+                frappe.throw("Đợt chọn chồi không tồn tại.")
             expected_date = getdate(add_days(batch.selection_date, days))
             if not getdate(self.period_start_date) <= expected_date <= getdate(self.period_end_date):
-                frappe.throw("Sucker Selection cohort does not mature inside this forecast period.")
+                frappe.throw("Đợt chọn chồi không cho trái trong kỳ dự thu này.")
             self.source_bunch_qty = flt(batch.selected_sucker_qty)
             self.source_snapshot = json.dumps(
                 {
@@ -559,7 +559,7 @@ class HarvestForecast(Document):
             return
 
         if self.forecast_basis == "Shooting Operations":
-            days = self._profile_days("shooting_to_harvest_days", "Shooting-to-Harvest")
+            days = self._profile_days("shooting_to_harvest_days", "từ trổ đến thu hoạch")
             rows = frappe.get_all(
                 "Bunch Operation",
                 filters={
@@ -625,12 +625,12 @@ class HarvestForecast(Document):
             )
             return
 
-        frappe.throw("Unsupported Forecast Basis.")
+        frappe.throw("Cơ sở dự thu không được hỗ trợ.")
 
     def _hydrate_allocations(self):
         if self.allocations and self.supply_state == "Draft":
             frappe.throw(
-                "Release the forecast before allocating. Map legacy rows through the allocation API."
+                "Phát hành dự thu trước khi phân bổ. Gắn các dòng cũ qua chức năng phân bổ."
             )
 
         output_by_item = {row.item: row for row in self.output_plan or []}
@@ -638,27 +638,27 @@ class HarvestForecast(Document):
         seen_rows = set()
         for row in self.allocations or []:
             if flt(row.reserved_qty_kg) <= 0 or not row.sales_order_item:
-                frappe.throw("Allocation requires a positive quantity and an exact Sales Order Item row.")
+                frappe.throw("Phân bổ cần số lượng lớn hơn 0 và đúng một dòng đơn bán hàng.")
             key = (row.sales_order_item, row.allocation_state)
             if row.allocation_state == "Reserved" and key in seen_rows:
-                frappe.throw("Duplicate Sales Order Item/state in this forecast.")
+                frappe.throw("Dòng đơn bán hàng/trạng thái bị trùng trong dự thu này.")
             seen_rows.add(key)
             so = frappe.get_doc("Sales Order", row.sales_order)
             # Preserve released/materialized history after SO cancellation.
             if row.allocation_state == "Reserved" and (
                 so.docstatus != 1 or so.status in ("Closed", "Cancelled")
             ):
-                frappe.throw("Active allocations require an open submitted Sales Order.")
+                frappe.throw("Phân bổ đang hiệu lực cần đơn bán hàng đang mở và đã duyệt.")
             line = next((x for x in so.items if x.name == row.sales_order_item), None)
             if not line or line.item_code not in allowed_items:
-                frappe.throw("Sales Order Item must match one of the forecast finished Items.")
+                frappe.throw("Dòng đơn bán hàng phải khớp một trong các thành phẩm của dự thu.")
             row.customer, row.item = so.customer, line.item_code
             row.forecast_output = output_by_item[line.item_code].name if output_by_item else None
             row.delivery_date = line.delivery_date or so.delivery_date
             if row.allocation_state == "Reserved" and getdate(row.delivery_date) < getdate(
                 self.period_start_date
             ):
-                frappe.throw("Delivery date is earlier than forecast availability.")
+                frappe.throw("Ngày giao sớm hơn ngày dự thu có hàng.")
 
     def _calculate(self):
         if self.get('process_adoption'):

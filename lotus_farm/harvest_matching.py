@@ -18,7 +18,7 @@ def match_forecast(actual):
         'supply_state': 'Released', 'period_start_date': ['<=', actual.harvest_date],
         'period_end_date': ['>=', actual.harvest_date], 'process_adoption': ['is','not set']}, fields=['name'])
     if len(rows) > 1:
-        frappe.throw('More than one released forecast matches this harvest; reconcile overlapping supply first.')
+        frappe.throw('Có nhiều hơn một dự thu đã phát hành khớp với lần thu hoạch này; hãy đối soát nguồn cung chồng chéo trước.')
     if rows:
         frappe.get_doc('Harvest Forecast', rows[0].name).check_permission('read')
         return rows[0].name
@@ -27,7 +27,7 @@ def match_forecast(actual):
 
 def check_unlinked_stock(actual):
     if not actual.forecast and match_forecast(actual):
-        frappe.throw('This harvest has unresolved released supply. Cancel/amend the harvest to link its forecast before posting stock.')
+        frappe.throw('Lần thu hoạch này còn nguồn cung đã phát hành chưa xử lý. Hủy rồi lập bản sửa thu hoạch để gắn dự thu trước khi ghi sổ kho.')
 
 
 def refresh_supply(doc, method=None):

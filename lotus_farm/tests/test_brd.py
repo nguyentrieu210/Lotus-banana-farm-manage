@@ -1103,7 +1103,7 @@ class TestBRDOnSite(unittest.TestCase):
         self.assertTrue(close.snapshot_hash)
         with self.assertRaises(frappe.ValidationError):result.cancel()
         issue.reload()
-        with self.assertRaisesRegex(frappe.ValidationError,'Cancel submitted Lotus material contexts'):
+        with self.assertRaisesRegex(frappe.ValidationError,'Hủy các chứng từ vật tư Lotus đã duyệt'):
             issue.cancel()
         with self.assertRaises(frappe.ValidationError):close.cancel()
         close.reload();close.reopen_reason='Correction requested';close.save();close.cancel()

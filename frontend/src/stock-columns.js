@@ -1,3 +1,4 @@
+import {hrCatalogLabel} from './hr-catalog-labels'
 import {formatDate} from './format'
 import {unitLabel} from './units'
 // Column definitions for every Kho list. Kho shows quantities only: valuation and stock value stay in Kế toán.
@@ -70,7 +71,7 @@ export function receiptDetailColumns(cash){return [
 
 export const masterColumns={
  warehouses:[{field:'warehouse_name',headerName:'Tên kho',minWidth:180,flex:1.2},{field:'name',headerName:'Mã kho',minWidth:160},{field:'lotus_address',headerName:'Địa chỉ kho',minWidth:220,flex:1.4},{field:'lotus_contact_name',headerName:'Người phụ trách',minWidth:150},{field:'lotus_contact_phone',headerName:'Liên hệ',minWidth:120},{field:'lotus_default_lead_days',headerName:'Chờ hàng (ngày)',minWidth:120,type:'numericColumn'}],
- items:[{field:'item_name',headerName:'Tên vật tư',minWidth:220,flex:1.6},{field:'name',headerName:'Mã vật tư',minWidth:160},{field:'item_group',headerName:'Nhóm vật tư',minWidth:140},{field:'stock_uom',headerName:'ĐVT gốc',minWidth:90,valueFormatter:p=>unitLabel(p.value)},{field:'pack_uom',headerName:'Quy đổi',minWidth:150,valueFormatter:p=>p.value?'1 '+unitLabel(p.value)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'—'},number('minimum_stock','Tồn tối thiểu',120),{field:'disabled',headerName:'Trạng thái',minWidth:110,valueFormatter:p=>p.value?'Ngừng dùng':'Đang dùng'}],
- groups:[{field:'name',headerName:'Nhóm vật tư',minWidth:200,flex:1.4},{field:'parent_item_group',headerName:'Thuộc nhóm',minWidth:180}],
+ items:[{field:'item_name',headerName:'Tên vật tư',minWidth:220,flex:1.6},{field:'name',headerName:'Mã vật tư',minWidth:160},{field:'item_group',headerName:'Nhóm vật tư',minWidth:140,valueFormatter:p=>hrCatalogLabel(p.value)},{field:'stock_uom',headerName:'ĐVT gốc',minWidth:90,valueFormatter:p=>unitLabel(p.value)},{field:'pack_uom',headerName:'Quy đổi',minWidth:150,valueFormatter:p=>p.value?'1 '+unitLabel(p.value)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'—'},number('minimum_stock','Tồn tối thiểu',120),{field:'disabled',headerName:'Trạng thái',minWidth:110,valueFormatter:p=>p.value?'Ngừng dùng':'Đang dùng'}],
+ groups:[{field:'name',headerName:'Nhóm vật tư',minWidth:200,flex:1.4,valueFormatter:p=>hrCatalogLabel(p.value)},{field:'parent_item_group',headerName:'Thuộc nhóm',minWidth:180,valueFormatter:p=>hrCatalogLabel(p.value)}],
  uoms:[{field:'name',headerName:'Mã đơn vị',minWidth:160},{headerName:'Tên hiển thị',minWidth:160,flex:1,valueGetter:p=>unitLabel(p.data.name)},{field:'must_be_whole_number',headerName:'Chỉ số nguyên',minWidth:120,valueFormatter:p=>p.value?'Có':'Không'},{field:'enabled',headerName:'Trạng thái',minWidth:120,valueFormatter:p=>p.value?'Đang dùng':'Ngừng dùng'}]
 }

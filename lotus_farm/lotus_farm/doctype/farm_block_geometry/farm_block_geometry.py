@@ -14,7 +14,7 @@ class FarmBlockGeometry(Document):
         block = frappe.get_doc("Farm Block", self.farm_block)
         block.check_permission("read")
         if block.farm != self.farm:
-            frappe.throw("Care block geometry must belong to the same Farm.")
+            frappe.throw("Hình học lô chăm sóc phải thuộc cùng vườn.")
         validate_version(self, "farm_block", ("Lotus Farm Manager",))
         try:
             self.geojson = json.dumps(geometry(self.geojson), separators=(",", ":"))
@@ -23,4 +23,4 @@ class FarmBlockGeometry(Document):
 
     def on_trash(self):
         if self.approval_state == "Approved":
-            frappe.throw("Approved care-block geometry is retained for audit.")
+            frappe.throw("Hình học lô chăm sóc đã duyệt được giữ lại để kiểm toán.")

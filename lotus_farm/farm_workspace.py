@@ -64,9 +64,9 @@ def load(farm, posting_date=None, zone=None):
 def norm_options(farm, doctype, search='', work_type=None):
     frappe.get_doc('Farm',farm).check_permission('read')
     if doctype not in ('Item','UOM','Work Type','Norm Basis'):
-        frappe.throw('Unsupported material norm selection.')
+        frappe.throw('Lựa chọn định mức vật tư không hợp lệ.')
     if not frappe.has_permission(doctype,'read'):
-        frappe.throw('Read permission required.',frappe.PermissionError)
+        frappe.throw('Cần quyền xem.',frappe.PermissionError)
     filters={}
     if doctype=='Item':filters={'is_stock_item':1,'disabled':0}
     elif doctype=='Work Type':filters={'active':1}

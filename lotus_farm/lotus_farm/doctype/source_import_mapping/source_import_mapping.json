@@ -78,7 +78,7 @@
       "fieldname": "business_key_columns",
       "label": "Business Key Columns",
       "fieldtype": "Small Text",
-      "description": "JSON array of stable legacy transaction identity columns. Required for new approved mappings."
+      "description": "Danh sách JSON các cột định danh giao dịch cũ ổn định. Bắt buộc với ánh xạ mới được duyệt."
     },
     {
       "fieldname": "sample_columns_json",

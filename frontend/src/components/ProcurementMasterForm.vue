@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from '../hr-catalog-labels'
 import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call} from '../api'
@@ -16,7 +17,7 @@ let snapshot=''
 watch(data,()=>{if(snapshot)emit('dirty',JSON.stringify(data.value)!==snapshot)},{deep:true})
 const key=newKey(),button=computed(()=>props.mobile?LotusMobileButton:Button)
 const api=(m,args={},write=false)=>purchaseRequest(call,'lotus_farm.procurement_masters.'+m,args,write)
-const opts=rows=>(rows||[]).map(r=>({value:r.name,label:r.name}))
+const opts=rows=>(rows||[]).map(r=>({value:r.name,label:hrCatalogLabel(r.name)}))
 onMounted(async()=>{try{
  options.value=await api('options',{company:props.company})
  const d=props.name?await api('detail',{company:props.company,kind:props.kind,name:props.name}):null

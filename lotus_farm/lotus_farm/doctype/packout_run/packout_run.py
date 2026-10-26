@@ -8,9 +8,9 @@ from lotus_farm.rules import reconcile_mass, RuleError
 class PackoutRun(Document):
     def validate(self):
         if not self.sources or not self.outputs:
-            frappe.throw("Packout requires input lineage and finished output.")
+            frappe.throw("Đóng gói cần nguồn đầu vào và thành phẩm đầu ra.")
         if frappe.db.get_value("Farm", self.farm, "company") != self.company:
-            frappe.throw("Farm must belong to the selected Company.")
+            frappe.throw("Vườn phải thuộc công ty đã chọn.")
         validate_warehouse(self.target_warehouse, self.company)
         before = self.get_doc_before_save()
         if before and before.qc_state == "Released":
@@ -24,7 +24,7 @@ class PackoutRun(Document):
             )
             for name in names:
                 if before.get(name) != self.get(name):
-                    frappe.throw("QC released packout is immutable. Cancel/amend to correct weights.")
+                    frappe.throw("Đợt đóng gói đã phát hành QC không được sửa. Hủy rồi lập bản sửa để điều chỉnh khối lượng.")
             source_fields = ("name", "idx", "harvest_lot", "input_kg")
             output_fields = ("name", "idx", "item", "net_kg", "cartons", "batch", "quality_standard", "standard_version", "output_type", "grade", "market", "pack_specification", "secondary_type")
             def rows(doc, table, fields):
@@ -48,7 +48,7 @@ class PackoutRun(Document):
             )
             changed = [key for key in old_values if old_values[key] != new_values[key]]
             if changed:
-                frappe.throw("QC released packout is immutable: " + ", ".join(changed))
+                frappe.throw("Đợt đóng gói đã phát hành QC không được sửa: " + ", ".join(changed))
 
             def valuation_rows(doc):
                 return [
@@ -62,25 +62,25 @@ class PackoutRun(Document):
                 ]
 
             if valuation_rows(self) != valuation_rows(before) and not command_allowed(self, "valuation"):
-                frappe.throw("Use the reviewed Packout valuation command to change finished-item rates.")
+                frappe.throw("Dùng lệnh định giá đóng gói đã kiểm tra để đổi đơn giá thành phẩm.")
         if self.qc_state == "Released" and (not before or before.qc_state != "Released"):
             require_role("Lotus QC Manager")
             self.qc_released_by = frappe.session.user
             self.qc_released_at = now_datetime()
         if before and self.qc_state != before.qc_state and before.qc_state == "Released":
-            frappe.throw("Released QC cannot be reset.")
+            frappe.throw("Không được đặt lại QC đã phát hành.")
         seen = set()
         for row in sorted(self.sources, key=lambda r: r.harvest_lot):
             if row.harvest_lot in seen:
-                frappe.throw("Duplicate Harvest Lot in Packout Run.")
+                frappe.throw("Lô thu hoạch bị trùng trong đợt đóng gói.")
             seen.add(row.harvest_lot)
             lock("Harvest Lot", row.harvest_lot)
             lot = frappe.get_doc("Harvest Lot", row.harvest_lot)
             lot.check_permission("read")
             if lot.docstatus != 1 or lot.farm != self.farm or lot.company != self.company:
-                frappe.throw("Input lot must be submitted and belong to this Farm/Company.")
+                frappe.throw("Lô đầu vào phải đã duyệt và thuộc vườn/công ty này.")
             if getdate(self.packing_date) < getdate(lot.received_date):
-                frappe.throw("Packing cannot precede lot receipt.")
+                frappe.throw("Ngày đóng gói không được trước ngày nhận lô.")
             source = frappe.qb.DocType("Packout Run Source")
             run = frappe.qb.DocType("Packout Run")
             used = (
@@ -97,25 +97,25 @@ class PackoutRun(Document):
                 sum(float(r[0]) for r in used) + positive(row.input_kg, "Input kg")
                 > float(lot.released_raw_kg) + 0.0005
             ):
-                frappe.throw("Input exceeds remaining Harvest Lot quantity.")
+                frappe.throw("Đầu vào vượt số lượng còn lại của lô thu hoạch.")
         seen_items = set()
         for row in self.outputs:
             validate_item(row.item, batched=True)
             if row.item in seen_items:
-                frappe.throw("Combine duplicate output Items into one row.")
+                frappe.throw("Gộp các vật tư đầu ra bị trùng thành một dòng.")
             seen_items.add(row.item)
             standard = frappe.get_doc("Quality Standard", row.quality_standard or self.quality_standard)
             standard.check_permission("read")
             if standard.approval_state != "Approved" or standard.item != row.item:
-                frappe.throw("Output needs an approved quality standard matching its Item.")
+                frappe.throw("Đầu ra cần tiêu chuẩn chất lượng đã duyệt khớp vật tư.")
             if getdate(self.packing_date) < getdate(standard.valid_from) or (
                 standard.valid_to and getdate(self.packing_date) > getdate(standard.valid_to)
             ):
-                frappe.throw("Output quality standard is not valid on the packing date.")
+                frappe.throw("Tiêu chuẩn chất lượng của đầu ra không có hiệu lực vào ngày đóng gói.")
             row.quality_standard = standard.name
             row.standard_version = standard.version
             if int(row.cartons or 0) < 0:
-                frappe.throw("Cartons cannot be negative.")
+                frappe.throw("Số thùng không được âm.")
         tolerance = frappe.db.get_single_value("Lotus Farm Settings", "mass_balance_tolerance_kg") or 0
         try:
             values = reconcile_mass(
@@ -134,11 +134,11 @@ class PackoutRun(Document):
         from lotus_farm.daily_operations import packout_losses
         packout_losses(self)
         if self.qc_state != "Released" or not self.qc_released_by:
-            frappe.throw("QC Manager must release the packout before submission.")
+            frappe.throw("Quản lý QC phải phát hành đợt đóng gói trước khi duyệt.")
 
     def before_cancel(self):
         if self.stock_entry and frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") != 2:
-            frappe.throw("Cancel/delete the linked ERPNext Stock Entry before cancelling packout.")
+            frappe.throw("Hủy/xóa phiếu kho ERPNext đã liên kết trước khi hủy đợt đóng gói.")
 
     def before_update_after_submit(self):
         self.validate()

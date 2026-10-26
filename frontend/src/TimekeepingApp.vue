@@ -89,7 +89,7 @@ const rank=r=>r.machine?.needs_review&&r.docstatus===0?0:r.manual?1:r.matches?2:
 const shown=computed(()=>(view.value==='all'?staff.value:staff.value.filter(r=>rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
 const allChecked=computed(()=>shown.value.length>0&&shown.value.every(r=>r.selected))
 
-const genderLabel=name=>({Male:'Nam',Female:'Nữ',Other:'Khác',Transgender:'Chuyển giới',Genderqueer:'Phi nhị nguyên',"Prefer not to say":'Không khai báo'})[name]||name
+const genderLabel=name=>({Male:'Nam',Female:'Nữ',Other:'Khác',Transgender:'Chuyển giới',Genderqueer:'Phi nhị nguyên',"Prefer not to say":'Không khai báo'})[name]||hrCatalogLabel(name)
 const fmt=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const currency=computed(()=>session.value?.companies.find(c=>c.name===company.value)?.default_currency||'VND')
 const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:currency.value})

@@ -17,7 +17,7 @@ TEMPLATES={
 def configure(key_path):
     frappe.only_for('System Manager')
     key=Path(key_path).read_text().strip()
-    if not key.startswith('re_'):frappe.throw('Invalid Resend credential file')
+    if not key.startswith('re_'):frappe.throw('Tệp thông tin đăng nhập Resend không hợp lệ')
     request=Request('https://api.resend.com/domains/'+DOMAIN_ID,headers={'Authorization':'Bearer '+key,'User-Agent':'Lotus-Mail-Setup'})
     with urlopen(request,timeout=20) as response:domain=json.load(response)
     verified=domain.get('status')=='verified'

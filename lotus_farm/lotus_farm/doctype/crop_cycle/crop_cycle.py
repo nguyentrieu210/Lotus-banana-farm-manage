@@ -8,10 +8,10 @@ class CropCycle(Document):
     def validate(self):
         from lotus_farm.controls import command_allowed
         if self.is_new() and self.status == "Closed":
-            frappe.throw("New Cycles cannot start Closed.")
+            frappe.throw("Vụ mới không được bắt đầu ở trạng thái Đã đóng.")
         before=self.get_doc_before_save()
         if before and self.status != before.status and (self.status == "Closed" or before.status == "Closed") and not command_allowed(self,"cycle_close"):
-            frappe.throw("Use the reviewed Cycle Closing Report to close or reopen a Cycle.")
+            frappe.throw("Dùng báo cáo kết vụ đã kiểm tra để đóng hoặc mở lại vụ.")
         self._validate_block()
         self._validate_cycle()
         self._set_variety()
@@ -20,9 +20,9 @@ class CropCycle(Document):
     def _validate_block(self):
         block = frappe.db.get_value("Farm Block", self.farm_block, ["farm", "variety"], as_dict=True)
         if not block:
-            frappe.throw("Farm Block does not exist.")
+            frappe.throw("Lô không tồn tại.")
         if block.farm != self.farm:
-            frappe.throw("Farm Block must belong to the selected Farm.")
+            frappe.throw("Lô phải thuộc vườn đã chọn.")
 
     def _validate_cycle(self):
         before = self.get_doc_before_save()
@@ -33,7 +33,7 @@ class CropCycle(Document):
         other_cycles = [row for row in self._lotus_plot_cycles or [] if row.name != self.name]
         cycle_no = cint(self.cycle_no)
         if cycle_no < 1:
-            frappe.throw("Cycle No. must be 1 or greater.")
+            frappe.throw("Số vụ phải từ 1 trở lên.")
 
         if cycle_no == 1:
             if self.get('origin_basis') == 'Handover':
@@ -42,9 +42,9 @@ class CropCycle(Document):
                 frappe.throw('Thửa đã mở vụ kế thừa; vụ tiếp theo phải liên kết vụ trước, không tạo lại vụ mẹ.')
             self.cycle_type = "Plant Crop"
             if not self.planting_date:
-                frappe.throw("Planting Date is required for Cycle 1.")
+                frappe.throw("Vụ 1 phải có ngày trồng.")
             if self.parent_cycle:
-                frappe.throw("Cycle 1 cannot have a Parent Cycle.")
+                frappe.throw("Vụ 1 không được có vụ trước.")
         else:
             self.cycle_type = "Ratoon"
             if not self.parent_cycle:
@@ -70,7 +70,7 @@ class CropCycle(Document):
                     if not self.handover_zone:
                         frappe.throw('Lô kế thừa phải có khu đã khai báo.')
                     return
-                frappe.throw("Parent Cycle is required for ratoon cycles.")
+                frappe.throw("Vụ chồi (lưu gốc) phải có vụ trước.")
             if self.get('origin_basis') == 'Handover':
                 frappe.throw('Đã có vụ trước liên kết: dùng nguồn vụ thực tế thay cho ranh giới bàn giao.')
             parent = frappe.db.get_value(
@@ -80,11 +80,11 @@ class CropCycle(Document):
                 as_dict=True,
             )
             if not parent:
-                frappe.throw("Parent Cycle does not exist.")
+                frappe.throw("Vụ trước không tồn tại.")
             if parent.farm != self.farm or parent.farm_block != self.farm_block or (parent.farm_plot or "") != (self.farm_plot or ""):
-                frappe.throw("Parent Cycle must belong to the same Farm Block.")
+                frappe.throw("Vụ trước phải thuộc cùng lô.")
             if cint(parent.cycle_no) != cycle_no - 1:
-                frappe.throw("Parent Cycle must be the immediately previous cycle.")
+                frappe.throw("Vụ trước phải là vụ liền kề trước đó.")
 
     def _set_variety(self):
         if not self.variety:
@@ -93,7 +93,7 @@ class CropCycle(Document):
     def _validate_unique_cycle(self):
         if self._lotus_plot_cycles is not None:
             if any(row.name != self.name and cint(row.cycle_no) == cint(self.cycle_no) for row in self._lotus_plot_cycles):
-                frappe.throw(f"Cycle {self.cycle_no} already exists for Farm Block {self.farm_block}.")
+                frappe.throw(f"Vụ {self.cycle_no} đã tồn tại ở lô {self.farm_block}.")
             return
         existing = frappe.db.get_value(
             "Crop Cycle",
@@ -101,4 +101,4 @@ class CropCycle(Document):
             "name",
         )
         if existing and existing != self.name:
-            frappe.throw(f"Cycle {self.cycle_no} already exists for Farm Block {self.farm_block}.")
+            frappe.throw(f"Vụ {self.cycle_no} đã tồn tại ở lô {self.farm_block}.")

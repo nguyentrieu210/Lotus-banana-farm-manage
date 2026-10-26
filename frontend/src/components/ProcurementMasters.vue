@@ -1,4 +1,6 @@
 <script setup>
+import {unitLabel} from '../units'
+import {hrCatalogLabel} from '../hr-catalog-labels'
 import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
 import {Cell,CellGroup} from 'vant'
@@ -19,11 +21,11 @@ const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const api=(m,args={})=>call('lotus_farm.procurement_masters.'+m,args)
 const suppliers=computed(()=>props.kind==='suppliers')
 const columns=computed(()=>suppliers.value?[
- {field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200,flex:1},{field:'supplier_group',headerName:'Nhóm NCC'},{field:'tax_id',headerName:'Mã số thuế'},{field:'lotus_supplier_contact',headerName:'Liên hệ'},{field:'lotus_supplier_phone',headerName:'Điện thoại'},{field:'email_id',headerName:'Email'}]:[
- {field:'name',headerName:'Mã hàng'},{field:'item_name',headerName:'Tên hàng',minWidth:200,flex:1},{field:'item_group',headerName:'Nhóm hàng'},{field:'stock_uom',headerName:'Đơn vị gốc'},{headerName:'Loại',valueGetter:p=>p.data.is_fixed_asset?'Tài sản':p.data.is_stock_item?'Hàng tồn kho':'Dịch vụ'}])
+ {field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200,flex:1},{field:'supplier_group',headerName:'Nhóm NCC',valueFormatter:p=>hrCatalogLabel(p.value)},{field:'tax_id',headerName:'Mã số thuế'},{field:'lotus_supplier_contact',headerName:'Liên hệ'},{field:'lotus_supplier_phone',headerName:'Điện thoại'},{field:'email_id',headerName:'Email'}]:[
+ {field:'name',headerName:'Mã hàng'},{field:'item_name',headerName:'Tên hàng',minWidth:200,flex:1},{field:'item_group',headerName:'Nhóm hàng',valueFormatter:p=>hrCatalogLabel(p.value)},{field:'stock_uom',headerName:'Đơn vị gốc',valueFormatter:p=>unitLabel(p.value)},{headerName:'Loại',valueGetter:p=>p.data.is_fixed_asset?'Tài sản':p.data.is_stock_item?'Hàng tồn kho':'Dịch vụ'}])
 const canCreate=computed(()=>suppliers.value?options.value.can_create_supplier:options.value.can_create_item)
 const addLabel=computed(()=>suppliers.value?'Thêm nhà cung cấp':'Thêm hàng mua')
-const groupOptions=computed(()=>(suppliers.value?options.value.supplier_groups||[]:options.value.item_groups||[]).map(r=>({value:r.name,label:r.name})))
+const groupOptions=computed(()=>(suppliers.value?options.value.supplier_groups||[]:options.value.item_groups||[]).map(r=>({value:r.name,label:hrCatalogLabel(r.name)})))
 const stateOptions=[{value:'active',label:'Đang dùng'},{value:'disabled',label:'Ngừng dùng'},{value:'all',label:'Tất cả'}]
 const historyLinks=[['quotes','Báo giá'],['orders','Đơn mua'],['receipts','Phiếu nhận'],['invoices','Hóa đơn'],['payments','Thanh toán'],['payables','Công nợ']]
 let timer

@@ -13,19 +13,19 @@ def set_output_valuation(packout, rates):
     run = frappe.get_doc("Packout Run", packout)
     run.check_permission("write")
     if run.docstatus != 1 or run.qc_state != "Released":
-        frappe.throw("Only a submitted, QC released Packout Run can be valued.")
+        frappe.throw("Chỉ định giá được đợt đóng gói đã duyệt và đã qua QC.")
     if len(run.outputs or []) < 2:
-        frappe.throw("Manual output valuation is only required for multi-Item packout.")
+        frappe.throw("Chỉ cần định giá đầu ra thủ công khi đóng gói nhiều vật tư.")
     if run.stock_entry and frappe.db.get_value("Stock Entry", run.stock_entry, "docstatus") != 2:
-        frappe.throw("Cancel the active Stock Entry before changing packout valuation.")
+        frappe.throw("Hủy phiếu kho đang hiệu lực trước khi đổi định giá đóng gói.")
 
     rates = frappe.parse_json(rates) if isinstance(rates, str) else rates
     if not isinstance(rates, dict):
-        frappe.throw("Valuation rates must be an Item-to-rate object.")
+        frappe.throw("Đơn giá định giá phải là một đối tượng vật tư → đơn giá.")
 
     expected = {row.item for row in run.outputs}
     if set(rates) != expected:
-        frappe.throw("Provide one valuation rate for every finished Item, with no extras.")
+        frappe.throw("Nhập đúng một đơn giá cho mỗi thành phẩm, không thừa.")
 
     reviewed_at = now_datetime()
     for row in run.outputs:
@@ -50,7 +50,7 @@ def make_repack_entry(packout):
     run = frappe.get_doc("Packout Run", packout)
     run.check_permission("read")
     if run.docstatus != 1 or run.qc_state != "Released":
-        frappe.throw("Only submitted, QC released packout can create an ERPNext draft.")
+        frappe.throw("Chỉ đợt đóng gói đã duyệt và đã qua QC mới tạo được phiếu nháp ERPNext.")
     if run.stock_entry:
         entry = frappe.get_doc("Stock Entry", run.stock_entry)
         entry.check_permission("read")
@@ -71,7 +71,7 @@ def make_repack_entry(packout):
         lot = frappe.get_doc("Harvest Lot", source.harvest_lot)
         lot.check_permission("read")
         if not all((lot.raw_item, lot.raw_warehouse, lot.raw_batch)):
-            frappe.throw("Receive raw inventory in ERPNext and map Item/Warehouse/Batch on each lot first.")
+            frappe.throw("Nhận hàng nguyên liệu trong ERPNext và gắn vật tư/kho/lô hàng cho từng lô trước.")
         validate_item(lot.raw_item, batched=True)
         validate_warehouse(lot.raw_warehouse, run.company)
         entry.append(
@@ -96,7 +96,7 @@ def make_repack_entry(packout):
         ]
         if missing:
             frappe.throw(
-                "Multi-Item Repack needs reviewed stock valuation rates first: "
+                "Đóng gói lại nhiều vật tư cần đơn giá định giá đã kiểm tra trước: "
                 + ", ".join(missing)
             )
 
@@ -106,7 +106,7 @@ def make_repack_entry(packout):
         existing = frappe.db.get_value("Batch", {"batch_id": batch_id}, "name")
         if existing:
             if frappe.db.get_value("Batch", existing, "item") != output.item:
-                frappe.throw("Output Batch identity conflict.")
+                frappe.throw("Định danh lô hàng đầu ra bị xung đột.")
             batch = frappe.get_doc("Batch", existing)
             batch.check_permission("read")
         else:
@@ -140,7 +140,7 @@ def make_repack_entry(packout):
 def validate_entry(doc, method=None):
     before = doc.get_doc_before_save()
     if (doc.get('lotus_forecast_impacts_json') or '') != (before.get('lotus_forecast_impacts_json') or '' if before else ''):
-        frappe.throw('Posted forecast impacts are written only by the stock bridge.')
+        frappe.throw('Ảnh hưởng tới dự thu đã ghi sổ chỉ do cầu nối kho ghi.')
     if not doc.get("lotus_packout_run"):
         return
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
@@ -153,11 +153,11 @@ def validate_entry(doc, method=None):
         or doc.company != run.company
         or doc.purpose != "Repack"
     ):
-        frappe.throw("Stock Entry must match a submitted, released Lotus Packout Run.")
+        frappe.throw("Phiếu kho phải khớp một đợt đóng gói Lotus đã duyệt và đã phát hành.")
     if run.stock_entry and run.stock_entry != doc.name:
         prior_status = frappe.db.get_value("Stock Entry", run.stock_entry, "docstatus")
         if prior_status != 2:
-            frappe.throw("Packout already has a different active Stock Entry.")
+            frappe.throw("Đợt đóng gói đã có một phiếu kho khác đang hiệu lực.")
     expected_inputs, expected_outputs = {}, {}
     expected_output_rates = {}
 
@@ -176,7 +176,7 @@ def validate_entry(doc, method=None):
                 or not output.valuation_set_by
                 or not output.valuation_set_at
             ):
-                frappe.throw("Multi-Item Packout must have reviewed valuation rates before Stock Entry.")
+                frappe.throw("Đóng gói nhiều vật tư phải có đơn giá định giá đã kiểm tra trước khi lập phiếu kho.")
             expected_output_rates[key] = flt(output.valuation_rate, 6)
     inputs, outputs = {}, {}
     for row in doc.items:
@@ -185,10 +185,10 @@ def validate_entry(doc, method=None):
         if row.serial_and_batch_bundle:
             bundle = frappe.get_doc("Serial and Batch Bundle", row.serial_and_batch_bundle)
             if len(bundle.entries) != 1:
-                frappe.throw("Lotus bridge requires one Batch per Stock Entry row.")
+                frappe.throw("Cầu nối Lotus cần mỗi dòng phiếu kho đúng một lô hàng.")
             batch_no = bundle.entries[0].batch_no
         if row.stock_uom != "Kg" or (row.s_warehouse and row.t_warehouse):
-            frappe.throw("Lotus bridge requires separate input/output rows in Kg.")
+            frappe.throw("Cầu nối Lotus cần dòng đầu vào và đầu ra riêng, tính theo Kg.")
         if row.s_warehouse:
             add(inputs, (row.item_code, row.s_warehouse, batch_no), row.transfer_qty)
         elif row.t_warehouse:
@@ -201,11 +201,11 @@ def validate_entry(doc, method=None):
                     or not row.set_basic_rate_manually
                     or abs(flt(row.basic_rate, 6) - expected_rate) > 0.000001
                 ):
-                    frappe.throw("Multi-Item Stock Entry valuation must match the reviewed Packout rates.")
+                    frappe.throw("Định giá phiếu kho nhiều vật tư phải khớp đơn giá đóng gói đã kiểm tra.")
         else:
-            frappe.throw("Stock Entry row has no Warehouse.")
+            frappe.throw("Dòng phiếu kho chưa có kho.")
     if inputs != expected_inputs or outputs != expected_outputs:
-        frappe.throw("Stock Entry input/output must exactly match Packout lineage and weights.")
+        frappe.throw("Đầu vào/đầu ra của phiếu kho phải khớp chính xác nguồn gốc và khối lượng đóng gói.")
 
 
 def _forecast_outputs(run, use_snapshot=True):
@@ -288,7 +288,7 @@ def before_stock_cancel(doc, method=None):
         day_guard(frappe.get_doc("Packout Run",doc.lotus_packout_run))
     if doc.get("lotus_packout_run") and not command_allowed(doc, "reconciliation_cancel"):
         frappe.throw(
-            "Create and apply an approved Supply Reconciliation before cancelling Lotus stock."
+            "Tạo và áp dụng phiếu đối soát cung ứng đã duyệt trước khi hủy phiếu kho Lotus."
         )
 
 
@@ -296,7 +296,7 @@ def stock_reversed(doc, method=None):
     if not doc.get("lotus_packout_run"):
         return
     if not command_allowed(doc, "reconciliation_cancel"):
-        frappe.throw("Lotus stock reversal must run through Supply Reconciliation.")
+        frappe.throw("Đảo phiếu kho Lotus phải thực hiện qua phiếu đối soát cung ứng.")
     run = frappe.get_doc("Packout Run", doc.lotus_packout_run)
     impacts = _forecast_outputs(run)
     supplies = {}
@@ -308,11 +308,11 @@ def stock_reversed(doc, method=None):
             for item, amount in item_amounts.items():
                 output = output_by_item.get(item)
                 if not output or float(output.materialized_qty_kg or 0) + 0.0005 < float(amount):
-                    frappe.throw("Per-Item forecast materialized quantity is smaller than the stock reversal.")
+                    frappe.throw("Số lượng dự thu đã hiện thực theo từng vật tư nhỏ hơn số đảo phiếu kho.")
         else:
             amount = item_amounts.get(supply.item, 0)
             if float(supply.materialized_qty_kg or 0) + 0.0005 < float(amount):
-                frappe.throw("Forecast materialized quantity is smaller than the stock reversal.")
+                frappe.throw("Số lượng dự thu đã hiện thực nhỏ hơn số đảo phiếu kho.")
         supplies[name] = (supply, item_amounts)
 
     for supply, item_amounts in supplies.values():
@@ -343,9 +343,9 @@ def link_stock_reservation(forecast, allocation, stock_reservation, qty_kg=None)
     supply.check_permission("write")
     row = next((r for r in supply.allocations or [] if r.name == allocation), None)
     if not row or reservation.docstatus != 1 or reservation.voucher_type != "Sales Order":
-        frappe.throw("Select a submitted physical stock reservation and valid forecast allocation.")
+        frappe.throw("Chọn phiếu giữ hàng thực tế đã duyệt và phân bổ dự thu hợp lệ.")
     if row.stock_reservation == reservation.name and row.allocation_state == "Materialized":
-        if qty_kg is not None and abs(float(qty_kg)-float(row.reserved_qty_kg))>0.0005:frappe.throw('This conversion already has a different quantity.')
+        if qty_kg is not None and abs(float(qty_kg)-float(row.reserved_qty_kg))>0.0005:frappe.throw('Lần chuyển đổi này đã có số lượng khác.')
         return {"allocation": row.name, "state": row.allocation_state}
     if (
         row.allocation_state != "Reserved"
@@ -353,16 +353,16 @@ def link_stock_reservation(forecast, allocation, stock_reservation, qty_kg=None)
         or row.sales_order_item != reservation.voucher_detail_no
         or row.item != reservation.item_code
     ):
-        frappe.throw("Physical reservation must match the exact forecast SO Item.")
+        frappe.throw("Phiếu giữ hàng thực tế phải khớp đúng dòng đơn bán hàng của dự thu.")
     split = next((r for r in supply.allocations if r.materialized_from==allocation and r.stock_reservation==reservation.name and r.allocation_state=='Materialized'),None)
     if split:
         if qty_kg is not None and abs(float(qty_kg)-float(split.reserved_qty_kg))>0.0005:
-            frappe.throw('This conversion already has a different quantity.')
+            frappe.throw('Lần chuyển đổi này đã có số lượng khác.')
         return {'allocation':split.name,'state':split.allocation_state,'remaining_future_kg':row.reserved_qty_kg}
     linked = frappe.get_all(
         'Forecast Allocation',filters={'stock_reservation':reservation.name,'allocation_state':'Materialized'},fields=['reserved_qty_kg'])
     if float(reservation.delivered_qty or 0):
-        frappe.throw('Use a new undelivered physical reservation for further forecast conversion.')
+        frappe.throw('Dùng một phiếu giữ hàng thực tế mới, chưa giao, để chuyển đổi tiếp dự thu.')
     from lotus_farm.promax_rules import split_amount
     from lotus_farm.rules import RuleError
     try:
@@ -374,7 +374,7 @@ def link_stock_reservation(forecast, allocation, stock_reservation, qty_kg=None)
     line=next(i for i in order.items if i.name==row.sales_order_item)
     remaining_demand=max(float(line.stock_qty)-float(line.delivered_qty or 0)*float(line.conversion_factor),0)
     if _active_for_line(line.name)-amount>remaining_demand+0.0005:
-        frappe.throw('Physical plus remaining future commitments exceed the undelivered Sales Order demand. Convert enough or reduce the physical reservation.')
+        frappe.throw('Hàng giữ thực tế cộng các cam kết tương lai còn lại vượt nhu cầu chưa giao của đơn bán hàng. Chuyển đổi đủ hoặc giảm số giữ thực tế.')
     converted=row
     if remainder:
         converted=supply.append('allocations',{k:row.get(k) for k in ('sales_order','sales_order_item','item','forecast_output','allocated_by','allocated_at')})
@@ -393,7 +393,7 @@ def reservation_cancel(doc, method=None):
         "Forecast Allocation", {"stock_reservation": doc.name, "allocation_state": "Materialized"}
     ) and not allowed:
         frappe.throw(
-            "Create and apply an approved Supply Reconciliation before cancelling this physical reservation."
+            "Tạo và áp dụng phiếu đối soát cung ứng đã duyệt trước khi hủy phiếu giữ hàng thực tế này."
         )
 
 

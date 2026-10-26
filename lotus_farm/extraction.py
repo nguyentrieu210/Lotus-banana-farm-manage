@@ -11,24 +11,24 @@ MAX_ROWS=10000
 
 def read_workbook(data, mapping):
     from openpyxl import load_workbook
-    if not isinstance(data,bytes) or len(data)>MAX_BYTES:raise RuleError('Workbook exceeds the 40 MiB input limit.')
+    if not isinstance(data,bytes) or len(data)>MAX_BYTES:raise RuleError('Sổ Excel vượt giới hạn 40 MiB.')
     with ZipFile(BytesIO(data)) as archive:
-        if sum(i.file_size for i in archive.infolist())>200*1024*1024:raise RuleError('Expanded workbook exceeds 200 MiB.')
+        if sum(i.file_size for i in archive.infolist())>200*1024*1024:raise RuleError('Sổ Excel sau khi giải nén vượt 200 MiB.')
     book=load_workbook(BytesIO(data),data_only=False,read_only=False,keep_links=False)
     try:
-        if mapping['sheet_name'] not in book.sheetnames:raise RuleError('Approved sheet does not exist.')
+        if mapping['sheet_name'] not in book.sheetnames:raise RuleError('Trang tính đã duyệt không tồn tại.')
         sheet=book[mapping['sheet_name']]
-        if sheet.max_row>MAX_ROWS:raise RuleError('Split the workbook into approved batches of at most 10,000 rows.')
+        if sheet.max_row>MAX_ROWS:raise RuleError('Tách sổ Excel thành các đợt tối đa 10.000 dòng.')
         headers=[source_text(c.value) for c in sheet[int(mapping['header_row'])]]
         used=[h for h in headers if h]
-        if len(used)!=len(set(used)):raise RuleError('Header has duplicate names; select an unambiguous header row.')
+        if len(used)!=len(set(used)):raise RuleError('Dòng tiêu đề có tên cột trùng; chọn dòng tiêu đề rõ ràng.')
         columns={h:i for i,h in enumerate(headers) if h}
         required=[mapping['legacy_org_column']]+[f['source_column'] for f in mapping['fields']]
-        if any(c not in columns for c in required):raise RuleError('Approved mapping columns are missing from the selected header.')
+        if any(c not in columns for c in required):raise RuleError('Dòng tiêu đề đã chọn thiếu các cột của ánh xạ đã duyệt.')
         keys=json.loads(mapping.get('business_key_columns') or '[]')
         samples=json.loads(mapping.get('sample_columns_json') or '[]')
         if any(c not in columns for c in keys) or any(s['column'] not in columns for s in samples):
-            raise RuleError('Business key or measurement sample columns are missing.')
+            raise RuleError('Thiếu cột khóa nghiệp vụ hoặc cột mẫu đo.')
         rows=[];seen_keys=set()
         for number,cells in enumerate(sheet.iter_rows(min_row=int(mapping['first_data_row'])),int(mapping['first_data_row'])):
             if all(c.value is None for c in cells):continue
@@ -40,22 +40,22 @@ def read_workbook(data, mapping):
             for f in mapping['fields']:
                 value=raw.get(f['source_column'])
                 try:
-                    if isinstance(value,str) and value.startswith('='):raise RuleError('Formula cell requires a reviewed values-only source version.')
+                    if isinstance(value,str) and value.startswith('='):raise RuleError('Ô công thức cần phiên bản nguồn chỉ chứa giá trị đã kiểm tra.')
                     kind=f['value_type']
                     if kind=='Date':value=source_date(value)
                     elif kind in ('Number','Integer','Percent'):
                         value=source_number(value,mapping['decimal_mark'],mapping.get('grouping_mark') or '',percent=kind=='Percent')
                         if kind=='Percent' and isinstance(raw.get(f['source_column']),str) and raw[f['source_column']].strip().endswith('%'):value*=100
                         if kind=='Integer' and value is not None:
-                            if not float(value).is_integer():raise RuleError('Expected a whole number.')
+                            if not float(value).is_integer():raise RuleError('Cần một số nguyên.')
                             value=int(value)
                     elif kind=='JSON':value=json.loads(value) if value not in (None,'') else None
                     else:value=source_text(value)
                     if f.get('value_map_json') and value is not None:
                         lookup=json.loads(f['value_map_json'])
-                        if str(value) not in lookup:raise RuleError('Value has no approved master mapping.')
+                        if str(value) not in lookup:raise RuleError('Giá trị chưa có ánh xạ danh mục đã duyệt.')
                         value=lookup[str(value)]
-                    if f.get('required') and value in (None,''):raise RuleError('Required source value is blank.')
+                    if f.get('required') and value in (None,''):raise RuleError('Giá trị bắt buộc trong nguồn đang để trống.')
                     normalized[f['target_field']]=value
                 except (RuleError,ValueError,TypeError) as exc:errors.append(f['source_column']+': '+str(exc))
             if samples:
@@ -64,7 +64,7 @@ def read_workbook(data, mapping):
                     try:
                         value=raw.get(sample['column'])
                         if value in (None,'','-'):continue
-                        if isinstance(value,str) and value.startswith('='):raise RuleError('Sample formula needs reviewed values.')
+                        if isinstance(value,str) and value.startswith('='):raise RuleError('Công thức mẫu cần giá trị đã kiểm tra.')
                         value=source_number(value,mapping['decimal_mark'],mapping.get('grouping_mark') or '')
                         normalized['samples'].append(dict(sample_no=sample.get('sample_no') or sample['column'],lane=sample.get('lane') or sample['column'],dimension=sample.get('dimension') or 'Length',value=value,uom=sample['uom']))
                     except (RuleError,ValueError,TypeError) as exc:errors.append(sample['column']+': '+str(exc))

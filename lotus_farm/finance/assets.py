@@ -865,7 +865,7 @@ def import_template():
     setup.require_view()
     from openpyxl import Workbook
     book = Workbook()
-    book.active.title = 'Tai san dau ky'
+    book.active.title = 'Tài sản đầu kỳ'
     book.active.append(list(PROFILE_LABELS))
     for index in range(1, len(PROFILE_LABELS)+1):
         from openpyxl.utils import get_column_letter
