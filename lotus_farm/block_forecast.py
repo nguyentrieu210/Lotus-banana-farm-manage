@@ -189,8 +189,11 @@ def _preview(farm,from_date,to_date,block=None):
         elif str(w.uom).strip().casefold()!=e["uom"].casefold():issue="Đơn vị tính chưa khớp danh mục"
         if e["parameter_status"]!="Approved":
             issue="Chưa có bộ thông số dự thu được duyệt cho lô và ngày."
-        if e["count_status"] not in ("Cohort Approved","Census Confirmed"):
-            issue="Số cây chưa được xác nhận kiểm kê/đợt cây; chỉ được xem dự phóng."
+        # The prior-period lot count was accepted as Lotus' official
+        # operating baseline. Do not block work merely because the physical
+        # census evidence has a separate provenance status.
+        if e["count_status"] not in ("Cohort Approved","Census Confirmed","Planning Baseline"):
+            issue="Thiếu số cây gốc chốt cho lô hoặc thông tin đợt cây hợp lệ."
         if e["work_code"] in REQUIRES_FIELD_SURVEY:
             issue="Chống đổ cần số cây khảo sát thực tế; không giao theo dự thu"
         norm=None
