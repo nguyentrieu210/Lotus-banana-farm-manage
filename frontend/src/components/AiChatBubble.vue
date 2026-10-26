@@ -26,6 +26,7 @@ async function send(text){
  const question=String(text??draft.value).trim()
  if(!question||question.length>4000||busy.value)return
  const id=++requestId
+ const before=messages.value.slice()
  draft.value='';error.value=''
  messages.value=[...messages.value,{role:'user',content:question}].slice(-30)
  busy.value=true;scroll()
@@ -33,7 +34,7 @@ async function send(text){
   const result=await call('lotus_farm.ai_chat.ask',{messages:messages.value.slice(-12).map(({role,content})=>({role,content}))},true)
   if(id!==requestId)return
   messages.value=[...messages.value,{role:'assistant',content:String(result?.answer||'Chưa có câu trả lời; hãy thử lại.'),steps:Array.isArray(result?.steps)?result.steps:[]}].slice(-30)
- }catch(e){if(id===requestId){error.value=e.code==='AuthenticationError'?'Phiên đăng nhập đã hết; hãy đăng nhập lại.':'Chưa nhận được câu trả lời. '+e.message;draft.value=question}}
+ }catch(e){if(id===requestId){messages.value=before;error.value=e.code==='AuthenticationError'?'Phiên đăng nhập đã hết; hãy đăng nhập lại.':'Chưa nhận được câu trả lời. '+e.message;draft.value=question}}
  finally{if(id===requestId){busy.value=false;scroll();await nextTick();input.value?.$el?.focus()}}
 }
 function keydown(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();send()}}

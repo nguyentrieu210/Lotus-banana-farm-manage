@@ -47,6 +47,7 @@ test('IME Enter does not send; failed requests retain the question for retry',as
  assert.equal(calls,0)
  input.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await tick();await tick()
  assert.equal(calls,1);assert.equal(input.value,'Tồn kho hôm nay?')
+ assert.deepEqual(JSON.parse(window.sessionStorage.getItem('lotus-ai-chat|retry')),[],'failed attempts do not accumulate in the next model request')
  assert.ok(view.root.querySelector('[role=alert]'))
  assert.equal(view.root.querySelector('button[type=submit]').disabled,false)
 })
