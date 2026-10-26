@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import timedelta
 import frappe
 from lotus_farm.block_forecast_engine import forecast, date
+from lotus_farm.forecast_parameters import DEFAULTS, validate
 from lotus_farm import plan_book2_reference as book2
 
 SPRAY_CODES={"CV024","CV026","CV028","CV031"}
@@ -50,7 +51,7 @@ def _sources(farm,zone=None,block=None):
     """All records are filtered through Frappe read permissions and farm scope."""
     _farm(farm)
     meta=frappe.get_meta("Farm Block")
-    fields=["name","farm","block_code","block_name","farm_zone","area_ha","active","variety"]
+    fields=["name","farm","block_code","block_name","farm_zone","area_ha","active","variety","modified","forecast_count_source"]
     for optional in ("lotus_tree_count","lotus_estimated_flowering_date","lotus_estimation_basis"):
         if meta.has_field(optional):
             fields.append(optional)
@@ -67,7 +68,7 @@ def _sources(farm,zone=None,block=None):
             filters={"farm":farm,"approval_state":"Approved","farm_block":["in",list(names)]},
             fields=["name","farm_block","crop_cycle","cohort_code","cohort_name",
                     "anchor","anchor_date","quantity_basis","planned_qty",
-                    "version","approval_state","modified"],limit_page_length=2000)
+                    "version","approval_state","modified","forecast_distribution_mode"],limit_page_length=2000)
     cycle_names={c.crop_cycle for c in co if c.crop_cycle}
     cycles={}
     if cycle_names and frappe.has_permission("Crop Cycle","read"):
@@ -78,6 +79,26 @@ def _sources(farm,zone=None,block=None):
         c["cycle_no"]=cycles[c.crop_cycle].cycle_no if c.crop_cycle in cycles else None
     return blocks,co
 
+def _profiles(farm):
+    if not frappe.has_permission("Lotus Block Forecast Profile","read"):
+        return []
+    return frappe.get_list("Lotus Block Forecast Profile",
+        filters={"farm":farm,"approval_state":"Approved","active":1},
+        fields=["*"],limit_page_length=1000)
+
+def _observations(farm,block=None):
+    """Actual field observations are reported separately; not counted twice."""
+    if not frappe.has_permission("Bunch Operation","read"):
+        return []
+    filters={"farm":farm,"docstatus":1,
+             "operation_type":["in",["Shooting","Bud Injection","Cut Bud"]]}
+    if block:filters["farm_block"]=block
+    records=frappe.get_list("Bunch Operation",filters=filters,
+        fields=["name","farm_block","crop_cycle","operation_date","operation_type",
+                "bunch_qty","net_bunch_qty","modified"],
+        order_by="operation_date desc",limit_page_length=1000)
+    return records
+
 @frappe.whitelist()
 def board(farm=None,zone=None,block=None):
     farms=frappe.get_list("Farm",fields=["name","farm_name"],limit_page_length=0)
@@ -85,7 +106,12 @@ def board(farm=None,zone=None,block=None):
     if not chosen:
         return dict(farms=[],farm=None,rows=[],months=[],warnings=["Không có vườn được cấp quyền."])
     blocks,cohorts=_sources(chosen,zone,block)
-    result=forecast(blocks,cohorts)
+    profiles=_profiles(chosen)
+    result=forecast(blocks,cohorts,profiles=profiles)
+    actuals=_observations(chosen,block=block)
+    if zone:
+        selected_blocks={b.name for b in blocks}
+        actuals=[a for a in actuals if a.farm_block in selected_blocks]
     all_zones=frappe.get_list("Farm Block",filters={"farm":chosen,"active":1},
                               fields=["farm_zone"],limit_page_length=0)
     zones=sorted({b.farm_zone for b in all_zones if b.farm_zone})
@@ -93,15 +119,17 @@ def board(farm=None,zone=None,block=None):
         zone_list=zones,blocks=blocks,cohorts=cohorts,rows=result["rows"],
         months=result["monthly"],warnings=result["warnings"],
         source_count=result["source_count"], rule=result["rule"],
+        actuals=actuals,
+        profiles=[dict(name=p.name,version=p.version,farm_block=p.farm_block,
+                       valid_from=p.valid_from,valid_to=p.valid_to,
+                       approved_by=p.approved_by,approval_state=p.approval_state)
+                  for p in profiles],
         can_create=frappe.has_permission("Daily Work Plan","create"),
-        params=dict(waves=[17,40,25,18],sucker_to_flower_months=6,
-            flower_day_offset=14,flower_to_inject_days=5,
-            inject_to_cut_days=16,cut_to_harvest_days=65,
-            work_reference=book2.SOURCE))
+        params=dict(validate(DEFAULTS),work_reference=book2.SOURCE))
 
-def _work_events(waves,start,end):
+def _work_events(daily_rows,start,end):
     grouped={}
-    for wave in waves:
+    for wave in daily_rows:
         for code,off,basis,note,anchor in (
             [(a,b,c,d,"inject") for a,b,c,d in INJECTION_WORK]+
             [(a,b,c,d,"harvest") for a,b,c,d in HARVEST_WORK]):
@@ -114,10 +142,15 @@ def _work_events(waves,start,end):
             if key not in grouped:
                 grouped[key]=dict(date=str(current),farm_block=wave["farm_block"],
                     work_code=code,planned_qty=0,uom="Cây" if code=="CV021" else "Buồng",
-                    note=note,sources=[],crop_cycle=wave.get("crop_cycle"),cohort=wave.get("cohort"))
+                    note=note,sources=[],crop_cycle=wave.get("crop_cycle"),cohort=wave.get("cohort"),
+                    parameter_status=wave.get("parameter_status"),count_status=wave.get("count_status"),
+                    profile=wave.get("profile"))
             event=grouped[key]
             event["planned_qty"]+=qty
             event["sources"].append(wave["key"])
+            if event["parameter_status"]!=wave.get("parameter_status"):event["parameter_status"]="Mixed"
+            if event["count_status"]!=wave.get("count_status"):event["count_status"]="Mixed"
+            if event["profile"]!=wave.get("profile"):event["profile"]=None
             if event["crop_cycle"]!=wave.get("crop_cycle"):event["crop_cycle"]=None
             if event["cohort"]!=wave.get("cohort"):event["cohort"]=None
     events=[]
@@ -132,8 +165,8 @@ def _preview(farm,from_date,to_date,block=None):
     if last<first or (last-first).days>45:
         frappe.throw("Chỉ xem tối đa 46 ngày.")
     blocks,cohorts=_sources(farm,block=block)
-    projected=forecast(blocks,cohorts)
-    events=_work_events(projected["rows"],first,last)
+    projected=forecast(blocks,cohorts,profiles=_profiles(farm),include_daily=True)
+    events=_work_events(projected["daily_rows"],first,last)
     works=frappe.get_list("Work Type",
         fields=["name","work_code","work_name","uom","active","allow_daywork",
                 "productivity_per_workday"],
@@ -152,6 +185,10 @@ def _preview(farm,from_date,to_date,block=None):
         if not w:issue="Mã công việc thiếu hoặc trùng trong ERP"
         elif not w.allow_daywork or float(w.productivity_per_workday or 0)<=0:issue="Chưa duyệt công nhật hoặc năng suất"
         elif str(w.uom).strip().casefold()!=e["uom"].casefold():issue="Đơn vị tính chưa khớp danh mục"
+        if e["parameter_status"]!="Approved":
+            issue="Chưa có bộ thông số dự thu được duyệt cho lô và ngày."
+        if e["count_status"] not in ("Cohort Approved","Census Confirmed"):
+            issue="Số cây chưa được xác nhận kiểm kê/đợt cây; chỉ được xem dự phóng."
         if e["work_code"] in REQUIRES_FIELD_SURVEY:
             issue="Chống đổ cần số cây khảo sát thực tế; không giao theo dự thu"
         norm=None
@@ -176,14 +213,16 @@ def _preview(farm,from_date,to_date,block=None):
                             amount=e["planned_qty"]*float(line.norm_qty)*float(line.frequency)*float(line.conversion_factor)/float(line.basis_qty)
                             materials[(e["date"],e["farm_block"],line.item,line.uom)]+=amount
         e.update(work_type=w.name if w else None,work_name=w.work_name if w else None,
-            norm_profile=norm.name if norm else None,blocking_issue=issue,
+            norm_profile=norm.name if norm else None,
+            norm_version=norm.version if norm else None,blocking_issue=issue,
             required_workdays=(round(e["planned_qty"]/float(w.productivity_per_workday),3)
                                if w and not issue else None))
     snapshot=dict(farm=farm,from_date=str(first),to_date=str(last),block=block,
         sources=[(c.get("name"),str(c.get("modified")),c.get("planned_qty"),c.get("anchor_date"))
                  for c in cohorts],
-        blocks=[(b.get("name"),b.get("lotus_tree_count"),str(b.get("lotus_estimated_flowering_date"))) for b in blocks],
-        events=[(e["schedule_key"],e["planned_qty"],e["work_type"],e["norm_profile"],e["blocking_issue"]) for e in events])
+        blocks=[(b.get("name"),b.get("lotus_tree_count"),str(b.get("lotus_estimated_flowering_date")),str(b.get("modified")),b.get("forecast_count_source")) for b in blocks],
+        profiles=[(p.get("name"),str(p.get("modified")),p.get("version")) for p in _profiles(farm)],
+        events=[(e["schedule_key"],e["planned_qty"],e["work_type"],e["norm_profile"],e["norm_version"],e["blocking_issue"]) for e in events])
     fingerprint=hashlib.sha256(json.dumps(snapshot,sort_keys=True,default=str).encode()).hexdigest()
     return dict(rows=events,materials=[dict(date=k[0],farm_block=k[1],item=k[2],
         uom=k[3],quantity=round(v,5)) for k,v in sorted(materials.items())],
@@ -220,18 +259,21 @@ def create_care_plan_draft(farm,block,posting_date,fingerprint):
         doc=frappe.get_doc("Daily Work Plan",p.name)
         doc.check_permission("read")
         occupied.update((line.farm_block,line.work_type) for line in doc.lines)
+    company=frappe.db.get_value("Farm",farm,"company")
     lines=[]
     for row in plan["rows"]:
         if (block,row["work_type"]) in occupied:
             frappe.throw("Đã có kế hoạch ngày/lô/công việc: "+row["work_code"])
-        lines.append(dict(farm_block=block,work_type=row["work_type"],
+        lines.append(dict(company=company,farm=farm,farm_block=block,
+            crop_cycle=row.get("crop_cycle"),
+            work_type=row["work_type"],uom=row["uom"],
             planned_qty=row["planned_qty"],payment_mode="Daywork",
-            norm_profile=row["norm_profile"],schedule_key=row["schedule_key"],
+            norm_profile=row["norm_profile"],norm_version=row["norm_version"],
+            schedule_key=row["schedule_key"],
             lotus_forecast_sources=json.dumps(
                 dict(source="Farm Block / Plan Cohort",waves=row["sources"],
                      crop_cycle=row["crop_cycle"],cohort=row["cohort"]),
                 ensure_ascii=False),execution_state="Planned"))
-    company=frappe.db.get_value("Farm",farm,"company")
     doc=frappe.get_doc(dict(doctype="Daily Work Plan",farm=farm,company=company,
         posting_date=day,lines=lines))
     doc.insert() # docstatus=0 only; never submit or issue material.
