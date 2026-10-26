@@ -1,0 +1,1 @@
+import{o as e}from"./use-toast-CKUP858r.js";function t(){try{return e().farm||``}catch{return``}}export{t};
