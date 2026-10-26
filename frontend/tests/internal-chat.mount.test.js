@@ -113,3 +113,46 @@ test('changing account during a send clears the old room and ignores its complet
  finish(response({name:'old',seq:1,sender:'one',body:'Tin riêng',creation:'2026-10-26 12:00:00'}));await tick()
  assert.doesNotMatch(view.root.textContent,/Tin riêng/)
 })
+
+test('links are clickable, recall needs a second tap and recalled text disappears',async t=>{
+ let recalled=0
+ const mine={name:'m1',room:room.name,seq:1,sender:'one',body:'Xem https://lotus.example/kho?x=1. Rồi báo',creation:new Date().toISOString().replace('T',' ').slice(0,19)}
+ mock(t,(url,body)=>{
+  if(url.includes('.history'))return response({room,messages:[mine],has_more:false})
+  if(url.includes('.mark_read'))return response({seq:body.seq})
+  if(url.includes('.recall')){recalled++;return response({...mine,body:'',recalled:true})}
+  throw Error(url)
+ })
+ const view=mount(Chat,{user:'one',client:client(),active:true});t.after(view.unmount)
+ action(view,'Mở chat Nguyễn Hai').click();await tick();await tick()
+ const link=view.root.querySelector('.lotus-chat__bubble a')
+ assert.equal(link.getAttribute('href'),'https://lotus.example/kho?x=1','trailing punctuation stays outside the link')
+ assert.equal(link.getAttribute('rel'),'noopener noreferrer')
+ const recall=[...view.root.querySelectorAll('button')].find(b=>b.textContent==='Thu hồi')
+ recall.click();await tick();assert.equal(recalled,0,'first tap only arms the action')
+ assert.match(recall.textContent,/Bấm lần nữa/)
+ recall.click();await tick();await tick();assert.equal(recalled,1)
+ assert.match(view.root.querySelector('.lotus-chat__bubble').textContent,/Tin nhắn đã thu hồi/)
+})
+
+test('group tools rename and leave; the inbox search filters rooms',async t=>{
+ const group={...room,name:'g1',kind:'Group',title:'Tổ A',owner:'one',is_owner:true,members:[...room.members,{user:'three',label:'Trần Ba',last_read_seq:0}]}
+ const calls=[]
+ mock(t,(url,body)=>{
+  if(url.includes('.history'))return response({room:group,messages:[],has_more:false})
+  if(url.includes('.rename')){calls.push(['rename',body.title]);return response({...group,title:body.title})}
+  if(url.includes('.remove_member')){calls.push(['remove',body.member]);return response({left:true,room:null})}
+  throw Error(url)
+ })
+ const state=client();state.rooms.value=[group,...Array.from({length:6},(_,i)=>({...room,name:'r'+i,title:'Người '+i,preview:'',members:room.members}))]
+ const view=mount(Chat,{user:'one',client:state,active:true});t.after(view.unmount)
+ await input(view.root.querySelector('input[aria-label="Tìm cuộc trò chuyện"]'),'to a')
+ assert.equal(view.root.querySelectorAll('.lotus-chat__room').length,1,'search ignores accents and case')
+ action(view,'Mở chat Tổ A').click();await tick();await tick()
+ action(view,'Xem thành viên').click();await tick()
+ await input(view.root.querySelector('input[aria-label="Đổi tên nhóm"]'),'Tổ bao buồng')
+ ;[...view.root.querySelectorAll('button')].find(b=>b.textContent==='Đổi tên').click();await tick();await tick()
+ const leave=()=>[...view.root.querySelectorAll('button')].find(b=>/rời nhóm/i.test(b.textContent))
+ leave().click();await tick();leave().click();await tick();await tick()
+ assert.deepEqual(calls,[['rename','Tổ bao buồng'],['remove','one']])
+})

@@ -2,6 +2,7 @@
 import os
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import frappe
 from lotus_farm import chat
@@ -33,6 +34,9 @@ class ChatIntegrationTest(unittest.TestCase):
         frappe.set_user(self.users[0])
         frappe.db.savepoint('chat_case')
         self.paths = []
+        # The send rate limit lives in the cache, which a savepoint rollback does not undo.
+        for user in self.users:
+            frappe.cache().delete_value('lotus-chat-rate:' + user)
 
     def tearDown(self):
         frappe.db.rollback(save_point='chat_case')
@@ -96,8 +100,9 @@ class ChatIntegrationTest(unittest.TestCase):
 
     def test_history_paginates_without_duplicates(self):
         room = self.direct()
-        for i in range(55):
-            chat.send(room, 'pagination-id-' + str(i), body=str(i))
+        with mock.patch.object(chat, 'RATE_LIMIT', 100):
+            for i in range(55):
+                chat.send(room, 'pagination-id-' + str(i), body=str(i))
         latest = chat.history(room)
         older = chat.history(room, before=latest['messages'][0]['seq'])
         self.assertEqual([r['seq'] for r in older['messages'] + latest['messages']], list(range(1, 56)))
@@ -184,6 +189,36 @@ class ChatIntegrationTest(unittest.TestCase):
         frappe.set_user('Guest')
         with self.assertRaises(frappe.AuthenticationError):
             chat.inbox()
+
+
+    def test_group_rename_add_leave_and_owner_only_removal(self):
+        two, three = self.users[1], self.users[2]
+        room = chat.create([two], title='Tổ A', kind='Group')['name']
+        self.assertEqual(chat.rename(room, 'Tổ bao buồng')['title'], 'Tổ bao buồng')
+        self.assertEqual(len(chat.add_members(room, [three])['members']), 3)
+        frappe.set_user(two)
+        with self.assertRaises(frappe.PermissionError):
+            chat.remove_member(room, three)
+        self.assertTrue(chat.remove_member(room, two)['left'])
+        with self.assertRaises(frappe.PermissionError):
+            chat.history(room)
+
+    def test_recall_is_sender_only_and_blocks_the_file(self):
+        room = chat.create([self.users[1]])['name']
+        message = chat.send(room, 'client-recall-1', body='Nhầm phòng')
+        frappe.set_user(self.users[1])
+        with self.assertRaises(frappe.PermissionError):
+            chat.recall(message['name'])
+        frappe.set_user(self.users[0])
+        self.assertTrue(chat.recall(message['name'])['recalled'])
+        self.assertTrue(chat.history(room)['messages'][-1]['recalled'])
+
+    def test_send_is_rate_limited(self):
+        room = chat.create([self.users[1]])['name']
+        for index in range(chat.RATE_LIMIT):
+            chat.send(room, f'client-rate-{index:04d}', body=str(index))
+        with self.assertRaises(frappe.ValidationError):
+            chat.send(room, 'client-rate-over', body='quá nhanh')
 
 
 if __name__ == '__main__':
