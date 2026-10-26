@@ -46,6 +46,8 @@ const columns=[
  {field:'harvest_window_end',headerName:'Thu đến',minWidth:135,valueFormatter:p=>dateFmt(p.value)},
  {field:'bunches_harvest',headerName:'Buồng thu',minWidth:115,valueFormatter:p=>fmt(p.value)},
  {field:'kg_pack',headerName:'Thành phẩm kg',minWidth:125,valueFormatter:p=>fmt(p.value)},
+ {field:'carton_equivalent',headerName:'Thùng tương đương',minWidth:135,valueFormatter:p=>fmt(p.value,2)},
+ {field:'container_equivalent',headerName:'Cont 40ft tương đương',minWidth:150,valueFormatter:p=>fmt(p.value,3)},
  {field:'source',headerName:'Nguồn',minWidth:205},
 ]
 const monthColumns=[
@@ -96,6 +98,8 @@ const careColumns=[
  {field:'planned_qty',headerName:'Khối lượng',valueFormatter:p=>fmt(p.value)},
  {field:'uom',headerName:'ĐVT'},
  {field:'required_workdays',headerName:'Số công',valueFormatter:p=>fmt(p.value,2)},
+ {field:'staffed_workdays',headerName:'Công định biên có dự phòng',valueFormatter:p=>fmt(p.value,2)},
+ {field:'daywork_cost_estimate',headerName:'Công nhật tham chiếu',valueFormatter:p=>fmt(p.value)},
  {field:'blocking_issue',headerName:'Chưa đủ điều kiện',minWidth:280},
 ]
 const materialColumns=[
@@ -208,6 +212,7 @@ onMounted(load)
    <p v-if="careError" class="land-bad" role="alert">{{careError}}</p>
    <template v-if="careData">
     <p class="land-note">{{careData.total_count}} dòng lịch, {{careData.ready_count}} dòng đủ điều kiện lập nháp. Chưa giao việc hoặc xuất kho.</p>
+    <p class="land-note">Tổng {{fmt(careData.estimated_workdays,2)}} công dự tính; dự phòng vắng {{fmt((careData.absence_reserve_reference||0)*100)}}% → {{fmt(careData.staffed_workdays_reference,2)}} công định biên. Giá công nhật Book2 {{fmt(careData.daywork_rate_reference)}} đ/công; chi phí tham chiếu {{fmt(careData.daywork_cost_reference)}} đ. Đây KHÔNG phải lương đã duyệt hoặc chi phí kế toán.</p>
     <div v-if="careBlock&&data?.can_create&&careDays.length" class="land-actions">
      <UiSelect v-model="careDate" aria-label="Ngày lập kế hoạch nháp" :disabled="careBusy">
       <option v-for="d in careDays" :key="d" :value="d">{{dateFmt(d)}}</option>
