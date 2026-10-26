@@ -6,8 +6,6 @@ generate Daily Work Plans, Purchase Orders or payroll entries.
 """
 from __future__ import annotations
 
-from lotus_farm import forecast_book2_reference as book2
-
 SOURCE = "Lotus_Lich_Tro_2_Vu_Don_Gia_Nhan_Cong_2026_2028.xlsx"
 SHEET = "DM_CONG_VIEC"
 # Each line: work code | group | description | reported unit | Book2 timing
