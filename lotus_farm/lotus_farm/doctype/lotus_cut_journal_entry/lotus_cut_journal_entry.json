@@ -4,7 +4,7 @@
   "module": "Lotus Farm",
   "autoname": "hash",
   "track_changes": 1,
-  "description": "Một dòng nhật ký chặt cây mẹ lần 2 (khu, ngày, số cây). Chỉ ghi qua lotus_farm.cut_forecast (nhập Excel).",
+  "description": "Lưu trữ lịch sử ngưng sử dụng, không còn thuộc nguồn dự thu hoặc kế hoạch Lotus mới. Chỉ đọc để truy vết; không nhập mới.",
   "sort_field": "cut_date",
   "sort_order": "DESC",
   "fields": [
@@ -74,18 +74,19 @@
       "role": "System Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Farm Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Auditor",
       "read": 1,
       "report": 1
     }
-  ]
+  ],
+  "hide_in_desk": 1
 }
