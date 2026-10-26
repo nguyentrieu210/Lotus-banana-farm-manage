@@ -178,6 +178,8 @@ def _preview(farm,from_date,to_date,block=None):
         fields=["name","work_type","valid_from","valid_to","approval_state","version"],
         filters={"farm":farm,"approval_state":"Approved"},limit_page_length=1000) if frappe.has_permission("Material Norm Profile","read") else []
     materials=defaultdict(float)
+    wage=book2.compare()["daywork_rate"]
+    reserve=book2.compare()["absence_reserve"]
     for e in events:
         matches=workmap.get(e["work_code"],[])
         w=matches[0] if len(matches)==1 else None
@@ -212,11 +214,14 @@ def _preview(farm,from_date,to_date,block=None):
                         for line in p.lines:
                             amount=e["planned_qty"]*float(line.norm_qty)*float(line.frequency)*float(line.conversion_factor)/float(line.basis_qty)
                             materials[(e["date"],e["farm_block"],line.item,line.uom)]+=amount
+        labor=(e["planned_qty"]/float(w.productivity_per_workday)
+               if w and float(w.productivity_per_workday or 0)>0 else None)
         e.update(work_type=w.name if w else None,work_name=w.work_name if w else None,
             norm_profile=norm.name if norm else None,
             norm_version=norm.version if norm else None,blocking_issue=issue,
-            required_workdays=(round(e["planned_qty"]/float(w.productivity_per_workday),3)
-                               if w and not issue else None))
+            required_workdays=round(labor,3) if labor is not None else None,
+            daywork_cost_estimate=round(labor*wage,0) if labor is not None else None,
+            staffed_workdays=round(labor/(1-reserve),3) if labor is not None else None)
     snapshot=dict(farm=farm,from_date=str(first),to_date=str(last),block=block,
         sources=[(c.get("name"),str(c.get("modified")),c.get("planned_qty"),c.get("anchor_date"))
                  for c in cohorts],
@@ -229,6 +234,10 @@ def _preview(farm,from_date,to_date,block=None):
         warnings=projected["warnings"],fingerprint=fingerprint,
         ready_count=sum(not e["blocking_issue"] for e in events),
         total_count=len(events),source_count=projected["source_count"],
+        estimated_workdays=round(sum(e["required_workdays"] or 0 for e in events),2),
+        daywork_cost_reference=round(sum(e["daywork_cost_estimate"] or 0 for e in events),0),
+        staffed_workdays_reference=round(sum(e["staffed_workdays"] or 0 for e in events),2),
+        daywork_rate_reference=wage,absence_reserve_reference=reserve,
         from_date=str(first),to_date=str(last),block=block)
 
 @frappe.whitelist()
