@@ -4,7 +4,7 @@
   "module": "Lotus Farm",
   "autoname": "hash",
   "track_changes": 1,
-  "description": "Bộ thông số dự thu theo nhật ký chặt mẹ lần 2 của một vườn. Bản đã duyệt không sửa; đổi thông số là tạo phiên bản mới.",
+  "description": "Lưu trữ lịch sử ngưng sử dụng, không còn thuộc nguồn dự thu hoặc kế hoạch Lotus mới. Chỉ đọc để truy vết; không nhập mới.",
   "sort_field": "version",
   "sort_order": "DESC",
   "fields": [
@@ -234,18 +234,19 @@
       "role": "System Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Farm Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Auditor",
       "read": 1,
       "report": 1
     }
-  ]
+  ],
+  "hide_in_desk": 1
 }
