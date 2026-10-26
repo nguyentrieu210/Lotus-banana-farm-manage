@@ -96,11 +96,16 @@ def source_rows(blocks,cohorts):
             if not when or quantity<=0 or float(raw)!=quantity:
                 warnings.append(f"{block}: Thiếu số cây lô và mốc trổ; không suy từ diện tích.")
                 continue
+            # The previously supplied per-lot tree count is the OFFICIAL
+            # OPERATING BASELINE for forecast/planning, even on legacy records
+            # with Unverified/Source File/Estimated status. This is a management
+            # acceptance of the numbers, NOT proof of a physical field census.
+            physical_count=b.get("forecast_count_source")=="Census Confirmed"
             sources.append(dict(farm_block=block,zone=b.get("farm_zone") or "",
                 crop_cycle=None,cohort=None,basis="Trees",quantity=quantity,
                 anchor="Shooting",anchor_date=date(when),distribution="Four Waves",
-                cycle_no=1,count_status=b.get("forecast_count_source") or "Unverified",
-                origin="Farm Block (số cây nguồn chưa phải kiểm kê)",
+                cycle_no=1,count_status="Census Confirmed" if physical_count else "Planning Baseline",
+                origin="Số cây gốc đợt trước đã chốt" if not physical_count else "Số cây ghi nhận ngoài vườn",
                 source_version=None,source_modified=str(b.get("modified") or "")))
     return sources,warnings
 
