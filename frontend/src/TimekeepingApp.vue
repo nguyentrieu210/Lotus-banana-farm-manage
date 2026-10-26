@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import {hrCatalogLabel} from "./hr-catalog-labels"
 const props=defineProps({embedded:Boolean,navigationKey:String})
 import {computed,nextTick,onMounted,reactive,ref} from 'vue'
@@ -188,15 +189,16 @@ useNoticeToast(notice)
 <template><div class="stock-shell attendance-shell tk-shell lotus-ui" :class="{'embedded-workspace':embedded,'sidebar-collapsed':sidebarCollapsed}">
  <component :is="embedded?'section':'main'" class="stock-main"><WorkspaceTabs v-if="embedded" :items="tabs" :model-value="tab" label="Chấm công" @update:model-value="chooseTab($event)"/>
   <p v-if="error" class="stock-error" role="alert">{{error}}</p>
-  <div v-if="tab!=='setup'||(session?.companies?.length||0)>1" class="stock-scope tk-filters">
-   <LotusField v-if="(session?.companies?.length||0)>1" v-model="company" label="Công ty" :options="(session?.companies||[]).map(c=>c.name)" :searchable="false" :empty-option="null" :disabled="busy||saving||dirty" @update:model-value="changeCompany"/>
-   <LotusField v-if="['staff','crew'].includes(tab)" v-model="date" label="Ngày công" type="date" :max="session?.today" :clearable="false" :disabled="busy||saving||dirty" @update:model-value="load"/>
-   <LotusField v-else-if="tab==='month'" v-model="month" label="Tháng" type="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @update:model-value="load"/>
-   <LotusField v-if="tab==='staff'" v-model="shift" label="Ca làm việc" :options="catalog.shifts.map(s=>s.name)" :searchable="false" empty-option="Theo lịch ca" :disabled="busy||saving||dirty" @update:model-value="load"/>
-   <LotusField v-if="['crew','month'].includes(tab)" v-model="farm" label="Vườn" :options="catalog.farms.map(f=>({value:f.name,label:f.farm_name}))" :searchable="false" empty-option="Tất cả được phân quyền" :disabled="busy||saving" @update:model-value="load"/>
-   <LotusField v-if="tab==='staff'" v-model="search" label="Tìm nhân viên" class="stock-search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/>
-   <UiButton v-if="tab!=='setup'" variant="outline" :disabled="busy||saving||dirty" aria-label="Làm mới" @click="load"><LotusIcon name="refresh"/>{{busy?'Đang tải…':'Làm mới'}}</UiButton>
-  </div>
+  <WorkspaceListToolbar v-if="tab!=='setup'||(session?.companies?.length||0)>1" :searchable="false" :refreshable="tab!=='setup'" :busy="busy" :refresh-disabled="saving||dirty" @refresh="load">
+   <template #filters>
+   <LotusField v-if="(session?.companies?.length||0)>1" v-model="company" aria-label="Công ty" :options="(session?.companies||[]).map(c=>c.name)" :searchable="false" :empty-option="null" :disabled="busy||saving||dirty" @update:model-value="changeCompany"/>
+   <LotusField v-if="['staff','crew'].includes(tab)" v-model="date" aria-label="Ngày công" type="date" :max="session?.today" :clearable="false" :disabled="busy||saving||dirty" @update:model-value="load"/>
+   <LotusField v-else-if="tab==='month'" v-model="month" aria-label="Tháng" type="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @update:model-value="load"/>
+   <LotusField v-if="tab==='staff'" v-model="shift" aria-label="Ca làm việc" :options="catalog.shifts.map(s=>s.name)" :searchable="false" empty-option="Theo lịch ca" :disabled="busy||saving||dirty" @update:model-value="load"/>
+   <LotusField v-if="['crew','month'].includes(tab)" v-model="farm" aria-label="Vườn" :options="catalog.farms.map(f=>({value:f.name,label:f.farm_name}))" :searchable="false" empty-option="Tất cả được phân quyền" :disabled="busy||saving" @update:model-value="load"/>
+   <LotusField v-if="tab==='staff'" v-model="search" aria-label="Tìm nhân viên" class="stock-search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/>
+   </template>
+  </WorkspaceListToolbar>
 
   <template v-if="tab==='staff'">
    <p v-if="locked" class="tk-banner is-lock" role="status"><LotusIcon name="lock"/>Tháng {{date.slice(0,7)}} đã khóa công. Chỉ xem; HR Manager mở lại kỳ ở Hồ sơ nhân sự › Kỳ công & bảng lương.</p>
@@ -222,7 +224,7 @@ useNoticeToast(notice)
    </div>
    <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
     <LotusField :model-value="allChecked" type="checkbox" label="Chọn tất cả nhân viên đang hiện" @update:model-value="toggleAll"/>
-     <DataTable :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass" />
+     <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
      <template v-else>Chưa có nhân viên đang làm trong công ty này.<UiButton v-if="cap.Employee?.create" variant="link" @click="openMaster('employee')">Thêm nhân sự</UiButton></template>
