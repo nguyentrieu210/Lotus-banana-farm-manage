@@ -32,7 +32,7 @@ const form=ref({}),formNote=ref(''),journalWave=ref(''),journalLimit=ref(200)
 const scopeOpen=ref(false),scopeEntry=ref(null),scopeForm=ref({farm_block:'',crop_cycle:'',plan_cohort:''})
 const careBlock=ref(''),careFrom=ref(new Date().toISOString().slice(0,10))
 const careTo=ref(new Date().toISOString().slice(0,10))
-const careData=ref(null),careBusy=ref(false),careError=ref('')
+const careData=ref(null),careBusy=ref(false),careError=ref(''),careDraftDate=ref('')
 const blockOptions=computed(()=>(data.value?.blocks||[]).filter(x=>!zone.value||x.farm_zone===zone.value))
 const cropOptions=computed(()=>(data.value?.cycles||[]).filter(x=>x.farm_block===scopeForm.value.farm_block))
 const cohortOptions=computed(()=>(data.value?.cohorts||[]).filter(x=>x.farm_block===scopeForm.value.farm_block&&(!scopeForm.value.crop_cycle||!x.crop_cycle||x.crop_cycle===scopeForm.value.crop_cycle)))
@@ -81,7 +81,8 @@ async function loadCarePreview(){
  if(!farm.value)return
  careBusy.value=true;careError.value='';careData.value=null
  try{careData.value=await call('lotus_farm.cut_forecast.preview_care_plan',{
-  farm:farm.value,from_date:careFrom.value,to_date:careTo.value,farm_block:careBlock.value||null})}
+  farm:farm.value,from_date:careFrom.value,to_date:careTo.value,farm_block:careBlock.value||null})
+  careDraftDate.value=careDates.value.includes(careDraftDate.value)?careDraftDate.value:(careDates.value[0]||'')}
  catch(e){careError.value=e.message}finally{careBusy.value=false}
 }
 async function createCareDraft(date){
@@ -238,7 +239,10 @@ useNoticeToast(notice)
    <p class="land-note">{{num(careData.total_count)}} dòng việc · {{num(careData.ready_count)}} dòng đủ điều kiện tạo nháp · {{num(careData.unmapped_count)}} dòng nguồn chưa gắn lô · Bộ hệ số #{{careData.profile_version}}</p>
    <p v-for="w in careData.warnings||[]" :key="w" class="land-note">{{w}}</p>
    <div v-if="careBlock&&data?.can_edit&&careDates.length" class="land-actions">
-    <UiButton v-for="d in careDates" :key="d" variant="outline" :disabled="careBusy" @click="createCareDraft(d)">Tạo nháp {{vnDate(d)}}</UiButton>
+    <UiSelect v-model="careDraftDate" aria-label="Ngày tạo kế hoạch nháp" :disabled="careBusy">
+     <option v-for="d in careDates" :key="d" :value="d">{{vnDate(d)}}</option>
+    </UiSelect>
+    <UiButton variant="outline" :disabled="careBusy||!careDraftDate" @click="createCareDraft(careDraftDate)">Tạo kế hoạch NHÁP cho ngày đã chọn</UiButton>
    </div>
    <div class="land-table cutfc-table"><DataTable :rows="careData.rows||[]" :columns="careColumns" row-key="schedule_key" storage-key="care-plan-book2" empty="Không có lịch trong khoảng đã chọn."/></div>
    <details v-if="careData.materials?.length" class="land-card"><summary>Vật tư dự kiến từ định mức đã duyệt ({{num(careData.materials.length)}} dòng)</summary>
