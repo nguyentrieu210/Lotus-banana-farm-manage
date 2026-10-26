@@ -147,7 +147,7 @@ onMounted(load)
    <div class="land-actions">
     <UiButton variant="outline" @click="router.push({path:'/plan-norm',query:{farm}})">Quản lý đợt cây & định mức</UiButton>
     <a href="/app/lotus-block-forecast-profile" class="btn">Bộ thông số đã duyệt</a>
-    <UiButton variant="outline" @click="router.push({path:'/forecast-onedrive',query:{farm}})">Phiếu dự thu đã phát hành</UiButton>
+    <a href="/app/harvest-forecast" class="btn">Phiếu dự thu (ERPNext)</a>
    </div>
   </header>
   <p v-if="error" role="alert" class="land-bad">{{error}}</p>
