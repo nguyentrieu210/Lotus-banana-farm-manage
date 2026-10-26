@@ -31,7 +31,7 @@ class BlockForecastIntegrationTests(unittest.TestCase):
             data=json.loads((ROOT/f"lotus_farm/lotus_farm/doctype/{name}/{name}.json").read_text(encoding="utf-8"))
             return {x["fieldname"]:x for x in data["fields"]}
         block=fields("farm_block")
-        self.assertEqual(block["forecast_count_source"]["default"],"Unverified")
+        self.assertEqual(block["forecast_count_source"]["default"],"Planning Baseline")
         cohort=fields("plan_cohort")
         self.assertIn("Single Wave",cohort["forecast_distribution_mode"]["options"])
 
