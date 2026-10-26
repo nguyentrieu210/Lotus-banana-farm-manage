@@ -247,10 +247,11 @@ def create_care_plan_draft(farm,block,posting_date,fingerprint):
     if fingerprint!=plan["fingerprint"]:
         frappe.throw("Dữ liệu lô/vụ/đợt vừa thay đổi. Tải lại lịch.")
     if not plan["rows"]:frappe.throw("Không có lịch chăm sóc cho ngày này.")
-    blockers=[r["work_code"] for r in plan["rows"] if r["blocking_issue"]]
-    if blockers:
-        frappe.throw("Chưa đủ điều kiện giao việc: "+", ".join(sorted(set(blockers))))
-    if len(plan["rows"])>100:frappe.throw("Quá nhiều việc trong ngày.")
+    blockers=sorted(set(r["work_code"] for r in plan["rows"] if r["blocking_issue"]))
+    eligible=[r for r in plan["rows"] if not r["blocking_issue"]]
+    if not eligible:
+        frappe.throw("Ngày này chưa có công việc nào đủ điều kiện tạo nháp; xem cảnh báo.")
+    if len(eligible)>100:frappe.throw("Quá nhiều việc trong ngày.")
     plans=frappe.get_list("Daily Work Plan",
         filters={"farm":farm,"posting_date":day,"docstatus":["<",2]},
         fields=["name"],limit_page_length=0)
@@ -261,20 +262,24 @@ def create_care_plan_draft(farm,block,posting_date,fingerprint):
         occupied.update((line.farm_block,line.work_type) for line in doc.lines)
     company=frappe.db.get_value("Farm",farm,"company")
     lines=[]
-    for row in plan["rows"]:
+    for row in eligible:
         if (block,row["work_type"]) in occupied:
             frappe.throw("Đã có kế hoạch ngày/lô/công việc: "+row["work_code"])
+        # Current WorkPlan validates all new jobs at large-block scope only.
+        # Do not populate crop_cycle without a Farm Plot. Keep crop-cycle
+        # evidence in lotus_forecast_sources for later audit.
         lines.append(dict(company=company,farm=farm,farm_block=block,
-            crop_cycle=row.get("crop_cycle"),
             work_type=row["work_type"],uom=row["uom"],
             planned_qty=row["planned_qty"],payment_mode="Daywork",
             norm_profile=row["norm_profile"],norm_version=row["norm_version"],
             schedule_key=row["schedule_key"],
             lotus_forecast_sources=json.dumps(
                 dict(source="Farm Block / Plan Cohort",waves=row["sources"],
-                     crop_cycle=row["crop_cycle"],cohort=row["cohort"]),
+                     crop_cycle=row["crop_cycle"],cohort=row["cohort"],
+                     profile=row.get("profile")),
                 ensure_ascii=False),execution_state="Planned"))
     doc=frappe.get_doc(dict(doctype="Daily Work Plan",farm=farm,company=company,
         posting_date=day,lines=lines))
     doc.insert() # docstatus=0 only; never submit or issue material.
-    return dict(plan=doc.name,docstatus=doc.docstatus,lines=len(lines))
+    return dict(plan=doc.name,docstatus=doc.docstatus,lines=len(lines),
+                skipped_codes=blockers)
