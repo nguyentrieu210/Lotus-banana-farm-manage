@@ -53,3 +53,25 @@
 - Các bài test mới: `tests/test_plan_book2_reference.py` và `frontend/tests/plan-book2-simulation.test.js`.
 
 Bước tiếp theo phải là bài kiểm tra đầu-cuối cho một lô cụ thể: cây hiện hữu → 4 đợt trổ → công chăm sóc → công nhật/vật tư → dự thu đã duyệt → đối chiếu thu thật.
+
+## Mở rộng P0 đã thêm theo phê duyệt 26/10
+
+**Gắn dự thu với lô/vụ/đợt**
+- `Lotus Cut Journal Entry` bổ sung liên kết **tùy chọn** `farm_block`, `crop_cycle`, `plan_cohort`. Dòng nhật ký Excel cũ không có lô vẫn tồn tại, không phân bổ ngày/cây theo diện tích một cách suy đoán.
+- Dòng được gắn bằng thao tác chọn trực tiếp trên tab **Nhật ký & lịch từng đợt**. `assign_entry_scope` bắt buộc phiên bản `modified` và đối chiếu farm/khu/vụ/đợt. Không thay đổi `entry_key` gốc, tổng cây hay lịch sử nhập.
+- Tab **Lịch chăm sóc theo lô** sử dụng duy nhất bộ thông số dự thu 4 đợt đã duyệt. Tạm dừng sinh lịch nếu chích → cắt bắp chưa +16 ngày Book2; những giả định trổ/chích vẫn phải xác nhận bằng quan sát thực địa.
+
+**Tính lịch từ bốn đợt đã gắn lô**
+- `cut_work_schedule.work_calendar` (thuần dữ liệu, không DB) sinh chích bắp, chống đổ, vén/tỉa, lặt hoa 3 lần, phun buồng 4 lần, cắt bắp, buộc dây, lót, bao buồng, đo trái từ thu-10 đến thu-7, cắt/vác và vận chuyển buồng.
+- Mỗi `(ngày, lô, mã công việc)` được **gộp thành một dòng**, kèm danh sách nhật ký/đợt trổ nguồn để tránh tạo trùng khối lượng hoặc trùng dòng trong một kế hoạch.
+- Kế hoạch chưa gắn lô không sinh; việc chưa khớp `Work Type.work_code`, `uom`, `allow_daywork` hoặc năng suất chỉ hiển thị **cảnh báo**, không tạo phiếu.
+- `preview_care_plan` là API GET read-only trong cửa sổ tối đa 46 ngày. `create_care_plan_draft` là POST quản lý vườn chủ động xác nhận, chỉ tạo một `Daily Work Plan` **docstatus=0** tại một lô và một ngày.
+- POST yêu cầu fingerprint lập lại từ dữ liệu nguồn + profile hiện tại; chặn thay đổi giữa hai lần xem, thiếu danh mục, ngày đã có việc cùng lô và mã, tạo kế hoạch trên ngày đã chốt, thiếu quyền. Không submit, cấp phát vật tư, ghi lương hoặc duyệt chi.
+- Bổ sung `Daily Work Plan Line.lotus_forecast_sources` để lưu căn cứ nguồn và phiên bản hệ số trên **dòng nháp**.
+
+**Giới hạn chưa vượt qua**
+- 64 lô chỉ có thể lập kế hoạch sau khi nhật ký đã được đối chiếu rõ mã lô; dữ liệu Book2 `NHAT_KY_CHAT_ME` hiện là biểu mẫu nguồn, không có thông tin lô đầy đủ để tự nhập lại an toàn.
+- Một số công việc định kỳ của Book2 chưa có ngày khởi động và cần điều kiện kỹ thuật; API mới chỉ sinh việc theo mốc chích/thu, không tự nhân lịch hóa chất/định mức vật tư.
+- Giao việc và ghi kết quả phải qua bước phê duyệt kế hoạch chính thức như hiện tại.
+- Thay đổi schema yêu cầu `bench migrate` trên môi trường nghiệm thu **sau khi kiểm thử thành công**, không chạy lên live tự động.
+- Kiểm thử mới: `tests/test_cut_work_schedule.py`. Chưa xác nhận kết quả build/bench site UAT khi GitHub Actions chưa chạy xong.
