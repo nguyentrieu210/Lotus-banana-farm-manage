@@ -13,6 +13,12 @@ ROOM = 'Lotus Chat Room'
 MEMBER = 'Lotus Chat Member'
 MESSAGE = 'Lotus Chat Message'
 MAX_BYTES = 20 * 1024 * 1024
+RATE_LIMIT, RATE_WINDOW = 20, 10          # messages per user per seconds
+RECALL_HOURS = 24
+# A recalled message keeps its row (sequence, sender, time) but loses its content. The DocType has no flag column and
+# this release adds no schema, so the marker lives in file_type, which is never a real MIME type with this prefix.
+RECALLED = 'lotus/recalled'
+PUSH_COOLDOWN = 30                        # seconds between pushes for one room to one person
 EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.pdf', '.doc', '.docx', '.xls', '.xlsx',
               '.csv', '.tsv', '.ppt', '.pptx', '.txt', '.zip', '.rar', '.7z', '.mp4', '.mov', '.mp3', '.wav', '.m4a'}
 
@@ -86,17 +92,22 @@ def _room_dict(room):
     user = frappe.session.user
     others = [m.user for m in room.members if m.user != user]
     me = next(m for m in room.members if m.user == user)
+    owner = room.owner if getattr(room, 'owner', None) else ''
     return {'name': room.name, 'kind': room.kind,
             'title': _label(others[0]) if room.kind == 'Direct' and others else room.title,
             'members': [{'user': m.user, 'label': _label(m.user), 'online': _online(m.user),
                          'last_read_seq': m.last_read_seq or 0} for m in room.members],
             'last_seq': room.last_seq or 0, 'unread': max(0, (room.last_seq or 0) - (me.last_read_seq or 0)),
-            'preview': room.last_preview or '', 'last_activity': room.last_activity or room.creation}
+            'preview': room.last_preview or '', 'last_activity': room.last_activity or room.creation,
+            'owner': owner, 'is_owner': owner == user}
 
 
 def _message_dict(row):
     result = {key: row.get(key) for key in ('name', 'room', 'seq', 'sender', 'body', 'creation')}
     result['sender_name'] = _label(row.sender)
+    if row.get('file_type') == RECALLED:
+        result.update(body='', recalled=True)
+        return result
     if row.file_url:
         url = '/api/method/lotus_farm.chat.download?message=' + quote(row.name, safe='')
         result['file'] = {'name': row.file_name, 'size': row.file_size, 'url': url,
@@ -110,7 +121,18 @@ def inbox():
     user = _user()
     frappe.cache().set_value('lotus-chat-online:' + user, 1, expires_in_sec=70)
     names = frappe.get_all(MEMBER, filters={'user': user, 'parenttype': ROOM}, pluck='parent')
-    rooms = [_room_dict(frappe.get_doc(ROOM, name)) for name in names]
+    rows = {r.name: r for r in frappe.get_all(ROOM, filters={'name': ['in', names or ['']]}, limit_page_length=0,
+                                              fields=['name', 'kind', 'title', 'last_seq', 'last_preview', 'last_activity', 'creation', 'owner'])}
+    members = {}
+    for m in frappe.get_all(MEMBER, filters={'parent': ['in', names or ['']], 'parenttype': ROOM}, fields=['parent', 'user', 'last_read_seq'],
+                            order_by='idx asc', limit_page_length=0):
+        members.setdefault(m.parent, []).append(m)
+    rooms = []
+    for name in names:
+        if name in rows:
+            room = rows[name]
+            room.members = members.get(name, [])
+            rooms.append(_room_dict(room))
     rooms.sort(key=lambda r: str(r['last_activity'] or ''), reverse=True)
     return {'rooms': rooms, 'unread': sum(r['unread'] for r in rooms), 'site': frappe.local.site}
 
@@ -210,6 +232,11 @@ def send(room, client_id, body='', file_url='', file_id=''):
     key = 'LCM-' + hashlib.sha256((room + '\0' + user + '\0' + client_id).encode()).hexdigest()[:40]
     if frappe.db.exists(MESSAGE, key):
         return _message_dict(frappe.get_doc(MESSAGE, key))
+    rate_key = 'lotus-chat-rate:' + user
+    sent = int(frappe.cache().get_value(rate_key) or 0)
+    if sent >= RATE_LIMIT:
+        frappe.throw('Bạn gửi quá nhanh. Chờ vài giây rồi gửi tiếp.')
+    frappe.cache().set_value(rate_key, sent + 1, expires_in_sec=RATE_WINDOW)
     body = str(body or '').strip()
     if len(body) > 6000 or (not body and not file_url):
         frappe.throw('Nhập tin nhắn hoặc chọn tệp, tối đa 6.000 ký tự.')
@@ -232,7 +259,119 @@ def send(room, client_id, body='', file_url='', file_id=''):
     me = _member(room)
     frappe.db.set_value(MEMBER, me.name, 'last_read_seq', seq, update_modified=False)
     _notify(doc, 'message', seq=seq)
+    _push(doc, message, body or ('Đã gửi tệp: ' + file.file_name if file else ''))
     return _message_dict(message)
+
+
+def _push(room, message, preview):
+    """Phone notification for members who are not looking at Lotus right now (one per room every 30 s)."""
+    try:
+        from lotus_farm.push_notifications import APPS, DEVICE, _add_alert
+        sender = frappe.session.user
+        title = _label(sender) if room.kind == 'Direct' else (room.title or 'Nhóm chat')
+        body = (preview if room.kind == 'Direct' else _label(sender) + ': ' + preview)[:200]
+        for row in room.members:
+            if row.user == sender or _online(row.user):
+                continue
+            cooldown = f'lotus-chat-push:{row.user}:{room.name}'
+            if frappe.cache().get_value(cooldown):
+                continue
+            apps = set(frappe.get_all(DEVICE, filters={'user': row.user, 'enabled': 1}, pluck='app'))
+            for app in apps & set(APPS):
+                name = _add_alert(row.user, app, title, body, APPS[app], MESSAGE, message.name, key='chat-' + message.name)
+                if name:
+                    frappe.enqueue('lotus_farm.push_notifications._send_alert', queue='short', enqueue_after_commit=True, alert_name=name)
+            frappe.cache().set_value(cooldown, 1, expires_in_sec=PUSH_COOLDOWN)
+    except Exception:
+        # A failed notification never blocks the message itself.
+        frappe.log_error(title='Lotus chat push', message=frappe.get_traceback())
+
+
+def _group(room):
+    doc = _room(room, lock=True)
+    if doc.kind != 'Group':
+        frappe.throw('Chỉ nhóm mới đổi tên hoặc đổi thành viên được.')
+    return doc
+
+
+def _save_room(doc):
+    doc.flags.chat_write = True
+    doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist(methods=['POST'])
+def rename(room, title):
+    doc = _group(room)
+    title = str(title or '').strip()
+    if not 1 <= len(title) <= 80:
+        frappe.throw('Nhập tên nhóm, tối đa 80 ký tự.')
+    doc.title = title
+    _save_room(doc)
+    _notify(doc, 'room')
+    return _room_dict(doc)
+
+
+@frappe.whitelist(methods=['POST'])
+def add_members(room, members):
+    doc = _group(room)
+    if isinstance(members, str):
+        members = frappe.parse_json(members)
+    current = {m.user for m in doc.members}
+    new = [m for m in dict.fromkeys(members or []) if isinstance(m, str) and m not in current]
+    if not new:
+        frappe.throw('Chọn ít nhất một người chưa có trong nhóm.')
+    if len(current) + len(new) > 50:
+        frappe.throw('Nhóm tối đa 50 người.')
+    for member in new:
+        enabled, user_type = frappe.db.get_value('User', member, ['enabled', 'user_type']) or (0, '')
+        if not enabled or user_type != 'System User':
+            frappe.throw('Thành viên phải là tài khoản nhân viên đang hoạt động.')
+        # New members see the history from now on, like joining a group chat.
+        doc.append('members', {'user': member, 'last_read_seq': doc.last_seq or 0})
+    _save_room(doc)
+    _notify(doc, 'room')
+    return _room_dict(doc)
+
+
+@frappe.whitelist(methods=['POST'])
+def remove_member(room, member):
+    doc = _group(room)
+    user = frappe.session.user
+    if member != user and doc.owner != user:
+        frappe.throw('Chỉ người tạo nhóm mới mời người khác ra khỏi nhóm.', frappe.PermissionError)
+    if member == doc.owner and member != user:
+        frappe.throw('Không thể mời người tạo nhóm ra khỏi nhóm.')
+    rows = [m for m in doc.members if m.user == member]
+    if not rows:
+        frappe.throw('Người này không có trong nhóm.')
+    if len(doc.members) <= 1:
+        frappe.throw('Nhóm phải còn ít nhất một người.')
+    everyone = list(doc.members)
+    doc.remove(rows[0])
+    _save_room(doc)
+    # Tell everyone, including the person who left, so their inbox drops the room.
+    for row in everyone:
+        frappe.publish_realtime('lotus_chat', {'room': doc.name, 'kind': 'room'}, user=row.user, after_commit=True)
+    return {'left': member == user, 'room': _room_dict(doc) if member != user else None}
+
+
+@frappe.whitelist(methods=['POST'])
+def recall(message):
+    _user()
+    row = frappe.get_doc(MESSAGE, message)
+    doc = _room(row.room, lock=True)
+    if row.sender != frappe.session.user:
+        frappe.throw('Chỉ thu hồi được tin nhắn của chính bạn.', frappe.PermissionError)
+    if row.file_type == RECALLED:
+        return _message_dict(row)
+    if (now_datetime() - row.creation).total_seconds() > RECALL_HOURS * 3600:
+        frappe.throw(f'Chỉ thu hồi được tin nhắn trong vòng {RECALL_HOURS} giờ.')
+    # Content goes; the private file stays attached to the row (no one can download it any more).
+    frappe.db.set_value(MESSAGE, row.name, {'body': '', 'file_url': '', 'file_type': RECALLED}, update_modified=False)
+    if row.seq == doc.last_seq:
+        frappe.db.set_value(ROOM, doc.name, 'last_preview', 'Tin nhắn đã thu hồi', update_modified=False)
+    _notify(doc, 'message', seq=row.seq)
+    return _message_dict(frappe.get_doc(MESSAGE, row.name))
 
 
 @frappe.whitelist(methods=['POST'])
