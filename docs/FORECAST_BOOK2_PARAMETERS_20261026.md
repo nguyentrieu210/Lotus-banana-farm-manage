@@ -75,3 +75,9 @@ Bước tiếp theo phải là bài kiểm tra đầu-cuối cho một lô cụ 
 - Giao việc và ghi kết quả phải qua bước phê duyệt kế hoạch chính thức như hiện tại.
 - Thay đổi schema yêu cầu `bench migrate` trên môi trường nghiệm thu **sau khi kiểm thử thành công**, không chạy lên live tự động.
 - Kiểm thử mới: `tests/test_cut_work_schedule.py`. Chưa xác nhận kết quả build/bench site UAT khi GitHub Actions chưa chạy xong.
+
+### An toàn vật tư và chống đổ (bổ sung)
+- Với các mã CV021/024/026/028/030/031/032/033 có nhu cầu vật tư, `_care_plan_preview` chỉ cho phép tạo nháp khi có **Material Norm Profile đã duyệt, còn hiệu lực, có dòng và hệ số hợp lệ**. Chọn phiên bản theo hiệu lực ngày; tài liệu Book2 ghi `DINH_MUC_VT_CV` chỉ là **tham chiếu – chờ duyệt**, không tự đưa vào ERP.
+- Lịch xem trước tổng hợp **vật tư theo ngày/lô/mã hàng/đơn vị** theo định mức đã duyệt; không tạo `Material Requirement`, `Purchase Order` hoặc `Stock Entry`.
+- CV021 chống đổ chỉ dùng số lượng dự thu là **trần** cho bảng xem trước; luôn chặn tạo phiếu từ con số đó đến khi xác minh số cây cần chống tại hiện trường.
+- Giao diện tạo phiếu nháp dùng **một ô chọn ngày**, không tạo hàng loạt phiếu bằng click nhiều nút.
