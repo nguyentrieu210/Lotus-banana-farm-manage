@@ -294,6 +294,20 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
         if not key:
             continue
         by_code.setdefault(key, []).append(w)
+    # A four-time bunch spray must never become an actionable job without
+    # approved consumable norms. The same applies to wrapping / packing inputs.
+    material_codes = {"CV024", "CV026", "CV028", "CV031", "CV030", "CV032", "CV033"}
+    norm_rows = frappe.get_list("Material Norm Profile",
+        filters={"farm":farm,"approval_state":"Approved"},
+        fields=["name","work_type","valid_from","valid_to","version"],
+        limit_page_length=0) if frappe.has_permission("Material Norm Profile", "read") else []
+    def selected_norm(work_type, when):
+        valid = [n for n in norm_rows if n.work_type == work_type
+                 and str(n.valid_from or "") <= when
+                 and (not n.valid_to or str(n.valid_to) >= when)]
+        return max(valid, key=lambda n:int(n.version or 0)) if valid else None
+
+    material_summary = {}
     ready_count = 0
     for row in rows:
         matches = by_code.get(row["work_code"], [])
@@ -308,6 +322,29 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
             row["blocking_issue"] = "Đơn vị của công việc chưa khớp Book2; cần đối chiếu quy đổi."
         else:
             row["blocking_issue"] = None
+        norm = selected_norm(work.name, row["date"]) if work else None
+        row["norm_profile"] = norm.name if norm else None
+        if not row["blocking_issue"] and row["work_code"] in material_codes:
+            if not norm:
+                row["blocking_issue"] = "Chưa có bộ định mức vật tư đã duyệt cho ngày công việc."
+            else:
+                doc = frappe.get_doc("Material Norm Profile", norm.name)
+                doc.check_permission("read")
+                if not doc.lines:
+                    row["blocking_issue"] = "Bộ định mức vật tư không có dòng nào."
+                else:
+                    for item in doc.lines:
+                        basis = float(item.basis_qty or 0)
+                        multiplier = float(item.norm_qty or 0) * float(item.frequency or 0) * float(item.conversion_factor or 0)
+                        if basis <= 0 or multiplier <= 0:
+                            row["blocking_issue"] = "Định mức vật tư thiếu cơ sở, tần suất hoặc hệ số quy đổi."
+                            break
+                    if not row["blocking_issue"]:
+                        for item in doc.lines:
+                            qty = row["planned_qty"] * float(item.norm_qty) * float(item.frequency) * float(item.conversion_factor) / float(item.basis_qty)
+                            key = (row["date"], row["farm_block"], item.item, item.uom)
+                            material_summary[key] = material_summary.get(key, 0) + qty
+        if not row["blocking_issue"]:
             ready_count += 1
         row["work_type"] = work.name if work else None
         row["work_name"] = work.work_name if work else None
@@ -315,7 +352,7 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
     signatures = sorted([{
         "block": r["farm_block"], "day": r["date"], "code": r["work_code"],
         "qty": r["planned_qty"], "key": r["schedule_key"],
-        "work_type": r["work_type"], "issue": r["blocking_issue"],
+        "work_type": r["work_type"], "norm":r["norm_profile"], "issue": r["blocking_issue"],
     } for r in rows], key=lambda x:(x["day"],x["block"],x["code"]))
     fingerprint = hashlib.sha256(json.dumps({
         "farm":farm, "from":str(start), "to":str(end),
@@ -326,7 +363,10 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
     return dict(farm=farm, from_date=str(start), to_date=str(end),
                 farm_block=farm_block, profile=active.name, profile_version=active.version,
                 unmapped_count=unmapped, ready_count=ready_count,
-                total_count=len(rows), warnings=issues, rows=rows, fingerprint=fingerprint)
+                total_count=len(rows), warnings=issues, rows=rows,
+                materials=[dict(date=k[0], farm_block=k[1], item=k[2], uom=k[3],
+                                quantity=round(v, 5)) for k,v in sorted(material_summary.items())],
+                fingerprint=fingerprint)
 
 
 @frappe.whitelist()
@@ -375,6 +415,7 @@ def create_care_plan_draft(farm, farm_block, posting_date, fingerprint):
             frappe.throw("Đã có kế hoạch cùng lô và công việc trong ngày. Không tạo trùng: " + row["work_code"])
         lines.append(dict(farm_block=row["farm_block"], work_type=row["work_type"],
                           planned_qty=row["planned_qty"], payment_mode="Daywork",
+                          norm_profile=row["norm_profile"],
                           schedule_key=row["schedule_key"],
                           lotus_forecast_sources=json.dumps({
                               "profile":proposal["profile"], "farm_block":row["farm_block"],
