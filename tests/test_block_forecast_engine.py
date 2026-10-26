@@ -63,7 +63,8 @@ class BlockForecastTests(unittest.TestCase):
         self.assertEqual(str(months_after("2026-11-01",6)),"2027-05-01")
         out=forecast([block()], [cohort()])
         self.assertEqual(out["rows"][0]["flower_window_start"],"2027-05-01")
-        self.assertTrue(out["rows"][0]["harvest_date"].startswith("2027-"))
+        self.assertEqual(out["rows"][0]["harvest_date"],"2027-07-26")
+        self.assertEqual(out["rows"][0]["flower_date"],"2027-05-01")
 
     def test_rounding_and_invalid_shares(self):
         self.assertEqual(portions(73),[12,29,18,14])
