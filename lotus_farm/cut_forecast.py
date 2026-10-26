@@ -375,7 +375,12 @@ def create_care_plan_draft(farm, farm_block, posting_date, fingerprint):
             frappe.throw("Đã có kế hoạch cùng lô và công việc trong ngày. Không tạo trùng: " + row["work_code"])
         lines.append(dict(farm_block=row["farm_block"], work_type=row["work_type"],
                           planned_qty=row["planned_qty"], payment_mode="Daywork",
-                          schedule_key=row["schedule_key"], execution_state="Planned"))
+                          schedule_key=row["schedule_key"],
+                          lotus_forecast_sources=json.dumps({
+                              "profile":proposal["profile"], "farm_block":row["farm_block"],
+                              "crop_cycle":row["crop_cycle"], "plan_cohort":row["plan_cohort"],
+                              "cut_entries":row["sources"]}, ensure_ascii=False),
+                          execution_state="Planned"))
     company = frappe.db.get_value("Farm", farm, "company")
     doc = frappe.get_doc(dict(doctype="Daily Work Plan",
                               company=company, farm=farm, posting_date=date,
