@@ -46,9 +46,22 @@ export function stages(cohort,profile) {
   return {dates:result,harvest,warning:''};
 }
 export function allocate(amount,percentages) {
-  if(!Number.isSafeInteger(amount)||amount<0||percentages.length!==3||percentages.some(v=>v<0||!Number.isFinite(v))||Math.abs(percentages.reduce((a,b)=>a+b,0)-100)>0.0001)throw Error('Tỷ lệ trổ phải đủ 100%, số buồng là số nguyên');
-  const a=Math.floor(amount*percentages[0]/100),b=Math.floor(amount*percentages[1]/100);
-  return [a,b,amount-a-b];
+  if(!Number.isSafeInteger(amount)||amount<0||![3,4].includes(percentages.length)
+    ||percentages.some(v=>v<0||!Number.isFinite(v))
+    ||Math.abs(percentages.reduce((a,b)=>a+b,0)-100)>0.0001)
+    throw Error('Tỷ lệ trổ phải đủ 100%, số buồng là số nguyên; chỉ hỗ trợ 3 hoặc 4 đợt');
+  // Keep the old three-wave simulation backwards-compatible.
+  if(percentages.length===3){
+    const a=Math.floor(amount*percentages[0]/100),b=Math.floor(amount*percentages[1]/100);
+    return [a,b,amount-a-b];
+  }
+  // Four waves use Excel ROUND, with the last wave receiving the remaining bunches.
+  let remaining=amount;
+  return percentages.map((share,i)=>{
+    const qty=i===percentages.length-1?remaining:Math.min(remaining,Math.floor(amount*share/100+0.5));
+    remaining-=qty;
+    return qty;
+  });
 }
 function floweringWaves(cohort,phase,profile,shares) {
   const shoot=phase.dates.Shooting;
@@ -57,10 +70,10 @@ function floweringWaves(cohort,phase,profile,shares) {
   if(!shoot||!interval||!Number.isSafeInteger(number(cohort.planned_qty))||cohort.quantity_basis!=='Bunches'
     ||!['Planting','Selection'].includes(cohort.anchor))return [];
   return allocate(Number(cohort.planned_qty),shares).map((count,index)=>{
-    const flowering=month(shoot,index);
+    const flowering=shares.length===4?day(shoot,index*30):month(shoot,index);
     const harvest=day(flowering,interval);
     const cut=cutDays>0?day(harvest,-cutDays):'';
-    return {ordinal:index+1,quantity:count,dates:{...phase.dates,Shooting:flowering,'Cut Bud':cut},harvest,source:'Mô phỏng 3 đợt'};
+    return {ordinal:index+1,quantity:count,dates:{...phase.dates,Shooting:flowering,'Cut Bud':cut},harvest,source:'Mô phỏng '+shares.length+' đợt'};
   }).filter(w=>w.quantity>0);
 }
 function latestCohorts(rows,includeDraft) {
@@ -74,13 +87,16 @@ function latestCohorts(rows,includeDraft) {
   }
   return [...versions.values()];
 }
-export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false,flowerShares=[20,60,20],repeatRatoons=true}={}) {
+export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false,flowerShares=[20,60,20],repeatRatoons=true,dayworkRate=null,absenceReserve=0}={}) {
   const start=month(from,0),end=day(month(start,months),-1);
   const blocks=new Map((payload?.blocks||[]).map(b=>[b.name,b]));
   const works=new Map((payload?.works||[]).map(w=>[w.name,w]));
   const normProfiles=payload?.norms||[];
   const rules=(payload?.rules||[]).filter(r=>r.approval_state==='Approved');
   const warnings=new Set(),events=[],harvests=[],materials=[];
+  const wage=number(dayworkRate),reserve=number(absenceReserve);
+  if(wage!==null&&wage<0)throw Error('Công nhật dự toán không thể âm');
+  if(reserve===null||reserve<0||reserve>=1)throw Error('Dự phòng vắng mặt phải từ 0 đến dưới 100%');
   const planCohorts=latestCohorts(payload?.cohorts,includeDraft);
   const cohortsPerBlock=new Map();
   for(const c of planCohorts)cohortsPerBlock.set(c.farm_block,(cohortsPerBlock.get(c.farm_block)||0)+1);
@@ -121,7 +137,11 @@ export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false
               materials.push({item:line.item,uom:line.uom,quantity:qty/basis*(number(line.norm_qty)||0)*(number(line.frequency)||0)*(number(line.conversion_factor)||0),date:when,cohort:cohort.name});
             }
             events.push({key:[cohort.name,tag,rule.name,occurrence].join('|'),farm_block:cohort.farm_block,cohort:cohort.cohort_name,work_type:work.work_name,date:when,qty,uom:work.uom,
-              required_workdays:labor,piecework_cost:Number(work.allow_piecework)===1&&number(work.piecework_rate)>0?qty*Number(work.piecework_rate):null,norm_version:norm?.version??null,projected:true});
+              required_workdays:labor,
+              staffed_workdays:labor!==null?labor/(1-reserve):null,
+              daywork_cost:Number(work.allow_daywork)===1&&labor!==null&&wage!==null?labor*wage:null,
+              piecework_cost:Number(work.allow_piecework)===1&&number(work.piecework_rate)>0?qty*Number(work.piecework_rate):null,
+              norm_version:norm?.version??null,projected:true});
           }
         }
         if((!every||every<=0)&&!everyMonth)break;
@@ -170,9 +190,11 @@ export function simulate(payload,{from='2026-01-01',months=36,includeDraft=false
     const mHarvest=harvests.filter(e=>e.month===id&&!e.virtual);
     monthly.push({month:id,tasks:mEvents.length,workdays:mEvents.reduce((x,e)=>x+Number(e.required_workdays||0),0),
       piecework_cost:mEvents.reduce((x,e)=>x+Number(e.piecework_cost||0),0),
+      daywork_cost:mEvents.reduce((x,e)=>x+Number(e.daywork_cost||0),0),
+      staffed_workdays:mEvents.reduce((x,e)=>x+Number(e.staffed_workdays||0),0),
       bunches:mHarvest.reduce((x,e)=>x+Number(e.bunches||0),0),
       gross_kg:mHarvest.reduce((x,e)=>x+Number(e.gross_kg||0),0),
       packed_kg:mHarvest.reduce((x,e)=>x+Number(e.packed_kg||0),0)});
   }
-  return {start,end,events,harvests,materials,monthly,warnings:[...warnings],rule:'Chỉ tính thử, không giao việc, không xuất kho và không cam kết bán.'};
+  return {start,end,events,harvests,materials,monthly,warnings:[...warnings],rule:'Chỉ tính thử, không giao việc, không xuất kho và không cam kết bán. Chi phí công nhật và khoán là HAI PHƯƠNG ÁN, không cộng chung.'};
 }
