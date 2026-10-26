@@ -15,6 +15,7 @@ import frappe
 from frappe.utils import cint, now_datetime
 
 from lotus_farm import cut_forecast_rules as rules
+from lotus_farm import forecast_book2_reference as book2
 from lotus_farm.farm_land import can_edit
 
 ENTRY = 'Lotus Cut Journal Entry'
@@ -103,7 +104,8 @@ def board(farm=None, zone=None):
                                                                       'error_rows', 'trees', 'profile', 'imported_by', 'imported_at', 'undone_at'],
                              order_by='imported_at desc', limit_page_length=20)
     return _jsonable(dict(farms=farms, farm=farm, zone=zone or '', zone_list=zone_list, can_edit=can_edit(), params=rules.PARAMS, stages=rules.STAGES,
-                          profile=active, profiles=profiles, issues=issues, imports=imports, **result))
+                          profile=active, profiles=profiles, issues=issues, imports=imports,
+                           book2_reference=book2.reference(_profile_values(active) if active else None), **result))
 
 
 # Excel upload ----------------------------------------------------------------------------------------
