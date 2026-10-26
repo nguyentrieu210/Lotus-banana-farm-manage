@@ -37,12 +37,19 @@
 **Ngày chọn chồi 01/11/2026 của khu A → dự thu vụ chồi từ 07/2027** là kịch bản cấp khu, không phải ngày đã đo được cho toàn bộ 13 lô khu A.
 
 ## Chưa làm trong nhánh này
-- Chưa sửa thuật toán `plan-norm-engine.js` 3 đợt và chưa hợp nhất các bộ tính dự thu cũ.
+- Đã bổ sung chế độ **mô phỏng Book2 4 đợt** (30 ngày/đợt) trên trang `plan-norm`; chế độ mô phỏng 3 đợt cũ vẫn được giữ tương thích trong API. Chưa hợp nhất các bộ tính dự thu cũ hoặc phát hành `Harvest Forecast` từ kết quả mô phỏng.
 - Chưa thay schema nhật ký chặt mẹ để lưu `farm_block`/`crop_cycle`/`cohort`.
-- Chưa tạo lịch chăm sóc/tính lương/vật tư từ dự thu trong `Daily Work Plan`.
+- Mô phỏng kế hoạch Book2 giờ tính **số công, công định biên và 2 kịch bản tiền công nhật/khoán riêng biệt** theo Work Type đã có năng suất. CHƯA tự tạo `Daily Work Plan`, lịch làm theo mốc chích bắp/thu hoạch, hay yêu cầu xuất vật tư từ dự thu.
 - Chưa chạy migrate, chưa đổi cấu hình live.
 
 ## Kiểm thử
 `python -m unittest tests.test_forecast_book2_reference tests.test_cut_forecast`
+
+### Cập nhật phần kế hoạch hiện có
+- Backend `plan_norm.board` cung cấp `book2_plan_reference` read-only.
+- Trên `/lotus/plan-norm` có tab **Đối chiếu Book2** (43 mã, tần suất, mã ERP tương ứng, năng suất; tránh tự ghi khi chưa được duyệt).
+- Tab **Thử tính 36 tháng** dùng bốn đợt 17/40/25/18, bước 30 ngày khi chọn chế độ Book2; hiển thị số công định biên dự phòng và tiền công nhật dự kiến 290.000đ/công khi Work Type cho công nhật.
+- Công nhật và công khoán là hai kịch bản độc lập, không cộng; phụ cấp buồng, thuốc và thưởng chuyên cần vẫn tính riêng theo điều kiện thực tế.
+- Các bài test mới: `tests/test_plan_book2_reference.py` và `frontend/tests/plan-book2-simulation.test.js`.
 
 Bước tiếp theo phải là bài kiểm tra đầu-cuối cho một lô cụ thể: cây hiện hữu → 4 đợt trổ → công chăm sóc → công nhật/vật tư → dự thu đã duyệt → đối chiếu thu thật.
