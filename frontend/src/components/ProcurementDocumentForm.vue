@@ -6,6 +6,7 @@ import LotusField from './form/LotusField.vue'
 import LineItemsEditor from './form/LineItemsEditor.vue'
 import {Button} from './ui/button'
 import LotusMobileButton from './LotusMobileButton.vue'
+import DocumentReader from './DocumentReader.vue'
 import {newPurchaseLine,purchaseUnits,purchaseTotal} from '../mobile-purchase'
 import {allowedKinds,purchaseKind,money} from '../procurement'
 // Fields of Đề nghị mua / Báo giá / Đơn mua. The surrounding ResponsiveForm owns submit and close.
@@ -25,6 +26,22 @@ const lineColumns=computed(()=>[
  {field:'vat_code',label:'VAT',options:vatOptions,searchable:false,props:{emptyOption:null},width:'minmax(120px,.9fr)'},
  {field:'freight',label:'Vận chuyển',type:'money',props:{min:0},width:'minmax(120px,.9fr)'}
 ])
+// AI-read quote / invoice / delivery note: pick the matched supplier and append the matched lines; the user reviews before saving.
+const vatCode=percent=>{if(percent==null||percent==='')return 'KCT';const p=Number(percent);return ['0','5','8','10'].reduce((best,v)=>Math.abs(Number(v)-p)<Math.abs(Number(best)-p)?v:best,'0')}
+const docKinds={quote:'báo giá',invoice:'hóa đơn',delivery_note:'phiếu giao hàng',purchase_order:'đơn đặt hàng',other:'chứng từ'}
+function applyDocument(result){
+ const draft=props.modelValue,doc=result.document
+ const supplier=result.supplier.match?.name
+ if(props.type!=='need'&&supplier&&props.catalog.suppliers?.some(s=>s.name===supplier))draft.supplier=supplier
+ const documentVat=doc.vat_amount&&doc.subtotal?doc.vat_amount/doc.subtotal*100:null
+ const lines=result.lines.filter(line=>line.item&&itemOf(line.item.code)).map(line=>{
+  const item=itemOf(line.item.code),units=purchaseUnits(item.name,props.catalog.items,props.catalog.conversions)
+  return {...newPurchaseLine(),item:item.name,kind:purchaseKind(item),qty:line.qty||1,uom:units.includes(line.uom)?line.uom:item.stock_uom,rate:line.rate??'',vat_code:vatCode(line.vat_percent??documentVat)}
+ })
+ if(lines.length)draft.items=[...draft.items.filter(row=>row.item),...lines]
+ const ref=[doc.number&&'số '+doc.number,doc.date&&'ngày '+doc.date.split('-').reverse().join('/')].filter(Boolean).join(' ')
+ if(ref&&!draft.notes)draft.notes='Theo '+(docKinds[doc.type]||'chứng từ')+' '+ref+(result.supplier.text?' của '+result.supplier.text:'')
+}
 // Choosing another item resets its unit and purchase kind (desktop picker and phone list alike).
 const chosen=new WeakMap()
 watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of props.modelValue?.items||[]){if(!chosen.has(row)){chosen.set(row,row.item);continue}if(chosen.get(row)!==row.item){chosen.set(row,row.item);const item=itemOf(row.item);Object.assign(row,{uom:item?.stock_uom||'',kind:purchaseKind(item),material_request:'',material_request_item:''})}}},{immediate:true})
@@ -32,6 +49,7 @@ watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of pro
 <template>
  <FormSection title="Thông tin chung">
   <FormGrid :columns="3">
+   <DocumentReader :mobile="mobile" :disabled="saving" label="Đọc báo giá / hóa đơn bằng AI" @read="applyDocument"/>
    <LotusField v-if="type!=='need'&&catalog.requests?.length" :mobile="mobile" label="Lấy dòng từ đề nghị đã duyệt" :options="options(catalog.requests)" @update:model-value="emit('request',$event)"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
    <LotusField :mobile="mobile" v-model="modelValue.warehouse" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>

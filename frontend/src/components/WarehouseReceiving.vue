@@ -1,4 +1,5 @@
 <script setup>
+import StockEvidence from './stock/StockEvidence.vue'
 import '../procurement.css'
 import {computed,nextTick,ref} from 'vue'
 import {call} from '../api'
@@ -61,6 +62,7 @@ defineExpose({openPicker,openOrder,openReceipt,hasChanges,discardChanges})
    <DataTable :rows="receipt.items||[]" :columns="receiptColumns"/>
    <dl v-if="receipt.incoming_total!=null" class="lotus-form-totals"><div><dt>Tiền hàng</dt><dd>{{fmt(receipt.goods_total)}} {{receipt.currency}}</dd></div><div><dt>Chi phí phân bổ</dt><dd>{{fmt(receipt.valuation_charges)}} {{receipt.currency}}</dd></div><div><dt>Giá trị nhập</dt><dd>{{fmt(receipt.incoming_total)}} {{receipt.currency}}</dd></div></dl>
    <p v-if="receipt.docstatus===1" class="stock-success" role="status">Đã ghi sổ nhận hàng. Tồn và phần chờ nhập đã cập nhật.</p>
+   <StockEvidence doctype="Purchase Receipt" :name="receipt.name" title="Chứng từ nhận hàng (phiếu giao hàng, hóa đơn, ảnh hàng)"/>
   </template>
   <template #actions><template v-if="stage==='receipt'&&receipt"><UiButton as="a" variant="outline" :href="printURL" target="_blank" rel="noopener">In phiếu</UiButton><UiButton v-if="receipt.can_submit" type="button" :disabled="busy" @click="post">Ghi sổ nhận hàng</UiButton></template></template>
  </ModalForm>

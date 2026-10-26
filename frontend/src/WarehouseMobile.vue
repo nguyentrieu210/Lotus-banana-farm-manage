@@ -1,4 +1,5 @@
 <script setup>
+import StockEvidence from './components/stock/StockEvidence.vue'
 import {formatDate} from './format'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
 import {Icon} from 'vant'
@@ -582,6 +583,7 @@ onUnmounted(()=>{
     
     <div class="mobile-summary"><span>Số phiếu <b>{{createdDocDetails.name}}</b></span><span>Ngày <b>{{createdDocDetails.posting_date}}</b></span></div>
     <div class="mobile-list-card" v-for="(r,i) in createdDocDetails.items" :key="i"><strong>{{r.item_name}}</strong><div class="mobile-inline"><span>{{wname(r.source)}} {{r.source&&r.target?'→':''}} {{wname(r.target)}}</span><b>{{fmt(r.qty)}} {{unitLabel(r.uom)}}</b></div></div>
+    <StockEvidence class="mobile-evidence" :doctype="createdDocDetails.doctype" :name="createdDocDetails.name" :title="createdDocDetails.kind==='Material Issue'?'Ảnh bằng chứng xuất kho':'Ảnh hàng, phiếu giao hàng'"/>
     <div class="mobile-confirm"><p>Phiếu mới chỉ là nháp. Bấm xác nhận để cập nhật tồn kho.</p><LotusMobileCheck v-model="confirmed" :disabled="saving">Đã kiểm tra đúng hàng và số lượng</LotusMobileCheck><LotusMobileButton class="mobile-submit" type="button" :disabled="!online||saving||!confirmed" @click="postStock">Ghi sổ phiếu</LotusMobileButton></div>
    </template>
 
