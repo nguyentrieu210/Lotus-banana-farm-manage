@@ -141,6 +141,10 @@ const zoneRows=computed(()=>(data.value?.zones||[]).map(z=>({...z,cut_range:vnDa
 const zoneCols=[col('zone','Khu',v=>'Khu '+v),col('cut_range','Ngày chặt'),quantity('trees','Cây mẹ chặt 2'),quantity('shoot','Trổ buồng'),quantity('budcut','Cắt bắp'),quantity('harvest','Thu hoạch'),quantity('pack','Đóng gói'),quantity('tonnes','Tấn sơ chế',2)]
 const matrixCols=computed(()=>[col('zone','Khu'),...zoneMonthCols.value.map(m=>col(m,monthLabel(m),v=>v?num(v,1):'—'))])
 const matrixRows=computed(()=>(data.value?.zones||[]).map(z=>({zone:z.zone,...data.value?.zone_months?.[z.zone]})))
+const careMaterialColumns=[
+ col('date','Ngày',v=>vnDate(v)),col('farm_block','Lô'),
+ col('item','Vật tư'),col('uom','ĐVT'),quantity('quantity','Nhu cầu dự kiến',3)
+]
 const careColumns=[
  col('date','Ngày',v=>vnDate(v)),col('farm_block','Lô'),col('crop_cycle','Vụ cây'),
  col('work_code','Mã công việc'),col('work_name','Tên công việc'),
@@ -237,6 +241,10 @@ useNoticeToast(notice)
     <UiButton v-for="d in careDates" :key="d" variant="outline" :disabled="careBusy" @click="createCareDraft(d)">Tạo nháp {{vnDate(d)}}</UiButton>
    </div>
    <div class="land-table cutfc-table"><DataTable :rows="careData.rows||[]" :columns="careColumns" row-key="schedule_key" storage-key="care-plan-book2" empty="Không có lịch trong khoảng đã chọn."/></div>
+   <details v-if="careData.materials?.length" class="land-card"><summary>Vật tư dự kiến từ định mức đã duyệt ({{num(careData.materials.length)}} dòng)</summary>
+    <p class="land-note">Chỉ tính nhu cầu, KHÔNG tạo yêu cầu mua, không giữ hoặc xuất tồn kho. Việc phun/bọc thiếu định mức đã duyệt không thể tạo kế hoạch nháp.</p>
+    <div class="land-table cutfc-table"><DataTable :rows="careData.materials" :columns="careMaterialColumns" storage-key="care-plan-book2-materials"/></div>
+   </details>
   </template>
  </section>
 
