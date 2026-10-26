@@ -84,7 +84,7 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
  </header>
  <div class="land-stats land-stats--block">
   <div><span>Diện tích</span><strong>{{num(b.area_ha,2)}} ha</strong><small>{{(info?.plots||[]).length}} thửa · {{num(plotsArea,2)}} ha</small></div>
-  <div><span>Số cây kiểm kê</span><strong>{{b.lotus_tree_count?num(b.lotus_tree_count):'Chưa đếm'}}</strong><small>{{b.lotus_tree_count_source||'—'}}</small></div>
+  <div><span>Số cây gốc đã chốt</span><strong>{{b.lotus_tree_count?num(b.lotus_tree_count):'Chưa có số cây'}}</strong><small>{{b.lotus_tree_count_source||'—'}}</small></div>
   <div><span>Mật độ</span><strong>{{b.density?num(b.density)+' cây/ha':'—'}}</strong><small>{{b.planting_density?'thiết kế '+num(b.planting_density)+' cây/ha':'chưa có mật độ thiết kế'}}</small></div>
   <div><span>Giống</span><strong>{{b.variety||'Chưa có'}}</strong><small>{{b.planting_date?'trồng '+vnDate(b.planting_date):b.lotus_inferred_planting_date?'trồng ~'+vnDate(b.lotus_inferred_planting_date)+' (suy ngược)':'chưa có ngày trồng'}}</small></div>
  </div>
@@ -166,7 +166,7 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
     <LotusField v-else-if="f.field==='active'" :model-value="form.active" :label="f.label" :options="activeOptions" :searchable="false" :empty-option="null" @update:model-value="value=>form.active=Number(value)"/>
     <LotusField v-else v-model="form[f.field]" :label="f.label" :type="kindOf(f)" :step="f.kind==='float'?'any':undefined" min="0"/>
    </template>
-   <LotusField v-if="String(form.lotus_tree_count??'')!==String(b.lotus_tree_count??'')" v-model="form.lotus_tree_count_source" label="Nguồn số cây (bắt buộc khi đổi số cây)" wide required placeholder="VD: Đếm 20/10/2026 · tổ trưởng khu A"/>
+   <LotusField v-if="String(form.lotus_tree_count??'')!==String(b.lotus_tree_count??'')" v-model="form.lotus_tree_count_source" label="Nguồn số cây (bắt buộc khi đổi số cây)" wide required placeholder="VD: Bộ số cây đợt trước chốt 26/10/2026"/>
   </FormGrid>
  </ModalForm>
  <ModalForm v-model="plotOpen" :title="plot.name?'Sửa thửa '+plot.plot_code:'Thêm thửa vào lô '+b.block_code" :busy="saving" width="640px" submit-label="Lưu thửa" :submit-disabled="!plot.plot_code" @submit="savePlot">
