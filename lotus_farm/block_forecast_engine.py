@@ -188,6 +188,8 @@ def forecast(blocks,cohorts,from_date=None,to_date=None,block=None,profiles=None
                  harvest_date=str(harvest_start),harvest_window_end=str(harvest_end),
                  tree_qty=initial,bunches_shoot=shoots,bunches_cut=cut,bunches_harvest=harvest,
                  bunches_pack=packed,kg_pack=round(packed*weight,3),weight_kg=weight,
+                 carton_equivalent=round(packed*weight/config["kg_per_carton"],3),
+                 container_equivalent=round(packed*weight/(config["kg_per_carton"]*config["cartons_per_container"]),5),
                  window_days=window,timing=config,estimated=True)
             waves.append(wave)
             # Monthly yield from each DAILY harvest date, not a repeated
