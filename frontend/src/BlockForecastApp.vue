@@ -126,9 +126,9 @@ async function draft(){
  careBusy.value=true;careError.value=''
  try{
   const day=await call('lotus_farm.block_forecast.preview_care_plan',{farm:farm.value,from_date:careDate.value,to_date:careDate.value,block:careBlock.value})
-  if(!day.rows?.length||day.rows.some(r=>r.blocking_issue))throw Error('Ngày đã chọn còn thiếu mã công việc, năng suất hoặc định mức đã duyệt.')
+  if(!day.rows?.some(r=>!r.blocking_issue))throw Error('Ngày này chưa có công việc đủ điều kiện tạo nháp; hãy kiểm tra phần cảnh báo.')
   const saved=await call('lotus_farm.block_forecast.create_care_plan_draft',{farm:farm.value,block:careBlock.value,posting_date:careDate.value,fingerprint:day.fingerprint},true)
-  notice.value='Đã tạo phiếu kế hoạch NHÁP '+saved.plan+' với '+saved.lines+' công việc. Chưa duyệt.'
+  notice.value='Đã tạo phiếu kế hoạch NHÁP '+saved.plan+' với '+saved.lines+' công việc; '+(saved.skipped_codes?.length||0)+' mã chưa đủ điều kiện được bỏ qua. Chưa duyệt.'
   await previewCare()
  }catch(e){careError.value=e.message}finally{careBusy.value=false}
 }
