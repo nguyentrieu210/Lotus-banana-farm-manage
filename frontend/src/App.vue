@@ -59,7 +59,7 @@ const workspaceComponents={
  'cong-viec':defineAsyncComponent({loader:()=>import('./FarmWorkApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  farms:defineAsyncComponent({loader:()=>import('./FarmLandApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
  'tai-chinh':defineAsyncComponent({loader:()=>import('./FinanceApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
- forecast:defineAsyncComponent({loader:()=>import('./CutForecastApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
+ forecast:defineAsyncComponent({loader:()=>import('./BlockForecastApp.vue'),loadingComponent:WorkspaceLoading,delay:0}),
 }
 import {mobileTabs as getMobileTabs, mobileActions as getMobileActions} from './mobile-menu'
 import {queueCapture,queueRows,syncCaptures,reconcileCapture,clearSent} from './offline'
