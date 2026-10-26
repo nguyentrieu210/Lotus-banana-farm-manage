@@ -1,0 +1,8 @@
+{
+ "doctype":"DocType","name":"Lotus Chat Member","module":"Lotus Farm","istable":1,
+ "field_order":["user","last_read_seq"],
+ "fields":[
+  {"fieldname":"user","label":"Thành viên","fieldtype":"Link","options":"User","reqd":1,"in_list_view":1},
+  {"fieldname":"last_read_seq","label":"Tin đã đọc","fieldtype":"Int","default":"0","read_only":1}
+ ]
+}

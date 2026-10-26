@@ -4,6 +4,7 @@ import {load,mount,tick,window,document,h,ref} from './support/mount.mjs'
 
 const Chat=await load('components/AiChatBubble.vue')
 const response=answer=>({ok:true,json:async()=>({message:{answer,steps:[{tool:'query',doctype:'Bin'}]}})})
+const inbox=()=>({ok:true,json:async()=>({message:{rooms:[],unread:0}})})
 const click=(root,label)=>root.querySelector(`button[aria-label="${label}"]`).click()
 async function open(view){click(view.root,'Hỏi Trợ lý Lotus AI');await tick()}
 async function type(view,text){const input=view.root.querySelector('textarea');input.value=text;input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();return input}
@@ -12,7 +13,7 @@ test('chat opens, submits once while busy, escapes HTML, saves and resets histor
  window.sessionStorage.clear()
  let resolve,calls=0,body
  const original=globalThis.fetch
- globalThis.fetch=async(_url,options)=>{calls++;body=JSON.parse(options.body);return new Promise(r=>{resolve=r})}
+ globalThis.fetch=async(_url,options)=>{if(_url.includes('lotus_farm.chat.'))return inbox();calls++;body=JSON.parse(options.body);return new Promise(r=>{resolve=r})}
  const view=mount(Chat,{user:'tester@example.com'});t.after(()=>{view.unmount();globalThis.fetch=original})
  assert.equal(view.root.querySelector('[role=dialog]'),null)
  await open(view)
@@ -39,7 +40,7 @@ test('chat opens, submits once while busy, escapes HTML, saves and resets histor
 test('IME Enter does not send; failed requests retain the question for retry',async t=>{
  window.sessionStorage.clear()
  const original=globalThis.fetch;let calls=0
- globalThis.fetch=async()=>{calls++;throw new Error('offline')}
+ globalThis.fetch=async url=>{if(url.includes('lotus_farm.chat.'))return inbox();calls++;throw new Error('offline')}
  const view=mount(Chat,{user:'retry'});t.after(()=>{view.unmount();globalThis.fetch=original})
  await open(view);const input=await type(view,'Tồn kho hôm nay?')
  input.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}));await tick()
@@ -53,7 +54,7 @@ test('IME Enter does not send; failed requests retain the question for retry',as
 test('switching accounts isolates histories and ignores a previous account response',async t=>{
  window.sessionStorage.clear();window.sessionStorage.setItem('lotus-ai-chat|second','{}')
  const user=ref('first'),original=globalThis.fetch;let resolve
- globalThis.fetch=async()=>new Promise(r=>{resolve=r})
+ globalThis.fetch=async url=>url.includes('lotus_farm.chat.')?inbox():new Promise(r=>{resolve=r})
  const view=mount({setup:()=>()=>h(Chat,{user:user.value})});t.after(()=>{view.unmount();globalThis.fetch=original})
  await open(view);view.root.querySelector('.ai-chat__chip').click();await tick()
  user.value='second';await tick()

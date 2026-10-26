@@ -3,6 +3,8 @@ import {nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {Button,Field,Icon,Popup} from 'vant'
 import {call} from '../api'
 import {renderMarkdown} from '../ai-markdown'
+import {useChatConnection} from '../chat-client'
+import InternalChat from './InternalChat.vue'
 
 // The same component is mounted by LotusMobileShell in every phone app.
 // It calls the existing read-only, permission-aware Lotus AI endpoint.
@@ -12,6 +14,7 @@ const props=defineProps({
  keyboardOpen:{type:Boolean,default:false}
 })
 const show=ref(false),draft=ref(''),busy=ref(false),error=ref('')
+const chat=useChatConnection(()=>props.user),tab=ref('ai'),chatBusy=ref(false)
 const messages=ref([]),list=ref(null),input=ref(null),trigger=ref(null)
 const online=ref(typeof navigator==='undefined'?true:navigator.onLine)
 const popupStyle=ref({height:'min(84dvh,740px)'})
@@ -31,7 +34,7 @@ watch(messages,rows=>{
  try{window.sessionStorage.setItem(key(),JSON.stringify(rows.slice(-30)))}catch{}
 },{deep:true,flush:'sync'})
 watch(()=>props.user,()=>{
- requestId++;messages.value=load();draft.value='';error.value='';busy.value=false;show.value=false
+ requestId++;messages.value=load();draft.value='';error.value='';busy.value=false;show.value=false;tab.value='ai';chatBusy.value=false
 },{flush:'sync'})
 onBeforeUnmount(()=>{requestId++})
 
@@ -100,17 +103,20 @@ async function send(text){
 <template>
  <div v-if="user&&user!=='Guest'" class="lotus-mobile-ai">
   <Button v-show="!keyboardOpen&&!show" ref="trigger" class="lotus-mobile-ai__fab" type="primary"
-   icon="chat-o" aria-label="Hỏi trợ lý Lotus AI" :disabled="disabled" @click="show=true">Hỏi AI</Button>
-  <Popup v-model:show="show" teleport="body" position="bottom" round :close-on-click-overlay="!busy"
+   icon="chat-o" aria-label="Hỏi trợ lý Lotus AI" :disabled="disabled" @click="show=true">AI · Chat<b v-if="chat.unread.value" class="lotus-chat-badge">{{chat.unread.value>99?'99+':chat.unread.value}}</b></Button>
+  <Popup v-model:show="show" teleport="body" position="bottom" round :close-on-click-overlay="!busy&&!chatBusy"
    class="lotus-mobile-ai__popup" :style="popupStyle">
-   <section class="lotus-mobile-ai__panel" role="dialog" aria-modal="true" aria-label="Trợ lý Lotus AI" @keydown.esc.stop="show=false">
+   <section class="lotus-mobile-ai__panel" role="dialog" aria-modal="true" aria-label="Trợ lý Lotus AI" @keydown.esc.stop="!chatBusy&&(show=false)">
     <header class="lotus-mobile-ai__header">
      <span class="lotus-mobile-ai__mark"><Icon name="chat-o" size="22"/></span>
-     <div class="lotus-mobile-ai__heading"><strong>Trợ lý Lotus AI</strong><small>Đọc dữ liệu theo quyền tài khoản</small></div>
-     <Button v-if="messages.length" plain icon="replay" size="small" :disabled="busy"
+     <div class="lotus-mobile-ai__heading"><strong>{{tab==='ai'?'Trợ lý Lotus AI':'Lotus Chat'}}</strong><small>{{tab==='ai'?'Đọc dữ liệu theo quyền tài khoản':'Chat riêng và nhóm'}}</small></div>
+     <Button v-if="messages.length&&tab==='ai'" plain icon="replay" size="small" :disabled="busy"
       aria-label="Cuộc hỏi mới" @click="reset"/>
-     <Button plain icon="cross" size="small" aria-label="Đóng trợ lý AI" @click="show=false"/>
+     <Button plain icon="cross" size="small" aria-label="Đóng trợ lý AI" :disabled="chatBusy" @click="show=false"/>
     </header>
+    <div class="lotus-chat-tabs" role="tablist" aria-label="Trợ lý và tin nhắn"><Button role="tab" :aria-selected="tab==='ai'" :disabled="chatBusy" @click="tab='ai'">Trợ lý AI</Button><Button role="tab" :aria-selected="tab==='chat'" @click="tab='chat'">Tin nhắn<b v-if="chat.unread.value">{{chat.unread.value>99?'99+':chat.unread.value}}</b></Button></div>
+    <InternalChat v-show="tab==='chat'" :user="user" :client="chat" :active="show&&tab==='chat'" mobile @busy="chatBusy=$event"/>
+    <div v-show="tab==='ai'" class="lotus-mobile-ai__ai">
     <div ref="list" class="lotus-mobile-ai__messages" aria-live="polite">
      <div v-if="!messages.length" class="lotus-mobile-ai__welcome">
       <p>Hỏi về kho, đơn mua, nhân sự, dự thu… AI sẽ tra cứu số liệu bạn được phép xem.</p>
@@ -134,12 +140,14 @@ async function send(text){
       aria-label="Gửi câu hỏi" :disabled="busy||!draft.trim()||!online"/>
     </form>
     <p v-if="!online" class="lotus-mobile-ai__offline">Không có mạng, chưa thể gửi câu hỏi.</p>
+    </div>
    </section>
   </Popup>
  </div>
 </template>
 
 <style>
+.lotus-mobile-ai__ai{display:flex;flex:1;flex-direction:column;min-height:0}.lotus-mobile-ai .lotus-chat-tabs .van-button{height:auto;border:0}.lotus-mobile-ai__popup .lotus-chat-tabs .van-button{height:auto;border:0;min-height:var(--lotus-touch)}.lotus-mobile-ai__fab.van-button{overflow:visible}
 .lotus-mobile-ai__fab.van-button{position:fixed;right:max(14px,calc((100vw - var(--lotus-pwa-width))/2 + 14px));bottom:calc(76px + env(safe-area-inset-bottom));z-index:75;min-height:52px;min-width:88px;padding:0 14px;border-radius:28px;box-shadow:var(--lotus-shadow-lg);font-weight:700;gap:6px}
 .lotus-mobile-ai__popup.van-popup{max-width:600px;left:50%;transform:translateX(-50%);background:var(--lotus-surface);color:var(--lotus-text);font-family:var(--lotus-font);overflow:hidden}
 .lotus-mobile-ai__panel{display:flex;flex-direction:column;height:100%;min-height:0}

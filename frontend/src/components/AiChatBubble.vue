@@ -6,16 +6,19 @@ import {Tooltip} from './ui/tooltip'
 import {Textarea} from './ui/textarea'
 import LotusIcon from './LotusIcon.vue'
 import {renderMarkdown} from '../ai-markdown'
+import {useChatConnection} from '../chat-client'
+import InternalChat from './InternalChat.vue'
 // Bong bóng "Trợ lý Lotus AI": hỏi đáp dữ liệu. The server reads data only, with the signed-in user's permissions.
 // The conversation is kept for this browser tab only (sessionStorage).
 const props=defineProps({user:{type:String,default:''}})
+const chat=useChatConnection(()=>props.user),tab=ref('ai'),chatBusy=ref(false)
 const open=ref(false),draft=ref(''),busy=ref(false),error=ref(''),list=ref(null),input=ref(null),fab=ref(null)
 let requestId=0
 const storageKey=()=>'lotus-ai-chat|'+props.user
 const load=()=>{try{const value=JSON.parse(window.sessionStorage.getItem(storageKey())||'[]');return Array.isArray(value)?value.filter(m=>m&&['user','assistant'].includes(m.role)&&typeof m.content==='string').slice(-30).map(m=>({...m,steps:Array.isArray(m.steps)?m.steps:[]})):[]}catch{return []}}
 const messages=ref(load())
 watch(messages,value=>{try{window.sessionStorage.setItem(storageKey(),JSON.stringify(value.slice(-30)))}catch{}},{deep:true,flush:'sync'})
-watch(()=>props.user,()=>{requestId++;messages.value=load();draft.value='';error.value='';busy.value=false;open.value=false},{flush:'sync'})
+watch(()=>props.user,()=>{requestId++;messages.value=load();draft.value='';error.value='';busy.value=false;open.value=false;tab.value='ai';chatBusy.value=false},{flush:'sync'})
 onBeforeUnmount(()=>{requestId++})
 const suggestions=['Tồn kho hiện tại ở từng kho, vật tư nào sắp hết?','Chi phí tháng này theo tài khoản là bao nhiêu?','Có bao nhiêu nhân viên đang làm việc ở mỗi vườn?','Đơn mua nào đang chờ nhận hàng?']
 async function scroll(){await nextTick();if(list.value)list.value.scrollTop=list.value.scrollHeight}
@@ -35,7 +38,7 @@ async function send(text){
 }
 function keydown(event){if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();send()}}
 function reset(){if(busy.value)return;messages.value=[];error.value=''}
-function close(){open.value=false;nextTick(()=>fab.value?.$el?.focus())}
+function close(){if(chatBusy.value)return;open.value=false;nextTick(()=>fab.value?.$el?.focus())}
 const stepText=steps=>[...new Set((steps||[]).filter(s=>s&&!s.error&&s.tool!=='search_doctypes'&&s.doctype).map(s=>s.doctype))].join(' · ')
 watch(open,async value=>{if(value){await scroll();input.value?.$el?.focus()}})
 </script>
@@ -44,10 +47,13 @@ watch(open,async value=>{if(value){await scroll();input.value?.$el?.focus()}})
   <section v-if="open" class="ai-chat__panel" role="dialog" aria-label="Trợ lý Lotus AI" @keydown.esc.stop="close">
    <header class="ai-chat__head">
     <span class="ai-chat__badge"><LotusIcon name="sparkle"/></span>
-    <div><strong>Trợ lý Lotus AI</strong><small>Chỉ đọc dữ liệu, theo quyền của bạn</small></div>
-    <Tooltip v-if="messages.length" content="Cuộc hỏi mới"><UiButton variant="ghost" size="icon" class="ai-chat__icon-btn" aria-label="Cuộc hỏi mới" :disabled="busy" @click="reset"><LotusIcon name="refresh"/></UiButton></Tooltip>
-    <Tooltip content="Đóng trợ lý AI"><UiButton variant="ghost" size="icon" class="ai-chat__icon-btn" aria-label="Đóng trợ lý AI" @click="close"><LotusIcon name="x"/></UiButton></Tooltip>
+    <div><strong>{{tab==='ai'?'Trợ lý Lotus AI':'Lotus Chat'}}</strong><small>{{tab==='ai'?'Chỉ đọc dữ liệu, theo quyền của bạn':'Chat riêng và nhóm'}}</small></div>
+    <Tooltip v-if="messages.length&&tab==='ai'" content="Cuộc hỏi mới"><UiButton variant="ghost" size="icon" class="ai-chat__icon-btn" aria-label="Cuộc hỏi mới" :disabled="busy" @click="reset"><LotusIcon name="refresh"/></UiButton></Tooltip>
+    <Tooltip content="Đóng trợ lý AI"><UiButton variant="ghost" size="icon" class="ai-chat__icon-btn" aria-label="Đóng trợ lý AI" :disabled="chatBusy" @click="close"><LotusIcon name="x"/></UiButton></Tooltip>
    </header>
+   <div class="lotus-chat-tabs" role="tablist" aria-label="Trợ lý và tin nhắn"><UiButton role="tab" :aria-selected="tab==='ai'" :disabled="chatBusy" @click="tab='ai'">Trợ lý AI</UiButton><UiButton role="tab" :aria-selected="tab==='chat'" @click="tab='chat'">Tin nhắn<b v-if="chat.unread.value">{{chat.unread.value>99?'99+':chat.unread.value}}</b></UiButton></div>
+   <InternalChat v-show="tab==='chat'" :user="user" :client="chat" :active="open&&tab==='chat'" @busy="chatBusy=$event"/>
+   <div v-show="tab==='ai'" class="ai-chat__ai">
    <div ref="list" class="ai-chat__list" aria-live="polite">
     <div v-if="!messages.length" class="ai-chat__empty">
      <p>Hỏi bất cứ điều gì về số liệu: tồn kho, mua hàng, chi phí, nhân sự, thu hoạch… Trợ lý tự tra cứu và trả lời.</p>
@@ -65,12 +71,14 @@ watch(open,async value=>{if(value){await scroll();input.value?.$el?.focus()}})
     <Textarea ref="input" v-model="draft" rows="2" maxlength="4000" placeholder="Hỏi về tồn kho, chi phí, nhân sự…" aria-label="Câu hỏi cho trợ lý AI" :disabled="busy" @keydown="keydown"/>
     <Tooltip content="Gửi câu hỏi"><UiButton type="submit" class="ai-chat__send" :disabled="busy||!draft.trim()" aria-label="Gửi câu hỏi"><LotusIcon name="send"/></UiButton></Tooltip>
    </form>
+   </div>
   </section>
-  <UiButton ref="fab" class="ai-chat__fab" :aria-expanded="open" :aria-label="open?'Đóng trợ lý AI':'Hỏi Trợ lý Lotus AI'" :title="open?'Đóng':'Hỏi Trợ lý Lotus AI'" @click="open?close():open=true"><LotusIcon :name="open?'x':'chat'"/><span v-if="!open" class="ai-chat__fab-label">Hỏi AI</span></UiButton>
+  <UiButton ref="fab" class="ai-chat__fab" :aria-expanded="open" :aria-label="open?'Đóng trợ lý AI':'Hỏi Trợ lý Lotus AI'" :title="open?'Đóng':'AI và tin nhắn'" @click="open?close():open=true"><LotusIcon :name="open?'x':'chat'"/><span v-if="!open" class="ai-chat__fab-label">AI · Chat</span><b v-if="chat.unread.value&&!open" class="lotus-chat-badge">{{chat.unread.value>99?'99+':chat.unread.value}}</b></UiButton>
  </div>
 </template>
 <style>
 .ai-chat{position:fixed;right:var(--lotus-space-6);bottom:var(--lotus-space-6);z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:var(--lotus-space-3);font-size:var(--lotus-text-base)}
+.ai-chat__ai{display:flex;flex:1;flex-direction:column;min-height:0}.ai-chat__fab{position:relative}
 .ai-chat__fab{display:inline-flex;align-items:center;gap:var(--lotus-space-2);height:48px;padding:0 var(--lotus-space-4);border:0;border-radius:999px;background:var(--lotus-primary);color:var(--lotus-on-primary);font:inherit;font-weight:700;box-shadow:var(--lotus-shadow-lg);cursor:pointer;transition:transform var(--lotus-motion),box-shadow var(--lotus-motion)}
 .ai-chat__fab:hover{transform:translateY(-1px);box-shadow:var(--lotus-shadow-lg)}
 .ai-chat__fab .lotus-icon{width:22px;height:22px}
