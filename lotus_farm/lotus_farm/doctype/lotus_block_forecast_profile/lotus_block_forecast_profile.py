@@ -1,0 +1,47 @@
+"""Farm-scoped, immutable-on-approval forecast assumptions."""
+import frappe
+from frappe.model.document import Document
+from frappe.utils import now_datetime
+
+from lotus_farm.forecast_parameters import validate
+
+
+class LotusBlockForecastProfile(Document):
+    def validate(self):
+        old = None if self.is_new() else self.get_doc_before_save()
+        if old and old.approval_state == "Approved":
+            frappe.throw("Bộ dự thu đã duyệt không chỉnh sửa được. Tạo phiên bản mới.")
+        if self.farm_block:
+            block=frappe.get_doc("Farm Block",self.farm_block)
+            if block.farm != self.farm:
+                frappe.throw("Bộ thông số phải dùng lô thuộc đúng vườn.")
+        if int(self.version or 0)<1:
+            frappe.throw("Phiên bản phải từ 1 trở lên.")
+        if self.valid_to and str(self.valid_to)<str(self.valid_from):
+            frappe.throw("Ngày hiệu lực kết thúc phải sau ngày bắt đầu.")
+        duplicate=frappe.db.exists(self.doctype, {
+            "farm":self.farm,
+            "farm_block":self.farm_block or "",
+            "version":self.version,
+            "name":["!=",self.name],
+        })
+        if duplicate:
+            frappe.throw("Vườn/lô đã có phiên bản thông số cùng số phiên bản.")
+        try:
+            clean=validate(self.as_dict())
+        except ValueError as err:
+            frappe.throw(str(err))
+        for key,val in clean.items():
+            self.set(key,val)
+        if self.approval_state=="Approved":
+            if not (self.source_reference or "").strip() or not (self.notes or "").strip():
+                frappe.throw("Trước khi duyệt cần ghi nguồn và biên bản/căn cứ xác nhận kỹ thuật.")
+            self.approved_by=frappe.session.user
+            self.approved_at=now_datetime()
+        else:
+            self.approved_by=None
+            self.approved_at=None
+
+    def on_trash(self):
+        if self.approval_state=="Approved":
+            frappe.throw("Không xóa bộ hệ số đã duyệt. Tạo phiên bản thay thế.")
