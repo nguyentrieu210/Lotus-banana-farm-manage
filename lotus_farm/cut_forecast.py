@@ -296,7 +296,7 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
         by_code.setdefault(key, []).append(w)
     # A four-time bunch spray must never become an actionable job without
     # approved consumable norms. The same applies to wrapping / packing inputs.
-    material_codes = {"CV024", "CV026", "CV028", "CV031", "CV030", "CV032", "CV033"}
+    material_codes = {"CV021", "CV024", "CV026", "CV028", "CV031", "CV030", "CV032", "CV033"}
     norm_rows = frappe.get_list("Material Norm Profile",
         filters={"farm":farm,"approval_state":"Approved"},
         fields=["name","work_type","valid_from","valid_to","version"],
@@ -322,6 +322,10 @@ def _care_plan_preview(farm, from_date, to_date, farm_block=None):
             row["blocking_issue"] = "Đơn vị của công việc chưa khớp Book2; cần đối chiếu quy đổi."
         else:
             row["blocking_issue"] = None
+        if not row["blocking_issue"] and row["work_code"] == "CV021":
+            # Book2 gives the *maximum* number of affected plants; only field
+            # survey can determine the actual trees that require anti-fall support.
+            row["blocking_issue"] = "Phải khảo sát số cây thực sự cần chống đổ; số cây hiện tại chỉ là trần dự toán."
         norm = selected_norm(work.name, row["date"]) if work else None
         row["norm_profile"] = norm.name if norm else None
         if not row["blocking_issue"] and row["work_code"] in material_codes:
