@@ -5,8 +5,9 @@ import LotusMobileHeader from './LotusMobileHeader.vue'
 import LotusMobileBottomNav from './LotusMobileBottomNav.vue'
 import LotusMobileNotifications from './LotusMobileNotifications.vue'
 import LotusMobileOnboarding from './LotusMobileOnboarding.vue'
+import LotusMobileAiChat from './LotusMobileAiChat.vue'
 import {mobileTheme} from '../mobile-ui-theme'
-const props=defineProps({app:{type:String,default:'warehouse'},title:{type:String,default:'Lotus'},tabs:{type:Array,required:true},activeTab:{type:String,required:true},back:Boolean,keyboardOpen:Boolean,disabled:Boolean,notifications:{type:Boolean,default:true},onboarding:{type:Boolean,default:true},refresh:Function,refreshable:Boolean})
+const props=defineProps({app:{type:String,default:'warehouse'},user:{type:String,default:''},title:{type:String,default:'Lotus'},tabs:{type:Array,required:true},activeTab:{type:String,required:true},back:Boolean,keyboardOpen:Boolean,disabled:Boolean,notifications:{type:Boolean,default:true},onboarding:{type:Boolean,default:true},refresh:Function,refreshable:Boolean})
 const emit=defineEmits(['navigate','back'])
 // Pull down to reload the current list. Apps enable it only on root screens so forms in progress are never reloaded.
 const pulling=ref(false)
@@ -24,5 +25,6 @@ onUnmounted(()=>scheme?.removeEventListener?.('change',applyScheme))
   <PullRefresh v-model="pulling" class="lotus-pwa-pull" :disabled="!refresh||!refreshable||keyboardOpen||disabled" pulling-text="Kéo xuống để tải lại" loosing-text="Thả ra để tải lại" loading-text="Đang tải lại…" success-text="Đã cập nhật" :success-duration="700" @refresh="pull"><slot/></PullRefresh>
   <LotusMobileOnboarding v-if="onboarding" :app="app" :title="title"/>
   <LotusMobileBottomNav :items="tabs" :active="activeTab" :hidden="keyboardOpen" :disabled="disabled" @navigate="emit('navigate',$event)"/>
+  <LotusMobileAiChat :user="user" :keyboard-open="keyboardOpen" :disabled="disabled"/>
  </ConfigProvider>
 </template>

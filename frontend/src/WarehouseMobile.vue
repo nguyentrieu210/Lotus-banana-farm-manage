@@ -552,7 +552,7 @@ onUnmounted(()=>{
 </script>
 
 <template>
- <LotusMobileShell app="warehouse" :refresh="pullRefresh" :refreshable="rootScreens.has(screen)" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
+ <LotusMobileShell app="warehouse" :user="session?.user||''" :refresh="pullRefresh" :refreshable="rootScreens.has(screen)" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="activeTab"
   :back="!baseTabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="goTab"  @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipeCancel">
