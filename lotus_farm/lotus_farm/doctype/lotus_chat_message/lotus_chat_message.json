@@ -1,0 +1,16 @@
+{
+ "doctype":"DocType","name":"Lotus Chat Message","module":"Lotus Farm","autoname":"hash",
+ "field_order":["room","seq","sender","body","file_url","file_id","file_name","file_size","file_type"],
+ "fields":[
+  {"fieldname":"room","label":"Hội thoại","fieldtype":"Link","options":"Lotus Chat Room","reqd":1,"search_index":1},
+  {"fieldname":"seq","label":"Thứ tự","fieldtype":"Int","reqd":1,"search_index":1},
+  {"fieldname":"sender","label":"Người gửi","fieldtype":"Link","options":"User","reqd":1},
+  {"fieldname":"body","label":"Nội dung","fieldtype":"Code","options":"Text"},
+  {"fieldname":"file_url","label":"Đường dẫn tệp","fieldtype":"Data","length":1000,"hidden":1},
+  {"fieldname":"file_id","label":"Tệp đính kèm","fieldtype":"Link","options":"File","hidden":1},
+  {"fieldname":"file_name","label":"Tên tệp","fieldtype":"Data"},
+  {"fieldname":"file_size","label":"Dung lượng","fieldtype":"Int"},
+  {"fieldname":"file_type","label":"Kiểu tệp","fieldtype":"Data"}
+ ],
+ "permissions":[{"role":"All","read":1,"select":1}]
+}

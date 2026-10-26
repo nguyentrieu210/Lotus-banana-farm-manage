@@ -6,6 +6,7 @@ import {load,mount,tick,window,document,ref,h} from './support/mount.mjs'
 const Chat=await load('components/LotusMobileAiChat.vue')
 const popup=()=>document.querySelector('.lotus-mobile-ai__popup')
 const response=answer=>({ok:true,json:async()=>({message:{answer,steps:[{tool:'query',doctype:'Bin'}]}})})
+const inbox=()=>({ok:true,json:async()=>({message:{rooms:[],unread:0}})})
 async function open(view){view.root.querySelector('button[aria-label="Hỏi trợ lý Lotus AI"]').click();await tick();assert.ok(popup())}
 
 test('four phone apps use one shared chat in LotusMobileShell',()=>{
@@ -21,7 +22,7 @@ test('logged-in user can query, and answer appears in the panel',async t=>{
  window.sessionStorage.clear()
  const original=globalThis.fetch
  let resolve,count=0
- globalThis.fetch=async(url,options)=>{count++;assert.equal(url,'/api/method/lotus_farm.ai_chat.ask');assert.equal(options.method,'POST');return new Promise(r=>resolve=r)}
+ globalThis.fetch=async(url,options)=>{if(url.includes('lotus_farm.chat.'))return inbox();count++;assert.equal(url,'/api/method/lotus_farm.ai_chat.ask');assert.equal(options.method,'POST');return new Promise(r=>resolve=r)}
  const user=ref('')
  const view=mount({setup:()=>()=>h(Chat,{user:user.value})})
  t.after(()=>{view.unmount();globalThis.fetch=original})
@@ -40,7 +41,7 @@ test('account change drops previous responses',async t=>{
  window.sessionStorage.clear()
  const original=globalThis.fetch
  let finish
- globalThis.fetch=()=>new Promise(resolve=>finish=resolve)
+ globalThis.fetch=url=>url.includes('lotus_farm.chat.')?inbox():new Promise(resolve=>finish=resolve)
  const user=ref('first')
  const view=mount({setup:()=>()=>h(Chat,{user:user.value})})
  t.after(()=>{view.unmount();globalThis.fetch=original})

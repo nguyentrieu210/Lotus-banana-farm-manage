@@ -12,6 +12,7 @@ ARG REVISION=unknown
 USER root
 COPY --chown=frappe:root app/ /home/frappe/frappe-bench/apps/lotus_farm/
 COPY --chown=frappe:root downloads/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/
+RUN /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/lotus_farm/deployment/fix-websocket-origin.py
 RUN find /home/frappe/frappe-bench/apps/lotus_farm -name '*.pyc' -delete
 LABEL org.opencontainers.image.revision=${REVISION} \
       org.opencontainers.image.source=https://github.com/nguyentrieu210/Lotus-banana-farm-manage

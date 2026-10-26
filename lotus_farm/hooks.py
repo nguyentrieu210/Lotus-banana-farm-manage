@@ -5,6 +5,9 @@ app_publisher = "Nguyen Trieu"
 app_description = "Banana farm operations, harvest forecast and availability-to-promise for Lotus"
 app_license = "MIT"
 
+# Chat documents and their attached private files follow conversation membership.
+# These maps are extended below by the existing business-document hooks.
+
 # Lotus red on Frappe pages too: Desk (/app) and website pages such as /login.
 app_include_css = "/assets/lotus_farm/css/lotus-brand.css"
 web_include_css = "/assets/lotus_farm/css/lotus-brand.css"
@@ -291,3 +294,14 @@ for _finance_dt in ('Payment Entry', 'Journal Entry', 'Purchase Invoice', 'Sales
             _old = [_old]
         if _handler not in _old:
             doc_events[_finance_dt][_event] = [*_old, _handler]
+
+for _chat_dt, _chat_query in (('Lotus Chat Room', 'room_query'), ('Lotus Chat Message', 'message_query'),
+                             ('Lotus Chat Member', 'member_query')):
+    has_permission[_chat_dt] = 'lotus_farm.chat.permission'
+    permission_query_conditions[_chat_dt] = 'lotus_farm.chat.' + _chat_query
+
+for _chat_file_event in ('before_validate', 'on_trash'):
+    _chat_file_handlers = doc_events.setdefault('File', {}).get(_chat_file_event, [])
+    if isinstance(_chat_file_handlers, str):
+        _chat_file_handlers = [_chat_file_handlers]
+    doc_events['File'][_chat_file_event] = [*_chat_file_handlers, 'lotus_farm.chat.file_guard']
