@@ -73,7 +73,7 @@ async function openDocument(doctype,name){
  catch(e){error.value=e.message}
 }
 async function documentSaved(result){
- notice.value='Đã lưu phiếu nháp '+result.name+'.'
+ notice.value='Đã lưu phiếu nháp '+result.name+'.'+(result.warning?' '+result.warning:'')
  changed()
  const list=Object.entries(documentViews).find(([,kind])=>kind===result.form_kind)?.[0]
  if(list&&list!==view.value)await go(list)

@@ -1,0 +1,1 @@
+import{Jt as e,kn as t,t as n}from"./use-confirm-core-pQkXRKcR.js";function r(){let r=t(null);return{dialog:r,...n({onShow:()=>e(()=>r.value?.showModal()),onHide:()=>r.value?.close()})}}export{r as t};

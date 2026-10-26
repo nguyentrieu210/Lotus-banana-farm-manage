@@ -1,4 +1,5 @@
 <script setup>
+import StockEvidence from './StockEvidence.vue'
 import {computed,ref} from 'vue'
 import {call} from '../../api'
 import ModalForm from '../form/ModalForm.vue'
@@ -53,6 +54,7 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
   </template>
   <p v-if="detail.receiver" class="lotus-form-note">Người nhận: {{detail.receiver}} · {{issueModes[detail.issue_mode]||issueModes.Manual}}</p>
   <p v-if="detail.notes" class="lotus-form-note">{{detail.notes}}</p>
+  <StockEvidence :doctype="detail.doctype" :name="detail.name"/>
   <LotusField v-if="detail.can_submit" v-model="confirmPost" type="checkbox" required label="Tôi đã kiểm tra phiếu. Ghi sổ sẽ cập nhật tồn kho."/>
   <p v-else-if="detail.docstatus===0" class="lotus-form-note">Tài khoản chưa có quyền ghi sổ hoặc phiếu thuộc nghiệp vụ nâng cao chưa hỗ trợ ở đây.</p>
   <template #secondary>

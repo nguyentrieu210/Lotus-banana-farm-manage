@@ -7,6 +7,8 @@ import FormSection from '../form/FormSection.vue'
 import LotusField from '../form/LotusField.vue'
 import LineItemsEditor from '../form/LineItemsEditor.vue'
 import StockReceiptReason from '../StockReceiptReason.vue'
+import StockEvidence from './StockEvidence.vue'
+import DocumentReader from '../DocumentReader.vue'
 import {unitLabel} from '../../units'
 import {fmt} from '../../stock-columns'
 // Phiếu nhập không theo đơn · xuất kho · chuyển kho · kiểm kê, saved as an ERPNext draft (lotus_farm.warehouse.create_draft).
@@ -73,7 +75,28 @@ async function selectIssueSource(name){
  try{const result=await api('issue_lines',{company:props.company,mode:form.issue_mode,name});if(version===issueVersion){form.lines=result.rows.map(r=>({...r,qty:r.remaining_qty,fixed_area:!!r.area}));issueNote.value=result.note}}
  catch(e){if(version===issueVersion)error.value=e.message}finally{if(version===issueVersion)issueLoading.value=false}
 }
+const evidence=ref(null),pendingFiles=ref([]),aiNote=ref('')
+// AI-read delivery note / invoice: fill supplier and lines (item, quantity, unit, price); the read file is kept as evidence.
+async function applyDocument(result,stored){
+ if(result.supplier.match)form.supplier=result.supplier.match.name
+ if(!form.receipt_reason&&(result.supplier.match||result.supplier.text))form.receipt_reason='Purchase'
+ const rows=[]
+ for(const line of result.lines.filter(l=>l.item)){
+  const option=(await searchItems(line.item.label)).find(o=>o.value===line.item.code)
+  if(!option)continue
+  const row={...newLine(),item:option.value};selectItem(row,option)
+  row.qty=line.qty||1
+  if(line.uom&&line.uom===option.pack_uom)row.uom=option.pack_uom
+  if(line.rate!=null)row.rate=line.rate
+  rows.push(row)
+ }
+ if(rows.length)form.lines=[...form.lines.filter(r=>r.item),...rows]
+ const doc=result.document
+ if(!form.notes&&(doc.number||result.supplier.text))form.notes=['Theo chứng từ',doc.number&&'số '+doc.number,doc.date&&'ngày '+doc.date.split('-').reverse().join('/'),result.supplier.text&&'của '+result.supplier.text].filter(Boolean).join(' ')
+ pendingFiles.value=[...pendingFiles.value,{file_url:stored.file_url,file_name:stored.file_name}]
+}
 async function start(kind){
+ pendingFiles.value=[]
  issueVersion++;error.value='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false
  const first=props.warehouse||props.warehouses[0]?.name||''
  Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',work_plan:'',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],lines:[newLine()]})
@@ -95,7 +118,10 @@ async function save(){
   const lines=manual.value?form.lines:form.lines.filter(r=>Number(r.qty)>0)
   if(!lines.length)throw new Error('Chọn ít nhất một dòng vật tư có số lượng cấp lớn hơn 0.')
   const result=await api('create_draft',{company:props.company,...form,lines},true)
-  open.value=false;emit('saved',{...result,form_kind:form.kind})
+  // Evidence uploads once the draft exists. If it fails the draft is still saved; the detail view opens so files can be added again.
+  let warning=''
+  try{await evidence.value?.flush(result.doctype,result.name)}catch(e){warning='Chưa gắn được chứng từ: '+e.message+'. Thêm lại ở mục chứng từ của phiếu.'}
+  open.value=false;emit('saved',{...result,form_kind:form.kind,warning})
  }catch(e){error.value=e.message}finally{saving.value=false}
 }
 defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{open.value=false}})
@@ -105,6 +131,7 @@ defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{op
  <ModalForm v-model="open" :title="title" :busy="saving" :error="error" width="1080px" :submit-label="form.existing_name?'Lưu thay đổi':'Lưu phiếu nháp'" :submit-disabled="issueLoading||!form.lines.length" @submit="save">
   <p v-if="form.kind==='receipt'" class="lotus-modal-form__description">Chọn kho nhận, vật tư và số lượng thực nhận. Có thể nhập đơn giá theo kg, bao hoặc can nếu đã khai báo quy đổi.</p>
   <FormSection title="Thông tin phiếu">
+   <DocumentReader v-if="form.kind==='receipt'&&manual" :disabled="saving" label="Đọc phiếu giao hàng / hóa đơn bằng AI" @read="applyDocument"/>
    <StockReceiptReason v-if="form.kind==='receipt'" ref="reasonFields" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier"/>
    <FormGrid :columns="3">
     <LotusField v-if="form.kind==='issue'" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
@@ -125,6 +152,9 @@ defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{op
    <p v-if="!accountsLoading&&!accounts.length" class="lotus-form-note">Cần quyền đọc tài khoản chi phí của công ty để thêm chi phí.</p>
    <LineItemsEditor v-model="form.additional_costs" title="Các khoản chi phí" add-label="Thêm chi phí" empty-text="Chưa có chi phí vận chuyển, bốc xếp…" :columns="costColumns" :min="0" :max="30" :readonly="accountsLoading||!accounts.length" :new-row="()=>({description:'',amount:0,expense_account:defaultAccount})"/>
    <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(basic)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(charges)}}</dd></div><div><dt>Tổng giá trị nhập</dt><dd>{{cash(basic+charges)}}</dd></div></dl>
+  </FormSection>
+  <FormSection>
+   <StockEvidence ref="evidence" v-model:pending="pendingFiles" :doctype="form.kind==='count'?'Stock Reconciliation':'Stock Entry'" :name="form.existing_name||''" :disabled="saving" :title="form.kind==='issue'?'Ảnh bằng chứng xuất kho':form.kind==='receipt'?'Chứng từ nhập kho (phiếu giao hàng, hóa đơn, ảnh)':'Chứng từ, ảnh bằng chứng'"/>
   </FormSection>
   <FormSection v-if="form.kind!=='count'">
    <LotusField v-model="form.notes" :label="form.kind==='issue'&&form.issue_mode==='Manual'?'Lý do xuất thủ công':'Ghi chú'" type="textarea" maxlength="2000" :required="form.kind==='issue'&&form.issue_mode==='Manual'" placeholder="Mục đích cấp vật tư…"/>
