@@ -48,6 +48,16 @@ class BlockForecastTests(unittest.TestCase):
         self.assertGreater(len(result["monthly"]),4) # four 30-day windows cross month boundaries
         self.assertLess(max(x["tree_qty"] for x in daily),20) # no fictitious single-day spike
 
+    def test_previous_period_source_labels_all_use_official_planning_baseline(self):
+        for old_source in ("Unverified","Source File","Estimated","Planning Baseline",None):
+            with self.subTest(old_source=old_source):
+                projected=forecast([block(status=old_source)],[])
+                self.assertEqual(len(projected["rows"]),4)
+                self.assertTrue(all(r["count_status"]=="Planning Baseline" for r in projected["rows"]))
+                self.assertTrue(all(r["source"]=="Số cây gốc đợt trước đã chốt" for r in projected["rows"]))
+        physical=forecast([block(status="Census Confirmed")],[])
+        self.assertEqual(physical["rows"][0]["count_status"],"Census Confirmed")
+
     def test_approved_cohort_replaces_census_for_same_lot(self):
         rows=forecast([block()], [cohort()], profiles=[profile()])["rows"]
         self.assertEqual(len(rows),4)
