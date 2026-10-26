@@ -229,12 +229,12 @@ class TestInheritedOpening(unittest.TestCase):
                                    (self.Inspection, "Defect Inspection", "inspection_date")):
             with self.subTest(doctype=doctype):
                 self.transaction(cls, doctype)._validate_scope()
-                with self.assertRaisesRegex(ValidationError, "coverage start"):
+                with self.assertRaisesRegex(ValidationError, "ngày bắt đầu theo dõi"):
                     self.transaction(cls, doctype, **{field: "2026-10-19"})._validate_scope()
         self.daily.plot_scope(self.transaction(Doc, "Daily Work Plan Line"))
-        with self.assertRaisesRegex(ValidationError, "coverage start"):
+        with self.assertRaisesRegex(ValidationError, "ngày bắt đầu theo dõi"):
             self.daily.plot_scope(self.transaction(Doc, "Fruit Measurement", posting_date="2026-10-19"))
-        with self.assertRaisesRegex(ValidationError, "coverage start"):
+        with self.assertRaisesRegex(ValidationError, "ngày bắt đầu theo dõi"):
             self.daily.plot_scope(self.transaction(Doc, "Sucker Selection Batch", posting_date=None, selection_date="2026-10-19"))
 
     def test_supplied_cohort_still_must_match_and_malformed_root_is_not_exempt(self):
@@ -244,7 +244,7 @@ class TestInheritedOpening(unittest.TestCase):
             with self.subTest(doctype=doctype), self.assertRaises(ValidationError):
                 self.transaction(cls, doctype, sucker_selection_batch="OTHER")._validate_scope()
         self.records["Crop Cycle"][0].coverage_start_date = None
-        with self.assertRaisesRegex(ValidationError, "Complete the inherited"):
+        with self.assertRaisesRegex(ValidationError, "Hoàn tất vụ đầu kỳ kế thừa và ngày bắt đầu theo dõi trước khi ghi thao tác"):
             self.transaction(self.Operation, "Bunch Operation")._validate_scope()
 
     def test_explicit_forecast_requires_exact_cut_source_and_normalizes_blank_ssb(self):
@@ -259,7 +259,7 @@ class TestInheritedOpening(unittest.TestCase):
         self.assertEqual(actual.saleable_weight_kg, 10)
         for source in (None, "OTHER-CUT"):
             actual.source_cut_operation = source
-            with self.subTest(source=source), self.assertRaisesRegex(ValidationError, "exactly this source"):
+            with self.subTest(source=source), self.assertRaisesRegex(ValidationError, "Dự thu phải gắn đúng với thao tác cắt bắp nguồn này"):
                 actual.validate()
 
     def test_all_schema_references_freeze_cycle_identity_with_their_correct_field(self):
@@ -268,7 +268,7 @@ class TestInheritedOpening(unittest.TestCase):
             with self.subTest(doctype=doctype):
                 self.records[doctype] = [Doc(name="DEPENDENT", **{link: "OPEN"})]
                 cycle = self.opening(_new=False, _before=self.opening(), coverage_start_date="2026-10-21")
-                with self.assertRaisesRegex(ValidationError, "Used production identities"):
+                with self.assertRaisesRegex(ValidationError, "Định danh sản xuất đã dùng thì không được sửa"):
                     self.controls.preserve_lineage(cycle)
                 del self.records[doctype]
 
@@ -295,7 +295,7 @@ class TestInheritedOpening(unittest.TestCase):
         self.assertEqual(report.planted_qty, 0)
         report._before = copy.deepcopy(report)
         report.planting_date_known = 1
-        with self.assertRaisesRegex(ValidationError, "provenance is immutable"):
+        with self.assertRaisesRegex(ValidationError, "Nguồn số liệu kết vụ đã duyệt không được sửa"):
             report.before_update_after_submit()
 
 
