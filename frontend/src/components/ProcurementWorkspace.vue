@@ -173,7 +173,11 @@ async function saveDocument(){await run(async()=>{
  if(form.value==='need')answer=await method('purchase_proposal','save_proposal',{company:company.value,values:{reason:draft.value.notes,warehouse:draft.value.warehouse,items:draft.value.items.map(r=>({...r,item_code:r.item,warehouse:r.warehouse||draft.value.warehouse,schedule_date:draft.value.expected_date}))}},true)
  else if(form.value==='quote')answer=await api('save_quotation',{company:company.value,data:draft.value,client_key:key.value},true)
  else answer=await method('warehouse_buying_lite','save_order',{company:company.value,data:purchasePayload(draft.value,catalog.value),name:draft.value.name||null,modified:draft.value.modified||null},true)
- const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();success('Đã lưu nháp '+answer.name)
+ const doctype={need:'Material Request',quote:'Supplier Quotation'}[form.value]||'Purchase Order'
+ // Photos / PDFs read by AI become attachments of the saved document.
+ let attachNote=''
+ for(const file_url of draft.value.ai_files||[]){try{await call('lotus_farm.stock_attachments.attach',{doctype,name:answer.name,file_url},true)}catch(e){attachNote=' Chưa gắn được chứng từ AI: '+e.message}}
+ const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();success('Đã lưu nháp '+answer.name+(draft.value.ai_files?.length&&!attachNote?' kèm chứng từ đã đọc.':'')+attachNote)
 })}
 async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value});draft.value=purchaseFromRequest(draft.value,request)})}
 async function open(row,type=tab.value){error.value='';try{

@@ -58,7 +58,7 @@ test('shared form inputs preserve number and text model types',()=>{
   assert.equal(normalizeInputValue('',true),'')
   assert.equal(normalizeInputValue('not-a-number',true),'not-a-number')
   assert.equal(normalizeInputValue('125.5',false),'125.5')
-  assert.match(read('src/components/SchemaForm.vue'),/import \{Input as UiInput\}/)
+  assert.match(read('src/components/SchemaForm.vue'),/import \{Input as UiInput[,}]/)
   assert.match(read('src/components/SchemaForm.vue'),/import \{Textarea as UiTextarea\}/)
   assert.match(read('src/AssignApp.vue'),/import \{Input as UiInput\}/)
   assert.match(read('src/AssignApp.vue'),/import \{Badge as UiBadge\}/)
