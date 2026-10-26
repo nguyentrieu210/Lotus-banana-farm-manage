@@ -9,10 +9,10 @@ from lotus_farm.promax_rules import work_completion, vintage_choice
 
 def records(doctype,filters,fields):
     if not frappe.has_permission(doctype,'read'):
-        frappe.throw('Cần quyền xem '+frappe._(doctype),frappe.PermissionError)
+        frappe.throw('Cần quyền xem '+getattr(frappe, "_", str)(doctype),frappe.PermissionError)
     result=frappe.get_list(doctype,filters=filters,fields=fields,limit_page_length=10000)
     if len(result)==10000 and frappe.get_list(doctype,filters=filters,fields=['name'],limit_start=10000,limit_page_length=1):
-        frappe.throw('Phạm vi báo cáo vượt 10.000 bản ghi cho '+frappe._(doctype)+'; hãy thu hẹp vườn/khoảng ngày.')
+        frappe.throw('Phạm vi báo cáo vượt 10.000 bản ghi cho '+getattr(frappe, "_", str)(doctype)+'; hãy thu hẹp vườn/khoảng ngày.')
     return result
 
 

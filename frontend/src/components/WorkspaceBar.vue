@@ -1,4 +1,5 @@
 <script setup>
+import UiSelect from './ui/select/Select.vue'
 import WorkspaceModal from './WorkspaceModal.vue'
 import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
 import LotusIcon from './LotusIcon.vue'
@@ -9,7 +10,8 @@ import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
 import {call,consoleAPI} from '../api'
 import {loadWorkspaceDirectory,mergeWorkspaceActions} from '../workspace-directory'
-const props=defineProps({user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
+const emit=defineEmits(['update:farm'])
+const props=defineProps({farms:{type:Array,default:()=>[]},farm:{type:String,default:''},user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
 const {dark,sidebarCollapsed,toggleTheme,toggleSidebar}=useWorkspace()
 const palette=ref(null),input=ref(null),query=ref(''),selected=ref(0),loggingOut=ref(false),logoutError=ref('')
 const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
@@ -47,6 +49,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
     <DropdownMenuTrigger as-child><button type="button" class="workspace-nav-trigger" aria-label="Chuyển phân hệ"><span class="workspace-nav-title">{{title}}</span><LotusIcon name="chevron-down"/></button></DropdownMenuTrigger>
     <DropdownMenuContent><DropdownMenuItem v-for="action in allActions.filter(a=>a.navigation)" :key="action.id" @select="choose(action)">{{action.label}}</DropdownMenuItem></DropdownMenuContent>
    </DropdownMenu>
+   <label v-if="farms.length" class="workspace-farm" title="Vườn làm việc: chứng từ mới và bộ lọc vườn tự lấy vườn này"><LotusIcon name="sprout"/><span class="sr-only">Vườn làm việc</span><UiSelect :model-value="farm" aria-label="Vườn làm việc" @update:model-value="emit('update:farm',$event)"><option value="">Tất cả vườn</option><option v-for="f in farms" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect></label>
   </div>
   <UiButton class="workspace-search" variant="outline" aria-label="Tìm nhanh (Ctrl K)" @click="open"><LotusIcon name="search" class="workspace-search-icon"/><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right">

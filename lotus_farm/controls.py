@@ -11,14 +11,14 @@ def require_role(*roles):
     if frappe.session.user == "Administrator":
         return
     if not set(roles).intersection(frappe.get_roles()):
-        frappe.throw("Thao tác này cần quyền: " + ", ".join(frappe._(role) for role in roles), frappe.PermissionError)
+        frappe.throw("Thao tác này cần quyền: " + ", ".join(getattr(frappe, "_", str)(role) for role in roles), frappe.PermissionError)
 
 
 def lock(doctype, name):
     table = frappe.qb.DocType(doctype)
     rows = frappe.qb.from_(table).select(table.name).where(table.name == name).for_update().run()
     if not rows:
-        frappe.throw(f"{frappe._(doctype)} {name} không tồn tại.")
+        frappe.throw(f"{getattr(frappe, '_', str)(doctype)} {name} không tồn tại.")
 
 
 def positive(value, label):
