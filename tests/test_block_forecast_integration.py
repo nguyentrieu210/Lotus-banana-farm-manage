@@ -32,6 +32,9 @@ class BlockForecastIntegrationTests(unittest.TestCase):
             return {x["fieldname"]:x for x in data["fields"]}
         block=fields("farm_block")
         self.assertEqual(block["forecast_count_source"]["default"],"Planning Baseline")
+        source=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
+        self.assertIn('"Planning Baseline"',source)
+        self.assertNotIn("Số cây chưa được xác nhận kiểm kê",source)
         cohort=fields("plan_cohort")
         self.assertIn("Single Wave",cohort["forecast_distribution_mode"]["options"])
 
