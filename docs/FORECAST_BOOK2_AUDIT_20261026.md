@@ -6,7 +6,7 @@ Bộ máy hiện hành: `lotus_farm.block_forecast_engine`; đầu vào `Farm Bl
 
 ## Kiểm kê dữ liệu
 - Vườn 222: 64 lô lớn (A13+B12+C14+D12+E13), diện tích lô 215,16 ha; D13 lớn đã loại khỏi tập dữ liệu sản xuất; mã tưới D13 ở D12 không xóa.
-- Nguồn đếm cây sau D13: 518.296. Tổng dùng dự thu trong Excel: 530.373 cây, có **2,33% giả định đối với các lô chưa kiểm kê**. Chỉ 10/64 lô có kiểm kê được ghi nhận trong master nguồn; các lô còn lại tuyệt đối không được tự đánh nhãn `Census Confirmed`.
+- **Quyết định vận hành mới:** sử dụng **530.373 cây trong bộ chốt đợt trước** làm số cây gốc chính thức để chạy dự thu/kế hoạch theo từng lô. Bộ số liệu có nguồn là Master Excel đợt trước (nguồn cây 518.296 và điều chỉnh mô hình ở thời điểm chốt). Không nhân thêm +2,33% lần thứ hai; không tự đổi số cây đã chốt. Trạng thái sử dụng là `Planning Baseline`, không cần xác nhận kiểm đếm lại để lập kế hoạch.
 - Bản phân bổ trổ 17/40/25/18 cho **vụ chồi 2+**. Nếu không có mốc/cơ sở sản lượng vụ 1, không suy từ tỷ lệ vụ chồi ra sản lượng vụ 1 như số liệu đã xác nhận.
 
 ## Bảng thông số dự thu (bản tham chiếu Book2)
@@ -35,7 +35,7 @@ Một ví dụ: chọn chồi 01/11/2026 → trổ từ 01/05/2027 → thu từ 
 1. Không dồn 30 ngày trổ thành một ngày: bốn đợt 17/40/25/18 vẫn đúng tổng; `daily_rows` bảo toàn số cây, buồng trổ/cắt/thu/đóng; `monthly` cộng theo **ngày thu từng phần**, không ghi tất cả vào một tháng chỉ vì ngày đầu đợt.
 2. Tách đơn vị nguồn: `Trees` và `Selected Suckers` dự phóng tỷ lệ trổ/cây rồi cắt; `Bunches` tại Shooting là số buồng và dùng hệ số cắt **trên buồng đã trổ**; không áp 90% trên cây lần hai. Bunches ở mốc Selection bị từ chối.
 3. `Plan Cohort` mới có `forecast_distribution_mode`: `Four Waves` hoặc `Single Wave`; buồng tại ngày trổ mặc định một đợt. Chọn Single Wave cho đợt thực tế không phân bổ thêm bốn lần.
-4. `Farm Block.forecast_count_source` ghi `Unverified`, `Source File`, `Estimated` hoặc `Census Confirmed`. Dữ liệu cũ mặc định `Unverified`, không dùng để tạo kế hoạch tự động.
+4. `Farm Block.forecast_count_source` mặc định `Planning Baseline`. Tất cả số cây hợp lệ đang lưu theo lô, kể cả trạng thái nguồn cũ `Unverified`/`Source File`/`Estimated`, được sử dụng như **số cây gốc đã chốt** để lập kế hoạch khi bộ thông số và mốc trổ hợp lệ. `Census Confirmed` chỉ dành cho bản ghi có nguồn kiểm đếm thực địa riêng; không cần chuyển trường nguồn lịch sử để tính kế hoạch.
 5. `Lotus Block Forecast Profile` được tạo mới với 22 tham số versioned, cấp vườn hoặc lô, thời hạn hiệu lực, nguồn/căn cứ duyệt. Profile đã duyệt bất biến; profile mới không được chồng thời gian cùng vườn/lô. Không có Approved thì dự thu chỉ là **Unapproved Book2 scenario** và không cho tạo kế hoạch.
 6. Có kiểm tra `Crop Cycle.cycle_no`; nếu thiếu vụ thì trọng lượng 19/20 chỉ là giả định hiển thị và **không cho lập phiếu nháp**.
 7. `Bunch Operation` Submitted trổ/chích/cắt bắp hiển thị riêng làm số thực tế đã ghi nhận; KHÔNG nhân vào dự thu lần hai, không tự nhận thuộc một đợt nếu chưa có quan hệ nguồn xác thực.
@@ -46,7 +46,7 @@ Một ví dụ: chọn chồi 01/11/2026 → trổ từ 01/05/2027 → thu từ 
 
 ## Các phần CHƯA thể coi là hoàn tất
 - Tỷ lệ trổ thực tế chưa được nghiệm thu; mặc định 100% là trần và phải gắn nhãn giả định.
-- Hầu hết cây nguồn chưa được kiểm kê, ngày trổ từng lô chưa có xác nhận; không thay số thật bằng +2,33% ngầm.
+- Số cây bộ trước đã được **chốt làm đầu vào vận hành**. Chỉ yêu cầu bổ sung ngày trổ/chọn chồi của lô nếu chưa có mốc; không lấy việc chưa có biên bản kiểm đếm mới làm lý do chặn kế hoạch. Không cộng lặp 2,33% vào bộ đã chốt.
 - Liều vật tư/thuốc, năng suất của 19 công việc và lịch phun theo kỹ thuật phải được người phụ trách xác nhận. Hệ thống không được chế ra nguồn còn thiếu.
 - Chưa có liên kết duy nhất từng `Bunch Operation` đến `Plan Cohort` dự báo, nên actuals chỉ hiển thị riêng, không tự hiệu chỉnh forecast hay forecast snapshot đã phát hành.
 - Phân bổ đều 30 ngày là giả định vận hành để tránh đỉnh công ảo; khi có số trổ theo tuần/ngày thực tế phải thay bằng phân bố đo đếm.
@@ -60,3 +60,8 @@ cd frontend
 node --test tests/block-forecast.mount.test.js tests/plan-book2-simulation.test.js tests/plan-norm-engine.test.js tests/plan-norm-safety.test.js
 npm run build
 ```
+
+## Quyết định tiếp nhận số cây cũ làm số cây chốt (26/10/2026)
+- Giá trị `Farm Block.lotus_tree_count` từ dữ liệu đợt trước là **số cây chính thức phục vụ dự thu và kế hoạch**, không cần phân loại “chưa kiểm kê”. Nếu có số cây hợp lệ, bộ dự thu trả trạng thái `Planning Baseline`, cho phép sinh phiếu kế hoạch nháp khi đáp ứng các điều kiện thông số/Work Type/vật tư.
+- Giao diện Vườn & lô và Dự thu dùng nhãn **“Số cây gốc đã chốt”**, không hiển thị số cây đợt trước như một vấn đề thiếu kiểm kê.
+- Thông tin nguồn/giá trị cũ vẫn được bảo tồn, tránh tạo bản ghi sai rằng đã đếm thực địa. Chỉ khi số cây hoàn toàn trống/0 mới yêu cầu dữ liệu nguồn theo lô.
