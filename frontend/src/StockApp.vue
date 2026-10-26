@@ -87,7 +87,8 @@ watch(()=>props.stockView,value=>{const next=normalizeStockView(value);if(next!=
 watch(()=>props.company,value=>{if(value&&value!==company.value)setCompany(value)})
 watch(()=>props.warehouse,value=>{if((value||'')!==warehouse.value)warehouse.value=value||''})
 const listProps=computed(()=>({company:company.value,warehouse:warehouse.value,session:session.value,warehouses:warehouses.value,refreshKey:refreshKey.value}))
-const listEvents={'onUpdate:warehouse':setWarehouse,'onUpdate:company':setCompany,onOpenDocument:openDocument}
+// v-on="listEvents" takes event names (it adds the "on" prefix itself).
+const listEvents={'update:warehouse':setWarehouse,'update:company':setCompany,'open-document':openDocument}
 const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.includes(r.id)):stockNavigation).map(({id,label})=>({id,label})))
 </script>
 

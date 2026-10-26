@@ -537,8 +537,8 @@ useNoticeToast(notice)
   <template v-if="STATEMENTS.includes(report)&&reportData?.rows">
    <FormSection :title="reportData.title+' · Mẫu '+reportData.form+' · '+(report==='b01'?'tại ngày '+vnDate(reportData.on_date):'từ '+vnDate(reportData.from_date)+' đến '+vnDate(reportData.to_date))" :description="report==='b01'?'Ngày báo cáo lấy theo ngày &quot;Đến&quot;; số đầu năm là số dư ngày 31/12 năm trước.':report==='b02'?'Kỳ theo ô Từ – Đến; cột so sánh là cùng kỳ năm trước. Không gồm bút toán kết chuyển 911.':'Phương pháp gián tiếp, kỳ theo ô Từ – Đến.'">
     <template #actions><span :class="reportData.checks.every(c=>c.ok)?'fin-ok':'land-bad'">{{reportData.checks.every(c=>c.ok)?'Cân, khớp sổ':'Có chênh lệch'}}</span></template>
-    <div class="fin-statement"><DataTable :rows="reportData.rows" :columns="statementColumns" row-key="code" :storage-key="'fin-'+report" empty="Không có số liệu."/></div>
-    <DataTable :rows="reportData.checks" :columns="checkColumns" row-key="label" :storage-key="'fin-'+report+'-checks'"/>
+    <div class="fin-statement"><DataTable :rows="reportData.rows" :columns="statementColumns" :totals="false" row-key="code" :storage-key="'fin-'+report" empty="Không có số liệu."/></div>
+    <DataTable :rows="reportData.checks" :columns="checkColumns" :totals="false" row-key="label" :storage-key="'fin-'+report+'-checks'"/>
     <p v-for="u in reportData.uncovered||[]" :key="'u'+u.number+u.party" class="land-warn">TK {{u.number}} {{u.name}}{{u.party?' · '+u.party:''}} ({{num(u.net)}}) chưa thuộc chỉ tiêu nào{{report==='b03'?' — đã đưa vào dòng 16':''}}.</p>
     <p v-for="d in reportData.double||[]" :key="'d'+d.number" class="land-bad">TK {{d.number}} được lấy ở nhiều chỉ tiêu: {{d.lines.join(', ')}}.</p>
     <details><summary>Nguồn biểu mẫu và cách lấy số</summary><p class="lotus-form-note">{{reportData.source}}</p><ul class="fin-list"><li v-for="n in reportData.notes" :key="n">{{n}}</li></ul></details>
@@ -578,13 +578,13 @@ useNoticeToast(notice)
   <template v-else-if="report==='vat'&&reportData?.summary">
    <FormSection :title="'Thuế GTGT tháng '+reportData.month.slice(5)+'/'+reportData.month.slice(0,4)" description="Tháng lấy theo ngày &quot;Đến&quot;. Số liệu tham khảo để lập tờ khai 01/GTGT trên HTKK / eTax (chưa trừ số còn được khấu trừ của kỳ trước).">
     <WorkspaceSummaryStrip :items="[{label:'Thuế GTGT đầu vào',value:vnd(reportData.summary.input_tax)},{label:'Thuế GTGT đầu ra',value:vnd(reportData.summary.output_tax)},{label:reportData.summary.payable>=0?'Phải nộp':'Còn được khấu trừ',value:vnd(Math.abs(reportData.summary.payable))},{label:'Doanh thu không chịu thuế',value:vnd(reportData.summary.exempt_sales)}]"/>
-    <DataTable :rows="reportData.checks" :columns="vatCheckColumns" row-key="label" storage-key="fin-vat-checks"/>
+    <DataTable :rows="reportData.checks" :columns="vatCheckColumns" :totals="false" row-key="label" storage-key="fin-vat-checks"/>
    </FormSection>
    <FormSection title="Bảng kê hóa đơn mua vào"><DataTable :rows="reportData.purchases" :columns="vatPurchaseColumns" row-key="name" storage-key="fin-vat-purchases" empty="Không có hóa đơn mua trong tháng."/></FormSection>
    <FormSection title="Bảng kê hóa đơn bán ra"><DataTable :rows="reportData.sales" :columns="vatSalesColumns" row-key="name" storage-key="fin-vat-sales" empty="Không có hóa đơn bán trong tháng."/></FormSection>
   </template>
   <FormSection v-else-if="report==='reconciliation'&&reportData?.checks" :title="'Đối chiếu sổ kế toán với nghiệp vụ Lotus ('+vnDate(reportData.on_date)+')'">
-   <DataTable :rows="reportData.checks" :columns="reconColumns" row-key="label" storage-key="fin-reconciliation"/>
+   <DataTable :rows="reportData.checks" :columns="reconColumns" :totals="false" row-key="label" storage-key="fin-reconciliation"/>
   </FormSection>
  </template>
 

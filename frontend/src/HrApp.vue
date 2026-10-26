@@ -219,7 +219,7 @@ useNoticeToast(notice)
 
   <template v-if="tab==='employees'||tab==='onboarding'">
    <section class="stock-panel workspace-employee-list" :aria-label="tab==='onboarding'?'Nhân viên chờ tiếp nhận':'Hồ sơ nhân viên'">
-    <DataTable :key="company+':'+tab" :storage-key="'hr-employees:'+company+':'+tab" :rows="filteredEmployees" :columns="employeeColumns" :loading="busy" :interactive="isManager" :empty="tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'" @open="openEmployee"/>
+    <DataTable :fill="24" :key="company+':'+tab" :storage-key="'hr-employees:'+company+':'+tab" :rows="filteredEmployees" :columns="employeeColumns" :loading="busy" :interactive="isManager" :empty="tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'" @open="openEmployee"/>
    </section>
   </template>
 
