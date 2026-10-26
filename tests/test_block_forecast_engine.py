@@ -26,7 +26,7 @@ class BlockForecastTests(unittest.TestCase):
         self.assertEqual([x["tree_qty"] for x in rows],[170,400,250,180])
         self.assertEqual(sum(x["tree_qty"] for x in rows),1000)
         self.assertEqual(len(result["daily_rows"]),120)
-        self.assertEqual(rows[0]["source"],"Farm Block (số cây nguồn chưa phải kiểm kê)")
+        self.assertEqual(rows[0]["source"],"Số cây gốc đợt trước đã chốt")
         self.assertEqual(rows[0]["parameter_status"],"Unapproved Book2 scenario")
         self.assertEqual((dt.date.fromisoformat(rows[0]["cut_bud_date"])
                         -dt.date.fromisoformat(rows[0]["inject_date"])).days,16)
@@ -70,7 +70,7 @@ class BlockForecastTests(unittest.TestCase):
         pending={**cohort(),"approval_state":"Draft"}
         result=forecast([block()], [pending])
         self.assertEqual(result["source_count"],1)
-        self.assertEqual(result["rows"][0]["count_status"],"Unverified")
+        self.assertEqual(result["rows"][0]["count_status"],"Planning Baseline")
 
     def test_missing_input_never_invents_density_or_tree_count(self):
         b=block(trees=None);b["area_ha"]=9;b["planting_density"]=2400
