@@ -107,23 +107,23 @@
     "file": "assets/LotusSignatureTimeline-lszO42ck.css",
     "src": "_LotusSignatureTimeline-lszO42ck.css"
   },
-  "_MobileSupplierForm-CLR90Kx9.js": {
-    "file": "assets/MobileSupplierForm-CLR90Kx9.js",
+  "_MobileSupplierForm-RqWxKQck.js": {
+    "file": "assets/MobileSupplierForm-RqWxKQck.js",
     "name": "MobileSupplierForm",
     "imports": [
       "_use-confirm-core-BEgaohc_.js",
       "_units-BFCdIoWk.js",
       "_LotusField-nGN3NEIE.js",
       "_LotusMobileFeedback-CxvMguSP.js",
-      "_procurement-H03sE8vH.js"
+      "_procurement-eQzI1xV0.js"
     ]
   },
   "_ProcurementWorkspace-BLRtfo8d.css": {
     "file": "assets/ProcurementWorkspace-BLRtfo8d.css",
     "src": "_ProcurementWorkspace-BLRtfo8d.css"
   },
-  "_ProcurementWorkspace-CwYMxT5U.js": {
-    "file": "assets/ProcurementWorkspace-CwYMxT5U.js",
+  "_ProcurementWorkspace-uDGwX-eZ.js": {
+    "file": "assets/ProcurementWorkspace-uDGwX-eZ.js",
     "name": "ProcurementWorkspace",
     "imports": [
       "_use-confirm-core-BEgaohc_.js",
@@ -136,11 +136,11 @@
       "_LotusMobileFeedback-CxvMguSP.js",
       "_hr-catalog-labels-C2PpWfy5.js",
       "_preload-helper-BB2FBftw.js",
-      "_procurement-H03sE8vH.js",
-      "_MobileSupplierForm-CLR90Kx9.js",
+      "_procurement-eQzI1xV0.js",
+      "_MobileSupplierForm-RqWxKQck.js",
       "_use-mobile-confirm-BR4xZ9LD.js",
       "_FormGrid-CavsBWcL.js",
-      "_WarehouseReceiving-Dkdnq1gf.js",
+      "_WarehouseReceiving-ByHMPFtK.js",
       "_LineItemsEditor-8okVEjJ6.js",
       "_work-farm-DLl_J4SE.js"
     ],
@@ -185,8 +185,8 @@
       "_LotusSignatureTimeline-B3V8nJxj.js"
     ]
   },
-  "_WarehouseReceiving-Dkdnq1gf.js": {
-    "file": "assets/WarehouseReceiving-Dkdnq1gf.js",
+  "_WarehouseReceiving-ByHMPFtK.js": {
+    "file": "assets/WarehouseReceiving-ByHMPFtK.js",
     "name": "WarehouseReceiving",
     "imports": [
       "_use-confirm-core-BEgaohc_.js",
@@ -194,7 +194,7 @@
       "_units-BFCdIoWk.js",
       "_LotusField-nGN3NEIE.js",
       "_LotusMobileDialog-eIUAcxcQ.js",
-      "_procurement-H03sE8vH.js",
+      "_procurement-eQzI1xV0.js",
       "_FormGrid-CavsBWcL.js",
       "_LineItemsEditor-8okVEjJ6.js"
     ],
@@ -332,12 +332,12 @@
     "file": "assets/preload-helper-BB2FBftw.js",
     "name": "preload-helper"
   },
-  "_procurement-CO_iAnKb.css": {
-    "file": "assets/procurement-CO_iAnKb.css",
-    "src": "_procurement-CO_iAnKb.css"
+  "_procurement-BDeswjkK.css": {
+    "file": "assets/procurement-BDeswjkK.css",
+    "src": "_procurement-BDeswjkK.css"
   },
-  "_procurement-H03sE8vH.js": {
-    "file": "assets/procurement-H03sE8vH.js",
+  "_procurement-eQzI1xV0.js": {
+    "file": "assets/procurement-eQzI1xV0.js",
     "name": "procurement",
     "imports": [
       "_use-confirm-core-BEgaohc_.js",
@@ -345,7 +345,7 @@
       "_LotusField-nGN3NEIE.js"
     ],
     "css": [
-      "assets/procurement-CO_iAnKb.css"
+      "assets/procurement-BDeswjkK.css"
     ]
   },
   "_procurement-navigation-D-05whiJ.js": {
@@ -409,7 +409,7 @@
     ]
   },
   "buying.html": {
-    "file": "assets/buying-CDfGNcmM.js",
+    "file": "assets/buying-DsQXQfLf.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
@@ -420,12 +420,12 @@
       "_LotusMobileDialog-eIUAcxcQ.js",
       "_mobile-ui-CrzQiDHj.js",
       "_LotusMobileFeedback-CxvMguSP.js",
-      "_MobileSupplierForm-CLR90Kx9.js",
+      "_MobileSupplierForm-RqWxKQck.js",
       "_use-mobile-confirm-BR4xZ9LD.js",
       "_LotusMobileAction-Cy-WBrff.js",
       "_SignerPicker-HoVsvssI.js",
       "_LotusSignatureTimeline-B3V8nJxj.js",
-      "_ProcurementWorkspace-CwYMxT5U.js"
+      "_ProcurementWorkspace-uDGwX-eZ.js"
     ],
     "css": [
       "assets/buying-Df07eCaK.css"
@@ -451,7 +451,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-z3Z1bTgl.js",
+    "file": "assets/index-BQPyLEud.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -477,7 +477,7 @@
       "src/components/LotusImportPreview.vue",
       "src/components/Vip126RollingForecast.vue",
       "_use-workspace-confirm-BgpHW5lN.js",
-      "_ProcurementWorkspace-CwYMxT5U.js",
+      "_ProcurementWorkspace-uDGwX-eZ.js",
       "_WorkJournalApp-BZxyZbWl.js",
       "src/UserAdminApp.vue",
       "src/HrApp.vue",
@@ -489,7 +489,7 @@
       "src/CutForecastApp.vue"
     ],
     "css": [
-      "assets/index-DQJ5iSCK.css"
+      "assets/index-C1UB2Fmu.css"
     ]
   },
   "login.html": {
@@ -497,7 +497,7 @@
     "src": "login.html"
   },
   "src/CutForecastApp.vue": {
-    "file": "assets/CutForecastApp-Ch9S3SLR.js",
+    "file": "assets/CutForecastApp-ChB8bKo9.js",
     "name": "CutForecastApp",
     "src": "src/CutForecastApp.vue",
     "isDynamicEntry": true,
@@ -517,7 +517,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-CtLx9huS.js",
+    "file": "assets/FarmLandApp-BcG2i4w_.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -541,7 +541,7 @@
     ]
   },
   "src/FarmWorkApp.vue": {
-    "file": "assets/FarmWorkApp-DecqbEhh.js",
+    "file": "assets/FarmWorkApp-m-GhnATt.js",
     "name": "FarmWorkApp",
     "src": "src/FarmWorkApp.vue",
     "isDynamicEntry": true,
@@ -556,7 +556,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-BJ6_3RAJ.js",
+    "file": "assets/FinanceApp-BmpOhcBj.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -580,7 +580,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-YHYXDVgM.js",
+    "file": "assets/HrApp-DsZnj_na.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -608,7 +608,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-CVOyBHsO.js",
+    "file": "assets/StockApp-DFNtRQ-p.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -622,10 +622,10 @@
       "_hr-catalog-labels-C2PpWfy5.js",
       "_format-B_EEKp98.js",
       "index.html",
-      "_procurement-H03sE8vH.js",
+      "_procurement-eQzI1xV0.js",
       "_FormGrid-CavsBWcL.js",
       "_SigningPanel-CcVddpid.js",
-      "_WarehouseReceiving-Dkdnq1gf.js",
+      "_WarehouseReceiving-ByHMPFtK.js",
       "_LineItemsEditor-8okVEjJ6.js"
     ],
     "css": [
@@ -633,7 +633,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-DBT2y4e6.js",
+    "file": "assets/TimekeepingApp-BHrkOBf4.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -656,7 +656,7 @@
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-VZcyI0y5.js",
+    "file": "assets/UserAdminApp-BovWn_Ds.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
@@ -673,7 +673,7 @@
     ]
   },
   "src/components/DesktopForecastChart.vue": {
-    "file": "assets/DesktopForecastChart-ClUblR52.js",
+    "file": "assets/DesktopForecastChart-D4qV3hHk.js",
     "name": "DesktopForecastChart",
     "src": "src/components/DesktopForecastChart.vue",
     "isDynamicEntry": true,
@@ -684,7 +684,7 @@
     ]
   },
   "src/components/ForecastWorkspace.vue": {
-    "file": "assets/ForecastWorkspace-DoJfSix4.js",
+    "file": "assets/ForecastWorkspace-DDZH8GoY.js",
     "name": "ForecastWorkspace",
     "src": "src/components/ForecastWorkspace.vue",
     "isDynamicEntry": true,
@@ -714,7 +714,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-CfWBtgGo.js",
+    "file": "assets/OneDriveProcessWorkspace-BP7zM-iK.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -733,7 +733,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-BqNVOIPR.js",
+    "file": "assets/OpsList-SAtOFXXQ.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -745,7 +745,7 @@
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-GtIq2Oh7.js",
+    "file": "assets/Vip126RollingForecast-ESjeABYK.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,
@@ -780,7 +780,7 @@
     ]
   },
   "warehouse.html": {
-    "file": "assets/warehouse-BBQh1EuK.js",
+    "file": "assets/warehouse-BPODefKN.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
@@ -793,8 +793,8 @@
       "_mobile-ui-CrzQiDHj.js",
       "_LotusMobileFeedback-CxvMguSP.js",
       "_format-B_EEKp98.js",
-      "_procurement-H03sE8vH.js",
-      "_MobileSupplierForm-CLR90Kx9.js",
+      "_procurement-eQzI1xV0.js",
+      "_MobileSupplierForm-RqWxKQck.js",
       "_use-mobile-confirm-BR4xZ9LD.js",
       "_SigningPanel-CcVddpid.js",
       "_LotusMobileAction-Cy-WBrff.js",
