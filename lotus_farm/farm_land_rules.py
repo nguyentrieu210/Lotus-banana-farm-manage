@@ -9,7 +9,7 @@ import math
 EDITABLE = (
     ('block_name', 'Tên lô', 'text'), ('farm_zone', 'Khu', 'text'), ('area_ha', 'Diện tích (ha)', 'float'),
     ('variety', 'Giống', 'text'), ('planting_date', 'Ngày trồng', 'date'), ('planting_density', 'Mật độ trồng (cây/ha)', 'float'),
-    ('irrigation_zone', 'Khu tưới', 'text'), ('lotus_tree_count', 'Số cây kiểm kê', 'int'),
+    ('irrigation_zone', 'Khu tưới', 'text'), ('lotus_tree_count', 'Số cây gốc đã chốt', 'int'),
     ('lotus_tree_count_source', 'Nguồn số cây', 'text'), ('active', 'Đang dùng (1/0)', 'int'), ('notes', 'Ghi chú', 'text'),
 )
 FIELD_LABELS = {f: label for f, label, _ in EDITABLE}
@@ -111,7 +111,7 @@ def diff_row(current, incoming, plots_area=None, known_zones=None):
     if 'active' in changes and changes['active'][1] not in (0, 1):
         errors.append('Đang dùng: chỉ nhận 1 hoặc 0')
     if 'lotus_tree_count' in changes and 'lotus_tree_count_source' not in changes:
-        errors.append('Đổi số cây cần ghi Nguồn số cây (ai đếm, ngày nào)')
+        errors.append('Đổi số cây cần ghi nguồn/bảng chốt và thời điểm cập nhật')
     area = changes.get('area_ha', (None, current.get('area_ha')))[1]
     if plots_area and _num(area) > 0 and abs(_num(area) - _num(plots_area)) > max(0.05, 0.03 * _num(plots_area)):
         warnings.append('Diện tích %.2f ha khác tổng các thửa %.2f ha' % (_num(area), _num(plots_area)))
