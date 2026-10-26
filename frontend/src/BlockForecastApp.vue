@@ -35,7 +35,7 @@ const columns=[
  {field:'wave',headerName:'Đợt trổ',minWidth:105},
  {field:'qty_basis',headerName:'Nguồn số lượng',minWidth:120},
  {field:'tree_qty',headerName:'Khối lượng cơ sở',minWidth:135,valueFormatter:p=>fmt(p.value)},
- {field:'count_status',headerName:'Nguồn cây',minWidth:155},
+ {field:'count_status',headerName:'Cơ sở số cây',minWidth:175,valueFormatter:p=>p.value==='Planning Baseline'?'Số cây gốc đã chốt':p.value==='Census Confirmed'?'Số cây thực địa':p.value==='Cohort Approved'?'Đợt cây đã duyệt':p.value},
  {field:'parameter_status',headerName:'Thông số',minWidth:185},
  {field:'profile',headerName:'Phiên bản thông số',minWidth:150},
  {field:'flower_window_start',headerName:'Bắt đầu trổ',minWidth:135,valueFormatter:p=>dateFmt(p.value)},
@@ -143,7 +143,7 @@ onMounted(load)
 <template>
  <section class="land lotus-ui">
   <header class="land-head">
-   <div><h2>Dự thu theo lô & vụ cây</h2><p class="land-note">Một nguồn số cây kiểm kê của lô và các đợt cây đã duyệt. Dự phóng không phải nguồn hàng đã phát hành.</p></div>
+   <div><h2>Dự thu theo lô & vụ cây</h2><p class="land-note">Số cây gốc đợt trước được chốt để chạy dự thu theo lô; đợt cây đã duyệt được ưu tiên. Dự phóng không phải nguồn hàng đã phát hành.</p></div>
    <div class="land-actions">
     <UiButton variant="outline" @click="router.push({path:'/plan-norm',query:{farm}})">Quản lý đợt cây & định mức</UiButton>
     <a href="/app/lotus-block-forecast-profile" class="btn">Bộ thông số đã duyệt</a>
