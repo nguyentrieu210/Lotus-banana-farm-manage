@@ -4,7 +4,7 @@
   "module": "Lotus Farm",
   "autoname": "hash",
   "track_changes": 1,
-  "description": "Một dòng nhật ký chặt cây mẹ lần 2 (khu, ngày, số cây). Chỉ ghi qua lotus_farm.cut_forecast (nhập Excel).",
+  "description": "Nhật ký chặt mẹ lần 2 theo khu, có thể đối chiếu lô lớn/vụ/đợt cây. Dữ liệu cũ chưa rõ lô KHÔNG được tự phân bổ diện tích. Chỉ ghi qua API có kiểm tra.",
   "sort_field": "cut_date",
   "sort_order": "DESC",
   "fields": [
@@ -25,6 +25,26 @@
       "reqd": 1,
       "in_list_view": 1,
       "in_standard_filter": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Lô lớn (đối chiếu)",
+      "fieldtype": "Link",
+      "options": "Farm Block",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "crop_cycle",
+      "label": "Vụ cây (đối chiếu)",
+      "fieldtype": "Link",
+      "options": "Crop Cycle"
+    },
+    {
+      "fieldname": "plan_cohort",
+      "label": "Đợt cây kế hoạch (đối chiếu)",
+      "fieldtype": "Link",
+      "options": "Plan Cohort"
     },
     {
       "fieldname": "cut_date",
@@ -63,6 +83,9 @@
   "field_order": [
     "farm",
     "farm_zone",
+    "farm_block",
+    "crop_cycle",
+    "plan_cohort",
     "cut_date",
     "tree_qty",
     "source_ref",
