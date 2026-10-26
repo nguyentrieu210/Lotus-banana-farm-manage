@@ -37,20 +37,20 @@ async function pick([file]){
 .lotus-doc-reader{display:grid;gap:8px;justify-items:start;grid-column:1/-1}
 .lotus-doc-reader__actions{display:flex;flex-wrap:wrap;gap:8px;width:100%}
 /* Reader buttons: own styles so they look the same in the workspace and the phone apps. */
-.lotus-doc-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:0 16px;border:1px solid var(--lotus-border,#e3e3e3);border-radius:999px;background:var(--lotus-surface,#fff);color:var(--lotus-text,#222);font:inherit;font-size:14px;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,box-shadow .15s}
+.lotus-doc-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:0 16px;border:1px solid var(--lotus-border);border-radius:999px;background:var(--lotus-surface);color:var(--lotus-text);font:inherit;font-size:14px;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,box-shadow .15s}
 .lotus-doc-btn .lotus-icon{width:17px;height:17px;flex:0 0 auto}
-.lotus-doc-btn:hover:not(:disabled){border-color:var(--lotus-primary,#c62828);box-shadow:0 1px 4px rgba(198,40,40,.12)}
-.lotus-doc-btn:focus-visible{outline:2px solid var(--lotus-primary,#c62828);outline-offset:2px}
+.lotus-doc-btn:hover:not(:disabled){border-color:var(--lotus-primary);box-shadow:0 1px 4px rgba(198,40,40,.12)}
+.lotus-doc-btn:focus-visible{outline:2px solid var(--lotus-primary);outline-offset:2px}
 .lotus-doc-btn:disabled{opacity:.65;cursor:progress}
-.lotus-doc-btn--primary{border-color:transparent;background:var(--lotus-primary,#c62828);color:#fff}
-.lotus-doc-btn--primary:hover:not(:disabled){background:var(--lotus-primary-hover,#b71c1c)}
-.lotus-doc-btn--soft{border-color:color-mix(in srgb,var(--lotus-primary,#c62828) 35%,transparent);background:var(--lotus-primary-subtle,#fdecea);color:var(--lotus-primary-text,#b71c1c)}
+.lotus-doc-btn--primary{border-color:transparent;background:var(--lotus-primary);color:#fff}
+.lotus-doc-btn--primary:hover:not(:disabled){background:var(--lotus-primary-hover)}
+.lotus-doc-btn--soft{border-color:color-mix(in srgb,var(--lotus-primary) 35%,transparent);background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
 .lotus-doc-reader--mobile .lotus-doc-reader__actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}
 .lotus-doc-reader--mobile .lotus-doc-btn{min-height:46px;font-size:15px}
 /* Spinner while the AI reads the document (respects reduced motion). */
 .lotus-spinner{display:inline-block;width:16px;height:16px;flex:0 0 auto;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:lotus-spin .8s linear infinite}
-.lotus-spinner--lg{width:22px;height:22px;border-width:3px;color:var(--lotus-primary,#c62828)}
-.lotus-doc-reader__busy{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:var(--lotus-radius-md,8px);background:var(--lotus-primary-subtle,#fdecea);color:var(--lotus-text);font-size:var(--lotus-text-sm,13px);font-weight:600}
+.lotus-spinner--lg{width:22px;height:22px;border-width:3px;color:var(--lotus-primary)}
+.lotus-doc-reader__busy{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:var(--lotus-radius-md,8px);background:var(--lotus-primary-subtle);color:var(--lotus-text);font-size:var(--lotus-text-sm,13px);font-weight:600}
 @keyframes lotus-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.lotus-spinner{animation-duration:2.4s}}
 .lotus-doc-reader__error{margin:0;color:var(--lotus-danger);font-size:var(--lotus-text-sm)}
