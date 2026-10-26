@@ -26,6 +26,28 @@ class BlockForecastIntegrationTests(unittest.TestCase):
             self.assertTrue(all(not p.get("write") and not p.get("create") and not p.get("delete")
                 for p in info.get("permissions",[])))
 
+    def test_source_confidence_and_cohort_wave_mode_are_fields(self):
+        def fields(name):
+            data=json.loads((ROOT/f"lotus_farm/lotus_farm/doctype/{name}/{name}.json").read_text(encoding="utf-8"))
+            return {x["fieldname"]:x for x in data["fields"]}
+        block=fields("farm_block")
+        self.assertEqual(block["forecast_count_source"]["default"],"Unverified")
+        cohort=fields("plan_cohort")
+        self.assertIn("Single Wave",cohort["forecast_distribution_mode"]["options"])
+
+    def test_parameters_are_versioned_approved_and_immutable(self):
+        from lotus_farm.forecast_parameters import DEFAULTS,validate
+        self.assertEqual(len(DEFAULTS),22)
+        self.assertEqual(validate(DEFAULTS)["inject_to_cut_days"],16)
+        self.assertEqual(validate(DEFAULTS)["apply_sucker_yield_to_counted_trees"],0)
+        doc=json.loads((ROOT/"lotus_farm/lotus_farm/doctype/lotus_block_forecast_profile/lotus_block_forecast_profile.json").read_text(encoding="utf-8"))
+        fields={x["fieldname"] for x in doc["fields"]}
+        self.assertTrue(set(DEFAULTS).issubset(fields))
+        self.assertTrue({"version","approval_state","valid_from","valid_to","approved_by","source_reference"}.issubset(fields))
+        source=(ROOT/"lotus_farm/lotus_farm/doctype/lotus_block_forecast_profile/lotus_block_forecast_profile.py").read_text(encoding="utf-8")
+        self.assertIn('old.approval_state == "Approved"',source)
+        self.assertIn("không được chồng ngày hiệu lực",source)
+
     def test_new_document_pipeline_is_draft_only_with_approved_norms(self):
         code=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
         section=code.split("def create_care_plan_draft(",1)[1]
