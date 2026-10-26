@@ -16,9 +16,8 @@ def cohort(name="C1",number=2,anchor="Selection",when="2026-11-01",
                 planned_qty=qty,modified="2026-10-26")
 
 def profile(**overrides):
-    return dict(name="PROFILE1",approval_state="Approved",active=1,
-                farm_block=None,version=1,valid_from="2026-01-01",
-                **overrides)
+    return dict(dict(name="PROFILE1",approval_state="Approved",active=1,
+                     farm_block=None,version=1,valid_from="2026-01-01"),**overrides)
 
 class BlockForecastTests(unittest.TestCase):
     def test_four_wave_allocation_and_no_cutting_dependency(self):
