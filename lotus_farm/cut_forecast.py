@@ -53,9 +53,12 @@ def _entries(farm, zone=None):
     filters = {'farm': farm}
     if zone:
         filters['farm_zone'] = zone
-    rows = frappe.get_all(ENTRY, filters=filters, fields=['name', 'farm_zone', 'cut_date', 'tree_qty', 'source_ref', 'entry_key', 'import_batch'],
+    rows = frappe.get_all(ENTRY, filters=filters, fields=['name', 'farm_zone', 'farm_block', 'crop_cycle', 'plan_cohort', 'cut_date', 'tree_qty', 'source_ref', 'entry_key', 'import_batch', 'modified'],
                           order_by='farm_zone, cut_date, source_ref', limit_page_length=0)
-    return [dict(name=r.name, zone=r.farm_zone, cut_date=r.cut_date, tree_qty=r.tree_qty, source_ref=r.source_ref or '', entry_key=r.entry_key, import_batch=r.import_batch)
+    return [dict(name=r.name, zone=r.farm_zone, farm_block=r.farm_block, crop_cycle=r.crop_cycle,
+                 plan_cohort=r.plan_cohort, modified=r.modified,
+                 cut_date=r.cut_date, tree_qty=r.tree_qty, source_ref=r.source_ref or '',
+                 entry_key=r.entry_key, import_batch=r.import_batch)
             for r in rows]
 
 
@@ -94,17 +97,30 @@ def board(farm=None, zone=None):
     shown = [e for e in entries if not zone or e['zone'] == zone]
     profiles = _profiles(farm)
     active = _active(profiles)
+    # Expose only permission-filtered options; legacy zone-only rows stay unresolved.
+    blocks = frappe.get_list('Farm Block', filters={'farm': farm}, fields=['name','block_code','block_name','farm_zone'],
+                             order_by='farm_zone,block_code', limit_page_length=0) if frappe.has_permission('Farm Block', 'read') else []
+    cycles = frappe.get_list('Crop Cycle', filters={'farm': farm},
+                             fields=['name','farm_block','cycle_no','status'], limit_page_length=0) if frappe.has_permission('Crop Cycle', 'read') else []
+    cohorts = frappe.get_list('Plan Cohort', filters={'farm': farm},
+                              fields=['name','farm_block','crop_cycle','cohort_code','cohort_name','approval_state'],
+                              limit_page_length=0) if frappe.db.exists('DocType','Plan Cohort') and frappe.has_permission('Plan Cohort','read') else []
     issues = []
     if not entries:
         issues.append('Vườn này chưa có nhật ký chặt mẹ lần 2. Bấm "Nhập Excel" để tải file dự thu lên.')
     if not active:
         issues.append('Chưa có bộ thông số đã duyệt nên chưa tính được dự thu.')
+    unmapped_count = sum(not bool(e.get('farm_block')) for e in shown)
+    if unmapped_count:
+        issues.append(f'{unmapped_count} dòng nhật ký chưa gắn lô; không được tự phân bổ cây từ khu sang lô.')
     result = rules.compute(shown, _profile_values(active)) if active and shown else dict(rows=[], months=[], zones=[], zone_months={}, totals=None)
     imports = frappe.get_all(IMPORT, filters={'farm': farm}, fields=['name', 'file_name', 'source_file', 'sha256', 'new_rows', 'existing_rows', 'conflict_rows',
                                                                       'error_rows', 'trees', 'profile', 'imported_by', 'imported_at', 'undone_at'],
                              order_by='imported_at desc', limit_page_length=20)
     return _jsonable(dict(farms=farms, farm=farm, zone=zone or '', zone_list=zone_list, can_edit=can_edit(), params=rules.PARAMS, stages=rules.STAGES,
                           profile=active, profiles=profiles, issues=issues, imports=imports,
+                           cut_entries=shown, blocks=blocks, cycles=cycles, cohorts=cohorts,
+                           unmapped_count=unmapped_count,
                            book2_reference=book2.reference(_profile_values(active) if active else None), **result))
 
 
@@ -214,6 +230,33 @@ def undo_import(farm, batch):
         frappe.delete_doc(ENTRY, name, ignore_permissions=True)
     doc.db_set(dict(undone_at=now_datetime(), undone_by=frappe.session.user))
     return dict(removed=len(names))
+
+
+@frappe.whitelist(methods=['POST'])
+def assign_entry_scope(farm, entry, farm_block=None, crop_cycle=None, plan_cohort=None, modified=None):
+    """Manually reconcile ONE legacy cut row. Never infer a block from the zone/area."""
+    _editor(farm)
+    if not modified:
+        frappe.throw("Thiếu phiên bản nhật ký để đối chiếu thay đổi.")
+    from lotus_farm.controls import lock
+    lock('Farm', farm)
+    doc = frappe.get_doc(ENTRY, entry, for_update=True)
+    if doc.farm != farm:
+        frappe.throw("Nhật ký không thuộc vườn này.", frappe.PermissionError)
+    if str(doc.modified) != str(modified):
+        frappe.throw("Nhật ký đã được người khác sửa. Tải lại và kiểm tra trước khi ghi.")
+    block = (farm_block or '').strip() or None
+    cycle = (crop_cycle or '').strip() or None
+    cohort = (plan_cohort or '').strip() or None
+    if (cycle or cohort) and not block:
+        frappe.throw("Chọn lô lớn trước khi gắn vụ/đợt cây.")
+    doc.farm_block = block
+    doc.crop_cycle = cycle
+    doc.plan_cohort = cohort
+    # DocType.validate rejects cross-farm/zone/cycle links; key stays source-based for dedupe.
+    doc.save(ignore_permissions=True)
+    return dict(entry=doc.name, farm_block=doc.farm_block, crop_cycle=doc.crop_cycle,
+                plan_cohort=doc.plan_cohort, modified=str(doc.modified))
 
 
 # Parameters ------------------------------------------------------------------------------------------
