@@ -130,7 +130,7 @@ onMounted(load)
    </div>
    <section class="land-card">
     <h3>Thông số dự phóng Book2</h3>
-    <p class="land-note">Trổ 4 đợt {{data?.params?.waves?.join(' / ')}}%; từ chọn chồi đến bắt đầu trổ {{data?.params?.sucker_to_flower_months}} tháng lịch; trổ → chích +5 ngày; chích → cắt bắp +16 ngày; cắt bắp → thu +65 ngày. Ngày đại diện mỗi đợt +14 ngày.</p>
+    <p class="land-note">Trổ 4 đợt {{data?.params?.waves?.join(' / ')}}%; từ chọn chồi đến bắt đầu trổ {{data?.params?.sucker_to_flower_months}} tháng lịch; trổ → chích +5 ngày; chích → cắt bắp +16 ngày; cắt bắp → thu +65 ngày. Mốc trổ là ngày bắt đầu mỗi đợt; chưa phân bổ số cây theo từng ngày trong cửa sổ 30 ngày.</p>
    </section>
    <section class="land-card">
     <h3>Tổng hợp theo tháng thu</h3>
