@@ -34,8 +34,18 @@ class LotusBlockForecastProfile(Document):
         for key,val in clean.items():
             self.set(key,val)
         if self.approval_state=="Approved":
+            if not self.valid_to:
+                frappe.throw("Bộ thông số đã duyệt phải có ngày hết hiệu lực để quản lý phiên bản về sau.")
             if not (self.source_reference or "").strip() or not (self.notes or "").strip():
                 frappe.throw("Trước khi duyệt cần ghi nguồn và biên bản/căn cứ xác nhận kỹ thuật.")
+            others=frappe.get_all(self.doctype,filters={
+                "farm":self.farm,"approval_state":"Approved","name":["!=",self.name]},
+                fields=["name","farm_block","valid_from","valid_to"])
+            for other in others:
+                if (other.farm_block or "")!=(self.farm_block or ""):
+                    continue
+                if str(other.valid_from)<=str(self.valid_to) and str(self.valid_from)<=str(other.valid_to or "9999-12-31"):
+                    frappe.throw("Hai phiên bản dự thu đã duyệt cùng vườn/lô không được chồng ngày hiệu lực.")
             self.approved_by=frappe.session.user
             self.approved_at=now_datetime()
         else:
