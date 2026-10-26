@@ -63,8 +63,7 @@ def preview(farm=None, block=None):
             "system_area_ha": existing_area,
             "area_match": match,
             "tree_count": count,
-            "count_status": ("Đã bổ sung từ ảnh biển lô hoặc xác nhận người quản lý; cần đối chiếu" if count_source and "18/10/2026" in count_source else
-                             "Số cây gốc đợt trước đã chốt" if count is not None else "Chưa có số cây"),
+            "count_status": ("Số cây gốc đợt trước đã chốt" if count is not None else "Chưa có số cây"),
             "count_source": count_source,
             "source_excel_row": int(item["source_excel_row"]),
         })
