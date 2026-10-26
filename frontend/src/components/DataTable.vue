@@ -16,7 +16,9 @@ import {loadColumnWidths,saveColumnWidths} from '../grid-state'
 import {gridRowId} from '../grid-row-id'
 import ModalForm from './form/ModalForm.vue'
 import {summableColumn,totalsRow} from '../grid-totals'
+import {sortExcelChoices} from '../excel-filter-state'
 import {Pagination} from './ui/pagination'
+import UiSelect from './ui/select/Select.vue'
 const desktopDensity=inject('lotusDesktopDensity',null)
 const theme=computed(()=>desktopGridThemes[desktopDensity?.value]||compactGridTheme)
 const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50}})
@@ -36,10 +38,12 @@ const localFilters=ref({})
 const key=c=>c.field||c.colId||c.headerName
 watch(()=>props.columns.map(key).join('|'),()=>{const allowed=new Set(props.columns.map(key));localFilters.value=Object.fromEntries(Object.entries(localFilters.value).filter(([field])=>allowed.has(field)))})
 const raw=(row,col)=>col.valueGetter?col.valueGetter({data:row}):row[col.field]
-const visibleRows=computed(()=>props.filterValues?props.rows:props.rows.filter(row=>Object.entries(localFilters.value).every(([field,values])=>values.includes(raw(row,props.columns.find(col=>key(col)===field))))))
+const passes=(row,skip)=>Object.entries(localFilters.value).every(([field,values])=>field===skip||values.includes(raw(row,props.columns.find(col=>key(col)===field))))
+const visibleRows=computed(()=>props.filterValues?props.rows:props.rows.filter(row=>passes(row)))
 // Empty local-filter results unmount AG Grid; publish the empty selection explicitly.
 watch(visibleRows,list=>{if(!list.length)emit('visible-rows',[])},{flush:'post'})
-function headerParams(col){const field=key(col);const choices=props.filterValues?.[field]||[...new Map(props.rows.map(data=>({value:raw(data,col),data})).map(r=>[r.value,r])).values()];return {choices:choices.map(row=>({...row,label:row.label??(col.valueFormatter?col.valueFormatter({value:row.value,data:row.data||{}}):row.value)})),selection:props.filterValues?props.serverFilters[field]:localFilters.value[field],apply:values=>{if(props.filterValues)emit('filter',{field,values});else{const next={...localFilters.value};if(values===null)delete next[field];else next[field]=values;localFilters.value=next}}}}
+// Like Excel: a column's value list shows what is left after the OTHER columns' filters, sorted, blanks last.
+function headerParams(col){const field=key(col);const choices=props.filterValues?.[field]||[...new Map(props.rows.filter(row=>passes(row,field)).map(data=>({value:raw(data,col),data})).map(r=>[r.value,r])).values()];return {choices:sortExcelChoices(choices.map(row=>({...row,label:row.label??(col.valueFormatter?col.valueFormatter({value:row.value,data:row.data||{}}):row.value)}))),selection:props.filterValues?props.serverFilters[field]:localFilters.value[field],apply:values=>{if(props.filterValues)emit('filter',{field,values});else{const next={...localFilters.value};if(values===null)delete next[field];else next[field]=values;localFilters.value=next}}}}
 const rowIdentity=computed(()=>visibleRows.value.map((r,i)=>gridRowId(r,props.rowKey)||i).join('|'))
 const mobileColumns=computed(()=>props.columns.filter(c=>!c.hideOnMobile))
 // Sum row on every table: the row count plus the numeric columns of the rows on screen (after column filters), pinned under the grid.
@@ -56,7 +60,8 @@ const pinnedRenderer=c=>({cellRendererSelector:p=>p.node?.rowPinned?{component:p
 const defs=computed(()=>props.columns.map(c=>({...c,...pinnedSafe(c),headerName:uiFarmLabel(c.headerName),flex:c.flex||1,minWidth:c.minWidth||100,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)})))
 
 function value(row,col){if(col.mobileValue)return col.mobileValue(row);const value=col.valueGetter?col.valueGetter({data:row}):row[col.field];return col.valueFormatter?col.valueFormatter({value,data:row}):value??'—'}
-function sorted(event){sortState.value=event.api.getColumnState().filter(c=>c.sort).map(c=>({colId:c.colId,sort:c.sort,sortIndex:c.sortIndex}));if(props.serverSort)emit('sort',event.api.getColumnState().filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
+let restoring=false
+function sorted(event){sortState.value=event.api.getColumnState().filter(c=>c.sort).map(c=>({colId:c.colId,sort:c.sort,sortIndex:c.sortIndex}));if(props.serverSort&&!restoring)emit('sort',event.api.getColumnState().filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
 // Row click: screens that handle @open / @cell-open / @row-double-open keep their own behaviour; every other table opens a read-only detail of the row.
 const listeners=getCurrentInstance()?.vnode.props||{}
 const ownsClick=()=>Boolean(listeners.onOpen||listeners.onCellOpen||listeners.onRowDoubleOpen)
@@ -80,7 +85,7 @@ function pageChanged(event){const page=event.api?.paginationGetCurrentPage?.();i
 function goPage(start){pageStart.value=start;gridApi.value?.paginationGoToPage(Math.floor(start/props.pageSize))}
 onMounted(()=>{if(props.fill>=0){window.addEventListener('resize',fit);nextTick(fit)}})
 onBeforeUnmount(()=>window.removeEventListener('resize',fit))
-watch(()=>visibleRows.value.length>10,()=>nextTick(fit))
+watch(()=>[visibleRows.value.length>10,rowIdentity.value,props.loading],()=>nextTick(fit))
 // A rendered row may move after filtering or sorting. Its ID must come from its document, not its index.
 const getRowId=params=>gridRowId(params.data,props.rowKey)
 const hasLocalFilters=computed(()=>!props.filterValues&&Object.keys(localFilters.value).length>0)
@@ -89,20 +94,33 @@ const widthKey=computed(()=>props.storageKey||props.columns.map(key).join('|'))
 const gridApi=ref(null),sortState=ref([])
 const columnLabels=computed(()=>Object.fromEntries(props.columns.map(c=>[key(c),uiFarmLabel(c.headerName)])))
 // Saved views: column filters (local tables) + sort, applied back onto the grid.
-function applyView(view){if(!props.filterValues)localFilters.value={...(view.filters||{})};gridApi.value?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})}
-function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths})}
+// Server-filtered lists (filterValues) get the same chips and views: each changed column is sent back as a filter event.
+const mobileFilter=ref('')
+const filterable=computed(()=>props.columns.filter(c=>c.filterable!==false&&!c.hide))
+const mobileFilterParams=computed(()=>{const col=props.columns.find(c=>key(c)===mobileFilter.value);return col?{...headerParams(col),displayName:uiFarmLabel(col.headerName)}:null})
+const activeFilters=computed(()=>props.filterValues?Object.fromEntries(Object.entries(props.serverFilters||{}).filter(([,values])=>Array.isArray(values))):localFilters.value)
+function applyView(view){
+ const next=view.filters||{}
+ if(props.filterValues){for(const field of new Set([...Object.keys(activeFilters.value),...Object.keys(next)]))if(JSON.stringify(activeFilters.value[field]??null)!==JSON.stringify(next[field]??null))emit('filter',{field,values:next[field]??null})}
+ else localFilters.value={...next}
+ gridApi.value?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})
+}
+// The grid is rebuilt when its rows change (filters, reload): bring back saved widths and the current sort without re-asking the server.
+function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths})
+ if(sortState.value.length){restoring=true;try{event.api.applyColumnState({state:sortState.value,defaultState:{sort:null}})}finally{restoring=false}}}
 function resized(event){if(event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,event.api.getColumnState())}
 function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)});emit('visible-rows',records)}
 </script>
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
-  <DataTableViews v-if="!filterValues" :storage-key="widthKey" :filters="localFilters" :sort="sortState" :labels="columnLabels" @apply="applyView" @clear="localFilters={}"/>
+  <DataTableViews :storage-key="widthKey" :filters="activeFilters" :sort="sortState" :labels="columnLabels" @apply="applyView" @clear="applyView({filters:{},sort:sortState})"/>
   <div v-if="!visibleRows.length&&!showEmptyHeaders&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 5" :key="n" class="lotus-table-skeleton__row"/></div>
   <DesktopEmptyState v-else-if="!visibleRows.length&&!showEmptyHeaders" class="empty stock-empty" :title="empty" :description="hasLocalFilters?'Bộ lọc cột đang ẩn toàn bộ dòng.':emptyHint">
    <template v-if="hasLocalFilters||$slots['empty-actions']" #actions><UiButton v-if="hasLocalFilters" type="button" variant="outline" size="sm" @click="localFilters={}">Xóa bộ lọc</UiButton><slot name="empty-actions"/></template>
   </DesktopEmptyState>
   <template v-else>
    <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':visibleRows.length>10,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&visibleRows.length>10?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="defs" :dom-layout="visibleRows.length>10?'normal':'autoHeight'" :pagination="paginate" :pagination-page-size="pageSize" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&emit('row-double-open',event.data)" @cell-clicked="emit('cell-open',$event)" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
+   <div class="lotus-mobile-filter"><UiSelect v-model="mobileFilter" aria-label="Lọc theo cột"><option value="">Lọc theo cột…</option><option v-for="col in filterable" :key="key(col)" :value="key(col)">{{uiFarmLabel(col.headerName)}}{{activeFilters[key(col)]?' · đang lọc':''}}</option></UiSelect><ExcelHeader v-if="mobileFilterParams" :key="mobileFilter" :params="mobileFilterParams"/></div>
    <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p><component :is="interactive?UiButton:'article'" v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record" variant="ghost" @click="interactive?emit('open',row):showDetail(row)"><strong>{{value(row,mobileColumns[0]||columns[0])}}</strong><span v-for="col in mobileColumns.slice(1,mobileLimit||undefined)" :key="col.field||col.headerName" class="lotus-mobile-record-detail"><span>{{uiFarmLabel(col.headerName)}}</span><slot v-if="!interactive&&($slots['cell-'+key(col)]||$slots.cell)" :name="$slots['cell-'+key(col)]?'cell-'+key(col):'cell'" :row="row" :value="raw(row,col)" :column="col" :params="{data:row,value:raw(row,col),colDef:col}"/><UiButton v-else-if="col.colId" variant="link" size="sm" @click.stop="emit('cell-open',{data:row,colDef:col})">{{value(row,col)}}</UiButton><span v-else>{{value(row,col)}}</span></span><LotusIcon v-if="interactive" name="chevron" class="lotus-mobile-record-arrow"/></component>
     <dl v-for="total in bottomRows" :key="'total'" class="lotus-mobile-total"><dt>{{totalsLabel}} ({{visibleRows.length}} dòng)</dt><div v-for="col in sumColumns" :key="key(col)" class="lotus-mobile-record-detail"><span>{{uiFarmLabel(col.headerName)}}</span><span>{{totalText(col,total)}}</span></div></dl></div>
    <Pagination v-if="paginate" :start="pageStart" :count="pageRows.length" :total="visibleRows.length" :page-size="pageSize" @update:start="goPage"/>

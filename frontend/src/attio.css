@@ -78,7 +78,7 @@ input::placeholder{color:var(--lotus-neutral-400)}
 .lotus-ag-grid .ag-header-cell-text{font-size:11px;letter-spacing:.05px}
 .lotus-ag-grid .ag-row:focus-within{box-shadow:inset 0 0 0 1px var(--lotus-info-300)}
 .lotus-grid-footer{padding:9px 4px 0;color:var(--lotus-neutral-500);font-size:11px}
-.lotus-mobile-records{display:none}
+.lotus-mobile-records,.lotus-mobile-filter{display:none}
 @media(max-width:1000px){
   .sidebar{width:200px;padding:18px 10px}
   main{padding:20px 16px}
@@ -98,6 +98,12 @@ input::placeholder{color:var(--lotus-neutral-400)}
   .kpi strong{font-size:24px}
   .lotus-ag-grid-shell{display:none}
   .lotus-mobile-records{display:grid;gap:0;border:1px solid var(--lotus-border);border-radius:9px;overflow:hidden}
+  .lotus-mobile-filter{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+  .lotus-mobile-filter>:first-child{flex:1 1 auto;min-width:0;width:auto}
+  .lotus-mobile-filter select{width:100%;min-width:0;height:40px}
+  .lotus-mobile-filter .excel-header{flex:0 0 auto;width:auto;min-width:0;padding:0}
+  .lotus-mobile-filter .excel-sort{display:none}
+  .lotus-mobile-filter .excel-trigger{width:40px;height:40px;border:1px solid var(--lotus-border);border-radius:8px;background:var(--lotus-surface)}
   .lotus-mobile-record{position:relative;width:100%;border:0;border-bottom:1px solid var(--lotus-border);border-radius:0;background:#fff;color:var(--lotus-text);display:grid;gap:6px;text-align:left;padding:14px 30px 14px 12px}
   .lotus-mobile-record:last-child{border-bottom:0}
   .lotus-mobile-record:focus-visible{outline:2px solid var(--lotus-info-200);outline-offset:-2px}
