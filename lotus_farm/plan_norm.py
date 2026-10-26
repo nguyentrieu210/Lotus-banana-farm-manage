@@ -7,6 +7,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import flt, cint
 from lotus_farm.scoping import land_scope, land_filters
+from lotus_farm import plan_book2_reference as book2_plan
 from lotus_farm.controls import check_farm
 
 
@@ -121,13 +122,15 @@ def board(farm=None, block=None,zone=None):
         "packout_rate_percent","modified"
     ], {"farm": ["in", [farm, ""]]}, limit=1000)
     profiles = [p for p in profiles if not p.farm_block or p.farm_block in permitted]
+    works = _list("Work Type", ["name","work_code","work_name","uom",
+        "productivity_per_workday","piecework_rate","allow_piecework",
+        "allow_daywork","active"], {"active": 1}, limit=1000)
     return {
         "farm": farm, "blocks": blocks, "cycles": cycles, "cohorts": cohorts,
         "rules": rules, "norms": norms, "norm_lines": norm_lines,
         "profiles": profiles,
-        "works": _list("Work Type", ["name","work_name","uom",
-            "productivity_per_workday","piecework_rate","allow_piecework",
-            "allow_daywork","active"], {"active": 1}, limit=1000),
+        "works": works,
+        "book2_plan_reference": book2_plan.compare(works),
         "permissions": {dt: {
             "read": frappe.has_permission(dt,"read"),
             "create": frappe.has_permission(dt,"create"),
