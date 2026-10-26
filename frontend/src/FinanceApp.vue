@@ -397,6 +397,9 @@ const adjColumns=computed(()=>[{field:'account',label:'Tài khoản',required:tr
  {field:'party',label:'Đối tượng',props:{placeholder:'Mã NCC / KH'},width:'minmax(120px,1fr)'},{field:'lotus_farm_block',label:'Lô',options:(lookups.value?.blocks||[]).map(b=>({value:b.name,label:b.block_code})),width:'minmax(110px,.8fr)'}])
 const keyed=list=>(list||[]).map((r,i)=>({...r,__key:i}))
 const tiles=computed(()=>overview.value?.tiles||{})
+const todos=computed(()=>{const c=overview.value?.pending_counts||{};return [
+ ['receipts','phiếu nhận hàng chưa có hóa đơn','pending'],['payroll','bảng lương đã ký chưa ghi sổ','pending'],['issues','dòng xuất kho chưa gắn lô','pending'],
+ ['harvests','lô thu hoạch chưa nhập kho','pending'],['vouchers','phiếu chi đang chờ ký','cash']].map(([key,label,tab])=>({count:Number(c[key]||0),label,tab}))})
 const costChart=computed(()=>(report.value==='costs'&&reportData.value?.rows||[]).slice(0,12))
 watch(()=>route.query.tab,load)
 watch(report,()=>run(loadReport))
@@ -431,13 +434,9 @@ useNoticeToast(notice)
   <p v-for="e in overview.mapping_errors.slice(0,4)" :key="e" class="land-warn">{{e}}</p>
   <WorkspaceSummaryStrip :items="[{label:'Tiền mặt',value:vnd(tiles.cash)},{label:'Tiền gửi ngân hàng',value:vnd(tiles.bank)},{label:'Phải trả nhà cung cấp',value:vnd(tiles.payable_supplier)},{label:'Hàng về chưa có hóa đơn',value:vnd(tiles.received_not_billed)},{label:'Phải trả người lao động',value:vnd(tiles.payable_employee)},{label:'Bảo hiểm phải nộp',value:vnd(tiles.insurance)},{label:'Chi phí tháng này',value:vnd(tiles.month_cost)}]"/>
   <FormSection title="Việc cần làm">
-   <div class="fin-todo">
-    <UiButton variant="outline" @click="go('pending')"><b>{{overview.pending_counts.receipts}}</b> phiếu nhận hàng chưa có hóa đơn</UiButton>
-    <UiButton variant="outline" @click="go('pending')"><b>{{overview.pending_counts.payroll}}</b> bảng lương đã ký chưa ghi sổ</UiButton>
-    <UiButton variant="outline" @click="go('pending')"><b>{{overview.pending_counts.issues}}</b> dòng xuất kho chưa gắn lô</UiButton>
-    <UiButton variant="outline" @click="go('pending')"><b>{{overview.pending_counts.harvests||0}}</b> lô thu hoạch chưa nhập kho</UiButton>
-    <UiButton variant="outline" @click="go('cash')"><b>{{overview.pending_counts.vouchers}}</b> phiếu chi đang chờ ký</UiButton>
-   </div>
+   <ul class="fin-todo">
+    <li v-for="t in todos" :key="t.label"><UiButton variant="ghost" class="fin-todo__item" :class="{'is-zero':!t.count}" @click="go(t.tab)"><b class="fin-todo__count">{{t.count}}</b><span>{{t.label}}</span><LotusIcon name="chevron"/></UiButton></li>
+   </ul>
   </FormSection>
  </template>
 
@@ -475,7 +474,7 @@ useNoticeToast(notice)
  <template v-else-if="tab==='sales'&&salesData">
   <WorkspaceSummaryStrip :items="[{label:'Sổ cái 131',value:vnd(salesData.gl_total)}]"/>
   <FormSection title="Khách hàng">
-   <template #actions><template v-if="overview?.can_post"><UiButton variant="outline" @click="openCustomer()">Thêm khách hàng</UiButton><UiButton @click="openSale">Lập hóa đơn bán</UiButton></template></template>
+   <template #actions><template v-if="overview?.can_post"><UiButton @click="openSale"><LotusIcon name="plus"/>Lập hóa đơn bán</UiButton><UiButton variant="outline" @click="openCustomer()">Thêm khách hàng</UiButton></template></template>
    <DataTable :rows="salesData.customers" :columns="customerColumns" row-key="customer" storage-key="fin-customers" empty="Chưa có khách hàng. Bấm Thêm khách hàng.">
     <template #cell-__edit="{row}"><UiButton size="sm" variant="outline" @click.stop="openCustomer(row)">Sửa</UiButton></template>
     <template #cell-__receive="{row}"><UiButton v-if="row.open_invoices>0" size="sm" variant="outline" @click.stop="openReceipt(row)">Thu tiền</UiButton></template>
@@ -490,7 +489,7 @@ useNoticeToast(notice)
  <template v-else-if="tab==='payables'&&payData">
   <WorkspaceSummaryStrip :items="[{label:'Sổ cái 331',value:vnd(payData.gl_total)}]"/>
   <FormSection title="Theo nhà cung cấp">
-   <template #actions><UiButton variant="outline" @click="exportReport('payables')"><LotusIcon name="download"/>Xuất Excel</UiButton><UiButton v-if="overview?.can_post" variant="outline" @click="openService">Hóa đơn dịch vụ / chi phí</UiButton></template>
+   <template #actions><UiButton v-if="overview?.can_post" @click="openService"><LotusIcon name="plus"/>Hóa đơn dịch vụ / chi phí</UiButton><UiButton variant="outline" @click="exportReport('payables')"><LotusIcon name="download"/>Xuất Excel</UiButton></template>
    <DataTable :rows="payData.suppliers" :columns="supplierColumns" row-key="supplier" storage-key="fin-suppliers" empty="Chưa có công nợ nhà cung cấp.">
     <template #cell-__pay="{row}"><UiButton v-if="row.open_invoices>0" size="sm" variant="outline" @click.stop="openPay(row.supplier)">Lập phiếu chi</UiButton></template>
    </DataTable>
@@ -499,7 +498,7 @@ useNoticeToast(notice)
  </template>
 
  <template v-else-if="tab==='cash'&&cash">
-  <div v-if="overview?.can_post" class="fin-actions fin-actions--end"><UiButton variant="outline" @click="openAdvance">Tạm ứng lương</UiButton><UiButton variant="outline" @click="openStatutory">Nộp BH, KPCĐ, thuế TNCN</UiButton></div>
+  <div v-if="overview?.can_post" class="fin-actions"><UiButton variant="outline" @click="openAdvance">Tạm ứng lương</UiButton><UiButton variant="outline" @click="openStatutory">Nộp BH, KPCĐ, thuế TNCN</UiButton></div>
   <FormSection v-if="mine.length" title="Chờ bạn ký">
    <article v-for="v in mine" :key="v.name" class="fin-voucher"><header><b>{{v.kind}} · {{v.party_name}}</b><strong>{{vnd(v.amount)}}</strong></header><small>{{v.name}} · {{vnDate(v.posting_date)}}</small>
     <div class="fin-actions"><UiButton v-if="v.signing.can_return" variant="outline" :disabled="saving" @click="openReturn(v)">Trả lại</UiButton><UiButton v-if="v.signing.can_sign" :disabled="saving" @click="sign(v)">Ký</UiButton></div></article>
@@ -519,8 +518,8 @@ useNoticeToast(notice)
  </template>
 
  <template v-else-if="tab==='reports'">
-  <div class="workspace-list-toolbar fin-report-toolbar">
-   <div class="workspace-list-filters">
+  <div class="fin-report-toolbar">
+   <div class="fin-report-toolbar__filters">
     <LotusField :model-value="report" aria-label="Báo cáo" :options="REPORTS.map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" class="fin-wide" @update:model-value="chooseReport"/>
     <DateRangePicker v-model:from="range.from" v-model:to="range.to"/>
     <LotusField v-if="report==='costs'" v-model="groupBy" aria-label="Nhóm theo" :options="[{value:'lotus_farm',label:'Theo vườn'},{value:'lotus_farm_block',label:'Theo lô'},{value:'lotus_crop_cycle',label:'Theo vụ'},{value:'lotus_work_type',label:'Theo công việc'}]" :searchable="false" :empty-option="null"/>
@@ -529,7 +528,7 @@ useNoticeToast(notice)
     <LotusField v-if="report==='party'" v-model="partyAccount" aria-label="Tài khoản công nợ" :options="(lookups?.accounts||[]).filter(a=>/^(131|331|334|141|1388|3388)/.test(a.account_number||'')).map(a=>({value:a.name,label:a.name}))" placeholder="Chọn tài khoản công nợ…" class="fin-wide"/>
     <LotusField v-if="report==='bank'" aria-label="Sao kê ngân hàng (.xlsx)" type="file" accept=".xlsx" :disabled="saving" @update:model-value="readStatement"/>
    </div>
-   <div class="workspace-list-actions">
+   <div class="fin-report-toolbar__actions">
     <UiButton v-if="report!=='bank'" variant="outline" @click="run(loadReport)">Xem</UiButton>
     <UiButton v-if="!['reconciliation','bank','vat','costing'].includes(report)" variant="outline" :disabled="(report==='ledger'&&!ledgerAccount)||(report==='party'&&!partyAccount)" @click="exportReport(report)"><LotusIcon name="download"/>Xuất Excel</UiButton>
     <UiButton v-if="report==='vat'&&reportData?.summary" variant="outline" @click="exportVat"><LotusIcon name="download"/>Xuất bảng kê Excel</UiButton>

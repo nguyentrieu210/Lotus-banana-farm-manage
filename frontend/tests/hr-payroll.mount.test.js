@@ -38,11 +38,11 @@ test('employee list filters by farm and category, without showing a single compa
  routes['lotus_farm.hr_workspace.catalogue'].farms=[{name:'LOTUS-222',farm_name:'Vườn 222'},{name:'LOTUS-126'}]
  routes['lotus_farm.hr_workspace.overview'].employees=[{...employee,employee_name:'An',lotus_farm:'LOTUS-222',lotus_worker_category:'Seasonal'},{...employee,name:'HR-EMP-2',employee_name:'Bình',lotus_farm:'LOTUS-126',lotus_worker_category:'Permanent'}]
  const view=mount(HrApp,{embedded:true});await tick();await tick()
- const farm=[...view.root.querySelectorAll('.lotus-field')].find(l=>l.querySelector('label')?.textContent.startsWith('Vườn')).querySelector('select')
+ const farm=view.root.querySelector('.workspace-list-filters select[aria-label="Vườn"]')
  farm.value='LOTUS-222';farm.dispatchEvent(new Event('change',{bubbles:true}));await tick()
  const body=view.root.querySelector('.lotus-mobile-records')
  assert.match(body.textContent,/An/);assert.doesNotMatch(body.textContent,/Bình/)
- assert.equal([...view.root.querySelectorAll('label')].some(l=>l.textContent.startsWith('Công ty')),false)
+ assert.equal(view.root.querySelector('[aria-label="Công ty"]'),null)
  view.unmount()
 })
 

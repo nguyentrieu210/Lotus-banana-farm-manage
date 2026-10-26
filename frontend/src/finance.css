@@ -9,9 +9,6 @@
 .fin-badge{margin-left:6px;padding:0 6px;border-radius:999px;background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-size:var(--lotus-text-xs)}
 .fin .fin-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
 .fin-stats>button{cursor:pointer}
-.fin-todo{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.fin-todo button{width:100%;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font:inherit;text-align:left;cursor:pointer}
-.fin-todo b{font-size:1.15rem;margin-right:6px;font-variant-numeric:tabular-nums}
 .fin-table{max-height:none}
 .fin-table tbody tr{cursor:default}
 .fin-table tbody tr.clickable{cursor:pointer}
@@ -39,7 +36,7 @@
 .fin-month small{color:var(--lotus-muted)}
 .fin-month.closed{background:var(--lotus-soft)}
 @media(max-width:1100px){.fin .fin-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.fin-months{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:700px){.fin .fin-stats,.fin-todo{grid-template-columns:repeat(2,minmax(0,1fr))}.fin-months{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:700px){.fin .fin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.fin-months{grid-template-columns:repeat(3,minmax(0,1fr))}
  .fin-entry summary{grid-template-columns:1fr auto}.fin-entry summary span{display:none}}
 .fin-cell-action{padding:2px 10px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-sm,6px);background:var(--lotus-surface);color:var(--lotus-primary-text);font:inherit;font-size:var(--lotus-text-sm);cursor:pointer}
 .fin-cell-action:hover{background:var(--lotus-hover)}
@@ -83,10 +80,19 @@
 .fin .fin-actions--end{justify-content:flex-end}
 .fin .fin-num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .fin .fin-inline-link{height:auto;padding:0;vertical-align:baseline}
-.fin .fin-report-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;overflow:visible}
-.fin .fin-report-toolbar .workspace-list-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex:1 1 auto;min-width:0}
-.fin .fin-report-toolbar .workspace-list-actions{display:flex;gap:8px;margin-left:auto}
-.fin .fin-todo{display:flex;flex-wrap:wrap;gap:8px}
-.fin .fin-todo b{margin-right:4px;font-variant-numeric:tabular-nums}
+.fin .fin-report-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;min-width:0}
+.fin .fin-report-toolbar__filters,.fin .fin-report-toolbar__actions{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;min-width:0}
+.fin .fin-report-toolbar__filters>*{flex:0 1 200px;min-width:160px;max-width:260px}
+.fin .fin-report-toolbar__filters>.fin-wide{flex-basis:300px;max-width:360px}
+.fin .fin-report-toolbar__filters>.lotus-date--range{flex:0 0 auto;min-width:240px;max-width:none}
+.fin .fin-report-toolbar :is(input,button){height:36px}
+/* Việc cần làm: one left-aligned row per task — count, label, chevron; tasks at 0 recede. */
+.fin .fin-todo{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 16px}
+.fin .fin-todo__item{width:100%;height:auto;min-height:44px;justify-content:flex-start;gap:12px;padding:8px 10px;text-align:left;font-weight:400;color:var(--lotus-text);white-space:normal}
+.fin .fin-todo__item span{flex:1;min-width:0}
+.fin .fin-todo__item .lotus-icon{width:16px;height:16px;color:var(--lotus-muted)}
+.fin .fin-todo__count{min-width:32px;padding:2px 8px;border-radius:999px;background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-weight:650;text-align:center;font-variant-numeric:tabular-nums}
+.fin .fin-todo__item.is-zero{color:var(--lotus-muted)}
+.fin .fin-todo__item.is-zero .fin-todo__count{background:var(--lotus-soft);color:var(--lotus-muted)}
 .fin .fin-checklist__mark .lotus-icon{width:14px;height:14px}
-.fin>.lotus-form-section{padding:16px;margin-top:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
+.fin>.lotus-form-section.lotus-form-section{padding:16px;margin-top:12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
