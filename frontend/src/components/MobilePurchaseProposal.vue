@@ -129,7 +129,7 @@ defineExpose({back,newProposal,open})
    </div>
    <div class="pp-pair">
     <LotusMobileInput v-model="line.qty" label="SL đề xuất mua" type="number" min="0" step="any" required :disabled="pricesOnly"/>
-    <LotusMobileInput v-model="line.rate" label="Đơn giá dự kiến (đồng)" type="number" min="0" step="1000"/>
+    <LotusMobileInput v-model="line.rate" label="Đơn giá dự kiến (đồng)" type="money"/>
    </div>
    <LotusMobileInput v-model="line.schedule_date" label="Thời gian cần hàng" type="date" :min="today" required :disabled="pricesOnly"/>
    <LotusMobileInput v-model="line.lotus_supplier_hint" label="Nhà cung cấp đề xuất" maxlength="140" placeholder="Không bắt buộc"/>

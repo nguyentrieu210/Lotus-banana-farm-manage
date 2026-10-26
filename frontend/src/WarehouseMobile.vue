@@ -570,7 +570,7 @@ onUnmounted(()=>{
       <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="form.lines.length>1" type="button" @click="form.lines.splice(i,1)">Xóa</LotusMobileButton></div>
       <MobileLinkField label="Tên hàng" :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/>
       <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/><LotusMobileSelect label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></div>
-      <LotusMobileInput v-if="kind==='receipt'" label="Đơn giá (nếu có)" v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/>
+      <LotusMobileInput v-if="kind==='receipt'" label="Đơn giá (nếu có)" v-model="r.rate" type="money"/>
       <LotusMobileInput v-if="kind==='issue'||kind==='receipt'&&form.receipt_reason==='Recovery'" :label="(kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng')" v-model="r.area" placeholder="Ví dụ: Lô A01" required/>
      </div>
      <LotusMobileButton type="button" class="mobile-add" @click="form.lines.push(blank())">＋ Thêm hàng</LotusMobileButton>

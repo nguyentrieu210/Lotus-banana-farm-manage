@@ -1,4 +1,5 @@
 <script setup>
+import {MoneyInput} from './components/ui/input'
 import LotusField from './components/form/LotusField.vue'
 import {FormField} from './components/ui/form-field'
 import {unitLabel} from './units'
@@ -114,7 +115,7 @@ const workspaceActions=computed(()=>[{id:'home',label:'Trang chủ Lotus',naviga
     </label>
     <LotusField v-if="modes(item.work_type).length" v-model="item.payment_mode" label="Hình thức tính công" :options="modes(item.work_type)" :searchable="false" empty-option="Theo cấu hình công việc" :disabled="busy||submitting" @update:model-value="invalidate"/>
     <label v-if="canSetRate(item)">Đơn giá khoán đề xuất (đ/{{unit(item.work_type)}})
-     <UiInput v-model="item.piecework_rate" type="number" min="0" step="any" inputmode="decimal" :disabled="busy||submitting" :placeholder="String(listedRate(item))" @input="invalidate"/>
+     <MoneyInput v-model="item.piecework_rate" :disabled="busy||submitting" :placeholder="number(listedRate(item))" @input="invalidate"/>
      <span class="hint">Giá niêm yết: {{number(listedRate(item))}} đ. Bỏ trống để lấy giá chuẩn; vượt giá sẽ cần duyệt.</span>
     </label>
     <label>Số lượng giao <span class="muted">{{unit(item.work_type)}}</span>

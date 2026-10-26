@@ -9,7 +9,7 @@ import DataTable from '../DataTable.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
 import WorkspaceConfirm from '../WorkspaceConfirm.vue'
 import {Button} from '../ui/button'
-import {Input} from '../ui/input'
+import {Input,MoneyInput} from '../ui/input'
 import {FormField} from '../ui/form-field'
 import {Combobox} from '../ui/combobox'
 import {Textarea} from '../ui/textarea'
@@ -143,7 +143,7 @@ onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length
   <WorkspaceModal :model-value="editor==='month'" :title="'Ngân sách tháng '+formatMonth(form.month)" width="860px" @update:model-value="v=>!v&&(editor='')">
    <form class="fp-form" @submit.prevent="monthSubmit">
     <p v-if="formError" class="stock-error" role="alert">{{formError}}</p>
-    <fieldset v-for="[group,label] in [['production','Sản lượng & giá bán'],['cost','Ngân sách chi phí'],['cash','Đầu tư, vốn & thu chi khác']]" :key="group"><legend>{{label}}</legend><div class="fp-fields"><FormField v-for="[key,text] in budgetFields.filter(f=>f[2]===group)" :key="key" :label="text" v-slot="field"><Input v-bind="field" v-model.number="form[key]" type="number" min="0" :step="key.endsWith('_kg')?'0.001':'1'"/></FormField></div></fieldset>
+    <fieldset v-for="[group,label] in [['production','Sản lượng & giá bán'],['cost','Ngân sách chi phí'],['cash','Đầu tư, vốn & thu chi khác']]" :key="group"><legend>{{label}}</legend><div class="fp-fields"><FormField v-for="[key,text] in budgetFields.filter(f=>f[2]===group)" :key="key" :label="text" v-slot="field"><Input v-if="key.endsWith('_kg')" v-bind="field" v-model.number="form[key]" type="number" min="0" step="0.001"/><MoneyInput v-else v-bind="field" v-model="form[key]"/></FormField></div></fieldset>
     <div class="fp-toolbar"><Button type="button" variant="outline" @click="copyMonth">Chép ngân sách sang các tháng</Button><Button type="button" variant="outline" @click="editor=''">Hủy</Button><Button type="submit">Áp dụng tháng</Button></div>
    </form>
   </WorkspaceModal>

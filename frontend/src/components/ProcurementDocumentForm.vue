@@ -50,8 +50,10 @@ watch(()=>[props.modelValue?.order_freight,props.modelValue?.order_farm,...(prop
 // AI-read quote / invoice / delivery note: pick the matched supplier and append the matched lines; the user reviews before saving.
 const vatCode=percent=>{if(percent==null||percent==='')return 'KCT';const p=Number(percent);return ['0','5','8','10'].reduce((best,v)=>Math.abs(Number(v)-p)<Math.abs(Number(best)-p)?v:best,'0')}
 const docKinds={quote:'báo giá',invoice:'hóa đơn',delivery_note:'phiếu giao hàng',purchase_order:'đơn đặt hàng',other:'chứng từ'}
-function applyDocument(result){
+function applyDocument(result,stored){
  const draft=props.modelValue,doc=result.document
+ // The read file is attached to the document once it is saved.
+ if(stored?.file_url)draft.ai_files=[...(draft.ai_files||[]),stored.file_url]
  const supplier=result.supplier.match?.name
  if(props.type!=='need'&&supplier&&props.catalog.suppliers?.some(s=>s.name===supplier))draft.supplier=supplier
  const documentVat=doc.vat_amount&&doc.subtotal?doc.vat_amount/doc.subtotal*100:null

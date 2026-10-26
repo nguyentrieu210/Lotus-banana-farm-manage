@@ -654,7 +654,7 @@ onBeforeUnmount(()=>{
        <MobileLinkField label="Loại công việc" v-model="line.work_type" :options="workOptions" :searchable="true" placeholder="Gõ tên công việc…" required @update:modelValue="line.payment_mode='';line.piecework_rate='';editAssign()"/>
        <LotusMobileInput label="Số lượng giao" v-model="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @input="editAssign"/>
        <MobileLinkField v-if="line.work_type" label="Hình thức công" v-model="line.payment_mode" :options="modeOptions(line.work_type)" :searchable="false" @update:modelValue="editAssign"/>
-       <LotusMobileInput v-if="line.work_type&&modeOptions(line.work_type).some(m=>['Piece','Both'].includes(m.value))" :label="'Đơn giá khoán (đ/đơn vị, giá chuẩn '+(fmt(currentRate(line.work_type)))+')'" v-model="line.piecework_rate" type="number" min="0" step="any" inputmode="decimal" :placeholder="'Giá chuẩn '+fmt(currentRate(line.work_type))" @input="editAssign"/>
+       <LotusMobileInput v-if="line.work_type&&modeOptions(line.work_type).some(m=>['Piece','Both'].includes(m.value))" :label="'Đơn giá khoán (đ/đơn vị, giá chuẩn '+(fmt(currentRate(line.work_type)))+')'" v-model="line.piecework_rate" type="money" :placeholder="'Giá chuẩn '+fmt(currentRate(line.work_type))" @input="editAssign"/>
       </div>
       <LotusMobileButton type="button" class="mobile-add" :disabled="assignLines.length>=50" @click="assignLines.push(blankLine());editAssign()">＋ Thêm công việc</LotusMobileButton>
       <LotusMobileButton type="submit" class="mobile-submit" :disabled="!online">{{saving?'Đang kiểm tra…':'Xem lại kế hoạch →'}}</LotusMobileButton>
