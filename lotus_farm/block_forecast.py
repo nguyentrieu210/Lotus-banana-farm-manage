@@ -86,7 +86,9 @@ def board(farm=None,zone=None,block=None):
         return dict(farms=[],farm=None,rows=[],months=[],warnings=["Không có vườn được cấp quyền."])
     blocks,cohorts=_sources(chosen,zone,block)
     result=forecast(blocks,cohorts)
-    zones=sorted({b.farm_zone for b in blocks if b.farm_zone})
+    all_zones=frappe.get_list("Farm Block",filters={"farm":chosen,"active":1},
+                              fields=["farm_zone"],limit_page_length=0)
+    zones=sorted({b.farm_zone for b in all_zones if b.farm_zone})
     return dict(farms=farms,farm=chosen,zone=zone or "",block=block or "",
         zone_list=zones,blocks=blocks,cohorts=cohorts,rows=result["rows"],
         months=result["monthly"],warnings=result["warnings"],
