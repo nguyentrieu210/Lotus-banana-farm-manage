@@ -259,6 +259,132 @@ def assign_entry_scope(farm, entry, farm_block=None, crop_cycle=None, plan_cohor
                 plan_cohort=doc.plan_cohort, modified=str(doc.modified))
 
 
+# Care-plan preview and explicitly requested DRAFT creation ---------------------------------------
+
+def _care_plan_preview(farm, from_date, to_date, farm_block=None):
+    """Shared source for read preview and POST, without any implicit write."""
+    from datetime import date as _date
+    from lotus_farm.cut_work_schedule import work_calendar
+    from lotus_farm.cut_forecast_rules import as_date
+
+    _reader(farm)
+    start, end = as_date(from_date), as_date(to_date)
+    if end < start or (end - start).days > 45:
+        frappe.throw("Chỉ xem lịch trong một khoảng từ 1 đến 46 ngày.")
+    if farm_block:
+        block = frappe.get_doc("Farm Block", farm_block)
+        block.check_permission("read")
+        if block.farm != farm:
+            frappe.throw("Lô không thuộc vườn.")
+    active = _active(_profiles(farm))
+    if not active:
+        frappe.throw("Chưa có bộ thông số dự thu đã duyệt.")
+    all_entries = _entries(farm)
+    rows, issues, unmapped = work_calendar(
+        all_entries, _profile_values(active), from_date=start, to_date=end,
+        farm_block=farm_block)
+    # Work Type mapping is an explicit code match; fuzzy name lookup is forbidden.
+    works = frappe.get_list("Work Type", fields=[
+        "name", "work_code", "work_name", "active", "uom",
+        "productivity_per_workday", "allow_daywork"
+    ], filters={"active": 1}, limit_page_length=0)
+    by_code = {}
+    for w in works:
+        key = (w.work_code or "").strip().upper()
+        if not key:
+            continue
+        by_code.setdefault(key, []).append(w)
+    ready_count = 0
+    for row in rows:
+        matches = by_code.get(row["work_code"], [])
+        work = matches[0] if len(matches) == 1 else None
+        if not work:
+            row["blocking_issue"] = ("Trùng mã công việc trong ERP." if matches else "Chưa có mã công việc trong ERP.")
+        elif not work.allow_daywork:
+            row["blocking_issue"] = "Chưa cho phép công nhật; chọn hình thức trả công trong danh mục trước."
+        elif float(work.productivity_per_workday or 0) <= 0:
+            row["blocking_issue"] = "Chưa xác nhận năng suất/công."
+        elif (work.uom or "").strip().casefold() != row["uom"].casefold():
+            row["blocking_issue"] = "Đơn vị của công việc chưa khớp Book2; cần đối chiếu quy đổi."
+        else:
+            row["blocking_issue"] = None
+            ready_count += 1
+        row["work_type"] = work.name if work else None
+        row["work_name"] = work.work_name if work else None
+        row["required_workdays"] = round(row["planned_qty"] / float(work.productivity_per_workday), 4) if not row["blocking_issue"] else None
+    signatures = sorted([{
+        "block": r["farm_block"], "day": r["date"], "code": r["work_code"],
+        "qty": r["planned_qty"], "key": r["schedule_key"],
+        "work_type": r["work_type"], "issue": r["blocking_issue"],
+    } for r in rows], key=lambda x:(x["day"],x["block"],x["code"]))
+    fingerprint = hashlib.sha256(json.dumps({
+        "farm":farm, "from":str(start), "to":str(end),
+        "block":farm_block, "profile":active.name,
+        "entries":[(e["entry_key"],str(e["modified"]),e.get("farm_block")) for e in all_entries],
+        "lines":signatures,
+    }, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    return dict(farm=farm, from_date=str(start), to_date=str(end),
+                farm_block=farm_block, profile=active.name, profile_version=active.version,
+                unmapped_count=unmapped, ready_count=ready_count,
+                total_count=len(rows), warnings=issues, rows=rows, fingerprint=fingerprint)
+
+
+@frappe.whitelist()
+def preview_care_plan(farm, from_date, to_date, farm_block=None):
+    """Only read: time-window and mapped-block care plan proposed from four waves."""
+    return _jsonable(_care_plan_preview(farm, from_date, to_date, farm_block))
+
+
+@frappe.whitelist(methods=['POST'])
+def create_care_plan_draft(farm, farm_block, posting_date, fingerprint):
+    """Create at most one day of DRAFT work, never submit, post payroll or issue stock."""
+    from lotus_farm.cut_forecast_rules import as_date
+    from lotus_farm.controls import lock
+
+    _editor(farm)
+    if not frappe.has_permission("Daily Work Plan", "create"):
+        frappe.throw("Không có quyền tạo kế hoạch công việc.", frappe.PermissionError)
+    if not farm_block:
+        frappe.throw("Phải chọn một lô lớn để tạo kế hoạch nháp.")
+    date = str(as_date(posting_date))
+    lock("Farm", farm)
+    proposal = _care_plan_preview(farm, date, date, farm_block)
+    if proposal["fingerprint"] != fingerprint:
+        frappe.throw("Lịch dự kiến hoặc nguồn vừa thay đổi, cần tải lại và xác nhận.")
+    if not proposal["rows"]:
+        frappe.throw("Không có lịch việc ngày này cho lô đã chọn.")
+    missing = [r["work_code"] for r in proposal["rows"] if r["blocking_issue"]]
+    if missing:
+        frappe.throw("Chưa đủ danh mục/năng suất/đơn vị để tạo kế hoạch an toàn: " + ", ".join(sorted(set(missing))))
+    if len(proposal["rows"]) > 100:
+        frappe.throw("Quá nhiều công việc trong một ngày. Kiểm tra dữ liệu chặt mẹ.")
+    # Do not duplicate a work type already assigned in any non-cancelled plan.
+    assigned = set()
+    existing = frappe.get_list("Daily Work Plan",
+        filters={"farm":farm, "posting_date":date,"docstatus":["<",2]},
+        fields=["name"], limit_page_length=0)
+    for p in existing:
+        doc = frappe.get_doc("Daily Work Plan", p.name)
+        doc.check_permission("read")
+        assigned.update((line.farm_block, line.work_type)
+                        for line in doc.lines)
+    lines = []
+    for row in proposal["rows"]:
+        key = (row["farm_block"], row["work_type"])
+        if key in assigned:
+            frappe.throw("Đã có kế hoạch cùng lô và công việc trong ngày. Không tạo trùng: " + row["work_code"])
+        lines.append(dict(farm_block=row["farm_block"], work_type=row["work_type"],
+                          planned_qty=row["planned_qty"], payment_mode="Daywork",
+                          schedule_key=row["schedule_key"], execution_state="Planned"))
+    company = frappe.db.get_value("Farm", farm, "company")
+    doc = frappe.get_doc(dict(doctype="Daily Work Plan",
+                              company=company, farm=farm, posting_date=date,
+                              lines=lines))
+    doc.insert()
+    # Explicit DRAFT, submission stays a separate approved action.
+    return dict(plan=doc.name, docstatus=doc.docstatus, lines=len(lines), farm_block=farm_block, posting_date=date)
+
+
 # Parameters ------------------------------------------------------------------------------------------
 
 def _new_profile(farm, values, source='Web', source_import=None, notes=None):
