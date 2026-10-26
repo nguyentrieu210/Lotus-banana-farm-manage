@@ -49,7 +49,7 @@ test('chart offers a table view with the same numbers',async()=>{
  const toggle=view.root.querySelector('.lotus-chart-head button')
  assert.equal(toggle.textContent,'Xem bảng số liệu')
  toggle.click();await tick()
- const rows=[...view.root.querySelectorAll('.lotus-chart-table .ag-row')].map(r=>['label','series_0'].map(f=>r.querySelector('.ag-cell[col-id="'+f+'"]')?.textContent))
+ const rows=[...view.root.querySelectorAll('.lotus-chart-table .ag-row:not(.ag-row-pinned)')].map(r=>['label','series_0'].map(f=>r.querySelector('.ag-cell[col-id="'+f+'"]')?.textContent))
  assert.deepEqual(rows,[['Khu A','15.000'],['Khu B','5.000']])
  assert.match(view.root.querySelector('.lotus-chart-table .ag-header').textContent,/Số cây \(cây\)/)
  view.unmount()

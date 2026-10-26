@@ -22,7 +22,7 @@ const cellSlots=computed(()=>Object.keys(slots).filter(name=>name.startsWith('ce
   <p v-if="error" class="lotus-list-page__error" role="alert">{{error}}</p>
   <WorkspaceSummaryStrip v-if="summary?.length" :items="summary"/>
   <slot name="before"/>
-  <DataTable v-bind="$attrs" :rows="rows" :columns="columns" :loading="loading"><template v-for="name in cellSlots" :key="name" #[name]="scope"><slot :name="name" v-bind="scope"/></template></DataTable>
+  <DataTable :fill="paged?76:24" v-bind="$attrs" :rows="rows" :columns="columns" :loading="loading" :totals-label="paged&&(hasMore||(total||0)>rows.length)?'Tổng trang này':'Tổng'"><template v-for="name in cellSlots" :key="name" #[name]="scope"><slot :name="name" v-bind="scope"/></template></DataTable>
   <Pagination v-if="paged" :start="start" :count="rows.length" :total="total" :has-more="hasMore" :page-size="pageSize" :disabled="loading" @update:start="emit('update:start',$event)"/>
   <slot/>
  </section>
