@@ -59,6 +59,13 @@
       "reqd": 1
     },
     {
+      "fieldname": "forecast_distribution_mode",
+      "label": "Kiểu phân bổ trổ của đợt cây",
+      "fieldtype": "Select",
+      "options": "\nFour Waves\nSingle Wave",
+      "description": "Để trống: buồng đã trổ dùng một đợt; cây/chồi dự phóng chia bốn đợt. Chọn Single Wave nếu đợt đã quan sát đầy đủ."
+    },
+    {
       "fieldname": "planned_qty",
       "label": "Số lượng dự kiến",
       "fieldtype": "Float",
@@ -106,6 +113,7 @@
     "anchor",
     "anchor_date",
     "quantity_basis",
+    "forecast_distribution_mode",
     "planned_qty",
     "version",
     "approval_state",
