@@ -75,11 +75,17 @@ def source_rows(blocks,cohorts):
                 # selection_date instead of projecting here.
                 distribution=c.get("forecast_distribution_mode") or (
                     "Single Wave" if anchor=="Shooting" and c.get("quantity_basis")=="Bunches" else "Four Waves")
+                cycle_no=c.get("cycle_no")
+                count_status="Cohort Approved"
+                if not cycle_no:
+                    cycle_no=2 if anchor=="Selection" else 1
+                    count_status="Cycle Unconfirmed"
+                    warnings.append(f'{block}: Đợt {c.get("cohort_code")} chưa liên kết số vụ cây; trọng lượng kg/buồng chỉ là kịch bản.')
                 sources.append(dict(farm_block=block,zone=b.get("farm_zone") or "",
                     crop_cycle=c.get("crop_cycle"),cohort=c.get("name") or c.get("cohort_code"),
                     basis=c["quantity_basis"],quantity=quantity,
                     anchor=anchor,anchor_date=date(when),distribution=distribution,
-                    cycle_no=c.get("cycle_no"),count_status="Cohort Approved",
+                    cycle_no=cycle_no,count_status=count_status,
                     origin="Plan Cohort",source_version=int(c.get("version") or 1),
                     source_modified=str(c.get("modified") or "")))
         else:
@@ -133,9 +139,13 @@ def forecast(blocks,cohorts,from_date=None,to_date=None,block=None,profiles=None
     waves=[];daily=[];monthly=defaultdict(lambda:dict(bunches=0,packed_kg=0))
     for s in sources:
         if block and s["farm_block"]!=block:continue
-        base=approved_version(profiles or [],s["farm_block"],s["anchor_date"])
+        estimated_bloom=(months_after(s["anchor_date"],DEFAULTS["sucker_to_flower_months"])
+                         if s["anchor"]=="Selection" else s["anchor_date"])
+        base=approved_version(profiles or [],s["farm_block"],estimated_bloom)
         config=validate(base) if base else validate(DEFAULTS)
         parameter_status="Approved" if base else "Unapproved Book2 scenario"
+        if not base:
+            warnings.append(f'{s["farm_block"]}: Chưa có bộ thông số dự thu đã duyệt có hiệu lực; chỉ được xem kịch bản.')
         bloom=months_after(s["anchor_date"],config["sucker_to_flower_months"]) if s["anchor"]=="Selection" else s["anchor_date"]
         full_weights=[config[f"wave_{i}_share"] for i in range(1,5)]
         weights=[1.0] if s["distribution"]=="Single Wave" else full_weights
