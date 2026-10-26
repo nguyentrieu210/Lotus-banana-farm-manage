@@ -23,12 +23,20 @@ import './land.css'
 import './cut-forecast.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
-const TABS=[['overview','Tổng quan'],['journal','Nhật ký & lịch từng đợt'],['params','Thông số & lần nhập']]
+const TABS=[['overview','Tổng quan'],['journal','Nhật ký & lịch từng đợt'],['params','Thông số & lần nhập'],['care','Lịch chăm sóc theo lô']]
 const route=useRoute(),router=useRouter(),session=useSession()
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,ask,finish:finishConfirm}=useWorkspaceConfirm()
 const data=ref(null),busy=ref(false),error=ref(''),notice=ref(''),tab=ref('overview')
 const importOpen=ref(false),preview=ref(null),saving=ref(false),applyParams=ref(true),fileName=ref('')
 const form=ref({}),formNote=ref(''),journalWave=ref(''),journalLimit=ref(200)
+const scopeOpen=ref(false),scopeEntry=ref(null),scopeForm=ref({farm_block:'',crop_cycle:'',plan_cohort:''})
+const careBlock=ref(''),careFrom=ref(new Date().toISOString().slice(0,10))
+const careTo=ref(new Date().toISOString().slice(0,10))
+const careData=ref(null),careBusy=ref(false),careError=ref('')
+const blockOptions=computed(()=>(data.value?.blocks||[]).filter(x=>!zone.value||x.farm_zone===zone.value))
+const cropOptions=computed(()=>(data.value?.cycles||[]).filter(x=>x.farm_block===scopeForm.value.farm_block))
+const cohortOptions=computed(()=>(data.value?.cohorts||[]).filter(x=>x.farm_block===scopeForm.value.farm_block&&(!scopeForm.value.crop_cycle||!x.crop_cycle||x.crop_cycle===scopeForm.value.crop_cycle)))
+const careDates=computed(()=>[...new Set((careData.value?.rows||[]).map(r=>r.date))].sort())
 const farm=computed(()=>String(route.query.farm||data.value?.farm||''))
 const zone=computed(()=>String(route.query.zone||''))
 const num=(v,d=0)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d})
@@ -49,7 +57,49 @@ async function load(){busy.value=true;error.value=''
  try{data.value=await call('lotus_farm.cut_forecast.board',{farm:route.query.farm||undefined,zone:zone.value||undefined});resetForm()}
  catch(e){error.value=e.message}finally{busy.value=false}}
 function resetForm(){const p=data.value?.profile;form.value=Object.fromEntries(params.value.map(([f,,,d])=>[f,p?p[f]:d]));formNote.value=''}
-function setScope(next){router.push({path:'/forecast',query:{...route.query,...next}})}
+function setScope(next){careData.value=null;router.push({path:'/forecast',query:{...route.query,...next}})}
+function openScope(row){
+ const entry=(data.value?.cut_entries||[]).find(e=>e.name===row.entry)
+ if(!entry||!data.value?.can_edit)return
+ scopeEntry.value=entry
+ scopeForm.value={farm_block:entry.farm_block||'',crop_cycle:entry.crop_cycle||'',plan_cohort:entry.plan_cohort||''}
+ scopeOpen.value=true
+}
+async function saveEntryScope(){
+ if(!scopeEntry.value||saving.value)return
+ saving.value=true;error.value=''
+ try{
+  await call('lotus_farm.cut_forecast.assign_entry_scope',{
+   farm:farm.value,entry:scopeEntry.value.name,modified:String(scopeEntry.value.modified),
+   farm_block:scopeForm.value.farm_block||null,crop_cycle:scopeForm.value.crop_cycle||null,
+   plan_cohort:scopeForm.value.plan_cohort||null},true)
+  scopeOpen.value=false;careData.value=null;notice.value='Đã liên kết nhật ký với lô. Chưa giao việc.'
+  await load()
+ }catch(e){error.value=e.message}finally{saving.value=false}
+}
+async function loadCarePreview(){
+ if(!farm.value)return
+ careBusy.value=true;careError.value='';careData.value=null
+ try{careData.value=await call('lotus_farm.cut_forecast.preview_care_plan',{
+  farm:farm.value,from_date:careFrom.value,to_date:careTo.value,farm_block:careBlock.value||null})}
+ catch(e){careError.value=e.message}finally{careBusy.value=false}
+}
+async function createCareDraft(date){
+ if(!careBlock.value||careBusy.value)return
+ const sure=await ask('Tạo kế hoạch NHÁP ngày '+vnDate(date)+' cho lô '+careBlock.value+' từ lịch dự kiến? Chưa giao việc, chưa cấp vật tư hoặc ghi lương.','Tạo kế hoạch nháp')
+ if(!sure)return
+ careBusy.value=true;careError.value=''
+ try{
+  // A single-day fingerprint is required; the broader preview cannot authorize a write.
+  const day=await call('lotus_farm.cut_forecast.preview_care_plan',{
+   farm:farm.value,from_date:date,to_date:date,farm_block:careBlock.value})
+  if(!day.rows?.length||day.rows.some(r=>r.blocking_issue))throw Error('Ngày này còn thiếu mã công việc/năng suất/đơn vị, chưa thể tạo nháp an toàn.')
+  const result=await call('lotus_farm.cut_forecast.create_care_plan_draft',{
+   farm:farm.value,farm_block:careBlock.value,posting_date:date,fingerprint:day.fingerprint},true)
+  notice.value='Đã tạo kế hoạch NHÁP '+result.plan+' ('+result.lines+' công việc); người quản lý cần duyệt riêng.'
+  await loadCarePreview()
+ }catch(e){careError.value=e.message}finally{careBusy.value=false}
+}
 function exportExcel(){if(farm.value)location.href='/api/method/lotus_farm.cut_forecast.export_forecast?'+new URLSearchParams({farm:farm.value,...(zone.value?{zone:zone.value}:{})})}
 async function readFile(event){const file=event.target.files?.[0];if(!file)return;saving.value=true;preview.value=null;error.value='';fileName.value=file.name
  try{const content=await new Promise((ok,fail)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=fail;r.readAsDataURL(file)})
@@ -91,7 +141,14 @@ const zoneRows=computed(()=>(data.value?.zones||[]).map(z=>({...z,cut_range:vnDa
 const zoneCols=[col('zone','Khu',v=>'Khu '+v),col('cut_range','Ngày chặt'),quantity('trees','Cây mẹ chặt 2'),quantity('shoot','Trổ buồng'),quantity('budcut','Cắt bắp'),quantity('harvest','Thu hoạch'),quantity('pack','Đóng gói'),quantity('tonnes','Tấn sơ chế',2)]
 const matrixCols=computed(()=>[col('zone','Khu'),...zoneMonthCols.value.map(m=>col(m,monthLabel(m),v=>v?num(v,1):'—'))])
 const matrixRows=computed(()=>(data.value?.zones||[]).map(z=>({zone:z.zone,...data.value?.zone_months?.[z.zone]})))
-const journalCols=[col('zone','Khu'),dateCol('cut_date','Ngày chặt mẹ 2'),quantity('tree_qty','Cây mẹ'),col('wave','Đợt',(_,r)=>r.wave+' · '+pct(r.share)+'%'),quantity('shoot_qty','Số cây trổ'),col('shoot_from','Cửa sổ trổ',(_,r)=>vnDate(r.shoot_from)+' – '+vnDate(r.shoot_to)),dateCol('shoot_date','Trổ (đại diện)'),dateCol('inject_date','Chích bắp'),dateCol('budcut_date','Cắt bắp'),quantity('budcut_qty','Buồng cắt'),dateCol('harvest_date','Thu hoạch'),quantity('harvest_qty','Buồng thu'),quantity('pack_qty','Đóng gói'),quantity('kg','Kg sơ chế'),col('source_ref','Dòng nguồn')]
+const careColumns=[
+ col('date','Ngày',v=>vnDate(v)),col('farm_block','Lô'),col('crop_cycle','Vụ cây'),
+ col('work_code','Mã công việc'),col('work_name','Tên công việc'),
+ quantity('planned_qty','Khối lượng dự kiến'),col('uom','ĐVT'),
+ quantity('required_workdays','Số công dự kiến',2),
+ col('note','Mốc tính'),col('blocking_issue','Chưa đủ điều kiện')
+]
+const journalCols=[col('zone','Khu'),col('farm_block','Lô'),col('crop_cycle','Vụ'),dateCol('cut_date','Ngày chặt mẹ 2'),quantity('tree_qty','Cây mẹ'),col('wave','Đợt',(_,r)=>r.wave+' · '+pct(r.share)+'%'),quantity('shoot_qty','Số cây trổ'),col('shoot_from','Cửa sổ trổ',(_,r)=>vnDate(r.shoot_from)+' – '+vnDate(r.shoot_to)),dateCol('shoot_date','Trổ (đại diện)'),dateCol('inject_date','Chích bắp'),dateCol('budcut_date','Cắt bắp'),quantity('budcut_qty','Buồng cắt'),dateCol('harvest_date','Thu hoạch'),quantity('harvest_qty','Buồng thu'),quantity('pack_qty','Đóng gói'),quantity('kg','Kg sơ chế'),col('source_ref','Dòng nguồn')]
 const profileCols=[col('version','Phiên bản',(_,r)=>r.version+(r.name===data.value?.profile?.name?' · đang dùng':'')),col('source','Nguồn',v=>v==='Excel'?'File Excel':'Web'),col('approved_by','Người duyệt'),dateCol('approved_at','Lúc'),col('days_to_first_shoot','Trổ đợt 1',v=>v+' ngày'),col('cut_rate','Cắt bắp',v=>pct(v)+'%'),col('harvest_rate','Thu',v=>pct(v)+'%'),col('pack_rate','Đóng gói',v=>pct(v)+'%'),quantity('kg_per_bunch','Kg/buồng',1),col('notes','Ghi chú')]
 const importRows=computed(()=>(data.value?.imports||[]).map(b=>({...b,conflicts:b.conflict_rows+' / '+b.error_rows})))
 const importCols=[col('file_name','File'),quantity('new_rows','Dòng mới'),quantity('existing_rows','Đã có'),col('conflicts','Xung đột / lỗi'),quantity('trees','Số cây'),col('imported_by','Người nhập'),dateCol('imported_at','Lúc'),col('undone_at','Trạng thái',v=>v?'Đã hoàn tác':'Đã nhập')]
@@ -154,9 +211,33 @@ useNoticeToast(notice)
  <section v-else-if="tab==='journal'" class="land-card">
   <div class="land-filters"><UiSelect v-model="journalWave" aria-label="Lọc đợt trổ" class="cutfc-narrow"><option value="">Mọi đợt trổ</option><option v-for="k in [1,2,3,4]" :key="k" :value="String(k)">Đợt {{k}}</option></UiSelect>
    <span class="land-spacer"></span><span class="land-count">{{num(journal.length)}} dòng (mỗi dòng chặt tách thành 4 đợt trổ)</span></div>
-  <div class="land-table cutfc-table cutfc-journal"><DataTable :rows="journal.slice(0,journalLimit).map(r=>({...r,__grid_id:(r.entry||r.source_ref)+'-'+r.wave}))" row-key="__grid_id" :columns="journalCols" storage-key="cutfc-journal" empty="Chưa có nhật ký."/>
+  <div class="land-table cutfc-table cutfc-journal"><DataTable :rows="journal.slice(0,journalLimit).map(r=>({...r,__grid_id:(r.entry||r.source_ref)+'-'+r.wave}))" row-key="__grid_id" :columns="journalCols" storage-key="cutfc-journal" interactive @open="openScope" empty="Chưa có nhật ký."/>
    <p v-if="!journal.length&&!busy" class="land-empty">Chưa có nhật ký chặt mẹ lần 2.</p></div>
   <UiButton v-if="journal.length>journalLimit" variant="outline" @click="journalLimit+=400">Xem thêm ({{num(journal.length-journalLimit)}} dòng)</UiButton>
+  <p class="land-note">Bấm một dòng để đối chiếu lô/vụ/đợt cây. Các dòng chỉ có khu không tự phân bổ số cây.</p>
+ </section>
+
+ <section v-else-if="tab==='care'" class="land-card">
+  <h3>Lịch chăm sóc dự kiến từ 4 đợt trổ</h3>
+  <p class="land-note">Chỉ lấy các dòng nhật ký đã gắn lô; ngày và số buồng là dự kiến. Chưa sinh lịch nếu thông số chích → cắt bắp không đúng quy trình Book2 +16 ngày.</p>
+  <div class="land-filters">
+   <UiSelect v-model="careBlock" aria-label="Lọc lô lớn">
+    <option value="">Mọi lô (chỉ xem)</option>
+    <option v-for="b in blockOptions" :key="b.name" :value="b.name">{{b.block_code||b.name}} · Khu {{b.farm_zone}}</option>
+   </UiSelect>
+   <LotusField label="Từ ngày" type="date" v-model="careFrom"/>
+   <LotusField label="Đến ngày" type="date" v-model="careTo"/>
+   <UiButton variant="outline" :disabled="careBusy||!farm" @click="loadCarePreview">{{careBusy?'Đang tính…':'Xem lịch'}}</UiButton>
+  </div>
+  <p v-if="careError" class="land-bad" role="alert">{{careError}}</p>
+  <template v-if="careData">
+   <p class="land-note">{{num(careData.total_count)}} dòng việc · {{num(careData.ready_count)}} dòng đủ điều kiện tạo nháp · {{num(careData.unmapped_count)}} dòng nguồn chưa gắn lô · Bộ hệ số #{{careData.profile_version}}</p>
+   <p v-for="w in careData.warnings||[]" :key="w" class="land-note">{{w}}</p>
+   <div v-if="careBlock&&data?.can_edit&&careDates.length" class="land-actions">
+    <UiButton v-for="d in careDates" :key="d" variant="outline" :disabled="careBusy" @click="createCareDraft(d)">Tạo nháp {{vnDate(d)}}</UiButton>
+   </div>
+   <div class="land-table cutfc-table"><DataTable :rows="careData.rows||[]" :columns="careColumns" row-key="schedule_key" storage-key="care-plan-book2" empty="Không có lịch trong khoảng đã chọn."/></div>
+  </template>
  </section>
 
  <template v-else>
@@ -195,6 +276,31 @@ useNoticeToast(notice)
   </section>
  </template>
 
+ <WorkspaceModal v-model="scopeOpen" title="Gắn nhật ký chặt mẹ với lô lớn" :busy="saving" width="620px">
+  <p class="land-note">Dòng {{scopeEntry?.name}} · Khu {{scopeEntry?.zone}} · {{num(scopeEntry?.tree_qty)}} cây. Không tự chia cây theo diện tích.</p>
+  <div class="land-form">
+   <label>Lô lớn
+    <UiSelect v-model="scopeForm.farm_block" :disabled="saving" @update:model-value="scopeForm.crop_cycle='';scopeForm.plan_cohort=''">
+     <option value="">Chưa xác định lô</option>
+     <option v-for="b in blockOptions.filter(b=>b.farm_zone===scopeEntry?.zone)" :key="b.name" :value="b.name">{{b.block_code||b.name}} · {{b.block_name}}</option>
+    </UiSelect>
+   </label>
+   <label>Vụ cây (nếu có)
+    <UiSelect v-model="scopeForm.crop_cycle" :disabled="saving||!scopeForm.farm_block" @update:model-value="scopeForm.plan_cohort=''">
+     <option value="">Chưa xác định vụ</option>
+     <option v-for="c in cropOptions" :key="c.name" :value="c.name">{{c.name}} · Vụ {{c.cycle_no}}</option>
+    </UiSelect>
+   </label>
+   <label>Đợt cây (nếu có)
+    <UiSelect v-model="scopeForm.plan_cohort" :disabled="saving||!scopeForm.farm_block">
+     <option value="">Chưa xác định đợt</option>
+     <option v-for="c in cohortOptions" :key="c.name" :value="c.name">{{c.cohort_code}} · {{c.cohort_name}}</option>
+    </UiSelect>
+   </label>
+   <div class="land-actions"><UiButton variant="outline" :disabled="saving" @click="scopeOpen=false">Hủy</UiButton>
+    <UiButton :disabled="saving" @click="saveEntryScope">Lưu liên kết lô/vụ</UiButton></div>
+  </div>
+ </WorkspaceModal>
  <WorkspaceModal v-model="importOpen" title="Nhập file dự thu" :busy="saving" width="980px">
   <div class="land-form">
    <ol class="land-steps"><li>Chọn file Excel dự thu có sheet <b>NHẬT KÝ GỐC</b> (Khu | Ngày chặt mẹ lần 2 | Số cây | Dòng trên file nguồn) và sheet <b>THÔNG SỐ</b>.</li><li>Xem trước: dòng mới được thêm, dòng đã nhập trước đây bỏ qua, dòng khác số cây so với lần trước được báo để kiểm tra.</li><li>Bấm Nhập. File gốc được lưu lại làm chứng cứ.</li></ol>
