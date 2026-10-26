@@ -167,7 +167,7 @@
       "fieldname": "legacy_aggregate_only",
       "label": "Legacy Aggregate Only",
       "fieldtype": "Check",
-      "description": "Historic aggregate without sample evidence; excluded from sample analysis."
+      "description": "Số liệu tổng hợp cũ không có mẫu đo; không đưa vào phân tích mẫu."
     },
     {
       "fieldname": "source_cut_operation",

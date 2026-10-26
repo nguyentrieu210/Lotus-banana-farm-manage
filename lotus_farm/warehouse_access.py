@@ -80,18 +80,18 @@ def provision_operator(email, company):
     Operational permissions include transactions and setup but NOT Purchase Order approval.
     """
     if frappe.session.user!='Administrator':
-        frappe.throw('Administrator required.',frappe.PermissionError)
+        frappe.throw('Cần quyền quản trị (Administrator).',frappe.PermissionError)
     if not frappe.db.exists('Company',company):
-        frappe.throw('Company not found.')
+        frappe.throw('Không tìm thấy công ty.')
     if not frappe.utils.validate_email_address(email,throw=False):
-        frappe.throw('Invalid email.')
+        frappe.throw('Email không hợp lệ.')
     install_roles()
     roles=('Lotus Warehouse Operator','Lotus Warehouse Requester',
            'Lotus Warehouse Receiver','Lotus Warehouse Manager')
     if frappe.db.exists('User',email):
         user=frappe.get_doc('User',email)
         if user.user_type!='System User':
-            frappe.throw('Existing account is not a System User; review before changing.')
+            frappe.throw('Tài khoản đã có không phải người dùng hệ thống; hãy kiểm tra trước khi thay đổi.')
     else:
         user=frappe.get_doc(dict(doctype='User',email=email,
             first_name=email.split('@')[0],user_type='System User',

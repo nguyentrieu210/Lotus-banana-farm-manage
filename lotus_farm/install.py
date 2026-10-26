@@ -145,7 +145,7 @@ def validate_reference_company(doc, method=None):
             validate_warehouse(value, doc.company)
         if field.options == "Cost Center" and value:
             if frappe.db.get_value("Cost Center", value, "company") != doc.company:
-                frappe.throw("Cost Center must belong to the Farm Company.")
+                frappe.throw("Trung tâm chi phí phải thuộc công ty của vườn.")
 
 
 def upgrade_cycle_unique_index():
@@ -159,5 +159,5 @@ def upgrade_cycle_unique_index():
     for name, columns in grouped.items():
         if [c for _, c in sorted(columns)] == ["farm_block", "cycle_no"]:
             if not name.replace("_", "").isalnum():
-                frappe.throw("Unexpected Crop Cycle index name.")
+                frappe.throw("Tên chỉ mục vụ không đúng.")
             frappe.db.sql("ALTER TABLE `tabCrop Cycle` DROP INDEX `" + name + "`")

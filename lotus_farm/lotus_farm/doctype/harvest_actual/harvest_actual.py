@@ -14,12 +14,12 @@ class HarvestActual(Document):
         rejected_weight = number(self.rejected_weight_kg, "Rejected weight")
         self.harvested_bunch_qty = whole_count(self.harvested_bunch_qty, "Harvested bunches")
         if self.harvested_bunch_qty < 1:
-            frappe.throw("Harvest requires a positive whole bunch count.")
+            frappe.throw("Thu hoạch cần số buồng là số nguyên dương.")
         from lotus_farm.harvest_matching import match_forecast
         if not self.forecast:
             self.forecast = match_forecast(self)
         if rejected_weight > gross_weight:
-            frappe.throw("Rejected Weight cannot exceed Gross Weight.")
+            frappe.throw("Khối lượng loại không được vượt khối lượng cân tổng.")
 
         self.saleable_weight_kg = flt(gross_weight - rejected_weight, 3)
         self.forecast_saleable_kg = 0
@@ -35,20 +35,20 @@ class HarvestActual(Document):
                 for_update=True,
             )
             if not forecast:
-                frappe.throw("Harvest Forecast does not exist.")
+                frappe.throw("Dự thu không tồn tại.")
             if (
                 forecast.farm != self.farm
                 or forecast.farm_block != self.farm_block
                 or forecast.crop_cycle != self.crop_cycle
             ):
-                frappe.throw("Harvest Forecast must belong to the same Farm, Block and Crop Cycle.")
+                frappe.throw("Dự thu phải thuộc cùng vườn, lô và vụ.")
             if (forecast.sucker_selection_batch or '') != (self.sucker_selection_batch or ''):
-                frappe.throw("Harvest Forecast must belong to the same Sucker Selection Batch.")
+                frappe.throw("Dự thu phải thuộc cùng đợt chọn chồi.")
             sources = set(frappe.get_all('Forecast Source Claim', filters={
                 'parent': self.forecast, 'parenttype': 'Harvest Forecast',
             }, pluck='source_cut_operation'))
             if (sources or forecast.process_adoption) and (not self.get('source_cut_operation') or sources != {self.get('source_cut_operation')}):
-                frappe.throw('Harvest Forecast must claim exactly this source Cut Bud operation.')
+                frappe.throw('Dự thu phải gắn đúng với thao tác cắt bắp nguồn này.')
 
             self.forecast_saleable_kg = flt(forecast.saleable_forecast_kg or 0, 3)
             self.variance_kg = flt(self.saleable_weight_kg - self.forecast_saleable_kg, 3)
@@ -58,7 +58,7 @@ class HarvestActual(Document):
     def _validate_scope(self):
         block_farm = frappe.db.get_value("Farm Block", self.farm_block, "farm")
         if block_farm and block_farm != self.farm:
-            frappe.throw("Farm Block must belong to the selected Farm.")
+            frappe.throw("Lô phải thuộc vườn đã chọn.")
 
         cycle = frappe.db.get_value(
             "Crop Cycle",
@@ -67,19 +67,19 @@ class HarvestActual(Document):
             as_dict=True,
         )
         if not cycle:
-            frappe.throw("Crop Cycle does not exist.")
+            frappe.throw("Vụ không tồn tại.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
-            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+            frappe.throw("Vụ phải thuộc vườn và lô đã chọn.")
         validate_coverage_date(cycle, self.harvest_date)
         if cycle.cycle_type == "Ratoon" and not self.sucker_selection_batch and not is_inherited_opening(cycle):
-            frappe.throw("Ratoon harvests must select a Sucker Selection Batch.")
+            frappe.throw("Thu hoạch vụ chồi (lưu gốc) phải chọn đợt chọn chồi.")
 
         if self.sucker_selection_batch:
             batch_cycle = frappe.db.get_value(
                 "Sucker Selection Batch", self.sucker_selection_batch, "crop_cycle"
             )
             if batch_cycle != self.crop_cycle:
-                frappe.throw("Sucker Selection Batch must belong to the selected Crop Cycle.")
+                frappe.throw("Đợt chọn chồi phải thuộc vụ đã chọn.")
 
     def before_cancel(self):
         source = frappe.qb.DocType("Harvest Lot Source")
@@ -93,4 +93,4 @@ class HarvestActual(Document):
             .run()
         )
         if rows:
-            frappe.throw("Cancel dependent Harvest Lots before cancelling this harvest.")
+            frappe.throw("Hủy các lô thu hoạch phụ thuộc trước khi hủy lần thu hoạch này.")

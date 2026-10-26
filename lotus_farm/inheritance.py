@@ -42,9 +42,9 @@ def validate_coverage_date(cycle, on_date):
     if cycle.get("origin_basis") != "Handover":
         return
     if not is_inherited_opening(cycle):
-        frappe.throw("Complete the inherited opening cycle and its coverage start date before recording operations.")
+        frappe.throw("Hoàn tất vụ đầu kỳ kế thừa và ngày bắt đầu theo dõi trước khi ghi thao tác.")
     if on_date and getdate(on_date) < getdate(cycle.get("coverage_start_date")):
-        frappe.throw("Operation date precedes the inherited cycle coverage start date.")
+        frappe.throw("Ngày thao tác trước ngày bắt đầu theo dõi của vụ kế thừa.")
 
 
 def cycle_provenance(cycle):

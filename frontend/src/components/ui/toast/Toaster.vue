@@ -16,7 +16,7 @@ function act(item){item.action?.run?.();dismissToast(item.id)}
    <ToastAction v-if="item.action" :alt-text="item.action.label" as-child><button type="button" class="lotus-toast__action" @click="act(item)">{{item.action.label}}</button></ToastAction>
    <ToastClose class="lotus-toast__close" aria-label="Đóng thông báo"><LotusIcon name="x"/></ToastClose>
   </ToastRoot>
-  <ToastViewport class="lotus-toast-viewport"/>
+  <ToastViewport class="lotus-toast-viewport" label="Thông báo ({hotkey})"/>
  </ToastProvider>
 </template>
 <style>

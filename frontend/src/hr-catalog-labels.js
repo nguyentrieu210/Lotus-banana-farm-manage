@@ -50,4 +50,37 @@ const names={
   "Sales": "Kinh doanh",
   "All Departments": "Tất cả phòng ban"
 }
+// ERPNext default masters shown across Lotus (supplier/item/customer groups, territories, employment types).
+Object.assign(names,{
+  "All Supplier Groups": "Tất cả nhóm nhà cung cấp",
+  "Distributor": "Nhà phân phối",
+  "Electrical": "Thiết bị điện",
+  "Hardware": "Kim khí, dụng cụ",
+  "Local": "Trong nước",
+  "Pharmaceutical": "Thuốc, dược phẩm",
+  "Raw Material": "Nguyên vật liệu",
+  "Services": "Dịch vụ",
+  "Commercial": "Thương mại",
+  "Consumable": "Vật tư tiêu hao",
+  "All Item Groups": "Tất cả nhóm vật tư",
+  "Products": "Sản phẩm",
+  "Sub Assemblies": "Bán thành phẩm",
+  "All Customer Groups": "Tất cả nhóm khách hàng",
+  "Individual": "Cá nhân",
+  "Government": "Cơ quan nhà nước",
+  "Non Profit": "Tổ chức phi lợi nhuận",
+  "All Territories": "Tất cả khu vực",
+  "Vietnam": "Việt Nam",
+  "Full-time": "Toàn thời gian",
+  "Part-time": "Bán thời gian",
+  "Probation": "Thử việc",
+  "Contract": "Hợp đồng",
+  "Commission": "Hưởng hoa hồng",
+  "Piecework": "Khoán sản phẩm",
+  "Intern": "Thực tập",
+  "Apprentice": "Học việc",
+  "Permanent": "Dài hạn",
+  "Fixed-term": "Hợp đồng xác định hạn",
+  "Seasonal": "Thời vụ"
+})
 export const hrCatalogLabel=value=>{if(!value)return value;const parts=value.match(/^(.*) - ([^-]+)$/);return names[value]||(parts&&names[parts[1]]?names[parts[1]]+' - '+parts[2]:value)}

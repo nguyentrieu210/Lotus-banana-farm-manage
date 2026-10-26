@@ -8,17 +8,17 @@ from lotus_farm.daily_operations import number
 def validate_actual_labor(doc):
     seen=set();days=quantity=0
     for row in doc.actual_labor:
-        if bool(row.employee)==bool(row.work_team):frappe.throw('Select either an Employee or a Work Team for each actual line.')
+        if bool(row.employee)==bool(row.work_team):frappe.throw('Mỗi dòng thực tế chọn hoặc một nhân viên, hoặc một đội sản xuất.')
         key=(row.employee or '',row.work_team or '')
-        if key in seen:frappe.throw('Combine duplicate actual labor identities.')
+        if key in seen:frappe.throw('Gộp các dòng nhân công thực tế bị trùng.')
         seen.add(key)
         allocations=frappe.get_all('Labor Allocation',filters={'work_plan_line':doc.work_plan_line,'docstatus':1},fields=['employee','work_team','allocated_workdays'])
         capacity=sum(flt(r.allocated_workdays) for r in allocations if (r.employee==row.employee if row.employee else (not r.employee and r.work_team==row.work_team)))
         actual=number(row.actual_workdays,'Actual workdays',positive=True)
-        if actual>capacity+0.000001:frappe.throw('Actual labor exceeds its submitted allocation for this task.')
+        if actual>capacity+0.000001:frappe.throw('Nhân công thực tế vượt phân bổ đã duyệt của công việc này.')
         days+=actual;quantity+=number(row.completed_qty,'Attributed completed quantity')
     if abs(days-flt(doc.actual_workdays))>0.000001 or abs(quantity-flt(doc.completed_qty))>0.000001:
-        frappe.throw('Attributed actual workdays and quantity must reconcile to the work result totals.')
+        frappe.throw('Tổng công và số lượng thực tế đã phân bổ phải khớp tổng của kết quả công việc.')
 
 
 @frappe.whitelist()

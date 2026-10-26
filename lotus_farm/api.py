@@ -11,9 +11,9 @@ def _insert_idempotent(doctype, key_field, key, payload, submit=False):
         doc = frappe.get_doc(doctype, existing)
         doc.check_permission("read")
         if doc.client_payload_hash != payload_hash:
-            frappe.throw("This event ID already belongs to a different payload.")
+            frappe.throw("Mã sự kiện này đã gắn với dữ liệu khác.")
         if submit and doc.docstatus != 1:
-            frappe.throw("This event is not a submitted document; reconcile it before retrying.")
+            frappe.throw("Sự kiện này chưa phải chứng từ đã duyệt; hãy đối soát trước khi thử lại.")
         return doc
     frappe.db.savepoint("lotus_event")
     try:
@@ -35,9 +35,9 @@ def _insert_idempotent(doctype, key_field, key, payload, submit=False):
         doc = frappe.get_doc(doctype, existing)
         doc.check_permission("read")
         if doc.client_payload_hash != payload_hash:
-            frappe.throw("Conflicting payload for an existing event ID.")
+            frappe.throw("Dữ liệu không khớp với sự kiện đã có cùng mã.")
         if submit and doc.docstatus != 1:
-            frappe.throw("This event is not a submitted document; reconcile it before retrying.")
+            frappe.throw("Sự kiện này chưa phải chứng từ đã duyệt; hãy đối soát trước khi thử lại.")
         return doc
 
 
@@ -58,7 +58,7 @@ def create_operation(
 ):
     require_role("Lotus Farm Manager", "Lotus Integration User")
     if not client_event_id:
-        frappe.throw("client_event_id is required for retries.")
+        frappe.throw("Thiếu mã sự kiện (client_event_id) để thử lại.")
     payload = dict(
         farm=farm,
         farm_block=farm_block,
@@ -86,7 +86,7 @@ def create_operation(
 def ingest_scale(farm, device_id, reading_id, captured_at, gross_kg, tare_kg):
     require_role("Lotus Integration User")
     if not device_id or not reading_id:
-        frappe.throw("Device and reading IDs are required.")
+        frappe.throw("Thiếu mã thiết bị hoặc mã lần đọc.")
     payload = dict(
         farm=farm,
         device_id=device_id,
@@ -142,7 +142,7 @@ def availability(period_start, period_end, farm=None, item=None):
     )
 
     if len(forecasts) == 10000 and frappe.get_list("Harvest Forecast", filters=filters, fields=["name"], limit_start=10000, limit_page_length=1):
-        frappe.throw("Availability exceeds 10,000 forecasts; narrow the Farm or period.")
+        frappe.throw("Có hơn 10.000 dòng dự thu; hãy thu hẹp vườn hoặc khoảng thời gian.")
     result = []
     for forecast in forecasts:
         outputs = frappe.get_all(

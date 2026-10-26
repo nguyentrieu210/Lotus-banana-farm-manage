@@ -42,7 +42,7 @@
       "label": "Sales Safety Buffer (%)"
     },
     {
-      "default": "Set these values from Lotus actual field data. V0 intentionally ships without generic banana assumptions.",
+      "default": "Nhập các giá trị này theo số liệu thực tế ngoài vườn của Lotus. Bản đầu tiên cố ý không dùng giả định chung về chuối.",
       "fieldname": "configuration_note",
       "fieldtype": "Small Text",
       "label": "Configuration Note",
@@ -93,7 +93,7 @@
       "label": "Enable Proactive Alerts",
       "fieldtype": "Check",
       "default": 0,
-      "description": "Enable hourly farm risk alerts after thresholds, Farm grants and warehouse mappings are approved."
+      "description": "Bật cảnh báo rủi ro vườn hằng giờ sau khi đã duyệt ngưỡng, quyền theo vườn và ánh xạ kho."
     }
   ],
   "permissions": [

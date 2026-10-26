@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from '../../hr-catalog-labels'
 import LotusField from '../form/LotusField.vue'
 // Lịch ca: employees x days. Shift managers tap or drag cells, then pick a shift (or no shift); a weekly
 // rotation fills Ca 1 → 2 → 3. Changes go through lotus_farm.shift_admin.set_roster, which splits HRMS
@@ -81,7 +82,7 @@ defineExpose({load})
  <header class="tk-card__head"><h3>Lịch ca</h3>
   <div class="tk-weeknav" role="group" aria-label="Chọn tuần"><UiButton variant="outline" size="sm" aria-label="Tuần trước" :disabled="busy" @click="move(-span)">‹</UiButton><strong>{{label}}</strong><UiButton variant="outline" size="sm" aria-label="Tuần sau" :disabled="busy" @click="move(span)">›</UiButton><UiButton variant="ghost" size="sm" :disabled="busy" @click="start=mondayOf(today)">Tuần này</UiButton></div>
   <UiSelect v-model.number="span" aria-label="Số ngày hiển thị" class="tk-span tk-narrow"><option :value="7">1 tuần</option><option :value="14">2 tuần</option><option :value="28">4 tuần</option></UiSelect>
-  <UiSelect v-model="department" class="tk-narrow" aria-label="Lọc bộ phận"><option value="">Mọi bộ phận</option><option v-for="d in departments" :key="d.name" :value="d.name">{{d.department_name||d.name}}</option></UiSelect>
+  <UiSelect v-model="department" class="tk-narrow" aria-label="Lọc bộ phận"><option value="">Mọi bộ phận</option><option v-for="d in departments" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name||d.name)}}</option></UiSelect>
   <UiInput v-model="search" type="search" placeholder="Tìm nhân viên…" aria-label="Tìm nhân viên trong lịch ca" class="tk-search"/>
   <UiButton v-if="canManage" variant="outline" :disabled="saving||!ordered.length" @click="openRotation"><LotusIcon name="refresh"/>Xoay ca theo tuần</UiButton>
  </header>

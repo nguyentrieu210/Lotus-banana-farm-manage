@@ -97,7 +97,7 @@ def map_block_data(farm, block=None, zone=None, include_draft=False):
 
 @frappe.whitelist(methods=['POST'])
 def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None,longitude=None,gps_accuracy_m=None,photo=None,expected_user=None,revision_of=None):
-    if expected_user and expected_user!=frappe.session.user:frappe.throw('Account changed; keep the event for its original user.',frappe.PermissionError)
+    if expected_user and expected_user!=frappe.session.user:frappe.throw('Tài khoản đã thay đổi; sự kiện được giữ cho người dùng ban đầu.',frappe.PermissionError)
     from lotus_farm.mobile_access import roles, is_manager, LEADER, SUPERVISOR
     scoped = (not is_manager() and
               'Lotus Integration User' not in roles() and
@@ -108,18 +108,18 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
     else:
         require_role('Lotus Farm Manager','Lotus Integration User')
     frappe.get_doc('Farm',farm).check_permission('read');lock('Farm',farm)
-    if not client_event_id or target_doctype not in CAPTURE_TYPES:frappe.throw('Select a supported field event and an event ID.')
+    if not client_event_id or target_doctype not in CAPTURE_TYPES:frappe.throw('Chọn loại sự kiện hiện trường được hỗ trợ và mã sự kiện.')
     values=json.loads(values) if isinstance(values,str) else values
-    if not isinstance(values,dict) or any(k not in IMPORT_FIELDS[target_doctype] for k in values):frappe.throw('Unsupported field event fields.')
+    if not isinstance(values,dict) or any(k not in IMPORT_FIELDS[target_doctype] for k in values):frappe.throw('Trường của sự kiện hiện trường không được hỗ trợ.')
     if scoped:
         from lotus_farm.mobile_access import validate_capture
         validate_capture(farm, values)
-    if (latitude is None)!=(longitude is None):frappe.throw('Provide both GPS coordinates, or neither.')
+    if (latitude is None)!=(longitude is None):frappe.throw('Nhập đủ cả hai tọa độ GPS, hoặc để trống cả hai.')
     if latitude is not None:coordinates(latitude,longitude)
     captured_at=str(local_timestamp(captured_at))
     if photo:
         names=frappe.get_all('File',filters={'file_url':photo,'owner':frappe.session.user,'is_private':1},pluck='name')
-        if not names:frappe.throw('Use a private photo uploaded by the signed-in user.')
+        if not names:frappe.throw('Dùng ảnh riêng tư do chính người đang đăng nhập tải lên.')
         frappe.get_doc('File',names[0]).check_permission('read')
     payload=dict(target_doctype=target_doctype,values=values,farm=farm,captured_at=captured_at,latitude=latitude,longitude=longitude,gps_accuracy_m=gps_accuracy_m,photo=photo)
     if revision_of:payload['revision_of']=revision_of
@@ -132,7 +132,7 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
                 frappe.throw('Không có quyền xem báo cáo này.', frappe.PermissionError)
         else:
             previous.check_permission('read')
-        if previous.payload_hash!=hashed:frappe.throw('Event ID already has a different payload; preserve the original event or use a new ID.')
+        if previous.payload_hash!=hashed:frappe.throw('Mã sự kiện đã gắn với dữ liệu khác; giữ sự kiện gốc hoặc dùng mã mới.')
         return dict(capture=previous.name,document=previous.target_name,replayed=True)
     target_values = dict(doctype=target_doctype, **values, farm=farm)
     if frappe.get_meta(target_doctype).has_field('company'):
@@ -219,7 +219,7 @@ def suggest_work(farm,posting_date):
 def make_suggested_plan(farm,posting_date):
     require_role('Lotus Farm Manager');lock('Farm',farm)
     suggestions=suggest_work(farm,posting_date)
-    if not suggestions:frappe.throw('No unplanned due tasks for this day.')
+    if not suggestions:frappe.throw('Không có công việc đến hạn ngoài kế hoạch trong ngày này.')
     doc=frappe.get_doc(dict(doctype='Daily Work Plan',farm=farm,company=frappe.db.get_value('Farm',farm,'company'),posting_date=posting_date,
         lines=[{k:v for k,v in r.items() if k!='rule'} for r in suggestions])).insert()
     return dict(plan=doc.name,docstatus=doc.docstatus,tasks=len(doc.lines))
@@ -240,12 +240,12 @@ def available_labor(farm,posting_date):
         result.append(dict(employee=e.name,employee_name=e.employee_name,attendance=attendance,
             attendance_known=bool(attendance),remaining_workdays=max(capacity-used,0)))
     return dict(farm=farm,date=str(date),attendance_installed=attendance_available,employees=result,
-        note='No attendance record means unknown presence; remaining workdays is allocation capacity, not verified attendance.')
+        note='Không có dữ liệu chấm công nghĩa là chưa rõ có mặt; số công còn lại là khả năng bố trí, chưa phải công đã chấm.')
 
 
 @frappe.whitelist()
 def session_info():
-    if frappe.session.user=='Guest':frappe.throw('Sign in before opening Lotus field capture.',frappe.AuthenticationError)
+    if frappe.session.user=='Guest':frappe.throw('Đăng nhập trước khi mở ghi nhận hiện trường Lotus.',frappe.AuthenticationError)
     from frappe.sessions import get_csrf_token
     return dict(user=frappe.session.user,csrf_token=get_csrf_token(),capabilities=dict(
         stock=all(frappe.has_permission(t,'read') for t in ('Stock Entry','Warehouse','Item','Bin','Company')),
@@ -298,9 +298,9 @@ def capture_status(client_event_id):
 def save_uploaded_photo():
     # Frappe upload_file validates the session, CSRF and upload type before dispatching here.
     if frappe.form_dict.get('expected_user')!=frappe.session.user or frappe.session.user=='Guest':
-        frappe.throw('Account changed before photo upload.',frappe.PermissionError)
+        frappe.throw('Tài khoản đã thay đổi trước khi tải ảnh lên.',frappe.PermissionError)
     require_role('Lotus Farm Manager','Lotus Integration User','Lotus Team Leader','Lotus Field Supervisor')
-    if not frappe.local.uploaded_file:frappe.throw('A photo file is required.')
+    if not frappe.local.uploaded_file:frappe.throw('Phải có tệp ảnh.')
     from lotus_farm.mobile_access import is_manager, roles
     bypass = not is_manager() and 'Lotus Integration User' not in roles()
     return frappe.get_doc(dict(doctype='File',file_name=frappe.local.uploaded_filename,is_private=1,content=frappe.local.uploaded_file)).save(ignore_permissions=bypass)

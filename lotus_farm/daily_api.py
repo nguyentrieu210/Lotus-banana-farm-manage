@@ -50,7 +50,7 @@ def create_requirements(work_plan):
     lock('Farm',plan.farm)
     lock('Daily Work Plan',plan.name)
     if plan.docstatus!=1:
-        frappe.throw('Submit the Work Plan first.')
+        frappe.throw('Hãy duyệt kế hoạch công việc trước.')
     names=[]
     for line in plan.lines:
         if not line.norm_profile:
@@ -72,7 +72,7 @@ def material_availability(requirement, warehouse):
     doc.check_permission('read')
     validate_warehouse(warehouse,doc.company)
     if not frappe.has_permission('Stock Ledger Entry','read'):
-        frappe.throw('Stock Ledger read permission is required.',frappe.PermissionError)
+        frappe.throw('Cần quyền xem sổ kho.',frappe.PermissionError)
     rows=[]
     from lotus_farm.warehouse_planning import source_allocations,_draft_holds,stock_quantity
     from lotus_farm.warehouse_rules import coverage
@@ -98,14 +98,14 @@ def create_material_request(requirement, warehouse, schedule_date):
     day_guard(doc)
     lock('Material Requirement',doc.name)
     if doc.docstatus!=1:
-        frappe.throw('Submit the requirement first.')
+        frappe.throw('Hãy duyệt nhu cầu vật tư trước.')
     if doc.material_request:
         existing=frappe.get_doc('Material Request',doc.material_request)
         existing.check_permission('read')
         if existing.docstatus!=2:
             return dict(material_request=existing.name,docstatus=existing.docstatus)
     if getdate(schedule_date)<getdate(doc.posting_date):
-        frappe.throw('Material request date cannot precede the work date.')
+        frappe.throw('Ngày đề nghị vật tư không được trước ngày làm việc.')
     from lotus_farm.warehouse_planning import create_purchase_request,assign_warehouse
     if not doc.get('lotus_warehouse'):
         assign_warehouse(doc.company,doc.name,warehouse)

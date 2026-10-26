@@ -9,11 +9,11 @@ class QualityStandard(Document):
         validate_version(self, "standard_code", ("Lotus QC Manager",))
         validate_item(self.item)
         if not 0 <= float(self.max_defective_percent) <= 100:
-            frappe.throw("Maximum defective percent must be between 0 and 100.")
+            frappe.throw("Tỷ lệ lỗi tối đa phải từ 0 đến 100.")
         seen = set()
         for row in self.parameters or []:
             if row.parameter in seen or float(row.minimum) > float(row.maximum):
-                frappe.throw("Parameters must be unique and minimum cannot exceed maximum.")
+                frappe.throw("Chỉ tiêu không được trùng và giá trị tối thiểu không được vượt tối đa.")
             try:
                 quantity(row.minimum)
                 quantity(row.maximum)
@@ -23,4 +23,4 @@ class QualityStandard(Document):
 
     def on_trash(self):
         if self.approval_state == "Approved":
-            frappe.throw("Approved quality versions cannot be deleted.")
+            frappe.throw("Không được xóa phiên bản tiêu chuẩn chất lượng đã duyệt.")

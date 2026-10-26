@@ -13,7 +13,7 @@ def land_scope(company=None, farm=None, block=None, plot=None, cycle=None, zone=
             if parent == key or not name:
                 continue
             if values[parent] and values[parent] != name:
-                frappe.throw('Selected ' + key + ' does not belong to the selected ' + parent + '.')
+                frappe.throw({'cycle':'Vụ','plot':'Thửa','block':'Lô','farm':'Vườn','company':'Công ty'}[key] + ' đã chọn không thuộc ' + {'cycle':'Vụ','plot':'Thửa','block':'Lô','farm':'Vườn','company':'Công ty'}[parent].lower() + ' đã chọn.')
             values[parent] = name
     if zone:
         zone = str(zone).strip()

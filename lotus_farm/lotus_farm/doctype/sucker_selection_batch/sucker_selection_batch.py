@@ -12,9 +12,9 @@ class SuckerSelectionBatch(Document):
         expected = cint(self.expected_productive_qty)
 
         if selected <= 0 or expected < 0:
-            frappe.throw("Sucker quantities cannot be negative.")
+            frappe.throw("Số chồi không được âm.")
         if expected and expected > selected:
-            frappe.throw("Expected Productive Qty cannot exceed Selected Sucker Qty.")
+            frappe.throw("Số cây cho trái dự kiến không được vượt số chồi đã chọn.")
 
     def _validate_scope(self):
         cycle = frappe.db.get_value(
@@ -24,8 +24,8 @@ class SuckerSelectionBatch(Document):
             as_dict=True,
         )
         if not cycle:
-            frappe.throw("Crop Cycle does not exist.")
+            frappe.throw("Vụ không tồn tại.")
         if cycle.farm != self.farm or cycle.farm_block != self.farm_block:
-            frappe.throw("Crop Cycle must belong to the selected Farm and Farm Block.")
+            frappe.throw("Vụ phải thuộc vườn và lô đã chọn.")
         if cycle.cycle_type != "Ratoon":
-            frappe.throw("Sucker Selection Batch is used for ratoon cycles (Cycle 2+).")
+            frappe.throw("Đợt chọn chồi dùng cho vụ chồi (lưu gốc), từ vụ 2 trở đi.")

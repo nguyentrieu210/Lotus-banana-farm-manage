@@ -30,21 +30,21 @@ def _polygon(value, code):
 
 def validate_bundle(bundle):
     if not isinstance(bundle, dict) or bundle.get("format") != FORMAT:
-        raise MapBundleError("Unknown map bundle format")
+        raise MapBundleError("Định dạng gói bản đồ không xác định")
     if (bundle.get("approved") is not False or bundle.get("requires_field_validation") is not True
             or bundle.get("verification") != "UNVERIFIED_PDF_ALIGNMENT"):
-        raise MapBundleError("This importer accepts ONLY explicitly unverified PDF drafts")
+        raise MapBundleError("Chức năng nhập này CHỈ nhận bản nháp PDF được đánh dấu rõ là chưa kiểm chứng")
     blocks = bundle.get("care_blocks")
     plots = bundle.get("irrigation_plots")
     if not isinstance(blocks, list) or not isinstance(plots, list) or len(blocks) != 64 or len(plots) != 205:
-        raise MapBundleError("Expected 64 care blocks and 205 irrigation plot records")
+        raise MapBundleError("Cần 64 lô chăm sóc và 205 bản ghi thửa tưới")
     codes = set()
     owner_map = {}
     link_count = 0
     for b in blocks:
         code = b.get("code")
         if not isinstance(code, str) or not code or code in codes:
-            raise MapBundleError("Missing or duplicated care block code")
+            raise MapBundleError("Thiếu hoặc trùng mã lô chăm sóc")
         codes.add(code)
         if not (isinstance(b.get("area_ha_pdf"), (int, float)) and b["area_ha_pdf"] > 0):
             raise MapBundleError(code + ": missing source area")
@@ -56,20 +56,20 @@ def validate_bundle(bundle):
             owner_map.setdefault(plot, []).append(code)
             link_count += 1
     if abs(sum(b["area_ha_pdf"] for b in blocks) - 215.16) > .001 or link_count != 209:
-        raise MapBundleError("PDF area total or 209 ownership references changed")
+        raise MapBundleError("Tổng diện tích PDF hoặc 209 tham chiếu sở hữu đã thay đổi")
     counts = Counter()
     manual = set()
     for p in plots:
         code = p.get("code")
         if not isinstance(code, str) or not code or counts[code]:
-            raise MapBundleError("Duplicated/missing irrigation plot code")
+            raise MapBundleError("Trùng hoặc thiếu mã thửa tưới")
         counts[code] += 1
         _polygon(p.get("geometry"), code)
         expected = owner_map.get(code)
         if not expected or (code != "E6" and (len(expected) != len(p.get("candidate_blocks", [])) or set(expected) != set(p.get("candidate_blocks", [])))):
             raise MapBundleError(code + ": owners disagree with PDF table")
         if code == "E6" and (expected != ["E4"] or p.get("candidate_blocks") != ["E4", "E5"]):
-            raise MapBundleError("E6 note conflict must remain explicit")
+            raise MapBundleError("Xung đột ghi chú E6 phải được giữ rõ ràng")
         if code in MANUAL:
             manual.add(code)
             if p.get("parent_block") is not None or p.get("needs_manual_review") is not True:
@@ -78,9 +78,9 @@ def validate_bundle(bundle):
             if expected != [p.get("parent_block")] or p["parent_block"] not in codes:
                 raise MapBundleError(code + ": parent is not a single source-listed care block")
     if set(counts) != set(owner_map) or manual != MANUAL:
-        raise MapBundleError("PDF codes or manual-review exceptions changed")
+        raise MapBundleError("Mã trong PDF hoặc các ngoại lệ cần xem tay đã thay đổi")
     if not isinstance(bundle.get("manual_review"), list) or {x.get("code") for x in bundle["manual_review"]} != MANUAL:
-        raise MapBundleError("Required conflict report is missing")
+        raise MapBundleError("Thiếu báo cáo xung đột bắt buộc")
     return dict(care_blocks=64, irrigation_plots=205, ownership_links=209,
                 direct_parent_plots=200, unresolved_codes=sorted(MANUAL),
                 unverified=True)
@@ -89,7 +89,7 @@ def validate_bundle(bundle):
 def load_bundle(raw):
     if isinstance(raw, bytes):
         if len(raw) > 10 * 1024 * 1024:
-            raise MapBundleError("Map bundle exceeds 10 MB")
+            raise MapBundleError("Gói bản đồ vượt 10 MB")
         raw = raw.decode("utf-8")
     value = json.loads(raw) if isinstance(raw, str) else raw
     validate_bundle(value)

@@ -49,7 +49,7 @@ def day_guard(doc, method=None):
             lock('Farm', farm)
         for date in dates:
             if frappe.db.exists('Daily Production Close', {'farm': farm, 'posting_date': date, 'docstatus': 1}):
-                frappe.throw('This Farm day is closed. Cancel the daily close with a reason before correcting data.')
+                frappe.throw('Ngày này của vườn đã chốt. Hủy chốt ngày kèm lý do trước khi sửa dữ liệu.')
 
 
 def plot_scope(doc, method=None):
@@ -57,56 +57,56 @@ def plot_scope(doc, method=None):
     if doc.doctype == 'Crop Cycle':
         before=doc.get_doc_before_save()
         if before and before.get('farm_plot') and not doc.get('farm_plot'):
-            frappe.throw('A mapped Cycle cannot lose its Plot.')
+            frappe.throw('Vụ đã liên kết không được bỏ thửa.')
         if doc.is_new() and not doc.get('farm_plot'):
-            frappe.throw('New Crop Cycles require a Farm Plot. Map legacy cycles explicitly.')
+            frappe.throw('Vụ mới phải có thửa. Hãy liên kết vụ cũ một cách rõ ràng.')
         plot_name = doc.get('farm_plot')
     else:
         cycle = frappe.get_doc('Crop Cycle', doc.crop_cycle)
         cycle.check_permission('read')
         if cycle.status == 'Closed' and doc.doctype != 'Cycle Closing Report' and (doc.is_new() or doc.docstatus == 1):
-            frappe.throw('Cycle is closed. Reopen its closing report before adding production records.')
+            frappe.throw('Vụ đã kết thúc. Mở lại báo cáo kết vụ trước khi thêm dữ liệu sản xuất.')
         if cycle.farm != doc.farm or cycle.farm_block != doc.farm_block:
-            frappe.throw('Cycle must match the Farm and Block.')
+            frappe.throw('Vụ phải khớp với vườn và lô.')
         if doc.get('farm_plot') and doc.farm_plot != cycle.get('farm_plot'):
-            frappe.throw('Plot must match the Crop Cycle.')
+            frappe.throw('Thửa phải khớp với vụ.')
         before=doc.get_doc_before_save()
         historical_forecast=doc.doctype=='Harvest Forecast' and before and before.supply_state!='Draft'
         if not historical_forecast:
             doc.farm_plot = cycle.get('farm_plot')
         plot_name = doc.farm_plot
         if (doc.doctype in DAILY_TYPES or (doc.doctype in ('Harvest Actual','Bunch Operation','Defect Inspection') and doc.is_new())) and not plot_name:
-            frappe.throw('Map the legacy cycle to a Plot before daily operations.')
+            frappe.throw('Liên kết vụ cũ với một thửa trước khi nhập dữ liệu hằng ngày.')
         if doc.get('sucker_selection_batch'):
             cohort = frappe.get_doc('Sucker Selection Batch', doc.sucker_selection_batch)
             cohort.check_permission('read')
             if cohort.crop_cycle != cycle.name:
-                frappe.throw('Cohort belongs to another Cycle.')
+                frappe.throw('Đợt cây thuộc vụ khác.')
         elif cycle.cycle_type == 'Ratoon' and not is_inherited_opening(cycle) and doc.doctype in (*DAILY_TYPES, 'Daily Work Plan Line'):
-            frappe.throw('Ratoon operations require a Sucker Selection Batch.')
+            frappe.throw('Thao tác vụ chồi (lưu gốc) cần đợt chọn chồi.')
         on_date = doc.get(DATE_FIELDS.get(doc.doctype, 'posting_date')) or doc.get('selection_date')
         validate_coverage_date(cycle, on_date)
         date = doc.get('posting_date')
         if date and cycle.planting_date and getdate(date) < getdate(cycle.planting_date):
-            frappe.throw('Operation date precedes planting.')
+            frappe.throw('Ngày thao tác trước ngày trồng.')
         if date and doc.get('sucker_selection_batch') and getdate(date) < getdate(cohort.selection_date):
-            frappe.throw('Operation date precedes sucker selection.')
+            frappe.throw('Ngày thao tác trước ngày chọn chồi.')
     if plot_name:
         plot = frappe.get_doc('Farm Plot', plot_name)
         plot.check_permission('read')
         if plot.farm != doc.farm or plot.farm_block != doc.farm_block:
-            frappe.throw('Plot must belong to the selected Farm and Block.')
+            frappe.throw('Thửa phải thuộc vườn và lô đã chọn.')
     if doc.meta.has_field('company'):
         company = frappe.db.get_value('Farm', doc.farm, 'company')
         if doc.get('company') and doc.company != company:
-            frappe.throw('Company must match the Farm.')
+            frappe.throw('Công ty phải khớp với vườn.')
         doc.company = company
 
 
 def company_scope(doc):
     company = frappe.db.get_value('Farm', doc.farm, 'company')
     if not company or (doc.get('company') and doc.company != company):
-        frappe.throw('Company must match the Farm.')
+        frappe.throw('Công ty phải khớp với vườn.')
     doc.company = company
 
 
@@ -117,13 +117,13 @@ def plan_line(doc):
         plan.check_permission('read')
     lock('Daily Work Plan', plan.name)
     if plan.docstatus != 1 or plan.farm != doc.farm or getdate(plan.posting_date) != getdate(doc.posting_date):
-        frappe.throw('Work Plan must be submitted for the same Farm/day.')
+        frappe.throw('Kế hoạch công việc phải được duyệt cho cùng vườn/ngày.')
     row = next((r for r in plan.lines if r.name == doc.work_plan_line), None)
     if not row:
-        frappe.throw('Select an exact Work Plan Line belonging to this Plan.')
+        frappe.throw('Chọn đúng dòng kế hoạch công việc thuộc kế hoạch này.')
     for field in ('farm_block', 'farm_plot', 'crop_cycle', 'sucker_selection_batch'):
         if (doc.get(field) or '') != (row.get(field) or ''):
-            frappe.throw('Result/allocation/material scope must match the Work Plan Line.')
+            frappe.throw('Phạm vi kết quả/phân bổ/vật tư phải khớp với dòng kế hoạch công việc.')
     return row
 
 
@@ -138,7 +138,7 @@ class DailyDocument(Document):
         if self.get('crop_cycle'):
             plot_scope(self)
         if self.get('amended_from') and not (self.get('amendment_reason') or '').strip():
-            frappe.throw('Amendment reason is required.')
+            frappe.throw('Phải nhập lý do sửa đổi.')
         self.validate_daily()
 
     def validate_daily(self):
@@ -167,16 +167,16 @@ class PlotMaster(Document):
         before = self.get_doc_before_save()
         if before and any(self.get(f) != before.get(f) for f in ('farm', 'farm_block', 'plot_code')):
             if frappe.db.exists('Crop Cycle', {'farm_plot': self.name}):
-                frappe.throw('Used Plot identities cannot be reassigned.')
+                frappe.throw('Định danh thửa đã dùng thì không được gán lại.')
         if frappe.db.exists('Farm Plot', {'farm_block': self.farm_block, 'plot_code': self.plot_code, 'name': ['!=', self.name]}):
-            frappe.throw('Plot code must be unique within its Block.')
+            frappe.throw('Mã thửa không được trùng trong cùng lô.')
 
 
 class TeamMaster(Document):
     def validate(self):
         check_farm(self)
         if frappe.db.exists('Work Team', {'farm': self.farm, 'team_code': self.team_code, 'name': ['!=', self.name]}):
-            frappe.throw('Team code must be unique within its Farm.')
+            frappe.throw('Mã đội không được trùng trong cùng vườn.')
 
 
 class WorkTypeMaster(Document):
@@ -191,50 +191,50 @@ class NormProfile(Document):
         validate_version(self, 'profile_name', ('Lotus Farm Manager',))
         work = frappe.get_doc('Work Type', self.work_type)
         if not work.active:
-            frappe.throw('Work Type is inactive.')
+            frappe.throw('Loại công việc đang ngừng dùng.')
         if not self.lines:
-            frappe.throw('A norm profile requires material lines.')
+            frappe.throw('Định mức phải có dòng vật tư.')
         seen = set()
         for row in self.lines:
             if row.item in seen:
-                frappe.throw('Combine duplicate Items into one norm line.')
+                frappe.throw('Gộp các vật tư trùng thành một dòng định mức.')
             seen.add(row.item)
             item = frappe.get_doc('Item', row.item)
             item.check_permission('read')
             if item.disabled or not item.is_stock_item or row.uom != item.stock_uom:
-                frappe.throw('Material norm requires an active stock Item with its stock UOM.')
+                frappe.throw('Định mức vật tư cần vật tư kho đang dùng, đúng đơn vị tồn kho.')
             basis = frappe.get_doc('Norm Basis', row.norm_basis)
             if not basis.active or basis.uom != work.uom:
-                frappe.throw('Norm basis UOM must match the Work Type UOM. Use an explicit conversion factor.')
+                frappe.throw('Đơn vị gốc của định mức phải khớp đơn vị của loại công việc. Hãy khai báo hệ số quy đổi.')
             for field in ('norm_qty', 'basis_qty', 'frequency', 'conversion_factor'):
                 number(row.get(field), field, positive=field!='norm_qty')
         if self.approval_state == 'Approved':
             if not self.valid_to:
-                frappe.throw('Approved material norms require Valid To so later versions can take effect without changing history.')
+                frappe.throw('Định mức đã duyệt phải có ngày hiệu lực đến để phiên bản sau có hiệu lực mà không đổi lịch sử.')
             filters = {'farm': self.farm, 'work_type': self.work_type, 'approval_state': 'Approved', 'name': ['!=', self.name]}
             for other in frappe.get_all(self.doctype, filters=filters, fields=['name','valid_from','valid_to']):
                 if getdate(other.valid_from) <= getdate(self.valid_to or '9999-12-31') and getdate(self.valid_from) <= getdate(other.valid_to or '9999-12-31'):
-                    frappe.throw('Approved material norms cannot overlap for the same Farm and Work Type.')
+                    frappe.throw('Định mức vật tư đã duyệt không được trùng thời gian cho cùng vườn và loại công việc.')
 
     def on_trash(self):
         if self.approval_state == 'Approved':
-            frappe.throw('Approved norm versions cannot be deleted.')
+            frappe.throw('Không được xóa phiên bản định mức đã duyệt.')
 
 
 def applicable_norm(profile, farm, work_type, date):
     norm = frappe.get_doc('Material Norm Profile', profile)
     norm.check_permission('read')
     if norm.farm != farm or norm.work_type != work_type or norm.approval_state != 'Approved':
-        frappe.throw('Select an approved norm for this Farm and Work Type.')
+        frappe.throw('Chọn định mức đã duyệt cho vườn và loại công việc này.')
     if getdate(date) < getdate(norm.valid_from) or (norm.valid_to and getdate(date) > getdate(norm.valid_to)):
-        frappe.throw('Material norm is not effective on the work date.')
+        frappe.throw('Định mức vật tư chưa có hiệu lực vào ngày làm việc.')
     return norm
 
 
 class WorkPlan(DailyDocument):
     def validate_daily(self):
         if not self.lines:
-            frappe.throw('Work Plan requires at least one task.')
+            frappe.throw('Kế hoạch công việc phải có ít nhất một công việc.')
         seen = set()
         for row in self.lines:
             row.farm = self.farm
@@ -250,7 +250,7 @@ class WorkPlan(DailyDocument):
                     frappe.throw('Dữ liệu cũ có thửa phải liên kết vụ phù hợp.')
                 plot_scope(row)
                 if not frappe.db.get_value('Farm Plot', row.farm_plot, 'active'):
-                    frappe.throw('Historical work requires an active Plot.')
+                    frappe.throw('Công việc nhập bổ sung cần thửa đang dùng.')
             else:
                 row.farm_plot = None
                 row.crop_cycle = None
@@ -259,7 +259,7 @@ class WorkPlan(DailyDocument):
             work = frappe.get_doc('Work Type', row.work_type)
             work.check_permission('read')
             if not work.active:
-                frappe.throw('Work Type is inactive.')
+                frappe.throw('Loại công việc đang ngừng dùng.')
             row.uom = work.uom
             number(row.planned_qty, 'Planned quantity', positive=True)
             from lotus_farm.labor_pricing import labor_settings, planned_labor
@@ -302,7 +302,7 @@ class WorkResult(DailyDocument):
             from lotus_farm.productivity import validate_actual_labor
             validate_actual_labor(self)
         if frappe.db.exists(self.doctype, {'work_plan_line': self.work_plan_line, 'docstatus': 1, 'name': ['!=', self.name]}):
-            frappe.throw('Each work plan line has one submitted daily result. Cancel/amend to correct it.')
+            frappe.throw('Mỗi dòng kế hoạch công việc chỉ có một kết quả ngày đã duyệt. Hủy rồi lập bản sửa để điều chỉnh.')
         if self.docstatus == 1:
             rule(completion, row.planned_qty, self.completed_qty, self.unfinished_reason)
 
@@ -315,12 +315,12 @@ class LaborAllocationRecord(DailyDocument):
             team = frappe.get_doc('Work Team', self.work_team)
             team.check_permission('read')
             if team.farm != self.farm or not team.active:
-                frappe.throw('Work Team must be active in the same Farm.')
+                frappe.throw('Đội sản xuất phải đang hoạt động trong cùng vườn.')
         if self.employee:
             employee = frappe.get_doc('Employee', self.employee, for_update=True)
             employee.check_permission('read')
             if employee.company != self.company or employee.status != 'Active':
-                frappe.throw('Employee must be active in the same Company.')
+                frappe.throw('Nhân viên phải đang làm việc trong cùng công ty.')
             # Farm lock precedes Employee lock, ensuring cross-Farm staffing serializes.
             lock('Employee', self.employee)
             table=frappe.qb.DocType(self.doctype)
@@ -332,9 +332,9 @@ class LaborAllocationRecord(DailyDocument):
                 capacity=0 if statuses.intersection({'Absent','On Leave'}) else (0.5 if 'Half Day' in statuses else 1)
             shift_days=sum(flt(r[0]) for r in frappe.db.sql('select l.workdays from `tabPackhouse Shift Labor` l join `tabPackhouse Shift` s on s.name=l.parent where s.posting_date=%s and s.docstatus=1 and l.employee=%s FOR UPDATE',(self.posting_date,self.employee)))
             if sum(flt(x) for x in used)+shift_days+amount > capacity+0.000001:
-                frappe.throw('Employee allocation exceeds daily capacity or submitted attendance availability.')
+                frappe.throw('Phân bổ nhân viên vượt công suất ngày hoặc số công đã chấm.')
         elif not self.work_team or not self.allocation_note:
-            frappe.throw('Aggregate allocation requires a Work Team and an explanatory note.')
+            frappe.throw('Phân bổ gộp cần đội sản xuất và ghi chú giải thích.')
 
 
 class LaborSummary(DailyDocument):
@@ -343,14 +343,14 @@ class LaborSummary(DailyDocument):
         for field, value in values.items():
             self.set(field, value)
         if frappe.db.exists(self.doctype, {'farm': self.farm, 'posting_date': self.posting_date, 'work_category': self.work_category, 'work_area': self.work_area, 'docstatus': 1, 'name': ['!=', self.name]}):
-            frappe.throw('One submitted labor summary is allowed per Farm/day/category/work area.')
+            frappe.throw('Mỗi vườn/ngày/nhóm/khu vực làm việc chỉ có một bảng tổng hợp nhân công đã duyệt.')
 
 
 class MaterialRequirementRecord(DailyDocument):
     def validate_daily(self):
         row = plan_line(self)
         if not row.norm_profile:
-            frappe.throw('Work Plan Line has no approved material norm.')
+            frappe.throw('Dòng kế hoạch công việc chưa có định mức vật tư đã duyệt.')
         norm = applicable_norm(row.norm_profile, self.farm, row.work_type, self.posting_date)
         self.norm_profile, self.norm_version = norm.name, norm.version
         self.lines = []
@@ -359,7 +359,7 @@ class MaterialRequirementRecord(DailyDocument):
             values['required_qty'] = rule(material_needed, row.planned_qty, source.norm_qty, source.basis_qty, source.frequency, source.conversion_factor)
             self.append('lines', values)
         if frappe.db.exists(self.doctype, {'work_plan_line': self.work_plan_line, 'docstatus': 1, 'name': ['!=', self.name]}):
-            frappe.throw('One submitted material requirement is allowed per work plan line.')
+            frappe.throw('Mỗi dòng kế hoạch công việc chỉ có một nhu cầu vật tư đã duyệt.')
 
 
 def entry_detail(entry_name, detail_name, company):
@@ -367,10 +367,10 @@ def entry_detail(entry_name, detail_name, company):
     entry.check_permission('read')
     lock('Stock Entry', entry_name)
     if entry.docstatus != 1 or entry.company != company:
-        frappe.throw('Stock Entry must be submitted in the same Company.')
+        frappe.throw('Phiếu kho phải được ghi sổ trong cùng công ty.')
     row = next((r for r in entry.items if r.name == detail_name), None)
     if not row:
-        frappe.throw('Stock Entry Detail must belong to the selected Stock Entry.')
+        frappe.throw('Dòng phiếu kho phải thuộc phiếu kho đã chọn.')
     return entry, row
 
 
@@ -379,33 +379,33 @@ class MaterialConsumptionRecord(DailyDocument):
         result = frappe.get_doc('Daily Work Result', self.work_result)
         result.check_permission('read')
         if result.docstatus != 1 or any((self.get(f) or '') != (result.get(f) or '') for f in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')) or getdate(result.posting_date) != getdate(self.posting_date):
-            frappe.throw('Consumption must match a submitted Work Result for this Plot/day.')
+            frappe.throw('Sử dụng vật tư phải khớp với một kết quả công việc đã duyệt của thửa/ngày này.')
         req = frappe.get_doc('Material Requirement', self.material_requirement)
         req.check_permission('read')
         if req.docstatus != 1 or req.work_plan_line != result.work_plan_line:
-            frappe.throw('Material Requirement must match the Work Result task.')
+            frappe.throw('Nhu cầu vật tư phải khớp với công việc của kết quả công việc.')
         norm = next((r for r in req.lines if r.item == self.item), None)
         if not norm:
-            frappe.throw('Item is not part of the task Material Requirement.')
+            frappe.throw('Vật tư không có trong nhu cầu vật tư của công việc.')
         validate_warehouse(self.warehouse, self.company)
         entry, row = entry_detail(self.stock_entry, self.stock_entry_detail, self.company)
         if entry.purpose != 'Material Issue' or row.item_code != self.item or row.s_warehouse != self.warehouse or row.t_warehouse or getdate(entry.posting_date) != getdate(self.posting_date):
-            frappe.throw('Consumption requires the matching dated Material Issue row from this Warehouse.')
+            frappe.throw('Sử dụng vật tư cần dòng xuất kho cùng ngày từ kho này.')
         self.uom = row.stock_uom
         if self.uom != norm.uom:
-            frappe.throw('Issue stock UOM does not match the norm.')
+            frappe.throw('Đơn vị tồn kho của dòng xuất không khớp với định mức.')
         if frappe.db.exists(self.doctype, {'stock_entry_detail': row.name, 'docstatus': 1, 'name': ['!=', self.name]}):
-            frappe.throw('Issue row already belongs to another submitted consumption. Split ERP issue rows by task.')
+            frappe.throw('Dòng xuất kho đã thuộc một phiếu sử dụng vật tư khác đã duyệt. Hãy tách dòng xuất ERP theo từng công việc.')
         self.issued_qty = number(row.transfer_qty, 'Issued quantity', positive=True)
         used = number(self.consumed_qty, 'Consumed quantity')
         if used > self.issued_qty:
-            frappe.throw('Consumed quantity exceeds issued stock.')
+            frappe.throw('Số lượng sử dụng vượt số đã xuất kho.')
         self.remaining_qty = self.issued_qty-used
 
     def before_cancel(self):
         super().before_cancel()
         if frappe.db.exists('Material Recovery', {'consumption': self.name, 'docstatus': 1}):
-            frappe.throw('Cancel material recoveries first.')
+            frappe.throw('Hủy các phiếu thu hồi vật tư trước.')
 
 
 class MaterialRecoveryRecord(DailyDocument):
@@ -414,43 +414,43 @@ class MaterialRecoveryRecord(DailyDocument):
         consumption.check_permission('read')
         lock('Material Consumption', self.consumption)
         if consumption.docstatus != 1 or any((self.get(f) or '') != (consumption.get(f) or '') for f in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')):
-            frappe.throw('Recovery must match a submitted Material Consumption scope.')
+            frappe.throw('Thu hồi phải khớp phạm vi của một phiếu sử dụng vật tư đã duyệt.')
         if getdate(self.posting_date) < getdate(consumption.posting_date):
-            frappe.throw('Recovery cannot precede consumption.')
+            frappe.throw('Ngày thu hồi không được trước ngày sử dụng.')
         amount = number(self.recovered_qty, 'Recovered quantity', positive=True)
         used = sum(flt(x) for x in frappe.get_all(self.doctype, filters={'consumption': self.consumption, 'docstatus': 1, 'name': ['!=', self.name]}, pluck='recovered_qty'))
         if used+amount > flt(consumption.remaining_qty)+0.000001:
-            frappe.throw('Recovery exceeds unconsumed issued quantity.')
+            frappe.throw('Số thu hồi vượt số đã xuất mà chưa dùng.')
         entry, row = entry_detail(self.stock_entry, self.stock_entry_detail, self.company)
         if entry.purpose != 'Material Receipt' or row.item_code != consumption.item or row.stock_uom != consumption.uom or not row.t_warehouse or row.s_warehouse or getdate(entry.posting_date) != getdate(self.posting_date):
-            frappe.throw('Recovery requires a matching dated Material Receipt row.')
+            frappe.throw('Thu hồi cần dòng nhập kho cùng ngày tương ứng.')
         if abs(flt(row.transfer_qty)-amount) > 0.000001:
-            frappe.throw('Recovery quantity must equal its ERP receipt row.')
+            frappe.throw('Số lượng thu hồi phải bằng dòng nhập kho ERP của nó.')
         if frappe.db.exists(self.doctype, {'stock_entry_detail': row.name, 'docstatus': 1, 'name': ['!=', self.name]}):
-            frappe.throw('Receipt row already belongs to another recovery.')
+            frappe.throw('Dòng nhập kho đã thuộc một phiếu thu hồi khác.')
 
 
 class CancellationRecord(DailyDocument):
     def validate_daily(self):
         if whole_count(self.bunch_qty, 'Cancelled bunches') < 1:
-            frappe.throw('Cancelled bunches must be a positive whole count.')
+            frappe.throw('Số buồng hủy phải là số nguyên dương.')
         if getdate(self.expected_harvest_date) < getdate(self.posting_date):
-            frappe.throw('Expected harvest date cannot precede cancellation.')
+            frappe.throw('Ngày dự kiến thu hoạch không được trước ngày hủy.')
         reason = frappe.get_doc('Cancellation Reason', self.reason)
         if not reason.active or not frappe.db.get_value('Cancellation Reason Group', reason.reason_group, 'active'):
-            frappe.throw('Cancellation reason/group is inactive.')
+            frappe.throw('Lý do/nhóm hủy đang ngừng dùng.')
         if self.source_operation:
             operation = frappe.get_doc('Bunch Operation', self.source_operation)
             operation.check_permission('read')
             lock('Bunch Operation', self.source_operation)
             if operation.docstatus != 1 or any((self.get(f) or '') != (operation.get(f) or '') for f in ('farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch')):
-                frappe.throw('Source operation must match this submitted production scope.')
+                frappe.throw('Thao tác nguồn phải khớp phạm vi sản xuất đã duyệt này.')
             if getdate(self.posting_date) < getdate(operation.operation_date) or (operation.expected_harvest_date and getdate(self.expected_harvest_date) != getdate(operation.expected_harvest_date)):
-                frappe.throw('Cancellation date/expected harvest must match the source operation.')
+                frappe.throw('Ngày hủy/ngày dự kiến thu hoạch phải khớp thao tác nguồn.')
             used = sum(flt(x) for x in frappe.get_all(self.doctype, filters={'source_operation': self.source_operation,'docstatus':1,'name':['!=',self.name]}, pluck='bunch_qty'))
             harvested = sum(flt(x) for x in frappe.get_all('Harvest Actual',filters={'source_cut_operation':self.source_operation,'docstatus':['<',2]},pluck='harvested_bunch_qty')) if operation.operation_type=='Cut Bud' else 0
             if used+self.bunch_qty+harvested > operation.net_bunch_qty:
-                frappe.throw('Cancelled bunches exceed the source operation net bunches.')
+                frappe.throw('Số buồng hủy vượt số buồng còn lại của thao tác nguồn.')
 
     def on_submit(self):
         invalidate_draft_forecasts(self)
@@ -487,18 +487,18 @@ def cancellation_adjustment(doc):
 class PlantingRecord(DailyDocument):
     def validate_daily(self):
         if whole_count(self.plant_qty, 'Plants') < 1:
-            frappe.throw('Planting requires positive plants.')
+            frappe.throw('Trồng mới phải có số cây lớn hơn 0.')
         area = number(self.area_ha, 'Planted area', positive=True)
         if area > flt(frappe.db.get_value('Farm Plot', self.farm_plot, 'area_ha')):
-            frappe.throw('Planted area exceeds Plot area.')
+            frappe.throw('Diện tích trồng vượt diện tích thửa.')
 
 
 class DiseaseRecord(DailyDocument):
     def validate_daily(self):
         if whole_count(self.affected_plants, 'Affected plants') < 1:
-            frappe.throw('Disease observation requires positive affected plants.')
+            frappe.throw('Ghi nhận bệnh phải có số cây bị bệnh lớn hơn 0.')
         if not frappe.db.get_value('Disease', self.disease, 'active'):
-            frappe.throw('Disease is inactive.')
+            frappe.throw('Bệnh này đang ngừng dùng.')
 
 
 class MeasurementRecord(DailyDocument):
@@ -507,18 +507,18 @@ class MeasurementRecord(DailyDocument):
             seen=set();values={'Length':[], 'Diameter':[]}
             for sample in self.samples:
                 key=(sample.lane,sample.sample_no,sample.dimension)
-                if key in seen:frappe.throw('Duplicate sample identity and dimension.')
+                if key in seen:frappe.throw('Mã mẫu và kích thước đo bị trùng.')
                 seen.add(key)
-                if sample.dimension not in values or sample.uom!=self.uom:frappe.throw('Samples require a supported dimension and the measurement UOM.')
+                if sample.dimension not in values or sample.uom!=self.uom:frappe.throw('Mẫu đo cần kích thước được hỗ trợ và đơn vị đo.')
                 values[sample.dimension].append(number(sample.value,'Sample value',positive=True))
             self.sample_count=len({(s.lane,s.sample_no) for s in self.samples})
             self.average_length=sum(values['Length'])/len(values['Length']) if values['Length'] else None
             self.average_diameter=sum(values['Diameter'])/len(values['Diameter']) if values['Diameter'] else None
             self.measurer=self.measurer or frappe.session.user
         elif not self.legacy_aggregate_only:
-            frappe.throw('Enter individual measurement samples; historic aggregate-only evidence must be explicitly marked.')
+            frappe.throw('Nhập từng mẫu đo; số liệu tổng hợp cũ không có mẫu phải đánh dấu rõ.')
         if whole_count(self.sample_count, 'Sample count') < 1:
-            frappe.throw('Measurement requires samples.')
+            frappe.throw('Phiếu đo phải có mẫu đo.')
         if self.average_length is not None:number(self.average_length, 'Length', positive=True)
         if self.average_diameter is not None:number(self.average_diameter, 'Diameter', positive=True)
 
@@ -529,34 +529,34 @@ class IncomingQC(DailyDocument):
         lot.check_permission('read')
         lock('Harvest Lot', self.harvest_lot)
         if lot.docstatus != 1 or lot.farm != self.farm or getdate(self.posting_date) < getdate(lot.received_date):
-            frappe.throw('Incoming QC requires a submitted lot from this Farm, after receipt.')
+            frappe.throw('QC đầu vào cần lô thu hoạch đã duyệt của vườn này, sau khi nhận.')
         self.received_kg = lot.released_raw_kg
         self.accepted_kg = number(self.accepted_kg, 'Accepted kg')
         if self.accepted_kg > self.received_kg:
-            frappe.throw('Accepted kg exceeds lot weight.')
+            frappe.throw('Số kg đạt vượt khối lượng lô.')
         self.rejected_kg = self.received_kg-self.accepted_kg
         seen = set()
         for row in self.defects:
             if row.defect_reason in seen:
-                frappe.throw('Duplicate defect reason.')
+                frappe.throw('Lý do lỗi bị trùng.')
             seen.add(row.defect_reason)
             whole_count(row.affected_units, 'Affected units')
             whole_count(row.occurrences, 'Occurrences')
             if row.occurrences < row.affected_units:
-                frappe.throw('Defect occurrences must cover affected units.')
+                frappe.throw('Số lần xuất hiện lỗi phải bao gồm đủ số đơn vị bị ảnh hưởng.')
         if self.rejected_kg and abs(sum(number(r.weight_kg or 0,'Defect kg') for r in self.defects)-self.rejected_kg)>0.0005:
-            frappe.throw('Incoming defect weights must explain the entire rejected weight.')
+            frappe.throw('Khối lượng lỗi đầu vào phải giải thích hết khối lượng bị loại.')
         if self.rejected_kg and not self.defects:
-            frappe.throw('Rejected incoming weight requires defect reasons.')
+            frappe.throw('Khối lượng loại đầu vào phải có lý do lỗi.')
         if frappe.db.exists(self.doctype, {'harvest_lot':self.harvest_lot,'docstatus':1,'name':['!=',self.name]}):
-            frappe.throw('One submitted incoming inspection is allowed per Harvest Lot.')
+            frappe.throw('Mỗi lô thu hoạch chỉ có một phiếu QC đầu vào đã duyệt.')
 
     def before_cancel(self):
         super().before_cancel()
         source, run = frappe.qb.DocType('Packout Run Source'), frappe.qb.DocType('Packout Run')
         if (frappe.qb.from_(source).join(run).on(source.parent==run.name).select(run.name)
             .where((source.harvest_lot==self.harvest_lot)&(run.docstatus==1)).run()):
-            frappe.throw('Cancel dependent Packout Runs before incoming QC.')
+            frappe.throw('Hủy các đợt đóng gói phụ thuộc trước khi sửa QC đầu vào.')
 
 
 def incoming_packout_guard(doc, method=None):
@@ -567,20 +567,20 @@ def incoming_packout_guard(doc, method=None):
         qc = frappe.get_all('Incoming Quality Inspection', filters={'harvest_lot': row.harvest_lot,'docstatus':1}, fields=['name','accepted_kg'])
         if not qc:
             if doc.is_new() or doc.docstatus == 1:
-                frappe.throw('Incoming QC must be submitted before packing this lot.')
+                frappe.throw('Phải duyệt QC đầu vào trước khi đóng gói lô này.')
             continue
         src, run = frappe.qb.DocType('Packout Run Source'), frappe.qb.DocType('Packout Run')
         used = (frappe.qb.from_(src).join(run).on(src.parent==run.name).select(src.input_kg)
             .where((src.harvest_lot==row.harvest_lot)&(run.docstatus==1)&(run.name!=doc.name)).run())
         if sum(flt(x[0]) for x in used)+flt(row.input_kg) > flt(qc[0].accepted_kg)+0.0005:
-            frappe.throw('Packout input exceeds incoming QC accepted weight.')
+            frappe.throw('Khối lượng đưa vào đóng gói vượt khối lượng đạt của QC đầu vào.')
 
 
 def stock_context_cancel(doc, method=None):
     refs = [('Material Consumption','stock_entry'),('Material Recovery','stock_entry'),('Secondary Product Movement','stock_entry')]
     for doctype, field in refs:
         if frappe.db.exists(doctype, {field:doc.name,'docstatus':1}):
-            frappe.throw('Cancel submitted Lotus material contexts before reversing ERP stock.')
+            frappe.throw('Hủy các chứng từ vật tư Lotus đã duyệt trước khi đảo phiếu kho ERP.')
 
 
 def close_checks(farm, date):
@@ -652,7 +652,7 @@ class DailyClose(Document):
         lock('Farm',self.farm)
         company_scope(self)
         if self.amended_from and not (self.amendment_reason or '').strip():
-            frappe.throw('Amendment reason is required.')
+            frappe.throw('Phải nhập lý do sửa đổi.')
         if self.docstatus != 1:
             self.set('checks',close_checks(self.farm,self.posting_date))
             self.snapshot_hash = canonical_hash([r.as_dict() for r in self.checks])
@@ -661,11 +661,11 @@ class DailyClose(Document):
         require_role('Lotus Farm Manager')
         lock('Farm',self.farm)
         if frappe.db.exists(self.doctype,{'farm':self.farm,'posting_date':self.posting_date,'docstatus':1,'name':['!=',self.name]}):
-            frappe.throw('Farm day is already closed.')
+            frappe.throw('Ngày này của vườn đã chốt.')
         self.set('checks',close_checks(self.farm,self.posting_date))
         blockers=[r.message for r in self.checks if r.status=='Block']
         if blockers:
-            frappe.throw('Daily close blocked: '+ '; '.join(dict.fromkeys(blockers)))
+            frappe.throw('Chưa chốt ngày được: '+ '; '.join(dict.fromkeys(blockers)))
         self.snapshot_hash=canonical_hash([r.as_dict() for r in self.checks])
         self.closed_by,self.closed_at=frappe.session.user,now_datetime()
 
@@ -682,24 +682,24 @@ class DailyClose(Document):
                    and get_datetime(self.closed_at)==get_datetime(before.closed_at)
                    and checks(self)==checks(before))
         if not unchanged:
-            frappe.throw('Submitted daily close snapshot is immutable.')
+            frappe.throw('Ảnh chụp số liệu chốt ngày đã duyệt không được sửa.')
 
     def before_cancel(self):
         require_role('Lotus Farm Manager')
         lock('Farm',self.farm)
         if not (self.reopen_reason or '').strip():
-            frappe.throw('Reopen reason is required before cancelling daily close.')
+            frappe.throw('Phải nhập lý do mở lại trước khi hủy chốt ngày.')
 
 
 class SourceRegistry(Document):
     def validate(self):
         if not re.fullmatch(r'[0-9a-f]{64}',self.sha256 or ''):
-            frappe.throw('Source file hash must be lowercase SHA-256.')
+            frappe.throw('Mã băm của tệp nguồn phải là SHA-256 chữ thường.')
         before=self.get_doc_before_save()
         if before and frappe.db.exists('Source Import Batch',{'source_file':self.name}):
             for field in ('source_key','source_family','source_path','source_filename','sha256','business_period'):
                 if self.get(field)!=before.get(field):
-                    frappe.throw('Used source identity/hash is immutable; register a new file version.')
+                    frappe.throw('Định danh/mã băm của nguồn đã dùng không được sửa; hãy đăng ký phiên bản tệp mới.')
 
 
 class LegacyMap(Document):
@@ -710,7 +710,7 @@ class LegacyMap(Document):
         if before and before.approval_state=='Approved':
             for field in ('legacy_key','legacy_company','legacy_source_unit','legacy_farm','company','farm','approval_state','approved_by','approved_at'):
                 if self.get(field)!=before.get(field):
-                    frappe.throw('Approved organization mapping is immutable.')
+                    frappe.throw('Ánh xạ tổ chức đã duyệt không được sửa.')
         elif self.approval_state=='Approved':
             require_role('Lotus Farm Manager')
             self.approved_by,self.approved_at=frappe.session.user,now_datetime()
@@ -724,38 +724,38 @@ class ImportBatch(Document):
         source.check_permission('read')
         self.source_hash=source.sha256
         if not self.rows:
-            frappe.throw('Import batch requires source rows.')
+            frappe.throw('Đợt nhập dữ liệu phải có dòng nguồn.')
         seen=set();resolved=0
         for row in self.rows:
             if row.row_key in seen or int(row.source_row or 0)<1:
-                frappe.throw('Import row keys must be unique and source rows positive.')
+                frappe.throw('Khóa dòng nhập phải không trùng và số dòng nguồn phải lớn hơn 0.')
             seen.add(row.row_key)
             try:raw=json.loads(row.raw_json)
-            except (ValueError,TypeError):frappe.throw('Import row raw JSON is invalid.')
+            except (ValueError,TypeError):frappe.throw('Dữ liệu JSON gốc của dòng nhập không hợp lệ.')
             if row.source_hash!=canonical_hash(raw):
-                frappe.throw('Import row hash must match its raw JSON.')
+                frappe.throw('Mã băm của dòng nhập phải khớp dữ liệu JSON gốc.')
             if row.row_status=='Imported':
                 mapping=frappe.get_all('Legacy Organization Map',filters={'legacy_key':row.legacy_org_key,'approval_state':'Approved','farm':self.farm},pluck='name')
                 if not mapping:
-                    frappe.throw('Imported rows require an approved organization mapping to this Farm.')
+                    frappe.throw('Dòng nhập cần ánh xạ tổ chức đã duyệt cho vườn này.')
                 if not row.target_doctype or not row.target_name or not frappe.db.exists(row.target_doctype,row.target_name):
-                    frappe.throw('Imported row must reference an existing target document.')
+                    frappe.throw('Dòng nhập phải trỏ tới một chứng từ đích có sẵn.')
                 target=frappe.get_doc(row.target_doctype,row.target_name)
                 target.check_permission('read')
                 if not target.meta.has_field('farm') or target.get('farm')!=self.farm:
-                    frappe.throw('Imported target must belong to this Farm.')
+                    frappe.throw('Chứng từ đích phải thuộc vườn này.')
                 if target.meta.has_field('source_import_batch') and target.source_import_batch!=self.name:
-                    frappe.throw('Imported target must retain this import batch lineage.')
+                    frappe.throw('Chứng từ đích phải giữ liên kết với đợt nhập này.')
                 if self.mapping:
                     from lotus_farm.importing import ensure_business_identity
                     ensure_business_identity(self,row)
                 prior=frappe.db.sql('''select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.docstatus=1 and b.source_file=%s and r.row_key=%s and r.row_status='Imported' and b.name!=%s limit 1 FOR UPDATE''',(self.source_file,row.row_key,self.name))
                 if prior:
-                    frappe.throw('Source row was already imported in a submitted batch.')
+                    frappe.throw('Dòng nguồn đã được nhập trong một đợt đã duyệt.')
                 resolved+=1
             elif row.row_status=='Rejected':
                 if not row.reject_reason or not row.reject_owner:
-                    frappe.throw('Rejected row requires a reason and an owner.')
+                    frappe.throw('Dòng bị từ chối phải có lý do và người phụ trách.')
                 resolved+=1
         self.resolved_percent=resolved/len(self.rows)*100
 
@@ -769,13 +769,13 @@ class ImportBatch(Document):
             verify_staging(self)
             totals=reconcile_totals(self)
             if any(abs(v)>0.000001 for v in totals['variance'].values()) and not self.reconciliation_reason:
-                frappe.throw('Explain source-versus-target quantity differences before accepting the batch.')
+                frappe.throw('Giải thích chênh lệch số lượng giữa nguồn và đích trước khi chấp nhận đợt nhập.')
             controls=json.loads(self.control_totals_json or '{}');controls.update(totals);self.control_totals_json=json.dumps(controls,default=str)
             if any(r.row_status=='Rejected' for r in self.rows) and not self.reconciliation_reason:
-                frappe.throw('Explain rejected-source control totals before accepting the import batch.')
+                frappe.throw('Giải thích tổng kiểm soát của các dòng nguồn bị từ chối trước khi chấp nhận đợt nhập.')
             self.reconciled_by=frappe.session.user
         if self.resolved_percent < 99.5:
-            frappe.throw('At least 99.5% of scoped rows must be imported or explicitly rejected.')
+            frappe.throw('Ít nhất 99,5% số dòng trong phạm vi phải được nhập hoặc từ chối rõ ràng.')
 
 
 def live_loss_fraction(doc):
@@ -798,7 +798,7 @@ def packout_losses(doc):
     for row in doc.loss_details or []:
         totals[row.loss_type]+=number(row.weight_kg,'Loss weight',positive=True)
     if abs(totals['Reject']-flt(doc.reject_kg))>0.0005 or abs(totals['Process Loss']-flt(doc.other_loss_kg))>0.0005:
-        frappe.throw('Packout loss details must explain all rejected and process-loss weight.')
+        frappe.throw('Chi tiết hao hụt đóng gói phải giải thích hết khối lượng loại và hao hụt chế biến.')
 
 
 class SecondaryMovement(DailyDocument):
@@ -806,33 +806,33 @@ class SecondaryMovement(DailyDocument):
         run=frappe.get_doc('Packout Run',self.packout_run)
         run.check_permission('read')
         if run.docstatus!=1 or run.farm!=self.farm or getdate(self.posting_date)<getdate(run.packing_date):
-            frappe.throw('Secondary movement requires a submitted packout in the same Farm.')
+            frappe.throw('Xuất phụ phẩm cần một đợt đóng gói đã duyệt trong cùng vườn.')
         output=next((r for r in run.outputs if r.item==self.item and r.output_type=='Secondary'),None)
         if not output:
-            frappe.throw('Item must be a secondary output from this Packout Run.')
+            frappe.throw('Vật tư phải là phụ phẩm của đợt đóng gói này.')
         if not run.stock_entry or frappe.db.get_value('Stock Entry',run.stock_entry,'docstatus')!=1:
-            frappe.throw('Post the packout stock before recording secondary movement.')
+            frappe.throw('Ghi sổ kho thành phẩm đóng gói trước khi ghi xuất phụ phẩm.')
         entry,row=entry_detail(self.stock_entry,self.stock_entry_detail,self.company)
         if entry.purpose not in ('Material Issue','Material Transfer') or row.item_code!=self.item or row.stock_uom!='Kg' or not row.s_warehouse or getdate(entry.posting_date)!=getdate(self.posting_date):
-            frappe.throw('Secondary movement must match its dated ERP stock issue/transfer row in Kg.')
+            frappe.throw('Xuất phụ phẩm phải khớp với dòng xuất/chuyển kho ERP cùng ngày, tính theo Kg.')
         batch=row.batch_no
         if row.serial_and_batch_bundle:
             bundle=frappe.get_doc('Serial and Batch Bundle',row.serial_and_batch_bundle)
             if len(bundle.entries)!=1:
-                frappe.throw('Secondary movement requires one Batch.')
+                frappe.throw('Xuất phụ phẩm cần đúng một lô hàng.')
             batch=bundle.entries[0].batch_no
         if batch!=output.batch:
-            frappe.throw('Secondary movement Batch must match its source packout.')
+            frappe.throw('Lô hàng của phụ phẩm phải khớp với đợt đóng gói nguồn.')
         if abs(number(self.quantity_kg,'Secondary kg',positive=True)-flt(row.transfer_qty))>0.0005:
-            frappe.throw('Secondary movement quantity must equal the ERP stock row.')
+            frappe.throw('Số lượng phụ phẩm phải bằng dòng phiếu kho ERP.')
         if frappe.db.exists(self.doctype,{'stock_entry_detail':row.name,'docstatus':1,'name':['!=',self.name]}):
-            frappe.throw('Stock row already has a submitted secondary movement.')
+            frappe.throw('Dòng phiếu kho này đã có phiếu xuất phụ phẩm đã duyệt.')
 
 
 class CycleClose(DailyDocument):
     def validate_daily(self):
         if self.sucker_selection_batch:
-            frappe.throw('Cycle close covers the entire Cycle; leave Cohort blank.')
+            frappe.throw('Kết vụ áp dụng cho cả vụ; để trống đợt cây.')
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
         provenance = cycle_provenance(cycle)
         self.origin_basis = provenance['origin_basis']
@@ -871,34 +871,34 @@ class CycleClose(DailyDocument):
         require_role('Lotus Farm Manager')
         lock('Crop Cycle',self.crop_cycle)
         if frappe.db.exists(self.doctype,{'crop_cycle':self.crop_cycle,'docstatus':1,'name':['!=',self.name]}):
-            frappe.throw('Cycle already has a submitted closing report.')
+            frappe.throw('Vụ này đã có báo cáo kết vụ đã duyệt.')
         if frappe.db.exists('Harvest Forecast',{'crop_cycle':self.crop_cycle,'supply_state':'Released'}):
-            frappe.throw('Close/reconcile released forecasts before ending this Cycle.')
+            frappe.throw('Đóng/đối soát các dự thu đã phát hành trước khi kết thúc vụ.')
         for doctype in DAILY_TYPES:
             meta=frappe.get_meta(doctype)
             if not meta.has_field('crop_cycle'):
                 continue
             for row in frappe.get_all(doctype,filters={'crop_cycle':self.crop_cycle,'docstatus':['<',2]},fields=['name','docstatus','posting_date']):
                 if row.docstatus==0 or not frappe.db.exists('Daily Production Close',{'farm':self.farm,'posting_date':row.posting_date,'docstatus':1}):
-                    frappe.throw('Submit all Cycle transactions and close their Farm days first.')
+                    frappe.throw('Duyệt mọi giao dịch của vụ và chốt các ngày của vườn trước.')
         for actual_name in frappe.get_all('Harvest Actual',filters={'crop_cycle':self.crop_cycle,'docstatus':1},pluck='name'):
             actual=frappe.get_doc('Harvest Actual',actual_name)
             source,lot=frappe.qb.DocType('Harvest Lot Source'),frappe.qb.DocType('Harvest Lot')
             received=(frappe.qb.from_(source).join(lot).on(source.parent==lot.name).select(lot.name,source.contributed_kg)
                 .where((source.harvest_actual==actual_name)&(lot.docstatus==1)).run())
             if abs(sum(flt(r[1]) for r in received)-flt(actual.saleable_weight_kg))>0.0005:
-                frappe.throw('Cycle harvest must be fully traced into receiving lots before closing.')
+                frappe.throw('Sản lượng thu hoạch của vụ phải truy vết hết vào lô nhận hàng trước khi kết vụ.')
             for lot_name,_ in received:
                 qc=frappe.get_all('Incoming Quality Inspection',filters={'harvest_lot':lot_name,'docstatus':1},fields=['accepted_kg'])
                 if not qc:
-                    frappe.throw('Cycle lots require submitted incoming QC before closing.')
+                    frappe.throw('Các lô của vụ phải có QC đầu vào đã duyệt trước khi kết vụ.')
                 src,run=frappe.qb.DocType('Packout Run Source'),frappe.qb.DocType('Packout Run')
                 packed=(frappe.qb.from_(src).join(run).on(src.parent==run.name).select(run.name,src.input_kg,run.stock_entry)
                     .where((src.harvest_lot==lot_name)&(run.docstatus==1)).run())
                 if abs(sum(flt(r[1]) for r in packed)-flt(qc[0].accepted_kg))>0.0005:
-                    frappe.throw('All QC accepted Cycle weight must be packed before closing.')
+                    frappe.throw('Toàn bộ khối lượng QC đạt của vụ phải được đóng gói trước khi kết vụ.')
                 if any(not r[2] or frappe.db.get_value('Stock Entry',r[2],'docstatus')!=1 for r in packed):
-                    frappe.throw('Cycle finished goods must be posted to ERP stock before closing.')
+                    frappe.throw('Thành phẩm của vụ phải được ghi sổ kho ERP trước khi kết vụ.')
         from lotus_farm.controls import command
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
         cycle.status='Closed'
@@ -908,15 +908,15 @@ class CycleClose(DailyDocument):
     def before_update_after_submit(self):
         before=self.get_doc_before_save()
         if self.snapshot_json!=before.snapshot_json or self.snapshot_hash!=before.snapshot_hash:
-            frappe.throw('Submitted Cycle closing metrics are immutable.')
+            frappe.throw('Số liệu kết vụ đã duyệt không được sửa.')
         if any(self.get(field) != before.get(field) for field in ('origin_basis', 'coverage_start_date', 'planting_date_known')):
-            frappe.throw('Submitted Cycle closing provenance is immutable.')
+            frappe.throw('Nguồn số liệu kết vụ đã duyệt không được sửa.')
 
     def before_cancel(self):
         require_role('Lotus Farm Manager')
         lock('Farm',self.farm)
         if not (self.reopen_reason or '').strip():
-            frappe.throw('Cycle reopen reason is required.')
+            frappe.throw('Phải nhập lý do mở lại vụ.')
         from lotus_farm.controls import command
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle)
         cycle.status='Harvesting'
@@ -932,31 +932,31 @@ class LegacyCycleMapping(Document):
         cycle=frappe.get_doc('Crop Cycle',self.crop_cycle);cycle.check_permission('write')
         plot=frappe.get_doc('Farm Plot',self.farm_plot);plot.check_permission('read')
         if cycle.farm!=self.farm or plot.farm!=self.farm or cycle.farm_block!=plot.farm_block or not plot.active:
-            frappe.throw('Legacy Cycle and active Plot must belong to the same Farm/Block.')
+            frappe.throw('Vụ cũ và thửa đang dùng phải thuộc cùng vườn/lô.')
         if cycle.farm_plot:
-            frappe.throw('Only unmapped legacy cycles can use this mapping command.')
+            frappe.throw('Lệnh liên kết này chỉ dùng cho vụ cũ chưa liên kết.')
         if not (self.reason or '').strip():
-            frappe.throw('Legacy cycle mapping requires a reason.')
+            frappe.throw('Liên kết vụ cũ phải có lý do.')
         if frappe.db.exists('Harvest Forecast',{'crop_cycle':cycle.name,'supply_state':'Released'}):
-            frappe.throw('Close/reconcile released forecasts before mapping legacy land.')
+            frappe.throw('Đóng/đối soát các dự thu đã phát hành trước khi liên kết đất cũ.')
         if cycle.parent_cycle:
             parent=frappe.get_doc('Crop Cycle',cycle.parent_cycle)
             if parent.farm_plot!=plot.name:
-                frappe.throw('Map the parent cycle to this Plot first.')
+                frappe.throw('Liên kết vụ gốc với thửa này trước.')
 
     def before_submit(self):
         self.validate()
         lock('Crop Cycle',self.crop_cycle)
         if frappe.db.get_value('Crop Cycle',self.crop_cycle,'farm_plot'):
-            frappe.throw('Legacy Cycle was already mapped.')
+            frappe.throw('Vụ cũ đã được liên kết.')
         if frappe.db.exists('Crop Cycle',{'farm_plot':self.farm_plot,'cycle_no':frappe.db.get_value('Crop Cycle',self.crop_cycle,'cycle_no')}):
-            frappe.throw('Plot already has this Cycle number.')
+            frappe.throw('Thửa đã có số vụ này.')
         # Deliberately do not overwrite submitted actuals or frozen forecast snapshots.
         # This reviewed mapping augments the land reference on the legacy cycle only.
         frappe.db.set_value('Crop Cycle',self.crop_cycle,'farm_plot',self.farm_plot)
 
     def before_cancel(self):
-        frappe.throw('Submitted legacy cycle mappings are permanent audit records.')
+        frappe.throw('Liên kết vụ cũ đã duyệt là hồ sơ kiểm toán cố định.')
 
 
 class CancellationReasonMaster(Document):
@@ -964,7 +964,7 @@ class CancellationReasonMaster(Document):
         before=self.get_doc_before_save()
         if before and frappe.db.exists('Bunch Cancellation',{'reason':self.name}):
             if any(self.get(f)!=before.get(f) for f in ('reason_code','reason_name','reason_group')):
-                frappe.throw('Used cancellation classification cannot be reassigned. Create a new reason; deactivate the old one.')
+                frappe.throw('Phân loại hủy đã dùng thì không được gán lại. Hãy tạo lý do mới và ngừng dùng lý do cũ.')
 
 
 class ReasonAliasMaster(Document):
@@ -972,4 +972,4 @@ class ReasonAliasMaster(Document):
         from lotus_farm.source_data import source_text
         self.legacy_alias=(source_text(self.legacy_alias) or '').casefold()
         if not self.legacy_alias:
-            frappe.throw('Legacy alias is required.')
+            frappe.throw('Phải nhập tên gọi cũ.')

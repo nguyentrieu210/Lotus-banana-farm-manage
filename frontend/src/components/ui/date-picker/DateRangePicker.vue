@@ -30,11 +30,11 @@ function choose(preset){const [start,end]=preset.range(todayValue());apply(start
   <DateRangePickerRoot :model-value="value" :open="open" locale="vi-VN" :week-starts-on="1" fixed-weeks :number-of-months="2" :disabled="disabled" @update:model-value="set" @update:open="setOpen">
    <DateRangePickerField v-slot="{segments}" class="lotus-date__field" :aria-label="$attrs['aria-label']||label">
     <template v-for="item in segments.start" :key="'s'+item.part">
-     <DateRangePickerInput type="start" :part="item.part" :class="item.part==='literal'?'lotus-date__literal':'lotus-date__segment'">{{item.value}}</DateRangePickerInput>
+     <DateRangePickerInput type="start" :part="item.part" :aria-label="({day:'Ngày',month:'Tháng',year:'Năm'})[item.part]?({day:'Ngày',month:'Tháng',year:'Năm'})[item.part]+' từ':undefined" :class="item.part==='literal'?'lotus-date__literal':'lotus-date__segment'">{{item.value}}</DateRangePickerInput>
     </template>
     <span class="lotus-date__dash" aria-hidden="true">–</span>
     <template v-for="item in segments.end" :key="'e'+item.part">
-     <DateRangePickerInput type="end" :part="item.part" :class="item.part==='literal'?'lotus-date__literal':'lotus-date__segment'">{{item.value}}</DateRangePickerInput>
+     <DateRangePickerInput type="end" :part="item.part" :aria-label="({day:'Ngày',month:'Tháng',year:'Năm'})[item.part]?({day:'Ngày',month:'Tháng',year:'Năm'})[item.part]+' đến':undefined" :class="item.part==='literal'?'lotus-date__literal':'lotus-date__segment'">{{item.value}}</DateRangePickerInput>
     </template>
     <DateRangePickerTrigger class="lotus-date__trigger" aria-label="Mở lịch chọn khoảng ngày"><LotusIcon name="calendar"/></DateRangePickerTrigger>
    </DateRangePickerField>

@@ -9,10 +9,10 @@ from lotus_farm.promax_rules import work_completion, vintage_choice
 
 def records(doctype,filters,fields):
     if not frappe.has_permission(doctype,'read'):
-        frappe.throw('Read permission is required for '+doctype,frappe.PermissionError)
+        frappe.throw('Cần quyền xem '+frappe._(doctype),frappe.PermissionError)
     result=frappe.get_list(doctype,filters=filters,fields=fields,limit_page_length=10000)
     if len(result)==10000 and frappe.get_list(doctype,filters=filters,fields=['name'],limit_start=10000,limit_page_length=1):
-        frappe.throw('Reporting scope exceeds 10,000 records for '+doctype+'; narrow the Farm/date range.')
+        frappe.throw('Phạm vi báo cáo vượt 10.000 bản ghi cho '+frappe._(doctype)+'; hãy thu hẹp vườn/khoảng ngày.')
     return result
 
 
@@ -104,7 +104,7 @@ def _lot_fraction(name,selected):
 @frappe.whitelist()
 def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     start,end=getdate(from_date),getdate(to_date)
-    if start>end or (end-start).days>93:frappe.throw('Select a reporting period of at most 94 days.')
+    if start>end or (end-start).days>93:frappe.throw('Chọn kỳ báo cáo tối đa 94 ngày.')
     selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     farm=selected['farm'];company=selected['company']
     farms=records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name','company','farm_name'])
@@ -169,13 +169,13 @@ def dashboard(from_date,to_date,farm=None,company=None,block=None,plot=None,cycl
     from lotus_farm.api import availability
     supply=availability(str(start),str(getdate(add_days(end,56))),farm)
     supply=[s for s in supply if (not selected.get('zone_blocks') or s.get('farm_block') in selected['zone_blocks']) and any(f.name==s['farm'] for f in farms) and all(not selected[k] or s.get(field)==selected[k] for k,field in [('block','farm_block'),('plot','farm_plot'),('cycle','crop_cycle')])]
-    return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Work completion is averaged per task. Outstanding material is unconsumed requirement, not stock shortage. Scoped QC/packout weights are attributed by explicit source contributions.')
+    return dict(from_date=str(start),to_date=str(end),farms=summaries,forecast=supply,metric_note='Tỷ lệ hoàn thành tính bình quân theo công việc. Vật tư còn thiếu là nhu cầu chưa dùng, không phải thiếu tồn kho. Khối lượng QC/đóng gói trong phạm vi được phân bổ theo nguồn đóng góp đã khai báo.')
 
 
 @frappe.whitelist()
 def forecast_vintages(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=None,zone=None):
     start,end=getdate(from_date),getdate(to_date)
-    if start>end or (end-start).days>366:frappe.throw('Select at most one year.')
+    if start>end or (end-start).days>366:frappe.throw('Chọn tối đa một năm.')
     filters={'period_start_date':['>=',start],'period_end_date':['<=',end],'supply_state':['!=','Draft']}
     selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     filters.update(land_filters(frappe.get_meta('Harvest Forecast'),selected))
@@ -306,13 +306,13 @@ def charts(from_date,to_date,farm=None,company=None,block=None,plot=None,cycle=N
     """Aggregated series for the report charts. Same land scope and permissions as dashboard()."""
     from lotus_farm import report_charts as rc
     start,end=getdate(from_date),getdate(to_date)
-    if start>end or (end-start).days>365:frappe.throw('Select a reporting period of at most 366 days.')
+    if start>end or (end-start).days>365:frappe.throw('Chọn kỳ báo cáo tối đa 366 ngày.')
     selected=land_scope(company,farm,block,plot,cycle,zone=zone)
     farms=[f.name for f in records('Farm',land_filters(frappe.get_meta('Farm'),selected),['name'])]
     in_farms={'farm':['in',farms or ['__none__']]}
     land_only=bool(zone or block or plot or cycle)
     report_filters=frappe.parse_json(report_filters or '{}')
-    if not isinstance(report_filters,dict):frappe.throw('Invalid report filters')
+    if not isinstance(report_filters,dict):frappe.throw('Bộ lọc báo cáo không hợp lệ')
     def choices(rows,field):return sorted({r.get(field) for r in rows if r.get(field)})
     def matching(rows,fields):
         return [r for r in rows if all(not report_filters.get(key) or r.get(field)==report_filters[key] for key,field in fields.items())]

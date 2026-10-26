@@ -8,18 +8,18 @@ from lotus_farm.rules import canonical_hash, scale_net, RuleError
 class ScaleReading(Document):
     def validate(self):
         if not self.is_new():
-            frappe.throw("Raw Scale Readings are immutable. Record corrections separately.")
+            frappe.throw("Dữ liệu cân gốc không được sửa. Ghi điều chỉnh riêng.")
         self.captured_at = local_timestamp(self.captured_at)
         if frappe.db.get_single_value('Lotus Farm Settings','require_registered_scale'):
             device_name=frappe.db.get_value('Scale Device',{'device_id':self.device_id},'name')
-            if not device_name:frappe.throw('Register and bind this Scale Device before receiving readings.')
+            if not device_name:frappe.throw('Đăng ký và gắn cân này trước khi nhận dữ liệu cân.')
             device=frappe.get_doc('Scale Device',device_name);device.check_permission('read')
             if not device.enabled or device.farm!=self.farm or device.integration_user!=frappe.session.user:
-                frappe.throw('Scale is disabled or not bound to this Farm and API user.',frappe.PermissionError)
+                frappe.throw('Cân đang tắt hoặc chưa gắn với vườn và người dùng API này.',frappe.PermissionError)
             if not getdate(device.calibrated_on)<=getdate(self.captured_at)<=getdate(device.calibration_due):
-                frappe.throw('Reading is outside the registered calibration period.')
+                frappe.throw('Lần cân nằm ngoài kỳ hiệu chuẩn đã đăng ký.')
         if self.captured_at > now_datetime():
-            frappe.throw("Scale capture time cannot be in the future.")
+            frappe.throw("Thời điểm cân không được ở tương lai.")
         self.event_key = canonical_hash([self.farm, self.device_id, self.reading_id])
         try:
             self.net_kg = scale_net(self.gross_kg, self.tare_kg)
@@ -34,4 +34,4 @@ class ScaleReading(Document):
         )
 
     def on_trash(self):
-        frappe.throw("Raw Scale Readings cannot be deleted.")
+        frappe.throw("Không được xóa dữ liệu cân gốc.")

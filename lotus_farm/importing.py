@@ -31,7 +31,7 @@ IMPORT_FIELDS={
 
 def file_bytes(url):
     names=frappe.get_all('File',filters={'file_url':url},pluck='name')
-    if not names:frappe.throw('Select an uploaded File.')
+    if not names:frappe.throw('Chọn một tệp đã tải lên.')
     file=frappe.get_doc('File',names[0]);file.check_permission('read')
     data=file.get_content()
     return data.encode() if isinstance(data,str) else data
@@ -43,14 +43,14 @@ def stage_workbook(source_file,mapping,farm,file_url):
     frappe.get_doc('Farm',farm).check_permission('read')
     source=frappe.get_doc('Source File Registry',source_file);source.check_permission('read')
     profile=frappe.get_doc('Source Import Mapping',mapping);profile.check_permission('read')
-    if profile.approval_state!='Approved':frappe.throw('Approve the import mapping first.')
-    if source.migration_tier not in ('A','B'):frappe.throw('Only Tier A/B sources create detailed transactions; archive Tier C/D separately.')
+    if profile.approval_state!='Approved':frappe.throw('Duyệt ánh xạ nhập dữ liệu trước.')
+    if source.migration_tier not in ('A','B'):frappe.throw('Chỉ nguồn hạng A/B mới tạo giao dịch chi tiết; lưu trữ riêng nguồn hạng C/D.')
     data=file_bytes(file_url)
-    if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Uploaded bytes do not match the registered SHA-256.')
+    if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Dữ liệu tải lên không khớp mã SHA-256 đã đăng ký.')
     config=profile.as_dict();config['source_key']=source.source_key;config['source_family']=source.source_family or source.source_path
     try:result=read_workbook(data,config)
     except (RuleError,ValueError,KeyError) as exc:frappe.throw(str(exc))
-    if not result['rows']:frappe.throw('No source data rows were found.')
+    if not result['rows']:frappe.throw('Không tìm thấy dòng dữ liệu nguồn.')
     batch_key=canonical_hash([source.name,profile.name,farm])
     existing=frappe.db.get_value('Source Import Batch',{'batch_key':batch_key,'docstatus':['<',2]},'name')
     if existing:
@@ -63,18 +63,18 @@ def stage_workbook(source_file,mapping,farm,file_url):
 
 def _target(batch,row):
     mapping=frappe.get_doc('Source Import Mapping',batch.mapping);mapping.check_permission('read')
-    if mapping.approval_state!='Approved':frappe.throw('Mapping is no longer approved.')
-    if row.validation_error:frappe.throw('Resolve source validation before importing: '+row.validation_error)
+    if mapping.approval_state!='Approved':frappe.throw('Ánh xạ không còn ở trạng thái đã duyệt.')
+    if row.validation_error:frappe.throw('Xử lý lỗi kiểm tra nguồn trước khi nhập: '+row.validation_error)
     matches=frappe.get_all('Legacy Organization Map',filters={'legacy_key':row.legacy_org_key,'farm':batch.farm,'approval_state':'Approved'},pluck='name')
-    if not matches:frappe.throw('No approved organization mapping to this Farm.')
+    if not matches:frappe.throw('Chưa có ánh xạ tổ chức đã duyệt cho vườn này.')
     payload=json.loads(row.normalized_json or '{}')
-    if any(k not in IMPORT_FIELDS[mapping.target_doctype] for k in payload):frappe.throw('Staged target contains an unauthorized field.')
+    if any(k not in IMPORT_FIELDS[mapping.target_doctype] for k in payload):frappe.throw('Dữ liệu đích chuẩn bị có trường không được phép.')
     meta=frappe.get_meta(mapping.target_doctype)
     for field in meta.fields:
         if field.fieldtype=='Table' and field.fieldname in payload and payload[field.fieldname] is not None:
             allowed={f.fieldname for f in frappe.get_meta(field.options).fields if not f.read_only and f.fieldtype not in ('Section Break','Column Break','Tab Break')}
             if not isinstance(payload[field.fieldname],list) or any(not isinstance(r,dict) or set(r)-allowed for r in payload[field.fieldname]):
-                frappe.throw('Imported child rows contain unauthorized or computed fields.')
+                frappe.throw('Dòng con nhập vào có trường không được phép hoặc trường tính toán.')
     doc=frappe.get_doc(dict(doctype=mapping.target_doctype,**payload,farm=batch.farm))
     if doc.meta.has_field('company'):doc.company=frappe.db.get_value('Farm',batch.farm,'company')
     if doc.meta.has_field('source_import_batch'):doc.source_import_batch=batch.name
@@ -105,15 +105,15 @@ def import_rows(batch):
     doc=frappe.get_doc('Source Import Batch',batch);doc.check_permission('write')
     lock('Farm',doc.farm);lock('Source File Registry',doc.source_file);lock('Source Import Batch',doc.name)
     doc.reload()
-    if doc.docstatus!=0:frappe.throw('Only draft import batches can be processed.')
+    if doc.docstatus!=0:frappe.throw('Chỉ xử lý được đợt nhập ở trạng thái nháp.')
     verify_staging(doc)
-    if frappe.db.get_value('Source File Registry',doc.source_file,'source_status')!='Active':frappe.throw('Confirm this source is authoritative and mark it Active before creating targets.')
+    if frappe.db.get_value('Source File Registry',doc.source_file,'source_status')!='Active':frappe.throw('Xác nhận nguồn này là nguồn chính thức và đánh dấu Đang dùng trước khi tạo chứng từ đích.')
     totals={};imported=[]
     for row in doc.rows:
         if row.row_status!='Pending':continue
         ensure_business_identity(doc,row)
         duplicate=frappe.db.sql("select r.name from `tabSource Import Row` r join `tabSource Import Batch` b on b.name=r.parent where b.source_file=%s and b.docstatus<2 and r.row_key=%s and r.row_status='Imported' and b.name!=%s FOR UPDATE",(doc.source_file,row.row_key,doc.name))
-        if duplicate:frappe.throw('Source row already exists in another active batch.')
+        if duplicate:frappe.throw('Dòng nguồn đã có trong một đợt nhập khác đang hoạt động.')
         target=_target(doc,row).insert()
         # Imported transactions remain drafts for normal role review and submit.
         row.row_status='Imported';row.target_doctype=target.doctype;row.target_name=target.name
@@ -145,18 +145,18 @@ def run_task(task):
 
 
 def verify_staging(batch):
-    if not batch.mapping or not batch.source_attachment:frappe.throw('Mapped imports require the original uploaded source.')
+    if not batch.mapping or not batch.source_attachment:frappe.throw('Nhập theo ánh xạ cần tệp nguồn gốc đã tải lên.')
     source=frappe.get_doc('Source File Registry',batch.source_file);source.check_permission('read')
     data=file_bytes(batch.source_attachment)
-    if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Original source bytes changed.')
+    if hashlib.sha256(data).hexdigest()!=source.sha256:frappe.throw('Dữ liệu tệp nguồn gốc đã thay đổi.')
     mapping=frappe.get_doc('Source Import Mapping',batch.mapping);mapping.check_permission('read')
     config=mapping.as_dict();config['source_key']=source.source_key;config['source_family']=source.source_family or source.source_path
     expected=read_workbook(data,config)['rows']
-    if {r['row_key'] for r in expected}!={r.row_key for r in batch.rows}:frappe.throw('Staging rows no longer match the approved source scope.')
+    if {r['row_key'] for r in expected}!={r.row_key for r in batch.rows}:frappe.throw('Các dòng chuẩn bị không còn khớp phạm vi nguồn đã duyệt.')
     lookup={r['row_key']:r for r in expected}
     for row in batch.rows:
         for key in ('business_key','normalized_hash','source_hash','normalized_json','validation_error','legacy_org_key','source_sheet','source_row'):
-            if row.get(key)!=lookup[row.row_key][key]:frappe.throw('Staged source or transformation changed; register a reviewed source/mapping version.')
+            if row.get(key)!=lookup[row.row_key][key]:frappe.throw('Nguồn chuẩn bị hoặc cách chuyển đổi đã thay đổi; hãy đăng ký phiên bản nguồn/ánh xạ đã kiểm tra.')
 
 
 def reconcile_totals(batch):
@@ -182,7 +182,7 @@ def reconciliation(batch):
 
 def ensure_business_identity(batch, row):
     if not row.business_key or not row.normalized_hash:
-        frappe.throw('Approve a mapping with stable business key columns and restage the source before importing.')
+        frappe.throw('Duyệt ánh xạ có cột khóa nghiệp vụ ổn định và chuẩn bị lại nguồn trước khi nhập.')
     mapping=frappe.get_doc('Source Import Mapping',batch.mapping)
     prior=frappe.db.sql("""select r.normalized_hash, r.target_name from `tabSource Import Row` r
         join `tabSource Import Batch` b on b.name=r.parent
@@ -192,5 +192,5 @@ def ensure_business_identity(batch, row):
         (batch.farm,mapping.target_doctype,row.business_key,batch.name),as_dict=True)
     if prior:
         if any(p.normalized_hash!=row.normalized_hash for p in prior):
-            frappe.throw('This business transaction changed in a later source version. Review and cancel/amend the existing target; do not import a second actual.')
-        frappe.throw('This business transaction was already imported, including in another workbook version.')
+            frappe.throw('Giao dịch này đã thay đổi ở phiên bản nguồn mới hơn. Kiểm tra rồi hủy/lập bản sửa chứng từ đích hiện có; không nhập thêm một bản thực tế thứ hai.')
+        frappe.throw('Giao dịch này đã được nhập, kể cả từ một phiên bản sổ Excel khác.')

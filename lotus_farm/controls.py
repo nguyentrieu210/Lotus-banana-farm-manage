@@ -11,14 +11,14 @@ def require_role(*roles):
     if frappe.session.user == "Administrator":
         return
     if not set(roles).intersection(frappe.get_roles()):
-        frappe.throw("This action requires: " + ", ".join(roles), frappe.PermissionError)
+        frappe.throw("Thao tác này cần quyền: " + ", ".join(frappe._(role) for role in roles), frappe.PermissionError)
 
 
 def lock(doctype, name):
     table = frappe.qb.DocType(doctype)
     rows = frappe.qb.from_(table).select(table.name).where(table.name == name).for_update().run()
     if not rows:
-        frappe.throw(f"{doctype} {name} does not exist.")
+        frappe.throw(f"{frappe._(doctype)} {name} không tồn tại.")
 
 
 def positive(value, label):
@@ -39,27 +39,27 @@ def validate_version(doc, key, roles):
                 and field.fieldname not in ignored
             ):
                 if doc.as_dict().get(field.fieldname) != before.as_dict().get(field.fieldname):
-                    frappe.throw("Approved versions are immutable. Create a new version.")
+                    frappe.throw("Phiên bản đã duyệt không được sửa. Hãy tạo phiên bản mới.")
     if int(doc.version or 0) < 1:
-        frappe.throw("Version must be positive.")
+        frappe.throw("Phiên bản phải lớn hơn 0.")
     if doc.approval_state == "Approved" and (not before or before.approval_state != "Approved"):
         require_role(*roles)
     if doc.get("valid_to") and getdate(doc.valid_to) < getdate(doc.valid_from):
-        frappe.throw("Valid To cannot precede Valid From.")
+        frappe.throw("Hiệu lực đến không được trước hiệu lực từ.")
     duplicate = frappe.db.exists(
         doc.doctype, {key: doc.get(key), "version": doc.version, "name": ["!=", doc.name]}
     )
     if duplicate:
-        frappe.throw("This key/version already exists.")
+        frappe.throw("Mã/phiên bản này đã tồn tại.")
 
 
 def validate_item(item, *, batched=False):
     record = frappe.get_doc("Item", item)
     record.check_permission("read")
     if record.disabled or not record.is_stock_item or record.stock_uom != "Kg":
-        frappe.throw("Lotus inventory Items must be active stock Items with stock UOM Kg.")
+        frappe.throw("Vật tư tồn kho của Lotus phải là vật tư kho đang dùng, đơn vị tồn kho là Kg.")
     if batched and (not record.has_batch_no or record.has_serial_no):
-        frappe.throw("Lotus stock bridge requires batched, non-serialized Items.")
+        frappe.throw("Cầu nối kho Lotus chỉ dùng vật tư quản lý theo lô, không theo số sê-ri.")
     return record
 
 
@@ -67,14 +67,14 @@ def validate_warehouse(name, company):
     warehouse = frappe.get_doc("Warehouse", name)
     warehouse.check_permission("read")
     if warehouse.company != company or warehouse.is_group or warehouse.disabled:
-        frappe.throw("Warehouse must be an active leaf of the same Company.")
+        frappe.throw("Kho phải là kho cấp cuối đang hoạt động của cùng công ty.")
 
 
 def check_farm(doc, method=None):
     if doc.doctype=='Farm' and doc.is_new() and command_allowed(doc,'create_attendance_farm'):return
     farm = doc.name if doc.doctype == "Farm" else doc.get("farm")
     if farm and not farm_allowed(farm):
-        frappe.throw("You do not have access to this Farm.", frappe.PermissionError)
+        frappe.throw("Bạn không có quyền với vườn này.", frappe.PermissionError)
 
 
 def farm_allowed(farm, user=None):
@@ -159,7 +159,7 @@ def preserve_lineage(doc, method=None):
             fields=["dt", "fieldname"], limit_page_length=0,
         ))
     if any(frappe.db.exists(target, {link_field: doc.name}) for target, link_field in set(references)):
-        frappe.throw("Used production identities cannot be edited. Create a new cycle/cohort instead.")
+        frappe.throw("Định danh sản xuất đã dùng thì không được sửa. Hãy tạo vụ/đợt cây mới.")
 
 
 def validate_operation_date(doc, method=None):
@@ -173,19 +173,19 @@ def validate_operation_date(doc, method=None):
     from lotus_farm.inheritance import validate_coverage_date
     validate_coverage_date(cycle, on_date)
     if cycle.planting_date and on_date < getdate(cycle.planting_date):
-        frappe.throw("Transaction date precedes planting.")
+        frappe.throw("Ngày giao dịch trước ngày trồng.")
     if doc.sucker_selection_batch:
         selection = frappe.db.get_value(
             "Sucker Selection Batch", doc.sucker_selection_batch, "selection_date"
         )
         if on_date < getdate(selection):
-            frappe.throw("Transaction date precedes sucker selection.")
+            frappe.throw("Ngày giao dịch trước ngày chọn chồi.")
     if (
         doc.doctype == "Bunch Operation"
         and doc.expected_harvest_date
         and getdate(doc.expected_harvest_date) < on_date
     ):
-        frappe.throw("Expected harvest cannot precede the operation.")
+        frappe.throw("Ngày dự kiến thu hoạch không được trước ngày thao tác.")
 
 
 _authorized_commands = ContextVar("lotus_authorized_commands", default=frozenset())
@@ -200,7 +200,7 @@ def validate_calibration_evidence(doc):
     fields = ('calibration_json', 'calibration_hash')
     changed = any((doc.get(f) or None) != (previous.get(f) or None if previous else None) for f in fields)
     if changed and not command_allowed(doc, 'calibrated_profile'):
-        frappe.throw('Calibration evidence can only be created by the measured proposal command.')
+        frappe.throw('Bằng chứng hiệu chỉnh chỉ được tạo bằng lệnh đề xuất từ số đo.')
 
 
 @contextmanager

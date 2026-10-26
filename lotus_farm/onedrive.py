@@ -14,7 +14,7 @@ from lotus_farm.extraction import MAX_BYTES
 def graph_url(url):
     parsed=urlparse(url)
     if parsed.scheme!='https' or parsed.hostname!='graph.microsoft.com' or not parsed.path.startswith('/v1.0/'):
-        frappe.throw('Graph continuation URL is outside the approved API host.')
+        frappe.throw('Đường dẫn trang tiếp theo của Graph nằm ngoài máy chủ API được duyệt.')
     return url
 
 
@@ -23,14 +23,14 @@ def download(session,url):
     if response.status_code in (301,302,303,307,308):
         target=response.headers.get('Location','');host=urlparse(target).hostname or ''
         allowed=host.endswith('.sharepoint.com') or host.endswith('.1drv.com') or host.endswith('.1drvusercontent.com') or host.endswith('.onedrive.com')
-        if urlparse(target).scheme!='https' or not allowed:frappe.throw('Unexpected Graph file download host.')
+        if urlparse(target).scheme!='https' or not allowed:frappe.throw('Máy chủ tải tệp Graph không đúng.')
         # No bearer token is forwarded to the preauthenticated download host.
         response=requests.get(target,timeout=30,stream=True,allow_redirects=False)
     response.raise_for_status()
     chunks=[];size=0
     for chunk in response.iter_content(1024*1024):
         size+=len(chunk)
-        if size>MAX_BYTES:response.close();frappe.throw('Source exceeds the configured workbook limit.')
+        if size>MAX_BYTES:response.close();frappe.throw('Nguồn vượt giới hạn sổ Excel đã cấu hình.')
         chunks.append(chunk)
     response.close();return b''.join(chunks)
 
@@ -40,7 +40,7 @@ def poll_feed(feed):
     require_role('System Manager')
     cfg=frappe.get_doc('OneDrive Feed',feed);cfg.check_permission('write')
     lock('OneDrive Feed',cfg.name);cfg.reload()
-    if not cfg.enabled:frappe.throw('Enable the approved feed before polling.')
+    if not cfg.enabled:frappe.throw('Bật nguồn dữ liệu đã duyệt trước khi lấy dữ liệu.')
     previous=frappe.session.user;created=[]
     try:
         token=requests.post('https://login.microsoftonline.com/'+quote(cfg.tenant_id,safe='')+'/oauth2/v2.0/token',
@@ -72,7 +72,7 @@ def poll_feed(feed):
                     inventory.update(metadata)
                     with command(inventory,'source_inventory'):inventory.save()
                 if not fnmatch.fnmatch(item['name'],cfg.filename_pattern):continue
-                if int(item.get('size',0))>MAX_BYTES:frappe.throw('Matched feed file exceeds workbook limit.')
+                if int(item.get('size',0))>MAX_BYTES:frappe.throw('Tệp khớp trong nguồn dữ liệu vượt giới hạn sổ Excel.')
                 data=download(session,'https://graph.microsoft.com/v1.0/drives/'+quote(cfg.drive_id,safe='')+'/items/'+quote(item['id'],safe='')+'/content')
                 hashed=hashlib.sha256(data).hexdigest();source_key=canonical_hash([cfg.drive_id,item['id'],hashed])
                 source=frappe.db.get_value('Source File Registry',{'source_key':source_key},'name')
@@ -97,7 +97,7 @@ def poll_feed(feed):
                     from lotus_farm.importing import run_task
                     run_task(task)
             url=page.get('@odata.nextLink') or page.get('@odata.deltaLink')
-            if not url:frappe.throw('Graph page lacks a continuation checkpoint.')
+            if not url:frappe.throw('Trang Graph thiếu điểm tiếp tục.')
             cfg.delta_link=graph_url(url)
             if '@odata.deltaLink' in page:break
         session.close();cfg.last_error=''

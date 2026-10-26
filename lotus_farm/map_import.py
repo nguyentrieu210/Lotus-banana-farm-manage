@@ -17,17 +17,17 @@ def _load(farm, file_url):
     farm_doc = frappe.get_doc("Farm", farm)
     farm_doc.check_permission("read")
     if not file_url:
-        frappe.throw("Upload the export JSON as a private File before importing.")
+        frappe.throw("Tải tệp JSON xuất ra lên dưới dạng tệp riêng tư trước khi nhập.")
     file_names = frappe.get_all("File", filters={"file_url": file_url, "is_private": 1}, pluck="name")
     if not file_names:
-        frappe.throw("The map JSON must be uploaded as a private File.")
+        frappe.throw("Tệp JSON bản đồ phải được tải lên dưới dạng tệp riêng tư.")
     source_file = frappe.get_doc("File", file_names[0])
     source_file.check_permission("read")
     try:
         raw = source_file.get_content()
         bundle = load_bundle(raw.encode() if isinstance(raw, str) else raw)
     except (ValueError, UnicodeDecodeError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        frappe.throw("Invalid Lotus Map bundle: " + str(exc))
+        frappe.throw("Gói bản đồ Lotus không hợp lệ: " + str(exc))
     return bundle
 
 
@@ -37,7 +37,7 @@ def _master_index(farm):
     block_by_code = {}
     for block in blocks:
         if block.block_code in block_by_code:
-            frappe.throw("Ambiguous Farm Block code: " + block.block_code)
+            frappe.throw("Mã lô bị trùng, không xác định được: " + block.block_code)
         block_by_code[block.block_code] = block
     plots = frappe.get_list("Farm Plot", filters={"farm": farm},
                             fields=["name", "farm_block", "plot_code", "area_ha"], limit_page_length=20000)
@@ -45,7 +45,7 @@ def _master_index(farm):
     for plot in plots:
         key = (plot.farm_block, plot.plot_code)
         if key in plot_by_parent_code:
-            frappe.throw("Duplicate Farm Plot code within Block: " + plot.plot_code)
+            frappe.throw("Mã thửa bị trùng trong lô: " + plot.plot_code)
         plot_by_parent_code[key] = plot
     return block_by_code, plot_by_parent_code
 
@@ -119,7 +119,7 @@ def preview_map_bundle(farm, file_url):
 @frappe.whitelist(methods=["POST"])
 def stage_map_bundle(farm, file_url, acknowledge_unverified=False):
     if acknowledge_unverified not in (True, 1, "1"):
-        frappe.throw("Confirm UNVERIFIED_PDF_ALIGNMENT before creating draft geometry.")
+        frappe.throw("Xác nhận UNVERIFIED_PDF_ALIGNMENT trước khi tạo hình học nháp.")
     bundle = _load(farm, file_url)
     plan = _plan(farm, bundle)
     lock("Farm", farm)

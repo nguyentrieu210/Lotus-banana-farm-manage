@@ -12,7 +12,7 @@ def propose_profile(farm, farm_block, crop_cycle, from_date, to_date):
     cycle = frappe.get_doc("Crop Cycle", crop_cycle)
     cycle.check_permission("read")
     if cycle.farm != farm or cycle.farm_block != farm_block:
-        frappe.throw("Select matching Farm, Block and Crop Cycle.")
+        frappe.throw("Chọn vườn, lô và vụ khớp nhau.")
     rows = frappe.get_list(
         "Harvest Actual",
         filters={
@@ -52,7 +52,7 @@ def propose_complete_profile(farm, crop_cycle, from_date, to_date):
     from lotus_farm.reporting import records, _actual_fully_processed, packout_lineage
     from lotus_farm.promax_rules import weighted_packout
     cycle=frappe.get_doc('Crop Cycle',crop_cycle);cycle.check_permission('read')
-    if cycle.farm!=farm or getdate(from_date)>getdate(to_date):frappe.throw('Select the matching Farm and a valid sample period.')
+    if cycle.farm!=farm or getdate(from_date)>getdate(to_date):frappe.throw('Chọn đúng vườn và một kỳ lấy mẫu hợp lệ.')
     require_role('Lotus Farm Manager','Lotus Packing Supervisor')
     rows=records('Harvest Actual',{'farm':farm,'crop_cycle':crop_cycle,'docstatus':1,'harvest_date':['between',[from_date,to_date]]},['name','harvested_bunch_qty','gross_weight_kg','saleable_weight_kg'])
     complete=[r for r in rows if _actual_fully_processed(r.name)]
@@ -88,7 +88,7 @@ def propose_complete_profile(farm, crop_cycle, from_date, to_date):
 def create_calibrated_profile(base_profile,crop_cycle,from_date,to_date,valid_from,valid_to):
     require_role('Lotus Farm Manager')
     base=frappe.get_doc('Harvest Profile',base_profile);base.check_permission('read')
-    if base.approval_state!='Approved':frappe.throw('Select an approved base profile.')
+    if base.approval_state!='Approved':frappe.throw('Chọn hệ số gốc đã duyệt.')
     validate_calibration_scope(base, crop_cycle)
     result=propose_complete_profile(base.farm,crop_cycle,from_date,to_date)
     from lotus_farm.controls import lock
@@ -108,7 +108,7 @@ def create_calibrated_profile(base_profile,crop_cycle,from_date,to_date,valid_fr
 def create_calibrated_packout(base_profile,crop_cycle,from_date,to_date,valid_from,valid_to):
     require_role('Lotus Packing Supervisor')
     base=frappe.get_doc('Packout Profile',base_profile);base.check_permission('read')
-    if base.approval_state!='Approved':frappe.throw('Select an approved base Packout Profile.')
+    if base.approval_state!='Approved':frappe.throw('Chọn hệ số đóng gói gốc đã duyệt.')
     validate_calibration_scope(base, crop_cycle)
     result=propose_complete_profile(base.farm,crop_cycle,from_date,to_date)
     from lotus_farm.reporting import records,packout_lineage
@@ -120,7 +120,7 @@ def create_calibrated_packout(base_profile,crop_cycle,from_date,to_date,valid_fr
         share=sum(s['fraction'] for s in packout_lineage(run) if s['harvest_actual'] in selected)
         raw+=flt(run.input_kg)*share
         finished+=sum(flt(o.net_kg) for o in run.outputs if o.item==base.item and o.output_type=='Finished')*share
-    if not raw or not finished:frappe.throw('No complete matched finished output for this Item.')
+    if not raw or not finished:frappe.throw('Chưa có thành phẩm đối chiếu đầy đủ cho vật tư này.')
     from lotus_farm.controls import lock
     lock('Farm',base.farm)
     versions=frappe.get_all('Packout Profile',filters={'profile_name':base.profile_name},pluck='version')
@@ -138,4 +138,4 @@ def validate_calibration_scope(base, crop_cycle):
     cycle.check_permission('read')
     for field in ('farm', 'farm_block', 'variety', 'cycle_type'):
         if base.get(field) and base.get(field) != cycle.get(field):
-            frappe.throw('Calibration sample does not match the base profile: ' + field)
+            frappe.throw('Mẫu hiệu chỉnh không khớp hệ số gốc: ' + field)

@@ -16,7 +16,7 @@ def labor_needed(planned, productivity):
 def labor_summary(headcount, present, target, workdays, area):
     headcount, present, target = [integer_quantity(v) for v in (headcount, present, target)]
     if present > headcount:
-        raise RuleError('Present people cannot exceed headcount.')
+        raise RuleError('Số người có mặt không được vượt định biên.')
     days, area = quantity(workdays), quantity(area)
     return dict(absent=headcount-present, staffing_gap=present-target,
                 absence_percent=float(Decimal(headcount-present)/headcount*100) if headcount else 0,
@@ -27,7 +27,7 @@ def remaining_bunches(source, cancellations):
     source = quantity(source)
     lost = sum((quantity(v) for v in cancellations), Decimal(0))
     if lost > source:
-        raise RuleError('Cancelled bunches exceed the forecast source; reconcile the source before forecasting.')
+        raise RuleError('Số buồng hủy vượt nguồn dự thu; đối soát nguồn trước khi dự thu.')
     return float(source-lost)
 
 
@@ -35,5 +35,5 @@ def completion(planned, completed, reason):
     planned, completed = quantity(planned), quantity(completed)
     unfinished = max(planned-completed, Decimal(0))
     if unfinished and not (reason or '').strip():
-        raise RuleError('Unfinished work requires a reason.')
+        raise RuleError('Công việc chưa hoàn thành phải có lý do.')
     return float(unfinished)

@@ -44,7 +44,7 @@ def seed():
     frappe.db.commit()
     return {"status": "created_draft", "name": record.name,
             "approval_state": record.approval_state, "active": record.active,
-            "note": "Persisted for operator editing. Approval and stock release stay blocked."}
+            "note": "Đã lưu để người vận hành chỉnh sửa. Việc duyệt và phát hành hàng vẫn bị khóa."}
 
 def sync_cutbud_draft():
     """Controlled, idempotent update of the existing unapproved VIP126 setup.

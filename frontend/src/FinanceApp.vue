@@ -1,4 +1,5 @@
 <script setup>
+import {hrCatalogLabel} from './hr-catalog-labels'
 // /lotus/tai-chinh — Tài chính – Kế toán on ERPNext's ledger: overview, documents waiting for an accountant,
 // journal, payables, payment vouchers (signed accountant → chief accountant → director), reports and settings.
 // Data: lotus_farm.finance.*. Payment approvers without ledger access see only the vouchers waiting for them.
@@ -363,9 +364,9 @@ const openingColumns=[{field:'line',headerName:'Dòng',minWidth:70},{field:'numb
 const payrollLineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'lotus_farm',headerName:'Vườn',minWidth:110},
  {field:'lotus_farm_block',headerName:'Lô',minWidth:90,valueGetter:p=>dimLabel('lotus_farm_block',p.data.lotus_farm_block)},{field:'lotus_work_type',headerName:'Công việc',minWidth:120},{field:'note',headerName:'Diễn giải',minWidth:140}]
 const staff=ref(null)
-const roleCells=[['chief','Lotus Chief Accountant'],['accountant','Lotus Accountant'],['auditor','Lotus Auditor']]
+const roleCells=[['chief','Lotus Chief Accountant','Kế toán trưởng'],['accountant','Lotus Accountant','Kế toán'],['auditor','Lotus Auditor','Kiểm soát viên']]
 async function setRole(row,role,on){await run(async()=>{await call(F+'api.set_role',{user:row.user,role,on:on?1:0},true);staff.value=await call(F+'api.people');notice.value='Đã cập nhật vai trò của '+row.name+'.'})}
-const peopleColumns=[{field:'name',headerName:'Nhân sự',minWidth:200,flex:2},{field:'designation',headerName:'Chức danh',minWidth:140},{field:'user',headerName:'Tài khoản',minWidth:200},
+const peopleColumns=[{field:'name',headerName:'Nhân sự',minWidth:200,flex:2},{field:'designation',headerName:'Chức danh',minWidth:140,valueFormatter:p=>hrCatalogLabel(p.value)},{field:'user',headerName:'Tài khoản',minWidth:200},
  {field:'chief',headerName:'Kế toán trưởng',minWidth:120,sortable:false},{field:'accountant',headerName:'Kế toán',minWidth:100,sortable:false},{field:'auditor',headerName:'Kiểm soát',minWidth:100,sortable:false},
  {field:'approver',headerName:'Ký duyệt chi',minWidth:110,valueFormatter:p=>p.value?'Có':'—'},{field:'employee',headerName:'Hồ sơ NV',minWidth:100,valueFormatter:p=>p.value?'Có':'Chưa gắn'}]
 function newAdjLine(){return {account:'',debit:'',credit:'',party:'',lotus_farm_block:''}}
@@ -636,7 +637,7 @@ useNoticeToast(notice)
   </FormSection>
   <FormSection title="Người làm kế toán" :description="'Kế toán: lập hóa đơn, phiếu chi, ghi sổ lương. Kế toán trưởng: ký phiếu chi, đảo bút toán, kết chuyển, khóa sổ, cấu hình. Kiểm soát: chỉ xem. '+(staff?.can_assign?'':'Chỉ Quản trị hệ thống được gán vai trò.')">
    <DataTable :rows="staff?.people||[]" :columns="peopleColumns" row-key="user" storage-key="fin-people" empty="Chưa có tài khoản nhân sự.">
-    <template v-for="[key,role] in roleCells" :key="key" #[`cell-${key}`]="{row}"><Checkbox :model-value="!!row[key]" :disabled="!staff?.can_assign||saving" :aria-label="role+' cho '+row.name" @click.stop @update:model-value="value=>setRole(row,role,value)"/></template>
+    <template v-for="[key,role,roleName] in roleCells" :key="key" #[`cell-${key}`]="{row}"><Checkbox :model-value="!!row[key]" :disabled="!staff?.can_assign||saving" :aria-label="roleName+' cho '+row.name" @click.stop @update:model-value="value=>setRole(row,role,value)"/></template>
    </DataTable>
   </FormSection>
   <FormSection v-if="settings.is_chief" title="Bút toán điều chỉnh (phiếu kế toán khác)" description="Dùng cho nghiệp vụ không có chứng từ Lotus: phân loại lại số dư treo (VD 3381), điều chỉnh sai sót. Nợ phải bằng Có; tài khoản công nợ cần ghi mã đối tượng.">
