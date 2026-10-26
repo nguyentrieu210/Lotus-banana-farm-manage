@@ -1,4 +1,5 @@
 <script setup>
+import WorkspaceListToolbar from '../WorkspaceListToolbar.vue'
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusIcon from '../LotusIcon.vue'
 import {unitLabel} from '../../units'
@@ -111,13 +112,11 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
 </script>
 <template>
 <div class="hr-pay">
- <div class="stock-scope tk-filters">
-  <FormField label="Tháng" v-slot="f"><MonthPicker v-bind="f" v-model="month" :max="today?.slice(0,7)" label="Tháng công" :disabled="busy||saving" @change="load"/></FormField>
-  <UiButton variant="outline" :disabled="busy||saving" @click="load"><LotusIcon name="refresh"/>{{busy?'Đang tải…':'Làm mới'}}</UiButton>
-  <span class="tk-actions__spacer"></span>
-  <a v-if="period" class="stock-button" :href="period.print_url" target="_blank" rel="noopener"><LotusIcon name="printer"/>In bảng lương</a>
-  <a class="stock-button hr-pay__export" :href="exportLink"><LotusIcon name="download"/>Xuất bảng lương Excel</a>
- </div>
+ <WorkspaceListToolbar :searchable="false" :busy="busy" :refresh-disabled="saving" @refresh="load">
+  <template #filters><MonthPicker v-model="month" :max="today?.slice(0,7)" label="Tháng công" :disabled="busy||saving" @change="load"/></template>
+  <UiButton v-if="period" as="a" variant="outline" :href="period.print_url" target="_blank" rel="noopener"><LotusIcon name="printer"/>In bảng lương</UiButton>
+  <UiButton as="a" variant="outline" :href="exportLink"><LotusIcon name="download"/>Xuất bảng lương Excel</UiButton>
+ </WorkspaceListToolbar>
 
  <ol class="hr-steps" aria-label="Các bước chốt lương">
   <li v-for="(s,i) in steps" :key="s.id" :class="'is-'+s.state">

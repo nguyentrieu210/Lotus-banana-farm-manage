@@ -63,7 +63,7 @@ test('chart offers a table view with the same numbers',async()=>{
 test('without a usable canvas the chart falls back to its table',async()=>{
  const view=mount(LotusChart,{title:'Kho',categories:['10/26'],series:[{name:'Nhập',data:[10]},{name:'Xuất',data:[1]}],unit:'phiếu'});await tick()
  assert.equal(view.root.querySelector('.lotus-chart-head button'),null,'no toggle when only the table can be shown')
- assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-table .ag-cell[col-id="series_0"], .lotus-chart-table .ag-cell[col-id="series_1"]')].map(c=>c.textContent),['10','1'])
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-table .ag-row:not(.ag-row-pinned) .ag-cell[col-id="series_0"], .lotus-chart-table .ag-row:not(.ag-row-pinned) .ag-cell[col-id="series_1"]')].map(c=>c.textContent),['10','1'])
  view.unmount()
 })
 test('commerce offers independent party/status filters and retains company figures under a land scope',async()=>{
