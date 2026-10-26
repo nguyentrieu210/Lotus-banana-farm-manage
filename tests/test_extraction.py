@@ -21,8 +21,8 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn('1.250',row['raw_json'])
     def test_formula_and_blank_never_become_zero(self):
         result=read_workbook(self.workbook(['farm','=100+20',None]),self.mapping())
-        self.assertIn('Formula cell',result['rows'][0]['validation_error'])
-        self.assertIn('blank',result['rows'][0]['validation_error'])
+        self.assertIn('Ô công thức cần phiên bản nguồn chỉ chứa giá trị đã kiểm tra',result['rows'][0]['validation_error'])
+        self.assertIn('để trống',result['rows'][0]['validation_error'])
         self.assertEqual(result['control_totals']['plant_qty'],0)
     def test_wrong_sheet_does_not_guess(self):
         mapping=self.mapping();mapping['sheet_name']='Unknown'
