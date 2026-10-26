@@ -36,7 +36,7 @@ Một ví dụ: chọn chồi 01/11/2026 → trổ từ 01/05/2027 → thu từ 
 2. Tách đơn vị nguồn: `Trees` và `Selected Suckers` dự phóng tỷ lệ trổ/cây rồi cắt; `Bunches` tại Shooting là số buồng và dùng hệ số cắt **trên buồng đã trổ**; không áp 90% trên cây lần hai. Bunches ở mốc Selection bị từ chối.
 3. `Plan Cohort` mới có `forecast_distribution_mode`: `Four Waves` hoặc `Single Wave`; buồng tại ngày trổ mặc định một đợt. Chọn Single Wave cho đợt thực tế không phân bổ thêm bốn lần.
 4. `Farm Block.forecast_count_source` ghi `Unverified`, `Source File`, `Estimated` hoặc `Census Confirmed`. Dữ liệu cũ mặc định `Unverified`, không dùng để tạo kế hoạch tự động.
-5. `Lotus Block Forecast Profile` được tạo mới với 24 tham số versioned, cấp vườn hoặc lô, thời hạn hiệu lực, nguồn/căn cứ duyệt. Profile đã duyệt bất biến; profile mới không được chồng thời gian cùng vườn/lô. Không có Approved thì dự thu chỉ là **Unapproved Book2 scenario** và không cho tạo kế hoạch.
+5. `Lotus Block Forecast Profile` được tạo mới với 22 tham số versioned, cấp vườn hoặc lô, thời hạn hiệu lực, nguồn/căn cứ duyệt. Profile đã duyệt bất biến; profile mới không được chồng thời gian cùng vườn/lô. Không có Approved thì dự thu chỉ là **Unapproved Book2 scenario** và không cho tạo kế hoạch.
 6. Có kiểm tra `Crop Cycle.cycle_no`; nếu thiếu vụ thì trọng lượng 19/20 chỉ là giả định hiển thị và **không cho lập phiếu nháp**.
 7. `Bunch Operation` Submitted trổ/chích/cắt bắp hiển thị riêng làm số thực tế đã ghi nhận; KHÔNG nhân vào dự thu lần hai, không tự nhận thuộc một đợt nếu chưa có quan hệ nguồn xác thực.
 8. Phân bổ công việc theo ngày, 3 lần lặt hoa và 4 lần phun buồng, đo trái `thu-10` (cửa sổ đến `thu-7`), thu/cắt buồng. Phun lần 4 theo buồng đã cắt bắp, không theo toàn bộ cây.
