@@ -31,6 +31,11 @@ class CarePlanIntegrationGuards(unittest.TestCase):
         self.assertNotIn(".submit(", section)
         self.assertIn("lotus_forecast_sources", section)
         self.assertIn('if r["blocking_issue"]', section)
+        self.assertIn('material_codes = {"CV021"', code)
+        self.assertIn('approval_state":"Approved"', code)
+        self.assertIn('row["norm_profile"]', code)
+        self.assertIn('row["work_code"] == "CV021"', code)
+        self.assertIn("material_summary", code)
 
     def test_ui_has_manual_mapping_and_calendar_actions(self):
         ui = (ROOT / "frontend/src/CutForecastApp.vue").read_text(encoding="utf-8")
