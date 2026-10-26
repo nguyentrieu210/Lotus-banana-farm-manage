@@ -62,6 +62,16 @@ async function commitImport(){saving.value=true
  catch(e){error.value=e.message}finally{saving.value=false}}
 function formValue(field,kind){return kind==='rate'?pct(form.value[field]):form.value[field]}
 function setForm(field,kind,value){form.value={...form.value,[field]:value===''?'':kind==='rate'?Number(value)/100:Number(value)}}
+const book2Diffs=computed(()=>(data.value?.book2_reference?.comparisons||[]).filter(r=>r.changed))
+const book2Cols=[{field:'label',headerName:'Thông số',minWidth:260},{field:'approved',headerName:'Đang duyệt',minWidth:130},{field:'excel',headerName:'Excel mới',minWidth:130}]
+const book2ExtraCols=[{field:'code',headerName:'Mã thông số',minWidth:190},{field:'value',headerName:'Giá trị',minWidth:155,valueFormatter:p=>Array.isArray(p.value)?p.value.join(' / '):String(p.value??'')},{field:'unit',headerName:'Đơn vị',minWidth:120},{field:'status',headerName:'Mức tin cậy',minWidth:145},{field:'note',headerName:'Lưu ý khi dùng',minWidth:350}]
+function prepareBook2(){
+ const patch=data.value?.book2_reference?.profile_patch
+ if(!patch||!data.value?.can_edit)return
+ form.value={...form.value,...patch}
+ tab.value='params'
+ notice.value='Đã nạp giá trị Excel vào biểu mẫu CHƯA LƯU. Kiểm tra kỹ thông số giả định và bấm Lưu thành phiên bản mới nếu chấp thuận.'
+}
 async function saveProfile(){saving.value=true
  try{const r=await call('lotus_farm.cut_forecast.save_profile',{farm:farm.value,values:JSON.stringify(form.value),notes:formNote.value||null},true)
   notice.value='Đã lưu thông số phiên bản '+r.version+'. Dự thu đã tính lại.';await load()}
@@ -150,6 +160,19 @@ useNoticeToast(notice)
  </section>
 
  <template v-else>
+  <section v-if="data?.book2_reference" class="land-card">
+   <div class="land-card__head"><h3>Đối chiếu thông số Excel mới (26/10/2026)</h3>
+    <UiButton v-if="data?.can_edit" type="button" variant="outline" :disabled="saving" @click="prepareBook2">Nạp vào biểu mẫu (chưa lưu)</UiButton>
+   </div>
+   <p class="land-note"><b>Nguồn:</b> {{data.book2_reference.source_file}} · {{data.book2_reference.different_count}} thông số khác bản đang duyệt.</p>
+   <p class="land-note">{{data.book2_reference.warning}}</p>
+   <details v-if="book2Diffs.length" open><summary>Thông số cần xem lại ({{book2Diffs.length}})</summary>
+    <div class="land-table cutfc-table"><DataTable :rows="book2Diffs" :columns="book2Cols" row-key="field" storage-key="book2-forecast-diff"/></div>
+   </details>
+   <details><summary>Thông số Excel bổ sung chưa tự áp dụng ({{data.book2_reference.extras.length}})</summary>
+    <div class="land-table cutfc-table"><DataTable :rows="data.book2_reference.extras" :columns="book2ExtraCols" row-key="code" storage-key="book2-forecast-extra"/></div>
+   </details>
+  </section>
   <section class="land-card">
    <div class="land-card__head"><h3>Thông số dự thu <small v-if="data?.profile">· đang dùng phiên bản {{data.profile.version}} ({{data.profile.source==='Excel'?'từ file Excel':'sửa trên web'}}, {{vnDate(String(data.profile.approved_at||'').slice(0,10))}})</small></h3></div>
    <p class="land-note">Đợt cuối nhận phần cây còn lại, nên tổng 4 tỷ lệ phải bằng 100%. Lưu là tạo phiên bản mới; các phiên bản cũ được giữ lại để đối chiếu.</p>
