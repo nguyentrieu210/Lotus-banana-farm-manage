@@ -2,7 +2,7 @@
 
 The browser uploads a private File; read() sends the image (or the PDF's text) to the model, parses the JSON answer and
 matches supplier / items / units against Lotus masters. Nothing is saved: the form is only pre-filled for the user to check.
-The API key lives in site_config (groq_api_key), never in the repository.
+API keys live in site_config (groq_api_key, then groq_api_key_backup), never in the repository.
 """
 import base64
 import difflib
@@ -84,32 +84,48 @@ def _content(ext, data):
     return [{'type': 'text', 'text': PROMPT}, _image_part(max(images, key=len))]
 
 
+def _keys():
+    """Primary key first, then backups: groq_api_key, groq_api_key_backup, or a groq_api_keys list in site_config."""
+    keys = [frappe.conf.get('groq_api_key'), frappe.conf.get('groq_api_key_backup'), *(frappe.conf.get('groq_api_keys') or [])]
+    return [k for i, k in enumerate(keys) if k and k not in keys[:i]]
+
+
+def _call(key, body):
+    request = urllib.request.Request(API, data=body, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': 'lotus-farm'})
+    # Connection resets / TLS EOF happen now and then on the farm uplink: retry twice before giving up on this key.
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=90) as response:
+                return json.load(response)['choices'][0]['message']['content'] or ''
+        except urllib.error.HTTPError:
+            raise
+        except (urllib.error.URLError, ConnectionError, TimeoutError):
+            if attempt == 2:
+                raise
+            time.sleep(1.5 * (attempt + 1))
+
+
 def _ask(content):
-    key = frappe.conf.get('groq_api_key')
-    if not key:
+    keys = _keys()
+    if not keys:
         frappe.throw('Chưa cấu hình khóa AI trên máy chủ (groq_api_key).')
     body = json.dumps({'model': MODEL, 'messages': [{'role': 'user', 'content': content}], 'temperature': 0, 'max_tokens': 3000}).encode()
-    request = urllib.request.Request(API, data=body, headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'User-Agent': 'lotus-farm'})
-    try:
-        # Connection resets / TLS EOF happen now and then on the farm uplink: retry twice before giving up.
-        for attempt in range(3):
-            try:
-                with urllib.request.urlopen(request, timeout=90) as response:
-                    answer = json.load(response)['choices'][0]['message']['content'] or ''
-                break
-            except urllib.error.HTTPError:
-                raise
-            except (urllib.error.URLError, ConnectionError, TimeoutError):
-                if attempt == 2:
-                    raise
-                time.sleep(1.5 * (attempt + 1))
-    except urllib.error.HTTPError as exc:
-        status = exc.code
-        frappe.log_error(title='Lotus document AI', message=f'HTTP {status}: {exc.read()[:500]!r}')
-        frappe.throw('AI đang quá tải, thử lại sau ít phút.' if status == 429 else f'AI không đọc được chứng từ (lỗi {status}).')
-    except Exception:
-        frappe.log_error(title='Lotus document AI')
-        frappe.throw('Không kết nối được dịch vụ AI; thử lại sau.')
+    status = None
+    # Fall back to the next key when one is rate-limited, rejected, or the provider/network fails for it.
+    for index, key in enumerate(keys):
+        try:
+            answer = _call(key, body)
+            break
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            frappe.log_error(title='Lotus document AI', message=f'Key {index + 1}/{len(keys)} HTTP {status}: {exc.read()[:500]!r}')
+            if status not in (401, 403, 408, 429) and status < 500:
+                frappe.throw(f'AI không đọc được chứng từ (lỗi {status}).')
+        except Exception:
+            status = None
+            frappe.log_error(title='Lotus document AI', message=f'Key {index + 1}/{len(keys)}: {frappe.get_traceback()}')
+    else:
+        frappe.throw('AI đang quá tải, thử lại sau ít phút.' if status == 429 else 'Không kết nối được dịch vụ AI; thử lại sau.')
     answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.S)
     start, end = answer.find('{'), answer.rfind('}')
     try:
