@@ -468,7 +468,7 @@ onBeforeUnmount(()=>{
 </script>
 
 <template>
- <LotusMobileShell app="work" :refresh="refreshCurrentScreen" :refreshable="tabs.includes(screen)" class="lotus-mobile lotus-work" :class="{'mobile-keyboard-open':keyboard}"
+ <LotusMobileShell app="work" :user="session?.user||''" :refresh="refreshCurrentScreen" :refreshable="tabs.includes(screen)" class="lotus-mobile lotus-work" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="rootTab"
   :back="!tabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="changeTab" 
