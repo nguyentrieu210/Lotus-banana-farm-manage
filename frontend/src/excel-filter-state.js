@@ -29,6 +29,17 @@ export function excelAppliedValues(choices,selected){
  return choices.length>0&&values.length===choices.length?null:values
 }
 
+// Value list order: numbers by value, text in Vietnamese order (A2 before A10), blanks last.
+const collator=new Intl.Collator('vi',{numeric:true,sensitivity:'base'})
+const blank=value=>value===null||value===undefined||value===''
+export function sortExcelChoices(choices){
+ return [...choices].sort((a,b)=>{
+  if(blank(a.value)||blank(b.value))return blank(a.value)-blank(b.value)
+  if(typeof a.value==='number'&&typeof b.value==='number')return a.value-b.value
+  return collator.compare(String(a.label??a.value),String(b.label??b.value))
+ })
+}
+
 // Anchor the popup to the RIGHT of the clicked filter; remain inside the viewport.
 export function excelPopupLeft(triggerRight, popupWidth, viewportWidth){
  return Math.max(8,Math.min(triggerRight+8,viewportWidth-popupWidth-8))

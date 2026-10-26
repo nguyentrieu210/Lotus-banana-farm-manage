@@ -30,3 +30,9 @@ test('numeric codes shown as words are not summed',()=>{
  assert.equal(summableColumn({field:'qty',headerName:'Số lượng',valueFormatter:p=>p.value+' kg'},[{qty:1},{qty:2}],raw),true,'formatted amounts still add up')
  assert.equal(summableColumn({field:'v',headerName:'Giá trị nhập',valueFormatter:p=>p.value?p.value.toLocaleString('vi-VN'):''},[{v:0},{v:1600000}],raw),true,'a blank zero does not hide the column')
 })
+
+test('filter value lists are sorted like Excel: numbers by value, natural text order, blanks last',async()=>{
+ const {sortExcelChoices}=await import('../src/excel-filter-state.js')
+ assert.deepEqual(sortExcelChoices([{value:'A10'},{value:null},{value:'A2'},{value:'Ă1'}]).map(r=>r.value),['A2','A10','Ă1',null])
+ assert.deepEqual(sortExcelChoices([{value:10},{value:2},{value:''}]).map(r=>r.value),[2,10,''])
+})
