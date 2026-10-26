@@ -1,0 +1,1 @@
+import{Ft as e,Wn as t,on as n,rn as r}from"./use-confirm-core-C4lVY42G.js";var i={__name:`FormGrid`,props:{columns:{type:[Number,String],default:2}},setup(i){return(a,o)=>(r(),e(`div`,{class:`lotus-form-grid`,style:t({"--lotus-form-columns":i.columns})},[n(a.$slots,`default`)],4))}};export{i as t};
