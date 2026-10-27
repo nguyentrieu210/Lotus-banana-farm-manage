@@ -21,8 +21,8 @@ test('nút mẫu phải có cảnh báo, không cho phát hành phiếu dự thu
  assert.match(src,/ĐANG XEM DỮ LIỆU MẪU/)
  assert.match(src,/demoMode/)
  assert.match(src,/sampleForecastCalendar/)
- assert.match(app,/v-if="!demoView" class="forecast-legacy"/)
- assert.match(app,/@demo-changed="demoView=\$event"/)
+ assert.doesNotMatch(app,/<ForecastPlanner|forecast-legacy/)
+ assert.doesNotMatch(app,/@demo-changed/)
 })
 test('tệp nhập ngày trồng chỉ xuất dữ liệu, không tự cập nhật',()=>{
  const server=read('../../lotus_farm/forecast_setup.py')

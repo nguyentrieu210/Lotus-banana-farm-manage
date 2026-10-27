@@ -169,9 +169,8 @@ def _work(doc, begin, end):
 
 
 def _yield(doc, begin, end):
-    forecasts = _list('Harvest Forecast', {'farm_block': doc.name}, ['name', 'period_start_date', 'period_end_date', 'expected_harvest_bunch_qty',
-                                                                      'saleable_forecast_kg', 'packed_forecast_kg', 'supply_state', 'confidence'],
-                      order_by='period_start_date desc')
+    from lotus_farm.block_forecast import board
+    forecasts = board(farm=doc.farm, block=doc.name)['months']
     harvests = _list('Harvest Actual', {'farm_block': doc.name, 'harvest_date': ['between', [begin, end]], 'docstatus': 1},
                      ['harvest_date', 'harvested_bunch_qty', 'gross_weight_kg', 'saleable_weight_kg', 'rejected_weight_kg'], order_by='harvest_date desc')
     cancels = _list('Bunch Cancellation', {'farm_block': doc.name, 'posting_date': ['between', [begin, end]], 'docstatus': 1}, ['reason', 'bunch_qty'])
@@ -182,7 +181,7 @@ def _yield(doc, begin, end):
     measures = _list('Fruit Measurement', {'farm_block': doc.name, 'docstatus': 1}, ['posting_date', 'sample_count', 'average_length', 'average_diameter', 'uom'],
                      order_by='posting_date desc')
     total = lambda rows, f: round(sum(flt(r.get(f)) for r in rows or []), 2)
-    return dict(forecasts=(forecasts or [])[:8] if forecasts is not None else None,
+    return dict(forecasts=forecasts,
                 harvest=dict(rows=(harvests or [])[:30], bunches=int(total(harvests, 'harvested_bunch_qty')), gross_kg=total(harvests, 'gross_weight_kg'),
                              saleable_kg=total(harvests, 'saleable_weight_kg')) if harvests is not None else None,
                 cancellations=[dict(reason=labels.get(k, k), bunches=v) for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])] if cancels is not None else None,

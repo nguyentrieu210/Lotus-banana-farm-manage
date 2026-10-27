@@ -26,7 +26,9 @@ class FarmLandRules(unittest.TestCase):
     def test_gaps_name_what_is_missing(self):
         self.assertEqual(fl.gaps(lot(), has_map=False), ['trees', 'variety', 'map', 'planting'])
         complete = lot(lotus_tree_count=10, variety='VIP 126', lotus_inferred_planting_date='2026-01-01')
-        self.assertEqual(fl.gaps(complete, has_map=True), [], 'an inferred planting date counts as known')
+        self.assertEqual(fl.gaps(complete, has_map=True), ['planting'], 'an inferred date is not an observed planting date')
+        complete['planting_date'] = '2026-01-01'
+        self.assertEqual(fl.gaps(complete, has_map=True), [])
 
     def test_density_bands_for_the_map(self):
         self.assertEqual([fl.density_band(v) for v in (None, 1200, 1500, 2000, 2500)], [None, 0, 1, 2, 4])

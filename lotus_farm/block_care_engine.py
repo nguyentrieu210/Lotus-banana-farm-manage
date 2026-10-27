@@ -44,12 +44,15 @@ def work_events(daily_rows,start,end):
                     note=note,sources=[],crop_cycle=wave.get("crop_cycle"),cohort=wave.get("cohort"),
                     parameter_status=wave.get("parameter_status"),count_status=wave.get("count_status"),
                     profile=wave.get("profile"),source_details=[])
+                grouped[key]['farm_block_label']=wave.get('farm_block_label') or wave['farm_block']
             event=grouped[key]
             event["planned_qty"]+=qty
             event["sources"].append(wave["key"])
             event["source_details"].append(dict(key=wave["key"],quantity=qty,
                 crop_cycle=wave.get("crop_cycle"),cohort=wave.get("cohort"),
-                profile=wave.get("profile"),source_version=wave.get("source_version")))
+                profile=wave.get("profile"),source_version=wave.get("source_version"),
+                projected_cycle_no=wave.get('cycle_no'),generation=wave.get('generation',0),
+                source_crop_cycle=wave.get('source_crop_cycle'),source_cohort=wave.get('source_cohort')))
             if event["parameter_status"]!=wave.get("parameter_status"):event["parameter_status"]="Mixed"
             if event["count_status"]!=wave.get("count_status"):event["count_status"]="Mixed"
             if event["profile"]!=wave.get("profile"):event["profile"]=None

@@ -134,8 +134,11 @@ function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterA
  </div>
 </template>
 <style>
+.lotus-data-table{min-width:0}
+/* AG Grid owns the sole vertical scroll area. Its header and pinned total stay visible. */
+.lotus-ag-grid-shell--scroll{overflow:hidden}
 .lotus-ag-grid-shell--detail .ag-row:not(.ag-row-pinned){cursor:pointer}
-.lotus-ag-grid .ag-floating-bottom .ag-row{font-weight:650;background:var(--lotus-soft)}
+.lotus-ag-grid :is(.ag-grid-pinned-bottom-rows,.ag-floating-bottom) .ag-row{font-weight:650;background:var(--lotus-soft)}
 .lotus-row-detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px 20px;margin:0}
 .lotus-row-detail>div{min-width:0}
 .lotus-row-detail dt{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}

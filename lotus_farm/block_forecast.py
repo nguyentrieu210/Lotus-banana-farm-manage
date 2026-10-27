@@ -9,7 +9,7 @@ import hashlib
 import json
 from collections import defaultdict
 import frappe
-from lotus_farm.block_forecast_engine import forecast, date
+from lotus_farm.block_forecast_engine import forecast, date, source_rows, projection_config
 from lotus_farm.block_care_engine import work_events as _work_events
 from lotus_farm.forecast_parameters import DEFAULTS, validate
 from lotus_farm import plan_book2_reference as book2
@@ -77,26 +77,50 @@ def _observations(farm,block=None):
         order_by="operation_date desc",limit_page_length=1000)
     return records
 
+
+def _projection(farm,zone=None,block=None,include_daily=False):
+    """All readers use the same farm-wide 36-month window and lot source."""
+    all_blocks,all_cohorts=_sources(farm)
+    profiles=_profiles(farm)
+    all_sources,_=source_rows(all_blocks,all_cohorts)
+    anchors=[projection_config(s,profiles)[2] for s in all_sources]
+    start=min(anchors).replace(day=1) if anchors else None
+    blocks=[b for b in all_blocks if (not zone or b.farm_zone==zone) and (not block or b.name==block)]
+    names={b.name for b in blocks}
+    cohorts=[c for c in all_cohorts if c.farm_block in names]
+    result=forecast(blocks,cohorts,profiles=profiles,from_date=start,horizon_months=36,include_daily=include_daily)
+    labels={b.name:(b.block_name or b.block_code or b.name) for b in blocks}
+    varieties={v.name:v.variety_name or v.name for v in frappe.get_all('Banana Variety',fields=['name','variety_name'])}
+    by_name={b.name:b for b in blocks}
+    for row in result['rows']+result.get('daily_rows',[]):
+        row['farm_block_label']=labels.get(row['farm_block'],row['farm_block'])
+        row['variety_label']=varieties.get(by_name[row['farm_block']].variety,by_name[row['farm_block']].variety or '')
+    result['warnings']=[next((w.replace(name,label,1) for name,label in labels.items() if w.startswith(name+':')),w) for w in result['warnings']]
+    result['input_tree_count']=sum(int(b.get('lotus_tree_count') or 0) for b in blocks)
+    result['input_block_count']=len(blocks)
+    result['zones']=sorted({b.farm_zone for b in all_blocks if b.farm_zone})
+    return result,blocks,cohorts,profiles
+
 @frappe.whitelist()
 def board(farm=None,zone=None,block=None):
     farms=frappe.get_list("Farm",fields=["name","farm_name"],limit_page_length=0)
     chosen=farm or (farms[0].name if farms else None)
     if not chosen:
         return dict(farms=[],farm=None,rows=[],months=[],warnings=["Không có vườn được cấp quyền."])
-    blocks,cohorts=_sources(chosen,zone,block)
-    profiles=_profiles(chosen)
-    result=forecast(blocks,cohorts,profiles=profiles)
+    result,blocks,cohorts,profiles=_projection(chosen,zone,block)
     actuals=_observations(chosen,block=block)
+    block_labels={b.name:b.block_name or b.block_code or b.name for b in blocks}
+    for item in actuals:item['farm_block_label']=block_labels.get(item.farm_block,item.farm_block)
     if zone:
         selected_blocks={b.name for b in blocks}
         actuals=[a for a in actuals if a.farm_block in selected_blocks]
-    all_zones=frappe.get_list("Farm Block",filters={"farm":chosen,"active":1},
-                              fields=["farm_zone"],limit_page_length=0)
-    zones=sorted({b.farm_zone for b in all_zones if b.farm_zone})
+    zones=result['zones']
     return dict(farms=farms,farm=chosen,zone=zone or "",block=block or "",
         zone_list=zones,blocks=blocks,cohorts=cohorts,rows=result["rows"],
         months=result["monthly"],warnings=result["warnings"],
         source_count=result["source_count"], rule=result["rule"],
+        input_tree_count=result['input_tree_count'],input_block_count=result['input_block_count'],
+        horizon_months=36,window_start=result['window_start'],window_end=result['window_end'],
         actuals=actuals,
         profiles=[dict(name=p.name,version=p.version,farm_block=p.farm_block,
                        valid_from=p.valid_from,valid_to=p.valid_to,
@@ -106,12 +130,17 @@ def board(farm=None,zone=None,block=None):
         params=dict(validate(DEFAULTS),work_reference=book2.SOURCE))
 
 
+def sync_block_dates(doc,method=None):
+    """Select the successor at this crop's flowering, not 94 days before."""
+    if doc.meta.has_field('lotus_estimated_sucker_selection_date'):
+        doc.lotus_estimated_sucker_selection_date=doc.get('lotus_estimated_flowering_date') or None
+
+
 def _preview(farm,from_date,to_date,block=None):
     first,last=date(from_date),date(to_date)
     if last<first or (last-first).days>45:
         frappe.throw("Chỉ xem tối đa 46 ngày.")
-    blocks,cohorts=_sources(farm,block=block)
-    projected=forecast(blocks,cohorts,profiles=_profiles(farm),include_daily=True)
+    projected,blocks,cohorts,profiles=_projection(farm,block=block,include_daily=True)
     events=_work_events(projected["daily_rows"],first,last)
     works=frappe.get_list("Work Type",
         fields=["name","work_code","work_name","uom","active","allow_daywork",
@@ -179,7 +208,8 @@ def _preview(farm,from_date,to_date,block=None):
         works=[(w.name,str(w.modified),w.uom,w.allow_daywork,w.productivity_per_workday) for w in works],
         events=[(e["schedule_key"],e["planned_qty"],e["work_type"],e["norm_profile"],e["norm_version"],e["blocking_issue"]) for e in events])
     fingerprint=hashlib.sha256(json.dumps(snapshot,sort_keys=True,default=str).encode()).hexdigest()
-    return dict(rows=events,materials=[dict(date=k[0],farm_block=k[1],item=k[2],
+    block_labels={b.name:b.block_name or b.block_code or b.name for b in blocks}
+    return dict(rows=events,materials=[dict(date=k[0],farm_block=k[1],farm_block_label=block_labels.get(k[1],k[1]),item=k[2],
         uom=k[3],quantity=round(v,5)) for k,v in sorted(materials.items())],
         warnings=projected["warnings"],fingerprint=fingerprint,
         ready_count=sum(not e["blocking_issue"] for e in events),

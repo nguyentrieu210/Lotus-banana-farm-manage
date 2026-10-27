@@ -24,8 +24,7 @@ test('Không biến số cây trong ảnh thành mật độ trồng hoặc tr�
 test('Giao diện gọi API có kiểm tra quyền, hiển thị chờ xác nhận',()=>{
  const app=read('frontend/src/App.vue')
  const ui=read('frontend/src/components/LotusImportPreview.vue')
- assert.match(app,/import\('\.\/components\/LotusImportPreview\.vue'\)/)
- assert.match(app,/<LotusImportPreview /)
+ assert.doesNotMatch(app,/LotusImportPreview/)
  assert.match(ui,/lotus_farm\.forecast_import_preview\.preview/)
  assert.match(ui,/ƯỚC TÍNH KHU A/)
  assert.match(ui,/Chưa xác nhận/)

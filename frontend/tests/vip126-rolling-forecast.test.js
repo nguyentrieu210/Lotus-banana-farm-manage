@@ -22,7 +22,7 @@ test('rolling model is read-only, override forecast only',()=>{
  assert.match(code,/commit_ready":False/)
  assert.doesNotMatch(code,/\.save\(|\.insert\(|set_value\(|\.db\.sql\(/)
  const app=read('frontend/src/App.vue')
- assert.match(app,/Vip126RollingForecast/)
+ assert.doesNotMatch(app,/Vip126RollingForecast/)
 })
 test('census import stores dated estimates apart from observed planting',()=>{
  const src=read('lotus_farm/vip126_live.py')

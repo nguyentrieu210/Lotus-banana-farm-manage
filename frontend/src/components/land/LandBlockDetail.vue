@@ -64,7 +64,7 @@ const plotsCols=[dcol('plot_code','Mã thửa'),dcol('plot_name','Tên'),dnum('a
 const worksCols=[dcol('work','Công việc'),dcol('qty','Khối lượng',(v,r)=>num(v,2)+' '+(r.uom||'')),dnum('workdays','Công',2),dnum('days','Số ngày'),ddate('last','Gần nhất')]
 const teamsCols=[dcol('team','Đội'),dcol('workdays','Tổng công',v=>num(v,2)+' công')]
 const materialsCols=[dcol('item_name','Vật tư',(_,r)=>r.item_name+' · '+r.uom),dnum('required','Định mức',2),dnum('consumed','Đã dùng',2),dcol('variance','Chênh',(_,r)=>r.required?num(r.consumed-r.required,2):'—')]
-const forecastCols=[dcol('period_start_date','Kỳ',(_,r)=>vnDate(r.period_start_date)+' – '+vnDate(r.period_end_date)),dnum('expected_harvest_bunch_qty','Buồng'),dnum('saleable_forecast_kg','Đạt bán (kg)'),dcol('supply_state','Trạng thái')]
+const forecastCols=[dcol('month','Tháng thu'),dnum('bunches','Buồng dự kiến'),dnum('packed_kg','Thành phẩm (kg)')]
 const cancelledCols=[dcol('reason','Nguyên nhân'),dcol('bunches','Số buồng',v=>num(v)+' buồng')]
 const measuredCols=[ddate('posting_date','Ngày'),dnum('sample_count','Mẫu'),dcol('average_length','Dài TB',(v,r)=>num(v,1)+' '+unitLabel(r.uom)),dnum('average_diameter','Đường kính TB',1)]
 const diseaseCols=[dcol('disease','Bệnh'),dnum('observations','Lần'),dnum('plants','Cây bị'),dcol('severity','Mức gần nhất'),ddate('last','Gần nhất')]
@@ -131,7 +131,7 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
     <p v-if="!section.yield.harvest.rows.length" class="land-empty">Chưa có lượt thu hoạch đã duyệt.</p></template>
    <p v-else class="land-empty">Bạn chưa có quyền xem thu hoạch.</p></div>
   <div class="land-card"><h3>Dự thu</h3>
-   <DataTable v-if="section.yield.forecasts?.length" :rows="section.yield.forecasts" :columns="forecastCols" row-key="name" storage-key="lot-forecast"/>
+   <DataTable v-if="section.yield.forecasts?.length" :rows="section.yield.forecasts" :columns="forecastCols" row-key="month" storage-key="lot-forecast-36"/>
    <p v-else class="land-empty">Chưa có dự thu cho lô.</p></div>
   <div class="land-card"><header class="land-card__head"><h3>Hủy buồng theo nguyên nhân</h3><UiButton variant="link" size="sm" @click="go('losses')">Hủy & tổn thất ↗</UiButton></header>
    <DataTable v-if="section.yield.cancellations?.length" :rows="section.yield.cancellations" :columns="cancelledCols" row-key="reason" storage-key="lot-cancellations"/>

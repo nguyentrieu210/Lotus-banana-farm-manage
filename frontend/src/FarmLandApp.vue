@@ -29,13 +29,13 @@ const farm=computed(()=>String(route.query.farm||''))
 const block=computed(()=>String(route.query.block||''))
 const num=(v,d=0)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d})
 const vnDate=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):''
-const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['plots','Thửa'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi dự kiến']]
+const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['plots','Thửa'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi vụ sau']]
 const zones=computed(()=>[...new Set((data.value?.blocks||[]).map(b=>b.farm_zone).filter(Boolean))].sort())
 const rows=computed(()=>{
  const needle=search.value.trim().toLowerCase(),[key,dir]=sort.value
  return (data.value?.blocks||[]).filter(b=>(!zone.value||b.farm_zone===zone.value)&&(!variety.value||(variety.value==='-'?!b.variety:b.variety===variety.value))
   &&(!gap.value||b.gaps.includes(gap.value))&&(!needle||[b.block_code,b.block_name,b.farm_zone,b.variety_label].join(' ').toLowerCase().includes(needle)))
-  .slice().sort((a,b)=>{const x=key==='planting'?(a.planting_date||a.lotus_inferred_planting_date):a[key],y=key==='planting'?(b.planting_date||b.lotus_inferred_planting_date):b[key]
+  .slice().sort((a,b)=>{const x=key==='planting'?(a.planting_date):a[key],y=key==='planting'?(b.planting_date):b[key]
    if(x==null||x==='')return 1;if(y==null||y==='')return -1;return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'vi',{numeric:true}))*dir})
 })
 const shownTotals=computed(()=>({area:rows.value.reduce((s,b)=>s+Number(b.area_ha||0),0),trees:rows.value.reduce((s,b)=>s+Number(b.lotus_tree_count||0),0)}))
@@ -56,7 +56,7 @@ function togglePickAll(){const next=new Set(picked.value);for(const b of visible
 // The grid works on stable Farm Block IDs; a sort or Excel-column filter never changes the target of an edit.
 const gridRows=computed(()=>rows.value.map(b=>({...b,
  __picked:picked.value.has(b.name),
- planting:b.planting_date||b.lotus_inferred_planting_date||'',
+ planting:b.planting_date||'',
  gaps_label:(b.gaps||[]).map(g=>data.value?.gap_labels?.[g]?.replace('Chưa có ','')||g).join(', ')
 })))
 function renderLandPick(params){
@@ -76,7 +76,7 @@ const gridColumns=computed(()=>[
    const b=p.data||{},v=p.value
    if(['area_ha'].includes(field))return num(v,2)
    if(['lotus_tree_count','density','plots'].includes(field))return num(v)
-   if(field==='planting')return v?vnDate(v)+(b.planting_date?'':'*'):'—'
+   if(field==='planting')return v?vnDate(v):'—'
    if(field==='lotus_estimated_flowering_date'||field==='lotus_estimated_sucker_selection_date')return vnDate(v)||'—'
    if(field==='block_code')return (v||'—')+(!farm.value&&b.farm?' · '+b.farm:'')
    return v||'—'
@@ -130,15 +130,15 @@ useNoticeToast(notice)
   <p v-if="error" class="stock-error" role="alert">{{error}}</p>
 
   <div v-if="s" class="land-stats">
-   <div><span>Diện tích</span><strong>{{num(s.area_ha,1)}} ha</strong><small>{{s.blocks}} lô · {{s.plots}} thửa</small></div>
-   <div><span>Số cây gốc đã chốt</span><strong>{{num(s.trees)}}</strong><small>có số cây {{s.counted_blocks}}/{{s.blocks}} lô · {{num(s.counted_area_ha,1)}} ha</small></div>
-   <div><span>Mật độ bình quân</span><strong>{{s.trees_per_ha?num(s.trees_per_ha)+' cây/ha':'—'}}</strong><small>chỉ tính trên lô đã đếm</small></div>
+   <div><span>Diện tích</span><strong>{{num(s.area_ha,2)}} ha</strong><small>{{s.blocks}} lô · {{s.plots}} thửa</small></div>
+   <div><span>Số cây gốc đã chốt</span><strong>{{num(s.trees)}}</strong><small>có số cây {{s.counted_blocks}}/{{s.blocks}} lô · {{num(s.counted_area_ha,2)}} ha</small></div>
+   <div><span>Mật độ bình quân</span><strong>{{s.trees_per_ha?num(s.trees_per_ha)+' cây/ha':'—'}}</strong><small>trên lô có số cây gốc đã chốt</small></div>
    <button type="button" class="land-gaps" @click="gap=gap?'':'trees'"><span>Lô thiếu dữ liệu</span><strong>{{s.gaps.trees}}</strong><small>chưa có số cây · {{s.gaps.variety}} chưa có giống · {{s.gaps.planting}} chưa có ngày trồng · {{s.gaps.map}} chưa có ranh</small></button>
   </div>
 
   <section v-if="data?.zones?.length&&view==='list'" class="land-zones" aria-label="Theo khu">
    <button v-for="z in data.zones" :key="z.zone" type="button" class="land-zone" :class="{on:zone===z.zone}" :style="{'--zone':'var(--lotus-map-zone-'+String(z.zone).toLowerCase()+')'}" @click="zone=zone===z.zone?'':z.zone">
-    <b>Khu {{z.zone}}</b><span>{{z.blocks}} lô · {{num(z.area_ha,1)}} ha</span><small>{{z.trees?num(z.trees)+' cây · '+num(z.trees_per_ha)+'/ha':'chưa có số cây'}}</small>
+    <b>Khu {{z.zone}}</b><span>{{z.blocks}} lô · {{num(z.area_ha,2)}} ha</span><small>{{z.trees?num(z.trees)+' cây · '+num(z.trees_per_ha)+'/ha':'chưa có số cây'}}</small>
    </button>
   </section>
 
@@ -158,7 +158,6 @@ useNoticeToast(notice)
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>
-   <p class="land-note">* Ngày trồng suy ngược từ ngày trổ dự kiến, không phải ngày trồng thực tế. Bấm vào một lô để xem chi tiết.</p>
   </template>
 
   <section v-else class="land-map">
