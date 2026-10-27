@@ -13,7 +13,7 @@ import frappe
 from frappe.utils import getdate, nowdate
 from lotus_farm.forecast_import_preview import _private_rows, FARM, SOURCE, SOURCE_SHA256
 
-VARIETY = "VIP 126"
+VARIETY = "TALL-WILLIAM"
 OLD_CYCLE = "CYCLE-00001"
 OLD_BLOCK_CODE = "A13"
 OLD_BLOCK_ID = "cihuaei26t"
@@ -143,7 +143,7 @@ def import_census():
             frappe.throw("Lệch diện tích lô "+row["code"]+", dừng toàn bộ.")
     if not frappe.db.exists("Banana Variety", VARIETY):
         frappe.get_doc(dict(doctype="Banana Variety",
-            variety_code=VARIETY, variety_name="VIP 126", active=1,
+            variety_code=VARIETY, variety_name="Tall William", active=1,
             notes="Giống do người quản lý xác nhận 18/10/2026.")).insert(ignore_permissions=True)
     new_fields = _install_fields()
     changed = 0

@@ -41,6 +41,7 @@ permission_query_conditions = {
 has_permission["Work Daily Journal"] = "lotus_farm.work_journal.permission"
 permission_query_conditions["Work Daily Journal"] = "lotus_farm.work_journal.journal_query"
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
+doc_events['Farm Block']['before_validate']='lotus_farm.block_forecast.sync_block_dates'
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
 doc_events["Sales Order"] = {"before_cancel": "lotus_farm.allocations.sales_order_cancel"}
 doc_events["Stock Entry"] = {

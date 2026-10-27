@@ -11,6 +11,7 @@ EDITABLE = (
     ('variety', 'Giống', 'text'), ('planting_date', 'Ngày trồng', 'date'), ('planting_density', 'Mật độ trồng (cây/ha)', 'float'),
     ('irrigation_zone', 'Khu tưới', 'text'), ('lotus_tree_count', 'Số cây gốc đã chốt', 'int'),
     ('lotus_tree_count_source', 'Nguồn số cây', 'text'), ('active', 'Đang dùng (1/0)', 'int'), ('notes', 'Ghi chú', 'text'),
+    ('lotus_estimated_flowering_date', 'Trổ dự kiến / chọn chồi vụ sau', 'date'),
 )
 FIELD_LABELS = {f: label for f, label, _ in EDITABLE}
 GAPS = {'trees': 'Chưa có số cây', 'variety': 'Chưa có giống', 'map': 'Chưa có ranh giới', 'planting': 'Chưa có ngày trồng'}
@@ -39,7 +40,7 @@ def gaps(block, has_map):
         found.append('variety')
     if not has_map:
         found.append('map')
-    if not (block.get('planting_date') or block.get('lotus_inferred_planting_date')):
+    if not block.get('planting_date'):
         found.append('planting')
     return found
 

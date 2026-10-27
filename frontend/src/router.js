@@ -23,7 +23,7 @@ export function permittedRoute(path,session,query={}){
 }
 export function routeScope(route){const q={...route.query};for(const key of ['farm','block','plot','cycle'])if(route.params?.[key])q[key]=String(route.params[key]);return q}
 export function createLotusRouter({history=createWebHistory('/lotus')}={}){
- const routes=[{path:'/',redirect:'/mobile'},{path:'/mobile',name:'mobile',component:placeholder,beforeEnter:()=>useSession().capabilities.home?{path:'/reports'}:true},{path:'/today',redirect:to=>({path:'/reports',query:to.query})},{path:'/giao-viec',redirect:to=>({path:'/cong-viec',query:{...to.query,action:'assign'}})},...pageRoutes(placeholder),
+ const routes=[{path:'/',redirect:'/mobile'},{path:'/mobile',name:'mobile',component:placeholder,beforeEnter:()=>useSession().capabilities.home?{path:'/reports'}:true},{path:'/today',redirect:to=>({path:'/reports',query:to.query})},{path:'/giao-viec',redirect:to=>({path:'/cong-viec',query:{...to.query,action:'assign'}})},{path:'/forecast-onedrive',redirect:to=>({path:'/forecast',query:to.query})},...pageRoutes(placeholder),
  ...[['farm','farms'],['block','blocks']].map(([name,path])=>({path:'/'+path+'/:'+name,alias:'/'+name+'/:'+name,redirect:to=>({path:'/farms',query:{...to.query,[name]:to.params[name]}})})),
  ...[['plot','plots'],['cycle','cycles']].map(([name,path])=>({path:'/'+path+'/:'+name,name,alias:'/'+name+'/:'+name,component:placeholder})),
  {path:'/denied',name:'denied',component:placeholder},{path:'/:pathMatch(.*)*',redirect:'/denied'}]

@@ -80,66 +80,10 @@ def _ensure_sucker_estimate_field():
 
 
 def apply_zone_estimates():
-    """Apply verified A-D schedule to custom estimate columns, idempotently.
-
-    Protect existing actual dates and nontrial manual estimates. E untouched.
-    No actual Planting Event / Crop Cycle / Harvest Actual is created.
-    """
-    docs = _check_inventory()
-    created_field = _ensure_sucker_estimate_field()
-    target = [code for code in docs if code[:1] in CONFIRMED_SEQUENCE]
-    proposed = []
-    protected = []
-    for code in sorted(target):
-        doc = frappe.get_doc("Farm Block", docs[code].name)
-        if doc.variety != VARIETY:
-            frappe.throw("Lô " + code + " không còn là giống VIP 126.")
-        plan = planned_dates(code[:1])
-        existing = str(doc.get("lotus_inferred_planting_date") or "")
-        expected = plan["planting_estimate"]
-        basis = str(doc.get("lotus_estimation_basis") or "")
-        if existing and existing != expected and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
-            protected.append(code)
-            continue
-        selected = str(doc.get("lotus_estimated_sucker_selection_date") or "")
-        if selected and selected != plan["sucker_selection_estimate"] and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
-            protected.append(code)
-            continue
-        flowering = str(doc.get("lotus_estimated_flowering_date") or "")
-        if flowering and flowering != plan["flowering_estimate"] and not any(tag in basis for tag in (REVISION_TAG, LEGACY_REVISION_TAG)):
-            protected.append(code)
-            continue
-        proposed.append((doc, plan))
-    if protected:
-        return {"status": "blocked", "conflicts": protected,
-                "reason": "Các lô có ước tính thủ công khác lịch mới; chưa ghi đè."}
-    touched, changed = 0, 0
-    for doc, plan in proposed:
-        updated = {
-            "lotus_inferred_planting_date": plan["planting_estimate"],
-            "lotus_estimated_flowering_date": plan["flowering_estimate"],
-            "lotus_estimated_sucker_selection_date": plan["sucker_selection_estimate"],
-            "lotus_estimation_basis": REVISION_TAG + " | " + ZONE_REASON
-                + " | Khu " + plan["zone"] + ": chênh " +
-                str(plan["planting_month_offset"]) + " tháng so với A.",
-        }
-        if any(str(doc.get(k) or "") != str(v) for k,v in updated.items()):
-            for k,v in updated.items():
-                if str(doc.get(k) or "") != str(v):
-                    doc.set(k,v)
-                    changed += 1
-            doc.save(ignore_permissions=True)
-            touched += 1
-    frappe.db.commit()
-    return {"status":"applied_estimated_only", "farm": FARM, "variety": VARIETY,
-        "lots_in_plan": len(proposed), "touched_lots": touched,
-        "changed_values":changed, "created_sucker_date_field":created_field, "zones": [
-            planned_dates(z) for z in CONFIRMED_SEQUENCE],
-        "pending_zone": PENDING_ZONE, "unchanged_planting_date": True,
-        "source": REVISION_TAG}
+    """Retired: the shared Farm Block forecast owns all estimated dates."""
+    frappe.throw("Công cụ lịch khu cũ đã ngừng. Sửa mốc trổ tại Vườn & lô; dự thu dùng chung mô hình 36 tháng.")
 
 
-@frappe.whitelist()
 def status(farm=None, zone=None, block=None):
     if not frappe.has_permission("Farm Block", "read") or not frappe.has_permission(
         "Harvest Forecast", "read"

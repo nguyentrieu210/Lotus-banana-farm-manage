@@ -16,13 +16,13 @@ test('lô có thể khai ngày trồng mà chưa phải tạo hồ sơ vụ',()=
  assert.equal(doc.fields.find(x=>x.fieldname==='planting_date')?.fieldtype,'Date')
  assert.match(read('lotus_farm/forecast_calendar.py'),/block_row\.planting_date/)
 })
-test('màn chính lấy kế hoạch 36 tháng, không thay phiếu dự thu gốc',()=>{
- const app=read('frontend/src/App.vue')
- assert.match(app,/lotus_farm\.forecast_calendar\.calendar/)
- assert.match(app,/<ForecastPlanner/)
- assert.match(app,/class="forecast-legacy"/)
- assert.match(app,/lotus_farm\.forecast_workspace\.board/)
+test('màn chính chỉ dùng nguồn dự thu lô 36 tháng',()=>{
+ const app=read('frontend/src/App.vue'), ui=read('frontend/src/BlockForecastApp.vue')
+ assert.match(app,/import\('\.\/BlockForecastApp\.vue'\)/)
+ assert.match(ui,/lotus_farm\.block_forecast\.board/)
+ assert.doesNotMatch(app,/forecast_calendar\.calendar|forecast_workspace\.board|<ForecastPlanner|forecast-legacy/)
 })
+
 test('màn kế hoạch không gọi phát hành hàng hóa',()=>{
  const ui=read('frontend/src/components/ForecastPlanner.vue')
  assert.match(ui,/Dự thu 3 năm/)

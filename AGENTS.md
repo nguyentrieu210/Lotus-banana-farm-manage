@@ -4,6 +4,7 @@
 - Tên màn hình được thể hiện ở thanh điều hướng và mục đang chọn. Phía trên bảng chỉ giữ bộ lọc, tìm kiếm và thao tác cần thiết.
 - Không thêm mô tả, chú giải hoặc câu hướng dẫn thừa để trang trí bảng. Thông báo lỗi, trạng thái trống và hướng dẫn bắt buộc để nhập liệu đúng vẫn được giữ khi cần.
 - Áp dụng quy ước này cho các bảng mới và những bảng đang được chỉnh sửa; không tự thêm lại mô tả trong các lần cải tiến giao diện sau.
+- Bảng dùng chung DataTable cố định header ở trên và dòng tổng ở dưới; chỉ thân dữ liệu cuộn. Container bọc bảng không được tạo thêm vùng cuộn dọc khiến header hoặc dòng tổng bị cuộn mất.
 - Thanh lọc trên máy tính phải nằm trên một hàng: kho, từ ngày, đến ngày, làm mới và tìm kiếm. Không xếp hai trường ngày thành cột hoặc cho thanh lọc xuống nhiều hàng; màn hẹp được cuộn trong chính thanh lọc khi cần.
 
 ## Hệ màu chung (yêu cầu người dùng 19/10/2026)

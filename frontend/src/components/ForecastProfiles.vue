@@ -7,7 +7,7 @@ import LotusField from './form/LotusField.vue'
 import WorkspaceModal from './WorkspaceModal.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
-const props=defineProps({farm:String,blocks:{type:Array,default:()=>[]}})
+const props=defineProps({farm:String,blocks:{type:Array,default:()=>[]},validFrom:String,validTo:String})
 const emit=defineEmits(['changed'])
 const state=ref(null),busy=ref(false),error=ref(''),open=ref(false),form=ref({}),notice=ref(''),readOnly=ref(false)
 const confirm=useWorkspaceConfirm()
@@ -16,14 +16,14 @@ const fields=[
  ['wave_window_days','Số ngày mỗi đợt','ngày'],['wave_step_days','Khoảng cách hai đợt','ngày'],['sucker_to_flower_months','Chọn chồi → trổ','tháng'],['shoot_to_inject_days','Trổ → chích','ngày'],['inject_to_cut_days','Chích → cắt bắp','ngày'],['cut_to_harvest_days','Cắt bắp → thu','ngày'],
  ['flowering_rate','Tỷ lệ trổ / cây (%)','%'],['cut_rate_per_tree','Cắt bắp / cây (%)','%'],['cut_rate_per_flowered_bunch','Cắt bắp / buồng trổ (%)','%'],['harvest_rate','Thu / cắt bắp (%)','%'],['pack_rate','Buồng đóng gói / buồng thu (%)','%'],
  ['kg_cycle_1','Kg/buồng vụ 1','kg'],['kg_cycle_2','Kg/buồng vụ 2','kg'],['kg_cycle_3','Kg/buồng vụ 3+','kg'],['kg_per_carton','Kg/thùng','kg'],['cartons_per_container','Thùng/container 40ft','thùng'],['census_sucker_yield','Chồi hữu hiệu tham khảo (%)','%']]
-const blockOptions=computed(()=>[{value:'',label:'Toàn vườn'},...props.blocks.map(b=>({value:b.name,label:b.block_code||b.name}))])
+const blockOptions=computed(()=>[{value:'',label:'Toàn vườn'},...props.blocks.map(b=>({value:b.name,label:b.block_name||b.block_code||b.name}))])
 const dateFmt=value=>value?String(value).slice(8,10)+'/'+String(value).slice(5,7)+'/'+String(value).slice(0,4):'—'
-const columns=[{field:'profile_name',headerName:'Bộ thông số'},{field:'version',headerName:'Phiên bản'},{field:'farm_block',headerName:'Lô (trống: toàn vườn)'},{field:'approval_state',headerName:'Trạng thái',valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Nháp'},{field:'valid_from',headerName:'Từ ngày',valueFormatter:p=>dateFmt(p.value)},{field:'valid_to',headerName:'Đến ngày',valueFormatter:p=>dateFmt(p.value)},{field:'approved_by',headerName:'Người duyệt'},{field:'actions',headerName:'Thao tác',minWidth:250,sortable:false}]
+const columns=[{field:'profile_name',headerName:'Bộ thông số'},{field:'version',headerName:'Phiên bản'},{field:'farm_block',headerName:'Lô (trống: toàn vườn)',valueFormatter:p=>p.value?(props.blocks.find(b=>b.name===p.value)?.block_name||props.blocks.find(b=>b.name===p.value)?.block_code||p.value):'Toàn vườn'},{field:'approval_state',headerName:'Trạng thái',valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Nháp'},{field:'valid_from',headerName:'Từ ngày',valueFormatter:p=>dateFmt(p.value)},{field:'valid_to',headerName:'Đến ngày',valueFormatter:p=>dateFmt(p.value)},{field:'approved_by',headerName:'Người duyệt'},{field:'actions',headerName:'Thao tác',minWidth:250,sortable:false}]
 async function load(){if(!props.farm)return;busy.value=true;error.value='';try{state.value=await call('lotus_farm.forecast_profiles.list_profiles',{farm:props.farm})}catch(e){error.value=e.message}finally{busy.value=false}}
 function edit(row,view=false){
  readOnly.value=view
  const values={...(state.value?.defaults||{}),...(row||{})}
- if(!row){Object.assign(values,{profile_name:'Thông số dự thu Book2',farm_block:'',valid_from:new Date().toLocaleDateString('en-CA'),valid_to:'',source_reference:'Book2 26/10/2026',notes:''})}
+ if(!row){Object.assign(values,{profile_name:'Thông số dự thu 36 tháng',farm_block:'',valid_from:props.validFrom||new Date().toLocaleDateString('en-CA'),valid_to:props.validTo||'',source_reference:'Book2 26/10/2026',notes:''})}
  for(const [key,,unit] of fields)if(unit==='%')values[key]=Math.round(Number(values[key]||0)*1000000)/10000
  if(row?.approval_state==='Approved'&&!view){delete values.name;delete values.modified}
  values.apply_sucker_yield_to_counted_trees=0;form.value=values;error.value='';open.value=true
