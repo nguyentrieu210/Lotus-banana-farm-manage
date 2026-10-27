@@ -8,6 +8,13 @@ DOCTYPE = "Lotus Block Forecast Profile"
 EDITABLE = (*DEFAULTS, "profile_name", "farm_block", "valid_from", "valid_to", "source_reference", "notes")
 
 
+def install_units():
+    """Count units used by Book2 care jobs; preserve all existing UOM records."""
+    for unit in ("Buồng", "Cây"):
+        if not frappe.db.exists("UOM", unit):
+            frappe.get_doc(dict(doctype="UOM", uom_name=unit, must_be_whole_number=1)).insert(ignore_permissions=True)
+
+
 def _farm(name):
     frappe.get_doc("Farm", name).check_permission("read")
 

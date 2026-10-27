@@ -51,7 +51,7 @@ Một ví dụ: chọn chồi 01/11/2026 → trổ từ 01/05/2027 → thu từ 
 - Chưa có liên kết duy nhất từng `Bunch Operation` đến `Plan Cohort` dự báo, nên actuals chỉ hiển thị riêng, không tự hiệu chỉnh forecast hay forecast snapshot đã phát hành.
 - Phân bổ đều 30 ngày là giả định vận hành để tránh đỉnh công ảo; khi có số trổ theo tuần/ngày thực tế phải thay bằng phân bố đo đếm.
 - `/forecast-onedrive` còn để tra cứu kịch bản cũ, được gắn nhãn **Dự thu tham khảo cũ**. `/forecast` là màn chính. `Harvest Forecast` Released là chứng từ riêng, chưa tự phát hành từ số dự kiến.
-- Chưa nghiệm thu Frappe site UAT và migration; cần backup, `bench migrate` trên clone, phân quyền, phiếu nháp, form profile, xác nhận UOM, rồi mới merge/deploy live.
+- Migration và UAT đã chạy trên bản sao ERPNext ngày 27/10: tạo/duyệt/khóa phiên bản, chống chồng hiệu lực, chống dữ liệu cũ, kế hoạch nháp thật, chống tạo trùng và quyền người chỉ đọc. Các bước phát hành vẫn sao lưu và đối chiếu dữ liệu trước/sau.
 
 ## Kiểm thử tối thiểu
 ```sh
@@ -65,3 +65,12 @@ npm run build
 - Giá trị `Farm Block.lotus_tree_count` từ dữ liệu đợt trước là **số cây chính thức phục vụ dự thu và kế hoạch**, không cần phân loại “chưa kiểm kê”. Nếu có số cây hợp lệ, bộ dự thu trả trạng thái `Planning Baseline`, cho phép sinh phiếu kế hoạch nháp khi đáp ứng các điều kiện thông số/Work Type/vật tư.
 - Giao diện Vườn & lô và Dự thu dùng nhãn **“Số cây gốc đã chốt”**, không hiển thị số cây đợt trước như một vấn đề thiếu kiểm kê.
 - Thông tin nguồn/giá trị cũ vẫn được bảo tồn, tránh tạo bản ghi sai rằng đã đếm thực địa. Chỉ khi số cây hoàn toàn trống/0 mới yêu cầu dữ liệu nguồn theo lô.
+
+## Hoàn thiện vận hành 27/10/2026
+- Tab **Bộ thông số** trên `/lotus/forecast`: tạo/sửa nháp, xem chi tiết, duyệt có xác nhận và tạo phiên bản kế tiếp. Tỷ lệ nhập theo %, máy chủ lưu 0–1; người dùng không tự sửa người/thời điểm duyệt.
+- Quyền vườn áp dụng cả API và Desk cho `Lotus Block Forecast Profile`; không có vườn được cấp thì không đọc được bản ghi.
+- Ngày hiệu lực chọn đúng theo mốc trổ tính bằng thời gian chọn chồi của chính phiên bản, thay vì luôn dùng sáu tháng mặc định.
+- Chỉ tạo `Daily Work Plan` nháp cho dòng đủ điều kiện. Bằng chứng lưu toàn bộ đợt/vụ/phiên bản góp vào dòng tổng hợp. Fingerprint gồm thay đổi năng suất và danh mục; khóa vườn bảo vệ kiểm tra trùng.
+- Bổ sung UOM đếm **Buồng**, **Cây** nếu còn thiếu; giữ nguyên đơn vị đã có. Cấu hình kế hoạch/định mức có nút thêm công việc để khai báo mã CV của Book2 và năng suất được xác nhận. Không tự ánh xạ OD sang CV, đổi đơn vị của chứng từ cũ hoặc tự chấp thuận năng suất/thuốc còn thiếu.
+- Endpoint mô phỏng nhật ký cũ trả hướng dẫn chuyển màn hình, kể cả khi khách còn giữ bundle cũ.
+- Kiểm thử: 271 Python (1 skip), 492 frontend; suite Frappe `lotus_farm.tests.test_block_forecast` và UAT trên clone. `block_care_engine` không phụ thuộc Frappe nên bộ kiểm tra quy tắc có thể chạy trên CI riêng.

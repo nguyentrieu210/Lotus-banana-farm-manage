@@ -216,6 +216,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     <div class="pn-section">
      <div class="pn-section-head"><div><h3>Công việc, năng suất và đơn giá</h3><p>Số lượng hoàn thành trong một công; giá khoán tính trên đơn vị công việc.</p></div>
       <UiInput v-model="search" aria-label="Tìm công việc" placeholder="Tìm công việc..."/>
+      <UiButton v-if="perm('Work Type').create" type="button" @click="open('Work Type')">+ Thêm công việc</UiButton>
      </div>
      <div class="pn-cards">
       <button v-for="r in types" :key="r.name" type="button" class="pn-item" @click="open('Work Type',r)">

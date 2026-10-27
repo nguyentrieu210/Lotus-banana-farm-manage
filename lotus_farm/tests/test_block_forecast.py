@@ -38,8 +38,18 @@ class TestForecastProfilesOnSite(unittest.TestCase):
             forecast_profiles.save_draft(self.farm,self.values,saved['name'],'stale')
         email='forecast-'+uuid4().hex[:8]+'@example.invalid'
         frappe.get_doc(dict(doctype='User',email=email,first_name='Forecast auditor',send_welcome_email=0,roles=[dict(role='Lotus Auditor')])).insert()
+        frappe.get_doc(dict(doctype='User Permission',user=email,allow='Farm',for_value=self.farm,apply_to_all_doctypes=1)).insert()
         frappe.set_user(email)
         listed=forecast_profiles.list_profiles(self.farm)
         self.assertFalse(listed['can_approve'])
         with self.assertRaises(frappe.PermissionError):
             forecast_profiles.approve(saved['name'],str(saved['modified']))
+
+    def test_native_profile_reads_require_assigned_farm(self):
+        saved=forecast_profiles.save_draft(self.farm,self.values)
+        email='forecast-scope-'+uuid4().hex[:8]+'@example.invalid'
+        frappe.get_doc(dict(doctype='User',email=email,first_name='Scoped reader',send_welcome_email=0,roles=[dict(role='Lotus Auditor')])).insert()
+        frappe.set_user(email)
+        self.assertEqual(frappe.get_list(forecast_profiles.DOCTYPE,pluck='name'),[])
+        with self.assertRaises(frappe.PermissionError):
+            frappe.get_doc(forecast_profiles.DOCTYPE,saved['name']).check_permission('read')

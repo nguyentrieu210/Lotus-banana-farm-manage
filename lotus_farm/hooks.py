@@ -32,6 +32,7 @@ _scoped_doctypes = [
     "Packout Run",
     "Scale Reading",
     "Supply Reconciliation",
+    "Lotus Block Forecast Profile",
 ]
 has_permission = {name: "lotus_farm.controls.farm_permission" for name in _scoped_doctypes}
 permission_query_conditions = {
