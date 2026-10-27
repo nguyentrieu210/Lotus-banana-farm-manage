@@ -143,7 +143,7 @@ onMounted(load)
 </script>
 
 <template>
- <section class="land lotus-ui">
+ <section class="land lotus-ui block-forecast">
   <header class="land-head">
    <div class="land-actions">
     <UiButton variant="outline" @click="router.push({path:'/plan-norm',query:{farm}})">Quản lý đợt cây & định mức</UiButton>
@@ -231,3 +231,8 @@ onMounted(load)
   <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" @answer="finishConfirm"/>
  </section>
 </template>
+<style>
+.block-forecast .land-filters{flex-wrap:nowrap;overflow-x:auto}
+.block-forecast .land-filters>*{flex:0 0 180px;min-width:0}
+.block-forecast .land-filters>button{flex:0 0 auto}
+</style>

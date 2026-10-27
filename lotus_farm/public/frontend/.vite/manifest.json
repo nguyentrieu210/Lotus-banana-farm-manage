@@ -533,7 +533,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CfLL9i85.js",
+    "file": "assets/index-BbLA3pp3.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -583,7 +583,7 @@
     "src": "login.html"
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-CyA6hIh1.js",
+    "file": "assets/BlockForecastApp-DZ_-HEz3.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -597,11 +597,12 @@
       "_hr-catalog-labels-C-HOGqnr.js"
     ],
     "css": [
+      "assets/BlockForecastApp-BfrdB91i.css",
       "assets/land-BXlyezDc.css"
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-BuJrChhD.js",
+    "file": "assets/FarmLandApp-DkJcgHts.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -627,7 +628,7 @@
     ]
   },
   "src/FarmWorkApp.vue": {
-    "file": "assets/FarmWorkApp-COhYRGSZ.js",
+    "file": "assets/FarmWorkApp-B6Qz-sQY.js",
     "name": "FarmWorkApp",
     "src": "src/FarmWorkApp.vue",
     "isDynamicEntry": true,
@@ -644,7 +645,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-DDiWTV6Q.js",
+    "file": "assets/FinanceApp-CxcOb5eb.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -671,7 +672,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-DoxwuIPC.js",
+    "file": "assets/HrApp-BbgQ97tU.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -702,7 +703,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-CItXFgip.js",
+    "file": "assets/StockApp-CBPwN7FD.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -728,7 +729,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-mBdcewTr.js",
+    "file": "assets/TimekeepingApp-D_8A4QEi.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -754,7 +755,7 @@
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-KuMXO3MX.js",
+    "file": "assets/UserAdminApp-BU74_JBJ.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
@@ -773,7 +774,7 @@
     ]
   },
   "src/components/DesktopForecastChart.vue": {
-    "file": "assets/DesktopForecastChart-DDuK_pf2.js",
+    "file": "assets/DesktopForecastChart-DSqpLmOH.js",
     "name": "DesktopForecastChart",
     "src": "src/components/DesktopForecastChart.vue",
     "isDynamicEntry": true,
@@ -784,7 +785,7 @@
     ]
   },
   "src/components/ForecastWorkspace.vue": {
-    "file": "assets/ForecastWorkspace-HP3fQ8F_.js",
+    "file": "assets/ForecastWorkspace-C0Y1bjIi.js",
     "name": "ForecastWorkspace",
     "src": "src/components/ForecastWorkspace.vue",
     "isDynamicEntry": true,
@@ -817,7 +818,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-DT_lVovf.js",
+    "file": "assets/OneDriveProcessWorkspace-BQUgsiLz.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -838,7 +839,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CRBr69U_.js",
+    "file": "assets/OpsList-DbvX0S7k.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -850,7 +851,7 @@
     ]
   },
   "src/components/Vip126RollingForecast.vue": {
-    "file": "assets/Vip126RollingForecast-C945U3qb.js",
+    "file": "assets/Vip126RollingForecast-BDsvr-MY.js",
     "name": "Vip126RollingForecast",
     "src": "src/components/Vip126RollingForecast.vue",
     "isDynamicEntry": true,

@@ -17,7 +17,8 @@ const fields=[
  ['flowering_rate','Tỷ lệ trổ / cây (%)','%'],['cut_rate_per_tree','Cắt bắp / cây (%)','%'],['cut_rate_per_flowered_bunch','Cắt bắp / buồng trổ (%)','%'],['harvest_rate','Thu / cắt bắp (%)','%'],['pack_rate','Buồng đóng gói / buồng thu (%)','%'],
  ['kg_cycle_1','Kg/buồng vụ 1','kg'],['kg_cycle_2','Kg/buồng vụ 2','kg'],['kg_cycle_3','Kg/buồng vụ 3+','kg'],['kg_per_carton','Kg/thùng','kg'],['cartons_per_container','Thùng/container 40ft','thùng'],['census_sucker_yield','Chồi hữu hiệu tham khảo (%)','%']]
 const blockOptions=computed(()=>[{value:'',label:'Toàn vườn'},...props.blocks.map(b=>({value:b.name,label:b.block_code||b.name}))])
-const columns=[{field:'profile_name',headerName:'Bộ thông số'},{field:'version',headerName:'Phiên bản'},{field:'farm_block',headerName:'Lô (trống: toàn vườn)'},{field:'approval_state',headerName:'Trạng thái',valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Nháp'},{field:'valid_from',headerName:'Từ ngày'},{field:'valid_to',headerName:'Đến ngày'},{field:'approved_by',headerName:'Người duyệt'},{field:'actions',headerName:'Thao tác',minWidth:250,sortable:false}]
+const dateFmt=value=>value?String(value).slice(8,10)+'/'+String(value).slice(5,7)+'/'+String(value).slice(0,4):'—'
+const columns=[{field:'profile_name',headerName:'Bộ thông số'},{field:'version',headerName:'Phiên bản'},{field:'farm_block',headerName:'Lô (trống: toàn vườn)'},{field:'approval_state',headerName:'Trạng thái',valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Nháp'},{field:'valid_from',headerName:'Từ ngày',valueFormatter:p=>dateFmt(p.value)},{field:'valid_to',headerName:'Đến ngày',valueFormatter:p=>dateFmt(p.value)},{field:'approved_by',headerName:'Người duyệt'},{field:'actions',headerName:'Thao tác',minWidth:250,sortable:false}]
 async function load(){if(!props.farm)return;busy.value=true;error.value='';try{state.value=await call('lotus_farm.forecast_profiles.list_profiles',{farm:props.farm})}catch(e){error.value=e.message}finally{busy.value=false}}
 function edit(row,view=false){
  readOnly.value=view
@@ -47,8 +48,8 @@ onMounted(load)
  <div>
   <div class="land-actions"><UiButton v-if="state?.can_create" :disabled="busy" @click="edit()">Thêm bộ thông số</UiButton><UiButton variant="outline" :disabled="busy" @click="load">Làm mới</UiButton></div>
   <p v-if="error&&!open" role="alert" class="land-bad">{{error}}</p><p v-if="notice" role="status">{{notice}}</p>
-  <DataTable :rows="state?.rows||[]" :columns="columns" row-key="name" storage-key="forecast-profile-management" empty="Chưa có bộ thông số. Tạo bản nháp để nhập và duyệt.">
-   <template #cell-actions="{row}"><UiButton variant="outline" :disabled="busy" @click="edit(row,true)">Xem</UiButton><UiButton v-if="row.approval_state==='Draft'&&state?.can_write||row.approval_state==='Approved'&&state?.can_create" variant="outline" :disabled="busy" @click="edit(row)">{{row.approval_state==='Approved'?'Tạo phiên bản mới':'Sửa'}}</UiButton><UiButton v-if="row.approval_state==='Draft'&&state?.can_approve" :disabled="busy" @click="approve(row)">Duyệt</UiButton></template>
+  <DataTable :rows="state?.rows||[]" :columns="columns" :totals="false" row-key="name" storage-key="forecast-profile-management" empty="Chưa có bộ thông số. Tạo bản nháp để nhập và duyệt.">
+   <template #cell-actions="{row}"><div class="forecast-profile-actions"><UiButton variant="outline" :disabled="busy" @click="edit(row,true)">Xem</UiButton><UiButton v-if="row.approval_state==='Draft'&&state?.can_write||row.approval_state==='Approved'&&state?.can_create" variant="outline" :disabled="busy" @click="edit(row)">{{row.approval_state==='Approved'?'Tạo phiên bản mới':'Sửa'}}</UiButton><UiButton v-if="row.approval_state==='Draft'&&state?.can_approve" :disabled="busy" @click="approve(row)">Duyệt</UiButton></div></template>
   </DataTable>
   <WorkspaceModal v-model="open" :title="readOnly?'Xem bộ thông số':form.name?'Sửa bộ thông số nháp':'Thêm bộ thông số'" :busy="busy">
    <form class="forecast-profile-form" @submit.prevent="save">
@@ -69,3 +70,6 @@ onMounted(load)
   <WorkspaceConfirm :open="confirm.open.value" :title="confirm.title.value" :message="confirm.message.value" @answer="confirm.finish"/>
  </div>
 </template>
+<style>
+.forecast-profile-actions{display:inline-flex;gap:var(--lotus-space-1);align-items:center}
+</style>
