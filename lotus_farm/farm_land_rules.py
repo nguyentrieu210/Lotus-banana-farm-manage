@@ -111,7 +111,7 @@ def diff_row(current, incoming, plots_area=None, known_zones=None):
     if 'active' in changes and changes['active'][1] not in (0, 1):
         errors.append('Đang dùng: chỉ nhận 1 hoặc 0')
     if 'lotus_tree_count' in changes and 'lotus_tree_count_source' not in changes:
-        errors.append('Đổi số cây cần ghi nguồn/bảng chốt và thời điểm cập nhật')
+        errors.append('Đổi số cây cần ghi Nguồn số cây (bảng chốt và thời điểm cập nhật)')
     area = changes.get('area_ha', (None, current.get('area_ha')))[1]
     if plots_area and _num(area) > 0 and abs(_num(area) - _num(plots_area)) > max(0.05, 0.03 * _num(plots_area)):
         warnings.append('Diện tích %.2f ha khác tổng các thửa %.2f ha' % (_num(area), _num(plots_area)))

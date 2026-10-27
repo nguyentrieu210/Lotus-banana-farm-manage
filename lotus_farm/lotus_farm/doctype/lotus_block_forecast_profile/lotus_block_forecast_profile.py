@@ -4,15 +4,19 @@ from frappe.model.document import Document
 from frappe.utils import now_datetime
 
 from lotus_farm.forecast_parameters import validate
+from lotus_farm.controls import lock, require_role
 
 
 class LotusBlockForecastProfile(Document):
     def validate(self):
+        frappe.get_doc("Farm", self.farm).check_permission("read")
+        lock("Farm", self.farm)
         old = None if self.is_new() else self.get_doc_before_save()
         if old and old.approval_state == "Approved":
             frappe.throw("Bộ dự thu đã duyệt không chỉnh sửa được. Tạo phiên bản mới.")
         if self.farm_block:
             block=frappe.get_doc("Farm Block",self.farm_block)
+            block.check_permission("read")
             if block.farm != self.farm:
                 frappe.throw("Bộ thông số phải dùng lô thuộc đúng vườn.")
         if int(self.version or 0)<1:
@@ -34,6 +38,7 @@ class LotusBlockForecastProfile(Document):
         for key,val in clean.items():
             self.set(key,val)
         if self.approval_state=="Approved":
+            require_role("System Manager", "Lotus Farm Manager")
             if not self.valid_to:
                 frappe.throw("Bộ thông số đã duyệt phải có ngày hết hiệu lực để quản lý phiên bản về sau.")
             if not (self.source_reference or "").strip() or not (self.notes or "").strip():

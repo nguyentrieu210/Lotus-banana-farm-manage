@@ -56,6 +56,11 @@ def validate(values):
         raise ValueError("Không nhân 97% chồi vào số cây/chồi đã kiểm kê hoặc chọn thực tế.")
     if clean["wave_step_days"]<clean["wave_window_days"]:
         raise ValueError("Bốn cửa sổ trổ đang chồng lấn. Kiểm tra bước và độ dài cửa sổ.")
+    for name in ("wave_step_days", "wave_window_days", "shoot_to_inject_days", "inject_to_cut_days", "cut_to_harvest_days"):
+        if clean[name] > 366:
+            raise ValueError(f"Thông số {name} không vượt quá 366 ngày.")
+    if clean["sucker_to_flower_months"] > 60:
+        raise ValueError("Thời gian chọn chồi đến trổ không vượt quá 60 tháng.")
     return clean
 
 

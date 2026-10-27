@@ -6,6 +6,7 @@ import {Button as UiButton} from './components/ui/button'
 import UiSelect from './components/ui/select/Select.vue'
 import DataTable from './components/DataTable.vue'
 import LotusField from './components/form/LotusField.vue'
+import ForecastProfiles from './components/ForecastProfiles.vue'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import {useWorkspaceConfirm} from './use-workspace-confirm'
 import './land.css'
@@ -33,10 +34,10 @@ const columns=[
  {field:'crop_cycle',headerName:'Vụ cây',minWidth:120},
  {field:'cohort',headerName:'Đợt cây',minWidth:120},
  {field:'wave',headerName:'Đợt trổ',minWidth:105},
- {field:'qty_basis',headerName:'Nguồn số lượng',minWidth:120},
+ {field:'qty_basis',headerName:'Nguồn số lượng',minWidth:120,valueFormatter:p=>({'Trees':'Số cây','Selected Suckers':'Chồi đã chọn','Bunches':'Buồng trổ'})[p.value]||p.value},
  {field:'tree_qty',headerName:'Khối lượng cơ sở',minWidth:135,valueFormatter:p=>fmt(p.value)},
  {field:'count_status',headerName:'Cơ sở số cây',minWidth:175,valueFormatter:p=>p.value==='Planning Baseline'?'Số cây gốc đã chốt':p.value==='Census Confirmed'?'Số cây thực địa':p.value==='Cohort Approved'?'Đợt cây đã duyệt':p.value},
- {field:'parameter_status',headerName:'Thông số',minWidth:185},
+ {field:'parameter_status',headerName:'Thông số',minWidth:185,valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Kịch bản chưa duyệt'},
  {field:'profile',headerName:'Phiên bản thông số',minWidth:150},
  {field:'flower_window_start',headerName:'Bắt đầu trổ',minWidth:135,valueFormatter:p=>dateFmt(p.value)},
  {field:'flower_window_end',headerName:'Kết thúc trổ',minWidth:135,valueFormatter:p=>dateFmt(p.value)},
@@ -110,6 +111,7 @@ const materialColumns=[
  {field:'quantity',headerName:'Dự trù',valueFormatter:p=>fmt(p.value,3)},
 ]
 function changeScope(changes){careData.value=null;router.push({path:'/forecast',query:{...route.query,...changes}})}
+function invalidateScope(){careData.value=null;careBlock.value='';careDate.value='';load()}
 async function load(){
  busy.value=true;error.value=''
  try{data.value=await call('lotus_farm.block_forecast.board',{farm:route.query.farm||undefined,zone:zone.value||undefined,block:block.value||undefined})}
@@ -136,17 +138,15 @@ async function draft(){
   await previewCare()
  }catch(e){careError.value=e.message}finally{careBusy.value=false}
 }
-watch(()=>[route.query.farm,route.query.zone,route.query.block],load)
+watch(()=>[route.query.farm,route.query.zone,route.query.block],invalidateScope)
 onMounted(load)
 </script>
 
 <template>
  <section class="land lotus-ui">
   <header class="land-head">
-   <div><h2>Dự thu theo lô & vụ cây</h2><p class="land-note">Số cây gốc đợt trước được chốt để chạy dự thu theo lô; đợt cây đã duyệt được ưu tiên. Dự phóng không phải nguồn hàng đã phát hành.</p></div>
    <div class="land-actions">
     <UiButton variant="outline" @click="router.push({path:'/plan-norm',query:{farm}})">Quản lý đợt cây & định mức</UiButton>
-    <a href="/app/lotus-block-forecast-profile" class="btn">Bộ thông số đã duyệt</a>
     <a href="/app/harvest-forecast" class="btn">Phiếu dự thu (ERPNext)</a>
    </div>
   </header>
@@ -166,6 +166,7 @@ onMounted(load)
   <nav class="workspace-tabs" aria-label="Dự thu và kế hoạch">
    <button :class="{active:tab==='forecast'}" type="button" @click="tab='forecast'">Dự thu 4 đợt</button>
    <button :class="{active:tab==='care'}" type="button" @click="tab='care'">Lịch chăm sóc theo lô</button>
+   <button :class="{active:tab==='profiles'}" type="button" @click="tab='profiles'">Bộ thông số</button>
   </nav>
   <template v-if="tab==='forecast'">
    <div class="land-stats">
@@ -197,6 +198,7 @@ onMounted(load)
     <div class="land-table"><DataTable :rows="data?.actuals||[]" :columns="actualColumns" row-key="name" storage-key="forecast-observed-milestones" empty="Chưa có bản ghi trổ/chích/cắt bắp đã duyệt."/></div>
    </section>
   </template>
+  <ForecastProfiles v-else-if="tab==='profiles'" :farm="farm" :blocks="data?.blocks||[]" @changed="careData=null;load()"/>
   <section v-else class="land-card">
    <h3>Xem lịch chăm sóc theo mốc dự thu</h3>
    <p class="land-note">Nhu cầu công được rải theo từng ngày trong cửa sổ trổ 30 ngày. Chỉ được tạo phiếu nháp khi bộ hệ số và số cây/đợt đã duyệt; phun/bọc cần định mức, chống đổ cần khảo sát.</p>

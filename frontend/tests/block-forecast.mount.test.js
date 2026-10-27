@@ -42,7 +42,7 @@ test('forecast page uses block/cohort API and never opens a cut journal',async()
  const ui=await open()
  try{
   assert.ok(calls.some(c=>c.method===M+'board'))
-  assert.match(ui.el.textContent,/Dự thu theo lô & vụ cây/)
+  assert.match(ui.el.textContent,/Dự thu 4 đợt/)
   assert.match(ui.el.textContent,/01\/05\/2027/)
   assert.match(ui.el.textContent,/26\/07\/2027/)
   assert.doesNotMatch(ui.el.textContent,/Nhật ký chặt mẹ|Nhập nhật ký|NHẬT KÝ GỐC/)

@@ -264,12 +264,16 @@
     },
     {
       "fieldname": "approved_by",
+      "read_only": 1,
+      "no_copy": 1,
       "label": "Người phê duyệt",
       "fieldtype": "Link",
       "options": "User"
     },
     {
       "fieldname": "approved_at",
+      "read_only": 1,
+      "no_copy": 1,
       "label": "Ngày phê duyệt",
       "fieldtype": "Datetime"
     }
@@ -298,6 +302,22 @@
       "read": 1,
       "report": 1,
       "export": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1
+    },
+    {
+      "role": "Lotus Work Journal Clerk",
+      "read": 1
     }
   ]
 }

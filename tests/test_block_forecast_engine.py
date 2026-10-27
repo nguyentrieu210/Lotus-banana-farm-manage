@@ -124,5 +124,12 @@ class BlockForecastTests(unittest.TestCase):
         self.assertEqual(sum(distribute_daily(170,30)),170)
         self.assertEqual(len(distribute_daily(170,30)),30)
 
+    def test_profile_effectiveness_uses_its_own_selection_offset(self):
+        expired=profile(name="expired",valid_to="2027-05-31",sucker_to_flower_months=8)
+        valid=profile(name="valid",version=2,valid_from="2027-06-01",valid_to="2027-12-31",sucker_to_flower_months=8)
+        result=forecast([block()],[cohort()],profiles=[expired,valid])
+        self.assertEqual(result["rows"][0]["profile"],"valid")
+        self.assertEqual(result["rows"][0]["flower_window_start"],"2027-07-01")
+
 if __name__=="__main__":
     unittest.main()

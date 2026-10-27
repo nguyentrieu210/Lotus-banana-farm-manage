@@ -8,37 +8,15 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
-from datetime import timedelta
 import frappe
 from lotus_farm.block_forecast_engine import forecast, date
+from lotus_farm.block_care_engine import work_events as _work_events
 from lotus_farm.forecast_parameters import DEFAULTS, validate
 from lotus_farm import plan_book2_reference as book2
 
 SPRAY_CODES={"CV024","CV026","CV028","CV031"}
 MATERIAL_CODES=SPRAY_CODES|{"CV030","CV032","CV033"}
 REQUIRES_FIELD_SURVEY={"CV021"}
-# work code / offset after injection / basis / readable note
-INJECTION_WORK=(
-    ("CV020",0,"bunches_shoot","Chích bắp: cần kiểm tra trổ ngoài vườn"),
-    ("CV021",5,"bunches_shoot","Chống đổ: phải khảo sát cây cần chống thực tế"),
-    ("CV022",7,"bunches_shoot","Vén lá, tỉa"),
-    ("CV023",7,"bunches_shoot","Lặt hoa 1"),
-    ("CV024",7,"bunches_shoot","Phun buồng 1"),
-    ("CV025",10,"bunches_shoot","Lặt hoa 2"),
-    ("CV026",10,"bunches_shoot","Phun buồng 2"),
-    ("CV027",13,"bunches_shoot","Lặt hoa 3"),
-    ("CV028",13,"bunches_shoot","Phun buồng 3"),
-    ("CV029",16,"bunches_cut","Cắt bắp"),
-    ("CV030",16,"bunches_cut","Cột dây màu"),
-    ("CV031",16,"bunches_cut","Phun buồng 4"),
-    ("CV032",16,"bunches_cut","Lót, chèn xốp"),
-    ("CV033",16,"bunches_cut","Bao buồng"),
-)
-HARVEST_WORK=(
-    ("CV034",-10,"bunches_harvest","Đo trái: cửa sổ thu -10 đến -7 ngày"),
-    ("CV035",0,"bunches_harvest","Cắt/vác buồng: theo đo trái thực tế"),
-    ("CV036",0,"bunches_harvest","Vận chuyển buồng"),
-)
 
 def _farm(farm, permission="read"):
     if not farm:
@@ -127,38 +105,6 @@ def board(farm=None,zone=None,block=None):
         can_create=frappe.has_permission("Daily Work Plan","create"),
         params=dict(validate(DEFAULTS),work_reference=book2.SOURCE))
 
-def _work_events(daily_rows,start,end):
-    grouped={}
-    for wave in daily_rows:
-        for code,off,basis,note,anchor in (
-            [(a,b,c,d,"inject") for a,b,c,d in INJECTION_WORK]+
-            [(a,b,c,d,"harvest") for a,b,c,d in HARVEST_WORK]):
-            current=date(wave["inject_date"] if anchor=="inject" else wave["harvest_date"])+timedelta(days=off)
-            if current<start or current>end:
-                continue
-            qty=int(wave[basis])
-            if qty<1:continue
-            key=(str(current),wave["farm_block"],code)
-            if key not in grouped:
-                grouped[key]=dict(date=str(current),farm_block=wave["farm_block"],
-                    work_code=code,planned_qty=0,uom="Cây" if code=="CV021" else "Buồng",
-                    note=note,sources=[],crop_cycle=wave.get("crop_cycle"),cohort=wave.get("cohort"),
-                    parameter_status=wave.get("parameter_status"),count_status=wave.get("count_status"),
-                    profile=wave.get("profile"))
-            event=grouped[key]
-            event["planned_qty"]+=qty
-            event["sources"].append(wave["key"])
-            if event["parameter_status"]!=wave.get("parameter_status"):event["parameter_status"]="Mixed"
-            if event["count_status"]!=wave.get("count_status"):event["count_status"]="Mixed"
-            if event["profile"]!=wave.get("profile"):event["profile"]=None
-            if event["crop_cycle"]!=wave.get("crop_cycle"):event["crop_cycle"]=None
-            if event["cohort"]!=wave.get("cohort"):event["cohort"]=None
-    events=[]
-    for (day,block,code),row in sorted(grouped.items()):
-        row["sources"]=sorted(set(row["sources"]))
-        row["schedule_key"]="BOOK2-"+hashlib.sha256("|".join([day,block,code]+row["sources"]).encode()).hexdigest()[:34]
-        events.append(row)
-    return events
 
 def _preview(farm,from_date,to_date,block=None):
     first,last=date(from_date),date(to_date)
@@ -169,7 +115,7 @@ def _preview(farm,from_date,to_date,block=None):
     events=_work_events(projected["daily_rows"],first,last)
     works=frappe.get_list("Work Type",
         fields=["name","work_code","work_name","uom","active","allow_daywork",
-                "productivity_per_workday"],
+                "productivity_per_workday","modified"],
         filters={"active":1},limit_page_length=1000)
     workmap=defaultdict(list)
     for w in works:
@@ -230,6 +176,7 @@ def _preview(farm,from_date,to_date,block=None):
                  for c in cohorts],
         blocks=[(b.get("name"),b.get("lotus_tree_count"),str(b.get("lotus_estimated_flowering_date")),str(b.get("modified")),b.get("forecast_count_source")) for b in blocks],
         profiles=[(p.get("name"),str(p.get("modified")),p.get("version")) for p in _profiles(farm)],
+        works=[(w.name,str(w.modified),w.uom,w.allow_daywork,w.productivity_per_workday) for w in works],
         events=[(e["schedule_key"],e["planned_qty"],e["work_type"],e["norm_profile"],e["norm_version"],e["blocking_issue"]) for e in events])
     fingerprint=hashlib.sha256(json.dumps(snapshot,sort_keys=True,default=str).encode()).hexdigest()
     return dict(rows=events,materials=[dict(date=k[0],farm_block=k[1],item=k[2],
@@ -264,13 +211,14 @@ def create_care_plan_draft(farm,block,posting_date,fingerprint):
     if not eligible:
         frappe.throw("Ngày này chưa có công việc nào đủ điều kiện tạo nháp; xem cảnh báo.")
     if len(eligible)>100:frappe.throw("Quá nhiều việc trong ngày.")
-    plans=frappe.get_list("Daily Work Plan",
+    # Internal uniqueness guard covers plans outside the creator's read scope.
+    # Only the requested work codes are reported; no other plan data is returned.
+    plans=frappe.get_all("Daily Work Plan",
         filters={"farm":farm,"posting_date":day,"docstatus":["<",2]},
         fields=["name"],limit_page_length=0)
     occupied=set()
     for p in plans:
         doc=frappe.get_doc("Daily Work Plan",p.name)
-        doc.check_permission("read")
         occupied.update((line.farm_block,line.work_type) for line in doc.lines)
     company=frappe.db.get_value("Farm",farm,"company")
     lines=[]
@@ -286,7 +234,7 @@ def create_care_plan_draft(farm,block,posting_date,fingerprint):
             norm_profile=row["norm_profile"],norm_version=row["norm_version"],
             schedule_key=row["schedule_key"],
             lotus_forecast_sources=json.dumps(
-                dict(source="Farm Block / Plan Cohort",waves=row["sources"],
+                dict(source="Farm Block / Plan Cohort",waves=row["sources"],details=row["source_details"],
                      crop_cycle=row["crop_cycle"],cohort=row["cohort"],
                      profile=row.get("profile")),
                 ensure_ascii=False),execution_state="Planned"))

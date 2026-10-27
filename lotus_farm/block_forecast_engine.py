@@ -61,7 +61,7 @@ def source_rows(blocks,cohorts):
                 raw=c.get("planned_qty")
                 try:quantity=int(raw)
                 except (TypeError,ValueError):quantity=0
-                if not quantity or float(raw)!=quantity or c.get("quantity_basis") not in ("Trees","Selected Suckers","Bunches"):
+                if quantity<=0 or float(raw)!=quantity or c.get("quantity_basis") not in ("Trees","Selected Suckers","Bunches"):
                     warnings.append(f'{block}: Đợt {c.get("cohort_code")} thiếu số lượng hợp lệ.')
                     continue
                 anchor=c.get("anchor");when=c.get("anchor_date")
@@ -144,9 +144,21 @@ def forecast(blocks,cohorts,from_date=None,to_date=None,block=None,profiles=None
     waves=[];daily=[];monthly=defaultdict(lambda:dict(bunches=0,packed_kg=0))
     for s in sources:
         if block and s["farm_block"]!=block:continue
-        estimated_bloom=(months_after(s["anchor_date"],DEFAULTS["sucker_to_flower_months"])
-                         if s["anchor"]=="Selection" else s["anchor_date"])
-        base=approved_version(profiles or [],s["farm_block"],estimated_bloom)
+        # A profile's own calendar offset must place flowering inside its
+        # effective dates. Using the default six months can select an expired
+        # profile when an approved farm-specific offset differs.
+        applicable=[]
+        for candidate in profiles or []:
+            if candidate.get("approval_state")!="Approved" or not candidate.get("active",True):
+                continue
+            if candidate.get("farm_block") and candidate["farm_block"]!=s["farm_block"]:
+                continue
+            candidate_bloom=(months_after(s["anchor_date"],validate(candidate)["sucker_to_flower_months"])
+                             if s["anchor"]=="Selection" else s["anchor_date"])
+            if approved_version([candidate],s["farm_block"],candidate_bloom):
+                applicable.append(candidate)
+        applicable.sort(key=lambda p:(bool(p.get("farm_block")),int(p.get("version") or 0)),reverse=True)
+        base=applicable[0] if applicable else None
         config=validate(base) if base else validate(DEFAULTS)
         parameter_status="Approved" if base else "Unapproved Book2 scenario"
         if not base:

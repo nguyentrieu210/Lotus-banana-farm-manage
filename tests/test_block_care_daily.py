@@ -2,7 +2,7 @@
 import datetime as dt
 import unittest
 from lotus_farm.block_forecast_engine import forecast
-from lotus_farm.block_forecast import _work_events
+from lotus_farm.block_care_engine import work_events as _work_events
 
 class CareDailyTests(unittest.TestCase):
     def test_four_sprays_cut_and_harvest_conserve_daily_quantity(self):
