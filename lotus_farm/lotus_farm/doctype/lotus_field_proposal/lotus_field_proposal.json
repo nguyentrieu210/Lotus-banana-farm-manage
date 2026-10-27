@@ -1,0 +1,136 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Field Proposal",
+  "module": "Lotus Farm",
+  "autoname": "format:LFP-{YYYY}-{#####}",
+  "track_changes": 1,
+  "field_order": [
+    "company",
+    "farm",
+    "farm_block",
+    "kind",
+    "needed_date",
+    "reason",
+    "state",
+    "requester",
+    "lines",
+    "total_estimate",
+    "reviewer",
+    "review_note",
+    "reviewed_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô / khu vực",
+      "options": "Farm Block"
+    },
+    {
+      "fieldname": "kind",
+      "fieldtype": "Select",
+      "label": "Loại đề xuất",
+      "options": "Vật tư\nChi phí",
+      "reqd": 1
+    },
+    {
+      "fieldname": "needed_date",
+      "fieldtype": "Date",
+      "label": "Ngày cần",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do đề xuất",
+      "reqd": 1
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Nháp\nChờ duyệt\nĐã duyệt\nTrả lại\nTừ chối",
+      "default": "Nháp",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "requester",
+      "fieldtype": "Link",
+      "label": "Người đề xuất",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "lines",
+      "fieldtype": "Table",
+      "label": "Các khoản đề xuất",
+      "options": "Lotus Field Proposal Line",
+      "reqd": 1
+    },
+    {
+      "fieldname": "total_estimate",
+      "fieldtype": "Currency",
+      "label": "Tổng tiền dự kiến",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewer",
+      "fieldtype": "Link",
+      "label": "Người xử lý",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_note",
+      "fieldtype": "Small Text",
+      "label": "Ý kiến quản lý",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reviewed_at",
+      "fieldtype": "Datetime",
+      "label": "Thời gian xử lý",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "title_field": "reason"
+}

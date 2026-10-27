@@ -75,6 +75,7 @@ export const extraFieldNames = Object.freeze({
   legacy_source_key: 'Mã dữ liệu cũ',
 })
 export const extraStateNames = Object.freeze({
+  proposal: 'Đề xuất hiện trường',
   'Purchase Invoice': 'Hóa đơn mua',
   'Supplier Payment': 'Trả nhà cung cấp',
   Payroll: 'Lương',

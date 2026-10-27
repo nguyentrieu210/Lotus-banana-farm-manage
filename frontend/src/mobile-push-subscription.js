@@ -4,7 +4,8 @@ const workers={
  warehouse:'/api/method/lotus_farm.web.warehouse_service_worker',
  buying:'/api/method/lotus_farm.web.buying_service_worker',
  work:'/api/method/lotus_farm.web.work_service_worker',
- hr:'/api/method/lotus_farm.web.hr_mobile_service_worker'
+ hr:'/api/method/lotus_farm.web.hr_mobile_service_worker',
+ proposal:'/api/method/lotus_farm.web.field_proposal_service_worker'
 }
 export function canUsePush(){
  return typeof window!=='undefined'&&window.isSecureContext&&
@@ -24,7 +25,7 @@ export async function enableMobilePush(app){
  const config=await call('lotus_farm.push_notifications.config',{app})
  if(!config?.enabled||!config?.public_key)throw Error('Máy chủ chưa thiết lập thông báo đẩy.')
  let registration=await navigator.serviceWorker.getRegistration(location.pathname)
- if(!registration)registration=await navigator.serviceWorker.register(workers[app],{scope:app==='hr'?'/hr-mobile':'/'+app,updateViaCache:'none'})
+ if(!registration)registration=await navigator.serviceWorker.register(workers[app],{scope:app==='hr'?'/hr-mobile':app==='proposal'?'/field-proposals':'/'+app,updateViaCache:'none'})
  await navigator.serviceWorker.ready
  const sub=await registration.pushManager.getSubscription()||
   await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeKey(config.public_key)})

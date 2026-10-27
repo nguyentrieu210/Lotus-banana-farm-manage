@@ -1,0 +1,47 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Field Proposal Line",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "field_order": [
+    "item_code",
+    "description",
+    "qty",
+    "uom",
+    "rate",
+    "amount"
+  ],
+  "fields": [
+    {
+      "fieldname": "item_code",
+      "fieldtype": "Link",
+      "label": "Mã vật tư",
+      "options": "Item"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Data",
+      "label": "Tên vật tư / khoản chi"
+    },
+    {
+      "fieldname": "qty",
+      "fieldtype": "Float",
+      "label": "Số lượng"
+    },
+    {
+      "fieldname": "uom",
+      "fieldtype": "Data",
+      "label": "Đơn vị tính"
+    },
+    {
+      "fieldname": "rate",
+      "fieldtype": "Currency",
+      "label": "Đơn giá dự kiến"
+    },
+    {
+      "fieldname": "amount",
+      "fieldtype": "Currency",
+      "label": "Thành tiền"
+    }
+  ]
+}

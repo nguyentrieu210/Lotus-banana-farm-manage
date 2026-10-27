@@ -47,6 +47,33 @@ def warehouse_service_worker():
                              'Cache-Control':'no-store'})
 
 @frappe.whitelist(allow_guest=True, methods=['GET'])
+def field_proposal_service_worker():
+    """Standalone proposal PWA worker: cache only public build files."""
+    root = Path(frappe.get_app_path('lotus_farm', 'public'))
+    manifest = json.loads((root / 'frontend/.vite/manifest.json').read_text(encoding='utf-8'))
+    files, seen = set(), set()
+
+    def collect(key):
+        if key in seen:
+            return
+        seen.add(key)
+        entry = manifest[key]
+        for dependency in entry.get('imports', []):
+            collect(dependency)
+        for file in [entry.get('file'), *entry.get('css', []), *entry.get('assets', [])]:
+            if file:
+                files.add('/assets/lotus_farm/frontend/' + file)
+
+    collect('field-proposal.html')
+    version = hashlib.sha256(json.dumps(sorted(files)).encode()).hexdigest()[:16]
+    code = (root / 'field-proposal-worker.js').read_text(encoding='utf-8')
+    code = code.replace('__FIELD_PROPOSAL_ASSETS__', json.dumps(sorted(files)))
+    code = code.replace('__FIELD_PROPOSAL_VERSION__', version)
+    return Response(code, content_type='application/javascript; charset=utf-8',
+                    headers={'Service-Worker-Allowed': '/field-proposals', 'Cache-Control': 'no-store'})
+
+
+@frappe.whitelist(allow_guest=True, methods=['GET'])
 def work_service_worker():
     """Cache only the separate Work PWA assets; do not cache authenticated responses."""
     root = Path(frappe.get_app_path('lotus_farm', 'public'))

@@ -1,0 +1,1 @@
+import{o as e}from"./use-toast-Dsi3t_xR.js";function t(){try{return e().farm||``}catch{return``}}export{t};

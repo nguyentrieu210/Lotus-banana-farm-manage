@@ -11,9 +11,9 @@ const supported=typeof window!=='undefined'&&window.isSecureContext&&
 const api=(name,args={},write=false)=>call('lotus_farm.push_notifications.'+name,args,write)
 let polling
 function appWorker(app){
- return '/api/method/lotus_farm.web.'+({warehouse:'warehouse_service_worker',buying:'buying_service_worker',work:'work_service_worker',hr:'hr_mobile_service_worker'}[app])
+ return '/api/method/lotus_farm.web.'+({warehouse:'warehouse_service_worker',buying:'buying_service_worker',work:'work_service_worker',hr:'hr_mobile_service_worker',proposal:'field_proposal_service_worker'}[app])
 }
-const appScope=app=>app==='hr'?'/hr-mobile':'/'+app
+const appScope=app=>app==='hr'?'/hr-mobile':app==='proposal'?'/field-proposals':'/'+app
 function decodeKey(raw){
  const padding='='.repeat((4-raw.length%4)%4)
  const bytes=atob(raw.replace(/-/g,'+').replace(/_/g,'/')+padding)

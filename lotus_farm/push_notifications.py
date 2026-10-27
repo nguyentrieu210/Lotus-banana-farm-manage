@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 import frappe
 from frappe.utils import now_datetime
 
-APPS = {"warehouse": "/warehouse", "buying": "/buying", "work": "/work", "hr": "/hr-mobile"}
+APPS = {"warehouse": "/warehouse", "buying": "/buying", "work": "/work", "hr": "/hr-mobile", "proposal": "/field-proposals"}
 DEVICE = "Lotus Push Device"
 ALERT = "Lotus Mobile Alert"
 ALLOWED_PUSH_HOSTS = {

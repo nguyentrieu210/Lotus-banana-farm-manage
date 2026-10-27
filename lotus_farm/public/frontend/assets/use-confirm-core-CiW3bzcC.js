@@ -1,0 +1,1 @@
+import{H as e,vt as t}from"./vue.runtime.esm-bundler-Dx9eLHme.js";function n({onShow:n=()=>{},onHide:r=()=>{}}={}){let i=t(``),a=t(!1),o;function s(e){return a.value?Promise.resolve(!1):(i.value=e,a.value=!0,new Promise(e=>{o=e,n()}))}function c(e){r(),a.value=!1;let t=o;o=null,t?.(!!e)}return e(()=>c(!1)),{message:i,pending:a,ask:s,finish:c}}export{n as t};

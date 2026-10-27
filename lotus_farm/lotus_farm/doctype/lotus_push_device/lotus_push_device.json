@@ -27,7 +27,7 @@
       "fieldname": "app",
       "fieldtype": "Select",
       "label": "Ứng dụng",
-      "options": "warehouse\nbuying\nwork\nhr",
+      "options": "warehouse\nbuying\nwork\nhr\nproposal",
       "reqd": 1
     },
     {
