@@ -1,4 +1,4 @@
-importScripts('/assets/lotus_farm/lotus-push-worker.js?v=1');
+importScripts('/assets/lotus_farm/lotus-push-worker.js?v=2');
 const CACHE='lotus-warehouse-shell-'+__WAREHOUSE_VERSION__;
 const ASSETS=__WAREHOUSE_ASSETS__;
 const OFFLINE='/assets/lotus_farm/warehouse-offline.html';

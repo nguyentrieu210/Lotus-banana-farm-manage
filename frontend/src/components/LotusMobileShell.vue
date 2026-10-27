@@ -25,6 +25,6 @@ onUnmounted(()=>scheme?.removeEventListener?.('change',applyScheme))
   <PullRefresh v-model="pulling" class="lotus-pwa-pull" :disabled="!refresh||!refreshable||keyboardOpen||disabled" pulling-text="Kéo xuống để tải lại" loosing-text="Thả ra để tải lại" loading-text="Đang tải lại…" success-text="Đã cập nhật" :success-duration="700" @refresh="pull"><slot/></PullRefresh>
   <LotusMobileOnboarding v-if="onboarding" :app="app" :title="title"/>
   <LotusMobileBottomNav :items="tabs" :active="activeTab" :hidden="keyboardOpen" :disabled="disabled" @navigate="emit('navigate',$event)"/>
-  <LotusMobileAiChat :user="user" :keyboard-open="keyboardOpen" :disabled="disabled"/>
+  <LotusMobileAiChat :user="user" :push-app="app" :keyboard-open="keyboardOpen" :disabled="disabled"/>
  </ConfigProvider>
 </template>

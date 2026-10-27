@@ -213,6 +213,36 @@ class ChatIntegrationTest(unittest.TestCase):
         self.assertTrue(chat.recall(message['name'])['recalled'])
         self.assertTrue(chat.history(room)['messages'][-1]['recalled'])
 
+    def test_online_member_still_receives_registered_phone_push(self):
+        from lotus_farm import push_notifications
+
+        room_name = self.direct()
+        recipient = self.users[1]
+        online_key = 'lotus-chat-online:' + recipient
+        cooldown_key = f'lotus-chat-push:{recipient}:{room_name}'
+        frappe.cache().set_value(online_key, 1, expires_in_sec=70)
+        frappe.cache().delete_value(cooldown_key)
+        actual_get_all = frappe.get_all
+
+        def get_all(doctype, *args, **kwargs):
+            if doctype == push_notifications.DEVICE:
+                return ['work']
+            return actual_get_all(doctype, *args, **kwargs)
+
+        try:
+            with mock.patch.object(frappe, 'get_all', side_effect=get_all), \
+                 mock.patch.object(push_notifications, '_add_alert', return_value='alert-test') as alert, \
+                 mock.patch.object(frappe, 'enqueue') as enqueue:
+                chat._push(frappe.get_doc(chat.ROOM, room_name),
+                           frappe._dict(name='LCM-test-notification'), 'Hello')
+                self.assertEqual(alert.call_count, 1)
+                self.assertEqual(alert.call_args.args[0], recipient)
+                self.assertEqual(alert.call_args.args[4], '/work?chat=1')
+                self.assertEqual(enqueue.call_count, 1)
+        finally:
+            frappe.cache().delete_value(online_key)
+            frappe.cache().delete_value(cooldown_key)
+
     def test_send_is_rate_limited(self):
         room = chat.create([self.users[1]])['name']
         for index in range(chat.RATE_LIMIT):

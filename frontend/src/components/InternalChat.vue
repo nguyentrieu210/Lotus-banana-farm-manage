@@ -9,16 +9,27 @@ import LotusMobileButton from './LotusMobileButton.vue'
 import LotusMobileInput from './LotusMobileInput.vue'
 import LotusIcon from './LotusIcon.vue'
 import {chatAPI} from '../chat-client'
+import {enableMobilePush} from '../mobile-push-subscription'
 import {upload} from '../api'
 import {FilePickerButton} from './ui/file-input'
 
-const props=defineProps({user:{type:String,required:true},client:{type:Object,required:true},active:Boolean,mobile:Boolean})
+const props=defineProps({user:{type:String,required:true},client:{type:Object,required:true},active:Boolean,mobile:Boolean,pushApp:{type:String,default:''}})
 const emit=defineEmits(['busy'])
 const selected=ref(''),detail=ref(null),messages=ref([]),draft=ref(''),files=ref([]),error=ref(''),busy=ref(false),loading=ref(false)
 const mode=ref('list'),group=ref(false),title=ref(''),search=ref(''),people=ref([]),chosen=ref([]),hasMore=ref(false),showMembers=ref(false)
+const pushBusy=ref(false),pushNotice=ref(''),pushError=ref('')
 const list=ref(null),fileInput=ref(null),textInput=ref(null),typingNames=ref({})
 const roomSearch=ref(''),renaming=ref(''),armed=ref(''),dragging=ref(false)
 let generation=0,peopleVersion=0,searchTimer,typingTimer,lastTyping=0,sendId='',syncPending=false,readSeq=0,armTimer
+async function turnOnNotifications(){
+ if(pushBusy.value)return
+ pushBusy.value=true;pushError.value='';pushNotice.value=''
+ try{
+  await enableMobilePush(props.pushApp)
+  pushNotice.value='Đã bật thông báo tin nhắn trên máy này.'
+ }catch(e){pushError.value=e?.message||'Chưa bật được thông báo.'}
+ finally{pushBusy.value=false}
+}
 const Action=computed(()=>props.mobile?LotusMobileButton:UiButton)
 const primary=computed(()=>props.mobile?'primary':'default')
 const neutral=computed(()=>props.mobile?'default':'ghost')
@@ -155,6 +166,11 @@ onBeforeUnmount(()=>{generation++;peopleVersion++;clearTimeout(searchTimer);clea
  <div class="lotus-chat" :class="{'is-mobile':mobile}" :aria-busy="busy" :data-realtime="client.connected?.value?'connected':'fallback'">
   <template v-if="mode==='list'">
    <div class="lotus-chat__toolbar"><strong>Tin nhắn</strong><component :is="Action" :variant="primary" class="lotus-chat__new" aria-label="Cuộc trò chuyện mới" @click="start"><LotusIcon name="plus"/>Chat mới</component></div>
+   <div v-if="mobile&&pushApp" class="lotus-chat__push-setup">
+    <component :is="Action" :variant="neutral" :disabled="pushBusy" @click="turnOnNotifications">{{pushBusy?'Đang bật…':'Bật thông báo tin nhắn'}}</component>
+    <small v-if="pushNotice" role="status">{{pushNotice}}</small>
+    <small v-if="pushError" role="alert">{{pushError}}</small>
+   </div>
    <p v-if="client.error.value" class="lotus-chat__error" role="alert">{{client.error.value}} <component :is="Action" :variant="neutral" @click="client.refresh">Thử lại</component></p>
    <div v-if="rooms.length>5" class="lotus-chat__search"><LotusMobileInput v-if="mobile" v-model="roomSearch" label="Tìm cuộc trò chuyện" placeholder="Tên người, nhóm hoặc nội dung…"/><Input v-else v-model="roomSearch" type="search" aria-label="Tìm cuộc trò chuyện" placeholder="Tìm người, nhóm hoặc nội dung…"/></div>
    <div class="lotus-chat__rooms">

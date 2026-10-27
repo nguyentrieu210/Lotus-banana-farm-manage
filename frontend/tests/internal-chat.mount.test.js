@@ -79,6 +79,13 @@ test('file retry reuses the uploaded file and the same message id',async t=>{
  assert.ok(view.root.querySelector('a[aria-label="Tải note.txt"]'))
 })
 
+test('mobile chat offers notification setup without auto-requesting permission',async t=>{
+ const view=mount(Chat,{user:'one',client:client(),active:true,mobile:true,pushApp:'work'});t.after(view.unmount)
+ const button=[...view.root.querySelectorAll('button')].find(node=>node.textContent.includes('Bật thông báo tin nhắn'))
+ assert.ok(button,'user chooses when to enable device push notifications')
+ assert.equal(view.root.querySelectorAll('.lotus-chat__push-setup').length,1)
+})
+
 test('mobile composer uses a native submit button and preserves IME input',async t=>{
  let sends=0
  mock(t,url=>{

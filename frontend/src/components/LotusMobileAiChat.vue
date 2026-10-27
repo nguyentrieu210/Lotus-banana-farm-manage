@@ -10,6 +10,7 @@ import InternalChat from './InternalChat.vue'
 // It calls the existing read-only, permission-aware Lotus AI endpoint.
 const props=defineProps({
  user:{type:String,default:''},
+ pushApp:{type:String,default:''},
  disabled:{type:Boolean,default:false},
  keyboardOpen:{type:Boolean,default:false}
 })
@@ -53,6 +54,12 @@ onMounted(()=>{
  window.visualViewport?.addEventListener?.('resize',updateViewport)
  window.visualViewport?.addEventListener?.('scroll',updateViewport)
  updateViewport()
+ const url=new URL(window.location.href)
+ if(url.searchParams.get('chat')==='1'){
+  show.value=true;tab.value='chat'
+  url.searchParams.delete('chat')
+  window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash)
+ }
 })
 onBeforeUnmount(()=>{
  window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)
@@ -115,7 +122,7 @@ async function send(text){
      <Button plain icon="cross" size="small" aria-label="Đóng trợ lý AI" :disabled="chatBusy" @click="show=false"/>
     </header>
     <div class="lotus-chat-tabs" role="tablist" aria-label="Trợ lý và tin nhắn"><Button role="tab" :aria-selected="tab==='ai'" :disabled="chatBusy" @click="tab='ai'">Trợ lý AI</Button><Button role="tab" :aria-selected="tab==='chat'" @click="tab='chat'">Tin nhắn<b v-if="chat.unread.value">{{chat.unread.value>99?'99+':chat.unread.value}}</b></Button></div>
-    <InternalChat v-show="tab==='chat'" :user="user" :client="chat" :active="show&&tab==='chat'" mobile @busy="chatBusy=$event"/>
+    <InternalChat v-show="tab==='chat'" :user="user" :client="chat" :active="show&&tab==='chat'" :push-app="pushApp" mobile @busy="chatBusy=$event"/>
     <div v-show="tab==='ai'" class="lotus-mobile-ai__ai">
     <div ref="list" class="lotus-mobile-ai__messages" aria-live="polite">
      <div v-if="!messages.length" class="lotus-mobile-ai__welcome">

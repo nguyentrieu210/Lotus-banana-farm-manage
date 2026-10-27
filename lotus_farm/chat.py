@@ -264,24 +264,25 @@ def send(room, client_id, body='', file_url='', file_id=''):
 
 
 def _push(room, message, preview):
-    """Phone notification for members who are not looking at Lotus right now (one per room every 30 s)."""
+    """Send to every registered member device, even when another browser is online."""
     try:
         from lotus_farm.push_notifications import APPS, DEVICE, _add_alert
         sender = frappe.session.user
         title = _label(sender) if room.kind == 'Direct' else (room.title or 'Nhóm chat')
         body = (preview if room.kind == 'Direct' else _label(sender) + ': ' + preview)[:200]
         for row in room.members:
-            if row.user == sender or _online(row.user):
+            if row.user == sender:
                 continue
             cooldown = f'lotus-chat-push:{row.user}:{room.name}'
             if frappe.cache().get_value(cooldown):
                 continue
             apps = set(frappe.get_all(DEVICE, filters={'user': row.user, 'enabled': 1}, pluck='app'))
             for app in apps & set(APPS):
-                name = _add_alert(row.user, app, title, body, APPS[app], MESSAGE, message.name, key='chat-' + message.name)
+                name = _add_alert(row.user, app, title, body, APPS[app] + '?chat=1', MESSAGE, message.name, key='chat-' + message.name)
                 if name:
                     frappe.enqueue('lotus_farm.push_notifications._send_alert', queue='short', enqueue_after_commit=True, alert_name=name)
-            frappe.cache().set_value(cooldown, 1, expires_in_sec=PUSH_COOLDOWN)
+            if apps & set(APPS):
+                frappe.cache().set_value(cooldown, 1, expires_in_sec=PUSH_COOLDOWN)
     except Exception:
         # A failed notification never blocks the message itself.
         frappe.log_error(title='Lotus chat push', message=frappe.get_traceback())

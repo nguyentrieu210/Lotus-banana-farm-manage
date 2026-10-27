@@ -1,5 +1,5 @@
 // Mua hàng Lotus offline shell: never store ERP records, credentials or user HTML.
-importScripts('/assets/lotus_farm/lotus-push-worker.js?v=1');
+importScripts('/assets/lotus_farm/lotus-push-worker.js?v=2');
 const CACHE='lotus-buying-shell-'+__BUYING_VERSION__
 const ASSETS=__BUYING_ASSETS__
 const OFFLINE='/assets/lotus_farm/buying-offline.html'
