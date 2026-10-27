@@ -44,7 +44,7 @@ test('lots list shows area, trees and density; the gap tile filters to lots miss
  calls.length=0;routes={[L+'overview']:overview(false)}
  const view=await open('/farms')
  assert.match(text(view.root),/7,5 ha.*3 lô · 6 thửa/)
- assert.match(text(view.root),/12\.000.*đã đếm 2\/3 lô/)
+ assert.match(text(view.root),/Số cây gốc đã chốt12\.000.*có số cây 2\/3 lô/)
  assert.match(text(view.root),/2\.400 cây\/ha/)
  assert.deepEqual(rows(view.root),['A1','A2','B1'])
  view.root.querySelector('.land-gaps').click();await tick();await tick();await tick()

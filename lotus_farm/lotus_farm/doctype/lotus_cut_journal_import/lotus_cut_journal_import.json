@@ -4,7 +4,7 @@
   "module": "Lotus Farm",
   "autoname": "hash",
   "track_changes": 1,
-  "description": "Chứng cứ một lần nhập file nhật ký chặt mẹ lần 2: file gốc, SHA-256, số dòng mới / trùng / xung đột.",
+  "description": "Lưu trữ lịch sử ngưng sử dụng, không còn thuộc nguồn dự thu hoặc kế hoạch Lotus mới. Chỉ đọc để truy vết; không nhập mới.",
   "sort_field": "imported_at",
   "sort_order": "DESC",
   "fields": [
@@ -116,18 +116,19 @@
       "role": "System Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Farm Manager",
       "read": 1,
       "report": 1,
-      "export": 1
+      "export": 0
     },
     {
       "role": "Lotus Auditor",
       "read": 1,
       "report": 1
     }
-  ]
+  ],
+  "hide_in_desk": 1
 }

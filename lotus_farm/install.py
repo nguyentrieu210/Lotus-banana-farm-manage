@@ -36,6 +36,8 @@ def setup():
     from lotus_farm.localization import install_translations
     install_translations()
     create_roles()
+    from lotus_farm.forecast_profiles import install_units
+    install_units()
     set_brand()
     from frappe.permissions import add_permission, update_permission_property
     for _dt in ("Farm", "Farm Block", "Work Team", "Work Type"):

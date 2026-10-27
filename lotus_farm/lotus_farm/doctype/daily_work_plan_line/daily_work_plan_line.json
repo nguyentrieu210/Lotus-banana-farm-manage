@@ -23,6 +23,7 @@
     "norm_profile",
     "norm_version",
     "schedule_key",
+    "lotus_forecast_sources",
     "responsible",
     "work_team",
     "start_at",
@@ -147,6 +148,13 @@
       "label": "Schedule Key",
       "fieldtype": "Data",
       "read_only": 1
+    },
+    {
+      "fieldname": "lotus_forecast_sources",
+      "label": "Nguồn dự thu tham chiếu",
+      "fieldtype": "Long Text",
+      "read_only": 1,
+      "description": "Danh sách ID nhật ký chặt mẹ và đợt trổ dùng sinh kế hoạch nháp; không phải dữ liệu sản lượng đã duyệt."
     },
     {
       "fieldname": "responsible",

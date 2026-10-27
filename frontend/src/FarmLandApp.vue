@@ -131,14 +131,14 @@ useNoticeToast(notice)
 
   <div v-if="s" class="land-stats">
    <div><span>Diện tích</span><strong>{{num(s.area_ha,1)}} ha</strong><small>{{s.blocks}} lô · {{s.plots}} thửa</small></div>
-   <div><span>Số cây kiểm kê</span><strong>{{num(s.trees)}}</strong><small>đã đếm {{s.counted_blocks}}/{{s.blocks}} lô · {{num(s.counted_area_ha,1)}} ha</small></div>
+   <div><span>Số cây gốc đã chốt</span><strong>{{num(s.trees)}}</strong><small>có số cây {{s.counted_blocks}}/{{s.blocks}} lô · {{num(s.counted_area_ha,1)}} ha</small></div>
    <div><span>Mật độ bình quân</span><strong>{{s.trees_per_ha?num(s.trees_per_ha)+' cây/ha':'—'}}</strong><small>chỉ tính trên lô đã đếm</small></div>
-   <button type="button" class="land-gaps" @click="gap=gap?'':'trees'"><span>Lô thiếu dữ liệu</span><strong>{{s.gaps.trees}}</strong><small>chưa đếm cây · {{s.gaps.variety}} chưa có giống · {{s.gaps.planting}} chưa có ngày trồng · {{s.gaps.map}} chưa có ranh</small></button>
+   <button type="button" class="land-gaps" @click="gap=gap?'':'trees'"><span>Lô thiếu dữ liệu</span><strong>{{s.gaps.trees}}</strong><small>chưa có số cây · {{s.gaps.variety}} chưa có giống · {{s.gaps.planting}} chưa có ngày trồng · {{s.gaps.map}} chưa có ranh</small></button>
   </div>
 
   <section v-if="data?.zones?.length&&view==='list'" class="land-zones" aria-label="Theo khu">
    <button v-for="z in data.zones" :key="z.zone" type="button" class="land-zone" :class="{on:zone===z.zone}" :style="{'--zone':'var(--lotus-map-zone-'+String(z.zone).toLowerCase()+')'}" @click="zone=zone===z.zone?'':z.zone">
-    <b>Khu {{z.zone}}</b><span>{{z.blocks}} lô · {{num(z.area_ha,1)}} ha</span><small>{{z.trees?num(z.trees)+' cây · '+num(z.trees_per_ha)+'/ha':'chưa đếm cây'}}</small>
+    <b>Khu {{z.zone}}</b><span>{{z.blocks}} lô · {{num(z.area_ha,1)}} ha</span><small>{{z.trees?num(z.trees)+' cây · '+num(z.trees_per_ha)+'/ha':'chưa có số cây'}}</small>
    </button>
   </section>
 

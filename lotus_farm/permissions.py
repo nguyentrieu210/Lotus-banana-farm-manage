@@ -5,6 +5,10 @@ def farm(user=None):
     return query_condition("Farm", user)
 
 
+def lotus_block_forecast_profile(user=None):
+    return query_condition("Lotus Block Forecast Profile", user)
+
+
 def farm_block(user=None):
     return query_condition("Farm Block", user)
 

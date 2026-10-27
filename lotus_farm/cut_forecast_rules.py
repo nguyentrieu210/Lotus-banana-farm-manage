@@ -143,6 +143,8 @@ def expand(entries, profile):
             harvest_qty = excel_round(budcut_qty * profile['harvest_rate'])
             pack_qty = excel_round(harvest_qty * profile['pack_rate'])
             rows.append(dict(entry=e.get('name') or e.get('entry_key'), zone=e['zone'], cut_date=cut, tree_qty=int(e['tree_qty']), source_ref=e.get('source_ref') or '',
+                             farm_block=e.get('farm_block'), crop_cycle=e.get('crop_cycle'), plan_cohort=e.get('plan_cohort'),
+                             entry_modified=e.get('modified'),
                              wave=k, share=profile[wave], suckers=suckers, shoot_qty=shoot, shoot_from=start, shoot_to=start + add(days=profile['window_days'] - 1),
                              shoot_date=shoot_date, inject_date=inject, inject_qty=shoot, budcut_date=budcut, budcut_qty=budcut_qty,
                              harvest_date=harvest, harvest_qty=harvest_qty, pack_qty=pack_qty, kg=pack_qty * profile['kg_per_bunch']))

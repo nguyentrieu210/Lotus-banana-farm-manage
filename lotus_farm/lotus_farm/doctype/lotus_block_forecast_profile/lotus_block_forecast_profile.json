@@ -1,0 +1,323 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Block Forecast Profile",
+  "module": "Lotus Farm",
+  "autoname": "format:LBFP-{#####}",
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "editable_grid": 0,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "field_order": [
+    "farm",
+    "farm_block",
+    "profile_name",
+    "version",
+    "active",
+    "approval_state",
+    "valid_from",
+    "valid_to",
+    "source_reference",
+    "notes",
+    "wave_1_share",
+    "wave_2_share",
+    "wave_3_share",
+    "wave_4_share",
+    "wave_window_days",
+    "wave_step_days",
+    "sucker_to_flower_months",
+    "shoot_to_inject_days",
+    "inject_to_cut_days",
+    "cut_to_harvest_days",
+    "flowering_rate",
+    "cut_rate_per_tree",
+    "cut_rate_per_flowered_bunch",
+    "harvest_rate",
+    "pack_rate",
+    "kg_cycle_1",
+    "kg_cycle_2",
+    "kg_cycle_3",
+    "kg_per_carton",
+    "cartons_per_container",
+    "census_sucker_yield",
+    "apply_sucker_yield_to_counted_trees",
+    "approved_by",
+    "approved_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "label": "Vườn",
+      "fieldtype": "Link",
+      "options": "Farm",
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "label": "Lô lớn (để trống: toàn vườn)",
+      "fieldtype": "Link",
+      "options": "Farm Block"
+    },
+    {
+      "fieldname": "profile_name",
+      "label": "Tên bộ thông số",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "version",
+      "label": "Phiên bản",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "1"
+    },
+    {
+      "fieldname": "active",
+      "label": "Đang sử dụng",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "approval_state",
+      "label": "Trạng thái phê duyệt",
+      "fieldtype": "Select",
+      "options": "Draft\nApproved",
+      "reqd": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Hiệu lực từ",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "label": "Hiệu lực đến",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "source_reference",
+      "label": "Nguồn",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "default": "Book2 26/10/2026"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú và căn cứ kỹ thuật",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "wave_1_share",
+      "label": "Trổ đợt 1 (0–1)",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.17"
+    },
+    {
+      "fieldname": "wave_2_share",
+      "label": "Trổ đợt 2",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.4"
+    },
+    {
+      "fieldname": "wave_3_share",
+      "label": "Trổ đợt 3",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.25"
+    },
+    {
+      "fieldname": "wave_4_share",
+      "label": "Trổ đợt 4",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.18"
+    },
+    {
+      "fieldname": "wave_window_days",
+      "label": "Số ngày mỗi cửa sổ trổ",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "30"
+    },
+    {
+      "fieldname": "wave_step_days",
+      "label": "Khoảng cách bắt đầu hai đợt",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "30"
+    },
+    {
+      "fieldname": "sucker_to_flower_months",
+      "label": "Chọn chồi → trổ (tháng lịch)",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "6"
+    },
+    {
+      "fieldname": "shoot_to_inject_days",
+      "label": "Trổ → chích (ngày)",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "5"
+    },
+    {
+      "fieldname": "inject_to_cut_days",
+      "label": "Chích → cắt bắp (ngày)",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "16"
+    },
+    {
+      "fieldname": "cut_to_harvest_days",
+      "label": "Cắt bắp → thu (ngày)",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "65"
+    },
+    {
+      "fieldname": "flowering_rate",
+      "label": "Tỷ lệ trổ / số cây hữu hiệu",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "1"
+    },
+    {
+      "fieldname": "cut_rate_per_tree",
+      "label": "Tỷ lệ cắt bắp / cây gốc",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.9"
+    },
+    {
+      "fieldname": "cut_rate_per_flowered_bunch",
+      "label": "Tỷ lệ cắt bắp / buồng đã quan sát",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "1"
+    },
+    {
+      "fieldname": "harvest_rate",
+      "label": "Tỷ lệ thu / cắt bắp",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.97"
+    },
+    {
+      "fieldname": "pack_rate",
+      "label": "Tỷ lệ buồng đóng gói / buồng thu",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.98"
+    },
+    {
+      "fieldname": "kg_cycle_1",
+      "label": "Kg thành phẩm/buồng vụ 1",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "19"
+    },
+    {
+      "fieldname": "kg_cycle_2",
+      "label": "Kg thành phẩm/buồng vụ 2",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "20"
+    },
+    {
+      "fieldname": "kg_cycle_3",
+      "label": "Kg thành phẩm/buồng vụ 3+",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "19"
+    },
+    {
+      "fieldname": "kg_per_carton",
+      "label": "Kg thành phẩm/thùng",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "13"
+    },
+    {
+      "fieldname": "cartons_per_container",
+      "label": "Thùng/container 40ft",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "default": "1320"
+    },
+    {
+      "fieldname": "census_sucker_yield",
+      "label": "Hệ số chồi hữu hiệu để tham khảo",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "0.97"
+    },
+    {
+      "fieldname": "apply_sucker_yield_to_counted_trees",
+      "label": "Nhân lại hệ số chồi vào số đã kiểm kê (luôn 0)",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "approved_by",
+      "read_only": 1,
+      "no_copy": 1,
+      "label": "Người phê duyệt",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "approved_at",
+      "read_only": 1,
+      "no_copy": 1,
+      "label": "Ngày phê duyệt",
+      "fieldtype": "Datetime"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Farm Manager",
+      "create": 1,
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Auditor",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Sales Planner",
+      "read": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1
+    },
+    {
+      "role": "Lotus Work Journal Clerk",
+      "read": 1
+    }
+  ]
+}

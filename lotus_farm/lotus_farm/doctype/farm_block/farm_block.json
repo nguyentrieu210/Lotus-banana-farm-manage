@@ -14,6 +14,7 @@
     "variety",
     "planting_date",
     "planting_density",
+    "forecast_count_source",
     "irrigation_zone",
     "manager",
     "active",
@@ -72,6 +73,14 @@
       "fieldtype": "Float",
       "label": "Planting Density (plants/ha)",
       "non_negative": 1
+    },
+    {
+      "fieldname": "forecast_count_source",
+      "label": "Trạng thái nguồn số cây",
+      "fieldtype": "Select",
+      "options": "Planning Baseline\nCensus Confirmed\nUnverified\nSource File\nEstimated",
+      "default": "Planning Baseline",
+      "description": "Planning Baseline: số cây đợt trước được chốt làm đầu vào chính thức cho dự thu/kế hoạch; không phải xác nhận đã đi đếm thực địa. Các giá trị cũ được dùng như Planning Baseline khi có số cây."
     },
     {
       "fieldname": "irrigation_zone",

@@ -28,7 +28,9 @@ const monthColumns=[
  {field:'month',headerName:'Tháng'},
  {field:'tasks',headerName:'Công việc'},
  {field:'workdays',headerName:'Công lao động',valueGetter:p=>fmt(p.data.workdays)},
- {field:'piecework_cost',headerName:'Chi phí khoán',valueGetter:p=>fmt(p.data.piecework_cost,0)},
+ {field:'staffed_workdays',headerName:'Công định biên dự phòng',valueGetter:p=>fmt(p.data.staffed_workdays)},
+ {field:'daywork_cost',headerName:'Kịch bản công nhật',valueGetter:p=>fmt(p.data.daywork_cost,0)},
+ {field:'piecework_cost',headerName:'Kịch bản khoán',valueGetter:p=>fmt(p.data.piecework_cost,0)},
  {field:'bunches',headerName:'Buồng dự kiến',valueGetter:p=>fmt(p.data.bunches,0)},
  {field:'gross_kg',headerName:'Kg buồng',valueGetter:p=>fmt(p.data.gross_kg,0)},
  {field:'packed_kg',headerName:'Kg đóng gói',valueGetter:p=>fmt(p.data.packed_kg,0)}
@@ -49,6 +51,15 @@ const harvestColumns=[
  {field:'gross_kg',headerName:'Kg buồng',valueGetter:p=>fmt(p.data.gross_kg,0)},
  {field:'packed_kg',headerName:'Kg đóng gói',valueGetter:p=>fmt(p.data.packed_kg,0)}
 ]
+const book2WorkColumns=[
+ {field:'code',headerName:'Mã Book2',minWidth:105},
+ {field:'group',headerName:'Nhóm',minWidth:140},
+ {field:'title',headerName:'Công việc',minWidth:240},
+ {field:'unit',headerName:'Đơn vị',minWidth:95},
+ {field:'timing',headerName:'Tần suất / thời điểm',minWidth:245},
+ {field:'matched',headerName:'Danh mục ERP',minWidth:170,valueFormatter:p=>p.value?'Đã đối chiếu mã':'Chưa có mã'},
+ {field:'productivity',headerName:'Năng suất/công',minWidth:130,valueFormatter:p=>p.value>0?fmt(p.value):'Chưa nghiệm thu'}
+]
 const materialColumns=[
  {field:'date',headerName:'Ngày'},
  {field:'item',headerName:'Mã vật tư'},
@@ -61,21 +72,24 @@ const props=defineProps({
 })
 const emit=defineEmits(['reload'])
 const tab=ref('cycle'),dialog=ref(null),editor=ref(null),schema=ref(null),saving=ref(false),error=ref(''),notice=ref('')
-const from=ref(new Date().toISOString().slice(0,7)),drafts=ref(false),ratoons=ref(true),splits=ref([20,60,20])
+const from=ref(new Date().toISOString().slice(0,7)),drafts=ref(false),ratoons=ref(true),splits=ref([17,40,25,18])
 const search=ref(''),showWarnings=ref(true),selectedMonth=ref('')
 const descriptions={
   cycle:'Quản lý mốc sinh trưởng và từng đợt cây trong một lô. Dự kiến không phải ngày thực tế.',
   schedule:'Đặt công việc phải làm trước hoặc sau mốc nào. Quy tắc duyệt mới được dùng trong tính thử.',
   norm:'Năng suất lao động, giá khoán và lượng vật tư cần cho từng công việc.',
-  preview:'Xem 36 tháng trước khi giao việc. Chỉ là số ước tính; không tạo phiếu hoặc xuất kho.',
+  preview:'Kịch bản 36 tháng với 4 đợt trổ Book2, số công nhật và nhu cầu vật tư. Chỉ đọc, chưa phát hành kế hoạch.',
+  book2:'Đối chiếu 43 mã công việc Book2 với danh mục đang có; không tự sửa đơn giá, định mức hay phác đồ.',
 }
 const groups=[
   {id:'cycle',label:'Chu kỳ cây'},
   {id:'schedule',label:'Lịch công việc'},
   {id:'norm',label:'Định mức'},
+  {id:'book2',label:'Đối chiếu Book2'},
   {id:'preview',label:'Thử tính 36 tháng'},
 ]
 const perm=doctype=>props.payload?.permissions?.[doctype]||{}
+const book2=computed(()=>props.payload?.book2_plan_reference||null)
 const profileRows=computed(()=>(props.payload.profiles||[]).filter(p=>!p.farm||p.farm===props.farm))
 const cohorts=computed(()=>(props.payload.cohorts||[]).filter(r=>!props.block||r.farm_block===props.block).sort((a,b)=>String(a.farm_block).localeCompare(String(b.farm_block))||String(a.cohort_code).localeCompare(String(b.cohort_code))||Number(b.version)-Number(a.version)))
 const types=computed(()=>(props.payload.works||[]).filter(x=>!search.value||String(x.work_name||'').toLowerCase().includes(search.value.toLowerCase())))
@@ -85,7 +99,8 @@ const blockNames=computed(()=>Object.fromEntries((props.payload.blocks||[]).map(
 const simulationData=computed(()=>({...props.payload,cohorts:cohorts.value,blocks:(props.payload.blocks||[]).filter(b=>!props.block||b.name===props.block)}))
 const summary=computed(()=>{
   if(!props.payload?.farm)return null
-  try{return simulate(simulationData.value,{from:from.value+'-01',months:36,includeDraft:drafts.value,repeatRatoons:ratoons.value,flowerShares:splits.value.map(Number)})}
+  try{return simulate(simulationData.value,{from:from.value+'-01',months:36,includeDraft:drafts.value,repeatRatoons:ratoons.value,flowerShares:splits.value.map(Number),
+      dayworkRate:book2.value?.daywork_rate??null,absenceReserve:book2.value?.absence_reserve??0})}
   catch(e){return {error:e.message,monthly:[],warnings:[]}}
 })
 const filteredMonths=computed(()=>summary.value?.monthly?.filter(m=>!selectedMonth.value||m.month===selectedMonth.value)||[])
@@ -201,6 +216,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     <div class="pn-section">
      <div class="pn-section-head"><div><h3>Công việc, năng suất và đơn giá</h3><p>Số lượng hoàn thành trong một công; giá khoán tính trên đơn vị công việc.</p></div>
       <UiInput v-model="search" aria-label="Tìm công việc" placeholder="Tìm công việc..."/>
+      <UiButton v-if="perm('Work Type').create" type="button" @click="open('Work Type')">+ Thêm công việc</UiButton>
      </div>
      <div class="pn-cards">
       <button v-for="r in types" :key="r.name" type="button" class="pn-item" @click="open('Work Type',r)">
@@ -222,6 +238,16 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
     </div>
    </template>
 
+   <template v-else-if="tab==='book2'">
+    <section class="pn-section">
+     <div class="pn-section-head"><div><h3>Danh mục 43 công việc theo Excel Book2</h3><p>Nguồn: {{book2?.source}} / {{book2?.sheet}}. Bảng này chỉ để đối chiếu, không tạo việc hoặc ghi giá tự động.</p></div></div>
+     <p class="pn-hint">{{book2?.warning}}</p>
+     <p class="pn-hint">Đã có mã trong danh mục: {{(book2?.works?.length||0)-(book2?.missing_codes?.length||0)}} / {{book2?.works?.length||0}}. Chưa có mã: {{book2?.missing_codes?.length||0}}. Chưa đủ năng suất: {{book2?.missing_productivity?.length||0}}.</p>
+     <div class="pn-table-scroll"><DataTable :rows="book2?.works||[]" :columns="book2WorkColumns" row-key="code" storage-key="book2-43-work-catalogue" empty="Chưa có tham chiếu Book2."/></div>
+     <p class="pn-hint">Công việc theo chích bắp, thu hoạch, lịch 2 lần/tháng hoặc 2 tháng/lần phải được kỹ thuật và quản lý xác nhận mốc trước khi tạo Work Schedule Rule đã duyệt.</p>
+    </section>
+   </template>
+
    <template v-else-if="tab==='preview'">
     <div class="pn-section pn-preview">
       <div class="pn-section-head"><div><h3>Xem trước 36 tháng</h3><p>Không tạo công việc thật hoặc giữ sản lượng bán.</p></div></div>
@@ -230,16 +256,19 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
        <LotusField label="Trổ đợt 1 (%)" type="number" min="0" max="100" step="1" v-model="splits[0]"/>
        <LotusField label="Trổ đợt 2 (%)" type="number" min="0" max="100" step="1" v-model="splits[1]"/>
        <LotusField label="Trổ đợt 3 (%)" type="number" min="0" max="100" step="1" v-model="splits[2]"/>
+       <LotusField label="Trổ đợt 4 (%)" type="number" min="0" max="100" step="1" v-model="splits[3]"/>
        <LotusField type="checkbox" label="Bao gồm bản nháp để thử"  v-model="drafts"/>
        <LotusField type="checkbox" label="Hiện vụ chồi tương lai"  v-model="ratoons"/>
       </div>
-      <p class="pn-hint">20%–60%–20% là kịch bản thử có thể chỉnh tại đây; chưa được lưu thành tỷ lệ kỹ thuật chính thức. Chỉ phân 3 đợt cho số BUỒNG dự kiến chưa có mốc trổ thật.</p>
+      <p class="pn-hint">Mô phỏng 4 đợt 17/40/25/18, mỗi cửa sổ bắt đầu cách nhau 30 ngày (không phải tháng lịch). Dùng để thử vụ chồi 2+; chưa tự áp tỷ lệ này lên vụ mẹ và không sửa bộ thông số đã duyệt. Chỉ chia số BUỒNG dự kiến chưa có mốc trổ thật.</p>
       <p v-if="summary?.error" class="pn-error" role="alert">{{summary.error}}</p>
       <template v-else>
        <div class="pn-stats">
         <div><small>Công việc dự kiến</small><strong>{{fmt(summary?.events?.length||0,0)}}</strong></div>
         <div><small>Số công dự kiến</small><strong>{{fmt(sum('required_workdays',summary?.events||[]))}}</strong></div>
-        <div><small>Chi phí khoán biết trước</small><strong>{{fmt(sum('piecework_cost',summary?.events||[]),0)}} đ</strong></div>
+        <div><small>Chi phí công nhật ước tính</small><strong>{{fmt(sum('daywork_cost',summary?.events||[]),0)}} đ</strong></div>
+        <div><small>Chi phí khoán để so sánh</small><strong>{{fmt(sum('piecework_cost',summary?.events||[]),0)}} đ</strong></div>
+        <div><small>Công định biên (+dự phòng)</small><strong>{{fmt(sum('staffed_workdays',summary?.events||[]))}}</strong></div>
         <div><small>Kg đóng gói dự kiến</small><strong>{{fmt(sum('packed_kg',summary?.harvests||[]),0)}} kg</strong></div>
        </div>
        <div class="pn-chart" aria-label="Biểu đồ 36 tháng dự kiến">
@@ -260,7 +289,7 @@ function toggleMonth(id){selectedMonth.value=selectedMonth.value===id?'':id}
         <button type="button" @click="showWarnings=!showWarnings">⚠ Có {{summary.warnings.length}} vấn đề cần kiểm tra {{showWarnings?'⌃':'⌄'}}</button>
         <ul v-if="showWarnings"><li v-for="w in summary.warnings" :key="w">{{w}}</li></ul>
        </div>
-       <p class="pn-hint">{{summary.rule}} Công nhật chưa có đơn giá sẽ không được tính thành tiền. Vụ chồi tương lai chỉ hiện mốc để tham khảo, chưa nhân sản lượng chưa có căn cứ.</p>
+       <p class="pn-hint">{{summary.rule}} Công nhật tham chiếu {{fmt(book2?.daywork_rate,0)}} đ/công; dự phòng vắng mặt {{fmt((book2?.absence_reserve||0)*100,0)}}% chỉ dùng định biên, KHÔNG tính thêm vào tiền lương. Các khoản phụ cấp và thưởng theo điều kiện chưa đưa vào tổng. Vụ chồi tương lai chỉ hiện mốc, chưa nhân sản lượng khi thiếu căn cứ.</p>
       </template>
     </div>
    </template>

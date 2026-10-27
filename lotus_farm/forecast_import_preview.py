@@ -63,8 +63,7 @@ def preview(farm=None, block=None):
             "system_area_ha": existing_area,
             "area_match": match,
             "tree_count": count,
-            "count_status": ("Đã bổ sung từ ảnh biển lô hoặc xác nhận người quản lý; cần đối chiếu" if count_source and "18/10/2026" in count_source else
-                             "Từ Excel gốc, cần đối chiếu hiện trường" if count is not None else "Chưa có số cây"),
+            "count_status": ("Số cây gốc đợt trước đã chốt" if count is not None else "Chưa có số cây"),
             "count_source": count_source,
             "source_excel_row": int(item["source_excel_row"]),
         })
@@ -81,7 +80,7 @@ def preview(farm=None, block=None):
     return {
         "available": True, "mode": "import_preview", "farm": FARM,
         "source": SOURCE, "source_sha256": SOURCE_SHA256,
-        "source_status": "Excel gốc + số cây mới nhập vào Farm Block, có ghi nguồn từng lô; chưa kiểm kê độc lập",
+        "source_status": "Bộ số cây kỳ trước được chốt dùng cho dự thu và kế hoạch Lotus, có nguồn theo lô",
         "notice": "Không lưu số cây vào mật độ trồng; không tạo bản ghi trổ hoa/thu hoạch thực tế hoặc cam kết bán.",
         "summary": {
             "lots": len(result),
