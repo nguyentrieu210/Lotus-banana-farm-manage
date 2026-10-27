@@ -1,4 +1,5 @@
 <script setup>
+import {unitLabel} from '../units'
 import {hrCatalogLabel} from '../hr-catalog-labels'
 import '../procurement.css'
 import {computed,onMounted,ref,watch} from 'vue'
@@ -42,12 +43,12 @@ defineExpose({isSaving:()=>saving.value})
    <LotusField v-model="data.item_name" :mobile="mobile" label="Tên hàng" required/>
    <LotusField v-model="data.kind" :mobile="mobile" label="Loại mua" :options="purchaseKinds" :searchable="false" :disabled="!!name" required/>
    <LotusField v-model="data.group" :mobile="mobile" label="Nhóm hàng" :options="opts(options.item_groups)" required/>
-   <LotusField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="opts(options.uoms)" :disabled="!!name" required/>
+   <LotusField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="(options.uoms||[]).map(r=>({value:r.name,label:unitLabel(r.name)}))" :disabled="!!name" required/>
    <LotusField v-if="data.kind==='Asset'" v-model="data.asset_category" :mobile="mobile" label="Nhóm tài sản" :options="opts(options.asset_categories)" :disabled="!!name" required/>
    <LotusField :model-value="String(data.disabled||0)" :mobile="mobile" label="Trạng thái" :options="[{value:'0',label:'Đang dùng'},{value:'1',label:'Ngừng dùng'}]" :searchable="false" :empty-option="null" @update:model-value="data.disabled=Number($event)"/>
    <LotusField v-model="data.description" :mobile="mobile" label="Mô tả" type="textarea" wide/>
   </FormGrid>
-  <LineItemsEditor v-model="data.conversions" title="Đơn vị quy đổi" add-label="Thêm quy đổi" empty-text="Chưa có đơn vị quy đổi." :min="0" :mobile="mobile" :columns="[{field:'uom',label:'Đơn vị quy đổi',required:true,options:opts(options.uoms)},{field:'conversion_factor',label:'Hệ số về đơn vị gốc',type:'number',required:true,props:{min:0.000001}}]" :new-row="()=>({uom:'',conversion_factor:1})" @update:model-value="emit('dirty',true)"/>
+  <LineItemsEditor v-model="data.conversions" title="Đơn vị quy đổi" add-label="Thêm quy đổi" empty-text="Chưa có đơn vị quy đổi." :min="0" :mobile="mobile" :columns="[{field:'uom',label:'Đơn vị quy đổi',required:true,options:(options.uoms||[]).map(r=>({value:r.name,label:unitLabel(r.name)}))},{field:'conversion_factor',label:'Hệ số về đơn vị gốc',type:'number',required:true,props:{min:0.000001}}]" :new-row="()=>({uom:'',conversion_factor:1})" @update:model-value="emit('dirty',true)"/>
   <div class="lotus-inline-form__footer"><component :is="button" type="submit" :disabled="saving">{{saving?'Đang lưu…':'Lưu hàng mua'}}</component></div>
  </fieldset></form>
 </div></template>

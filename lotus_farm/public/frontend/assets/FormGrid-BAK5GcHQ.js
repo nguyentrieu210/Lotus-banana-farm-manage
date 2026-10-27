@@ -1,0 +1,1 @@
+import{W as e,jt as t,q as n,x as r}from"./vue.runtime.esm-bundler-Dx9eLHme.js";var i={__name:`FormGrid`,props:{columns:{type:[Number,String],default:2}},setup(i){return(a,o)=>(e(),r(`div`,{class:`lotus-form-grid`,style:t({"--lotus-form-columns":i.columns})},[n(a.$slots,`default`)],4))}};export{i as t};

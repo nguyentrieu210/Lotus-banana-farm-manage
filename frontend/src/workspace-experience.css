@@ -269,3 +269,12 @@
 .workspace-modal .user-choice-grid{max-height:min(360px,40dvh)}
 .workspace-modal .user-choice,.workspace-modal .user-choice span{min-width:0;overflow-wrap:anywhere}
 .nav-subsection{display:block;margin:var(--lotus-space-3) 0 var(--lotus-space-1);padding:0 var(--lotus-space-3);color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:600}
+
+/* Vườn làm việc in the top bar: compact select on the red bar, after the page title. */
+.workspace-bar .workspace-farm{display:inline-flex;flex-direction:row;align-items:center;gap:6px;margin:0 0 0 8px;padding:0;color:#fff;flex:0 1 auto;min-width:0;font-size:13px}
+.workspace-bar .workspace-farm .lotus-icon{width:16px;height:16px;flex:0 0 auto;color:#fff;opacity:.9}
+.lotus-ui .workspace-bar .workspace-farm select:not([type=checkbox]):not([type=radio]){width:auto;min-width:120px;max-width:220px;height:32px;min-height:32px;padding:0 28px 0 10px;border:1px solid rgba(255,255,255,.45);border-radius:8px;background-color:rgba(0,0,0,.16);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;color:#fff;font-size:13px;font-weight:600;-webkit-appearance:none;appearance:none;text-overflow:ellipsis;cursor:pointer}
+.lotus-ui .workspace-bar .workspace-farm select:not([type=checkbox]):hover{background-color:rgba(0,0,0,.24)}
+.workspace-bar .workspace-farm select:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:none}
+.lotus-ui .workspace-bar .workspace-farm select option{color:var(--lotus-neutral-900);background:var(--lotus-neutral-0)}
+@media(max-width:720px){.lotus-ui .workspace-bar .workspace-farm select:not([type=checkbox]):not([type=radio]){min-width:0;max-width:120px}}

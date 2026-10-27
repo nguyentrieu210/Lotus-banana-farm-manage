@@ -1,4 +1,5 @@
 <script setup>
+import DocumentReader from './components/DocumentReader.vue'
 import StockEvidence from './components/stock/StockEvidence.vue'
 import {formatDate} from './format'
 import MobilePurchaseOrderDetail from './components/MobilePurchaseOrderDetail.vue'
@@ -297,6 +298,24 @@ function searchMatches(r){
 }
 function queryChanged(r){if(r.item&&r.query!==iname(r.item))r.item=''}
 function chooseItem(r,i){r.item=i.name;r.query=i.item_name;r.uom=i.stock_uom}
+// AI-read delivery note / invoice (Nhập không theo đơn): fill supplier, reason and lines; the photo becomes evidence after saving.
+function applyDocument(result,stored){
+ const f=form.value;if(!f)return
+ if(result.supplier.match)f.supplier=result.supplier.match.name
+ if(!f.receipt_reason&&(result.supplier.match||result.supplier.text))f.receipt_reason='Purchase'
+ const rows=[]
+ for(const line of result.lines.filter(l=>l.item&&items.value.some(i=>i.name===l.item.code))){
+  const row=blank();chooseByCode(row,line.item.code)
+  row.qty=line.qty||1
+  if(line.uom&&unitsFor(row.item).includes(line.uom))row.uom=line.uom
+  if(line.rate!=null)row.rate=line.rate
+  rows.push(row)
+ }
+ if(rows.length)f.lines=[...f.lines.filter(r=>r.item),...rows]
+ const doc=result.document
+ if(!f.notes&&(doc.number||result.supplier.text))f.notes=['Theo chứng từ',doc.number&&'số '+doc.number,doc.date&&'ngày '+doc.date.split('-').reverse().join('/'),result.supplier.text&&'của '+result.supplier.text].filter(Boolean).join(' ')
+ f.ai_files=[...(f.ai_files||[]),stored.file_url]
+}
 function chooseByCode(row,code){
  const item=items.value.find(i=>i.name===code)
  if(item)chooseItem(row,item)
@@ -323,6 +342,8 @@ async function saveStock(){
    lines:f.lines.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom,rate:Number(r.rate||0),area:r.area}))
   },true)
   createdDoc.value=result
+  // The photo read by AI is kept as evidence of the new draft.
+  for(const file_url of f.ai_files||[])try{await call('lotus_farm.stock_attachments.attach',{doctype:result.doctype,name:result.name,file_url},true)}catch{}
   createdDocDetails.value=await stockAPI('document',{doctype:result.doctype,name:result.name})
   confirmed.value=false;screen.value='stock-review'
  }catch(e){error.value=safeError(e)}
@@ -531,7 +552,7 @@ onUnmounted(()=>{
 </script>
 
 <template>
- <LotusMobileShell app="warehouse" :refresh="pullRefresh" :refreshable="rootScreens.has(screen)" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
+ <LotusMobileShell app="warehouse" :user="session?.user||''" :refresh="pullRefresh" :refreshable="rootScreens.has(screen)" class="lotus-mobile" :class="{'mobile-keyboard-open':keyboard}"
   :title="mobileTitle" :tabs="mobileTabs" :active-tab="activeTab"
   :back="!baseTabs.includes(screen)" :keyboard-open="keyboard" :disabled="saving"
   @back="appBack" @navigate="goTab"  @touchstart.passive="swipeStart" @touchmove="swipeMove" @touchend="swipeEnd" @touchcancel="swipeCancel">
@@ -560,6 +581,7 @@ onUnmounted(()=>{
    <template v-if="screen==='stock-form'&&form">
     <p v-if="kind==='receipt'" class="mobile-subtle">Chỉ dùng khi hàng về không có đơn mua. Hàng đặt mua hãy dùng Nhập theo đơn.</p>
     <form @submit.prevent="saveStock"><fieldset class="mobile-form-fields" :disabled="saving">
+     <DocumentReader v-if="kind==='receipt'" mobile camera label="Chụp phiếu giao hàng / hóa đơn" :disabled="saving||!online" @read="applyDocument"/>
      <StockReceiptReason v-if="kind==='receipt'" ref="receiptReasonFields" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier" mobile/>
      <LotusMobileInput label="Ngày" type="date" v-model="form.posting_date" required/>
      <MobileLinkField v-if="kind!=='receipt'" label="Kho xuất" v-model="form.source" :options="storeOptions" :searchable="false" placeholder="Chọn kho xuất…" required/>
@@ -570,7 +592,7 @@ onUnmounted(()=>{
       <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="form.lines.length>1" type="button" @click="form.lines.splice(i,1)">Xóa</LotusMobileButton></div>
       <MobileLinkField label="Tên hàng" :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/>
       <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/><LotusMobileSelect label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></div>
-      <LotusMobileInput v-if="kind==='receipt'" label="Đơn giá (nếu có)" v-model="r.rate" type="number" min="0" step="any" inputmode="decimal"/>
+      <LotusMobileInput v-if="kind==='receipt'" label="Đơn giá (nếu có)" v-model="r.rate" type="money"/>
       <LotusMobileInput v-if="kind==='issue'||kind==='receipt'&&form.receipt_reason==='Recovery'" :label="(kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng')" v-model="r.area" placeholder="Ví dụ: Lô A01" required/>
      </div>
      <LotusMobileButton type="button" class="mobile-add" @click="form.lines.push(blank())">＋ Thêm hàng</LotusMobileButton>

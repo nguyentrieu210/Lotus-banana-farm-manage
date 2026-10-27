@@ -1,4 +1,5 @@
 <script setup>
+import {unitLabel} from '../units'
 import {stateLabel} from '../labels'
 import '../procurement.css'
 import {computed,inject,onMounted,onUnmounted,ref,watch} from 'vue'
@@ -62,7 +63,7 @@ const options=(values,label)=>values?.map(r=>({value:r.name,label:r[label]||r.na
 const shownRows=computed(()=>rows.value.filter(r=>(!pendingOnly.value||tab.value!=='orders'||r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng')&&(!supplier.value||['reports','payables','payments','invoices'].includes(tab.value)||r.supplier===supplier.value)&&(!search.value||Object.values(r).filter(x=>typeof x!=='object').join(' ').toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))))
 const columns=computed(()=>tab.value==='invoices'?[{field:'name',headerName:'Hóa đơn',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},{field:'bill_no',headerName:'Số hóa đơn NCC'},{field:'date',headerName:'Ngày ghi sổ'},{field:'due_date',headerName:'Hạn thanh toán'},{field:'amount',headerName:'Tổng tiền',valueFormatter:p=>money(p.value)},{field:'outstanding_amount',headerName:'Còn nợ',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payments'?[{field:'name',headerName:'Chứng từ',minWidth:180,valueGetter:p=>p.data.voucher_name||p.data.name},{field:'kind',headerName:'Loại giao dịch',minWidth:180},{field:'supplier',headerName:'Nhà cung cấp'},{field:'date',headerName:'Ngày'},{field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payables'?[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:190},{field:'name',headerName:'Chứng từ',minWidth:170},{field:'bill_no',headerName:'Hóa đơn NCC'},{field:'due_date',headerName:'Hạn trả'},{field:'amount',headerName:'Còn nợ / dư trả',valueFormatter:p=>money(p.value)},{field:'overdue_days',headerName:'Ngày quá hạn'},{field:'status',headerName:'Tình trạng',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='quotes'?[
  {field:'choice',headerName:'Chọn',width:85},{field:'item_name',headerName:'Mặt hàng',minWidth:170},{field:'supplier',headerName:'Nhà cung cấp',minWidth:150},
- {field:'quotation',headerName:'Báo giá'},{field:'stock_qty',headerName:'SL ĐVT kho'},{field:'stock_uom',headerName:'ĐVT kho'},
+ {field:'quotation',headerName:'Báo giá'},{field:'stock_qty',headerName:'SL ĐVT kho'},{field:'stock_uom',headerName:'ĐVT kho',valueFormatter:p=>unitLabel(p.value)},
  {field:'unit_cost',headerName:'Giá đủ/ĐVT kho',valueFormatter:p=>money(p.value)},
  {field:'net',headerName:'Chưa thuế',valueFormatter:p=>money(p.value)},{field:'tax',headerName:'VAT',valueFormatter:p=>money(p.value)},
  {field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'gross',headerName:'Tổng trả',valueFormatter:p=>money(p.value)},
@@ -74,7 +75,7 @@ const columns=computed(()=>tab.value==='invoices'?[{field:'name',headerName:'Hó
  {field:'name',headerName:'Số chứng từ',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',valueGetter:p=>p.data.supplier_name||p.data.supplier||''},
  {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)},
  {field:'amount',headerName:'Giá trị',valueFormatter:p=>money(p.value)}])
-const lineColumns=[{field:'item_name',headerName:'Mặt hàng',minWidth:180},{field:'qty',headerName:'Số lượng'},{field:'uom',headerName:'ĐVT'},{field:'rate',headerName:'Đơn giá',valueFormatter:p=>money(p.value)},{field:'vat_code',headerName:'VAT'},{field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'order',headerName:'Đơn mua'},{field:'receipt',headerName:'Phiếu nhận'}]
+const lineColumns=[{field:'item_name',headerName:'Mặt hàng',minWidth:180},{field:'qty',headerName:'Số lượng'},{field:'uom',headerName:'ĐVT',valueFormatter:p=>unitLabel(p.value)},{field:'rate',headerName:'Đơn giá',valueFormatter:p=>money(p.value)},{field:'vat_code',headerName:'VAT'},{field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'order',headerName:'Đơn mua'},{field:'receipt',headerName:'Phiếu nhận'}]
 const sourceOptions=computed(()=>form.value==='refund'?[{value:source.value,label:source.value}]:(finance.value?.sources?.[sourceType.value]||[]).map(r=>({value:r.name,label:r.name+' · '+r.supplier+' · còn '+money(r.amount)})))
 const payers=computed(()=>options(payerType.value==='Employee'?finance.value?.employees:finance.value?.shareholders,payerType.value==='Employee'?'employee_name':'title'))
 const companyOptions=computed(()=>options(session.value?.companies))
@@ -172,7 +173,11 @@ async function saveDocument(){await run(async()=>{
  if(form.value==='need')answer=await method('purchase_proposal','save_proposal',{company:company.value,values:{reason:draft.value.notes,warehouse:draft.value.warehouse,items:draft.value.items.map(r=>({...r,item_code:r.item,warehouse:r.warehouse||draft.value.warehouse,schedule_date:draft.value.expected_date}))}},true)
  else if(form.value==='quote')answer=await api('save_quotation',{company:company.value,data:draft.value,client_key:key.value},true)
  else answer=await method('warehouse_buying_lite','save_order',{company:company.value,data:purchasePayload(draft.value,catalog.value),name:draft.value.name||null,modified:draft.value.modified||null},true)
- const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();success('Đã lưu nháp '+answer.name)
+ const doctype={need:'Material Request',quote:'Supplier Quotation'}[form.value]||'Purchase Order'
+ // Photos / PDFs read by AI become attachments of the saved document.
+ let attachNote=''
+ for(const file_url of draft.value.ai_files||[]){try{await call('lotus_farm.stock_attachments.attach',{doctype,name:answer.name,file_url},true)}catch(e){attachNote=' Chưa gắn được chứng từ AI: '+e.message}}
+ const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();success('Đã lưu nháp '+answer.name+(draft.value.ai_files?.length&&!attachNote?' kèm chứng từ đã đọc.':'')+attachNote)
 })}
 async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value});draft.value=purchaseFromRequest(draft.value,request)})}
 async function open(row,type=tab.value){error.value='';try{
@@ -382,7 +387,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <template v-else-if="['return','invoice','credit'].includes(form)">
    <FormGrid :columns="mobile?1:4"><LotusField :mobile="mobile" v-model="date" label="Ngày ghi sổ" type="date" required/><template v-if="['invoice','credit'].includes(form)"><LotusField :mobile="mobile" v-model="bill" label="Số hóa đơn" required/><LotusField :mobile="mobile" v-model="billdate" label="Ngày hóa đơn" type="date" required/><LotusField v-if="form==='invoice'" :mobile="mobile" v-model="dueDate" label="Hạn thanh toán" type="date" required/></template></FormGrid>
    <LineItemsEditor :model-value="receiveInfo?.items||[]" :title="form==='return'?'Số lượng trả':'Số lượng lập hóa đơn'" :columns="stageColumns" :mobile="mobile" fixed>
-    <template #cell-item_name="{row}"><span class="receiving-line"><strong>{{row.item_name}}</strong><small>{{row.uom}} · tối đa {{row.remaining_qty??row.qty}}</small></span></template>
+    <template #cell-item_name="{row}"><span class="receiving-line"><strong>{{row.item_name}}</strong><small>{{unitLabel(row.uom)}} · tối đa {{row.remaining_qty??row.qty}}</small></span></template>
     <template #cell-qty="{row}"><LotusField v-model="quantities[row.line]" :mobile="mobile" :aria-label="'Số lượng '+row.item_name" type="number" min="0" :max="row.remaining_qty??row.qty"/></template>
    </LineItemsEditor>
   </template>

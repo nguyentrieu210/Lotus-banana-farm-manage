@@ -1,7 +1,7 @@
 <script setup>
 import {computed,useId} from 'vue'
 import {FormField} from '../ui/form-field'
-import {Input} from '../ui/input'
+import {Input,MoneyInput} from '../ui/input'
 import {Textarea} from '../ui/textarea'
 import {Combobox} from '../ui/combobox'
 import Select from '../ui/select/Select.vue'
@@ -35,10 +35,10 @@ const kind=computed(()=>{
  return 'input'
 })
 const numeric=computed(()=>kind.value==='money'||props.type==='number')
-const moneyHint=computed(()=>kind.value==='money'&&props.modelValue!==''&&props.modelValue!=null&&!Number.isNaN(Number(props.modelValue))?Number(props.modelValue).toLocaleString('vi-VN',{style:'currency',currency:props.currency}):'')
-const hintText=computed(()=>props.hint||moneyHint.value||undefined)
+// Money shows its thousands separators in the field itself (MoneyInput), so no echo hint underneath.
+const hintText=computed(()=>props.hint||undefined)
 const mobileControl=computed(()=>kind.value==='combobox'?MobileLinkField:kind.value==='select'?LotusMobileSelect:LotusMobileInput)
-const mobileType=computed(()=>numeric.value?'number':['date','month','textarea'].includes(kind.value)?kind.value:props.type==='combobox'?'text':props.type)
+const mobileType=computed(()=>kind.value==='money'?'money':numeric.value?'number':['date','month','textarea'].includes(kind.value)?kind.value:props.type==='combobox'?'text':props.type)
 // A file field's @change carries the native event (callers read event.target.files); other fields pass the new value.
 function set(value){emit('update:modelValue',value);if(kind.value!=='file')emit('change',value)}
 </script>
@@ -59,6 +59,7 @@ function set(value){emit('update:modelValue',value);if(kind.value!=='file')emit(
   <MonthPicker v-else-if="kind==='month'" v-bind="{...field,...$attrs}" :model-value="modelValue" :disabled="disabled||readonly" :label="label" @update:model-value="set"/>
   <Textarea v-else-if="kind==='textarea'" v-bind="{...field,...$attrs}" :model-value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
   <FileInput v-else-if="kind==='file'" v-bind="{...field,...$attrs}" :disabled="disabled||readonly" :required="required" @update:model-value="set" @change="emit('change',$event)"/>
+  <MoneyInput v-else-if="kind==='money'" v-bind="{...field,...$attrs}" :model-value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
   <Input v-else v-bind="{...field,...$attrs}" :model-value="modelValue" :type="numeric?'number':type" :model-modifiers="numeric?{number:true}:{}" :step="numeric?($attrs.step??'any'):$attrs.step" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
  </FormField>
 </template>

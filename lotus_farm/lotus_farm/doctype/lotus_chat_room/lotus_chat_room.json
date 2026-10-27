@@ -1,0 +1,14 @@
+{
+ "doctype":"DocType","name":"Lotus Chat Room","module":"Lotus Farm","autoname":"hash","title_field":"title",
+ "field_order":["kind","title","direct_key","members","last_seq","last_preview","last_activity"],
+ "fields":[
+  {"fieldname":"kind","label":"Loại","fieldtype":"Select","options":"Direct\nGroup","reqd":1},
+  {"fieldname":"title","label":"Tên nhóm","fieldtype":"Data"},
+  {"fieldname":"direct_key","label":"Khóa chat riêng","fieldtype":"Data","unique":1,"hidden":1},
+  {"fieldname":"members","label":"Thành viên","fieldtype":"Table","options":"Lotus Chat Member","reqd":1},
+  {"fieldname":"last_seq","label":"Tin cuối","fieldtype":"Int","default":"0","read_only":1},
+  {"fieldname":"last_preview","label":"Nội dung cuối","fieldtype":"Small Text","read_only":1},
+  {"fieldname":"last_activity","label":"Hoạt động cuối","fieldtype":"Datetime","read_only":1}
+ ],
+ "permissions":[{"role":"All","read":1,"select":1}]
+}

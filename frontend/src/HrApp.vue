@@ -1,4 +1,6 @@
 <script setup>
+import {MoneyInput} from './components/ui/input'
+import {workFarm} from './work-farm'
 import LotusField from './components/form/LotusField.vue'
 const props=defineProps({embedded:Boolean,navigationKey:String,hrView:{type:String,default:'employees'}})
 import {computed,onMounted,onBeforeUnmount,onDeactivated,nextTick,reactive,ref,watch} from 'vue'
@@ -36,7 +38,7 @@ const session=ref(null),company=ref(''),tab=ref(normalizeHrView(props.hrView)),b
 const router=props.embedded?useRouter():null
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
 const overview=ref({employees:[],candidates:[]})
-const employeeFilters=reactive({farm:'',department:'',team:'',status:'',category:'',stage:''})
+const employeeFilters=reactive({farm:workFarm(),department:'',team:'',status:'',category:'',stage:''})
 const search=ref(''),editEmployee=ref(false),editCandidate=ref(false),candidateHire=ref(null),cccdScanOpen=ref(false),offboardOpen=ref(false)
 const selectedEmployee=ref(null),selectedCandidate=ref(null),ops=ref(null),payroll=ref(null)
 const revealedCccd=ref('')
@@ -126,7 +128,7 @@ function emptyEmployee(){
  resetPanels();clear(employeeForm)
  Object.assign(employeeForm,{employee_name:'',gender:'',date_of_birth:'',date_of_joining:today.value,designation:'',department:'',
   employment_type:'',grade:'',reports_to:'',lotus_worker_category:'Seasonal',lotus_payment_basis:'Daywork',
-  lotus_farm:'',lotus_work_team:'',cell_number:'',personal_email:'',current_address:'',permanent_address:'',
+  lotus_farm:workFarm(),lotus_work_team:'',cell_number:'',personal_email:'',current_address:'',permanent_address:'',
   cccd:'',lotus_id_issue_on:'',lotus_id_issue_at:DEFAULT_CCCD_ISSUER,lotus_emergency_name:'',lotus_emergency_phone:'',
   lotus_tax_code:'',lotus_social_insurance_no:'',health_insurance_no:'',contract_end_date:'',lotus_onboarding_state:'Pending',
   lotus_base_salary:0,lotus_daily_rate:0,lotus_dependents:0,lotus_pit_commitment:0})
@@ -178,7 +180,7 @@ async function confirmOffboard(){saving.value=true;error.value=''
  try{await api('offboard_employee',{company:company.value,employee:selectedEmployee.value,modified:employeeForm.modified,...offboard},true);offboardOpen.value=false;notice.value='Đã ghi nhận nghỉ việc.';resetPanels();await refresh()}
  catch(e){error.value=e.message}finally{saving.value=false}}
 
-function emptyCandidate(){resetPanels();clear(candidateForm);Object.assign(candidateForm,{applicant_name:'',phone:'',email:'',designation:'',farm:'',job_opening:'',applied_on:today.value,source:'Trực tiếp',status:'New',interview_on:'',notes:''});editCandidate.value=true}
+function emptyCandidate(){resetPanels();clear(candidateForm);Object.assign(candidateForm,{applicant_name:'',phone:'',email:'',designation:'',farm:workFarm(),job_opening:'',applied_on:today.value,source:'Trực tiếp',status:'New',interview_on:'',notes:''});editCandidate.value=true}
 async function openCandidate(item){busy.value=true;error.value=''
  try{const details=await api('candidate_detail',{company:company.value,candidate:item.name});resetPanels();selectedCandidate.value=item.name;clear(candidateForm);Object.assign(candidateForm,details);editCandidate.value=true}
  catch(e){error.value=e.message}finally{busy.value=false}}
@@ -311,8 +313,8 @@ useNoticeToast(notice)
     <h3 class="hr-form-section">Lương</h3>
     <div class="hr-form-grid">
      <FormField label="Cơ chế công/lương" required v-slot="f"><UiSelect v-bind="f" v-model="employeeForm.lotus_payment_basis"><option value="">Chọn</option><option v-for="v in catalog.payment_bases" :key="v" :value="v">{{bases[v]}}</option></UiSelect></FormField>
-     <FormField v-if="['Monthly','Mixed'].includes(employeeForm.lotus_payment_basis)" label="Lương cơ bản tháng (VND)" hint="Cho 26 công × 8 giờ" v-slot="f"><UiInput v-bind="f" v-model.number="employeeForm.lotus_base_salary" type="number" min="0" step="1000"/></FormField>
-     <FormField v-if="['Daywork','Mixed'].includes(employeeForm.lotus_payment_basis)" label="Đơn giá công nhật (VND)" hint="Lương CB = đơn giá × 26" v-slot="f"><UiInput v-bind="f" v-model.number="employeeForm.lotus_daily_rate" type="number" min="0" step="1000"/></FormField>
+     <FormField v-if="['Monthly','Mixed'].includes(employeeForm.lotus_payment_basis)" label="Lương cơ bản tháng (VND)" hint="Cho 26 công × 8 giờ" v-slot="f"><MoneyInput v-bind="f" v-model="employeeForm.lotus_base_salary"/></FormField>
+     <FormField v-if="['Daywork','Mixed'].includes(employeeForm.lotus_payment_basis)" label="Đơn giá công nhật (VND)" hint="Lương CB = đơn giá × 26" v-slot="f"><MoneyInput v-bind="f" v-model="employeeForm.lotus_daily_rate"/></FormField>
      <FormField v-if="selectedEmployee&&employeeForm.lotus_payment_basis&&employeeForm.lotus_payment_basis!=='Piecework'" label="Mức lương áp dụng từ" hint="Mặc định đầu tháng này" v-slot="f"><DatePicker v-bind="f" v-model="employeeForm.pay_from_date" :min="employeeForm.date_of_joining" aria-label="Mức lương áp dụng từ"/></FormField>
      <p v-if="employeeForm.lotus_payment_basis==='Piecework'" class="hr-span hr-form-note">Khoán sản lượng: tiền trả qua đội khoán, không lên phiếu lương cá nhân.</p>
     </div>

@@ -5,7 +5,7 @@ import LinkPicker from './LinkPicker.vue'
 import UiSelect from './ui/select/Select.vue'
 import {computed,reactive} from 'vue'
 import {Button as UiButton} from './ui/button'
-import {Input as UiInput} from './ui/input'
+import {Input as UiInput,MoneyInput} from './ui/input'
 import {Textarea as UiTextarea} from './ui/textarea'
 import {FormField} from './ui/form-field'
 import {DatePicker} from './ui/date-picker'
@@ -43,7 +43,8 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
      <option v-for="option in (field.options||'').split('\n').filter(Boolean)" :key="option" :value="option">{{stateLabel(option)}}</option>
     </UiSelect>
     <Checkbox v-else-if="field.fieldtype==='Check'" v-bind="attrs" :model-value="model[field.fieldname]===true||Number(model[field.fieldname])===1" @update:model-value="value=>model[field.fieldname]=value?1:0"/>
-    <UiInput v-else-if="['Int','Float','Currency','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
+    <MoneyInput v-else-if="field.fieldtype==='Currency'" v-bind="attrs" v-model="model[field.fieldname]"/>
+    <UiInput v-else-if="['Int','Float','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
     <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)" @select="selectLink(field,$event)"/>
     <DatePicker v-else-if="field.fieldtype==='Date'" v-bind="attrs" v-model="model[field.fieldname]" :label="fieldCaption(field)"/>
     <UiInput v-else v-bind="attrs" v-model="model[field.fieldname]" :type="inputType(field)"/>

@@ -40,6 +40,7 @@ export const stores=[{name:'K1',warehouse_name:'Kho 1'},{name:'K2',warehouse_nam
 export const items=Array.from({length:12},(_,i)=>({name:'I'+i,item_name:i===0?'Dây cột buồng':'Vật tư '+i,stock_uom:'Kg'}));
 export const providers=[{name:'S1',supplier_name:'NCC 1'}];
 export function setCSRF(){};export async function upload(){};
+export const consoleAPI=(name,args={},write=false)=>call('lotus_farm.console.'+name,args,write);
 export async function call(method,args={},write=false){calls.push({method,args,write});const name=method.split('.').pop();
 if(name==='bootstrap')return {user:'audit@example.invalid',companies:[{name:'Lotus'}],today:'2026-10-16',can_create:true,permissions:{'Stock Entry':true,'Purchase Receipt':true}};
 if(name==='setup'||name==='catalog')return {warehouses:stores,items,suppliers:providers.map(r=>({...r})),conversions:[],can_create:true,can_create_supplier:true,currency:'VND'};

@@ -30,7 +30,7 @@ test('LotusField picks the control from type and options',async()=>{
   h(LotusField,{label:'Số tiền',type:'money',modelValue:form.amount,'onUpdate:modelValue':v=>{form.amount=v}})
  ])})
  await tick()
- const [qty,amount]=view.root.querySelectorAll('input[type=number]')
+ const qty=view.root.querySelector('input[type=number]'),amount=view.root.querySelector('input[inputmode=decimal][type=text]')
  qty.value='12.5';qty.dispatchEvent(new window.Event('input'));await tick()
  assert.equal(form.qty,12.5,'numbers come back as numbers')
  const select=view.root.querySelector('select')
@@ -39,7 +39,8 @@ test('LotusField picks the control from type and options',async()=>{
  assert.equal(view.root.querySelector('label[for="'+box.id+'"]').textContent,'Đã trả','the checkbox is labelled')
  box.click();await tick();assert.equal(form.paid,true)
  amount.value='1500000';amount.dispatchEvent(new window.Event('input'));await tick()
- assert.match(view.root.textContent,/1\.500\.000/,'money shows the formatted amount under the field')
+ assert.equal(amount.value,'1.500.000','money shows thousands separators in the field')
+ assert.equal(form.amount,1500000,'and is stored as a number')
  view.unmount()
 })
 

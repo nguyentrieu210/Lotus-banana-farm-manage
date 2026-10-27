@@ -6,7 +6,7 @@ self.addEventListener('push',event=>{
  let url;
  try {url=new URL(raw,self.location.origin)}catch{return}
  if(url.origin!==self.location.origin ||
-    !['/warehouse','/buying','/work'].some(prefix=>url.pathname===prefix))return;
+    !['/warehouse','/buying','/work','/hr-mobile'].some(prefix=>url.pathname===prefix))return;
  event.waitUntil(self.registration.showNotification(String(payload.title||'Lotus').slice(0,130),{
   body:String(payload.body||'').slice(0,500),tag:String(payload.tag||'lotus'),
   icon:'/assets/lotus_farm/images/lotus-agritech.jpg',

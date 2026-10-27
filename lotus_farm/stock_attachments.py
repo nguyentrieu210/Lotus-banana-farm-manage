@@ -1,4 +1,4 @@
-"""Chứng từ đính kèm phiếu kho: ảnh chụp, PDF phiếu giao hàng / hóa đơn làm bằng chứng nhập, xuất, chuyển, kiểm kê.
+"""Chứng từ đính kèm phiếu kho và chứng từ mua hàng: ảnh chụp, PDF phiếu giao hàng / hóa đơn / báo giá làm bằng chứng.
 
 The browser uploads a private File first (frappe upload_file); these calls then attach that file to a stock document
 the user can read. Files stay private and are served only to users who can read the document.
@@ -7,9 +7,12 @@ import os
 
 import frappe
 
-from lotus_farm.warehouse import _access, _stock_doc
+from lotus_farm.warehouse import _stock_doc
 
-DOCTYPES = ('Stock Entry', 'Stock Reconciliation', 'Purchase Receipt')
+STOCK_DOCTYPES = ('Stock Entry', 'Stock Reconciliation')
+# Purchasing documents only need read access to the document itself (buyers may not read stock entries).
+PURCHASE_DOCTYPES = ('Purchase Receipt', 'Purchase Order', 'Supplier Quotation', 'Material Request')
+DOCTYPES = STOCK_DOCTYPES + PURCHASE_DOCTYPES
 EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.pdf'}
 MAX_FILES = 20
 
@@ -17,8 +20,9 @@ MAX_FILES = 20
 def _document(doctype, name):
     if doctype not in DOCTYPES:
         frappe.throw('Loại phiếu không hỗ trợ đính kèm.')
-    if doctype == 'Purchase Receipt':
-        _access()
+    if doctype in PURCHASE_DOCTYPES:
+        if frappe.session.user == 'Guest':
+            frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
         doc = frappe.get_doc(doctype, name)
         doc.check_permission('read')
         return doc

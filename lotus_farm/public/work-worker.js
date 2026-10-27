@@ -1,5 +1,5 @@
 /* Only /work is controlled by this worker. Warehouse has another worker/cache. */
-importScripts('/assets/lotus_farm/lotus-push-worker.js?v=1');
+importScripts('/assets/lotus_farm/lotus-push-worker.js?v=2');
 const CACHE='lotus-work-shell-__WORK_VERSION__';
 const ASSETS=__WORK_ASSETS__;
 const OFFLINE='/assets/lotus_farm/work-offline.html';

@@ -37,6 +37,8 @@ class TestBRDOnSite(unittest.TestCase):
             )).insert()
         settings = frappe.get_single("Stock Settings")
         settings.enable_serial_and_batch_no_for_item = 1
+        # Newer ERPNext ships with stock reservation off; the forecast → physical reservation tests need it.
+        settings.enable_stock_reservation = 1
         settings.save()
         frappe.db.commit()
 

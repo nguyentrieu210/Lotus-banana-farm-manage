@@ -1,4 +1,5 @@
 <script setup>
+import {workFarm} from './work-farm'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import {hrCatalogLabel} from "./hr-catalog-labels"
 const props=defineProps({embedded:Boolean,navigationKey:String})
@@ -25,7 +26,7 @@ import {formatDate} from './format'
 // /lotus/cham-cong: daily staff attendance (HRMS Attendance, filled from device check-ins), contractor crew sheets,
 // the month sheet and setup. Drafts are reviewed and submitted here; a closed month is read-only.
 const api=(name,args={},write=false)=>call('lotus_farm.timekeeping.'+name,args,write)
-const session=ref(null),company=ref(''),date=ref(''),month=ref(''),shift=ref(''),farm=ref(''),tab=ref('staff'),search=ref(''),view=ref('all')
+const session=ref(null),company=ref(''),date=ref(''),month=ref(''),shift=ref(''),farm=ref(workFarm()),tab=ref('staff'),search=ref(''),view=ref('all')
 const busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const catalog=ref({farms:[],teams:[],shifts:[],employees:[],works:[],genders:[],departments:[],uoms:[]})
 const staff=ref([]),crews=ref([]),availableTeams=ref([]),monthData=ref(null),crewMonth=ref(null),eventId=ref(crypto.randomUUID())

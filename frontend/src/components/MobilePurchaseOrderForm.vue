@@ -48,10 +48,10 @@ function chooseItem(index,code){const item=props.items.find(r=>r.name===code);li
     <LotusMobileButton v-if="canCreateItem" @click="emit('add-item',index)">Thêm mặt hàng</LotusMobileButton>
     <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" :model-value="line.qty" type="number" min="0.000001" step="any" inputmode="decimal" required @update:modelValue="linePatch(index,{qty:$event})"/>
      <LotusMobileSelect label="Đơn vị" :model-value="line.uom" :options="purchaseUnits(line.item,items,conversions).map(u=>({value:u,label:unitLabel(u)}))" required @update:modelValue="linePatch(index,{uom:$event})"/></div>
-    <LotusMobileInput label="Đơn giá" :model-value="line.rate" type="number" min="0" step="any" inputmode="decimal" placeholder="Theo báo giá" @update:modelValue="linePatch(index,{rate:$event})"/>
+    <LotusMobileInput label="Đơn giá" :model-value="line.rate" type="money" placeholder="Theo báo giá" @update:modelValue="linePatch(index,{rate:$event})"/>
     <LotusMobileSelect label="Loại mua" :model-value="line.kind||purchaseKind(items.find(r=>r.name===line.item))" :options="allowedKinds(items.find(r=>r.name===line.item))" @update:modelValue="linePatch(index,{kind:$event})"/>
     <LotusMobileSelect label="VAT" :model-value="line.vat_code||'KCT'" :options="['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))" @update:modelValue="linePatch(index,{vat_code:$event})"/>
-    <LotusMobileInput label="Vận chuyển dòng này" :model-value="line.freight||0" type="number" min="0" step="any" @update:modelValue="linePatch(index,{freight:$event})"/>
+    <LotusMobileInput label="Vận chuyển dòng này" :model-value="line.freight||0" type="money" @update:modelValue="linePatch(index,{freight:$event})"/>
     <MobileLinkField v-if="farms.length" label="Vườn sử dụng" :model-value="line.lotus_farm||''" :options="farms.map(f=>({value:f.name,label:f.farm_name||f.name}))" @update:modelValue="linePatch(index,{lotus_farm:$event})"/>
     <small v-if="line.material_request" class="mobile-subtle">Theo đề nghị {{line.material_request}}</small>
    </section>
