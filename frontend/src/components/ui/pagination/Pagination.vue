@@ -39,4 +39,8 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
 .lotus-pagination__button .lotus-icon{width:16px;height:16px}
 .lotus-pagination__page[data-selected]{border-color:var(--lotus-primary);background:var(--lotus-primary);color:var(--lotus-on-primary)}
 .lotus-pagination__ellipsis{min-width:24px;text-align:center;color:var(--lotus-muted)}
+@media(min-width:721px){
+ /* The desktop chat launcher sits outside App's root; keep table actions clear of its corner. */
+ body:has(.ai-chat) .app-shell .lotus-pagination{padding-inline-end:calc(var(--lotus-space-6) * 6)}
+}
 </style>
