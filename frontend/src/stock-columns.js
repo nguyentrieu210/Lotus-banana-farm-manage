@@ -41,7 +41,8 @@ export function movementColumns(warehouseLabel){return [
  number('opening_qty','Tồn trước',80),number('in_qty','Nhập',75),number('out_qty','Xuất',75),number('qty_after_transaction','Tồn sau',85),
  {field:'stock_uom',headerName:'ĐVT',minWidth:65,valueFormatter:p=>unitLabel(p.value)},
  {field:'voucher_no',headerName:'Số phiếu',minWidth:170},
- {field:'kind',headerName:'Loại biến động',minWidth:95}
+ {field:'kind',headerName:'Loại biến động',minWidth:95},
+ {field:'content',headerName:'Nội dung',minWidth:250,flex:1.8}
 ]}
 
 // Nhập – xuất – tồn (quantities). The value version of this report lives in Kế toán → Báo cáo.
