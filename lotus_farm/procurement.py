@@ -125,8 +125,9 @@ def needs(company):
     result = []
     for r in frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase'}, fields=['name'], limit_page_length=0, order_by='transaction_date desc, name desc'):
         d = document('Material Request', r.name, company)
+        # Material Request has no document total; the estimate is the sum of its lines.
         result.append(dict(name=d.name, date=str(d.transaction_date), needed=str(d.schedule_date or ''), status=d.status,
-                           docstatus=d.docstatus, amount=flt(d.get('grand_total') or d.get('total')),
+                           docstatus=d.docstatus, amount=sum(flt(x.get('amount')) or flt(x.qty) * flt(x.rate) for x in d.items),
                            items=[dict(name=x.name, item=x.item_code, item_name=x.item_name, qty=flt(x.qty), uom=x.uom,
                                        factor=flt(x.conversion_factor), warehouse=x.warehouse, rate=flt(x.rate),
                                        kind=x.get('lotus_purchase_kind'), ordered_qty=flt(x.ordered_qty)) for x in d.items]))
@@ -155,6 +156,55 @@ def quotations(company, request=None):
     return result
 
 
+def _offer_key(row):
+    """Offers compete for one request line, or for one item when the quote is not tied to a request."""
+    return row.get('request_line') or 'item:' + str(row.get('item'))
+
+
+def _live_offers(company):
+    """Priced, not cancelled, not expired quote lines grouped by _offer_key → [unit cost per stock unit]."""
+    today, costs = getdate(nowdate()), {}
+    for row in quotations(company):
+        if row['valid_till'] and getdate(row['valid_till']) < today:
+            continue
+        costs.setdefault(_offer_key(row), []).append(row['unit_cost'])
+    return costs
+
+
+@frappe.whitelist()
+def compare(company, request=None):
+    """Price comparison: one row per request line (or item), one offer per supplier quote line.
+    unit_cost is the landed cost (VAT and freight included) per stock unit."""
+    access(company)
+    today, groups, suppliers = getdate(nowdate()), {}, {}
+    for r in quotations(company, request):
+        if r['valid_till'] and getdate(r['valid_till']) < today:
+            continue
+        key = _offer_key(r)
+        group = groups.setdefault(key, dict(key=key, item=r['item'], item_name=r['item_name'], stock_uom=r['stock_uom'],
+                                            request=r['request'] or '', request_line=r['request_line'] or '', offers=[]))
+        group['offers'].append(dict(quotation=r['quotation'], line=r['name'], supplier=r['supplier'], docstatus=r['docstatus'],
+                                    unit_cost=r['unit_cost'], rate=r['rate'], qty=r['qty'], uom=r['uom'], stock_qty=r['stock_qty'],
+                                    gross=r['gross'], vat_code=r['vat_code'], date=r['date'], modified=r['modified']))
+        suppliers[r['supplier']] = frappe.get_cached_value('Supplier', r['supplier'], 'supplier_name') or r['supplier']
+    requests = {}
+    for name in sorted({g['request'] for g in groups.values() if g['request']}):
+        d = document('Material Request', name, company)
+        requests[name] = dict(name=name, approved=d.docstatus == 1, state='Đã duyệt' if d.docstatus == 1 else (d.get('lotus_proposal_state') or 'Nháp'),
+                              lines={x.name: max(0, flt(x.stock_qty) - flt(x.ordered_qty)) for x in d.items})
+    rows = []
+    for group in groups.values():
+        priced = [o for o in group['offers'] if o['unit_cost'] is not None]
+        group['best_line'] = min(priced, key=lambda o: o['unit_cost'])['line'] if priced else ''
+        info = requests.get(group['request'])
+        group['need_qty'] = info['lines'].get(group['request_line']) if info else None
+        group['approved'] = bool(info and info['approved'])
+        rows.append(group)
+    rows.sort(key=lambda g: (g['request'], g['item_name'] or ''))
+    return dict(rows=rows, suppliers=[dict(name=k, label=v) for k, v in sorted(suppliers.items(), key=lambda s: s[1])],
+                requests=[dict(name=r['name'], approved=r['approved'], state=r['state']) for r in requests.values()])
+
+
 @frappe.whitelist(methods=['POST'])
 def save_quotation(company, data, client_key, name=None, modified=None):
     access(company)
@@ -173,7 +223,8 @@ def save_quotation(company, data, client_key, name=None, modified=None):
     d.update(dict(company=company, supplier=supplier.name, transaction_date=data.get('date') or nowdate(),
                   valid_till=data.get('valid_till') or None, lotus_delivery_date=data.get('expected_date'),
                   currency=frappe.get_cached_value('Company', company, 'default_currency')))
-    d.set('items', _lines(company, data.get('warehouse'), data.get('items'), data.get('expected_date')))
+    # Prices may be asked while the request is still being signed; orders still need an approved request.
+    d.set('items', _lines(company, data.get('warehouse'), data.get('items'), data.get('expected_date'), allow_pending=True))
     apply_line_taxes(d)
     d.lotus_procurement_key, d.lotus_procurement_hash = token, fingerprint
     d.save() if name else d.insert()
@@ -208,17 +259,29 @@ def select_quotes(company, selections, client_key):
         if any(r.lotus_procurement_hash != fingerprint for r in existing):
             frappe.throw('Lần chọn báo giá này đã dùng với nội dung khác.')
         return dict(orders=[r.name for r in existing])
-    groups, seen = {}, set()
+    groups, seen, drafts, cheapest = {}, set(), {}, {}
+    offers = _live_offers(company)
     for chosen in selections:
         if chosen['line'] in seen:
             frappe.throw('Không chọn hai lần cùng dòng báo giá.')
         seen.add(chosen['line'])
-        quote = document('Supplier Quotation', chosen['quotation'], company)
-        if quote.docstatus != 1 or str(quote.modified) != str(chosen.get('modified')) or quote.valid_till and getdate(quote.valid_till) < getdate(nowdate()):
-            frappe.throw('Báo giá chưa xác nhận, đã đổi hoặc hết hiệu lực. So sánh lại.')
+        quote = drafts.get(chosen['quotation']) or document('Supplier Quotation', chosen['quotation'], company)
+        if quote.docstatus == 2 or str(quote.modified) != str(chosen.get('modified')) or quote.valid_till and getdate(quote.valid_till) < getdate(nowdate()):
+            frappe.throw('Báo giá đã hủy, đã đổi hoặc hết hiệu lực. So sánh lại.')
         row = next((r for r in quote.items if r.name == chosen['line']), None)
-        if not row or flt(row.rate) <= 0 or not str(chosen.get('reason') or '').strip():
-            frappe.throw('Báo giá phải có giá và lý do lựa chọn.')
+        if not row or flt(row.rate) <= 0:
+            frappe.throw('Dòng báo giá được chọn phải có đơn giá.')
+        if row.material_request and frappe.db.get_value('Material Request', row.material_request, 'docstatus') != 1:
+            frappe.throw('Đề nghị ' + row.material_request + ' chưa duyệt xong, chưa tạo đơn được.')
+        cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, row.get('lotus_line_vat') or 'KCT', row.get('lotus_line_freight') or 0)['unit_cost']
+        key = _offer_key(dict(request_line=row.material_request_item, item=row.item_code))
+        best = not rules.needs_reason(cost, offers.get(key, []) + [cost])
+        reason = str(chosen.get('reason') or '').strip()
+        if not best and not reason:
+            frappe.throw('Ghi lý do chọn ' + (row.item_name or row.item_code) + ' vì không phải giá thấp nhất.')
+        if quote.docstatus == 0:
+            drafts[quote.name] = quote  # confirmed together with the order
+        cheapest[chosen['line']] = best and bool(row.material_request)
         qty = flt(chosen.get('qty') or row.qty)
         if qty <= 0 or qty > flt(row.qty):
             frappe.throw('Số lượng chọn vượt báo giá.')
@@ -226,7 +289,13 @@ def select_quotes(company, selections, client_key):
             warehouse=row.warehouse, expected_date=str(quote.get('lotus_delivery_date') or nowdate()),
             material_request=row.material_request, material_request_item=row.material_request_item,
             supplier_quotation=quote.name, supplier_quotation_item=row.name, kind=row.get('lotus_purchase_kind'),
-            vat_code=row.get('lotus_line_vat'), freight=flt(row.get('lotus_line_freight'))*qty/flt(row.qty), reason=chosen['reason']))
+            vat_code=row.get('lotus_line_vat'), freight=flt(row.get('lotus_line_freight'))*qty/flt(row.qty),
+            reason=reason or 'Giá thấp nhất trong các báo giá'))
+    # Choosing a draft quote confirms it: the person creating the order vouches for the quoted price.
+    for quote in drafts.values():
+        lock('Supplier Quotation', quote.name)
+        quote.check_permission('submit')
+        quote.submit()
     orders = []
     requested={}
     for rows in groups.values():
@@ -240,14 +309,36 @@ def select_quotes(company, selections, client_key):
                 requested[pair]=requested.get(pair,0)+flt(row['qty'])*factor
                 if requested[pair]>flt(original.stock_qty)-flt(original.ordered_qty)+.000001:
                     frappe.throw('Tổng các nhà cung cấp được chọn vượt lượng còn mua của đề nghị '+source.name)
+    approved = []
     for supplier, rows in groups.items():
         answer = save_order(company, dict(supplier=supplier, warehouse=rows[0]['warehouse'], expected_date=rows[0]['expected_date'], items=rows))
         d = frappe.get_doc('Purchase Order', answer['name'])
         d.lotus_procurement_key = rules.digest([frappe.session.user, 'quote-selection', client_key])+rules.digest(supplier)[:12]
         d.lotus_procurement_hash = fingerprint
         d.save()
+        if all(cheapest.get(r['supplier_quotation_item']) for r in rows):
+            _approve_by_policy(d, sorted({r['material_request'] for r in rows}))
+            approved.append(d.name)
         orders.append(d.name)
-    return dict(orders=orders)
+    return dict(orders=orders, approved=approved)
+
+
+def _approve_by_policy(doc, requests):
+    """Every line comes from an approved request and is the cheapest offer: the order needs no second approval."""
+    from frappe.utils import now_datetime
+    from lotus_farm.purchasing import PENDING
+    doc.check_permission('submit')
+    now = now_datetime()
+    doc.update(dict(lotus_approval_status=PENDING, lotus_requested_by=frappe.session.user, lotus_requested_at=now,
+                    lotus_approved_by=frappe.session.user, lotus_approved_at=now))
+    doc.save()
+    frappe.local.lotus_policy_approved = doc.name  # read by purchasing.check_submission
+    try:
+        doc.submit()
+    finally:
+        frappe.local.lotus_policy_approved = None
+    doc.add_comment('Comment', 'Tự duyệt theo quy định: theo đề nghị ' + ', '.join(requests)
+                    + ' đã duyệt và chọn giá thấp nhất trong các báo giá.')
 
 
 @frappe.whitelist()

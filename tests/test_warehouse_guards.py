@@ -69,13 +69,35 @@ class TestWarehouseGuards(unittest.TestCase):
         doc.doctype = 'Stock Entry'
         self.frappe.new_doc.return_value = doc
         result = self.module.create_draft('Farm', 'receipt', '2026-10-13',
-                                         [dict(item='FERT-001', qty=5, rate=10)], target='Main')
+                                         [dict(item='FERT-001', qty=5, rate=10)], target='Main', receipt_reason='Surplus')
         self.assertEqual(doc.stock_entry_type, 'Material Receipt')
         self.assertEqual(doc.append.call_args.args[1]['t_warehouse'], 'Main')
         self.assertEqual(doc.append.call_args.args[1]['basic_rate'], 10)
         doc.insert.assert_called_once_with()
         doc.submit.assert_not_called()
         self.assertEqual(result, dict(name='MAT-TEST', doctype='Stock Entry'))
+
+    def test_receipt_without_order_names_reason_supplier_and_price(self):
+        self.module._company = Mock()
+        self.module._warehouse = Mock()
+        item = Mock(name='Item')
+        item.name, item.item_name, item.stock_uom = 'FERT-001', 'Ure', 'Kg'
+        item.disabled = item.has_batch_no = item.has_serial_no = 0
+        item.is_stock_item = 1
+        self.frappe.get_doc.return_value = item
+        doc = Mock()
+        doc.name, doc.doctype = 'MAT-TEST', 'Stock Entry'
+        self.frappe.new_doc.return_value = doc
+        line = [dict(item='FERT-001', qty=5, rate=10)]
+        with self.assertRaises(ValueError):  # no reason
+            self.module.create_draft('Farm', 'receipt', '2026-10-13', line, target='Main')
+        with self.assertRaises(ValueError):  # bought goods without a supplier
+            self.module.create_draft('Farm', 'receipt', '2026-10-13', line, target='Main', receipt_reason='Purchase')
+        with self.assertRaises(ValueError):  # bought goods without a price
+            self.module.create_draft('Farm', 'receipt', '2026-10-13', [dict(item='FERT-001', qty=5, rate=0)],
+                                     target='Main', receipt_reason='Purchase', supplier='Kim Ngoan')
+        self.module.create_draft('Farm', 'receipt', '2026-10-13', line, target='Main', receipt_reason='Purchase', supplier='Kim Ngoan')
+        self.assertEqual(doc.lotus_supplier, 'Kim Ngoan')
 
     def test_transfer_to_same_warehouse_is_rejected(self):
         self.module._company = Mock()
@@ -144,7 +166,7 @@ class TestWarehouseGuards(unittest.TestCase):
         self.module._access = Mock()
         self.module._company = Mock()
         rows = [Row(name=str(i),item_code='I',actual_qty=-2 if i==60 else 5,
-                    voucher_no='V-'+str(i),warehouse='W',qty_after_transaction=100) for i in range(65)]
+                    voucher_type='Test Voucher',voucher_no='V-'+str(i),warehouse='W',qty_after_transaction=100) for i in range(65)]
         self.frappe.get_list = Mock(side_effect=[[Row(name='W')],[Row(name='I',item_name='Fertilizer')],rows])
         with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}):
             result=self.module.movements('Farm',from_date='2026-10-01',to_date='2026-10-13',column_filters={'out_qty':[2]})

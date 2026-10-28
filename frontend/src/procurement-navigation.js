@@ -1,6 +1,7 @@
 export const procurementNavigation=[
  {id:'needs',label:'Đề nghị mua',icon:'list'},
  {id:'quotes',label:'Báo giá',icon:'document'},
+ {id:'compare',label:'So sánh giá',icon:'chart'},
  {id:'orders',label:'Đơn mua',icon:'cart'},
  {id:'receipts',label:'Nhận / nghiệm thu',icon:'receive'},
  {id:'invoices',label:'Hóa đơn',icon:'document',finance:true,invoice:true},

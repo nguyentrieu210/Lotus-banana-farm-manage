@@ -609,6 +609,11 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             if receipt_reason and receipt_reason not in ('Purchase', 'Recovery', 'Surplus'):
                 frappe.throw('Lý do nhập kho không hợp lệ.')
             # The finance rules (lotus_farm.finance.stock) decide the credited account from the reason.
+            # Goods bought without an order still name their supplier and price; other receipts say why they came in.
+            if not receipt_reason and not existing_name:
+                frappe.throw('Chọn lý do nhập kho: mua lẻ không theo đơn, thu hồi từ lô hay thừa khi kiểm kê.')
+            if receipt_reason == 'Purchase' and not supplier:
+                frappe.throw('Hàng mua phải chọn nhà cung cấp.')
             doc.lotus_receipt_reason = receipt_reason or None
             doc.lotus_supplier = supplier if receipt_reason == 'Purchase' else None
         if kind == 'issue':
@@ -652,6 +657,8 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         # Existing clients can omit rates; new receipt forms send explicit prices.
         existing_rate = frappe.db.get_value('Bin', {'item_code': item.name, 'warehouse': target or source}, 'valuation_rate') or item.get('valuation_rate') or 0
         rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)
+        if kind == 'receipt' and receipt_reason == 'Purchase' and rate <= 0:
+            frappe.throw('Nhập giá mua cho ' + item.item_name + '.')
         values = dict(item_code=item.name, qty=qty, allow_zero_valuation_rate=1)
         if kind == 'count':
             if count_purpose=='Stock Reconciliation':

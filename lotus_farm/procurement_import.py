@@ -1,5 +1,6 @@
 """Private Excel preview and atomic draft-only import. Images remain manual evidence."""
 from io import BytesIO
+import json
 from zipfile import ZipFile, BadZipFile
 import re
 import unicodedata
@@ -10,6 +11,9 @@ from lotus_farm import procurement_rules as rules
 from lotus_farm.controls import lock
 
 DT = 'Lotus Purchase Import'
+# Names the farm writes in its workbook → item / supplier chosen for them once. Kept as a global default
+# (no schema): {"item": {label: item_code}, "supplier": {label: supplier}} with case-folded labels.
+ALIAS_KEY = 'lotus_procurement_aliases'
 
 
 def text(value):
@@ -18,6 +22,22 @@ def text(value):
 
 def header_key(value):
     return re.sub(r'\s+', ' ', re.sub(r'\s*\([^)]*\)', '', text(value))).strip().casefold()
+
+
+def load_aliases():
+    try:
+        data = json.loads(frappe.db.get_default(ALIAS_KEY) or '{}')
+    except ValueError:
+        data = {}
+    return dict(item=dict(data.get('item') or {}), supplier=dict(data.get('supplier') or {}))
+
+
+def remember_aliases(items=None, suppliers=None):
+    """items / suppliers: {label: code}. Later imports match these labels without manual mapping."""
+    data = load_aliases()
+    data['item'].update({text(k).casefold(): v for k, v in (items or {}).items() if text(k) and v})
+    data['supplier'].update({text(k).casefold(): v for k, v in (suppliers or {}).items() if text(k) and v})
+    frappe.db.set_default(ALIAS_KEY, json.dumps(data, ensure_ascii=False, sort_keys=True))
 
 
 def _file(file_url):
@@ -109,6 +129,13 @@ def _preview(company, file_url, mappings=None):
     suppliers = frappe.get_list('Supplier', filters={'disabled': 0}, fields=['name', 'supplier_name', 'modified'], limit_page_length=0)
     item_names = {text(v).casefold(): r.name for r in items for v in (r.name, r.item_name)}
     supplier_names = {text(v).casefold(): r.name for r in suppliers for v in (r.name, r.supplier_name)}
+    aliases = load_aliases()
+    for label, code in aliases['item'].items():
+        if code in {r.name for r in items}:
+            item_names.setdefault(label, code)
+    for label, code in aliases['supplier'].items():
+        if code in {r.name for r in suppliers}:
+            supplier_names.setdefault(label, code)
     masters, result = {}, []
     for row in raw:
         edit = mappings.get(row['key'], {})
@@ -116,6 +143,7 @@ def _preview(company, file_url, mappings=None):
             continue
         value = {**row, **{k: edit[k] for k in ('item', 'qty', 'rate', 'uom', 'month', 'supplier', 'warehouse', 'kind', 'type', 'date', 'vat_code', 'freight') if k in edit}}
         value['item'] = value.get('item') or item_names.get(text(value['item_label']).casefold(), '')
+        value['supplier_label'] = text(row.get('supplier'))
         value['supplier'] = supplier_names.get(text(value.get('supplier')).casefold(), value.get('supplier') or '')
         errors = []
         if value.get('price_basis')=='Gross' and 'vat_code' not in edit:
@@ -221,6 +249,9 @@ def commit(company, file_url, mappings, fingerprint, client_key, duplicate_reaso
     batch.flags.procurement_write = True
     batch.insert()
     frappe.db.set_value('File', data['file'], dict(attached_to_doctype=DT, attached_to_name=batch.name))
+    # Remember how this workbook's names were matched, so next month's file needs no manual mapping.
+    remember_aliases({r['item_label']: r['item'] for r in data['rows'] if r.get('item_label') and r.get('item')},
+                     {r['supplier_label']: r['supplier'] for r in data['rows'] if r.get('supplier_label') and r.get('supplier')})
     return dict(name=batch.name, documents=documents)
 
 

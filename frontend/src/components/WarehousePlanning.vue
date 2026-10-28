@@ -7,21 +7,16 @@ import DataTable from './DataTable.vue'
 import ListPage from './ListPage.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import ModalForm from './form/ModalForm.vue'
-import FormGrid from './form/FormGrid.vue'
 import LotusField from './form/LotusField.vue'
-import LineItemsEditor from './form/LineItemsEditor.vue'
-import PurchaseReceiptCosts from './PurchaseReceiptCosts.vue'
 import {DateRangePicker} from './ui/date-picker'
 import {Button as UiButton} from './ui/button'
 // Nhu cầu vật tư: approved demand vs stock, purchase requests still to order and purchase orders still to receive.
+// Receiving goods uses the one shared WarehouseReceiving of the stock workspace (events receive / open-receipt).
 const props=defineProps({company:String,warehouse:String,today:String})
+const emit=defineEmits(['receive','open-receipt'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse_planning.'+name,args,write)
 const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),from=ref(props.today||''),to=ref(shiftISODate(props.today,6)||''),search=ref(''),searchDraft=ref(''),start=ref(0),filters=ref({}),view=ref('coverage')
 const detail=ref(null),detailOpen=ref(false),selectedStores=ref({}),request=ref(null),requestOpen=ref(false),confirmAction=ref('')
-const order=ref(null),orderOpen=ref(false),receipt=ref(null),receiptOpen=ref(false),receiveDate=ref(props.today||''),receiveLines=ref([]),receiveKey=ref(''),receiptConfirm=ref('')
-const receiveCosts=ref([]),receiveAccounts=ref([]),receiveDefaultAccount=ref('')
-const receiveBaseTotal=computed(()=>receiveLines.value.reduce((sum,r)=>sum+Number(r.receive||0)*Number(r.rate||0),0))
-async function loadReceiveAccounts(){try{const r=await call('lotus_farm.warehouse.receipt_accounts',{company:props.company});receiveAccounts.value=r.accounts||[];receiveDefaultAccount.value=r.default_account||''}catch{receiveAccounts.value=[];receiveDefaultAccount.value=''}}
 const sortModel=ref([])
 let version=0
 const fmt=value=>value==null?'—':Number(value).toLocaleString('vi-VN',{maximumFractionDigits:3})
@@ -47,7 +42,6 @@ const sourceColumns=[{field:'name',headerName:'Nguồn',minWidth:210},{field:'da
 const orderColumns=[{field:'name',headerName:'Đơn mua',minWidth:210},{field:'supplier',headerName:'Nhà cung cấp',minWidth:170},{field:'item_name',headerName:'Tên hàng',minWidth:210},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},numeric('qty','Chưa nhận'),{field:'uom',headerName:'Đơn vị',minWidth:80,valueFormatter:p=>unit(p.value)},{field:'date',headerName:'Dự kiến về',minWidth:110},{field:'overdue',headerName:'Tiến độ',minWidth:110,valueFormatter:p=>p.value?'Quá hẹn':'Đang chờ'}]
 const requestColumns=[{field:'name',headerName:'Đề nghị mua',minWidth:210},{field:'item_name',headerName:'Vật tư',minWidth:210},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},numeric('qty','Chưa mua'),{field:'uom',headerName:'Đơn vị',minWidth:80,valueFormatter:p=>unit(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110},{field:'status',headerName:'Trạng thái',minWidth:110}]
 const purchaseItems=[{field:'item_name',headerName:'Vật tư',minWidth:220},numeric('qty','Số lượng'),{field:'uom',headerName:'Đơn vị',valueFormatter:p=>unit(p.value)},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110}]
-const receiveColumns=[{field:'item',label:'Vật tư'},{field:'receive',label:'Thực nhận',type:'number',width:'minmax(140px,1fr)',disabled:r=>!r.remaining_qty||saving.value,props:r=>({min:0,max:r.remaining_qty}),hint:r=>unit(r.uom)}]
 const storeOptions=computed(()=>(data.value?.warehouses||[]).map(store=>({value:store.name,label:store.warehouse_name})))
 function show(row){detail.value=row;detailOpen.value=true}
 async function openRequest(name){try{request.value=await api('purchase_request',{name});confirmAction.value='';requestOpen.value=true}catch(e){error.value=e.message}}
@@ -55,11 +49,8 @@ async function buy(row){if(saving.value)return;saving.value=true;error.value='';
 async function assign(source){if(saving.value)return;saving.value=true;try{await api('assign_warehouse',{company:props.company,requirement:source.name,warehouse:selectedStores.value[source.name]},true);await load()}catch(e){error.value=e.message}finally{saving.value=false}}
 async function act(action){if(saving.value)return;saving.value=true;error.value='';try{await api('purchase_action',{name:request.value.name,modified:request.value.modified,action},true);requestOpen.value=false;notice.value=action==='submit'?'Đã duyệt đề nghị mua. Chưa tính là hàng chờ nhập cho tới khi có đơn mua đã duyệt.':'Đã xóa đề nghị mua nháp.';await load()}catch(e){error.value=e.message}finally{saving.value=false}}
 const printURL=(doctype,name)=>'/lotus/in-phieu?'+new URLSearchParams({doctype,name})
-async function openOrder(name){try{order.value=await api('purchase_order',{name});receiveLines.value=(order.value.items||[]).map(row=>({...row,receive:''}));receiveCosts.value=[];receiveKey.value=crypto.randomUUID();receiveDate.value=props.today;await loadReceiveAccounts();orderOpen.value=true}catch(e){error.value=e.message}}
-async function openReceipt(name){try{receipt.value=await api('purchase_receipt',{name});receiptConfirm.value='';receiptOpen.value=true}catch(e){error.value=e.message}}
-const receiving=computed(()=>Object.fromEntries(receiveLines.value.filter(r=>Number(r.receive)>0).map(r=>[r.line,Number(r.receive)])))
-async function receive(){if(saving.value)return;saving.value=true;error.value='';try{const result=await api('receive_order',{name:order.value.name,posting_date:receiveDate.value,quantities:receiving.value,client_event_id:receiveKey.value,additional_costs:receiveCosts.value},true);orderOpen.value=false;await openReceipt(result.name);await load()}catch(e){error.value=e.message}finally{saving.value=false}}
-async function actReceipt(action){if(saving.value)return;saving.value=true;error.value='';try{await api('receipt_action',{name:receipt.value.name,modified:receipt.value.modified,action},true);receiptOpen.value=false;notice.value=action==='submit'?'Đã ghi sổ nhận hàng. Tồn và phần chờ nhập đã cập nhật.':'Đã xóa phiếu nhận nháp.';await load()}catch(e){error.value=e.message}finally{saving.value=false}}
+function openOrder(name){emit('receive',name)}
+function openReceipt(name){emit('open-receipt',name)}
 const unresolved=computed(()=>data.value?.unmapped||[])
 const listRows=computed(()=>view.value==='coverage'?data.value?.rows||[]:view.value==='requests'?requestRows.value:orderRows.value)
 const listColumns=computed(()=>view.value==='coverage'?columns:view.value==='requests'?requestColumns:orderColumns)
@@ -96,20 +87,5 @@ defineExpose({refresh:()=>load(true),openReceipt})
    <template #actions><UiButton v-if="request" as="a" variant="outline" :href="printURL('Material Request',request.name)" target="_blank" rel="noopener">In phiếu</UiButton><UiButton v-if="request?.can_submit" type="button" :disabled="saving" @click="confirmAction='submit'">Duyệt đề nghị mua</UiButton></template>
   </ModalForm>
 
-  <ModalForm v-model="orderOpen" :title="'Nhận hàng · '+(order?.name||'')+' · '+(order?.supplier||'')" :busy="saving" :error="error" width="1080px" submit-label="Lập phiếu nhận nháp" :submit-disabled="!order?.can_receive||!Object.keys(receiving).length" @submit="receive">
-   <FormGrid :columns="3"><LotusField v-model="receiveDate" label="Ngày nhận" type="date" required/></FormGrid>
-   <LineItemsEditor v-model="receiveLines" title="Hàng trên đơn" :columns="receiveColumns" fixed>
-    <template #cell-item="{row}"><div class="planning-receive-line"><strong>{{row.item_name}}</strong><small>{{row.item}} · {{warehouseLabel(row.warehouse)}}</small><small>Đặt {{fmt(row.ordered_qty)}} · Đã nhận {{fmt(row.received_qty)}} · Phiếu nháp {{fmt(row.draft_qty)}} · Còn nhận {{fmt(row.remaining_qty)}} {{unit(row.uom)}}</small><small>Đơn giá theo đơn: {{fmt(row.rate)}} {{order?.currency||'VND'}} / {{unit(row.uom)}}</small></div></template>
-   </LineItemsEditor>
-   <PurchaseReceiptCosts v-model="receiveCosts" :accounts="receiveAccounts" :default-account="receiveDefaultAccount" :base-total="receiveBaseTotal" :currency="order?.currency||'VND'" :disabled="saving"/>
-  </ModalForm>
-
-  <ModalForm v-model="receiptOpen" :title="'Nhận hàng · '+(receipt?.name||'')" :busy="saving" :error="error" readonly width="1080px" :description="(receipt?.supplier||'')+' · '+(['Nháp','Đã ghi sổ','Đã hủy'][receipt?.docstatus]||'')">
-   <DataTable :rows="receipt?.items||[]" :columns="purchaseItems"/>
-   <dl v-if="receipt" class="lotus-form-totals"><div><dt>Tiền hàng</dt><dd>{{fmt(receipt.goods_total)}} {{receipt.currency}}</dd></div><div><dt>Chi phí vào giá vốn</dt><dd>{{fmt(receipt.valuation_charges)}} {{receipt.currency}}</dd></div><div><dt>Giá trị nhập</dt><dd>{{fmt(receipt.incoming_total)}} {{receipt.currency}}</dd></div></dl>
-   <div v-if="receiptConfirm" class="lotus-delete-confirm" role="alert"><p>{{receiptConfirm==='submit'?'Ghi sổ số thực nhận này và cập nhật tồn kho?':'Xóa phiếu nhận hàng nháp này?'}}</p><div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="receiptConfirm=''">Quay lại</UiButton><UiButton type="button" :disabled="saving" @click="actReceipt(receiptConfirm)">Xác nhận</UiButton></div></div>
-   <template #secondary><UiButton v-if="receipt?.can_delete" type="button" variant="destructive" :disabled="saving" @click="receiptConfirm='delete'">Xóa nháp</UiButton></template>
-   <template #actions><UiButton v-if="receipt" as="a" variant="outline" :href="printURL('Purchase Receipt',receipt.name)" target="_blank" rel="noopener">In phiếu</UiButton><UiButton v-if="receipt?.can_submit" type="button" :disabled="saving" @click="receiptConfirm='submit'">Ghi sổ nhận hàng</UiButton></template>
-  </ModalForm>
  </div>
 </template>

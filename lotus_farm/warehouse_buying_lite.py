@@ -81,7 +81,8 @@ def _date(value, label):
     return day
 
 
-def _lines(company, warehouse, raw, expected_date):
+def _lines(company, warehouse, raw, expected_date, allow_pending=False):
+    """allow_pending: quotes may cite a request that is still being signed; orders need an approved one."""
     if isinstance(raw, str):
         raw = frappe.parse_json(raw)
     if not isinstance(raw, list) or not raw or len(raw) > 100:
@@ -115,7 +116,7 @@ def _lines(company, warehouse, raw, expected_date):
                 frappe.throw('Dòng đề nghị mua phải có đủ phiếu và dòng nguồn.')
             doc=frappe.get_doc('Material Request',row['material_request'])
             doc.check_permission('read')
-            if doc.company!=company or doc.docstatus!=1 or doc.material_request_type!='Purchase':
+            if doc.company!=company or doc.docstatus==2 or doc.docstatus==0 and not allow_pending or doc.material_request_type!='Purchase':
                 frappe.throw('Chỉ liên kết đề nghị mua được duyệt cùng công ty.')
             original=next((r for r in doc.items if r.name==row['material_request_item']),None)
             if not original or original.item_code!=item.name or original.warehouse!=store.name:
@@ -140,12 +141,14 @@ def _lines(company, warehouse, raw, expected_date):
 
 
 @frappe.whitelist()
-def request_detail(name, company):
+def request_detail(name, company, allow_pending=0):
+    """allow_pending=1 (quotes): a request still being signed may already be priced."""
     _access()
     _company(company)
     doc=frappe.get_doc('Material Request',name)
     doc.check_permission('read')
-    if doc.company!=company or doc.material_request_type!='Purchase' or doc.docstatus!=1:
+    usable=doc.docstatus==1 or doc.docstatus==0 and cint(allow_pending)
+    if doc.company!=company or doc.material_request_type!='Purchase' or not usable:
         frappe.throw('Chỉ được lấy đề nghị mua đã duyệt trong công ty.')
     rows=[]
     for r in doc.items:
@@ -167,11 +170,12 @@ def request_detail(name, company):
 def _requests(company):
     if not frappe.has_permission('Material Request','read'):
         return []
+    # Requests still being signed are listed too (pending=True): quotes may use them, orders may not.
     docs=frappe.get_list('Material Request',
-        filters={'company':company,'material_request_type':'Purchase','docstatus':1,
+        filters={'company':company,'material_request_type':'Purchase','docstatus':['<',2],
                  'status':['not in',['Stopped','Closed','Cancelled']]},
-        fields=['name','schedule_date'],order_by='modified desc',limit_page_length=200)
-    return [dict(name=r.name,schedule_date=str(r.schedule_date)) for r in docs]
+        fields=['name','schedule_date','docstatus'],order_by='modified desc',limit_page_length=200)
+    return [dict(name=r.name,schedule_date=str(r.schedule_date),pending=r.docstatus==0) for r in docs]
 
 
 def _files(name):

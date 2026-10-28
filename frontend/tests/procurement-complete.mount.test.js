@@ -81,7 +81,7 @@ test('shared receiving includes actual receipt costs in the native draft request
  // Line grids label each cell by its column header and row number.
  function fill(label,value){const input=[...document.querySelectorAll('input')].find(x=>(x.getAttribute('aria-label')||'').startsWith(label));assert.ok(input,label);input.value=value;input.dispatchEvent(new window.Event('input',{bubbles:true}))}
  fill('Thực nhận dòng 1','1');await click('Thêm chi phí');fill('Khoản chi phí dòng 1','Bốc xếp thử');fill('Số tiền (VND) dòng 1','3000');await tick()
- await click('Lập phiếu nhận nháp')
- const request=calls.find(c=>c.method.endsWith('.receive_order'));assert.ok(request);assert.equal(Number(request.args.quantities.L),1);assert.equal(request.args.additional_costs[0].amount,3000);assert.equal(request.args.additional_costs[0].expense_account,'E')
+ await click('Ghi nhận hàng')
+ const request=calls.find(c=>c.method.endsWith('.receive_order'));assert.ok(request);assert.equal(request.args.post,1);assert.equal(Number(request.args.quantities.L),1);assert.equal(request.args.additional_costs[0].amount,3000);assert.equal(request.args.additional_costs[0].expense_account,'E')
  assert.match(document.body.textContent,/Giá trị nhập\s*103\.000 VND/)
 })

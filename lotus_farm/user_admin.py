@@ -70,6 +70,8 @@ def permission_audit(user):
     roles = frappe.get_roles(user)
     signing = []
     for chain, config in signing_rules.CHAINS.items():
+        if config.get('variant_of'):
+            continue  # a shorter variant repeats steps already listed under its full chain
         for step in config['steps'][1:]:
             eligible = signing_rules.eligible(step, roles)
             signing.append(dict(chain=chain, chain_label=config['label'], step=step['key'], title=step['title'],

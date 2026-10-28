@@ -66,7 +66,7 @@ async function openBuying(extra,replace=false){
  if(router)await router[replace?'replace':'push']({path:'/mua-hang',query:q})
  else location.assign('/lotus/mua-hang?'+new URLSearchParams(Object.fromEntries(Object.entries(q).filter(([,v])=>v))))
 }
-function changed(){refreshKey.value++}
+function changed(){refreshKey.value++;planningView.value?.refresh()}
 async function openDocument(doctype,name){
  error.value=''
  try{if(doctype==='Purchase Receipt')await receivingView.value?.openReceipt(name);else await documentDetail.value.open(doctype,name)}
@@ -105,7 +105,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
     <StockDocumentList v-else-if="documentViews[view]" :kind="view" v-bind="listProps" v-on="listEvents" :can-create="canCreate" @create="kind=>documentForm.open(kind)" @receive="receivingView.openPicker()"/>
     <StockLedger v-else-if="view==='movements'" v-bind="listProps" v-on="listEvents"/>
     <StockReport v-else-if="view==='report'" v-bind="listProps" v-on="listEvents"/>
-    <WarehousePlanning v-else-if="view==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session.today">
+    <WarehousePlanning v-else-if="view==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session.today" @receive="name=>receivingView.openOrder(name)" @open-receipt="name=>receivingView.openReceipt(name)">
      <template #scope><StockScope :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session.companies||[]" @update:warehouse="setWarehouse" @update:company="setCompany"/></template>
     </WarehousePlanning>
     <StockMasterList v-else-if="masterViews.includes(view)" :kind="view" :company="company" :session="session" :refresh-key="refreshKey" @new-master="kind=>masterForm.open(kind)" @edit-master="(kind,name)=>masterForm.open(kind,name)"/>

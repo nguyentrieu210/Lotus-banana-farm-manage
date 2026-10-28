@@ -1,6 +1,7 @@
 <script setup>
 // Phiếu đề xuất mua vật tư (online) inside the Mua hàng PWA: list, form following the farm's Excel
 // columns, and the four-step signing (proposer → department → accounting/purchasing → director).
+// A fully priced proposal under 20 triệu only needs proposer → department (lotus_farm.proposal_rules.chain_for_lines).
 // The proposer names the three later signers when sending; each is notified on their turn.
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusMobileButton from './LotusMobileButton.vue'
@@ -37,10 +38,16 @@ const fail=e=>{emit('error',e.message||String(e))}
 async function load(){if(!props.company)return;busy.value=true
  try{rows.value=await api('proposals',{company:props.company,view:scope.value})}catch(e){fail(e)}finally{busy.value=false}}
 async function ensureSetup(){if(!setup.value)setup.value=await api('form_data',{company:props.company})}
-async function ensureSigners(chosen){
- if(!signerOptions.value)signerOptions.value=await api('signer_options',{company:props.company})
+const SMALL_LIMIT=20000000
+const smallProposal=computed(()=>{const items=form.value?.items||[];return items.length>0&&items.every(r=>Number(r.rate)>0)&&total.value<SMALL_LIMIT})
+let signerChain=''
+// While writing, the signers follow the proposal's value; a sent proposal keeps the chain it was sent with.
+async function ensureSigners(chosen,name){
+ const want=name?'doc:'+name:smallProposal.value?'small':'full'
+ if(!signerOptions.value||signerChain!==want){signerOptions.value=await api('signer_options',{company:props.company,...(name?{name}:{amount:smallProposal.value?total.value:SMALL_LIMIT,priced:1})});signerChain=want}
  if(chosen)signers.value={...chosen}
 }
+watch(smallProposal,()=>{if(form.value?.edit==='all')ensureSigners().catch(fail)})
 function blankLine(previous){return {key:Math.random().toString(36).slice(2),item_code:'',uom:'',qty:'',rate:'',stock:null,lotus_specification:'',
  // A new line repeats the needed date and purpose of the line above, as most Excel rows do.
  schedule_date:previous?.schedule_date||props.today,lotus_purpose:previous?.lotus_purpose||'',lotus_supplier_hint:'',lotus_notes:''}}
@@ -49,7 +56,7 @@ async function newProposal(){busy.value=true
  catch(e){fail(e)}finally{busy.value=false}}
 async function open(name){busy.value=true
  try{detail.value=await api('detail',{name});returnReason.value='';reassignTo.value=''
-  if(detail.value.needs_signers&&detail.value.can_sign||detail.value.can_reassign)await ensureSigners(detail.value.signers)
+  if(detail.value.needs_signers&&detail.value.can_sign||detail.value.can_reassign)await ensureSigners(detail.value.signers,detail.value.name)
   mode.value='detail';emit('title',detail.value.name)}catch(e){fail(e)}finally{busy.value=false}}
 async function edit(){busy.value=true
  try{await ensureSetup();const d=detail.value;if(d.edit==='all')await ensureSigners(d.signers);form.value={name:d.name,modified:d.modified,edit:d.edit,reason:d.reason,department:d.department,warehouse:d.warehouse||d.items[0]?.warehouse||'',

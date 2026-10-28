@@ -57,7 +57,9 @@ def _ensure_version(doc, modified):
 
 def check_submission(doc, method=None):
     """Protect Lotus purchase orders even if users call Frappe's generic submit endpoint."""
-    saved_state = frappe.db.get_value("Purchase Order", doc.name, "lotus_approval_status") if doc.name else None
+    if doc.name and getattr(frappe.local, "lotus_policy_approved", None) == doc.name:
+        return  # set only by procurement._approve_by_policy; request data cannot reach frappe.local
+    saved_state =frappe.db.get_value("Purchase Order", doc.name, "lotus_approval_status") if doc.name else None
     if saved_state or doc.get("lotus_approval_status") or doc.get("lotus_purchase_mode"):
         if saved_state != PENDING or doc.get("lotus_approval_status") != PENDING:
             frappe.throw("Đơn mua phải được gửi duyệt trước khi xác nhận.")

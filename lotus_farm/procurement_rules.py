@@ -45,6 +45,15 @@ def quote_total(qty, rate, factor=1, vat='KCT', freight=0):
                 tax=float(tax), freight=float(shipping), gross=float(net+tax+shipping))
 
 
+def needs_reason(chosen_cost, offer_costs):
+    """A reason is required only when the chosen landed cost (per stock unit) is above the cheapest priced
+    offer for the same need. Unpriced offers (None) never count as cheaper."""
+    priced = [float(c) for c in offer_costs if c is not None]
+    if chosen_cost is None or not priced:
+        return True
+    return float(chosen_cost) > min(priced) * (1 + 1e-9) + 0.005
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
 
