@@ -217,10 +217,14 @@ function renderSelectHeader(){
  host.appendChild(button)
  return host
 }
+// AG Grid header components must be classes with init/getGui; a plain function is constructed with `new`
+// and its returned element has no getGui, which stops the whole grid from rendering.
+const domHeader=build=>class{init(params){this.gui=build(params)}getGui(){return this.gui}refresh(){return false}destroy(){}}
+const selectHeader=domHeader(()=>renderSelectHeader())
 const selectDef={colId:'__lotus_select',headerName:'Chọn',width:42,minWidth:42,maxWidth:42,
  pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,resizable:false,
  sortable:false,filter:false,suppressHeaderMenuButton:true,suppressColumnsToolPanel:true,
- headerComponent:renderSelectHeader,cellRenderer:renderSelectionCell,cellClass:'lotus-grid-select-cell'}
+ headerComponent:selectHeader,cellRenderer:renderSelectionCell,cellClass:'lotus-grid-select-cell'}
 const sttDef={colId:'__lotus_stt',headerName:'STT',width:52,minWidth:52,maxWidth:52,
  pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,resizable:false,
  sortable:false,filter:false,suppressHeaderMenuButton:true,suppressColumnsToolPanel:true,
@@ -229,13 +233,13 @@ const sttDef={colId:'__lotus_stt',headerName:'STT',width:52,minWidth:52,maxWidth
 // Existing operational checkbox columns (HR/payroll/quotation) keep their business behavior.
 const nativeSelectId=computed(()=>columnId(props.columns.find(c=>c.headerName==='Chọn'&&['__pick','selected','select_log','choice'].includes(columnId(c)))||{})||null)
 const pickerColumns=computed(()=>props.columns.map(c=>columnId(c)===nativeSelectId.value?{...c,columnChooserLocked:true,suppressExport:true}:c))
-function renderNativeSelectionHeader(){const label=document.createElement('span');label.textContent='Chọn';label.className='lotus-grid-native-select-header';return label}
+const nativeSelectionHeader=domHeader(()=>{const label=document.createElement('span');label.textContent='Chọn';label.className='lotus-grid-native-select-header';return label})
 const gridDefs=computed(()=>{
  const own=defs.value.find(c=>columnId(c)===nativeSelectId.value)
  const body=defs.value.filter(c=>columnId(c)!==nativeSelectId.value)
  const select=own?{...own,width:42,minWidth:42,maxWidth:42,flex:0,
   pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,
-  hide:false,sortable:false,filter:false,headerComponent:renderNativeSelectionHeader,headerTooltip:'Chọn dòng'}:selectDef
+  hide:false,sortable:false,filter:false,headerComponent:nativeSelectionHeader,headerTooltip:'Chọn dòng'}:selectDef
  return [select,sttDef,...body]
 })
 
@@ -289,7 +293,16 @@ async function downloadExcel(){
   <template v-else>
    <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':visibleRows.length>10,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&visibleRows.length>10?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="visibleRows.length>10?'normal':'autoHeight'" :pagination="paginate" :pagination-page-size="pageSize" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
    <div v-if="rows.length>5||Object.keys(activeFilters).length" class="lotus-mobile-filter"><UiSelect v-model="mobileFilter" aria-label="Lọc theo cột"><option value="">Lọc theo cột…</option><option v-for="col in filterable" :key="key(col)" :value="key(col)">{{uiFarmLabel(col.headerName)}}{{activeFilters[key(col)]?' · đang lọc':''}}</option></UiSelect><ExcelHeader v-if="mobileFilterParams" :key="mobileFilter" :params="mobileFilterParams"/></div>
-   <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p><component :is="interactive?UiButton:'article'" v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record" variant="ghost" @click="interactive?emit('open',row):showDetail(row)"><span class="lotus-mobile-record__prefix"><button v-if="selectionEnabled" type="button" class="lotus-grid-select-toggle" :class="{'is-on':selectedIds.has(getSelectionId(row))}" :aria-pressed="selectedIds.has(getSelectionId(row))" :aria-label="selectedIds.has(getSelectionId(row))?'Bỏ chọn dòng':'Chọn dòng'" @click.stop="setRowSelected(row,!selectedIds.has(getSelectionId(row)))"><span aria-hidden="true">{{selectedIds.has(getSelectionId(row))?'✓':''}}</span></button><span class="lotus-mobile-record__stt">{{rowIndexOffset+pageStart+index+1}}</span></span><strong>{{value(row,mobileColumns[0]||activeDisplayColumns[0]||columns[0])}}</strong><span v-for="col in mobileColumns.slice(1,mobileLimit||undefined)" :key="col.field||col.headerName" class="lotus-mobile-record-detail"><span>{{uiFarmLabel(col.headerName)}}</span><slot v-if="!interactive&&($slots['cell-'+key(col)]||$slots.cell)" :name="$slots['cell-'+key(col)]?'cell-'+key(col):'cell'" :row="row" :value="raw(row,col)" :column="col" :params="{data:row,value:raw(row,col),colDef:col}"/><UiButton v-else-if="col.colId" variant="link" size="sm" @click.stop="emit('cell-open',{data:row,colDef:col})">{{value(row,col)}}</UiButton><span v-else>{{value(row,col)}}</span></span><LotusIcon v-if="interactive" name="chevron" class="lotus-mobile-record-arrow"/></component>
+   <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p>
+    <div v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record-entry" :class="{'lotus-mobile-record-entry--selectable':selectionEnabled}">
+     <button v-if="selectionEnabled" type="button" class="lotus-grid-select-toggle" :class="{'is-on':selectedIds.has(getSelectionId(row))}" :aria-pressed="selectedIds.has(getSelectionId(row))" :aria-label="selectedIds.has(getSelectionId(row))?'Bỏ chọn dòng':'Chọn dòng'" @click.stop="setRowSelected(row,!selectedIds.has(getSelectionId(row)))"><span aria-hidden="true">{{selectedIds.has(getSelectionId(row))?'✓':''}}</span></button>
+     <component :is="interactive?UiButton:'article'" class="lotus-mobile-record" variant="ghost" @click="interactive?emit('open',row):showDetail(row)">
+      <span class="lotus-mobile-record__prefix"><span class="lotus-mobile-record__stt">{{rowIndexOffset+pageStart+index+1}}</span></span>
+      <strong>{{value(row,mobileColumns[0]||activeDisplayColumns[0]||columns[0])}}</strong>
+      <span v-for="col in mobileColumns.slice(1,mobileLimit||undefined)" :key="col.field||col.headerName" class="lotus-mobile-record-detail"><span>{{uiFarmLabel(col.headerName)}}</span><slot v-if="!interactive&&($slots['cell-'+key(col)]||$slots.cell)" :name="$slots['cell-'+key(col)]?'cell-'+key(col):'cell'" :row="row" :value="raw(row,col)" :column="col" :params="{data:row,value:raw(row,col),colDef:col}"/><UiButton v-else-if="!interactive&&col.colId" variant="link" size="sm" @click.stop="emit('cell-open',{data:row,colDef:col})">{{value(row,col)}}</UiButton><span v-else>{{value(row,col)}}</span></span>
+      <LotusIcon v-if="interactive" name="chevron" class="lotus-mobile-record-arrow"/>
+     </component>
+    </div>
     <dl v-for="total in bottomRows" :key="'total'" class="lotus-mobile-total"><dt>{{totalsLabel}} ({{visibleRows.length}} dòng)</dt><div v-for="col in sumColumns" :key="key(col)" class="lotus-mobile-record-detail"><span>{{uiFarmLabel(col.headerName)}}</span><span>{{totalText(col,total)}}</span></div></dl></div>
    <Pagination v-if="paginate" :start="pageStart" :count="pageRows.length" :total="visibleRows.length" :page-size="pageSize" @update:start="goPage"/>
   </template>
@@ -324,6 +337,10 @@ async function downloadExcel(){
 .lotus-data-table__selected button{padding:4px 6px;border:0;background:transparent;color:var(--lotus-primary);cursor:pointer;font:inherit}
 .lotus-mobile-record__prefix{display:inline-flex;align-items:center;gap:8px;flex:none}
 .lotus-mobile-record__stt{min-width:25px;font-variant-numeric:tabular-nums;color:var(--lotus-muted);font-size:12px}
+.lotus-mobile-record-entry{position:relative}
+.lotus-mobile-record-entry>.lotus-grid-select-toggle{position:absolute;top:calc(var(--lotus-space-3) + var(--lotus-space-1)/2);left:var(--lotus-space-3);z-index:1}
+.lotus-mobile-record-entry--selectable .lotus-mobile-record__prefix{padding-left:calc(var(--lotus-space-6) + var(--lotus-space-1))}
+.lotus-mobile-record-entry:not(:last-child)>.lotus-mobile-record{border-bottom:1px solid var(--lotus-border)}
 
 .lotus-data-table__export{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 6px}
 .lotus-data-table__export-error{color:var(--lotus-danger);font-size:12px;text-align:right;margin:0 0 6px}
