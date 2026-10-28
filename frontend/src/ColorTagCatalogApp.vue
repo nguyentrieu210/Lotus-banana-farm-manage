@@ -140,7 +140,7 @@ async function generate(){
 .color-toolbar{display:grid;grid-template-columns:repeat(3,minmax(155px,1fr));gap:12px}
 .color-toolbar label,.color-panel label{font-size:12px;display:grid;gap:5px;font-weight:600}
 .color-notice{margin:0;font-size:12px;color:var(--lotus-muted)}
-.color-error{color:var(--lotus-danger-600);margin:0}
+.color-error{color:var(--lotus-danger);margin:0}
 .color-success{color:var(--lotus-success-700);margin:0}
 .color-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}
 .color-panel{border:1px solid var(--lotus-border);border-radius:12px;padding:15px;display:grid;gap:10px}
