@@ -8,14 +8,24 @@ test('record cards retain the same row actions as the desktop grid',async()=>{
  const row={name:'TS1',asset_name:'Máy bơm'}
  const view=mount(Component,{rows:[row],columns:[{field:'name',headerName:'Mã'},{field:'actions',headerName:'Thao tác'}],rowKey:'name'},{'cell-actions':({row})=>h('button',{onClick:()=>{selected=row.name}},'Chi tiết '+row.name)})
  await tick()
- const button=view.root.querySelector('.lotus-mobile-records button')
+ const button=view.root.querySelector('.lotus-mobile-record-detail button')
  assert.equal(button.textContent,'Chi tiết TS1')
  button.click();await tick();assert.equal(selected,'TS1')
  view.unmount()
 })
-test('interactive record cards remain a single button without nested action buttons',async()=>{
- const view=mount(Component,{rows:[{name:'TS1'}],columns:[{field:'name',headerName:'Mã'},{field:'actions',headerName:'Thao tác'}],rowKey:'name',interactive:true},{'cell-actions':()=>h('button',{},'Nested')})
+test('interactive cards keep selection separate from opening the record without nested buttons',async()=>{
+ let opened
+ const row={name:'TS1'}
+ const view=mount(Component,{rows:[row],columns:[{field:'name',headerName:'Mã'},{colId:'actions',headerName:'Thao tác'}],rowKey:'name',interactive:true,onOpen:value=>{opened=value}},{'cell-actions':()=>h('button',{},'Nested')})
  await tick()
- assert.equal(view.root.querySelector('.lotus-mobile-records').querySelectorAll('button').length,1)
+ const records=view.root.querySelector('.lotus-mobile-records'),card=records.querySelector('.lotus-mobile-record')
+ assert.equal(records.querySelectorAll('button').length,2,'one selection button and one record button')
+ assert.equal(card.tagName,'BUTTON')
+ assert.equal(card.querySelector('button'),null,'neither selection nor cell actions are nested buttons')
+ const select=records.querySelector('button[aria-label="Chọn dòng"]')
+ select.click();await tick()
+ assert.equal(select.getAttribute('aria-pressed'),'true')
+ assert.equal(opened,undefined,'selection does not open the record')
+ card.click();await tick();assert.equal(opened,row)
  view.unmount()
 })
