@@ -1,5 +1,5 @@
 <script setup>
-import {computed,useSlots} from 'vue'
+import {computed,ref,useSlots} from 'vue'
 import WorkspaceListToolbar from './WorkspaceListToolbar.vue'
 import WorkspaceSummaryStrip from './WorkspaceSummaryStrip.vue'
 import DataTable from './DataTable.vue'
@@ -12,17 +12,20 @@ const emit=defineEmits(['update:search','update:start','refresh'])
 // Custom cells (#cell-<field>) pass straight through to DataTable.
 const slots=useSlots()
 const cellSlots=computed(()=>Object.keys(slots).filter(name=>name.startsWith('cell-')))
+// The table's Cột hiển thị / Xuất Excel buttons move up into the toolbar row (one row less above the grid).
+const tools=ref(null)
 </script>
 <template>
  <section class="lotus-list-page" :aria-label="title">
   <WorkspaceListToolbar :model-value="search" :searchable="searchable" :placeholder="searchPlaceholder" :busy="loading" @update:model-value="emit('update:search',$event)" @refresh="emit('refresh')">
    <template v-if="$slots.filters" #filters><slot name="filters"/></template>
    <slot name="actions"/>
+   <template #tools><div ref="tools" class="lotus-list-page__tools"/></template>
   </WorkspaceListToolbar>
   <p v-if="error" class="lotus-list-page__error" role="alert">{{error}}</p>
   <WorkspaceSummaryStrip v-if="summary?.length" :items="summary"/>
   <slot name="before"/>
-  <DataTable :fill="paged?76:24" :paginate="!paged" :page-size="pageSize" :row-index-offset="paged?start:0" v-bind="$attrs" :rows="rows" :columns="columns" :loading="loading" :totals-label="paged&&(hasMore||(total||0)>rows.length)?'Tổng trang này':'Tổng'"><template v-for="name in cellSlots" :key="name" #[name]="scope"><slot :name="name" v-bind="scope"/></template></DataTable>
+  <DataTable :fill="paged?76:24" :tools-target="tools" :auto-hide-empty="!paged" :paginate="!paged" :page-size="pageSize" :row-index-offset="paged?start:0" v-bind="$attrs" :rows="rows" :columns="columns" :loading="loading" :totals-label="paged&&(hasMore||(total||0)>rows.length)?'Tổng trang này':'Tổng'"><template v-for="name in cellSlots" :key="name" #[name]="scope"><slot :name="name" v-bind="scope"/></template></DataTable>
   <Pagination v-if="paged" :start="start" :count="rows.length" :total="total" :has-more="hasMore" :page-size="pageSize" :disabled="loading" @update:start="emit('update:start',$event)"/>
   <slot/>
  </section>

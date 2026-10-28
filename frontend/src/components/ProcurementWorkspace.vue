@@ -1,5 +1,6 @@
 <script setup>
 import {unitLabel} from '../units'
+import {groupNumber} from '../grid-format'
 import {stateLabel} from '../labels'
 import '../procurement.css'
 import {computed,inject,onMounted,onUnmounted,ref,watch} from 'vue'
@@ -12,7 +13,6 @@ import ProcurementCompare from './ProcurementCompare.vue'
 import {Cell,CellGroup} from 'vant'
 import {call,upload,setCSRF} from '../api'
 import {Button} from './ui/button'
-import {Checkbox} from './ui/checkbox'
 import {DateRangePicker} from './ui/date-picker'
 import DataTable from './DataTable.vue'
 import ListPage from './ListPage.vue'
@@ -63,13 +63,15 @@ const visibleTabs=computed(()=>procurementTabs.filter(([k])=>k!=='payments'||cat
 const options=(values,label)=>values?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
 const shownRows=computed(()=>rows.value.filter(r=>(!pendingOnly.value||tab.value!=='orders'||r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng')&&(!supplier.value||['reports','payables','payments','invoices'].includes(tab.value)||r.supplier===supplier.value)&&(!search.value||Object.values(r).filter(x=>typeof x!=='object').join(' ').toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))))
 const columns=computed(()=>tab.value==='invoices'?[{field:'name',headerName:'Hóa đơn',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},{field:'bill_no',headerName:'Số hóa đơn NCC'},{field:'date',headerName:'Ngày ghi sổ'},{field:'due_date',headerName:'Hạn thanh toán'},{field:'amount',headerName:'Tổng tiền',valueFormatter:p=>money(p.value)},{field:'outstanding_amount',headerName:'Còn nợ',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payments'?[{field:'name',headerName:'Chứng từ',minWidth:180,valueGetter:p=>p.data.voucher_name||p.data.name},{field:'kind',headerName:'Loại giao dịch',minWidth:180},{field:'supplier',headerName:'Nhà cung cấp'},{field:'date',headerName:'Ngày'},{field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payables'?[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:190},{field:'name',headerName:'Chứng từ',minWidth:170},{field:'bill_no',headerName:'Hóa đơn NCC'},{field:'due_date',headerName:'Hạn trả'},{field:'amount',headerName:'Còn nợ / dư trả',valueFormatter:p=>money(p.value)},{field:'overdue_days',headerName:'Ngày quá hạn'},{field:'status',headerName:'Tình trạng',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='quotes'?[
- {field:'choice',headerName:'Chọn',width:85},{field:'item_name',headerName:'Mặt hàng',minWidth:170},{field:'supplier',headerName:'Nhà cung cấp',minWidth:150},
- {field:'quotation',headerName:'Báo giá'},{field:'stock_qty',headerName:'SL ĐVT kho'},{field:'stock_uom',headerName:'ĐVT kho',valueFormatter:p=>unitLabel(p.value)},
- {field:'unit_cost',headerName:'Giá đủ/ĐVT kho',valueFormatter:p=>money(p.value)},
- {field:'net',headerName:'Chưa thuế',valueFormatter:p=>money(p.value)},{field:'tax',headerName:'VAT',valueFormatter:p=>money(p.value)},
- {field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'gross',headerName:'Tổng trả',valueFormatter:p=>money(p.value)},
- {field:'delivery_date',headerName:'Ngày giao'},{field:'valid_till',headerName:'Hiệu lực'},
- {field:'reason',headerName:'Lý do chọn',minWidth:210}]:tab.value==='reports'?[
+ // A list to read: choosing a quote (and the reason when it is not the cheapest) happens in So sánh giá.
+ {field:'item_name',headerName:'Mặt hàng',minWidth:200},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},
+ {field:'quotation',headerName:'Báo giá',minWidth:150},
+ {field:'stock_qty',headerName:'Số lượng',unitField:'stock_uom',valueFormatter:p=>p.value==null?'':[groupNumber(p.value),unitLabel(p.data?.stock_uom)].filter(Boolean).join(' ')},
+ {field:'stock_uom',headerName:'ĐVT kho',defaultHidden:true,valueFormatter:p=>unitLabel(p.value)},
+ {field:'unit_cost',headerName:'Giá đủ/ĐVT',valueFormatter:p=>money(p.value)},
+ {field:'net',headerName:'Chưa thuế',defaultHidden:true,valueFormatter:p=>money(p.value)},{field:'tax',headerName:'VAT',defaultHidden:true,valueFormatter:p=>money(p.value)},
+ {field:'freight',headerName:'Vận chuyển',defaultHidden:true,valueFormatter:p=>money(p.value)},{field:'gross',headerName:'Tổng trả',minWidth:120,valueFormatter:p=>money(p.value)},
+ {field:'delivery_date',headerName:'Ngày giao'},{field:'valid_till',headerName:'Hiệu lực'}]:tab.value==='reports'?[
  {field:'date',headerName:'Ngày'},{field:'stage_label',headerName:'Giai đoạn',minWidth:170},{field:'name',headerName:'Chứng từ',minWidth:170},
  {field:'supplier',headerName:'Nhà cung cấp'},{field:'item_name',headerName:'Mặt hàng',minWidth:180},
  {field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)}]:[
@@ -272,7 +274,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
    :paged="isPaged" :start="queryStart" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
-   :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'&&tab!=='quotes'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
+   :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
   <template #filters>
    <LotusField v-if="companyOptions.length>1" v-model="company" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" @update:model-value="companyChanged"/>
    <template v-if="isPaged">
@@ -291,7 +293,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <template #actions>
    <Button v-if="tab==='needs'&&catalog.can_need" @click="start('need')">Thêm đề nghị</Button>
    <Button v-if="tab==='quotes'&&catalog.can_quote" @click="start('quote')">Thêm báo giá</Button>
-   <Button v-if="tab==='quotes'&&catalog.can_create" variant="outline" :disabled="!Object.values(selections).some(r=>r.selected)||saving" @click="chooseQuotes">Tạo đơn từ dòng chọn</Button>
+   <Button v-if="tab==='quotes'&&catalog.can_create" variant="outline" @click="changeTab('compare')">So sánh giá &amp; tạo đơn</Button>
    <Button v-if="tab==='orders'&&catalog.can_create" @click="start('order')">Thêm đơn mua</Button>
    <Button v-if="tab==='orders'" variant="outline" :aria-pressed="pendingOnly" @click="pendingOnly=!pendingOnly">{{pendingOnly?'Xem tất cả đơn':'Hàng chờ nhận'}}</Button>
    <Button v-if="['needs','quotes'].includes(tab)&&catalog.can_create" variant="outline" @click="start('import')">Nhập Excel</Button>
@@ -303,8 +305,6 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <FormSection v-if="tab==='payments'&&finance?.vouchers?.length" title="Phiếu chờ ký"><div class="procurement-actions"><Button v-for="v in finance.vouchers" :key="v.name" variant="outline" size="sm" @click="current=v;detailType='voucher'">{{v.name}} · {{money(v.amount)}} · {{v.signing?.waiting_for}}</Button></div></FormSection>
   </template>
   <template #cell-quotation="{row}"><Button variant="link" @click="open(row,'quotes')">{{row.quotation}}</Button></template>
-  <template #cell-choice="{row}"><Checkbox :model-value="selection(row).selected" :disabled="row.docstatus===2||row.gross==null" :aria-label="'Chọn '+row.item_name+' từ '+row.supplier" @update:model-value="value=>selection(row).selected=value"/></template>
-  <template #cell-reason="{row}"><LotusField v-model="selection(row).reason" :aria-label="'Lý do chọn '+row.quotation"/></template>
  </ListPage>
 
  <template v-else-if="!form&&!current">

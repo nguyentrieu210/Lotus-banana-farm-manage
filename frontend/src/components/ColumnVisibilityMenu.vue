@@ -23,7 +23,7 @@ const isPinned=id=>normalized.value.pinned.includes(id)
   <PopoverTrigger as-child>
    <UiButton type="button" variant="outline" size="sm" aria-label="Tùy chỉnh cột của bảng" class="lotus-column-picker-trigger"><LotusIcon name="sliders"/>Cột hiển thị<span v-if="normalized.hidden.length" class="lotus-column-picker-trigger__count">{{normalized.hidden.length}} ẩn</span></UiButton>
   </PopoverTrigger>
-  <PopoverContent align="end" side-offset="8" class="lotus-column-picker">
+  <PopoverContent align="end" :side-offset="8" class="lotus-column-picker">
    <div class="lotus-column-picker__header">
     <div><strong>Tùy chỉnh cột</strong><small>{{visibleCount}} / {{choices.length}} cột đang hiện</small></div>
     <button type="button" class="lotus-column-picker__reset" @click="emit('reset')">Mặc định</button>
