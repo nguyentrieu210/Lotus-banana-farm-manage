@@ -13,7 +13,7 @@ const farms=computed(()=>session.farms||[])
 const farm=ref(scope.farm||farms.value[0]?.name||'')
 const state=ref({rows:[],colors:[],programs:[],can_create:false,notice:''})
 const loading=ref(false),saving=ref(false),error=ref(''),notice=ref('')
-const search=ref(''),period=ref('all')
+const search=ref(''),period=ref('all'),showArchive=ref(false)
 const color=ref(''),start=ref(''),end=ref('')
 const program=ref(''),generatedFrom=ref(''),generatedTo=ref('')
 const today=computed(()=>session.today||new Date().toISOString().slice(0,10))
@@ -31,9 +31,11 @@ const columns=[
  {field:'color_name',headerName:'Màu dây',minWidth:165},
  {field:'week_label',headerName:'Tuần',minWidth:115},
  {field:'week_half',headerName:'Đợt 1 / 2',minWidth:95},
+ {field:'week_from',headerName:'Tuần từ',minWidth:125},
+ {field:'week_to',headerName:'Tuần đến',minWidth:125},
  {field:'color_code',headerName:'Mã màu',minWidth:90},
- {field:'valid_from',headerName:'Áp dụng từ',minWidth:125},
- {field:'valid_to',headerName:'Đến hết ngày',minWidth:125},
+ {field:'valid_from',headerName:'Đợt từ',minWidth:125},
+ {field:'valid_to',headerName:'Đợt đến',minWidth:125},
  {field:'status_label',headerName:'Tình trạng',minWidth:130},
  {field:'source_label',headerName:'Nguồn lịch',minWidth:135},
  {field:'tag_code',headerName:'Mã đợt (lưu lịch sử)',minWidth:230},
@@ -44,7 +46,7 @@ async function load(){
  if(!farm.value){state.value={rows:[],colors:[],programs:[],can_create:false,notice:''};return}
  loading.value=true;error.value=''
  try{
-  const result=await call('lotus_farm.bunch_tag_catalog.catalog',{farm:farm.value})
+  const result=await call('lotus_farm.bunch_tag_catalog.catalog',{farm:farm.value,include_disabled:showArchive.value?1:0})
   if(key!==request)return
   state.value=result
   if(!result.programs.some(x=>x.name===program.value))program.value=result.programs[0]?.name||''
@@ -52,7 +54,8 @@ async function load(){
  finally{if(key===request)loading.value=false}
 }
 watch(()=>scope.farm,value=>{if(value)farm.value=value})
-watch(farm,()=>{notice.value='';load()},{immediate:true})
+watch(farm,()=>{notice.value='';showArchive.value=false;load()},{immediate:true})
+watch(showArchive,()=>load())
 function validDates(a,b){return !!a&&!!b&&a<=b}
 async function addPeriod(){
  if(!validDates(start.value,end.value)||!color.value){error.value='Chọn màu và nhập ngày bắt đầu, kết thúc hợp lệ.';return}
@@ -101,9 +104,10 @@ async function generate(){
   <p v-if="error" role="alert" class="color-error">{{error}}</p>
   <p v-if="notice" role="status" class="color-success">{{notice}}</p>
   <p class="color-notice">{{state.notice}}</p>
+  <label v-if="state.weekly_mode" class="color-archive"><input type="checkbox" v-model="showArchive" /> Xem lịch tham chiếu 5 ngày cũ (chỉ để tra cứu lịch sử)</label>
   <p v-if="loading">Đang đọc danh mục…</p>
   <DataTable v-else :rows="rows" :columns="columns" row-key="name" storage-key="bunch-color-periods" empty="Chưa có kỳ màu dây trong vườn này."/>
-  <p class="color-footnote">{{rows.length}} kỳ màu đang hiển thị. Ngày ở đây là ngày <strong>cắt bắp</strong>, không phải ngày dự thu hoạch.</p>
+  <p class="color-footnote">{{rows.length}} đợt màu đang hiển thị. <strong>Tuần từ – Tuần đến</strong> luôn đủ 7 ngày, còn <strong>Đợt từ – Đợt đến</strong> phân đầu tuần (1) và cuối tuần (2) để ghi nhận cắt bắp. Không phải ngày dự thu hoạch.</p>
 
   <div v-if="state.can_create" class="color-actions">
    <section class="color-panel">
