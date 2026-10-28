@@ -13,6 +13,8 @@ import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
 import LandBlockDetail from './components/land/LandBlockDetail.vue'
 import DataTable from './components/DataTable.vue'
+import ColumnVisibilityMenu from './components/ColumnVisibilityMenu.vue'
+import {loadHiddenColumns,saveHiddenColumns,normalizeHiddenColumns,changeColumnVisibility,columnId} from './grid-visibility'
 import {buildXlsx,exportExcelFile} from './excel-export'
 import {COLOR_MODES} from './map-land'
 import {useNoticeToast} from './use-toast'
@@ -70,7 +72,7 @@ function renderLandPick(params){
  return input
 }
 const gridColumns=computed(()=>[
- ...(data.value?.can_edit?[{field:'__picked',headerName:'Chọn',minWidth:80,maxWidth:85,sortable:false,hideOnMobile:true,cellRenderer:renderLandPick}]:[]),
+ ...(data.value?.can_edit?[{field:'__picked',headerName:'Chọn',minWidth:80,maxWidth:85,sortable:false,hideOnMobile:true,columnChooserLocked:true,suppressExport:true,cellRenderer:renderLandPick}]:[]),
  ...columns.map(([field,headerName])=>({
   field,headerName,minWidth:field==='block_code'?100:field==='variety_label'?130:120,
   valueFormatter:p=>{
@@ -86,6 +88,14 @@ const gridColumns=computed(()=>[
  })),
  {field:'gaps_label',headerName:'Thiếu thông tin',minWidth:180}
 ])
+const hiddenLandColumns=ref(loadHiddenColumns('lotus-farm-land'))
+const normalizedLandHidden=computed(()=>normalizeHiddenColumns(gridColumns.value,hiddenLandColumns.value))
+const shownLandColumns=computed(()=>gridColumns.value.filter(col=>!col.hide&&!normalizedLandHidden.value.includes(columnId(col))&&!col.columnChooserLocked))
+function changeLandColumns(next){
+ hiddenLandColumns.value=normalizeHiddenColumns(gridColumns.value,next)
+ saveHiddenColumns('lotus-farm-land',hiddenLandColumns.value)
+}
+function toggleLandColumn(id){changeLandColumns(changeColumnVisibility(gridColumns.value,hiddenLandColumns.value,id))}
 watch(rows,()=>{gridVisible.value=null})
 
 async function applyBulk(){
@@ -97,7 +107,7 @@ async function applyBulk(){
  catch(e){error.value='Đã lưu '+done+' lô, dừng ở lỗi: '+e.message;await load()}finally{saving.value=false}}
 function exportExcel(){if(farm.value)location.href='/api/method/lotus_farm.farm_land.export_blocks?'+new URLSearchParams({farm:farm.value})}
 function exportVisibleLand(){
- const cols=gridColumns.value.filter(col=>col.field!=='__picked')
+ const cols=shownLandColumns.value.filter(col=>col.field!=='__picked')
  const records=visibleLandRows.value
  if(!records.length)return
  exportExcelFile(buildXlsx(cols,records),'Danh-sach-lo-dang-hien')
@@ -160,12 +170,13 @@ useNoticeToast(notice)
     <div class="land-filter-actions">
      <UiButton v-if="data?.can_edit&&rows.length" variant="outline" size="sm" @click="togglePickAll">{{allPicked?'Bỏ chọn lô đang hiện':'Chọn lô đang hiện'}}</UiButton>
      <span class="land-count">{{rows.length}} lô · {{num(shownTotals.area,2)}} ha · {{num(shownTotals.trees)}} cây</span>
+     <ColumnVisibilityMenu :columns="gridColumns" :hidden="normalizedLandHidden" @toggle="toggleLandColumn" @reset="changeLandColumns([])"/>
      <UiButton variant="outline" size="sm" :disabled="busy||!visibleLandRows.length" @click="exportVisibleLand"><LotusIcon name="download"/>Xuất bảng Excel</UiButton>
      <UiButton v-if="data?.can_edit&&picked.size" variant="outline" size="sm" @click="bulk={farm_zone:'',variety:''};bulkOpen=true">Sửa {{picked.size}} lô đã chọn</UiButton>
     </div>
    </div>
    <div class="land-table" :aria-busy="busy">
-    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" row-key="name" storage-key="lotus-farm-land" :loading="busy"
+    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :hidden-columns="normalizedLandHidden" row-key="name" storage-key="lotus-farm-land" :loading="busy"
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>
@@ -192,7 +203,7 @@ useNoticeToast(notice)
    <LotusField label="File Excel đã sửa" type="file" accept=".xlsx" :disabled="saving" @change="readFile"/>
    <template v-if="preview">
     <p><b>{{preview.ready}}</b> lô sẽ cập nhật · {{preview.unchanged}} lô không đổi · <span :class="{'land-bad':preview.errors}">{{preview.errors}} dòng lỗi</span></p>
-    <div class="land-table land-preview"><DataTable :exportable="false" :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>
+    <div class="land-table land-preview"><DataTable :exportable="false" :columns-menu="false" :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>
     <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="importOpen=false">Hủy</UiButton><UiButton type="button" :disabled="saving||!preview.ready" @click="commitImport">{{saving?'Đang cập nhật…':'Cập nhật '+preview.ready+' lô'}}</UiButton></div>
    </template>
   </div>
