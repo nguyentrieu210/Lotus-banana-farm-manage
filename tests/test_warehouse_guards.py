@@ -75,7 +75,28 @@ class TestWarehouseGuards(unittest.TestCase):
         self.assertEqual(doc.append.call_args.args[1]['basic_rate'], 10)
         doc.insert.assert_called_once_with()
         doc.submit.assert_not_called()
-        self.assertEqual(result, dict(name='MAT-TEST', doctype='Stock Entry'))
+        self.assertEqual((result['name'], result['doctype']), ('MAT-TEST', 'Stock Entry'))
+
+    def test_quick_purchase_posts_in_one_step_only_with_submit_right(self):
+        self.module._company = Mock()
+        self.module._warehouse = Mock()
+        self.module._simple_doc = Mock(return_value=True)
+        item = Mock(name='Item')
+        item.name, item.item_name, item.stock_uom = 'FERT-001', 'Ure', 'Kg'
+        item.disabled = item.has_batch_no = item.has_serial_no = 0
+        item.is_stock_item = 1
+        self.frappe.get_doc.return_value = item
+        line = [dict(item='FERT-001', qty=5, rate=10)]
+        for allowed in (True, False):
+            doc = Mock()
+            doc.name, doc.doctype, doc.docstatus = 'MAT-TEST', 'Stock Entry', 0
+            doc.has_permission.return_value = allowed
+            self.frappe.new_doc.return_value = doc
+            self.module.create_draft('Farm', 'receipt', '2026-10-13', line, target='Main', receipt_reason='Purchase', supplier='Kim Ngoan', post=1)
+            doc.insert.assert_called_once_with()
+            doc.has_permission.assert_called_with('submit')
+            # Without the submit right the receipt stays a draft for the storekeeper.
+            self.assertEqual(doc.submit.called, allowed)
 
     def test_receipt_without_order_names_reason_supplier_and_price(self):
         self.module._company = Mock()

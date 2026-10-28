@@ -115,8 +115,32 @@ def bootstrap(company=None):
                 can_quote=frappe.has_permission('Supplier Quotation','create'),
                 can_need=frappe.has_permission('Material Request','create'),
                 can_invoice=frappe.has_permission('Purchase Invoice','read'),
+                can_quick=frappe.has_permission('Stock Entry','create'),
                 farms=frappe.get_list('Farm',filters={'company':company},fields=['name','farm_name'],limit_page_length=0) if frappe.has_permission('Farm','read') else [])
     return data
+
+
+@frappe.whitelist()
+def quick_purchases(company):
+    """Mua nhanh: goods bought and brought in without an order (Material Receipt, reason Purchase). The accountant
+    invoices them later from Hóa đơn (finance.payments.make_goods_invoice), which links lotus_purchase_invoice."""
+    access(company)
+    if not frappe.has_permission('Stock Entry', 'read'):
+        return []
+    rows = frappe.get_list('Stock Entry', filters={'company': company, 'stock_entry_type': 'Material Receipt', 'lotus_receipt_reason': 'Purchase', 'docstatus': ['<', 2]},
+                           fields=['name', 'posting_date', 'lotus_supplier', 'total_incoming_value', 'docstatus', 'remarks', 'owner',
+                                   *(['lotus_purchase_invoice'] if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice') else [])],
+                           order_by='posting_date desc, creation desc', limit_page_length=500)
+    names = {s.name: s.supplier_name for s in frappe.get_all('Supplier', filters={'name': ['in', list({r.lotus_supplier for r in rows if r.lotus_supplier})]}, fields=['name', 'supplier_name'])} if rows else {}
+    stores = {}
+    if rows:
+        for r in frappe.get_all('Stock Entry Detail', filters={'parent': ['in', [r.name for r in rows]]}, fields=['parent', 't_warehouse'], limit_page_length=0):
+            stores.setdefault(r.parent, set()).add(r.t_warehouse)
+    return [dict(name=r.name, date=str(r.posting_date), supplier=r.lotus_supplier, supplier_name=names.get(r.lotus_supplier, r.lotus_supplier),
+                 warehouse=', '.join(sorted(w for w in stores.get(r.name, ()) if w)), amount=flt(r.total_incoming_value), docstatus=r.docstatus,
+                 invoice=r.get('lotus_purchase_invoice') or '', notes=r.remarks or '', owner=r.owner,
+                 status='Nháp, chưa nhập kho' if r.docstatus == 0 else ('Đã có hóa đơn' if r.get('lotus_purchase_invoice') else 'Đã nhập kho, chờ hóa đơn'))
+            for r in rows]
 
 
 @frappe.whitelist()

@@ -26,9 +26,10 @@ test('comparison helpers choose the cheapest landed cost and ask a reason only f
  assert.equal(compareSelections([urea],{'MRL-1':'Q1-1'},{'MRL-1':' Giao nhanh hơn '})[0].reason,'Giao nhanh hơn')
 })
 
-test('price comparison is a purchase menu entry after quotes',()=>{
- const ids=procurementNavigation.map(r=>r.id)
- assert.equal(ids[ids.indexOf('quotes')+1],'compare')
+test('price comparison and the quote list share one purchase menu entry',()=>{
+ const compare=procurementNavigation.find(r=>r.id==='compare')
+ assert.equal(compare.label,'Báo giá & so sánh')
+ assert.equal(procurementNavigation.find(r=>r.id==='quotes').group,'compare')
  assert.equal(normalizeBuyingView('compare'),'compare')
 })
 

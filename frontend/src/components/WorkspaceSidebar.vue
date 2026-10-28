@@ -53,7 +53,7 @@ const isOpen=group=>openGroup.value===group.label
 function itemActive(item){
  if(item.path!==props.page)return false
  const module=Object.values(sectionedModules).find(m=>m.viewPath===item.path)
- return !module||!item.id||item.id===module.normalize(props[module.prop])
+ return !module||!item.id||(module.menu?(item.menu||item.id)===module.menu(props[module.prop]):item.id===module.normalize(props[module.prop]))
 }
 const isActive=group=>group.items.some(item=>itemActive(item))
 </script>

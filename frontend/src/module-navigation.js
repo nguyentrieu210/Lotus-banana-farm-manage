@@ -1,12 +1,13 @@
 import {visibleHrNavigation,normalizeHrView,hrQuery} from './hr-navigation.js'
-import {visibleBuyingNavigation,normalizeBuyingView,buyingQuery} from './procurement-navigation.js'
+import {visibleBuyingNavigation,normalizeBuyingView,buyingQuery,buyingMenu} from './procurement-navigation.js'
 import {visibleStockNavigation,normalizeStockView,stockQuery} from './stock-navigation.js'
 import {visibleFinanceNavigation,normalizeFinanceView,financeQuery} from './finance-navigation.js'
 // Modules whose sidebar group lists their own views (navGroups[].kind). The sidebar, page titles and active state read this registry.
 // viewPath: the page whose ?param picks the view; items on other paths (HR → cham-cong) are active whenever that page is open.
+// menu (optional): maps a view to the sidebar entry it lives under, for entries that hold several views (item.menu).
 export const sectionedModules={
  hr:{paths:['nhan-su','cham-cong'],viewPath:'nhan-su',prop:'hrView',items:visibleHrNavigation,normalize:normalizeHrView,query:hrQuery,setupLabel:'Thiết lập nhân sự',toggleOnly:true},
- buying:{paths:['mua-hang'],viewPath:'mua-hang',prop:'buyingView',items:visibleBuyingNavigation,normalize:normalizeBuyingView,query:buyingQuery,setupLabel:'Danh mục mua hàng',toggleOnly:true},
+ buying:{paths:['mua-hang'],viewPath:'mua-hang',prop:'buyingView',items:visibleBuyingNavigation,normalize:normalizeBuyingView,menu:buyingMenu,query:buyingQuery,setupLabel:'Danh mục mua hàng',toggleOnly:true},
  stock:{paths:['kho'],viewPath:'kho',prop:'stockView',items:visibleStockNavigation,normalize:normalizeStockView,query:stockQuery,setupLabel:'Danh mục kho',toggleOnly:true},
  finance:{paths:['tai-chinh'],viewPath:'tai-chinh',prop:'financeView',items:visibleFinanceNavigation,normalize:normalizeFinanceView,query:financeQuery,setupLabel:'Thiết lập kế toán',toggleOnly:true},
 }

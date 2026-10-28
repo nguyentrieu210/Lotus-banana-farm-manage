@@ -5,11 +5,13 @@ import {stateLabel} from '../labels'
 import '../procurement.css'
 import {computed,inject,onMounted,onUnmounted,ref,watch} from 'vue'
 import {routerKey,routeLocationKey} from 'vue-router'
-import {normalizeBuyingView} from '../procurement-navigation'
+import {normalizeBuyingView,buyingGroupViews} from '../procurement-navigation'
 import ProcurementMasters from './ProcurementMasters.vue'
 import ProcurementMasterForm from './ProcurementMasterForm.vue'
 import WarehouseReceiving from './WarehouseReceiving.vue'
 import ProcurementCompare from './ProcurementCompare.vue'
+import StockDocumentForm from './stock/StockDocumentForm.vue'
+import StockDocumentDetail from './stock/StockDocumentDetail.vue'
 import {Cell,CellGroup} from 'vant'
 import {call,upload,setCSRF} from '../api'
 import {Button} from './ui/button'
@@ -50,6 +52,12 @@ const link=computed(()=>props.mobile?'a':Button)
 const company=ref(props.company||''),session=ref(null),catalog=ref(null),tab=ref(props.buyingView?normalizeBuyingView(props.buyingView):props.embedded?'orders':'needs'),rows=ref([])
 const busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),search=ref(''),form=ref(''),draft=ref(null),key=ref('')
 const pendingOnly=ref(false)
+// Mua nhanh reuses the Kho receipt form and detail (reason Purchase, posted at once); they need the company's warehouses.
+const quickForm=ref(null),quickDetail=ref(null),stockWarehouses=ref([])
+const stockSession=computed(()=>({...session.value,today:asof.value,companies:[{name:company.value,default_currency:'VND'}]}))
+const quickColumns=[{field:'name',headerName:'Phiếu nhập',minWidth:170},{field:'date',headerName:'Ngày'},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},
+ {field:'warehouse',headerName:'Kho',minWidth:120},{field:'amount',headerName:'Giá trị nhập',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Tình trạng',minWidth:180},
+ {field:'invoice',headerName:'Hóa đơn'},{field:'notes',headerName:'Ghi chú',minWidth:200}]
 const current=ref(null),chain=ref(null),detailType=ref(''),signerOptions=ref(null),signers=ref({}),selections=ref({}),finance=ref(null)
 const period=ref((props.today||new Date().toISOString().slice(0,10)).slice(0,7)),asof=ref(props.today||new Date().toISOString().slice(0,10)),farm=ref(''),supplier=ref(props.initialSupplier||''),kind=ref(''),report=ref(null)
 const sourceType=ref('Purchase Invoice'),source=ref(''),amount=ref(''),mode=ref('bank'),reference=ref(''),date=ref(asof.value)
@@ -59,10 +67,10 @@ const file=ref(null),fileUrl=ref(''),preview=ref(null),mappings=ref({}),importWa
 const workspaceConfirm=useWorkspaceConfirm(),mobileConfirm=useMobileConfirm()
 const confirmOpen=workspaceConfirm.open,confirmTitle=workspaceConfirm.title,confirmMessage=workspaceConfirm.message
 const mobileDialog=mobileConfirm.dialog,mobileMessage=mobileConfirm.message
-const visibleTabs=computed(()=>procurementTabs.filter(([k])=>k!=='payments'||catalog.value?.can_view_finance).filter(([k])=>!['invoices','payables','reports','payments'].includes(k)||catalog.value?.can_view_finance).filter(([k])=>k!=='invoices'||catalog.value?.can_invoice))
+const visibleTabs=computed(()=>procurementTabs.filter(([k])=>k!=='quick'||catalog.value?.can_quick&&!props.mobile).filter(([k])=>k!=='payments'||catalog.value?.can_view_finance).filter(([k])=>!['invoices','payables','reports','payments'].includes(k)||catalog.value?.can_view_finance).filter(([k])=>k!=='invoices'||catalog.value?.can_invoice))
 const options=(values,label)=>values?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
 const shownRows=computed(()=>rows.value.filter(r=>(!pendingOnly.value||tab.value!=='orders'||r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng')&&(!supplier.value||['reports','payables','payments','invoices'].includes(tab.value)||r.supplier===supplier.value)&&(!search.value||Object.values(r).filter(x=>typeof x!=='object').join(' ').toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))))
-const columns=computed(()=>tab.value==='invoices'?[{field:'name',headerName:'Hóa đơn',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},{field:'bill_no',headerName:'Số hóa đơn NCC'},{field:'date',headerName:'Ngày ghi sổ'},{field:'due_date',headerName:'Hạn thanh toán'},{field:'amount',headerName:'Tổng tiền',valueFormatter:p=>money(p.value)},{field:'outstanding_amount',headerName:'Còn nợ',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payments'?[{field:'name',headerName:'Chứng từ',minWidth:180,valueGetter:p=>p.data.voucher_name||p.data.name},{field:'kind',headerName:'Loại giao dịch',minWidth:180},{field:'supplier',headerName:'Nhà cung cấp'},{field:'date',headerName:'Ngày'},{field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payables'?[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:190},{field:'name',headerName:'Chứng từ',minWidth:170},{field:'bill_no',headerName:'Hóa đơn NCC'},{field:'due_date',headerName:'Hạn trả'},{field:'amount',headerName:'Còn nợ / dư trả',valueFormatter:p=>money(p.value)},{field:'overdue_days',headerName:'Ngày quá hạn'},{field:'status',headerName:'Tình trạng',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='quotes'?[
+const columns=computed(()=>tab.value==='quick'?quickColumns:tab.value==='invoices'?[{field:'name',headerName:'Hóa đơn',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},{field:'bill_no',headerName:'Số hóa đơn NCC'},{field:'date',headerName:'Ngày ghi sổ'},{field:'due_date',headerName:'Hạn thanh toán'},{field:'amount',headerName:'Tổng tiền',valueFormatter:p=>money(p.value)},{field:'outstanding_amount',headerName:'Còn nợ',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payments'?[{field:'name',headerName:'Chứng từ',minWidth:180,valueGetter:p=>p.data.voucher_name||p.data.name},{field:'kind',headerName:'Loại giao dịch',minWidth:180},{field:'supplier',headerName:'Nhà cung cấp'},{field:'date',headerName:'Ngày'},{field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payables'?[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:190},{field:'name',headerName:'Chứng từ',minWidth:170},{field:'bill_no',headerName:'Hóa đơn NCC'},{field:'due_date',headerName:'Hạn trả'},{field:'amount',headerName:'Còn nợ / dư trả',valueFormatter:p=>money(p.value)},{field:'overdue_days',headerName:'Ngày quá hạn'},{field:'status',headerName:'Tình trạng',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='quotes'?[
  // A list to read: choosing a quote (and the reason when it is not the cheapest) happens in So sánh giá.
  {field:'item_name',headerName:'Mặt hàng',minWidth:200},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},
  {field:'quotation',headerName:'Báo giá',minWidth:150},
@@ -84,6 +92,8 @@ const payers=computed(()=>options(payerType.value==='Employee'?finance.value?.em
 const companyOptions=computed(()=>options(session.value?.companies))
 const supplierOptions=computed(()=>options(catalog.value?.suppliers,'supplier_name'))
 const stateOptions=[{value:'0',label:'Nháp / chờ ký'},{value:'1',label:'Đã ghi sổ'},{value:'2',label:'Đã hủy'}]
+// Tabs at the top of a page whose sidebar entry holds several views (Báo giá & so sánh, Đơn mua & nhận hàng, Hóa đơn & công nợ).
+const groupTabs=computed(()=>buyingGroupViews(tab.value).filter(v=>visibleTabs.value.some(([k])=>k===v.id)).map(v=>[v.id,v.tab||v.label]))
 const tabLabel=computed(()=>procurementTabs.find(([k])=>k===tab.value)?.[1]||'Mua hàng')
 const summary=computed(()=>tab.value==='payables'&&debt.value?[{label:'Phải trả',value:money(debt.value.owed)},{label:'Tạm ứng',value:money(debt.value.advance)},{label:'Quá hạn',value:money(debt.value.overdue)},{label:'Số dư thuần',value:money(debt.value.net)}]:tab.value==='reports'&&report.value?Object.entries(report.value.stages||{}).map(([id,label])=>({label,value:money(report.value.totals[id])})):[])
 const detailLabels={orders:'Đơn mua',needs:'Đề nghị mua',quotes:'Báo giá',receipts:'Phiếu nhận',invoices:'Hóa đơn',payments:'Phiếu chi',voucher:'Phiếu chi'}
@@ -103,6 +113,13 @@ function submitForm(){
 const formTitle=computed(()=>({order:'Đơn mua',quote:'Báo giá',need:'Đề nghị mua',receive:'Nhận / nghiệm thu',invoice:'Lập hóa đơn',payment:'Chi / tạm ứng NCC',funding:'Ghi nhận chi hộ',reimburse:'Hoàn tiền chi hộ',accounts:'Tài khoản chi hộ',import:'Nhập Excel',return:'Trả hàng',credit:'Hóa đơn điều chỉnh trả hàng',refund:'Ghi nhận NCC hoàn tiền'}[form.value]||''))
 
 function defaultWarehouse(){return props.warehouse||(catalog.value?.warehouses?.length===1?catalog.value.warehouses[0].name:'')}
+async function loadWarehouses(name=company.value){try{stockWarehouses.value=(await call('lotus_farm.warehouse.overview',{company:name,start:0})).warehouses||[]}catch{stockWarehouses.value=[]}}
+async function startQuick(){if(!stockWarehouses.value.length)await loadWarehouses();quickForm.value?.openQuick()}
+async function quickSaved(result){
+ await load()
+ success(result.docstatus===1?'Đã nhập kho '+result.name+'. Kế toán lập hóa đơn từ phiếu này ở Hóa đơn & công nợ.':'Đã lưu nháp '+result.name+', chờ thủ kho ghi sổ.')
+ if(result.warning)error.value=result.warning
+}
 function success(text){notice.value=text;if(!props.mobile){toast.success(text);notice.value=''}}
 async function run(fn){if(saving.value)return;saving.value=true;error.value='';try{return await fn()}catch(e){error.value=e.message}finally{saving.value=false}}
 let loadVersion=0
@@ -113,6 +130,7 @@ async function load(){
  try{
   let resultRows=[],resultReport=null,resultQuery=null,resultFinance=null
   if(view==='compare')return  // ProcurementCompare loads its own matrix
+  if(view==='quick'){resultRows=await api('quick_purchases',{company:selectedCompany});if(!stockWarehouses.value.length)await loadWarehouses(selectedCompany)}
   if(view==='needs')resultRows=await api('needs',{company:selectedCompany})
   if(view==='quotes')resultRows=await api('quotations',{company:selectedCompany})
   if(view==='orders')resultRows=await method('purchasing','orders',{company:selectedCompany})
@@ -187,6 +205,7 @@ async function fromRequest(name){await run(async()=>{const request=await method(
 async function open(row,type=tab.value){error.value='';try{
  form.value='';detailType.value=type;signers.value={};chain.value=null
  if(type==='payables'){if(row.doctype!=='Purchase Invoice')return;return await open(row,'invoices')}
+ if(type==='quick'){await quickDetail.value?.open('Stock Entry',row.name);return}
  if(row.audit_only){current.value={...row};return}
  if(type==='orders'){
   current.value=await method('purchasing','detail',{name:row.name});chain.value=await api('chain',{name:row.name})
@@ -268,6 +287,8 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <template v-if="catalog">
  <nav v-if="!embedded||mobile" class="procurement-tabs" aria-label="Mua hàng"><component :is="button" v-for="[id,label] in visibleTabs" :key="id" :aria-current="tab===id?'page':undefined" :disabled="saving" @click="changeTab(id)">{{label}}</component></nav>
 
+ <nav v-if="!mobile&&groupTabs.length>1" class="procurement-subtabs" :aria-label="tabLabel"><button v-for="[id,label] in groupTabs" :key="id" type="button" :aria-current="tab===id?'page':undefined" :disabled="saving" @click="changeTab(id)">{{label}}</button></nav>
+
  <ProcurementMasters v-if="isMaster" ref="masterView" :key="company+tab" :company="company" :kind="tab" :mobile="mobile" @navigate="navigateMaster"><template #scope><LotusField v-if="companyOptions.length>1" v-model="company" :mobile="mobile" :label="mobile?'Công ty':undefined" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" :disabled="hasChanges()" @update:model-value="companyChanged"/></template></ProcurementMasters>
 
  <ProcurementCompare v-else-if="tab==='compare'" :key="'compare-'+company" :company="company" :mobile="mobile" :can-create="catalog.can_create" :api="api" @created="compareCreated"/>
@@ -291,6 +312,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    </template>
   </template>
   <template #actions>
+   <Button v-if="tab==='quick'" @click="startQuick">Mua nhanh</Button>
    <Button v-if="tab==='needs'&&catalog.can_need" @click="start('need')">Thêm đề nghị</Button>
    <Button v-if="tab==='quotes'&&catalog.can_quote" @click="start('quote')">Thêm báo giá</Button>
    <Button v-if="tab==='quotes'&&catalog.can_create" variant="outline" @click="changeTab('compare')">So sánh giá &amp; tạo đơn</Button>
@@ -301,6 +323,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <template v-if="tab==='reports'"><Button @click="load">Áp dụng</Button><Button variant="outline" :disabled="saving" @click="exportReport">Xuất toàn bộ Excel</Button></template>
   </template>
   <template #before>
+   <p v-if="tab==='quick'" class="lotus-form-note">Hàng mua lẻ đã về: bấm <b>Mua nhanh</b>, chụp hóa đơn, kiểm tra rồi lưu là hàng vào kho ngay, không cần đề nghị hay đơn mua. Đợt mua lớn theo kế hoạch tháng vẫn đi Đề nghị mua → So sánh giá → Đơn mua.</p>
    <p v-if="tab==='reports'&&report?.note" class="lotus-form-note">{{report.note}}</p>
    <FormSection v-if="tab==='payments'&&finance?.vouchers?.length" title="Phiếu chờ ký"><div class="procurement-actions"><Button v-for="v in finance.vouchers" :key="v.name" variant="outline" size="sm" @click="current=v;detailType='voucher'">{{v.name}} · {{money(v.amount)}} · {{v.signing?.waiting_for}}</Button></div></FormSection>
   </template>
@@ -448,6 +471,8 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <template #actions><template v-if="form==='import'"><component :is="link" as="a" variant="outline" href="/api/method/lotus_farm.procurement_import.template">Tải mẫu Excel</component><component :is="button" type="button" variant="outline" :disabled="!file||saving" @click="importPreview">Xem trước / kiểm tra lại</component></template></template>
  </ResponsiveForm>
  </template>
+ <template v-if="!mobile&&catalog?.can_quick"><StockDocumentForm ref="quickForm" :company="company" :warehouse="props.warehouse" :warehouses="stockWarehouses" :session="stockSession" @saved="quickSaved"/>
+ <StockDocumentDetail ref="quickDetail" :warehouses="stockWarehouses" :session="stockSession" @changed="load" @edit="d=>quickForm.edit(d)"/></template>
  <WarehouseReceiving ref="receivingView" :company="company" :warehouse="props.warehouse" :today="asof" :mobile="mobile" :confirm="ask" @changed="load"/>
  <WorkspaceModal v-if="!mobile" :model-value="!!quickMaster" :title="quickMaster==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'" width="1080px" @update:model-value="value=>!value&&closeQuickMaster()"><ProcurementMasterForm v-if="quickMaster" ref="masterSaving" :company="company" :kind="quickMaster" @saved="quickMasterSaved"/></WorkspaceModal>
  <LotusMobileDialog v-else ref="masterDialog" @cancel="closeQuickMaster"><h3>{{quickMaster==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'}}</h3><ProcurementMasterForm v-if="quickMaster" ref="masterSaving" :company="company" :kind="quickMaster" mobile @saved="quickMasterSaved"/><LotusMobileButton @click="closeQuickMaster">Đóng</LotusMobileButton></LotusMobileDialog>
