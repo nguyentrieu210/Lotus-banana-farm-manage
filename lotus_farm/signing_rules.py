@@ -23,6 +23,9 @@ CHAINS = {
     'purchase_proposal': dict(app='buying', gate=True, label='Phiếu đề xuất mua vật tư', steps=(
         _step('PROPOSE', 'Người đề xuất'), _step('DEPARTMENT', 'Phụ trách bộ phận', HEADS),
         _step('PURCHASING', 'Phòng Kế toán / Mua hàng', PURCHASING), _step('APPROVE', 'Giám đốc phê duyệt', PURCHASE_APPROVER))),
+    # Fully priced proposals under proposal_rules.SMALL_LIMIT: proposer and head of department only.
+    'purchase_proposal_small': dict(app='buying', gate=True, label='Phiếu đề xuất mua vật tư', variant_of='purchase_proposal', steps=(
+        _step('PROPOSE', 'Người đề xuất'), _step('DEPARTMENT', 'Phụ trách bộ phận', HEADS))),
     'issue_proposal': dict(app='warehouse', gate=False, label='Phiếu đề xuất cấp vật tư', steps=(
         _step('PROPOSE', 'Người đề xuất'), _step('DEPARTMENT', 'Phụ trách bộ phận', HEADS),
         _step('STOREKEEPER', 'Thủ kho', STOREKEEPERS), _step('APPROVE', 'Giám đốc NT / Người phê duyệt', DIRECTORS))),

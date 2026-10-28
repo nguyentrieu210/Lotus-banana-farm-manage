@@ -313,7 +313,9 @@ def purchase_order(name):
 
 
 @frappe.whitelist(methods=['POST'])
-def receive_order(name,posting_date,quantities,client_event_id,additional_costs=None):
+def receive_order(name,posting_date,quantities,client_event_id,additional_costs=None,post=0):
+    """post=1 records the goods in one step: the receipt is created and posted to stock together.
+    Without permission to post, the receipt stays a draft for the storekeeper."""
     from lotus_farm.controls import lock
     from lotus_farm.warehouse import _number,_text,_warehouse
     from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
@@ -333,7 +335,7 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
     if existing:
         _purchase_doc('Purchase Receipt',existing.name)
         if existing.lotus_payload_hash!=digest:frappe.throw('Yêu cầu này đã tạo phiếu '+existing.name+'. Mở lại để kiểm tra.')
-        return dict(name=existing.name)
+        return dict(name=existing.name,docstatus=frappe.db.get_value('Purchase Receipt',existing.name,'docstatus'))
     info=purchase_order(name)
     available={r['line']:r for r in info['items']}
     for line,qty in selected.items():
@@ -380,7 +382,11 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
 
     doc.lotus_client_key=key;doc.lotus_payload_hash=digest
     doc.insert()
-    return dict(name=doc.name)
+    if cint(post) and doc.has_permission('submit'):
+        doc.reload()
+        receipt_action(doc.name,str(doc.modified),'submit')  # same checks as posting a draft later
+        return dict(name=doc.name,docstatus=1)
+    return dict(name=doc.name,docstatus=0)
 
 
 def receipt_totals(doc):

@@ -17,6 +17,8 @@ const emit=defineEmits(['update:modelValue','request','add-supplier','add-item']
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const options=(rows,label)=>rows?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
 const itemOf=code=>props.catalog.items.find(r=>r.name===code)
+// Quotes may be asked while a request is still being signed; orders only take approved requests.
+const requestOptions=computed(()=>(props.catalog.requests||[]).filter(r=>props.type==='quote'||!r.pending).map(r=>({value:r.name,label:r.name+(r.pending?' (đang chờ ký)':'')})))
 const vatOptions=['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))
 const lineColumns=computed(()=>[
  {field:'item',label:'Mặt hàng',required:true,options:options(props.catalog.items,'item_name'),width:'minmax(200px,2.2fr)'},
@@ -74,7 +76,7 @@ watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of pro
  <FormSection title="Thông tin chung">
   <FormGrid :columns="3">
    <DocumentReader :mobile="mobile" :disabled="saving" label="Đọc báo giá / hóa đơn bằng AI" @read="applyDocument"/>
-   <LotusField v-if="type!=='need'&&catalog.requests?.length" :mobile="mobile" label="Lấy dòng từ đề nghị đã duyệt" :options="options(catalog.requests)" @update:model-value="emit('request',$event)"/>
+   <LotusField v-if="type!=='need'&&requestOptions.length" :mobile="mobile" :label="type==='quote'?'Lấy dòng từ đề nghị mua':'Lấy dòng từ đề nghị đã duyệt'" :options="requestOptions" @update:model-value="emit('request',$event)"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
    <LotusField v-if="type!=='need'&&farmOptions.length" :mobile="mobile" :model-value="modelValue.order_farm" label="Vườn sử dụng" :options="farmOptions" empty-option="Không gắn vườn (chi phí chung)" :searchable="false" :hint="lineFarms.length>1&&!modelValue.order_farm?'Các dòng đang thuộc nhiều vườn khác nhau; chọn một vườn để áp cho cả đơn.':''" @update:model-value="chooseFarm"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.order_freight" label="Phí vận chuyển cả đơn" type="money" min="0" hint="Tự chia vào các dòng theo giá trị hàng."/>

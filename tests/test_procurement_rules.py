@@ -47,6 +47,13 @@ class ProcurementRules(unittest.TestCase):
         self.assertEqual(r.digest({'a': 1, 'b': 2}), r.digest({'b': 2, 'a': 1}))
         self.assertNotEqual(r.digest({'month': '2026-10'}), r.digest({'month': '2026-11'}))
 
+    def test_reason_only_when_not_the_cheapest(self):
+        self.assertFalse(r.needs_reason(12_400, [12_400, 13_000, None]))
+        self.assertFalse(r.needs_reason(12_400.001, [12_400, 13_000]))  # rounding is not a choice
+        self.assertTrue(r.needs_reason(13_000, [12_400, 13_000]))
+        self.assertTrue(r.needs_reason(None, [12_400]))  # an unpriced line is never the cheapest
+        self.assertFalse(r.needs_reason(5_000, [None, 5_000]))  # unpriced offers do not count as cheaper
+
 
 if __name__ == '__main__':
     unittest.main()

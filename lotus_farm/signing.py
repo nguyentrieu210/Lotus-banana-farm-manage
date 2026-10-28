@@ -20,6 +20,7 @@ REQUEST = 'Lotus Sign Request'
 # chain -> link to the document inside the chain's app (push targets must stay in that app).
 URLS = {
     'purchase_proposal': lambda d: '/buying?proposal=' + quote(d.name),
+    'purchase_proposal_small': lambda d: '/buying?proposal=' + quote(d.name),
     'issue_proposal': lambda d: '/warehouse?doc=' + quote(d.name) + '&doctype=Material%20Request',
     'purchase_order': lambda d: '/buying?doc=' + quote(d.name),
     'stock_document': lambda d: '/warehouse?doc=' + quote(d.name) + '&doctype=' + quote(d.doctype),
@@ -29,9 +30,18 @@ URLS = {
 }
 
 
-def chain_for(doc):
+def chain_for(doc, fresh=False):
+    """fresh=True picks the chain for a new round; otherwise a started round keeps the chain it began with."""
     if doc.doctype == 'Material Request':
-        return 'purchase_proposal' if doc.material_request_type == 'Purchase' else 'issue_proposal'
+        if doc.material_request_type != 'Purchase':
+            return 'issue_proposal'
+        from lotus_farm import proposal_rules
+        if not fresh and doc.name:
+            started = frappe.get_all(REQUEST, filters={'document_type': doc.doctype, 'document_name': doc.name},
+                                     pluck='chain', order_by='round desc', limit_page_length=1)
+            if started and started[0] in proposal_rules.CHAINS:
+                return started[0]
+        return proposal_rules.chain_for_lines(doc.items)
     if (doc.doctype == 'Payment Entry' and (doc.get('payment_type') != 'Receive' or doc.get('party_type')=='Supplier')) or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind') in ('Salary', 'Advance', 'Statutory', 'PurchaseFunding', 'PurchaseReimbursement')):
         return 'payment_voucher'
     return {'Purchase Order': 'purchase_order', 'Stock Entry': 'stock_document', 'Stock Reconciliation': 'stock_document',
@@ -224,7 +234,7 @@ def _notify(doc, key, row, title, body=None):
 
 def start(doc, signers, details=None, require_image=False):
     """Create a new round with the chosen signers; the caller signs the first step. Returns status."""
-    key = chain_for(doc)
+    key = chain_for(doc, fresh=True)
     config = rules.chain(key)
     signers = frappe.parse_json(signers) if isinstance(signers, str) else (signers or {})
     issues = rules.validate_assignment(key, signers, _roles, frappe.session.user)

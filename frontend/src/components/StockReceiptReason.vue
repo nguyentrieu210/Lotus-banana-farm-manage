@@ -24,8 +24,9 @@ async function validate(lines=[]){
  if(!options.value)await load()
  if(!options.value)return error.value||'Chưa tải được lý do nhập kho. Bấm Thử lại.'
  const selected=options.value.reasons.find(r=>r.value===props.reason)
- if((options.value.enabled||props.reason)&&!selected)return 'Chọn lý do nhập kho.'
- if(selected?.supplier&&!props.supplier)return 'Chọn nhà cung cấp cho hàng mua ngoài.'
+ if(!selected)return 'Chọn lý do nhập kho.'
+ if(selected.supplier&&!props.supplier)return 'Chọn nhà cung cấp cho hàng mua ngoài.'
+ if(selected.supplier&&lines.some(r=>!(Number(r.rate)>0)))return 'Nhập giá mua cho từng dòng hàng mua.'
  if(selected?.lot&&lines.some(r=>!String(r.area||'').trim()))return 'Nhập lô thu hồi vật tư cho từng dòng.'
  return ''
 }
@@ -36,7 +37,8 @@ defineExpose({validate})
  <p v-if="busy" role="status">Đang tải lý do nhập kho…</p>
  <template v-if="error"><p role="alert" :class="mobile?'mobile-message danger':'stock-alert'">{{error}}</p><component :is="button" type="button" :disabled="busy" @click="load">Thử lại lý do nhập kho</component></template>
  <component :is="mobile?'div':FormGrid" v-if="options" :class="mobile?'mobile-form-fields':undefined">
-  <LotusField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" :required="options.enabled" @update:model-value="emit('update:reason',$event)"/>
+  <LotusField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" required @update:model-value="emit('update:reason',$event)"/>
   <LotusField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
  </component>
+ <p v-if="options?.reasons.find(r=>r.value===reason)?.supplier" class="lotus-form-note">Hàng mua cần giá cho từng dòng. Đã có đơn mua thì dùng <b>Nhận hàng theo đơn mua</b> để đơn và đề nghị được cập nhật.</p>
 </template>

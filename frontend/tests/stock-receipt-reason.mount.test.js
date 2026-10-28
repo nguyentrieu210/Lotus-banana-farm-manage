@@ -29,7 +29,8 @@ test('mobile direct receipt requires a reason and supplier, then sends both to t
  await start();assert.equal(document.querySelector('select[aria-label="Lý do nhập kho"]').required,true)
  await submit();assert.equal(writes().length,0);assert.match(view.root.textContent,/Chọn lý do nhập kho/)
  select('Lý do nhập kho','Purchase');await tick();await submit();assert.equal(writes().length,0);assert.match(view.root.textContent,/Chọn nhà cung cấp/)
- await choose('Nhà cung cấp','Nhà cung cấp thử');await submit()
+ await choose('Nhà cung cấp','Nhà cung cấp thử');await submit();assert.equal(writes().length,0);assert.match(view.root.textContent,/Nhập giá mua/)
+ const price=document.querySelector('input[aria-label="Đơn giá mua"]');assert.ok(price,'bought goods ask their price');price.value='12000';price.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();await submit()
  assert.equal(writes().length,1);assert.equal(writes()[0].args.receipt_reason,'Purchase');assert.equal(writes()[0].args.supplier,'NCC');assert.equal(writes()[0].args.lines[0].item,'I');assert.match(view.root.textContent,/Kiểm tra phiếu/)
 })
 test('mobile recovery receipt requires the source lot and preserves it in the request',async()=>{

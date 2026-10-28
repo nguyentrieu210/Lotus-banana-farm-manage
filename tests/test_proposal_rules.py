@@ -27,6 +27,16 @@ class ProposalRules(unittest.TestCase):
         self.assertIn('Dòng 2: số lượng đề xuất phải lớn hơn 0', issues)
         self.assertIn('Dòng 2: đơn giá không hợp lệ', issues)
 
+    def test_small_priced_proposals_need_two_signatures(self):
+        self.assertEqual(pr.chain_for_lines([dict(qty=10, rate=1_500_000)]), 'purchase_proposal_small')  # 15 triệu
+        self.assertEqual(pr.chain_for_lines([dict(qty=10, rate=2_500_000)]), 'purchase_proposal')  # 25 triệu
+        self.assertEqual(pr.chain_for_lines([dict(qty=1, rate=pr.SMALL_LIMIT)]), 'purchase_proposal')  # exactly the limit
+        # A line without a price cannot prove the proposal is small.
+        self.assertEqual(pr.chain_for_lines([dict(qty=1, rate=100), dict(qty=5, rate=0)]), 'purchase_proposal')
+        self.assertEqual(pr.chain_for_lines([]), 'purchase_proposal')
+        from lotus_farm.signing_rules import chain
+        self.assertEqual([s['key'] for s in chain('purchase_proposal_small')['steps']], ['PROPOSE', 'DEPARTMENT'])
+
 
 if __name__ == '__main__':
     unittest.main()

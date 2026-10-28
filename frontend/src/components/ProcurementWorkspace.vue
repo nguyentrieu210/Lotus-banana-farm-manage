@@ -8,6 +8,7 @@ import {normalizeBuyingView} from '../procurement-navigation'
 import ProcurementMasters from './ProcurementMasters.vue'
 import ProcurementMasterForm from './ProcurementMasterForm.vue'
 import WarehouseReceiving from './WarehouseReceiving.vue'
+import ProcurementCompare from './ProcurementCompare.vue'
 import {Cell,CellGroup} from 'vant'
 import {call,upload,setCSRF} from '../api'
 import {Button} from './ui/button'
@@ -109,6 +110,7 @@ async function load(){
  busy.value=true;error.value=''
  try{
   let resultRows=[],resultReport=null,resultQuery=null,resultFinance=null
+  if(view==='compare')return  // ProcurementCompare loads its own matrix
   if(view==='needs')resultRows=await api('needs',{company:selectedCompany})
   if(view==='quotes')resultRows=await api('quotations',{company:selectedCompany})
   if(view==='orders')resultRows=await method('purchasing','orders',{company:selectedCompany})
@@ -179,7 +181,7 @@ async function saveDocument(){await run(async()=>{
  for(const file_url of draft.value.ai_files||[]){try{await call('lotus_farm.stock_attachments.attach',{doctype,name:answer.name,file_url},true)}catch(e){attachNote=' Chưa gắn được chứng từ AI: '+e.message}}
  const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();success('Đã lưu nháp '+answer.name+(draft.value.ai_files?.length&&!attachNote?' kèm chứng từ đã đọc.':'')+attachNote)
 })}
-async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value});draft.value=purchaseFromRequest(draft.value,request)})}
+async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value,allow_pending:form.value==='quote'?1:0});draft.value=purchaseFromRequest(draft.value,request)})}
 async function open(row,type=tab.value){error.value='';try{
  form.value='';detailType.value=type;signers.value={};chain.value=null
  if(type==='payables'){if(row.doctype!=='Purchase Invoice')return;return await open(row,'invoices')}
@@ -189,7 +191,7 @@ async function open(row,type=tab.value){error.value='';try{
   signerOptions.value=await method('purchasing','approver_options',{company:company.value})
  }else if(type==='invoices')current.value=await method('procurement_queries','invoice',{company:company.value,name:row.name})
  else if(type==='needs'){
-  current.value=await method('purchase_proposal','detail',{name:row.name});signerOptions.value=await method('purchase_proposal','signer_options',{company:company.value})
+  current.value=await method('purchase_proposal','detail',{name:row.name});signerOptions.value=await method('purchase_proposal','signer_options',{company:company.value,name:row.name})
  }else if(type==='receipts')current.value=await api('receipt',{name:row.name})
  else if(type==='quotes')current.value={...row,line_id:row.name,name:row.quotation}
  else if(type==='payments'){current.value=await api('voucher',{doctype:row.doctype||'Journal Entry',name:row.journal_entry||row.name});if(row.lotus_purchase_funding)current.value.funding=fundingRows.value.find(r=>r.name===row.lotus_purchase_funding)}
@@ -215,7 +217,10 @@ async function submitStage(){await run(async()=>{
  if(form.value==='invoice')result=await api('invoice_receipt',{name:receiveInfo.value.name,bill_no:bill.value,bill_date:billdate.value,posting_date:date.value,due_date:dueDate.value,quantities:selected,client_key:key.value},true)
  const target=result.invoice?'invoices':'receipts';form.value='';current.value=null;await changeTab(target);await open({name:result.invoice||result.name},target);success('Đã tạo '+(result.name||result.invoice))
 })}
-async function chooseQuotes(){await run(async()=>{const result=await api('select_quotes',{company:company.value,selections:quoteChoices(rows.value,selections.value),client_key:key.value||=newKey()},true);key.value='';tab.value='orders';await load();success('Đã tạo đơn nháp: '+result.orders.join(', '))})}
+async function chooseQuotes(){await run(async()=>{const result=await api('select_quotes',{company:company.value,selections:quoteChoices(rows.value,selections.value),client_key:key.value||=newKey()},true);key.value='';tab.value='orders';await load();ordersCreated(result)})}
+// Orders from approved requests at the cheapest price are approved at once (procurement._approve_by_policy).
+function ordersCreated(result){const ok=result.approved||[],draft=result.orders.filter(n=>!ok.includes(n));success([ok.length?'Đơn đã duyệt, chờ nhận hàng: '+ok.join(', '):'',draft.length?'Đơn nháp chờ trình duyệt: '+draft.join(', '):''].filter(Boolean).join(' · '))}
+async function compareCreated(result){ordersCreated(result);await changeTab('orders')}
 function selection(row){return selections.value[row.line_id||row.name]||=( {selected:false,reason:'',qty:row.qty})}
 async function proposalSign(){await act('sign','purchase_proposal',{signers:signers.value})}
 async function pay(){await run(async()=>{
@@ -263,6 +268,8 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
  <ProcurementMasters v-if="isMaster" ref="masterView" :key="company+tab" :company="company" :kind="tab" :mobile="mobile" @navigate="navigateMaster"><template #scope><LotusField v-if="companyOptions.length>1" v-model="company" :mobile="mobile" :label="mobile?'Công ty':undefined" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" :disabled="hasChanges()" @update:model-value="companyChanged"/></template></ProcurementMasters>
 
+ <ProcurementCompare v-else-if="tab==='compare'" :key="'compare-'+company" :company="company" :mobile="mobile" :can-create="catalog.can_create" :api="api" @created="compareCreated"/>
+
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
    :paged="isPaged" :start="queryStart" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
    :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'&&tab!=='quotes'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
@@ -296,7 +303,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <FormSection v-if="tab==='payments'&&finance?.vouchers?.length" title="Phiếu chờ ký"><div class="procurement-actions"><Button v-for="v in finance.vouchers" :key="v.name" variant="outline" size="sm" @click="current=v;detailType='voucher'">{{v.name}} · {{money(v.amount)}} · {{v.signing?.waiting_for}}</Button></div></FormSection>
   </template>
   <template #cell-quotation="{row}"><Button variant="link" @click="open(row,'quotes')">{{row.quotation}}</Button></template>
-  <template #cell-choice="{row}"><Checkbox :model-value="selection(row).selected" :disabled="row.docstatus!==1||row.gross==null" :aria-label="'Chọn '+row.item_name+' từ '+row.supplier" @update:model-value="value=>selection(row).selected=value"/></template>
+  <template #cell-choice="{row}"><Checkbox :model-value="selection(row).selected" :disabled="row.docstatus===2||row.gross==null" :aria-label="'Chọn '+row.item_name+' từ '+row.supplier" @update:model-value="value=>selection(row).selected=value"/></template>
   <template #cell-reason="{row}"><LotusField v-model="selection(row).reason" :aria-label="'Lý do chọn '+row.quotation"/></template>
  </ListPage>
 

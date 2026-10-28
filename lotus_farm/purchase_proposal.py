@@ -187,17 +187,26 @@ def save_proposal(company, values, name=None, modified=None):
 
 
 @frappe.whitelist()
-def signer_options(company):
-    """People who may sign each later step: active employees with a login and the step's role."""
+def signer_options(company, name=None, amount=None, priced=1):
+    """People who may sign each later step: active employees with a login and the step's role.
+    The steps follow the proposal's value: the saved proposal when `name` is given, else `amount`
+    (and whether every line is priced) while the proposal is still being written."""
     _access()
     from lotus_farm.warehouse import _company
     _company(company)
-    return signing.candidates(CHAIN, company)
+    if name:
+        doc = _doc(name)
+        key = signing.chain_for(doc, fresh=doc.docstatus == 0 and rules.current_step(_state(doc)) == 0)
+    elif amount is not None:
+        key = rules.chain_for_lines([dict(qty=1, rate=flt(amount) if frappe.utils.cint(priced) else 0)])
+    else:
+        key = CHAIN
+    return signing.candidates(key, company)
 
 
 def _waiting_for_me():
     """Proposals whose waiting step is assigned to me (Administrator sees every waiting step)."""
-    filters = {'document_type': 'Material Request', 'chain': CHAIN, 'state': signing_rules.WAITING, 'step_index': ['>', 0]}
+    filters = {'document_type': 'Material Request', 'chain': ['in', rules.CHAINS], 'state': signing_rules.WAITING, 'step_index': ['>', 0]}
     if not _admin():
         filters['assignee'] = frappe.session.user
     return set(frappe.get_all(signing.REQUEST, filters=filters, pluck='document_name', limit_page_length=1000))
@@ -231,7 +240,8 @@ def proposals(company, view='mine'):
 
 
 def _chain(doc, with_images=False):
-    return signing.status(doc, CHAIN, with_images=with_images)
+    # The chain follows the proposal's value (lotus_farm.signing.chain_for); a started round keeps its own.
+    return signing.status(doc, None, with_images=with_images)
 
 
 def _signatures(chain):
