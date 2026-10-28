@@ -13,7 +13,7 @@ const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=re
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
 const columns=computed(()=>movementColumns(warehouseLabel))
 const columnPresets=[
- {id:'compact',label:'Gọn',visible:['posting_date','voucher_no','item_name','in_qty','out_qty','qty_after_transaction']},
+ {id:'compact',label:'Gọn',visible:['posting_date','voucher_no','content','item_name','in_qty','out_qty','qty_after_transaction']},
  {id:'production',label:'Theo sản xuất',visible:['posting_date','voucher_no','item_name','content','usage_area','work_team','receiver','out_qty']},
  {id:'full',label:'Đầy đủ',visible:['posting_date','voucher_no','transaction_type','content','item_name','item_code','warehouse','stock_uom','opening_qty','in_qty','out_qty','qty_after_transaction','receiver','usage_area','work_team']}
 ]
