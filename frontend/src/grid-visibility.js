@@ -32,6 +32,10 @@ export function normalizeColumnLayout(columns,layout={}){
  const pinned=unique(layout.pinned).filter(id=>ids.includes(id)&&!hidden.includes(id)).slice(0,2)
  return {hidden,order,pinned}
 }
+export function hasSavedColumnLayout(key){
+ if(!key)return false
+ try{return localStorage.getItem(layoutPrefix+key)!==null||localStorage.getItem(legacyPrefix+key)!==null}catch{return false}
+}
 export function loadColumnLayout(key,columns){
  let saved={}
  if(key){try{saved=JSON.parse(localStorage.getItem(layoutPrefix+key)||'{}')||{}}catch{}}

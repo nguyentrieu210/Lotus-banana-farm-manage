@@ -56,23 +56,16 @@ function sortBy(key){sort.value=[key,sort.value[0]===key?-sort.value[1]:1]}
 function togglePick(name){const next=new Set(picked.value);next.has(name)?next.delete(name):next.add(name);picked.value=next}
 function togglePickAll(){const next=new Set(picked.value);for(const b of visibleLandRows.value)allPicked.value?next.delete(b.name):next.add(b.name);picked.value=next}
 
+function setLandSelected(id,selected){const next=new Set(picked.value);selected?next.add(id):next.delete(id);picked.value=next}
+function setLandPageSelected(rows,selected){const next=new Set(picked.value);for(const row of rows){selected?next.add(row.name):next.delete(row.name)}picked.value=next}
+
+
 // The grid works on stable Farm Block IDs; a sort or Excel-column filter never changes the target of an edit.
 const gridRows=computed(()=>rows.value.map(b=>({...b,
- __picked:picked.value.has(b.name),
  planting:b.planting_date||'',
  gaps_label:(b.gaps||[]).map(g=>data.value?.gap_labels?.[g]?.replace('Chưa có ','')||g).join(', ')
 })))
-function renderLandPick(params){
- const input=document.createElement('input')
- input.type='checkbox'
- input.checked=!!params.data?.__picked
- input.setAttribute('aria-label','Chọn lô '+(params.data?.block_code||''))
- input.addEventListener('click',e=>e.stopPropagation())
- input.addEventListener('change',e=>{e.stopPropagation();togglePick(params.data.name)})
- return input
-}
 const gridColumns=computed(()=>[
- ...(data.value?.can_edit?[{field:'__picked',headerName:'Chọn',minWidth:80,maxWidth:85,sortable:false,hideOnMobile:true,columnChooserLocked:true,suppressExport:true,cellRenderer:renderLandPick}]:[]),
  ...columns.map(([field,headerName])=>({
   field,headerName,minWidth:field==='block_code'?100:field==='variety_label'?130:120,
   valueFormatter:p=>{
@@ -106,7 +99,7 @@ async function applyBulk(){
  catch(e){error.value='Đã lưu '+done+' lô, dừng ở lỗi: '+e.message;await load()}finally{saving.value=false}}
 function exportExcel(){if(farm.value)location.href='/api/method/lotus_farm.farm_land.export_blocks?'+new URLSearchParams({farm:farm.value})}
 function exportVisibleLand(){
- const cols=shownLandColumns.value.filter(col=>col.field!=='__picked')
+ const cols=shownLandColumns.value
  const records=visibleLandRows.value
  if(!records.length)return
  exportExcelFile(buildXlsx(cols,records),'Danh-sach-lo-dang-hien')
@@ -175,7 +168,7 @@ useNoticeToast(notice)
     </div>
    </div>
    <div class="land-table" :aria-busy="busy">
-    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :column-layout="normalizedLandLayout" row-key="name" storage-key="lotus-farm-land" :loading="busy"
+    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :column-layout="normalizedLandLayout" :selected-row-keys="[...picked]" @row-selection-change="({id,selected})=>setLandSelected(id,selected)" @page-selection-change="({rows,selected})=>setLandPageSelected(rows,selected)" @selection-clear="picked=new Set()" row-key="name" storage-key="lotus-farm-land" :loading="busy"
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>
