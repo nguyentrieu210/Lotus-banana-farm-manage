@@ -13,7 +13,7 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
 <template>
  <nav class="lotus-pagination" aria-label="Phân trang">
   <span class="lotus-pagination__range" aria-live="polite">{{range}}<template v-if="total"> / {{total.toLocaleString('vi-VN')}}</template></span>
-  <PaginationRoot v-if="total" :page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" show-edges :disabled="disabled" @update:page="go">
+  <PaginationRoot v-if="total && total>pageSize" :page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" show-edges :disabled="disabled" @update:page="go">
    <PaginationList v-slot="{items}" class="lotus-pagination__list">
     <PaginationPrev class="lotus-pagination__button" aria-label="Trang trước"><LotusIcon name="chevron-left"/></PaginationPrev>
     <template v-for="(item,index) in items" :key="index">
@@ -23,7 +23,7 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
     <PaginationNext class="lotus-pagination__button" aria-label="Trang sau"><LotusIcon name="chevron"/></PaginationNext>
    </PaginationList>
   </PaginationRoot>
-  <div v-else class="lotus-pagination__list">
+  <div v-else-if="!total&&(start>0||hasMore)" class="lotus-pagination__list">
    <button type="button" class="lotus-pagination__button" :disabled="disabled||!start" aria-label="Trang trước" @click="emit('update:start',Math.max(0,start-pageSize))"><LotusIcon name="chevron-left"/>Trước</button>
    <button type="button" class="lotus-pagination__button" :disabled="disabled||!hasMore" aria-label="Trang sau" @click="emit('update:start',start+pageSize)">Tiếp<LotusIcon name="chevron"/></button>
   </div>

@@ -53,7 +53,7 @@ const mobileColumns=computed(()=>activeDisplayColumns.value.filter(c=>!c.hideOnM
 // Sum row on every table: the row count plus the numeric columns of the rows on screen (after column filters), pinned under the grid.
 // A screen's own pinnedBottomRows win; :totals="false" turns it off (statements, check lists); a column opts in/out with sum:true|false.
 const sumColumns=computed(()=>activeDisplayColumns.value.filter(c=>summableColumn(c,visibleRows.value,raw)))
-const autoTotals=computed(()=>props.totals&&!props.pinnedBottomRows.length&&visibleRows.value.length?[totalsRow(props.columns,sumColumns.value,visibleRows.value,raw,key,props.totalsLabel)]:[])
+const autoTotals=computed(()=>props.totals&&!props.pinnedBottomRows.length&&visibleRows.value.length?[totalsRow(props.columns.filter(c=>columnId(c)!==nativeSelectId.value),sumColumns.value,visibleRows.value,raw,key,props.totalsLabel)]:[])
 const totalText=(col,total)=>{const v=total[key(col)];try{return col.valueFormatter?col.valueFormatter({value:v,data:total,node:{rowPinned:'bottom'}}):v}catch{return v}}
 const bottomRows=computed(()=>props.pinnedBottomRows.length?props.pinnedBottomRows:autoTotals.value)
 // Formatters and getters written for real rows must not break on the sum row.
@@ -111,7 +111,7 @@ const activeColumns=computed(()=>activeDisplayColumns.value.filter(c=>columnId(c
 function applyColumnLayout(api=gridApi.value){
  if(!api)return
  const cols=orderedColumns(props.columns,effectiveLayout.value).filter(c=>columnId(c)!==nativeSelectId.value)
- api.applyColumnState({state:[{colId:nativeSelectId.value||'__lotus_select',pinned:'left',hide:false},{colId:'__lotus_stt',pinned:'left'},...cols.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col))),pinned:effectiveLayout.value.pinned.includes(columnId(col))?'left':null}))],applyOrder:true})
+ api.applyColumnState({state:[{colId:nativeSelectId.value||'__lotus_select',pinned:'left',hide:false,width:42},{colId:'__lotus_stt',pinned:'left',width:52},...cols.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col))),pinned:effectiveLayout.value.pinned.includes(columnId(col))?'left':null}))],applyOrder:true})
 }
 function setColumnLayout(next){
  const normalized=normalizeColumnLayout(props.columns,next)
@@ -229,10 +229,13 @@ const sttDef={colId:'__lotus_stt',headerName:'STT',width:52,minWidth:52,maxWidth
 // Existing operational checkbox columns (HR/payroll/quotation) keep their business behavior.
 const nativeSelectId=computed(()=>columnId(props.columns.find(c=>c.headerName==='Chọn'&&['__pick','selected','select_log','choice'].includes(columnId(c)))||{})||null)
 const pickerColumns=computed(()=>props.columns.map(c=>columnId(c)===nativeSelectId.value?{...c,columnChooserLocked:true,suppressExport:true}:c))
+function renderNativeSelectionHeader(){const label=document.createElement('span');label.textContent='Chọn';label.className='lotus-grid-native-select-header';return label}
 const gridDefs=computed(()=>{
  const own=defs.value.find(c=>columnId(c)===nativeSelectId.value)
  const body=defs.value.filter(c=>columnId(c)!==nativeSelectId.value)
- const select=own?{...own,pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,hide:false}:selectDef
+ const select=own?{...own,width:42,minWidth:42,maxWidth:42,flex:0,
+  pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,
+  hide:false,sortable:false,filter:false,headerComponent:renderNativeSelectionHeader,headerTooltip:'Chọn dòng'}:selectDef
  return [select,sttDef,...body]
 })
 
@@ -308,7 +311,8 @@ async function downloadExcel(){
 .lotus-data-table__export button{min-height:29px}
 .lotus-data-table .ag-pinned-left-header,.lotus-data-table .ag-pinned-left-cols-container{border-right:1px solid var(--lotus-border)}
 .lotus-grid-stt-cell{font-variant-numeric:tabular-nums;color:var(--lotus-muted)}
-.lotus-grid-select-header{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.lotus-grid-select-header,.lotus-grid-native-select-header{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.lotus-grid-native-select-header{font-size:11px;font-weight:600;white-space:nowrap}
 .lotus-grid-select-toggle{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:none!important;width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;max-height:20px!important;margin:0!important;padding:0!important;border:1px solid var(--lotus-border)!important;border-radius:5px!important;background:var(--lotus-surface)!important;color:#fff!important;font-family:inherit!important;line-height:1!important;cursor:pointer}
 .lotus-grid-select-toggle.is-on{border-color:var(--lotus-primary)!important;background:var(--lotus-primary)!important}
 .lotus-grid-select-toggle.is-partial{border-color:var(--lotus-primary)!important;background:var(--lotus-soft)!important}

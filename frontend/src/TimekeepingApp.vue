@@ -70,7 +70,6 @@ const attendanceRowClass=row=>[
  row.selected?'is-selected':''
 ].filter(Boolean).join(' ')
 const attendanceColumns=[
- {field:'selected',headerName:'Chọn',minWidth:105,sortable:false,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
  {field:'employee_name',headerName:'Nhân viên',minWidth:220,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
  {field:'shift',headerName:'Ca',minWidth:140},
  {field:'status',headerName:'Trạng thái',minWidth:190,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
@@ -142,7 +141,16 @@ function chooseTab(value){if(dirty.value){error.value='Lưu hoặc bỏ thay đ�
 function edit(row){row.selected=true;row.edited=true}
 function chooseStatus(row){row.working_hours=row.status==='Half Day'?4:row.status==='Absent'?0:8;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
 function markPresent(){for(const row of staff.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.status){row.status='Present';chooseStatus(row)}}
-function toggleAll(){const value=!allChecked.value;for(const r of shown.value)r.selected=value}
+// The shared table owns the single tick column; keep the existing timekeeping
+// selected flags because save/approve/cancel use those very same employee records.
+function chooseStaffRows(rows,selectedValue){
+ const selectedEmployees=new Set(rows.map(row=>row.employee))
+ for(const row of staff.value)if(selectedEmployees.has(row.employee))row.selected=selectedValue
+}
+function toggleAll(){const value=!allChecked.value;chooseStaffRows(shown.value,value)}
+function selectAttendanceRow({id,selected}){chooseStaffRows([{employee:id}],selected)}
+function selectAttendancePage({rows,selected}){chooseStaffRows(rows,selected)}
+function clearAttendanceSelection(){for(const row of staff.value)row.selected=false}
 // Copies the device reading into one row (never silently over a hand-edited value).
 function useMachine(row){const p=row.machine;if(!p?.status||row.docstatus!==0)return
  Object.assign(row,{shift:p.shift||row.shift,status:p.status,working_hours:p.working_hours,overtime_hours:p.suggested_overtime,in_time:p.in_time,out_time:p.out_time,late_entry:p.late_entry,early_exit:p.early_exit});edit(row)}
@@ -224,8 +232,8 @@ useNoticeToast(notice)
     </DropdownMenu>
    </div>
    <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
-    <LotusField :model-value="allChecked" type="checkbox" label="Chọn tất cả nhân viên đang hiện" @update:model-value="toggleAll"/>
-     <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass" />
+    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass"
+      :selected-row-keys="selected.map(row=>row.employee)" @row-selection-change="selectAttendanceRow" @page-selection-change="selectAttendancePage" @selection-clear="clearAttendanceSelection" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
      <template v-else>Chưa có nhân viên đang làm trong công ty này.<UiButton v-if="cap.Employee?.create" variant="link" @click="openMaster('employee')">Thêm nhân sự</UiButton></template>
