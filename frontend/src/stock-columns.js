@@ -35,14 +35,21 @@ export function documentColumns(warehouseLabel){return [
 ]}
 
 export function movementColumns(warehouseLabel){return [
- {field:'posting_date',headerName:'Ngày',minWidth:105,valueFormatter:p=>formatDate(p.value)},
- {field:'item_code',headerName:'Tên hàng',minWidth:200,flex:1.6,valueFormatter:p=>p.data?p.data.item_name+' · '+p.value:p.value},
- {field:'warehouse',headerName:'Kho',minWidth:130,valueFormatter:p=>warehouseLabel(p.value)},
- number('opening_qty','Tồn trước',80),number('in_qty','Nhập',75),number('out_qty','Xuất',75),number('qty_after_transaction','Tồn sau',85),
- {field:'stock_uom',headerName:'ĐVT',minWidth:65,valueFormatter:p=>unitLabel(p.value)},
+ {field:'posting_date',headerName:'Ngày giờ',minWidth:142,valueFormatter:p=>p.value?formatDate(p.value)+(p.data?.posting_time?' · '+String(p.data.posting_time).slice(0,5):''):'—'},
  {field:'voucher_no',headerName:'Số phiếu',minWidth:170},
- {field:'kind',headerName:'Loại biến động',minWidth:95},
- {field:'content',headerName:'Nội dung',minWidth:250,flex:1.8}
+ {field:'transaction_type',headerName:'Loại giao dịch',minWidth:130},
+ {field:'content',headerName:'Nội dung',minWidth:250,flex:1.6},
+ {field:'item_name',headerName:'Tên vật tư',minWidth:200,flex:1.4},
+ {field:'item_code',headerName:'Mã vật tư',minWidth:135},
+ {field:'warehouse',headerName:'Kho',minWidth:150,valueFormatter:p=>warehouseLabel(p.value)},
+ {field:'stock_uom',headerName:'ĐVT',minWidth:85,valueFormatter:p=>unitLabel(p.value)},
+ number('opening_qty','Tồn trước',100),
+ number('in_qty','Nhập',90),
+ number('out_qty','Xuất',90),
+ number('qty_after_transaction','Tồn sau',105),
+ {field:'receiver',headerName:'Người giao / nhận',minWidth:170},
+ {field:'usage_area',headerName:'Khu / lô sử dụng',minWidth:170},
+ {field:'work_team',headerName:'Tổ liên quan',minWidth:160}
 ]}
 
 // Nhập – xuất – tồn (quantities). The value version of this report lives in Kế toán → Báo cáo.

@@ -320,7 +320,7 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         filters['posting_date'] = ['<=', getdate(to_date)]
     rows = frappe.get_list('Stock Ledger Entry', filters=filters,
         fields=['name', 'posting_date', 'posting_time', 'item_code', 'warehouse', 'voucher_type', 'voucher_no',
-                'actual_qty', 'qty_after_transaction', 'stock_uom'],
+                'voucher_detail_no', 'actual_qty', 'qty_after_transaction', 'stock_uom'],
         order_by='posting_datetime desc, creation desc, name desc', limit_page_length=0)
     query = str(search or '').strip().casefold()[:100]
     for row in rows:
@@ -340,8 +340,10 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         if not ids or not frappe.has_permission(doctype, 'read'):
             continue
         meta = frappe.get_meta(doctype)
-        fields_to_read = ['name'] + [field for field in ('remarks', 'purpose', 'stock_entry_type')
-                                     if meta.has_field(field)]
+        fields_to_read = ['name'] + [field for field in (
+            'remarks', 'purpose', 'stock_entry_type', 'lotus_receiver',
+            'lotus_work_plan', 'lotus_supplier', 'supplier', 'supplier_name')
+            if meta.has_field(field)]
         for offset in range(0, len(ids), 500):
             docs = frappe.get_list(doctype, filters={'name': ['in', ids[offset:offset+500]]},
                                    fields=fields_to_read, limit_page_length=0)
@@ -357,14 +359,55 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
     }
     doc_purposes = {'Purchase Receipt': 'Nhập hàng mua', 'Delivery Note': 'Xuất hàng bán',
                     'Stock Reconciliation': 'Kiểm kê'}
+    # Child rows have no independent document permission. Only access lines belonging
+    # to Stock Entry parents returned by the permission-aware get_list above.
+    visible_entries = {name for doctype, name in voucher_info if doctype == 'Stock Entry'}
+    detail_ids = list({row.voucher_detail_no for row in rows
+                       if row.voucher_type == 'Stock Entry'
+                       and row.voucher_no in visible_entries and row.get('voucher_detail_no')})
+    usage_by_detail = {}
+    if detail_ids and frappe.get_meta('Stock Entry Detail').has_field('lotus_usage_area'):
+        for offset in range(0, len(detail_ids), 500):
+            details = frappe.get_all('Stock Entry Detail',
+                filters={'name': ['in', detail_ids[offset:offset+500]],
+                         'parent': ['in', list(visible_entries)]},
+                fields=['name', 'lotus_usage_area'], limit_page_length=0)
+            usage_by_detail.update({detail.name: detail.lotus_usage_area or '' for detail in details})
+
+    # Only show a team when exactly one team is recorded against the linked plan.
+    plan_teams = {}
+    plan_names = list({doc.get('lotus_work_plan') for (doctype, name), doc in voucher_info.items()
+                       if doctype == 'Stock Entry' and doc.get('lotus_work_plan')})
+    if plan_names and frappe.has_permission('Daily Work Plan', 'read'):
+        visible_plans = set()
+        for offset in range(0, len(plan_names), 500):
+            visible_plans.update(frappe.get_list('Daily Work Plan',
+                filters={'name': ['in', plan_names[offset:offset+500]]},
+                pluck='name', limit_page_length=0))
+        if visible_plans:
+            for offset in range(0, len(visible_plans), 500):
+                batch = list(visible_plans)[offset:offset+500]
+                for line in frappe.get_all('Daily Work Plan Line',
+                        filters={'parent': ['in', batch]}, fields=['parent', 'work_team'],
+                        limit_page_length=0):
+                    if line.work_team:
+                        plan_teams.setdefault(line.parent, set()).add(line.work_team)
+
     for row in rows:
         voucher = voucher_info.get((row.voucher_type, row.voucher_no))
         purpose = (voucher.get('stock_entry_type') or voucher.get('purpose')) if voucher else None
         action = stock_purposes.get(purpose, doc_purposes.get(row.voucher_type, row.kind))
         remarks = str(voucher.get('remarks') or '').strip() if voucher else ''
+        row.transaction_type = action
         row.content = (action + ' – ' + remarks) if remarks else action
-    fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'content', 'in_qty', 'out_qty',
-              'opening_qty', 'qty_after_transaction', 'stock_uom']
+        row.receiver = (voucher.get('lotus_receiver') or voucher.get('supplier_name')
+                        or voucher.get('supplier') or voucher.get('lotus_supplier') or '') if voucher else ''
+        row.usage_area = usage_by_detail.get(row.get('voucher_detail_no'), '')
+        teams = plan_teams.get(voucher.get('lotus_work_plan'), set()) if voucher else set()
+        row.work_team = next(iter(teams)) if len(teams) == 1 else ''
+    fields = ['posting_date', 'item_code', 'item_name', 'warehouse', 'voucher_no',
+              'kind', 'transaction_type', 'content', 'receiver', 'usage_area', 'work_team',
+              'in_qty', 'out_qty', 'opening_qty', 'qty_after_transaction', 'stock_uom']
     selected = selections(column_filters, fields)
     choices = faceted_distinct(rows, fields, selected, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     rows = [row for row in rows if matches(row, selected)]
