@@ -490,7 +490,7 @@ def tag_lineage(doc,method=None):
     if not tag_name:return
     tag=frappe.get_doc('Bunch Tag',tag_name);tag.check_permission('read')
     if tag.get('farm') and tag.farm!=doc.farm:frappe.throw('Màu dây thuộc vườn khác.')
-    if active and doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection') and not tag.get('process_adoption'):
+    if active and doc.doctype=='Bunch Operation' and doc.operation_type in ('Cut Bud','Bud Injection') and not tag.get('process_adoption') and tag.get('source_kind')!='Lotus Weekly':
         frappe.throw('Chọn mã màu có phiên bản quy trình OneDrive cho đợt mới.')
     if not tag.get('process_adoption'):return  # Legacy guard still handles unversioned operation tags.
     if not tag.enabled:frappe.throw('Màu dây đã ngừng sử dụng.')

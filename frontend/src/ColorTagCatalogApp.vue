@@ -20,8 +20,8 @@ const today=computed(()=>session.today||new Date().toISOString().slice(0,10))
 const palette=computed(()=>Object.fromEntries(state.value.colors.map(x=>[x.code,x.label])))
 const rows=computed(()=>state.value.rows.map(r=>{
  const status=!r.enabled?'Ngừng dùng':!r.valid_from||!r.valid_to?'Chưa có kỳ':r.valid_from>today.value?'Sắp áp dụng':r.valid_to<today.value?'Đã qua':'Đang áp dụng'
- return {...r,color_name:palette.value[r.color_code]||r.display_name,
-  source_label:r.process_adoption?'Lịch đã duyệt':'Lịch thủ công',status_label:status}
+ return {...r,color_name:r.color_label||palette.value[r.color_code]||r.display_name, week_label:r.week_number?("Tuần "+r.week_number+"/"+r.week_year):"—",
+  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':r.process_adoption?'Lịch tham chiếu':'Lịch thủ công',status_label:status}
 }).filter(r=>{
  const q=search.value.trim().toLocaleLowerCase('vi')
  const matches=!q||[r.tag_code,r.display_name,r.color_name,r.valid_from,r.valid_to].some(v=>String(v||'').toLocaleLowerCase('vi').includes(q))
@@ -29,6 +29,8 @@ const rows=computed(()=>state.value.rows.map(r=>{
 }))
 const columns=[
  {field:'color_name',headerName:'Màu dây',minWidth:165},
+ {field:'week_label',headerName:'Tuần',minWidth:115},
+ {field:'week_half',headerName:'Đợt 1 / 2',minWidth:95},
  {field:'color_code',headerName:'Mã màu',minWidth:90},
  {field:'valid_from',headerName:'Áp dụng từ',minWidth:125},
  {field:'valid_to',headerName:'Đến hết ngày',minWidth:125},
