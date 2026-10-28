@@ -60,12 +60,33 @@
       "fieldname": "source_kind",
       "label": "Loại lịch",
       "fieldtype": "Select",
-      "options": "\nSource History\nExtended Plan"
+      "options": "\nSource History\nExtended Plan\nLotus Weekly"
     },
     {
       "fieldname": "source_version",
       "label": "Phiên bản nguồn",
       "fieldtype": "Data"
+    },
+    {
+      "fieldname": "color_label",
+      "label": "Tên màu dây thực tế",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "week_year",
+      "label": "Năm lịch màu",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "week_number",
+      "label": "Tuần ISO",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "week_half",
+      "label": "Đợt trong tuần",
+      "fieldtype": "Select",
+      "options": "\n1\n2"
     }
   ],
   "field_order": [
@@ -79,7 +100,11 @@
     "color_code",
     "period_basis",
     "source_kind",
-    "source_version"
+    "source_version",
+    "color_label",
+    "week_year",
+    "week_number",
+    "week_half"
   ],
   "autoname": "hash",
   "permissions": [

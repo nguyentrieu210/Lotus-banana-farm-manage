@@ -29,7 +29,8 @@ def catalog(farm):
         "Bunch Tag",
         filters={"farm": farm},
         fields=["name", "tag_code", "display_name", "color_code", "valid_from",
-                "valid_to", "enabled", "period_basis", "process_adoption", "source_kind"],
+                "valid_to", "enabled", "period_basis", "process_adoption", "source_kind",
+                "color_label", "week_year", "week_number", "week_half"],
         order_by="valid_from desc, name desc",
         limit_page_length=3000,
     )
@@ -45,7 +46,10 @@ def catalog(farm):
         )
     return {
         "rows": rows,
-        "colors": [{"code": c["code"], "label": c["label"]} for c in source["colors"]],
+        "colors": [{"code": c["code"], "label": c["label"]} for c in source["colors"]] + [
+            {"code": code, "label": label} for code, label in sorted({
+                r.color_code: r.color_label for r in rows if r.source_kind == "Lotus Weekly"
+            }.items())],
         "programs": programs,
         "can_create": bool(frappe.has_permission("Bunch Tag", "create")),
         "notice": "Thư viện tham chiếu hiện có " + str(len(source["colors"])) +

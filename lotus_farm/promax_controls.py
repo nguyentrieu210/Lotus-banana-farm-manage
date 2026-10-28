@@ -2,7 +2,7 @@
 import json
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime
+from frappe.utils import getdate, now_datetime, add_days
 from lotus_farm.controls import check_farm, command_allowed, validate_version, validate_warehouse, local_timestamp, require_role
 from lotus_farm.rules import canonical_hash, RuleError
 from lotus_farm.promax_rules import geometry, coordinates
@@ -194,7 +194,8 @@ def bunch_tag_guard(doc,method=None):
         tag=frappe.get_doc('Bunch Tag',doc.bunch_tag);tag.check_permission('read')
         if tag.get('process_adoption'):
             return
-        if not tag.enabled or (tag.valid_from and getdate(doc.operation_date)<getdate(tag.valid_from)) or (tag.valid_to and getdate(doc.operation_date)>getdate(tag.valid_to)):
+        effective_day = getdate(add_days(doc.operation_date,14)) if tag.get('source_kind') == 'Lotus Weekly' and doc.operation_type == 'Bud Injection' else getdate(doc.operation_date)
+        if not tag.enabled or (tag.valid_from and effective_day<getdate(tag.valid_from)) or (tag.valid_to and effective_day>getdate(tag.valid_to)):
             frappe.throw('Thẻ buồng đang ngừng dùng hoặc ngoài thời gian hiệu lực.')
 
 

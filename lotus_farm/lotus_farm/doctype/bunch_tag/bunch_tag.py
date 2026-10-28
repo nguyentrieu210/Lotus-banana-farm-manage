@@ -15,10 +15,27 @@ class BunchTag(ReferenceMaster):
         if self.valid_from and self.valid_to and getdate(self.valid_to) < getdate(self.valid_from):
             frappe.throw("Ngày kết thúc kỳ màu dây không được trước ngày bắt đầu.")
         before = self.get_doc_before_save()
-        protected = ("farm", "tag_code", "color_code", "period_basis", "valid_from", "valid_to")
+        protected = ("farm", "tag_code", "color_code", "color_label", "period_basis", "valid_from", "valid_to", "week_year", "week_number", "week_half", "source_kind")
         if before and any(self.get(key) != before.get(key) for key in protected):
             if frappe.db.exists("Bunch Operation", {"bunch_tag": self.name}):
                 frappe.throw("Màu dây đã có phiếu công đoạn; không được sửa mã, màu hoặc ngày áp dụng. Tạo kỳ mới.")
+
+        if self.source_kind == "Lotus Weekly":
+            if not (self.farm and self.color_label and self.color_code and self.valid_from and self.valid_to and self.week_year and self.week_number and self.week_half):
+                frappe.throw("Lịch màu Lotus phải có tên màu, tuần, đợt và hai ngày áp dụng.")
+            start, end = getdate(self.valid_from), getdate(self.valid_to)
+            if (start.isocalendar().year, start.isocalendar().week) != (int(self.week_year), int(self.week_number)):
+                frappe.throw("Ngày bắt đầu không thuộc tuần màu đã chọn.")
+            if self.week_half == "1":
+                if start.weekday() != 0 or (end-start).days != 3:
+                    frappe.throw("Đợt 1 phải từ thứ Hai đến hết thứ Năm.")
+            elif self.week_half == "2":
+                if start.weekday() != 4 or (end-start).days != 2:
+                    frappe.throw("Đợt 2 phải từ thứ Sáu đến hết Chủ nhật.")
+            else:
+                frappe.throw("Chọn đợt 1 hoặc đợt 2.")
+            if self.get("process_adoption"):
+                frappe.throw("Lịch màu Lotus riêng không được nhận là nguồn OneDrive.")
 
         # Old unversioned records can still be read. New cut-bud periods must
         # have a farm and both dates so they cannot apply indefinitely by mistake.
