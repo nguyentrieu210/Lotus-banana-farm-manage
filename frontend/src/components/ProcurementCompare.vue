@@ -58,7 +58,7 @@ defineExpose({refresh:load})
   <template v-for="(s,i) in suppliers" :key="s.name" #[`cell-s${i}`]="{row}">
    <button v-if="supplierOffer(row,s.name)" type="button" class="compare-offer" :class="{'is-chosen':choices[row.key]===supplierOffer(row,s.name).line,'is-best':supplierOffer(row,s.name).unit_cost===cheapestCost(row)}"
      :aria-pressed="choices[row.key]===supplierOffer(row,s.name).line" :aria-label="'Chọn '+s.label+' cho '+row.item_name" @click.stop="pick(row,supplierOffer(row,s.name))">
-    <span>{{money(supplierOffer(row,s.name).unit_cost)}}</span><small>/{{unitLabel(row.stock_uom)}}{{supplierOffer(row,s.name).unit_cost===cheapestCost(row)?' · rẻ nhất':''}}{{supplierOffer(row,s.name).docstatus===0?' · nháp':''}}</small>
+    <small>{{[supplierOffer(row,s.name).unit_cost===cheapestCost(row)&&'rẻ nhất',supplierOffer(row,s.name).docstatus===0&&'nháp'].filter(Boolean).join(' · ')}}</small><span :title="money(supplierOffer(row,s.name).unit_cost)+' / '+unitLabel(row.stock_uom)">{{money(supplierOffer(row,s.name).unit_cost)}}</span>
    </button>
    <span v-else class="compare-empty">—</span>
   </template>
@@ -70,8 +70,8 @@ defineExpose({refresh:load})
 </template>
 
 <style>
-.compare-offer{display:grid;width:100%;gap:0;padding:2px 8px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-sm,6px);background:var(--lotus-surface);color:var(--lotus-text);text-align:right;cursor:pointer;font:inherit;line-height:1.25}
-.compare-offer small{color:var(--lotus-muted);font-size:var(--lotus-text-sm)}
+.compare-offer{display:flex;align-items:baseline;justify-content:flex-end;width:100%;height:26px;gap:6px;white-space:nowrap;overflow:hidden;padding:0 8px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-sm,6px);background:var(--lotus-surface);color:var(--lotus-text);text-align:right;cursor:pointer;font:inherit;line-height:1.25}
+.compare-offer small{overflow:hidden;text-overflow:ellipsis;color:var(--lotus-muted);font-size:11px;font-weight:400}
 .compare-offer.is-best{border-color:var(--lotus-success,var(--lotus-primary))}
 .compare-offer.is-chosen{background:var(--lotus-primary-subtle);border-color:var(--lotus-primary);font-weight:600}
 .compare-empty{color:var(--lotus-muted)}

@@ -126,6 +126,7 @@
 .workspace-list-search{order:-1;flex:1 1 260px;width:auto;min-width:200px;max-width:380px;margin:0}
 .workspace-list-search input{width:100%;min-width:0}
 .workspace-list-refresh{flex:0 0 auto}
+.workspace-list-tools{flex:0 0 auto;display:flex;align-items:flex-end;margin-left:auto;min-width:0}
 .workspace-list-toolbar :is(input,select,button,.workspace-secondary-link){height:36px;min-height:36px;box-sizing:border-box}
 .workspace-list-toolbar textarea{height:auto}
 .workspace-list-toolbar .workspace-secondary-link{display:inline-flex;align-items:center}
