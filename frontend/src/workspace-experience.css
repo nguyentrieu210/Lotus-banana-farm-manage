@@ -73,9 +73,6 @@
  .lotus-ui.app-shell.sidebar-collapsed .lotus-brand-image{width:46px;height:32px;object-fit:cover;object-position:left center}
  .lotus-ui.app-shell.sidebar-collapsed .sidebar nav button{justify-content:center;padding:7px}
  .lotus-ui :is(.scope-picker,.stock-scope){display:flex;flex-wrap:nowrap!important;align-items:center;gap:10px;overflow-x:auto;scrollbar-width:thin}
- .lotus-ui.app-shell main>.scope-picker>label{display:flex;flex-direction:row;align-items:center;gap:6px;min-width:max-content;flex:0 0 auto;white-space:nowrap}
- .lotus-ui.app-shell main>.scope-picker>label :is(input,select){width:148px;min-width:0;max-width:180px}
- .lotus-ui.app-shell main>.scope-picker>label:first-child select{width:175px}
  .workspace-module-host .embedded-workspace .stock-scope label{display:flex;flex-direction:row;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap}
  .lotus-ui :is(.scope-picker,.stock-scope)>button{flex-shrink:0}
  .lotus-ui .mobile-home .mobile-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -216,15 +213,25 @@
 :root:root .mobile-bottom-nav button.active{background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
 .mobile-bottom-nav .mobile-bottom-icon{width:22px;height:22px}
 .mobile-action-icon .lotus-icon{width:22px;height:22px}
-/* Scope filter bar of /lotus: one row of controls (AGENTS.md). Wide: label beside field. <=1160px: label above
-   field and the bar scrolls sideways inside itself instead of wrapping or overlapping. */
-:root:root .app-shell main>.scope-picker>label{display:flex;align-items:center;gap:6px}
-@media(max-width:1160px){
- :root:root .app-shell main>.scope-picker{flex-wrap:nowrap;overflow-x:auto;align-items:flex-end;gap:8px;padding-bottom:10px;scrollbar-width:thin}
- :root:root .app-shell main>.scope-picker>label{flex-direction:column;align-items:stretch;gap:3px;flex:0 0 auto;min-width:0;white-space:nowrap}
- :root:root .app-shell main>.scope-picker>label>select{min-width:150px}
- :root:root .app-shell main>.scope-picker>button{flex-shrink:0}
+/* Main /lotus filters render as FormField (.lotus-field), not direct <label> children.
+   Reserve the full date-range width; scroll this single row rather than shrinking or overlapping controls. */
+:root:root .lotus-ui.app-shell main>.scope-picker{
+ display:flex;flex-wrap:nowrap;align-items:flex-end;gap:8px;
+ max-width:100%;min-width:0;overflow-x:auto;padding-bottom:10px;scrollbar-width:thin;
 }
+:root:root .lotus-ui.app-shell main>.scope-picker>.lotus-field{
+ flex:0 0 170px;width:170px;min-width:170px;max-width:170px;
+}
+:root:root .lotus-ui.app-shell main>.scope-picker>.scope-date-range{
+ flex-basis:320px;width:320px;min-width:320px;max-width:320px;
+}
+:root:root .lotus-ui.app-shell main>.scope-picker>.lotus-field :is(input,select,.lotus-date){
+ width:100%;min-width:0;max-width:100%;
+}
+:root:root .lotus-ui.app-shell main>.scope-picker>.scope-date-range .lotus-date__field{
+ width:100%;min-width:0;
+}
+:root:root .lotus-ui.app-shell main>.scope-picker>button{flex:0 0 auto;align-self:flex-end}
 /* Lotus desktop: business-area sidebar, single open section, existing routes and permissions. */
 :root:root .app-shell .sidebar nav{display:grid;gap:3px}
 .app-shell .sidebar .nav-group{min-width:0;display:grid;gap:1px}
