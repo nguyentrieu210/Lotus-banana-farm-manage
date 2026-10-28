@@ -12,6 +12,8 @@ import {Skeleton as UiSkeleton} from './ui/skeleton'
 import DesktopEmptyState from './DesktopEmptyState.vue'
 import LotusIcon from './LotusIcon.vue'
 import DataTableViews from './DataTableViews.vue'
+import ColumnVisibilityMenu from './ColumnVisibilityMenu.vue'
+import {columnId,loadHiddenColumns,saveHiddenColumns,normalizeHiddenColumns,changeColumnVisibility} from '../grid-visibility'
 import {loadColumnWidths,saveColumnWidths} from '../grid-state'
 import {gridRowId} from '../grid-row-id'
 import ModalForm from './form/ModalForm.vue'
@@ -22,8 +24,8 @@ import {Pagination} from './ui/pagination'
 import UiSelect from './ui/select/Select.vue'
 const desktopDensity=inject('lotusDesktopDensity',null)
 const theme=computed(()=>desktopGridThemes[desktopDensity?.value]||compactGridTheme)
-const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String,exportable:{type:Boolean,default:true}})
-const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open'])
+const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String,exportable:{type:Boolean,default:true},columnsMenu:{type:Boolean,default:true},hiddenColumns:{type:Array,default:null}})
+const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open','update:hiddenColumns'])
 // AG Grid's Vue adapter clones row data. Editable slots must update the source record by its stable ID.
 const sourceRows=computed(()=>new Map(props.rows.map(row=>[gridRowId(row,props.rowKey),row])))
 const slots=useSlots(),slotRenderers=new Map()
@@ -46,10 +48,10 @@ watch(visibleRows,list=>{if(!list.length)emit('visible-rows',[])},{flush:'post'}
 // Like Excel: a column's value list shows what is left after the OTHER columns' filters, sorted, blanks last.
 function headerParams(col){const field=key(col);const choices=props.filterValues?.[field]||[...new Map(props.rows.filter(row=>passes(row,field)).map(data=>({value:raw(data,col),data})).map(r=>[r.value,r])).values()];return {choices:sortExcelChoices(choices.map(row=>({...row,label:row.label??(col.valueFormatter?col.valueFormatter({value:row.value,data:row.data||{}}):row.value)}))),selection:props.filterValues?props.serverFilters[field]:localFilters.value[field],apply:values=>{if(props.filterValues)emit('filter',{field,values});else{const next={...localFilters.value};if(values===null)delete next[field];else next[field]=values;localFilters.value=next}}}}
 const rowIdentity=computed(()=>visibleRows.value.map((r,i)=>gridRowId(r,props.rowKey)||i).join('|'))
-const mobileColumns=computed(()=>props.columns.filter(c=>!c.hideOnMobile))
+const mobileColumns=computed(()=>props.columns.filter(c=>!c.hideOnMobile&&!c.hide&&!selectedHidden.value.includes(columnId(c))))
 // Sum row on every table: the row count plus the numeric columns of the rows on screen (after column filters), pinned under the grid.
 // A screen's own pinnedBottomRows win; :totals="false" turns it off (statements, check lists); a column opts in/out with sum:true|false.
-const sumColumns=computed(()=>props.columns.filter(c=>summableColumn(c,visibleRows.value,raw)))
+const sumColumns=computed(()=>props.columns.filter(c=>!c.hide&&!selectedHidden.value.includes(columnId(c))&&summableColumn(c,visibleRows.value,raw)))
 const autoTotals=computed(()=>props.totals&&!props.pinnedBottomRows.length&&visibleRows.value.length?[totalsRow(props.columns,sumColumns.value,visibleRows.value,raw,key,props.totalsLabel)]:[])
 const totalText=(col,total)=>{const v=total[key(col)];try{return col.valueFormatter?col.valueFormatter({value:v,data:total,node:{rowPinned:'bottom'}}):v}catch{return v}}
 const bottomRows=computed(()=>props.pinnedBottomRows.length?props.pinnedBottomRows:autoTotals.value)
@@ -58,7 +60,7 @@ const pinnedSafe=c=>({...(c.valueGetter?{valueGetter:p=>p.node?.rowPinned?p.data
 // Sum/pinned rows are plain text in every column, whatever renderer (inputs, buttons, slots) the column uses for real rows.
 const pinnedText=p=>document.createTextNode(String(p.valueFormatted??p.value??''))
 const pinnedRenderer=c=>({cellRendererSelector:p=>p.node?.rowPinned?{component:pinnedText}:c.cellRendererSelector?.(p)})
-const defs=computed(()=>props.columns.map(c=>({...c,...pinnedSafe(c),headerName:uiFarmLabel(c.headerName),flex:c.flex||1,minWidth:c.minWidth||100,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)})))
+const defs=computed(()=>props.columns.map(c=>({...c,...pinnedSafe(c),colId:c.colId||key(c),hide:Boolean(c.hide||selectedHidden.value.includes(columnId(c))),headerName:uiFarmLabel(c.headerName),flex:c.flex||1,minWidth:c.minWidth||100,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)})))
 
 function value(row,col){if(col.mobileValue)return col.mobileValue(row);const value=col.valueGetter?col.valueGetter({data:row}):row[col.field];return col.valueFormatter?col.valueFormatter({value,data:row}):value??'—'}
 let restoring=false
@@ -92,6 +94,24 @@ const getRowId=params=>gridRowId(params.data,props.rowKey)
 const hasLocalFilters=computed(()=>!props.filterValues&&Object.keys(localFilters.value).length>0)
 // Column widths persist per table (storageKey, or the column set) so a resized grid stays that way after reload.
 const widthKey=computed(()=>props.storageKey||props.columns.map(key).join('|'))
+const hiddenLocal=ref([])
+watch(widthKey,name=>{hiddenLocal.value=normalizeHiddenColumns(props.columns,loadHiddenColumns(name))},{immediate:true})
+const selectedHidden=computed(()=>normalizeHiddenColumns(props.columns,props.hiddenColumns??hiddenLocal.value))
+const activeColumns=computed(()=>props.columns.filter(c=>!c.hide&&!selectedHidden.value.includes(columnId(c))&&!c.suppressExport&&!c.columnChooserLocked))
+function applyHiddenColumns(api=gridApi.value){
+ if(!api)return
+ api.applyColumnState({state:props.columns.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col)))}))})
+}
+function setHiddenColumns(next){
+ const chosen=normalizeHiddenColumns(props.columns,next)
+ hiddenLocal.value=chosen
+ saveHiddenColumns(widthKey.value,chosen)
+ emit('update:hiddenColumns',chosen)
+ nextTick(()=>applyHiddenColumns())
+}
+function toggleColumn(id){setHiddenColumns(changeColumnVisibility(props.columns,selectedHidden.value,id))}
+function resetColumns(){setHiddenColumns([])}
+watch(selectedHidden,()=>nextTick(()=>applyHiddenColumns()))
 const gridApi=ref(null),sortState=ref([])
 const columnLabels=computed(()=>Object.fromEntries(props.columns.map(c=>[key(c),uiFarmLabel(c.headerName)])))
 // Saved views: column filters (local tables) + sort, applied back onto the grid.
@@ -107,7 +127,7 @@ function applyView(view){
  gridApi.value?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})
 }
 // The grid is rebuilt when its rows change (filters, reload): bring back saved widths and the current sort without re-asking the server.
-function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths})
+function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths});applyHiddenColumns(event.api)
  if(sortState.value.length){restoring=true;try{event.api.applyColumnState({state:sortState.value,defaultState:{sort:null}})}finally{restoring=false}}}
 function resized(event){if(event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,event.api.getColumnState())}
 function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)});emit('visible-rows',records)}
@@ -121,7 +141,7 @@ async function downloadExcel(){
   else if(gridApi.value)gridApi.value.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)})
   else records.push(...visibleRows.value)
   if(!records.length)throw new Error('Bảng hiện không có dữ liệu để xuất.')
-  const bytes=buildXlsx(props.columns,records)
+  const bytes=buildXlsx(activeColumns.value,records)
   exportExcelFile(bytes,props.exportTitle||props.storageKey||'Bang-du-lieu')
  }catch(e){exportError.value=e?.message||'Không thể xuất Excel.'}
  finally{exporting.value=false}
@@ -129,7 +149,10 @@ async function downloadExcel(){
 </script>
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
-  <div v-if="exportable" class="lotus-data-table__export"><UiButton variant="outline" size="sm" type="button" :disabled="loading||exporting||(!visibleRows.length&&!exportRows)" :title="exportRows?'Xuất toàn bộ dòng phù hợp bộ lọc':'Xuất các dòng đã tải, theo bộ lọc và thứ tự hiện tại'" @click="downloadExcel"><LotusIcon name="download"/>{{exporting?'Đang xuất…':'Xuất Excel'}}</UiButton></div>
+  <div v-if="columnsMenu||exportable" class="lotus-data-table__export">
+   <ColumnVisibilityMenu v-if="columnsMenu&&columns.length>1" :columns="columns" :hidden="selectedHidden" @toggle="toggleColumn" @reset="resetColumns"/>
+   <UiButton v-if="exportable" variant="outline" size="sm" type="button" :disabled="loading||exporting||(!visibleRows.length&&!exportRows)" :title="exportRows?'Xuất toàn bộ dòng phù hợp bộ lọc':'Xuất các dòng đã tải, theo bộ lọc và thứ tự hiện tại'" @click="downloadExcel"><LotusIcon name="download"/>{{exporting?'Đang xuất…':'Xuất Excel'}}</UiButton>
+  </div>
   <p v-if="exportError" role="alert" class="lotus-data-table__export-error">{{exportError}}</p>
   <DataTableViews :storage-key="widthKey" :filters="activeFilters" :sort="sortState" :labels="columnLabels" @apply="applyView" @clear="applyView({filters:{},sort:sortState})"/>
   <div v-if="!visibleRows.length&&!showEmptyHeaders&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 5" :key="n" class="lotus-table-skeleton__row"/></div>
@@ -153,7 +176,7 @@ async function downloadExcel(){
 </template>
 <style>
 .lotus-data-table{min-width:0}
-.lotus-data-table__export{display:flex;justify-content:flex-end;margin:0 0 6px}
+.lotus-data-table__export{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 6px}
 .lotus-data-table__export-error{color:var(--lotus-danger);font-size:12px;text-align:right;margin:0 0 6px}
 /* AG Grid owns the sole vertical scroll area. Its header and pinned total stay visible. */
 .lotus-ag-grid-shell--scroll{overflow:hidden}
