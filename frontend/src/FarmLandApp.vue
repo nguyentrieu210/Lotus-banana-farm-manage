@@ -14,7 +14,7 @@ import UiSelect from './components/ui/select/Select.vue'
 import LandBlockDetail from './components/land/LandBlockDetail.vue'
 import DataTable from './components/DataTable.vue'
 import ColumnVisibilityMenu from './components/ColumnVisibilityMenu.vue'
-import {loadHiddenColumns,saveHiddenColumns,normalizeHiddenColumns,changeColumnVisibility,columnId} from './grid-visibility'
+import {loadColumnLayout,saveColumnLayout,normalizeColumnLayout,changeColumnVisibility,displayedColumns,moveColumn,pinColumn,columnId} from './grid-visibility'
 import {buildXlsx,exportExcelFile} from './excel-export'
 import {COLOR_MODES} from './map-land'
 import {useNoticeToast} from './use-toast'
@@ -88,14 +88,13 @@ const gridColumns=computed(()=>[
  })),
  {field:'gaps_label',headerName:'Thiếu thông tin',minWidth:180}
 ])
-const hiddenLandColumns=ref(loadHiddenColumns('lotus-farm-land'))
-const normalizedLandHidden=computed(()=>normalizeHiddenColumns(gridColumns.value,hiddenLandColumns.value))
-const shownLandColumns=computed(()=>gridColumns.value.filter(col=>!col.hide&&!normalizedLandHidden.value.includes(columnId(col))&&!col.columnChooserLocked))
-function changeLandColumns(next){
- hiddenLandColumns.value=normalizeHiddenColumns(gridColumns.value,next)
- saveHiddenColumns('lotus-farm-land',hiddenLandColumns.value)
-}
-function toggleLandColumn(id){changeLandColumns(changeColumnVisibility(gridColumns.value,hiddenLandColumns.value,id))}
+const landLayout=ref(loadColumnLayout('lotus-farm-land',gridColumns.value))
+const normalizedLandLayout=computed(()=>normalizeColumnLayout(gridColumns.value,landLayout.value))
+const shownLandColumns=computed(()=>displayedColumns(gridColumns.value,normalizedLandLayout.value).filter(col=>!col.columnChooserLocked))
+function updateLandLayout(next){landLayout.value=saveColumnLayout('lotus-farm-land',gridColumns.value,next)}
+function toggleLandColumn(id){updateLandLayout({...normalizedLandLayout.value,hidden:changeColumnVisibility(gridColumns.value,normalizedLandLayout.value.hidden,id)})}
+function moveLandColumn(id,direction){updateLandLayout(moveColumn(gridColumns.value,normalizedLandLayout.value,id,direction))}
+function pinLandColumn(id){updateLandLayout(pinColumn(gridColumns.value,normalizedLandLayout.value,id))}
 watch(rows,()=>{gridVisible.value=null})
 
 async function applyBulk(){
@@ -170,13 +169,13 @@ useNoticeToast(notice)
     <div class="land-filter-actions">
      <UiButton v-if="data?.can_edit&&rows.length" variant="outline" size="sm" @click="togglePickAll">{{allPicked?'Bỏ chọn lô đang hiện':'Chọn lô đang hiện'}}</UiButton>
      <span class="land-count">{{rows.length}} lô · {{num(shownTotals.area,2)}} ha · {{num(shownTotals.trees)}} cây</span>
-     <ColumnVisibilityMenu :columns="gridColumns" :hidden="normalizedLandHidden" @toggle="toggleLandColumn" @reset="changeLandColumns([])"/>
+     <ColumnVisibilityMenu :columns="gridColumns" :layout="normalizedLandLayout" @toggle="toggleLandColumn" @reset="updateLandLayout({})" @all="updateLandLayout({...normalizedLandLayout,hidden:[]})" @move="moveLandColumn" @pin="pinLandColumn"/>
      <UiButton variant="outline" size="sm" :disabled="busy||!visibleLandRows.length" @click="exportVisibleLand"><LotusIcon name="download"/>Xuất bảng Excel</UiButton>
      <UiButton v-if="data?.can_edit&&picked.size" variant="outline" size="sm" @click="bulk={farm_zone:'',variety:''};bulkOpen=true">Sửa {{picked.size}} lô đã chọn</UiButton>
     </div>
    </div>
    <div class="land-table" :aria-busy="busy">
-    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :hidden-columns="normalizedLandHidden" row-key="name" storage-key="lotus-farm-land" :loading="busy"
+    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :column-layout="normalizedLandLayout" row-key="name" storage-key="lotus-farm-land" :loading="busy"
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>
