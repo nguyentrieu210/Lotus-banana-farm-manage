@@ -1,10 +1,15 @@
 import frappe
 from frappe.utils import getdate
 from lotus_farm.bunch_tag_rules import overlaps
+from lotus_farm.controls import lock
 from lotus_farm.promax_controls import ReferenceMaster
 
 
 class BunchTag(ReferenceMaster):
+    def before_insert(self):
+        if self.farm and not self.get("process_adoption"):
+            lock("Farm", self.farm)
+
     def validate(self):
         super().validate()
         if self.valid_from and self.valid_to and getdate(self.valid_to) < getdate(self.valid_from):
