@@ -6,7 +6,7 @@ Dòng đã lưu là chứng từ thật, không phải mặc định cho toàn b
 
 ## Hai cách tạo lịch
 
-1. **Lịch thủ công**: quản lý chọn màu và khoảng ngày không trùng kỳ đã có. Hệ thống tạo Bunch Tag mới; không sửa thẻ cũ. Mỗi khoảng ngày hiện giới hạn tối đa 31 ngày tính cả hai đầu.
+1. **Lịch thủ công**: quản lý chọn màu và khoảng ngày không trùng kỳ đã có. Hệ thống tạo Bunch Tag mới; không sửa thẻ cũ. Ngày kết thúc không được trước ngày bắt đầu.
 2. **Quy trình nguồn đã duyệt**: nếu vườn đã có Lotus Process Adoption, chỉ dùng chức năng **Tạo kỳ từ lịch đã duyệt**. Kỳ mới dùng hàm `generate_tags` sẵn có, giữ nguyên kỳ nguồn và phiên bản. Không chèn kỳ thủ công vào khoảng lịch đã duyệt.
 
 Dữ liệu tham chiếu `lotus_farm/data/onedrive_protocol_v1.json` hiện gồm **17 màu**,
