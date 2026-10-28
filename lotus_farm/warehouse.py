@@ -332,7 +332,38 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
     if query:
         rows = [row for row in rows if any(query in str(row.get(field) or '').casefold()
                 for field in ('item_code', 'item_name', 'voucher_no'))]
-    fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'in_qty', 'out_qty',
+    # Enrich SLE with the permitted source voucher's purpose and remarks.
+    # Never fetch voucher notes without read permission; keep stock quantity privacy unchanged.
+    voucher_info = {}
+    for doctype in ('Stock Entry', 'Purchase Receipt', 'Stock Reconciliation', 'Delivery Note'):
+        ids = list({row.voucher_no for row in rows if row.voucher_type == doctype and row.voucher_no})
+        if not ids or not frappe.has_permission(doctype, 'read'):
+            continue
+        meta = frappe.get_meta(doctype)
+        fields_to_read = ['name'] + [field for field in ('remarks', 'purpose', 'stock_entry_type')
+                                     if meta.has_field(field)]
+        for offset in range(0, len(ids), 500):
+            docs = frappe.get_list(doctype, filters={'name': ['in', ids[offset:offset+500]]},
+                                   fields=fields_to_read, limit_page_length=0)
+            for doc in docs:
+                voucher_info[(doctype, doc.name)] = doc
+
+    stock_purposes = {
+        'Material Receipt': 'Nhập kho', 'Material Issue': 'Xuất dùng',
+        'Material Transfer': 'Chuyển kho', 'Manufacture': 'Sản xuất',
+        'Repack': 'Đóng gói', 'Send to Subcontractor': 'Gửi gia công',
+        'Receive at Warehouse': 'Nhập kho', 'Opening Stock': 'Tồn đầu kỳ',
+        'Stock Reconciliation': 'Kiểm kê'
+    }
+    doc_purposes = {'Purchase Receipt': 'Nhập hàng mua', 'Delivery Note': 'Xuất hàng bán',
+                    'Stock Reconciliation': 'Kiểm kê'}
+    for row in rows:
+        voucher = voucher_info.get((row.voucher_type, row.voucher_no))
+        purpose = (voucher.get('stock_entry_type') or voucher.get('purpose')) if voucher else None
+        action = stock_purposes.get(purpose, doc_purposes.get(row.voucher_type, row.kind))
+        remarks = str(voucher.get('remarks') or '').strip() if voucher else ''
+        row.content = (action + ' – ' + remarks) if remarks else action
+    fields = ['posting_date', 'item_code', 'warehouse', 'voucher_no', 'kind', 'content', 'in_qty', 'out_qty',
               'opening_qty', 'qty_after_transaction', 'stock_uom']
     selected = selections(column_filters, fields)
     choices = faceted_distinct(rows, fields, selected, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})

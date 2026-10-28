@@ -17,11 +17,12 @@ import {gridRowId} from '../grid-row-id'
 import ModalForm from './form/ModalForm.vue'
 import {summableColumn,totalsRow} from '../grid-totals'
 import {sortExcelChoices} from '../excel-filter-state'
+import {buildXlsx,exportExcelFile} from '../excel-export'
 import {Pagination} from './ui/pagination'
 import UiSelect from './ui/select/Select.vue'
 const desktopDensity=inject('lotusDesktopDensity',null)
 const theme=computed(()=>desktopGridThemes[desktopDensity?.value]||compactGridTheme)
-const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50}})
+const props=defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String})
 const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open'])
 // AG Grid's Vue adapter clones row data. Editable slots must update the source record by its stable ID.
 const sourceRows=computed(()=>new Map(props.rows.map(row=>[gridRowId(row,props.rowKey),row])))
@@ -110,9 +111,26 @@ function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWid
  if(sortState.value.length){restoring=true;try{event.api.applyColumnState({state:sortState.value,defaultState:{sort:null}})}finally{restoring=false}}}
 function resized(event){if(event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,event.api.getColumnState())}
 function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)});emit('visible-rows',records)}
+const exporting=ref(false),exportError=ref('')
+async function downloadExcel(){
+ if(exporting.value)return
+ exporting.value=true;exportError.value=''
+ try{
+  const records=[]
+  if(props.exportRows)records.push(...await props.exportRows())
+  else if(gridApi.value)gridApi.value.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)})
+  else records.push(...visibleRows.value)
+  if(!records.length)throw new Error('Bảng hiện không có dữ liệu để xuất.')
+  const bytes=buildXlsx(props.columns,records)
+  exportExcelFile(bytes,props.exportTitle||props.storageKey||'Bang-du-lieu')
+ }catch(e){exportError.value=e?.message||'Không thể xuất Excel.'}
+ finally{exporting.value=false}
+}
 </script>
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
+  <div class="lotus-data-table__export"><UiButton variant="outline" size="sm" type="button" :disabled="loading||exporting||(!visibleRows.length&&!exportRows)" :title="exportRows?'Xuất toàn bộ dòng phù hợp bộ lọc':'Xuất các dòng đã tải, theo bộ lọc và thứ tự hiện tại'" @click="downloadExcel"><LotusIcon name="download"/>{{exporting?'Đang xuất…':'Xuất Excel'}}</UiButton></div>
+  <p v-if="exportError" role="alert" class="lotus-data-table__export-error">{{exportError}}</p>
   <DataTableViews :storage-key="widthKey" :filters="activeFilters" :sort="sortState" :labels="columnLabels" @apply="applyView" @clear="applyView({filters:{},sort:sortState})"/>
   <div v-if="!visibleRows.length&&!showEmptyHeaders&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 5" :key="n" class="lotus-table-skeleton__row"/></div>
   <DesktopEmptyState v-else-if="!visibleRows.length&&!showEmptyHeaders" class="empty stock-empty" :title="empty" :description="hasLocalFilters?'Bộ lọc cột đang ẩn toàn bộ dòng.':emptyHint">
@@ -135,6 +153,8 @@ function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterA
 </template>
 <style>
 .lotus-data-table{min-width:0}
+.lotus-data-table__export{display:flex;justify-content:flex-end;margin:0 0 6px}
+.lotus-data-table__export-error{color:var(--lotus-danger);font-size:12px;text-align:right;margin:0 0 6px}
 /* AG Grid owns the sole vertical scroll area. Its header and pinned total stay visible. */
 .lotus-ag-grid-shell--scroll{overflow:hidden}
 .lotus-ag-grid-shell--detail .ag-row:not(.ag-row-pinned){cursor:pointer}
