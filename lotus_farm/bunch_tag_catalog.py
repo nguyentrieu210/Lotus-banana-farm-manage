@@ -64,12 +64,14 @@ def add_manual_period(farm, color_code, valid_from, valid_to):
     palette = {str(c["code"]): c["label"] for c in source["colors"]}
     if color_code not in palette:
         frappe.throw("Chọn mã màu có trong danh mục tham chiếu.")
+    if not valid_from or not valid_to:
+        frappe.throw("Nhập đủ ngày bắt đầu và ngày kết thúc.")
     try:
         start, end = getdate(valid_from), getdate(valid_to)
     except (ValueError, TypeError):
         frappe.throw("Ngày bắt đầu và kết thúc phải hợp lệ.")
-    if end < start or (end - start).days > 30:
-        frappe.throw("Ngày kết thúc phải từ ngày bắt đầu đến tối đa 30 ngày sau.")
+    if end < start:
+        frappe.throw("Ngày kết thúc không được trước ngày bắt đầu.")
     lock("Farm", farm)
     programs = frappe.get_all(
         "Lotus Process Adoption",
