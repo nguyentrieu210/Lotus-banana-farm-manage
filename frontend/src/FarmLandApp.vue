@@ -13,6 +13,7 @@ import {Input as UiInput} from './components/ui/input'
 import UiSelect from './components/ui/select/Select.vue'
 import LandBlockDetail from './components/land/LandBlockDetail.vue'
 import DataTable from './components/DataTable.vue'
+import {buildXlsx,exportExcelFile} from './excel-export'
 import {COLOR_MODES} from './map-land'
 import {useNoticeToast} from './use-toast'
 import {call} from './api'
@@ -95,6 +96,13 @@ async function applyBulk(){
   notice.value='Đã cập nhật '+done+' lô.';bulkOpen.value=false;await load()}
  catch(e){error.value='Đã lưu '+done+' lô, dừng ở lỗi: '+e.message;await load()}finally{saving.value=false}}
 function exportExcel(){if(farm.value)location.href='/api/method/lotus_farm.farm_land.export_blocks?'+new URLSearchParams({farm:farm.value})}
+function exportVisibleLand(){
+ const cols=gridColumns.value.filter(col=>col.field!=='__picked')
+ const records=visibleLandRows.value
+ if(!records.length)return
+ exportExcelFile(buildXlsx(cols,records),'Danh-sach-lo-dang-hien')
+}
+
 async function readFile(event){const file=event.target.files?.[0];if(!file)return;saving.value=true;preview.value=null;error.value=''
  try{const content=await new Promise((ok,fail)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=fail;r.readAsDataURL(file)})
   preview.value=await call('lotus_farm.farm_land.preview_blocks',{farm:farm.value,content},true)}
@@ -124,7 +132,7 @@ useNoticeToast(notice)
    </div>
    <span class="land-spacer"></span>
    <div class="land-views" role="group" aria-label="Kiểu xem"><button type="button" :class="{on:view==='list'}" :aria-pressed="view==='list'" @click="view='list'"><LotusIcon name="list"/>Danh sách</button><button type="button" :class="{on:view==='map'}" :aria-pressed="view==='map'" @click="view='map'"><LotusIcon name="map"/>Bản đồ</button></div>
-   <UiButton variant="outline" :disabled="!farm" :title="farm?'':'Chọn một vườn để xuất'" @click="exportExcel"><LotusIcon name="download"/>Xuất Excel</UiButton>
+   <UiButton variant="outline" :disabled="!farm" :title="farm?'':'Chọn một vườn để xuất mẫu nhập'" @click="exportExcel"><LotusIcon name="download"/>Xuất mẫu Excel</UiButton>
    <UiButton v-if="data?.can_edit" variant="outline" :disabled="!farm" :title="farm?'':'Chọn một vườn để nhập'" @click="preview=null;importOpen=true"><LotusIcon name="upload"/>Nhập Excel</UiButton>
   </header>
   <p v-if="error" class="stock-error" role="alert">{{error}}</p>
@@ -149,12 +157,15 @@ useNoticeToast(notice)
     <UiSelect v-model="variety" aria-label="Lọc giống" class="land-narrow"><option value="">Mọi giống</option><option v-for="v in data?.varieties||[]" :key="v" :value="v">{{v}}</option><option value="-">Chưa có giống</option></UiSelect>
     <UiSelect v-model="gap" aria-label="Lọc dữ liệu thiếu" class="land-narrow"><option value="">Mọi lô</option><option v-for="(label,key) in data?.gap_labels||{}" :key="key" :value="key">{{label}}</option></UiSelect>
     <span class="land-spacer"></span>
-    <UiButton v-if="data?.can_edit&&rows.length" variant="outline" size="sm" @click="togglePickAll">{{allPicked?'Bỏ chọn lô đang hiện':'Chọn lô đang hiện'}}</UiButton>
-    <span class="land-count">{{rows.length}} lô · {{num(shownTotals.area,2)}} ha · {{num(shownTotals.trees)}} cây</span>
-    <UiButton v-if="data?.can_edit&&picked.size" variant="outline" @click="bulk={farm_zone:'',variety:''};bulkOpen=true">Sửa {{picked.size}} lô đã chọn</UiButton>
+    <div class="land-filter-actions">
+     <UiButton v-if="data?.can_edit&&rows.length" variant="outline" size="sm" @click="togglePickAll">{{allPicked?'Bỏ chọn lô đang hiện':'Chọn lô đang hiện'}}</UiButton>
+     <span class="land-count">{{rows.length}} lô · {{num(shownTotals.area,2)}} ha · {{num(shownTotals.trees)}} cây</span>
+     <UiButton variant="outline" size="sm" :disabled="busy||!visibleLandRows.length" @click="exportVisibleLand"><LotusIcon name="download"/>Xuất bảng Excel</UiButton>
+     <UiButton v-if="data?.can_edit&&picked.size" variant="outline" size="sm" @click="bulk={farm_zone:'',variety:''};bulkOpen=true">Sửa {{picked.size}} lô đã chọn</UiButton>
+    </div>
    </div>
    <div class="land-table" :aria-busy="busy">
-    <DataTable :rows="gridRows" :columns="gridColumns" row-key="name" storage-key="lotus-farm-land" :loading="busy"
+    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" row-key="name" storage-key="lotus-farm-land" :loading="busy"
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>
@@ -181,7 +192,7 @@ useNoticeToast(notice)
    <LotusField label="File Excel đã sửa" type="file" accept=".xlsx" :disabled="saving" @change="readFile"/>
    <template v-if="preview">
     <p><b>{{preview.ready}}</b> lô sẽ cập nhật · {{preview.unchanged}} lô không đổi · <span :class="{'land-bad':preview.errors}">{{preview.errors}} dòng lỗi</span></p>
-    <div class="land-table land-preview"><DataTable :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>
+    <div class="land-table land-preview"><DataTable :exportable="false" :rows="preview.rows.filter(r=>r.changes.length||r.errors.length||r.warnings.length)" :columns="landPreviewColumns" row-key="line" storage-key="land-import-preview" /></div>
     <div class="land-actions"><UiButton type="button" variant="outline" :disabled="saving" @click="importOpen=false">Hủy</UiButton><UiButton type="button" :disabled="saving||!preview.ready" @click="commitImport">{{saving?'Đang cập nhật…':'Cập nhật '+preview.ready+' lô'}}</UiButton></div>
    </template>
   </div>

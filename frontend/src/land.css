@@ -23,6 +23,14 @@
 .land-filters .land-search{flex:0 1 260px}
 .land-filters .land-narrow{flex:0 0 auto;width:auto;min-width:130px}
 .land-count{font-size:var(--lotus-text-sm);color:var(--lotus-muted);font-variant-numeric:tabular-nums}
+ .land-filter-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+ .land-filter-actions .land-count{white-space:nowrap}
+ .land-filter-actions>button{white-space:nowrap}
+ @media(max-width:780px){
+  .land-filter-actions{flex:1 1 100%;justify-content:flex-start}
+  .land-filter-actions .land-count{order:-1;flex:1 1 100%}
+ }
+
 .land-table{overflow:auto;max-height:66vh;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
 .land-table:has(>.lotus-data-table){overflow:visible;max-height:none;border:0;background:transparent}
 .land-table table,.land-mini{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--lotus-text-sm)}
