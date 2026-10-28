@@ -327,6 +327,9 @@ def create_adoption(farm, preset_key, condition_class=None, valid_from=None, val
 def generate_tags(process_adoption, from_date, to_date):
     require_role("Lotus Farm Manager")
     adoption=frappe.get_doc("Lotus Process Adoption",process_adoption);adoption.check_permission("read")
+    weekly_start=frappe.db.get_value("Bunch Tag", {"farm":adoption.farm, "source_kind":"Lotus Weekly", "enabled":1}, "valid_from", order_by="valid_from asc")
+    if weekly_start and getdate(to_date)>=getdate(weekly_start):
+        frappe.throw("Vườn đã chuyển sang lịch màu dây 7 ngày/tuần. Không tạo lịch tham chiếu 5 ngày từ tuần áp dụng.")
     _farm(adoption.farm,"write")
     lock("Lotus Process Adoption", adoption.name)
     if adoption.approval_state!="Approved":

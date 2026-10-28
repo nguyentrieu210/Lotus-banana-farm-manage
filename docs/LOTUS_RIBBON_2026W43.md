@@ -29,5 +29,10 @@ Dữ liệu lịch Lotus độc lập nguồn OneDrive (17 màu mỗi 5 ngày). 
 - Tạo 16 thẻ có mã tuần + đợt ổn định; chạy lại không tạo trùng.
 - Trong quá trình ghi nhận thực tế, chứng từ cắt bắp dùng màu đang hiệu lực
   tại ngày cắt. Chích bắp dùng mốc ngày dự kiến cắt bắp sau 14 ngày.
-- Phần lịch sau tuần 50 tiếp tục dùng dữ liệu tham chiếu hiện tại cho đến khi
-  có lịch màu thực tế được duyệt thay thế.
+- Mỗi tuần được hiểu là **7 ngày liên tục**, từ thứ Hai đến Chủ nhật;
+  hai nhãn 1/2 chỉ để phân biệt đầu và cuối tuần, không phải chu kỳ 5 ngày.
+- Từ tuần 43, không còn dùng bất cứ màu nào thuộc lịch tham chiếu 5 ngày
+  ở LOTUS-222. Các bản ghi cũ chỉ dùng tra cứu lịch sử, không xóa.
+- Sau tuần 50, chưa có lịch màu thực tế thì để trống, không tự phát hành
+  một đợt 5 ngày hay tự suy ra màu cho tuần kế tiếp.
+- LOTUS-180 không bị thay đổi khi cập nhật lịch LOTUS-222.

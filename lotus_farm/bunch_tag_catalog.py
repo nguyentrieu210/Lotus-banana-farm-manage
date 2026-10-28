@@ -5,7 +5,8 @@ never rewritten when the next rotation starts. Approved OneDrive programs
 continue to use their existing versioned generate_tags workflow.
 """
 import frappe
-from frappe.utils import getdate
+from datetime import timedelta
+from frappe.utils import getdate, cint
 from lotus_farm.bunch_tag_rules import overlaps, manual_tag_code
 from lotus_farm.controls import lock, require_role
 from lotus_farm.onedrive_workspace import library
@@ -20,22 +21,35 @@ def _farm_access(farm):
 
 
 @frappe.whitelist()
-def catalog(farm):
+def catalog(farm, include_disabled=0):
     _farm_access(farm)
     if not frappe.has_permission("Bunch Tag", "read"):
         frappe.throw("Không có quyền xem danh mục màu dây.", frappe.PermissionError)
     source, _ = library()
+    weekly_mode = bool(frappe.db.exists("Bunch Tag", {
+        "farm": farm, "source_kind": "Lotus Weekly", "enabled": 1
+    }))
+    filters = {"farm": farm}
+    if not cint(include_disabled):
+        filters["enabled"] = 1
+        if weekly_mode:
+            filters["source_kind"] = "Lotus Weekly"
     rows = frappe.get_list(
         "Bunch Tag",
-        filters={"farm": farm},
+        filters=filters,
         fields=["name", "tag_code", "display_name", "color_code", "valid_from",
                 "valid_to", "enabled", "period_basis", "process_adoption", "source_kind",
                 "color_label", "week_year", "week_number", "week_half"],
         order_by="valid_from desc, name desc",
         limit_page_length=3000,
     )
+    for row in rows:
+        if row.source_kind == "Lotus Weekly" and row.valid_from:
+            monday = getdate(row.valid_from) - timedelta(days=getdate(row.valid_from).weekday())
+            row["week_from"] = str(monday)
+            row["week_to"] = str(monday + timedelta(days=6))
     programs = []
-    if frappe.has_permission("Lotus Process Adoption", "read"):
+    if not weekly_mode and frappe.has_permission("Lotus Process Adoption", "read"):
         programs = frappe.get_list(
             "Lotus Process Adoption",
             filters={"farm": farm, "approval_state": "Approved"},
@@ -51,9 +65,13 @@ def catalog(farm):
                 r.color_code: r.color_label for r in rows if r.source_kind == "Lotus Weekly"
             }.items())],
         "programs": programs,
-        "can_create": bool(frappe.has_permission("Bunch Tag", "create")),
-        "notice": "Thư viện tham chiếu hiện có " + str(len(source["colors"])) +
-                  " màu; không tự giả định 12 màu hay số ngày áp dụng của Lotus.",
+        "can_create": bool(frappe.has_permission("Bunch Tag", "create")) and not weekly_mode,
+        "weekly_mode": weekly_mode,
+        "notice": ("Lịch Lotus áp dụng theo tuần 7 ngày (thứ Hai đến Chủ nhật); "
+                   "đợt 1 và 2 để ghi nhận đầu và cuối tuần. "
+                   "Lịch tham chiếu 5 ngày đã ngừng áp dụng tại vườn này."
+                   if weekly_mode else
+                   "Đang hiển thị lịch tham chiếu; vườn chưa có lịch màu Lotus theo tuần."),
     }
 
 
