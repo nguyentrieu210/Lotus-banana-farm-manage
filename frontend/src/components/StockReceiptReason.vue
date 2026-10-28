@@ -5,7 +5,8 @@ import LotusField from './form/LotusField.vue'
 import FormGrid from './form/FormGrid.vue'
 import LotusMobileButton from './LotusMobileButton.vue'
 import {Button} from './ui/button'
-const props=defineProps({reason:String,supplier:String,mobile:Boolean})
+// fixed: the reason is decided by the screen (Mua nhanh = Purchase), so only the supplier is asked.
+const props=defineProps({reason:String,supplier:String,mobile:Boolean,fixed:Boolean})
 const emit=defineEmits(['update:reason','update:supplier'])
 const options=ref(null),busy=ref(false),error=ref('')
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
@@ -37,8 +38,8 @@ defineExpose({validate})
  <p v-if="busy" role="status">Đang tải lý do nhập kho…</p>
  <template v-if="error"><p role="alert" :class="mobile?'mobile-message danger':'stock-alert'">{{error}}</p><component :is="button" type="button" :disabled="busy" @click="load">Thử lại lý do nhập kho</component></template>
  <component :is="mobile?'div':FormGrid" v-if="options" :class="mobile?'mobile-form-fields':undefined">
-  <LotusField :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" required @update:model-value="emit('update:reason',$event)"/>
+  <LotusField v-if="!fixed" :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" required @update:model-value="emit('update:reason',$event)"/>
   <LotusField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
  </component>
- <p v-if="options?.reasons.find(r=>r.value===reason)?.supplier" class="lotus-form-note">Hàng mua cần giá cho từng dòng. Đã có đơn mua thì dùng <b>Nhận hàng theo đơn mua</b> để đơn và đề nghị được cập nhật.</p>
+ <p v-if="!fixed&&options?.reasons.find(r=>r.value===reason)?.supplier" class="lotus-form-note">Hàng mua cần giá cho từng dòng. Đã có đơn mua thì dùng <b>Nhận hàng theo đơn mua</b> để đơn và đề nghị được cập nhật.</p>
 </template>

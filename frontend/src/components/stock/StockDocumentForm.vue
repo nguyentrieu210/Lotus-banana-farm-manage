@@ -13,12 +13,14 @@ import {unitLabel} from '../../units'
 import {fmt} from '../../stock-columns'
 // Phiếu nhập không theo đơn · xuất kho · chuyển kho · kiểm kê, saved as an ERPNext draft (lotus_farm.warehouse.create_draft).
 // open(kind) starts a new draft; edit(detail) reopens a draft from the detail dialog.
+// openQuick() is Mua hàng › Mua nhanh: goods already bought, reason fixed to Purchase, saved and posted to stock at once
+// (create_draft post=1; stays a draft when the user may not submit). The accountant invoices it later from Hóa đơn.
 const props=defineProps({company:String,warehouse:String,warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['saved'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const titles={receipt:'Nhập kho không theo đơn',issue:'Xuất kho',transfer:'Chuyển kho',count:'Kiểm kê kho'}
 const issueModes={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
-const open=ref(false),saving=ref(false),error=ref(''),reasonFields=ref(null)
+const open=ref(false),saving=ref(false),error=ref(''),reasonFields=ref(null),quick=ref(false),showCosts=ref(false)
 const form=reactive({kind:'receipt',receipt_reason:'',supplier:'',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:''})
 const employees=ref([]),blockCodes=ref([]),accounts=ref([]),defaultAccount=ref(''),accountsLoading=ref(false)
 const issueSources=ref([]),issueSource=ref(''),issueNote=ref(''),issueLoading=ref(false)
@@ -33,7 +35,7 @@ const manual=computed(()=>form.kind!=='issue'||form.issue_mode==='Manual')
 const priced=computed(()=>form.kind==='receipt'||(form.kind==='count'&&form.count_purpose==='Opening Stock'))
 const basic=computed(()=>form.lines.reduce((sum,row)=>sum+Number(row.qty||0)*Number(row.rate||0),0))
 const charges=computed(()=>form.additional_costs.reduce((sum,row)=>sum+Number(row.amount||0),0))
-const title=computed(()=>(form.existing_name?'Sửa phiếu nháp · ':'')+titles[form.kind])
+const title=computed(()=>(form.existing_name?'Sửa phiếu nháp · ':'')+(quick.value?'Mua nhanh':titles[form.kind]))
 
 async function searchItems(search){
  const result=await api('overview',{company:props.company,warehouse:form.kind==='count'?form.target:form.source||form.target||props.warehouse,search})
@@ -104,7 +106,11 @@ async function start(kind){
  open.value=true
  if(kind==='receipt')await loadAccounts()
 }
-async function openNew(kind){try{await start(kind)}catch(e){error.value=e.message;open.value=true}}
+async function openNew(kind){quick.value=false;showCosts.value=true;try{await start(kind)}catch(e){error.value=e.message;open.value=true}}
+async function openQuick(){
+ quick.value=true;showCosts.value=false
+ try{await start('receipt');form.receipt_reason='Purchase'}catch(e){error.value=e.message;open.value=true}
+}
 async function edit(current){
  const kind={'Material Receipt':'receipt','Material Issue':'issue','Material Transfer':'transfer'}[current.kind]||'count'
  await openNew(kind);await nextTick()
@@ -117,22 +123,23 @@ async function save(){
   if(form.kind==='receipt'){const message=await reasonFields.value.validate(form.lines);if(message)throw new Error(message)}
   const lines=manual.value?form.lines:form.lines.filter(r=>Number(r.qty)>0)
   if(!lines.length)throw new Error('Chọn ít nhất một dòng vật tư có số lượng cấp lớn hơn 0.')
-  const result=await api('create_draft',{company:props.company,...form,lines},true)
+  const result=await api('create_draft',{company:props.company,...form,lines,post:quick.value&&!form.existing_name?1:0},true)
   // Evidence uploads once the draft exists. If it fails the draft is still saved; the detail view opens so files can be added again.
   let warning=''
   try{await evidence.value?.flush(result.doctype,result.name)}catch(e){warning='Chưa gắn được chứng từ: '+e.message+'. Thêm lại ở mục chứng từ của phiếu.'}
-  open.value=false;emit('saved',{...result,form_kind:form.kind,warning})
+  open.value=false;emit('saved',{...result,form_kind:form.kind,quick:quick.value,warning})
  }catch(e){error.value=e.message}finally{saving.value=false}
 }
-defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{open.value=false}})
+defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChanges:()=>{open.value=false}})
 </script>
 
 <template>
- <ModalForm v-model="open" :title="title" :busy="saving" :error="error" width="1080px" :submit-label="form.existing_name?'Lưu thay đổi':'Lưu phiếu nháp'" :submit-disabled="issueLoading||!form.lines.length" @submit="save">
-  <p v-if="form.kind==='receipt'" class="lotus-modal-form__description">Chọn kho nhận, vật tư và số lượng thực nhận. Có thể nhập đơn giá theo kg, bao hoặc can nếu đã khai báo quy đổi.</p>
+ <ModalForm v-model="open" :title="title" :busy="saving" :error="error" width="1080px" :submit-label="form.existing_name?'Lưu thay đổi':quick?'Lưu & nhập kho':'Lưu phiếu nháp'" :submit-disabled="issueLoading||!form.lines.length" @submit="save">
+  <p v-if="quick" class="lotus-modal-form__description">Hàng đã mua và đã về: chụp hoặc chọn hóa đơn để AI điền sẵn, kiểm tra nhà cung cấp, số lượng, giá rồi bấm <b>Lưu &amp; nhập kho</b>. Kế toán lập hóa đơn và công nợ từ phiếu này sau.</p>
+  <p v-else-if="form.kind==='receipt'" class="lotus-modal-form__description">Chọn kho nhận, vật tư và số lượng thực nhận. Có thể nhập đơn giá theo kg, bao hoặc can nếu đã khai báo quy đổi.</p>
   <FormSection title="Thông tin phiếu">
-   <DocumentReader v-if="form.kind==='receipt'&&manual" :disabled="saving" label="Đọc phiếu giao hàng / hóa đơn bằng AI" @read="applyDocument"/>
-   <StockReceiptReason v-if="form.kind==='receipt'" ref="reasonFields" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier"/>
+   <DocumentReader v-if="form.kind==='receipt'&&manual" :camera="quick" :disabled="saving" label="Đọc phiếu giao hàng / hóa đơn bằng AI" @read="applyDocument"/>
+   <StockReceiptReason v-if="form.kind==='receipt'" ref="reasonFields" :fixed="quick" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier"/>
    <FormGrid :columns="3">
     <LotusField v-if="form.kind==='issue'" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
     <LotusField v-if="form.kind==='issue'&&form.issue_mode!=='Manual'" :model-value="issueSource" :label="form.issue_mode==='Plan'?'Kế hoạch đã duyệt':'Yêu cầu vật tư đã duyệt'" :options="issueSources.map(r=>({value:r.name,label:r.name+' · '+r.date}))" :searchable="false" :empty-option="issueLoading?'Đang tải…':form.issue_mode==='Plan'?'Chọn kế hoạch':'Chọn yêu cầu'" :disabled="issueLoading||saving" required @update:model-value="selectIssueSource"/>
@@ -148,7 +155,8 @@ defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{op
   <FormSection>
    <LineItemsEditor v-model="form.lines" title="Hàng hóa trên phiếu" add-label="Thêm vật tư" :columns="lineColumns" :new-row="newLine" :fixed="!manual" :empty-text="issueSource&&!issueLoading?'Nguồn này chưa có nhu cầu vật tư đã duyệt còn được cấp. Không có dòng nào để xuất.':'Chưa có dòng nào.'"/>
   </FormSection>
-  <FormSection v-if="form.kind==='receipt'" title="Chi phí nhập kho" description="Phân bổ chi phí theo giá trị vật tư. Cần có đơn giá để tính phân bổ.">
+  <div v-if="form.kind==='receipt'&&!showCosts&&!form.additional_costs.length"><button type="button" class="lotus-link-button" @click="showCosts=true">+ Thêm chi phí vận chuyển, bốc xếp</button></div>
+  <FormSection v-if="form.kind==='receipt'&&(showCosts||form.additional_costs.length)" title="Chi phí nhập kho" description="Phân bổ chi phí theo giá trị vật tư. Cần có đơn giá để tính phân bổ.">
    <p v-if="!accountsLoading&&!accounts.length" class="lotus-form-note">Cần quyền đọc tài khoản chi phí của công ty để thêm chi phí.</p>
    <LineItemsEditor v-model="form.additional_costs" title="Các khoản chi phí" add-label="Thêm chi phí" empty-text="Chưa có chi phí vận chuyển, bốc xếp…" :columns="costColumns" :min="0" :max="30" :readonly="accountsLoading||!accounts.length" :new-row="()=>({description:'',amount:0,expense_account:defaultAccount})"/>
    <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(basic)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(charges)}}</dd></div><div><dt>Tổng giá trị nhập</dt><dd>{{cash(basic+charges)}}</dd></div></dl>
@@ -163,6 +171,8 @@ defineExpose({open:openNew,edit,hasChanges:()=>open.value,discardChanges:()=>{op
 </template>
 
 <style>
+.lotus-link-button{padding:0;border:0;background:none;color:var(--lotus-primary);font:inherit;font-size:var(--lotus-text-sm);font-weight:600;cursor:pointer}
+.lotus-link-button:hover{text-decoration:underline}
 .lotus-form-note{margin:0;color:var(--lotus-muted);font-size:var(--lotus-text-sm)}
 .lotus-form-totals{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 24px;margin:0}
 .lotus-form-totals div{display:grid;gap:2px;text-align:right}

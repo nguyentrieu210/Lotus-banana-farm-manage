@@ -549,7 +549,9 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0):
+    """post=1 (Mua nhanh): a new receipt is posted to stock in the same request when the user may submit it;
+    otherwise it stays a draft for the storekeeper (docstatus 0 in the result)."""
     _access()
     _company(company)
     types = {'receipt': 'Material Receipt', 'issue': 'Material Issue', 'transfer': 'Material Transfer'}
@@ -698,7 +700,9 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         check_outbound_stock(doc,include_holds=True)
     if existing_name:doc.save()
     else:doc.insert()
-    return dict(name=doc.name, doctype=doc.doctype)
+    if cint(post) and kind == 'receipt' and doc.has_permission('submit') and _simple_doc(doc):
+        doc.submit()
+    return dict(name=doc.name, doctype=doc.doctype, docstatus=doc.docstatus)
 
 
 def check_outbound_stock(doc,include_holds=False):
