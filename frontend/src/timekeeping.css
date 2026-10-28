@@ -42,7 +42,12 @@
 .tk-card__head a.stock-button{display:inline-flex;align-items:center;gap:6px}
 
 /* Daily roster */
-.tk-roster{overflow:auto;padding:0}
+.tk-roster{overflow:visible;padding:0}
+.tk-roster .lotus-data-table__export{padding:6px 9px 0;min-height:38px;margin-bottom:3px}
+.tk-roster .lotus-data-table__export .lotus-column-picker-trigger,
+.tk-roster .lotus-data-table__export button{min-height:30px}
+.tk-roster .lotus-data-table .ag-root-wrapper{border-radius:0 0 9px 9px}
+
 .tk-roster table{width:100%;min-width:980px;border-collapse:collapse;font-size:var(--lotus-text-md)}
 .tk-roster th{position:sticky;top:0;z-index:1;padding:8px 10px;text-align:left;font-size:var(--lotus-text-sm);font-weight:600;background:var(--lotus-table-header);color:var(--lotus-table-heading);border-bottom:1px solid var(--lotus-border);white-space:nowrap}
 .tk-roster td{padding:6px 10px;border-bottom:1px solid var(--lotus-border);vertical-align:middle}

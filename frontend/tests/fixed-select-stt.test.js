@@ -13,7 +13,7 @@ test('Every shared table has fixed tick column first and STT second',()=>{
  assert.match(table,/const selectDef=\{colId:'__lotus_select'/)
  assert.match(table,/const sttDef=\{colId:'__lotus_stt'/)
  assert.match(table,/pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true/)
- assert.match(table,/state:\[\{colId:nativeSelectId.value\|\|'__lotus_select',pinned:'left',hide:false\},\{colId:'__lotus_stt',pinned:'left'\}/)
+ assert.match(table,/state:\[\{colId:nativeSelectId.value\|\|'__lotus_select',pinned:'left',hide:false,width:42\},\{colId:'__lotus_stt',pinned:'left',width:52\}/)
 })
 test('Selection is keyed by row identity and does not trigger opening the document',()=>{
  assert.match(table,/const getSelectionId=row=>gridRowId\(row,props.rowKey\)/)
