@@ -128,7 +128,7 @@ defineExpose({hasChanges:()=>dirty.value,reload:load})
   <p v-if="notice" class="field-report__notice" role="status">{{notice}}</p>
   <template v-if="report">
    <p v-if="report.state==='Returned'" class="field-report__warning" role="alert">Đội trưởng trả lại: {{report.return_reason}}</p>
-   <p v-if="report.overdue" class="lotus-list-page__error" role="alert">Quá hạn xác nhận (10 giờ sáng hôm sau).</p>
+   <p v-if="report.overdue&&report.name" class="lotus-list-page__error" role="alert">Quá hạn xác nhận (10 giờ sáng hôm sau).</p>
    <p v-if="!crewTeams.length" class="field-report__warning" role="status">Đội chưa có tổ nào. Vào Báo cáo ngày → Đội, tổ &amp; lô để xếp tổ trước khi ghi công khoán; công nhật vẫn ghi được.</p>
    <WorkspaceSummaryStrip :items="summary"/>
    <FormGrid :columns="mobile?1:3">

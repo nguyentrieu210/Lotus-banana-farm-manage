@@ -53,6 +53,8 @@ function select(column,row,option){column.onSelect?.(row,option);emit('select',{
 .lotus-lines__head,.lotus-lines__row{display:grid;grid-template-columns:var(--lotus-lines-template);gap:8px;align-items:start;min-width:min-content}
 .lotus-lines__head{padding:0 0 2px;font-size:var(--lotus-text-sm);font-weight:550;color:var(--lotus-muted)}
 .lotus-lines__cell{min-width:0}
+/* Controls fill their column; the legacy stock.css `select{min-width:210px}` must not push them over the next cell. */
+.lotus-lines__cell :is(select,input,textarea){min-width:0;max-width:100%}
 .lotus-lines__remove{align-self:start;width:36px;height:36px;padding:0}
 .lotus-lines__footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .lotus-lines__total{margin-left:auto}
