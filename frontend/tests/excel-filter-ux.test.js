@@ -85,7 +85,7 @@ test('Company scope filters hidden when user has only one authorized company',()
 })
 
 test('UI labels use Vườn rather than Nông trường without changing Farm data keys',()=>{
- for(const name of ['StockApp.vue','HrApp.vue','TimekeepingApp.vue','AssignApp.vue','FarmWorkApp.vue']){
+ for(const name of ['StockApp.vue','HrApp.vue','TimekeepingApp.vue','FieldReportApp.vue','FarmWorkApp.vue']){
   const src=readFileSync(new URL('../src/'+name,import.meta.url),'utf8')
   assert.doesNotMatch(src,/Nông trường|nông trường|NÔNG TRƯỜNG/)
  }

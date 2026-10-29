@@ -42,7 +42,7 @@ test('shadcn-vue registry configuration uses JS, Tailwind v3, and matching depen
 })
 test('main pages use shadcn-vue Button and still keep Frappe API provider',()=>{
   const main=read('src/App.vue')
-  const quick=read('src/AssignApp.vue')
+  const quick=read('src/FieldReportApp.vue')
   const form=read('src/components/SchemaForm.vue')
   for(const source of [main,quick,form]){
     assert.match(source,/import \{Button as UiButton\}/)
@@ -60,8 +60,6 @@ test('shared form inputs preserve number and text model types',()=>{
   assert.equal(normalizeInputValue('125.5',false),'125.5')
   assert.match(read('src/components/SchemaForm.vue'),/import \{Input as UiInput[,}]/)
   assert.match(read('src/components/SchemaForm.vue'),/import \{Textarea as UiTextarea\}/)
-  assert.match(read('src/AssignApp.vue'),/import \{Input as UiInput\}/)
-  assert.match(read('src/AssignApp.vue'),/import \{Badge as UiBadge\}/)
   assert.match(read('src/components/MobileHome.vue'),/import \{Card as UiCard\}/)
 })
 

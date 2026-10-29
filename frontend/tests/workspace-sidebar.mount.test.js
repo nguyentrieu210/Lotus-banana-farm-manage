@@ -47,7 +47,7 @@ test('sidebar parent navigates to its first page; the submenu lists every page o
  const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'work',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Tổng quan','Quản lý vườn','Điều hành công việc'])
- assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Tiến độ & kết quả','Bố trí nhân công'],'the page the group button opens is listed too')
+ assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Sâu bệnh & ghi nhận khác','Bố trí nhân công'],'the page the group button opens is listed too')
  view.root.querySelectorAll('.nav-group-current .nav-submenu button')[1].click();await tick()
  assert.deepEqual(visited,['labor'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')

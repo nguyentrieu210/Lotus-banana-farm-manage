@@ -5,7 +5,7 @@ const root=new URL('../../',import.meta.url)
 const read=p=>readFileSync(new URL(p,root),'utf8')
 // Every desktop module renders inside the single /lotus shell (main.js); module apps are embedded components.
 const entries=[
- ['main.js','App.vue'],['main.js','StockApp.vue'],['main.js','AssignApp.vue'],
+ ['main.js','App.vue'],['main.js','StockApp.vue'],['main.js','FieldReportApp.vue'],
  ['main.js','FarmWorkApp.vue'],['main.js','HrApp.vue'],['main.js','TimekeepingApp.vue']
 ]
 test('mọi ứng dụng máy tính nạp đúng chuẩn Lotus, không tác động mobile Vant',()=>{

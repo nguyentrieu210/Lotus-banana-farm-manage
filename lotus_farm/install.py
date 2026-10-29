@@ -31,8 +31,8 @@ def set_brand():
 
 
 def setup():
-    from lotus_farm.work_journal import install as install_journal
-    install_journal()
+    from lotus_farm.field_report import install_fields as install_field_report_fields
+    install_field_report_fields()
     from lotus_farm.localization import install_translations
     install_translations()
     create_roles()

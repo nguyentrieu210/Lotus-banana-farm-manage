@@ -1,0 +1,120 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Piece Rate",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "work_type",
+  "field_order": [
+    "farm",
+    "work_type",
+    "basis",
+    "rate",
+    "uom",
+    "norm_min",
+    "norm_max",
+    "valid_from",
+    "valid_to",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "ignore_user_permissions": 1,
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_type",
+      "fieldtype": "Link",
+      "label": "Công việc",
+      "ignore_user_permissions": 1,
+      "options": "Work Type",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "basis",
+      "fieldtype": "Select",
+      "label": "Tính theo",
+      "options": "Area\nTrees\nCount",
+      "default": "Count"
+    },
+    {
+      "fieldname": "rate",
+      "fieldtype": "Currency",
+      "label": "Đơn giá khoán",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "uom",
+      "fieldtype": "Link",
+      "label": "Đơn vị",
+      "ignore_user_permissions": 1,
+      "options": "UOM"
+    },
+    {
+      "fieldname": "norm_min",
+      "fieldtype": "Float",
+      "label": "Năng suất tối thiểu / công"
+    },
+    {
+      "fieldname": "norm_max",
+      "fieldtype": "Float",
+      "label": "Năng suất tối đa / công"
+    },
+    {
+      "fieldname": "valid_from",
+      "fieldtype": "Date",
+      "label": "Áp dụng từ",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "valid_to",
+      "fieldtype": "Date",
+      "label": "Đến ngày"
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

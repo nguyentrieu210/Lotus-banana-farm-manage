@@ -1,6 +1,6 @@
 <script setup>
 import {Combobox} from './ui/combobox'
-// Kept for existing callers (AssignApp, FarmWorkApp); the picker itself is ui/combobox.
+// Kept for existing callers (FarmWorkApp); the picker itself is ui/combobox.
 defineProps({modelValue:{type:[String,Number],default:''},options:{type:Array,default:()=>[]},placeholder:{type:String,default:'Chọn…'},label:{type:String,required:true},disabled:Boolean})
 const emit=defineEmits(['update:modelValue','change'])
 </script>

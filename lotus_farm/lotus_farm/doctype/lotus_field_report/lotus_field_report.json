@@ -1,0 +1,137 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Field Report",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "crew",
+  "sort_field": "posting_date",
+  "field_order": [
+    "company",
+    "farm",
+    "crew",
+    "posting_date",
+    "weather",
+    "state",
+    "return_reason",
+    "confirmed_by",
+    "confirmed_at",
+    "reopen_reason",
+    "lines",
+    "materials"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "ignore_user_permissions": 1,
+      "options": "Company",
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "ignore_user_permissions": 1,
+      "options": "Farm",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "crew",
+      "fieldtype": "Link",
+      "label": "Đội",
+      "ignore_user_permissions": 1,
+      "options": "Work Team",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "fieldtype": "Date",
+      "label": "Ngày",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "weather",
+      "fieldtype": "Data",
+      "label": "Thời tiết"
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Draft\nConfirmed\nReturned",
+      "default": "Draft",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "return_reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do trả lại"
+    },
+    {
+      "fieldname": "confirmed_by",
+      "fieldtype": "Link",
+      "label": "Người xác nhận",
+      "ignore_user_permissions": 1,
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "confirmed_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc xác nhận",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reopen_reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do mở lại"
+    },
+    {
+      "fieldname": "lines",
+      "fieldtype": "Table",
+      "label": "Dòng công việc",
+      "options": "Lotus Field Report Line"
+    },
+    {
+      "fieldname": "materials",
+      "fieldtype": "Table",
+      "label": "Vật tư tiêu hao",
+      "options": "Lotus Field Report Material"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

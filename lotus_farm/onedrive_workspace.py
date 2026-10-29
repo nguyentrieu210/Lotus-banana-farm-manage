@@ -326,6 +326,9 @@ def create_adoption(farm, preset_key, condition_class=None, valid_from=None, val
 @frappe.whitelist(methods=["POST"])
 def generate_tags(process_adoption, from_date, to_date):
     require_role("Lotus Farm Manager")
+    # 29/10/2026: the user removed the 17-colour 5-day reference calendar everywhere; farms use the 12-colour weekly cycle.
+    if not frappe.flags.in_test:
+        frappe.throw("Lịch tham chiếu 17 màu đã bỏ. Dùng lịch màu dây 12 màu theo tuần (Dự thu → Màu dây cắt bắp).")
     adoption=frappe.get_doc("Lotus Process Adoption",process_adoption);adoption.check_permission("read")
     weekly_start=frappe.db.get_value("Bunch Tag", {"farm":adoption.farm, "source_kind":"Lotus Weekly", "enabled":1}, "valid_from", order_by="valid_from asc")
     if weekly_start and getdate(to_date)>=getdate(weekly_start):

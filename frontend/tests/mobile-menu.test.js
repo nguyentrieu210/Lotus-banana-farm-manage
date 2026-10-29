@@ -5,9 +5,10 @@ import {hasMobileAccess,mobileActions,mobileGroups,mobileTabs} from '../src/mobi
 const session=(modules={},commands={},creatable={},capabilities={})=>({modules,commands,creatable,capabilities})
 
 test('single app combines different permitted jobs without switching persona',()=>{
- const user=session({work:['Daily Work Plan','Daily Work Result'], 'incoming-qc':['Incoming Quality Inspection'],farms:['Farm']},{work:true},{'Daily Work Result':true})
+ const user=session({work:['Daily Work Plan','Daily Work Result'], 'incoming-qc':['Incoming Quality Inspection'],farms:['Farm']},{work:true},{'Daily Work Result':true},{field_report:true})
  const actions=mobileActions(user).map(a=>a.id)
- for(const id of ['assign','work','actual','qc','farms'])assert.ok(actions.includes(id),id)
+ for(const id of ['farm-work','qc','farms'])assert.ok(actions.includes(id),id)
+ for(const id of ['assign','actual'])assert.ok(!actions.includes(id),id+': giao việc theo ngày and the old result form are gone')
  assert.equal(hasMobileAccess(user),true)
  assert.equal(new Set(actions).size,actions.length)
 })
@@ -15,7 +16,7 @@ test('single app combines different permitted jobs without switching persona',()
 test('read access does not create writing actions',()=>{
  const user=session({work:['Daily Work Plan'], 'incoming-qc':['Incoming Quality Inspection']},{work:false},{'Daily Work Result':false})
  const ids=mobileActions(user).map(a=>a.id)
- assert.ok(ids.includes('work'))
+ assert.ok(!ids.includes('farm-work'),'the daily report needs the field_report capability')
  assert.ok(ids.includes('qc'))
  assert.ok(!ids.includes('assign'))
  assert.ok(!ids.includes('actual'))

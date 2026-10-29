@@ -168,7 +168,6 @@ def load(name):
 
 with mock.patch.dict(sys.modules, STUBS):
     access = load("mobile_access")
-    work = load("work_mobile")
 
 
 class MobileAccessTest(unittest.TestCase):
@@ -192,15 +191,6 @@ class MobileAccessTest(unittest.TestCase):
         self.assertEqual(access.allowed_teams("Farm-A", "supervisor.a"), {"Team-A", "Team-B"})
         self.assertEqual(access.allowed_teams("Farm-A", "manager.a"), {"Team-A", "Team-B"})
         self.assertEqual(access.allowed_teams("Farm-A", "unassigned"), set())
-
-    def test_mixed_team_plan_filtered_server_side(self):
-        result = work.day("Farm-A", "2026-10-17")
-        self.assertEqual([t["line"] for t in result["tasks"]], ["Line-A"])
-        self.assertEqual(result["plans"], [])
-
-    def test_history_does_not_show_other_team(self):
-        result = work.history("Farm-A", "2026-10-17")
-        self.assertEqual([row.name for row in result["rows"]], ["WR-A"])
 
     def test_forged_capture_scope_is_rejected(self):
         valid = dict(work_plan="DWP-1", work_plan_line="Line-A", posting_date="2026-10-17",
