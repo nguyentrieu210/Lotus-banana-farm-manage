@@ -48,7 +48,10 @@ const allFlags=computed(()=>[...a.value.punchFlags(row.value),...(row.value.mach
 .tk-grid-cell select,.tk-grid-cell input:not([type=checkbox]){width:100%;min-width:0;max-height:34px}
 .tk-grid-cell--punch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tk-grid-cell--punch button{flex-shrink:0}
-.tk-grid-cell--presence{display:grid;grid-template-columns:18px 5ch;column-gap:var(--lotus-space-2);justify-content:center;align-content:center;width:100%}
-.tk-grid-cell--presence .lotus-checkbox{width:18px;height:18px;min-width:18px;min-height:18px;padding:0;margin:0}
-.tk-presence-time{width:5ch;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:18px}
+</style>
+<style>
+/* AG Grid mounts framework cells outside the SFC scope; target this board explicitly. */
+.attendance-roster .tk-grid-cell.tk-grid-cell--presence{height:100%;display:grid;grid-template-columns:18px 5ch;column-gap:var(--lotus-space-2);justify-content:center;align-content:center;width:100%}
+.attendance-roster .tk-grid-cell--presence .lotus-checkbox{width:18px;height:18px;min-width:18px;min-height:18px;padding:0;margin:0}
+.attendance-roster .tk-presence-time{width:5ch;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:18px}
 </style>
