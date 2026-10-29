@@ -7,26 +7,31 @@ import LotusMobileButton from './components/LotusMobileButton.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import FieldReportDay from './components/field/FieldReportDay.vue'
+import FieldAssignments from './components/field/FieldAssignments.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import {useMobileViewport} from './use-mobile-viewport'
 import {logoutPwa} from './mobile-push-session'
 import {call,setCSRF} from './api'
 import {formatDate} from './format'
 import {reportStates,money,amountText} from './field-report-model.js'
-// Công việc ngoài vườn (/work): the đội daily report on the phone. Tổ trưởng enter their own tổ's lines at the office
-// (wifi), the đội trưởng adds công nhật by khu and confirms the day; the same screen as /lotus/cong-viec.
+// Công việc ngoài vườn (/work): the đội daily report on the phone. Tổ trưởng report on the phiếu giao of their own tổ at
+// the office (wifi); the đội trưởng gives việc theo lô (tab Giao việc), adds công nhật and confirms the day; the same
+// screens as /lotus/cong-viec.
 const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const api=(name,args={},write=false)=>call('lotus_farm.field_report.'+name,args,write)
-const tabs=['home','history','profile']
-const mobileTabs=[{name:'home',label:'Báo cáo',icon:'notes-o'},{name:'history',label:'Đã báo cáo',icon:'orders-o'},{name:'profile',label:'Tôi',icon:'user-o'}]
+const allTabs=[{name:'home',label:'Báo cáo',icon:'notes-o'},{name:'assign',label:'Giao việc',icon:'todo-list-o'},{name:'history',label:'Đã báo cáo',icon:'orders-o'},{name:'profile',label:'Tôi',icon:'user-o'}]
 const screen=ref('home'),session=ref(null),setup=ref(null),farm=ref(''),crew=ref(''),date=ref('')
 const busy=ref(false),saving=ref(false),error=ref(''),reports=ref([]),dayView=ref(null)
 const {dialog:leaveDialog,message:leaveMessage,ask:askLeave,finish:finishLeave}=useMobileConfirm()
-const mobileTitle=computed(()=>({home:'Báo cáo ngày',history:'Đã báo cáo',profile:'Tôi'})[screen.value])
+const mobileTitle=computed(()=>({home:'Báo cáo ngày',assign:'Giao việc theo lô',history:'Đã báo cáo',profile:'Tôi'})[screen.value])
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const crews=computed(()=>(setup.value?.crews||[]).filter(c=>(setup.value?.my_crews||[]).includes(c.name)))
 const crewOptions=computed(()=>crews.value.map(c=>({value:c.name,label:c.team_name})))
+// Giao việc shows only for a đội trưởng (or quản lý vườn).
+const supervises=computed(()=>(setup.value?.supervised_crews||[]).length>0)
+const mobileTabs=computed(()=>allTabs.filter(t=>t.name!=='assign'||supervises.value))
+const tabs=computed(()=>mobileTabs.value.map(t=>t.name))
 const crewName=name=>(setup.value?.crews||[]).find(c=>c.name===name)?.team_name||name
 const farmName=computed(()=>(session.value?.farms||[]).find(f=>f.name===farm.value)?.farm_name||farm.value||'Chọn vườn')
 
@@ -58,7 +63,7 @@ function confirmLeave(){
  return askLeave('Báo cáo có thay đổi chưa lưu. Rời màn hình sẽ mất phần đang nhập.')
 }
 async function changeTab(tab){
- if(saving.value||!tabs.includes(tab)||screen.value===tab||!await confirmLeave())return
+ if(saving.value||!tabs.value.includes(tab)||screen.value===tab||!await confirmLeave())return
  screen.value=tab;error.value='';window.scrollTo({top:0,behavior:'instant'})
  if(tab==='history')await loadHistory()
 }
@@ -94,6 +99,11 @@ onBeforeUnmount(()=>{finishLeave(false);window.removeEventListener('beforeunload
      </div>
      <LotusMobileFeedback v-if="setup&&!crewOptions.length" kind="warning">Tài khoản chưa là tổ trưởng hoặc đội trưởng của đội nào. Nhờ quản lý vườn xếp ở Báo cáo ngày → Đội, tổ &amp; lô.</LotusMobileFeedback>
      <FieldReportDay v-if="setup&&crew&&date" ref="dayView" :farm="farm" :crew="crew" :date="date" :setup="setup" mobile @busy-change="saving=$event"/>
+    </template>
+
+    <template v-else-if="screen==='assign'">
+     <div class="work-scope"><LotusField v-if="crewOptions.length>1" v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" mobile/></div>
+     <FieldAssignments v-if="setup&&crew" :farm="farm" :crew="crew" :setup="setup" mobile/>
     </template>
 
     <template v-else-if="screen==='history'">
