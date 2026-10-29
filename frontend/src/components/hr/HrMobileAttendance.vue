@@ -78,7 +78,7 @@ defineExpose({load})
   <button v-for="r in rows" :key="r.row_key||r.employee" type="button" class="hr-att__row" :class="'is-'+kind(r)" @click="open(r)">
    <span class="hr-att__who"><strong>{{r.employee_name}}</strong><small>{{KINDS[kind(r)]}}<template v-if="r.name"> · {{statusLabel(r.status)}}</template></small></span>
    <span class="hr-att__clock"><b>Sáng {{r.morning_time?hhmm(r.morning_time):r.morning_present?'Có':'—'}} · Chiều {{r.afternoon_time?hhmm(r.afternoon_time):r.afternoon_present?'Có':'—'}}</b><small>{{r.working_hours/8}} công</small>
-    <small><template v-if="r.machine?.late_minutes&&r.machine.late_entry">Muộn {{r.machine.late_minutes}}′ </template><template v-if="r.machine?.suggested_overtime">TC {{r.machine.suggested_overtime}}h</template><template v-if="r.machine?.needs_review">{{r.machine.reason}}</template></small></span>
+    <small v-if="r.machine?.needs_review">{{r.machine.reason}}</small></span>
   </button>
  </section>
  <p v-if="data&&!rows.length&&!busy" class="mobile-empty">Không có ai ở mục này.</p>
@@ -94,9 +94,8 @@ defineExpose({load})
    <template v-if="mode!=='shift'">
     <LotusMobileSelect v-model="form.morning_present" label="Sáng" :options="presenceOptions" :disabled="locked||!canEdit||person.legacy_conflict||person.status==='On Leave'||person.docstatus===1&&!canManage" @update:model-value="applyPresence(form)"/>
     <LotusMobileSelect v-model="form.afternoon_present" label="Chiều" :options="presenceOptions" :disabled="locked||!canEdit||person.legacy_conflict||person.status==='On Leave'||person.docstatus===1&&!canManage" @update:model-value="applyPresence(form)"/>
-    <LotusMobileInput v-model.number="form.overtime_hours" label="Giờ tăng ca" type="number" min="0" max="16" step="0.25" :disabled="form.status==='Absent'"/>
     <LotusMobileInput v-model="form.note" label="Ghi chú" maxlength="2000"/>
-    <LotusMobileInput v-if="mode==='correct'" v-model="form.reason" label="Lý do sửa" required minlength="5" placeholder="VD: tổ trưởng xác nhận tăng ca"/>
+    <LotusMobileInput v-if="mode==='correct'" v-model="form.reason" label="Lý do sửa" required minlength="5" placeholder="VD: tổ trưởng xác nhận có mặt"/>
    </template>
    <template v-else>
     <LotusMobileSelect v-model="form.shift" label="Ca mới" :options="[{value:'',label:'Không xếp ca'},...shifts.map(s=>({value:s.name,label:s.name+' · '+String(s.start_time).slice(0,5)+'–'+String(s.end_time).slice(0,5)}))]"/>

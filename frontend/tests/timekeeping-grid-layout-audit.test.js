@@ -6,7 +6,7 @@ const attendance=readFileSync(new URL('../src/TimekeepingApp.vue',import.meta.ur
 const styles=readFileSync(new URL('../src/timekeeping.css',import.meta.url),'utf8')
 const pager=readFileSync(new URL('../src/components/ui/pagination/Pagination.vue',import.meta.url),'utf8')
 
-test('attendance uses one checkbox column and links selection to employee-shift rows',()=>{
+test('attendance uses one checkbox column and links selection to employee-day rows',()=>{
  const columns=attendance.slice(attendance.indexOf('const attendanceColumns='),attendance.indexOf('const rowState='))
  assert.doesNotMatch(columns,/field:'selected',headerName:'Chọn'/)
  assert.doesNotMatch(attendance,/label="Chọn tất cả nhân viên đang hiện"/)
@@ -17,7 +17,7 @@ test('attendance uses one checkbox column and links selection to employee-shift 
  assert.match(attendance,/@selection-clear="clearAttendanceSelection"/)
  assert.match(attendance,/function chooseStaffRows\(rows,selectedValue\)/)
  assert.match(attendance,/const selected=computed\(\(\)=>staff.value.filter\(r=>r.selected\)\)/)
- assert.match(attendance,/const rows=selected.value.filter\(/)
+ assert.match(attendance,/const rows=staff.value.filter\(/)
 })
 test('two shared utility columns are compact and totals label is not placed in a checkbox cell',()=>{
  assert.match(table,/const selectDef=\{colId:'__lotus_select',headerName:'Chọn',width:42,minWidth:42,maxWidth:42/)

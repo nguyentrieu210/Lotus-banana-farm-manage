@@ -47,6 +47,15 @@
 .tk-roster .lotus-data-table__export .lotus-column-picker-trigger,
 .tk-roster .lotus-data-table__export button{min-height:30px}
 .tk-roster .lotus-data-table .ag-root-wrapper{border-radius:0 0 9px 9px}
+.tk-shell .workspace-list-row,.tk-shell .workspace-list-filters{flex-wrap:nowrap}
+.tk-shell .workspace-list-row{overflow-x:auto}
+.tk-shell .workspace-list-filters{flex:1;min-width:max-content}
+.tk-shell .workspace-list-filters .stock-search{flex:1;min-width:200px}
+.tk-daily-actions{margin:4px 0 10px}
+.tk-daily-tools:empty{display:none}
+.tk-daily-tools .lotus-data-table__export{padding:0;min-height:0;margin:0!important}
+.tk-daily-roster .lotus-data-table .ag-root-wrapper{border-radius:var(--lotus-radius-md)}
+.tk-daily-roster .ag-row.is-edited .ag-cell{background:var(--lotus-primary-subtle)}
 
 .tk-roster table{width:100%;min-width:980px;border-collapse:collapse;font-size:var(--lotus-text-md)}
 .tk-roster th{position:sticky;top:0;z-index:1;padding:8px 10px;text-align:left;font-size:var(--lotus-text-sm);font-weight:600;background:var(--lotus-table-header);color:var(--lotus-table-heading);border-bottom:1px solid var(--lotus-border);white-space:nowrap}

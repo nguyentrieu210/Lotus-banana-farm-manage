@@ -10,10 +10,10 @@ class PresenceRules(unittest.TestCase):
         return presence_status(self.day,[dict(time='2026-10-29 '+s,log_type='IN') for s in stamps])
 
     def test_one_morning_one_afternoon_is_one_day_even_if_both_labelled_in(self):
-        row=self.result('06:46:00','13:01:00')
+        row=self.result('06:46:00','17:01:00')
         self.assertEqual((row['status'],row['workdays'],row['working_hours']),('Present',1,8))
         self.assertIsNone(row['out_time'])
-        self.assertEqual(row['afternoon_time'],'2026-10-29 13:01:00')
+        self.assertEqual(row['afternoon_time'],'2026-10-29 17:01:00')
         self.assertEqual(row['overtime_hours'],0)
 
     def test_repeated_morning_stamps_only_count_half(self):
@@ -22,12 +22,17 @@ class PresenceRules(unittest.TestCase):
         self.assertEqual(row['morning_time'],'2026-10-29 06:46:00')
 
     def test_afternoon_only_and_repeated_exits_count_half(self):
-        row=presence_status(self.day,[dict(time='2026-10-29 '+s,log_type='OUT') for s in ['13:00:00','17:00:00']])
+        row=presence_status(self.day,[dict(time='2026-10-29 '+s,log_type='OUT') for s in ['17:01:00','18:00:00']])
         self.assertEqual((row['status'],row['workdays']),('Half Day',.5))
 
-    def test_midday_belongs_to_one_session_and_other_dates_do_not_count(self):
-        row=presence_status(self.day,[dict(time='2026-10-29 12:00:00'),dict(time='2026-10-28 07:00:00')])
-        self.assertEqual((row['morning_present'],row['afternoon_present'],row['workdays']),(0,1,.5))
+    def test_midday_and_other_dates_do_not_count(self):
+        row=presence_status(self.day,[dict(time='2026-10-29 12:00:00'),dict(time='2026-10-28 06:30:00')])
+        self.assertEqual((row['morning_present'],row['afternoon_present'],row['workdays']),(0,0,0))
+
+    def test_strict_seven_and_seventeen_boundaries(self):
+        self.assertEqual(self.result('06:59:59')['workdays'],.5)
+        self.assertEqual(self.result('07:00:00','07:00:01','16:59:59','17:00:00')['workdays'],0)
+        self.assertEqual(self.result('17:00:01')['workdays'],.5)
 
     def test_no_punches_is_zero_and_no_late_exit_overtime_is_invented(self):
         self.assertEqual(self.result()['workdays'],0)

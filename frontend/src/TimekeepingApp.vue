@@ -15,6 +15,7 @@ import MonthPicker from './components/MonthPicker.vue'
 import TkMonthSheet from './components/timekeeping/TkMonthSheet.vue'
 import TkSetup from './components/timekeeping/TkSetup.vue'
 import TkCorrection from './components/timekeeping/TkCorrection.vue'
+import TkDailyDetails from './components/timekeeping/TkDailyDetails.vue'
 import {Button as UiButton} from './components/ui/button'
 import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuSeparator} from './components/ui/dropdown-menu'
 import {useNoticeToast} from './use-toast'
@@ -22,7 +23,7 @@ import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
 import {unitLabel} from './units'
 import {formatDate} from './format'
-import {applyPresence,presencePayload} from './attendance-presence'
+import {applyPresence,presenceDays,presencePayload} from './attendance-presence'
 
 // /lotus/cham-cong: daily staff attendance (HRMS Attendance, filled from device check-ins), contractor crew sheets,
 // the month sheet and setup. Drafts are reviewed and submitted here; a closed month is read-only.
@@ -48,6 +49,11 @@ const dirty=computed(()=>staff.value.some(r=>r.edited))
 const locked=computed(()=>!!dayInfo.value.period_closed)
 const canEditStaff=computed(()=>!locked.value&&!!(cap.value.Attendance?.create||cap.value.Attendance?.write))
 const selected=computed(()=>staff.value.filter(r=>r.selected))
+const editedCount=computed(()=>staff.value.filter(r=>r.edited).length)
+const attendanceTools=ref(null),detailRow=ref(null)
+function openDetails(row){detailRow.value=row}
+async function saveDetails(){if(await saveStaff())detailRow.value=null}
+function correctDetails(row){detailRow.value=null;openCorrection(row)}
 const rowKey=row=>row.row_key||row.employee
 const hasChanges=()=>dirty.value||(crewDialog.value.open&&crewSnapshot()!==crewBaseline.value)||(masterDialog.value.open&&JSON.stringify(master)!==masterBaseline.value)||!!setup.value?.hasChanges?.()||!!correction.value?.hasChanges?.()
 const correction=ref(null)
@@ -75,7 +81,8 @@ const attendanceCellActions={
  useMachine:row=>useMachine(row),
  openCorrection:row=>openCorrection(row),
  rowState:row=>rowState(row),
- stateLabel:v=>stateLabel[v]||v
+ stateLabel:v=>stateLabel[v]||v,
+ openDetails
 }
 const attendanceRowClass=row=>[
  row.machine?.needs_review?'attendance-review':'',
@@ -83,22 +90,20 @@ const attendanceRowClass=row=>[
  row.selected?'is-selected':''
 ].filter(Boolean).join(' ')
 const attendanceColumns=[
- {field:'employee_name',headerName:'Nhân viên',minWidth:220,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
- {field:'morning_present',headerName:'Sáng',width:140,minWidth:140,maxWidth:140,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
- {field:'afternoon_present',headerName:'Chiều',width:140,minWidth:140,maxWidth:140,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
- {field:'workdays',headerName:'Công',minWidth:90,valueGetter:p=>Number(p.data.working_hours||0)/8},
- {field:'overtime_hours',headerName:'Tăng ca',minWidth:130,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
- {field:'note',headerName:'Ghi chú',minWidth:200,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
- {field:'row_state',headerName:'Phiếu',minWidth:180,valueGetter:p=>stateLabel[rowState(p.data)],cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions}
+ {field:'employee_name',headerName:'Nhân viên',minWidth:160,flex:1,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'morning_present',headerName:'Sáng · ½',headerTooltip:'Trước 07:00 · ½ công',width:104,minWidth:104,maxWidth:104,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'afternoon_present',headerName:'Chiều · ½',headerTooltip:'Sau 17:00 · ½ công',width:104,minWidth:104,maxWidth:104,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
+ {field:'workdays',headerName:'Công',width:72,minWidth:72,maxWidth:72,flex:0,valueGetter:p=>Number(p.data.working_hours||0)/8},
+ {field:'row_state',headerName:'Trạng thái',width:154,minWidth:154,maxWidth:154,flex:0,valueGetter:p=>stateLabel[rowState(p.data)],cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions}
 ]
 
 const rowState=r=>r.legacy_conflict?'review':r.docstatus===1?'approved':r.edited?'draft':r.machine?.needs_review?'review':r.matches?'matching':!r.name?(r.morning_present||r.afternoon_present?'partial':'empty'):'draft'
 const stateLabel={empty:'Chưa chấm',partial:'Nửa công',draft:'Nháp',approved:'Đã duyệt',review:'Cần kiểm tra',matching:'Khớp máy'}
 const counts=computed(()=>{const c={all:staff.value.length,empty:0,partial:0,draft:0,approved:0,review:0,matching:0};for(const r of staff.value)c[rowState(r)]++;return c})
-const views=computed(()=>[['all','Tất cả'],...(counts.value.matching?[['matching','Khớp máy']]:[]),...(counts.value.partial?[['partial','Nửa công']]:[]),...(counts.value.review?[['review','Cần kiểm tra']]:[]),['empty','Chưa chấm'],['draft','Nháp'],['approved','Đã duyệt']])
+const views=computed(()=>[['all','Tất cả',staff.value.length],['full','Đủ công',staff.value.filter(r=>presenceDays(r)===1).length],['partial','Nửa công',staff.value.filter(r=>presenceDays(r)===.5).length],['empty','Chưa chấm',counts.value.empty],['draft','Nháp',counts.value.draft],['approved','Đã duyệt',counts.value.approved],...(counts.value.review?[['review','Cần kiểm tra',counts.value.review]]:[])].map(([value,label,count])=>({value,label:label+' ('+count+')'})))
 // Rows needing a decision come first: device problems, then hand-edited drafts, then the rest.
 const rank=r=>r.machine?.needs_review&&r.docstatus===0?0:r.manual?1:r.matches?2:r.docstatus===1?4:3
-const shown=computed(()=>(view.value==='all'?staff.value:staff.value.filter(r=>rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
+const shown=computed(()=>(view.value==='all'?staff.value:staff.value.filter(r=>view.value==='full'?presenceDays(r)===1:view.value==='partial'?presenceDays(r)===.5:rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
 const allChecked=computed(()=>shown.value.length>0&&shown.value.every(r=>r.selected))
 
 const genderLabel=name=>({Male:'Nam',Female:'Nữ',Other:'Khác',Transgender:'Chuyển giới',Genderqueer:'Phi nhị nguyên',"Prefer not to say":'Không khai báo'})[name]||hrCatalogLabel(name)
@@ -150,7 +155,7 @@ async function init(){busy.value=true
 async function changeCompany(){farm.value='';shift.value='';staff.value=[];await loadCatalog();await load()}
 function chooseTab(value){if(hasChanges()){error.value='Lưu hoặc bỏ thay đổi trước khi chuyển màn hình.';return}tab.value=value;notice.value='';load()}
 
-function edit(row){row.selected=true;row.edited=true}
+function edit(row){row.edited=true}
 function chooseStatus(row){const s=catalog.value.shifts.find(s=>s.name===row.shift);const minutes=v=>{const p=String(v).split(':').map(Number);return p[0]*60+p[1]};const duration=s?((minutes(s.end_time)-minutes(s.start_time)+1440)%1440)/60||8:8;row.working_hours=row.status==='Half Day'?duration/2:row.status==='Absent'?0:duration;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
 function markPresent(){for(const row of staff.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.name&&!row.morning_present&&!row.afternoon_present){row.morning_present=1;row.afternoon_present=1;applyPresence(row);edit(row)}}
 // The shared table owns the single tick column; keep the existing timekeeping
@@ -171,10 +176,10 @@ function useMachine(row){const p=row.machine;if(!p?.status||row.docstatus!==0)re
  Object.assign(row,{...presencePayload(p),status:p.status,working_hours:p.working_hours,overtime_hours:p.suggested_overtime});edit(row)}
 async function askMatching(){if(dirty.value||!dayInfo.value.counts.matching)return;const rows=staff.value.filter(r=>r.matches).map(r=>({row_key:r.row_key,review_hash:r.review_hash}));confirmation.value={type:'matching',action:'submit',count:rows.length,reviewed_rows:rows};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function saveStaff(){
- const rows=selected.value.filter(r=>r.docstatus===0&&r.status&&r.status!=='On Leave')
+ const rows=staff.value.filter(r=>r.edited&&r.docstatus===0&&r.status&&r.status!=='On Leave'&&!r.legacy_conflict)
  if(!rows.length){error.value='Chọn nhân viên và trạng thái để lưu nháp.';return}
  saving.value=true;error.value=''
- try{await api('save_staff',{company:company.value,date:date.value,daily_presence:1,client_event_id:eventId.value,rows:rows.map(r=>({employee:r.employee,name:r.name,modified:r.modified,...presencePayload(r),overtime_hours:r.overtime_hours||0,note:r.note}))},true);notice.value='Đã lưu '+rows.length+' dòng công nháp.';await load()}
+ try{await api('save_staff',{company:company.value,date:date.value,daily_presence:1,client_event_id:eventId.value,rows:rows.map(r=>({employee:r.employee,name:r.name,modified:r.modified,...presencePayload(r),overtime_hours:r.overtime_hours||0,note:r.note}))},true);notice.value='Đã lưu '+rows.length+' dòng công nháp.';await load();return true}
  catch(e){error.value=e.message}finally{saving.value=false}}
 async function askStaff(action){
  const rows=selected.value
@@ -220,6 +225,7 @@ useNoticeToast(notice)
    <LotusField v-else-if="tab==='month'" v-model="month" aria-label="Tháng" type="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @update:model-value="load"/>
    <LotusField v-if="['crew','month'].includes(tab)" v-model="farm" aria-label="Vườn" :options="catalog.farms.map(f=>({value:f.name,label:f.farm_name}))" :searchable="false" empty-option="Tất cả được phân quyền" :disabled="busy||saving" @update:model-value="load"/>
    <LotusField v-if="tab==='staff'" v-model="search" aria-label="Tìm nhân viên" class="stock-search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/>
+   <LotusField v-if="tab==='staff'" v-model="view" aria-label="Lọc công" :options="views" :searchable="false" :empty-option="null"/>
    </template>
   </WorkspaceListToolbar>
 
@@ -227,16 +233,15 @@ useNoticeToast(notice)
    <p v-if="locked" class="tk-banner is-lock" role="status"><LotusIcon name="lock"/>Tháng {{date.slice(0,7)}} đã khóa công. Chỉ xem; HR Manager mở lại kỳ ở Hồ sơ nhân sự › Kỳ công & bảng lương.</p>
    <p v-if="!locked&&dayInfo.holiday" class="tk-banner is-holiday" role="status"><LotusIcon name="flag"/>{{dayInfo.holiday.weekly_off?'Ngày nghỉ hằng tuần':'Ngày lễ: '+dayInfo.holiday.description}}. Giờ làm ngày này tính hệ số {{dayInfo.holiday.weekly_off?'200%':'300%'}}.</p>
    <p v-else-if="!locked&&!dayInfo.has_calendar" class="tk-banner is-info" role="status"><LotusIcon name="calendar"/>Chưa có lịch nghỉ năm nay. Tạo ở tab Thiết lập › Lịch nghỉ năm để tính lễ và khóa kỳ.</p>
-   <div class="tk-views" role="tablist" aria-label="Lọc theo trạng thái công"><UiButton v-for="[id,label] in views" :key="id" type="button" variant="ghost" role="tab" :aria-selected="view===id?'true':'false'" :class="['is-'+id,{active:view===id}]" @click="view=id">{{label}}<strong>{{counts[id]}}</strong></UiButton></div>
-   <div class="attendance-toolbar tk-actions">
-    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt {{dayInfo.counts.matching}} dòng khớp máy</UiButton>
-    <span v-if="dayInfo.synced" class="tk-hint tk-synced">Máy chấm: đã cập nhật {{dayInfo.synced.synced}} lượt mới{{dayInfo.synced.needs_review?', '+dayInfo.synced.needs_review+' lượt chưa ghép được':''}}</span>
+   <div class="attendance-toolbar tk-actions tk-daily-actions">
+    <UiButton v-if="canEditStaff" variant="outline" :disabled="saving||busy||!selected.length" title="Chấm sáng cho các nhân viên đã chọn" @click="markSession('morning')">Chấm sáng</UiButton>
+    <UiButton v-if="canEditStaff" variant="outline" :disabled="saving||busy||!selected.length" title="Chấm chiều cho các nhân viên đã chọn" @click="markSession('afternoon')">Chấm chiều</UiButton>
+    <div ref="attendanceTools" class="tk-daily-tools"></div>
     <span class="tk-actions__spacer"></span>
-    <span v-if="selected.length" class="tk-actions__count">Đã chọn {{selected.length}}</span>
-    <UiButton v-if="canEditStaff&&selected.length" variant="outline" :disabled="saving||busy" @click="markSession('morning')">Chấm sáng</UiButton>
-    <UiButton v-if="canEditStaff&&selected.length" variant="outline" :disabled="saving||busy" @click="markSession('afternoon')">Chấm chiều</UiButton>
+    <span v-if="editedCount" class="tk-actions__count">{{editedCount}} thay đổi</span>
+    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" variant="outline" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt khớp máy ({{dayInfo.counts.matching}})</UiButton>
     <UiButton v-if="canEditStaff" :disabled="saving||busy||!dirty" @click="saveStaff">Lưu nháp</UiButton>
-    <UiButton v-if="cap.Attendance?.submit&&!locked" variant="outline" :disabled="saving||!selected.length||dirty" :title="dirty?'Lưu nháp trước khi duyệt':''" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
+    <UiButton v-if="cap.Attendance?.submit&&!locked&&selected.length" variant="outline" :disabled="saving||busy||dirty" :title="dirty?'Lưu nháp trước khi duyệt':''" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
     <DropdownMenu v-if="!locked&&(cap.Attendance?.create||cap.Attendance?.cancel||cap.Attendance?.delete||dirty)">
      <DropdownMenuTrigger as-child><UiButton variant="outline" aria-label="Thao tác khác"><LotusIcon name="more"/></UiButton></DropdownMenuTrigger>
      <DropdownMenuContent align="end">
@@ -247,8 +252,8 @@ useNoticeToast(notice)
      </DropdownMenuContent>
     </DropdownMenu>
    </div>
-   <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
-    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="row_key" storage-key="timekeeping-attendance" :row-class="attendanceRowClass"
+   <section class="stock-panel attendance-roster tk-roster tk-daily-roster" aria-label="Bảng chấm công trong ngày">
+    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" :loading="busy" row-key="row_key" storage-key="timekeeping-daily-simple-v1" :row-class="attendanceRowClass" :columns-menu="false" :exportable="false" :tools-target="attendanceTools" interactive @open="openDetails"
       :selected-row-keys="selected.map(rowKey)" @row-selection-change="selectAttendanceRow" @page-selection-change="selectAttendancePage" @selection-clear="clearAttendanceSelection" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
@@ -322,6 +327,7 @@ useNoticeToast(notice)
   </FormGrid>
  </ModalForm>
 
+ <TkDailyDetails :row="detailRow" :busy="saving||busy" :editable="canEditStaff" :can-correct="canCorrect" @close="detailRow=null" @edit="edit" @presence="row=>{applyPresence(row);edit(row)}" @machine="useMachine" @save="saveDetails" @correct="correctDetails"/>
  <TkCorrection ref="correction" v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
  <ModalForm v-model="confirmDialog.open" :title="confirmation?.type==='matching'?'Duyệt công khớp máy chấm':confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'" :busy="saving" :error="error" width="560px" cancel-label="Quay lại" submit-label="Xác nhận" @submit="act">
   <p v-if="confirmation?.type==='staff'">{{confirmation.rows.length}} phiếu công đã chọn.</p>

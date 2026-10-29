@@ -30,23 +30,23 @@ const row=(root,name)=>[...root.querySelectorAll('.attendance-roster .ag-row')].
 
 test('the board shows morning and afternoon on one daily row and approves that day once',async()=>{
  calls.length=0
- const machine={checkins:2,status:'Present',working_hours:8.6,in_time:'2026-10-14 06:12:00',out_time:'2026-10-14 14:50:00',late_entry:1,early_exit:0,needs_review:0,reason:'',
+ const machine={checkins:2,status:'Present',working_hours:8.6,in_time:'2026-10-14 06:12:00',out_time:'2026-10-14 17:50:00',late_entry:1,early_exit:0,needs_review:0,reason:'',
   late_minutes:12,early_minutes:0,after_minutes:50,suggested_overtime:0.75,clean:true,shift:'Ca 1'}
  routes={...base({period_closed:false,counts:{matching:1,review:1,manual:0}}),
   'lotus_farm.attendance_day.approve_matching':{approved:1,names:['HR-ATT-1']}}
  const rows=routes['lotus_farm.attendance_day.board'].rows
- rows[0]={...rows[0],matches:true,machine,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 14:50:00',working_hours:8}
+ rows[0]={...rows[0],matches:true,machine,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 17:50:00',working_hours:8}
  rows[1]={...rows[1],morning_present:1,working_hours:4,morning_time:'2026-10-14 07:05:00',machine:{checkins:1,status:'Half Day',needs_review:0,clean:false}}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
  assert.equal(calls.find(c=>c.method==='lotus_farm.attendance_day.board').args.date,'2026-10-14')
  for(let i=0;i<12&&view.root.querySelectorAll('.attendance-roster .ag-row strong').length<2;i++)await tick()
  const first=[...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent)
  assert.deepEqual(first,['An','Bình'],'a complete daily match is ready before a partial day')
- assert.match(row(view.root,'An').textContent,/06:12.*14:50/)
- assert.equal(row(view.root,'An').querySelectorAll('[role=checkbox][data-state=checked]').length,2)
- assert.equal(row(view.root,'Bình').querySelectorAll('[role=checkbox][data-state=checked]').length,1)
+ assert.match(row(view.root,'An').textContent,/06:12.*17:50/)
+ assert.equal(row(view.root,'An').querySelectorAll('.tk-presence-toggle[aria-pressed=true]').length,2)
+ assert.equal(row(view.root,'Bình').querySelectorAll('.tk-presence-toggle[aria-pressed=true]').length,1)
  assert.ok(!row(view.root,'Bình').classList.contains('attendance-review'),'one morning stamp is valid half-day presence')
- button(view.root.querySelector('.attendance-toolbar'),'Duyệt 1 dòng khớp máy').click();await tick()
+ button(view.root.querySelector('.attendance-toolbar'),'Duyệt khớp máy (1)').click();await tick()
  assert.match(document.body.textContent,/mỗi buổi 0,5 công/)
  /* the confirmation is the standard dialog, rendered on <body> */document.querySelector('dialog[open] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
  assert.ok(calls.some(c=>c.method==='lotus_farm.attendance_day.approve_matching'&&c.args.date==='2026-10-14'))
@@ -55,13 +55,16 @@ test('the board shows morning and afternoon on one daily row and approves that d
 
 test('using device presence changes one daily row and sends the actual two stamps',async()=>{
  calls.length=0
- const machine={checkins:2,status:'Present',working_hours:8,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 14:50:00',needs_review:0,suggested_overtime:0,clean:true}
+ const machine={checkins:2,status:'Present',working_hours:8,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 17:50:00',needs_review:0,suggested_overtime:0,clean:true}
  routes={...base({period_closed:false,counts:{matching:0,review:0,manual:1}}),'lotus_farm.timekeeping.save_staff':{names:['HR-ATT-1']}}
  const rows=routes['lotus_farm.attendance_day.board'].rows
  rows[0]={...rows[0],name:'HR-ATT-1',modified:'m',status:'Present',working_hours:7,manual:true,machine}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
- assert.match(row(view.root,'An').textContent,/Đã chỉnh tay, khác máy/)
- button(row(view.root,'An'),'Dùng số máy').click();await tick()
+ view.root.querySelector('[aria-label="Chi tiết công An"]').click();await tick()
+ assert.match(document.querySelector('.lotus-sheet').textContent,/Đã chỉnh tay, khác máy/)
+ assert.ok(!document.querySelector('.lotus-sheet input[type=number]'),'no overtime input in daily attendance')
+ button(document.querySelector('.lotus-sheet'),'Dùng số máy').click();await tick()
+ button(document.querySelector('.lotus-sheet'),'Đóng').click();await tick()
  button(view.root.querySelector('.attendance-toolbar'),'Lưu nháp').click();await tick()
  const save=calls.find(c=>c.method==='lotus_farm.timekeeping.save_staff')
  assert.equal(save.args.daily_presence,1)
@@ -79,14 +82,14 @@ test('a closed month is read-only',async()=>{
  view.unmount()
 })
 
-test('status chips filter the roster and the month sheet shades days off',async()=>{
+test('status filter narrows the roster and the month sheet shades days off',async()=>{
  routes={...base({period_closed:false}),'lotus_farm.timekeeping.monthly':{month:'2026-10',days:31,rows:[{employee:'E1',employee_name:'An',days:{'1':[{status:'Present',docstatus:1}],'2':[{status:'Absent',docstatus:0}]},workdays:1,working_hours:8,overtime_hours:0,draft_count:1}],holidays:{'4':1,'20':0},period_closed:true},'lotus_farm.timekeeping.crew_monthly':{month:'2026-10',days:31,rows:[],holidays:{}}}
  routes['lotus_farm.attendance_day.board'].rows[0]={...routes['lotus_farm.attendance_day.board'].rows[0],name:'ATT-1',status:'Present',docstatus:1}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
- const chip=label=>[...view.root.querySelectorAll('.tk-views button')].find(b=>b.textContent.startsWith(label))
- chip('Đã duyệt').click();await tick();await tick();await tick()
+ const filter=value=>{const el=view.root.querySelector('select[aria-label="Lọc công"]');el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}))}
+ filter('approved');await tick();await tick();await tick()
  assert.deepEqual([...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent),['An'])
- chip('Chưa chấm').click();await tick();await tick();await tick()
+ filter('empty');await tick();await tick();await tick()
  assert.deepEqual([...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent),['Bình'])
  ;[...view.root.querySelectorAll('[role=tab]')].find(b=>b.textContent==='Bảng công tháng').click();await tick();await tick()
  const head=day=>view.root.querySelector('.tk-sheet .ag-header-cell[col-id="day_'+day+'"]')

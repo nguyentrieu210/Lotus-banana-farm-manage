@@ -7,7 +7,7 @@ import frappe
 from frappe.utils import cint, flt, get_datetime, getdate, nowdate
 from lotus_farm import timekeeping as t
 from lotus_farm.controls import lock
-from lotus_farm.presence_rules import presence_status
+from lotus_farm.presence_rules import POLICY,presence_session,presence_status
 
 FIELDS=['name','employee','status','working_hours','docstatus','modified','shift','in_time','out_time',
     'lotus_note','lotus_overtime_hours','lotus_presence_mode','lotus_morning_present','lotus_afternoon_present',
@@ -24,7 +24,7 @@ def values(day,entry):
         stamp=entry.get(session+'_time') if flag else None
         if stamp:
             stamp=get_datetime(stamp)
-            if stamp.date()!=day or (stamp.hour<12)!=(session=='morning'):
+            if stamp.date()!=day or presence_session(stamp)!=session:
                 frappe.throw('Giờ chấm không thuộc buổi/ngày công đã chọn.')
         result[session+'_present']=flag
         result[session+'_time']=str(stamp) if stamp else None
@@ -96,7 +96,7 @@ def board(company,date,search=None,sync=1):
         proposal=presence_status(day,punches.get(person.name,[])) if readable else None
         if proposal:
             proposal['clean']=bool(proposal['morning_present'] and proposal['afternoon_present'] or
-                (day<getdate(nowdate()) and proposal['checkins']))
+                (day<getdate(nowdate()) and proposal['workdays']>0))
         row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,
             row_key=person.name,name=None,modified=None,status='',working_hours=0,overtime_hours=0,note='',docstatus=0,
             shift=None,in_time=None,out_time=None,late_entry=0,early_exit=0,daily_presence=True,records=docs,
@@ -124,7 +124,7 @@ def board(company,date,search=None,sync=1):
         row.update(machine=proposal,manual=bool(record and proposal and not same),
             matches=bool(proposal and proposal['clean'] and same and row['docstatus']==0 and not docs[1:] and not closed))
         row['workdays']=round(row['working_hours']/8,3)
-        row['review_hash']=hashlib.sha256(json.dumps(dict(row_key=row['row_key'],records=docs,evidence=punches.get(person.name,[])),
+        row['review_hash']=hashlib.sha256(json.dumps(dict(policy=POLICY,row_key=row['row_key'],records=docs,evidence=punches.get(person.name,[])),
             sort_keys=True,default=str).encode()).hexdigest()
         counts['matching']+=row['matches'];counts['review']+=row['legacy_conflict'];counts['manual']+=row['manual']
         result.append(row)
