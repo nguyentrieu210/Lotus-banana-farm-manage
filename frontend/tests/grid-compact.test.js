@@ -71,3 +71,17 @@ test('a list page puts Cột hiển thị and Xuất Excel on the toolbar row',a
  assert.equal(view.root.querySelectorAll('.lotus-data-table__export').length,1,'no second row of tools above the grid')
  view.unmount()
 })
+
+test('a short last page of a paged list keeps the grid height, so the pager does not move under the cursor',async()=>{
+ const ListPage=await load('components/ListPage.vue')
+ const rows=Array.from({length:8},(_,i)=>({name:'R'+i,amount:i}))
+ const columns=[{field:'name',headerName:'Mã'},{field:'amount',headerName:'Số tiền'}]
+ const last=mount(ListPage,{rows,columns,rowKey:'name',paged:true,start:100,total:108})
+ await settle()
+ assert.ok(last.root.querySelector('.lotus-ag-grid-shell--scroll'),'last page keeps the fixed-height grid')
+ last.unmount()
+ const single=mount(ListPage,{rows,columns,rowKey:'name',paged:true,start:0,total:8})
+ await settle()
+ assert.equal(single.root.querySelector('.lotus-ag-grid-shell--scroll'),null,'a one-page list still fits its rows')
+ single.unmount()
+})
