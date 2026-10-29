@@ -1,0 +1,176 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Work Assignment",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "farm_block",
+  "sort_field": "assigned_on",
+  "field_order": [
+    "kind",
+    "company",
+    "farm",
+    "crew",
+    "work_team",
+    "farm_block",
+    "work_type",
+    "assigned_on",
+    "due_date",
+    "state",
+    "ended_on",
+    "done_report",
+    "done_line",
+    "done_date",
+    "cancel_reason",
+    "assigned_by"
+  ],
+  "fields": [
+    {
+      "fieldname": "kind",
+      "fieldtype": "Select",
+      "label": "Loại giao",
+      "options": "Round\nBunch",
+      "default": "Round",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "options": "Company",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "crew",
+      "fieldtype": "Link",
+      "label": "Đội",
+      "options": "Work Team",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_team",
+      "fieldtype": "Link",
+      "label": "Tổ",
+      "options": "Work Team",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô",
+      "options": "Farm Block",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_type",
+      "fieldtype": "Link",
+      "label": "Công việc",
+      "options": "Work Type",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "assigned_on",
+      "fieldtype": "Date",
+      "label": "Ngày giao",
+      "reqd": 1
+    },
+    {
+      "fieldname": "due_date",
+      "fieldtype": "Date",
+      "label": "Hạn xong"
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Open\nDone\nCancelled\nEnded",
+      "default": "Open",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "ended_on",
+      "fieldtype": "Date",
+      "label": "Ngày kết thúc giao"
+    },
+    {
+      "fieldname": "done_report",
+      "fieldtype": "Link",
+      "label": "Báo cáo xong",
+      "options": "Lotus Field Report",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "done_line",
+      "fieldtype": "Data",
+      "label": "Dòng báo xong",
+      "read_only": 1
+    },
+    {
+      "fieldname": "done_date",
+      "fieldtype": "Date",
+      "label": "Ngày xong",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancel_reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do huỷ / đổi"
+    },
+    {
+      "fieldname": "assigned_by",
+      "fieldtype": "Link",
+      "label": "Người giao",
+      "options": "User",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ]
+}

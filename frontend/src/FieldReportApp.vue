@@ -9,6 +9,8 @@ import {normalizeFieldView} from './field-report-navigation.js'
 import {reportStates,payShort,basisLabels,money,amountText} from './field-report-model.js'
 import {unitLabel} from './units'
 import FieldReportDay from './components/field/FieldReportDay.vue'
+import FieldAssignments from './components/field/FieldAssignments.vue'
+import FieldBoard from './components/field/FieldBoard.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
 import LotusField from './components/form/LotusField.vue'
@@ -18,7 +20,8 @@ import FormSection from './components/form/FormSection.vue'
 import {Button as UiButton} from './components/ui/button'
 import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import {useWorkspaceConfirm} from './use-workspace-confirm'
-// Công việc vườn: the đội daily report (báo cáo ngày), its lists, the month's tiền khoán and the giao lô setup.
+// Công việc vườn: the đội daily report (báo cáo ngày), giao việc theo lô and the lô × việc board, its lists, the month's
+// tiền khoán and the giao lô setup.
 const {desktop,density,gridDensity}=useDesktopWorkspace({embedded:props.embedded})
 provide('lotusDesktopDensity',gridDensity)
 const router=inject(routerKey,null),route=inject(routeLocationKey,null)
@@ -176,14 +179,16 @@ defineExpose({hasChanges:()=>!!dayView.value?.hasChanges(),discardChanges:()=>{}
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="view==='day'">
+    <template v-if="['day','assign','board'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
-      <LotusField v-model="day" label="Ngày" type="date"/>
+      <LotusField v-if="view==='day'" v-model="day" label="Ngày" type="date"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
-     <FieldReportDay v-if="crew&&day" ref="dayView" :farm="farm" :crew="crew" :date="day" :setup="setup"/>
+     <FieldReportDay v-if="view==='day'&&crew&&day" ref="dayView" :farm="farm" :crew="crew" :date="day" :setup="setup"/>
+     <FieldAssignments v-else-if="view==='assign'&&crew" :farm="farm" :crew="crew" :setup="setup"/>
+     <FieldBoard v-else-if="view==='board'&&crew" v-model:month="month" :farm="farm" :crew="crew"/>
     </template>
 
     <ListPage v-else-if="view==='reports'" v-model:search="search" title="Danh sách báo cáo" :rows="filtered" :columns="reportColumns" :loading="loading" row-key="name" storage-key="field-reports" interactive @open="openReport" @refresh="loadView">

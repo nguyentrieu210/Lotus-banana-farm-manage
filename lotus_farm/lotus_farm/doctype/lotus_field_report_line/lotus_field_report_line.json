@@ -7,6 +7,7 @@
   "field_order": [
     "line_id",
     "section",
+    "assignment",
     "work_type",
     "pay_kind",
     "work_team",
@@ -18,6 +19,7 @@
     "workdays_pm",
     "workdays",
     "qty",
+    "done",
     "uom",
     "whole_lot",
     "lot_area_ha",
@@ -25,9 +27,11 @@
     "piece_rate",
     "rate",
     "amount",
+    "paid_qty",
     "under_norm",
     "under_norm_reason",
     "bunch_tag",
+    "over_cut",
     "comment",
     "proposal",
     "note",
@@ -203,6 +207,30 @@
       "ignore_user_permissions": 1,
       "options": "User",
       "read_only": 1
+    },
+    {
+      "fieldname": "assignment",
+      "fieldtype": "Link",
+      "label": "Phiếu giao",
+      "options": "Lotus Work Assignment",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "done",
+      "fieldtype": "Check",
+      "label": "Xong lô",
+      "default": "0"
+    },
+    {
+      "fieldname": "paid_qty",
+      "fieldtype": "Float",
+      "label": "Khối lượng tính tiền"
+    },
+    {
+      "fieldname": "over_cut",
+      "fieldtype": "Check",
+      "label": "Vượt số cắt bắp",
+      "default": "0"
     }
   ],
   "permissions": []
