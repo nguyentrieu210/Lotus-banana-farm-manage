@@ -10,6 +10,9 @@ ARG BASE_IMAGE=lotus-hr-cccd-fullframe:v3-20261019
 FROM ${BASE_IMAGE}
 ARG REVISION=unknown
 USER root
+# Code is replaced, not overlaid: everything in the package except public/ (old hashed assets) is removed first, so
+# DocTypes and modules deleted from the repo do not survive in the image and get re-synced by migrate.
+RUN cd /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm && find . -mindepth 1 -maxdepth 1 ! -name public -exec rm -rf {} +
 COPY --chown=frappe:root app/ /home/frappe/frappe-bench/apps/lotus_farm/
 COPY --chown=frappe:root downloads/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/
 RUN /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/lotus_farm/deployment/fix-websocket-origin.py
