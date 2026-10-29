@@ -28,6 +28,7 @@ test('managers pick cells and set one change per run; the grid reloads',async()=
  calls.length=0
  routes={[A+'roster']:grid(true),[A+'set_roster']:{applied:[{employee:'E2'}],errors:[],warnings:[{employee:'E2',message:'Bình: 1 ngày đã có công theo ca cũ — kiểm tra lại công các ngày đó.'}]}}
  const view=mount(Roster,{company:'Lotus',today:'2026-10-14',shifts});await tick();await tick()
+ for(let i=0;i<20&&!cell(view.root,'Bình 13/10');i++)await tick()
  assert.equal(calls[0].args.start,'2026-10-12','the week starts on Monday')
  for(const d of ['12/10','13/10']){const c=cell(view.root,'Bình '+d);c.dispatchEvent(new Event('pointerdown',{bubbles:true}));window.dispatchEvent(new Event('pointerup'))}
  await tick()
@@ -62,6 +63,7 @@ test('editing a shift sends its id and version, and says approved days keep thei
  assert.match(body,/qua đêm/,'night shift is explained')
  assert.match(body,/Công đã duyệt giữ nguyên giờ ca lúc chấm/)
  document.body.querySelector('.tk-shift-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
+ for(let i=0;i<20&&!calls.some(c=>c.method===A+'update_shift');i++)await tick()
  const sent=calls.find(c=>c.method===A+'update_shift')
  assert.equal(sent.args.name,'Ca 3');assert.equal(sent.args.modified,'v1');assert.equal(sent.args.values.start_time,'22:00')
  view.unmount()

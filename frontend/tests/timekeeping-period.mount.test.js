@@ -28,34 +28,34 @@ const text=root=>root.textContent.replace(/\s+/g,' ')
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
 const row=(root,name)=>[...root.querySelectorAll('.attendance-roster .ag-row')].find(tr=>tr.textContent.includes(name))
 
-test('the board shows the device reading with minutes, and approves only matching rows in one step',async()=>{
+test('the board shows morning and afternoon on one daily row and approves that day once',async()=>{
  calls.length=0
  const machine={checkins:2,status:'Present',working_hours:8.6,in_time:'2026-10-14 06:12:00',out_time:'2026-10-14 14:50:00',late_entry:1,early_exit:0,needs_review:0,reason:'',
   late_minutes:12,early_minutes:0,after_minutes:50,suggested_overtime:0.75,clean:true,shift:'Ca 1'}
  routes={...base({period_closed:false,counts:{matching:1,review:1,manual:0}}),
   'lotus_farm.attendance_day.approve_matching':{approved:1,names:['HR-ATT-1']}}
  const rows=routes['lotus_farm.attendance_day.board'].rows
- rows[0]={...rows[0],matches:true,machine}
- rows[1]={...rows[1],machine:{checkins:1,status:'',in_time:'2026-10-14 07:05:00',out_time:null,needs_review:1,reason:'Thiếu lượt chấm',late_minutes:0,early_minutes:0,after_minutes:0,suggested_overtime:0,clean:false}}
+ rows[0]={...rows[0],matches:true,machine,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 14:50:00',working_hours:8}
+ rows[1]={...rows[1],morning_present:1,working_hours:4,morning_time:'2026-10-14 07:05:00',machine:{checkins:1,status:'Half Day',needs_review:0,clean:false}}
  const view=mount(TimekeepingApp,{embedded:true});await tick();await tick()
  assert.equal(calls.find(c=>c.method==='lotus_farm.attendance_day.board').args.date,'2026-10-14')
+ for(let i=0;i<12&&view.root.querySelectorAll('.attendance-roster .ag-row strong').length<2;i++)await tick()
  const first=[...view.root.querySelectorAll('.attendance-roster .ag-row strong')].map(n=>n.textContent)
- assert.deepEqual(first,['Bình','An'],'a row needing review comes first')
- assert.match(row(view.root,'An').textContent,/06:12 → 14:50/)
- assert.match(row(view.root,'An').textContent,/Muộn 12′/)
- assert.match(row(view.root,'An').textContent,/Dư 50′ → đề xuất TC 0.75 giờ/)
- assert.ok(row(view.root,'Bình').classList.contains('attendance-review'),'a single punch is flagged, not guessed')
- assert.equal(row(view.root,'An').querySelector('select').value,'','nothing is filled without a click')
+ assert.deepEqual(first,['An','Bình'],'a complete daily match is ready before a partial day')
+ assert.match(row(view.root,'An').textContent,/06:12.*14:50/)
+ assert.equal(row(view.root,'An').querySelectorAll('[role=checkbox][data-state=checked]').length,2)
+ assert.equal(row(view.root,'Bình').querySelectorAll('[role=checkbox][data-state=checked]').length,1)
+ assert.ok(!row(view.root,'Bình').classList.contains('attendance-review'),'one morning stamp is valid half-day presence')
  button(view.root.querySelector('.attendance-toolbar'),'Duyệt 1 dòng khớp máy').click();await tick()
- assert.match(document.body.textContent,/Tăng ca lấy theo đề xuất/)
+ assert.match(document.body.textContent,/mỗi buổi 0,5 công/)
  /* the confirmation is the standard dialog, rendered on <body> */document.querySelector('dialog[open] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
  assert.ok(calls.some(c=>c.method==='lotus_farm.attendance_day.approve_matching'&&c.args.date==='2026-10-14'))
  view.unmount()
 })
 
-test('using the device values fills one row only, keeping the suggested overtime',async()=>{
+test('using device presence changes one daily row and sends the actual two stamps',async()=>{
  calls.length=0
- const machine={checkins:2,status:'Present',working_hours:8.6,in_time:'2026-10-14 06:12:00',out_time:'2026-10-14 14:50:00',late_entry:1,early_exit:0,needs_review:0,reason:'',late_minutes:12,early_minutes:0,after_minutes:50,suggested_overtime:0.75,clean:true}
+ const machine={checkins:2,status:'Present',working_hours:8,morning_present:1,afternoon_present:1,morning_time:'2026-10-14 06:12:00',afternoon_time:'2026-10-14 14:50:00',needs_review:0,suggested_overtime:0,clean:true}
  routes={...base({period_closed:false,counts:{matching:0,review:0,manual:1}}),'lotus_farm.timekeeping.save_staff':{names:['HR-ATT-1']}}
  const rows=routes['lotus_farm.attendance_day.board'].rows
  rows[0]={...rows[0],name:'HR-ATT-1',modified:'m',status:'Present',working_hours:7,manual:true,machine}
@@ -64,7 +64,8 @@ test('using the device values fills one row only, keeping the suggested overtime
  button(row(view.root,'An'),'Dùng số máy').click();await tick()
  button(view.root.querySelector('.attendance-toolbar'),'Lưu nháp').click();await tick()
  const save=calls.find(c=>c.method==='lotus_farm.timekeeping.save_staff')
- assert.deepEqual(save.args.rows.map(r=>[r.employee,r.working_hours,r.overtime_hours,r.in_time]),[['E1',8.6,0.75,'2026-10-14 06:12:00']])
+ assert.equal(save.args.daily_presence,1)
+ assert.deepEqual(save.args.rows.map(r=>[r.employee,r.morning_present,r.afternoon_present,r.overtime_hours,r.morning_time]),[['E1',1,1,0,'2026-10-14 06:12:00']])
  view.unmount()
 })
 
@@ -74,7 +75,7 @@ test('a closed month is read-only',async()=>{
  assert.match(text(view.root),/Tháng 2026-10 đã khóa công/)
  const toolbar=view.root.querySelector('.attendance-toolbar')
  for(const label of ['Lưu nháp','Duyệt đã chọn','Có mặt tất cả'])assert.ok(!button(toolbar,label),label+' is hidden')
- assert.ok(row(view.root,'An').querySelector('select').disabled)
+ assert.ok(row(view.root,'An').querySelector('[aria-label="Sáng An"]').disabled)
  view.unmount()
 })
 

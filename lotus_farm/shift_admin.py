@@ -308,6 +308,7 @@ def correct_attendance(company, name, modified, values, reason):
     if len(reason) < 5:
         frappe.throw('Ghi lý do sửa công (ít nhất 5 ký tự).')
     from lotus_farm.controls import lock
+    lock('Company',company)
     lock('Attendance', name)
     doc = frappe.get_doc('Attendance', name)
     if doc.company != company or doc.docstatus != 1:
@@ -317,6 +318,11 @@ def correct_attendance(company, name, modified, values, reason):
     day = getdate(doc.attendance_date)
     _guard(company, day, day)
     values = frappe.parse_json(values) if isinstance(values, str) else (values or {})
+    presence=None
+    if cint(values.get('daily_presence')):
+        from lotus_farm.daily_attendance import values as presence_values
+        presence=presence_values(day,values)
+        values={**values,**presence,'shift':None,'in_time':None,'out_time':None,'late_entry':0,'early_exit':0}
     status = values.get('status') or doc.status
     if status not in ('Present', 'Absent', 'Half Day', 'Work From Home'):
         frappe.throw('Chọn trạng thái công hợp lệ.')
@@ -350,6 +356,9 @@ def correct_attendance(company, name, modified, values, reason):
                         lotus_correction_reason=reason[:2000], lotus_cancel_reason=None, lotus_client_key=None, lotus_payload_hash=None,
                         lotus_shift_start=start, lotus_shift_end=end))
     amended.flags.ignore_permissions = True
+    if presence:
+        from lotus_farm.daily_attendance import set_presence
+        set_presence(amended,presence)
     amended.insert()
     amended.submit()
     return dict(name=amended.name, amended_from=doc.name, modified=str(amended.modified))
