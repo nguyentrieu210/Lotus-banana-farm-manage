@@ -152,7 +152,10 @@ class LotusAttendanceIdentity(Document):
         if d.farm != self.farm:
             frappe.throw("Vườn gắn mã máy phải trùng vườn đặt máy.")
         person = _same_company_employee(self.company, self.employee)
-        if person.status != "Active":
+        from lotus_farm.timekeeping_rules import employed_on
+        bounded_history=(person.status=='Left' and self.valid_to and employed_on(person,self.valid_from) and employed_on(person,self.valid_to))
+        disabled_existing=(not self.is_new() and not self.active)
+        if person.status != "Active" and not bounded_history and not disabled_existing:
             frappe.throw("Chỉ liên kết mã máy với nhân viên đang làm việc.")
         if person.get("lotus_farm") and person.lotus_farm != self.farm:
             frappe.throw("Nhân viên không thuộc vườn của máy.")
@@ -657,7 +660,8 @@ def _promote(company,row):
         row.employee=None;row.state="Unmapped";row.flags.lotus_promotion=True;row.save()
         return "needs_review"
     person=_same_company_employee(company,emp)
-    if person.status!="Active":
+    from lotus_farm.timekeeping_rules import employed_on
+    if not employed_on(person,getdate(row.punched_at)):
         row.state="Needs Review";row.flags.lotus_promotion=True;row.save()
         return "needs_review"
     # HRMS refuses two check-ins of one employee at the same second, whatever their log type.

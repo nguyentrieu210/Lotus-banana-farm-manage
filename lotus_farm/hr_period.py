@@ -11,7 +11,7 @@ from datetime import date
 import frappe
 from frappe.utils import cint, flt, getdate, now_datetime, nowdate
 
-from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay, params_on, tax_method
+from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay, params_on, tax_method, pay_base, salary_segments, segmented_pay
 from lotus_farm.units import label as unit_label
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
@@ -71,6 +71,9 @@ def period_guard(doc, method=None):
     if not field or doc.flags.get('lotus_period_reopen'):
         return
     company = doc.get('company') or (frappe.db.get_value('Employee', doc.get('employee'), 'company') if doc.get('employee') else None)
+    if company:
+        from lotus_farm.controls import lock
+        lock('Company',company)
     before = doc.get_doc_before_save() if method == 'validate' else None
     for day in {doc.get(field), before.get(field) if before else None} - {None, ''}:
         if is_closed(company, day):
@@ -205,6 +208,7 @@ def close_period(company, month):
     if found:
         frappe.throw('Chưa khóa được kỳ: ' + '; '.join(r['label'] + ' (' + str(r['count']) + ')' for r in found))
     sheet = _sheet(company, month, begin, end)
+    _check_sheet_ready(sheet)
     snapshot = json.dumps(sheet, sort_keys=True, default=str, ensure_ascii=False)
     name = frappe.db.get_value(PERIOD, {'company': company, 'month': month})
     doc = frappe.get_doc(PERIOD, name) if name else frappe.new_doc(PERIOD)
@@ -253,8 +257,16 @@ def _period(company, month):
     return frappe.get_doc(PERIOD, name) if name else None
 
 
+def _check_sheet_ready(sheet):
+    if sheet.get('issues'):
+        frappe.throw('Hoàn thiện thông tin lương trước khi gửi/ký khóa kỳ: '+ '; '.join(
+            str(r.get('employee_name') or r.get('employee') or '')+': '+str(r['issue']) for r in sheet['issues'][:10]))
+
+
 def _frozen(company, month, begin, end):
-    snapshot = json.dumps(_sheet(company, month, begin, end), sort_keys=True, default=str, ensure_ascii=False)
+    sheet=_sheet(company,month,begin,end)
+    _check_sheet_ready(sheet)
+    snapshot = json.dumps(sheet, sort_keys=True, default=str, ensure_ascii=False)
     return snapshot, hashlib.sha256(snapshot.encode()).hexdigest()
 
 
@@ -325,6 +337,9 @@ def sign_period(company, month):
     doc = _period(company, month)
     if not doc or doc.status == 'Closed' or not approval(doc):
         frappe.throw('Kỳ này không có bảng công đang chờ ký.')
+    found=blockers(company,begin,end)
+    if found:
+        frappe.throw('Chưa ký khóa được kỳ: '+ '; '.join(r['label']+' ('+str(r['count'])+')' for r in found))
     if _frozen(company, month, begin, end)[1] != doc.snapshot_hash:
         frappe.throw('Chấm công hoặc bảng lương đã thay đổi sau khi gửi duyệt. Trả lại để người lập gửi duyệt lại.')
     from lotus_farm import signing
@@ -336,6 +351,20 @@ def sign_period(company, month):
         doc.flags.ignore_permissions = True  # the director signs as the named last signer, not as HR
         doc.save()
     return signing.status(doc, 'timekeeping_period')
+
+
+def punch_period_guard(doc, method=None):
+    """Raw late punches remain ingestible; serialize them with the final period check."""
+    company=doc.get('company') or (frappe.db.get_value('Employee',doc.employee,'company') if doc.get('employee') else None)
+    if company:
+        from lotus_farm.controls import lock
+        lock('Company',company)
+
+
+def salary_rate_guard(doc,method=None):
+    punch_period_guard(doc,method)
+    if doc.get('company') and doc.get('from_date') and is_closed(doc.company,doc.from_date):
+        frappe.throw('Kỳ tại ngày hiệu lực lương đã khóa. Mở lại kỳ trước khi sửa mức lương.')
 
 
 @frappe.whitelist(methods=['POST'])
@@ -403,6 +432,10 @@ def _sheet(company, month, begin, end):
     region = frappe.db.get_single_value('Lotus Finance Settings', 'minimum_wage_region') \
         if frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.get_meta('Lotus Finance Settings').has_field('minimum_wage_region') else None
     employees = []
+    rates={}
+    for rate in frappe.get_all('Salary Structure Assignment',filters={'company':company,'employee':['in',[p.name for p in people] or ['']],'docstatus':1},
+            fields=['name','employee','base','from_date','lotus_payment_basis'],order_by='from_date asc, name',limit_page_length=0):
+        rates.setdefault(rate.employee,[]).append(rate)
     for person in people:
         summary = summaries.get(person.name, empty_summary())
         months = None
@@ -411,12 +444,19 @@ def _sheet(company, month, begin, end):
             months = span.days / 30.4
         tax = dict(method=tax_method(person.lotus_worker_category, months), dependents=cint(person.lotus_dependents),
                    commitment=bool(cint(person.lotus_pit_commitment)))
-        pay = hourly_pay(person.lotus_payment_basis, summary, person.lotus_base_salary, person.lotus_daily_rate,
-                         insured=bool(person.lotus_social_insurance_no), params=params, region=region, tax=tax)
+        fallback=dict(name='Employee:'+person.name,from_date=person.date_of_joining or begin,
+            base=pay_base(person.lotus_payment_basis,person.lotus_base_salary,person.lotus_daily_rate),lotus_payment_basis=person.lotus_payment_basis)
+        rate_begin=max(begin,getdate(person.date_of_joining)) if person.date_of_joining else begin
+        rate_end=min(end,getdate(person.relieving_date)) if person.relieving_date else end
+        intervals=salary_segments(rates.get(person.name,[]),rate_begin,rate_end,fallback)
+        for interval in intervals:
+            interval['summary']=summary if len(intervals)==1 else month_hours(company,interval['start'],interval['end'],[person])[0].get(person.name,empty_summary())
+        pay=segmented_pay(intervals,insured=bool(person.lotus_social_insurance_no),params=params,region=region,tax=tax)
         employees.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department,
                               designation=person.designation, work_team=person.lotus_work_team,
-                              worker_category=person.lotus_worker_category, payment_basis=person.lotus_payment_basis,
-                              base_salary=flt(person.lotus_base_salary), daily_rate=flt(person.lotus_daily_rate),
+                              worker_category=person.lotus_worker_category, payment_basis=intervals[-1]['basis'],
+                              base_salary=flt(pay['base']) if intervals[-1]['basis']!='Daywork' else 0,
+                              daily_rate=flt(pay['base'])/STANDARD_DAYS if intervals[-1]['basis']=='Daywork' else 0,
                               tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
                               dependents=tax['dependents'], pit_commitment=tax['commitment'],
                               onboarding=person.lotus_onboarding_state, status=person.status, **summary, **pay))

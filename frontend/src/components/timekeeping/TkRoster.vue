@@ -21,6 +21,8 @@ const emit=defineEmits(['notice','error'])
 const start=ref(mondayOf(props.today||new Date().toISOString().slice(0,10))),span=ref(7),search=ref(''),department=ref('')
 const data=ref(null),busy=ref(false),saving=ref(false),picked=ref(new Set()),dragging=ref(false),result=ref(null)
 const rotationOpen=ref(false),rotation=ref({start:'',weeks:4,pattern:[],stagger:true,scope:'selected'})
+const multipleOpen=ref(false),multipleShifts=ref([])
+async function applyMultiple(){await apply(changesFor(pickedCells.value,'').map(({shift,...change})=>({...change,shifts:multipleShifts.value})),'Đã xếp '+multipleShifts.value.join(' + '));multipleOpen.value=false}
 const canManage=computed(()=>!!data.value?.can_manage)
 const colors=computed(()=>Object.fromEntries(props.shifts.map((s,i)=>[s.name,s.lotus_color||s.color||['#c43224','#d97706','#2563eb','#7c3aed'][i%4]])))
 const ordered=computed(()=>[...props.shifts].sort((a,b)=>String(a.start_time).localeCompare(String(b.start_time))))
@@ -39,7 +41,7 @@ const rosterColumns=computed(()=>[
  {field:'employee',headerName:'Nhân viên',minWidth:210,pinned:'left',cellRenderer:RosterGridCell,cellRendererParams:rosterActions,sortable:false},
  ...(data.value?.days||[]).map(d=>({
   field:'day_'+d.date,headerName:weekday(d.date)+' '+dm(d.date),minWidth:92,maxWidth:110,
-  valueGetter:p=>p.data.cells.find(c=>c.date===d.date)?.shift||'—',
+  valueGetter:p=>{const c=p.data.cells.find(c=>c.date===d.date);return c?.shifts?.join(' + ')||c?.shift||'—'},
   cellRenderer:RosterGridCell,cellRendererParams:{...rosterActions,rosterDate:d.date},sortable:false
  }))
 ])
@@ -74,7 +76,7 @@ watch(()=>[props.company,start.value,span.value,department.value],load,{immediat
 let timer;watch(search,()=>{clearTimeout(timer);timer=setTimeout(load,300)})
 window.addEventListener('pointerup',up)
 onBeforeUnmount(()=>{window.removeEventListener('pointerup',up);clearTimeout(timer)})
-defineExpose({load})
+defineExpose({load,hasChanges:()=>rotationOpen.value||multipleOpen.value,discardChanges:()=>{rotationOpen.value=false;multipleOpen.value=false;picked.value=new Set()}})
 </script>
 
 <template>
@@ -100,10 +102,17 @@ defineExpose({load})
  <div v-if="canManage&&picked.size" class="tk-rosterbar" role="toolbar" aria-label="Đổi ca các ô đã chọn">
   <span>Đã chọn <b>{{picked.size}}</b> ô · {{pickedPeople.length}} người</span>
   <UiButton v-for="s in ordered" :key="s.name" class="tk-rosterbar__shift" :style="{'--shift':colors[s.name]}" :disabled="saving" @click="assign(s.name)">{{s.name}}</UiButton>
+  <UiButton v-if="ordered.length>1" variant="outline" :disabled="saving" @click="multipleShifts=[];multipleOpen=true">Nhiều ca trong ngày</UiButton>
   <UiButton variant="outline" :disabled="saving" @click="assign('')">Không xếp ca</UiButton>
   <UiButton variant="ghost" :disabled="saving" @click="picked=new Set()">Bỏ chọn</UiButton>
  </div>
 
+ <WorkspaceModal v-model="multipleOpen" title="Xếp nhiều ca trong ngày" :busy="saving" width="620px">
+  <form class="tk-shift-form" @submit.prevent="applyMultiple">
+   <LotusField v-for="s in ordered" :key="s.name" type="checkbox" :label="s.name+' '+hhmm(s.start_time)+'–'+hhmm(s.end_time)" :model-value="multipleShifts.includes(s.name)" @update:model-value="on=>multipleShifts=on?[...multipleShifts,s.name]:multipleShifts.filter(n=>n!==s.name)"/>
+   <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="multipleOpen=false">Hủy</UiButton><UiButton type="submit" :disabled="saving||!multipleShifts.length">Xếp {{multipleShifts.length}} ca</UiButton></div>
+  </form>
+ </WorkspaceModal>
  <WorkspaceModal v-model="rotationOpen" title="Xoay ca theo tuần" :busy="saving" width="620px">
   <form class="tk-shift-form" @submit.prevent="applyRotation">
    <FormField label="Áp dụng cho"><UiSelect v-model="rotation.scope" aria-label="Người áp dụng"><option value="selected" :disabled="!pickedPeople.length">{{pickedPeople.length}} người đã chọn ô</option><option value="shown">Tất cả {{data?.rows?.length||0}} người đang hiện</option></UiSelect></FormField>

@@ -190,6 +190,13 @@ has_permission['Lotus Crew Attendance']='lotus_farm.controls.farm_permission'
 permission_query_conditions['Lotus Crew Attendance']='lotus_farm.timekeeping.crew_query'
 
 # Closed timekeeping months freeze Attendance, crew sheets and labour allocation (lotus_farm.hr_period).
+override_doctype_class={**globals().get('override_doctype_class',{}),
+    'Attendance':'lotus_farm.hr_historical.HistoricalAttendance',
+    'Employee Checkin':'lotus_farm.hr_historical.HistoricalEmployeeCheckin'}
+doc_events.setdefault('Lotus Attendance Punch', {})['before_insert']='lotus_farm.hr_period.punch_period_guard'
+doc_events.setdefault('Employee Checkin', {})['validate']='lotus_farm.hr_period.punch_period_guard'
+for _event in ('validate','before_cancel'):
+    doc_events.setdefault('Salary Structure Assignment',{})[_event]='lotus_farm.hr_period.salary_rate_guard'
 for _dt in ('Attendance', 'Lotus Crew Attendance', 'Labor Allocation'):
     for _event in ('validate', 'before_submit', 'before_cancel', 'on_trash'):
         _value = doc_events.setdefault(_dt, {}).get(_event, [])
