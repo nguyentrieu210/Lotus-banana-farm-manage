@@ -1,6 +1,8 @@
 // Báo cáo ngày (Công việc vườn) destinations for the sidebar, page titles and ?field_view= routing (same shape as kho/mua hàng).
 export const fieldNavigation=[
  {id:'day',label:'Báo cáo ngày',icon:'clipboard'},
+ {id:'assign',label:'Giao việc theo lô',icon:'users'},
+ {id:'board',label:'Bảng lô × việc',icon:'map'},
  {id:'reports',label:'Danh sách báo cáo',icon:'list'},
  {id:'bunch',label:'Chăm sóc buồng',icon:'sprout'},
  {id:'payable',label:'Tiền khoán tháng',icon:'wallet'},

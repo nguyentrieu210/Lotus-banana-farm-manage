@@ -16,27 +16,46 @@
       "_rolldown-runtime-hePW80VL.js"
     ]
   },
-  "_FieldReportDay-CWBoW7-T.js": {
-    "file": "assets/FieldReportDay-CWBoW7-T.js",
-    "name": "FieldReportDay",
+  "_DataTable-DuMhGRKh.js": {
+    "file": "assets/DataTable-DuMhGRKh.js",
+    "name": "DataTable",
+    "imports": [
+      "_rolldown-runtime-hePW80VL.js",
+      "_vue.runtime.esm-bundler-Dx9eLHme.js",
+      "_use-confirm-core-BO-iYwD1.js",
+      "_button-D2L27bEQ.js",
+      "_format-BuT7aDHa.js",
+      "_hr-catalog-labels-DqdPTssF.js"
+    ],
+    "css": [
+      "assets/DataTable-DudnahVn.css"
+    ]
+  },
+  "_DataTable-DudnahVn.css": {
+    "file": "assets/DataTable-DudnahVn.css",
+    "src": "_DataTable-DudnahVn.css"
+  },
+  "_FieldAssignments-CbfalhON.css": {
+    "file": "assets/FieldAssignments-CbfalhON.css",
+    "src": "_FieldAssignments-CbfalhON.css"
+  },
+  "_FieldAssignments-DAb862gK.js": {
+    "file": "assets/FieldAssignments-DAb862gK.js",
+    "name": "FieldAssignments",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_LineItemsEditor-CaivOZz-.js",
-      "_use-reason-dialog-BC7hNTH5.js",
+      "_ListPage-Bbh8WC0Y.js",
+      "_use-reason-dialog-CSMSoLPw.js",
       "_WorkspaceSummaryStrip-Bn0KTyfa.js"
     ],
     "css": [
-      "assets/FieldReportDay-Ctw1Nw0E.css"
+      "assets/FieldAssignments-CbfalhON.css"
     ]
-  },
-  "_FieldReportDay-Ctw1Nw0E.css": {
-    "file": "assets/FieldReportDay-Ctw1Nw0E.css",
-    "src": "_FieldReportDay-Ctw1Nw0E.css"
   },
   "_FormGrid-BAK5GcHQ.js": {
     "file": "assets/FormGrid-BAK5GcHQ.js",
@@ -52,38 +71,24 @@
     "file": "assets/FormGrid-Dhs85VHQ.css",
     "src": "_FormGrid-Dhs85VHQ.css"
   },
-  "_LineItemsEditor-1Hg474JS.css": {
-    "file": "assets/LineItemsEditor-1Hg474JS.css",
-    "src": "_LineItemsEditor-1Hg474JS.css"
-  },
-  "_LineItemsEditor-CaivOZz-.js": {
-    "file": "assets/LineItemsEditor-CaivOZz-.js",
-    "name": "LineItemsEditor",
-    "imports": [
-      "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_button-D2L27bEQ.js",
-      "_format-BuT7aDHa.js"
-    ],
-    "css": [
-      "assets/LineItemsEditor-1Hg474JS.css"
-    ]
-  },
-  "_ListPage-95xkxdwD.css": {
-    "file": "assets/ListPage-95xkxdwD.css",
-    "src": "_ListPage-95xkxdwD.css"
-  },
-  "_ListPage-BgazWe26.js": {
-    "file": "assets/ListPage-BgazWe26.js",
+  "_ListPage-Bbh8WC0Y.js": {
+    "file": "assets/ListPage-Bbh8WC0Y.js",
     "name": "ListPage",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_button-D2L27bEQ.js",
+      "_format-BuT7aDHa.js",
+      "_DataTable-DuMhGRKh.js",
       "_WorkspaceSummaryStrip-Bn0KTyfa.js",
       "_WorkspaceListToolbar-L7dMfiXt.js"
     ],
     "css": [
-      "assets/ListPage-95xkxdwD.css"
+      "assets/ListPage-CLejvOS2.css"
     ]
+  },
+  "_ListPage-CLejvOS2.css": {
+    "file": "assets/ListPage-CLejvOS2.css",
+    "src": "_ListPage-CLejvOS2.css"
   },
   "_LotusMobileAction-BUtwSBKS.js": {
     "file": "assets/LotusMobileAction-BUtwSBKS.js",
@@ -135,45 +140,32 @@
       "_SigningPanel-BF31ddcb.js"
     ]
   },
-  "_ModalForm-BYmBqZaU.css": {
-    "file": "assets/ModalForm-BYmBqZaU.css",
-    "src": "_ModalForm-BYmBqZaU.css"
+  "_ProcurementWorkspace-CxeUln0n.css": {
+    "file": "assets/ProcurementWorkspace-CxeUln0n.css",
+    "src": "_ProcurementWorkspace-CxeUln0n.css"
   },
-  "_ModalForm-W_BryHBY.js": {
-    "file": "assets/ModalForm-W_BryHBY.js",
-    "name": "ModalForm",
-    "imports": [
-      "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_button-D2L27bEQ.js",
-      "_WorkspaceModal-DEiDEb-x.js"
-    ],
-    "css": [
-      "assets/ModalForm-BYmBqZaU.css"
-    ]
-  },
-  "_ProcurementWorkspace-6B4knPMT.js": {
-    "file": "assets/ProcurementWorkspace-6B4knPMT.js",
+  "_ProcurementWorkspace-DuxghBEK.js": {
+    "file": "assets/ProcurementWorkspace-DuxghBEK.js",
     "name": "ProcurementWorkspace",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_procurement-navigation-IIG82_Pn.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
+      "_DataTable-DuMhGRKh.js",
       "_LotusMobileDialog-BEXJskPg.js",
       "_use-mobile-confirm-K23r-ucv.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_hr-catalog-labels-DqdPTssF.js",
+      "_preload-helper-BB2FBftw.js",
       "_SigningPanel-BF31ddcb.js",
       "_MobileSupplierForm-DENqxcPU.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_LineItemsEditor-CaivOZz-.js",
-      "_StockDocumentDetail-BqGs4Dma.js",
-      "_ListPage-BgazWe26.js",
-      "_work-farm-CHwXQayi.js"
+      "_ListPage-Bbh8WC0Y.js",
+      "_StockDocumentDetail-BTRuJH9T.js",
+      "_work-farm-nu8LcqeF.js"
     ],
     "dynamicImports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js"
@@ -181,10 +173,6 @@
     "css": [
       "assets/ProcurementWorkspace-CxeUln0n.css"
     ]
-  },
-  "_ProcurementWorkspace-CxeUln0n.css": {
-    "file": "assets/ProcurementWorkspace-CxeUln0n.css",
-    "src": "_ProcurementWorkspace-CxeUln0n.css"
   },
   "_SearchSelect-CwGs6rln.js": {
     "file": "assets/SearchSelect-CwGs6rln.js",
@@ -230,21 +218,20 @@
       "assets/SigningPanel-BDeswjkK.css"
     ]
   },
-  "_StockDocumentDetail-BqGs4Dma.js": {
-    "file": "assets/StockDocumentDetail-BqGs4Dma.js",
+  "_StockDocumentDetail-BTRuJH9T.js": {
+    "file": "assets/StockDocumentDetail-BTRuJH9T.js",
     "name": "StockDocumentDetail",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
+      "_DataTable-DuMhGRKh.js",
       "_LotusMobileDialog-BEXJskPg.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "_SigningPanel-BF31ddcb.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_LineItemsEditor-CaivOZz-.js"
+      "_ListPage-Bbh8WC0Y.js"
     ],
     "css": [
       "assets/StockDocumentDetail-DFhf-eAk.css"
@@ -260,14 +247,6 @@
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_use-confirm-core-BO-iYwD1.js",
-      "_button-D2L27bEQ.js"
-    ]
-  },
-  "_WorkspaceModal-DEiDEb-x.js": {
-    "file": "assets/WorkspaceModal-DEiDEb-x.js",
-    "name": "WorkspaceModal",
-    "imports": [
-      "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_button-D2L27bEQ.js"
     ]
   },
@@ -293,15 +272,15 @@
       "_vue.runtime.esm-bundler-Dx9eLHme.js"
     ]
   },
-  "_cccd-issuer-B49ziuz5.js": {
-    "file": "assets/cccd-issuer-B49ziuz5.js",
+  "_cccd-issuer-BJr7ZjgD.js": {
+    "file": "assets/cccd-issuer-BJr7ZjgD.js",
     "name": "cccd-issuer",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_button-D2L27bEQ.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js"
+      "_hr-catalog-labels-DqdPTssF.js",
+      "__plugin-vue_export-helper-BDNMzG2s.js",
+      "_preload-helper-BB2FBftw.js"
     ],
     "dynamicImports": [
       "../../../../../../../code/lotus-claude/frontend/node_modules/html5-qrcode/esm/index.js"
@@ -329,6 +308,14 @@
   "_format-X6pGp2Mw.css": {
     "file": "assets/format-X6pGp2Mw.css",
     "src": "_format-X6pGp2Mw.css"
+  },
+  "_hr-catalog-labels-DqdPTssF.js": {
+    "file": "assets/hr-catalog-labels-DqdPTssF.js",
+    "name": "hr-catalog-labels",
+    "imports": [
+      "_vue.runtime.esm-bundler-Dx9eLHme.js",
+      "_button-D2L27bEQ.js"
+    ]
   },
   "_land-MMMrAHuS.css": {
     "file": "assets/land-MMMrAHuS.css",
@@ -366,8 +353,8 @@
       "assets/mobile-ui-BBCYLE71.css"
     ]
   },
-  "_preload-helper-BKR7BmEq.js": {
-    "file": "assets/preload-helper-BKR7BmEq.js",
+  "_preload-helper-BB2FBftw.js": {
+    "file": "assets/preload-helper-BB2FBftw.js",
     "name": "preload-helper"
   },
   "_procurement-navigation-IIG82_Pn.js": {
@@ -414,35 +401,25 @@
       "_LotusMobileDialog-BEXJskPg.js"
     ]
   },
-  "_use-reason-dialog-BC7hNTH5.js": {
-    "file": "assets/use-reason-dialog-BC7hNTH5.js",
+  "_use-reason-dialog-CSMSoLPw.js": {
+    "file": "assets/use-reason-dialog-CSMSoLPw.js",
     "name": "use-reason-dialog",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_format-BuT7aDHa.js",
-      "_ModalForm-W_BryHBY.js"
+      "_DataTable-DuMhGRKh.js"
     ]
   },
-  "_use-workspace-confirm-CA754ClR.js": {
-    "file": "assets/use-workspace-confirm-CA754ClR.js",
+  "_use-workspace-confirm-D_E7fmrv.js": {
+    "file": "assets/use-workspace-confirm-D_E7fmrv.js",
     "name": "use-workspace-confirm",
     "imports": [
-      "_rolldown-runtime-hePW80VL.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js"
-    ],
-    "css": [
-      "assets/use-workspace-confirm-D9Dy0L2h.css"
+      "_hr-catalog-labels-DqdPTssF.js"
     ]
-  },
-  "_use-workspace-confirm-D9Dy0L2h.css": {
-    "file": "assets/use-workspace-confirm-D9Dy0L2h.css",
-    "src": "_use-workspace-confirm-D9Dy0L2h.css"
   },
   "_vue.runtime.esm-bundler-Dx9eLHme.js": {
     "file": "assets/vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -451,15 +428,15 @@
       "_rolldown-runtime-hePW80VL.js"
     ]
   },
-  "_work-farm-CHwXQayi.js": {
-    "file": "assets/work-farm-CHwXQayi.js",
+  "_work-farm-nu8LcqeF.js": {
+    "file": "assets/work-farm-nu8LcqeF.js",
     "name": "work-farm",
     "imports": [
-      "_use-workspace-confirm-CA754ClR.js"
+      "_use-workspace-confirm-D_E7fmrv.js"
     ]
   },
   "buying.html": {
-    "file": "assets/buying-C8MNaNic.js",
+    "file": "assets/buying-lSFhSwDl.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
@@ -475,14 +452,14 @@
       "_LotusMobileAction-BUtwSBKS.js",
       "_SignerPicker-DiGCpJfy.js",
       "_LotusSignatureTimeline-C3cwEF9N.js",
-      "_ProcurementWorkspace-6B4knPMT.js"
+      "_ProcurementWorkspace-DuxghBEK.js"
     ],
     "css": [
       "assets/buying-Df07eCaK.css"
     ]
   },
   "hr-mobile.html": {
-    "file": "assets/hr-mobile-B8eySTUx.js",
+    "file": "assets/hr-mobile-CJngziWW.js",
     "name": "hr-mobile",
     "src": "hr-mobile.html",
     "isEntry": true,
@@ -493,8 +470,8 @@
       "_LotusMobileDialog-BEXJskPg.js",
       "_mobile-ui-CYCipj71.js",
       "_use-mobile-confirm-K23r-ucv.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_cccd-issuer-B49ziuz5.js",
+      "_hr-catalog-labels-DqdPTssF.js",
+      "_cccd-issuer-BJr7ZjgD.js",
       "_attendance-presence-CabBKBzO.js"
     ],
     "css": [
@@ -502,7 +479,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CpFZ9E73.js",
+    "file": "assets/index-g_P4pNuk.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -510,20 +487,21 @@
       "_rolldown-runtime-hePW80VL.js",
       "_lotus-tokens-Cj3CgCmM.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_procurement-navigation-IIG82_Pn.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "__plugin-vue_export-helper-BDNMzG2s.js"
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
+      "__plugin-vue_export-helper-BDNMzG2s.js",
+      "_preload-helper-BB2FBftw.js"
     ],
     "dynamicImports": [
       "src/components/OpsList.vue",
       "src/components/OneDriveProcessWorkspace.vue",
-      "_use-workspace-confirm-CA754ClR.js",
-      "_ProcurementWorkspace-6B4knPMT.js",
+      "_DataTable-DuMhGRKh.js",
+      "_ProcurementWorkspace-DuxghBEK.js",
       "src/UserAdminApp.vue",
       "src/HrApp.vue",
       "src/TimekeepingApp.vue",
@@ -544,17 +522,18 @@
     "src": "login.html"
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-I6uBWhQX.js",
+    "file": "assets/BlockForecastApp-BHr5PZzo.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "index.html"
     ],
     "css": [
@@ -563,16 +542,17 @@
     ]
   },
   "src/ColorTagCatalogApp.vue": {
-    "file": "assets/ColorTagCatalogApp-DNu4LjL7.js",
+    "file": "assets/ColorTagCatalogApp-Cb0ftq6m.js",
     "name": "ColorTagCatalogApp",
     "src": "src/ColorTagCatalogApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
+      "_DataTable-DuMhGRKh.js",
       "__plugin-vue_export-helper-BDNMzG2s.js"
     ],
     "css": [
@@ -580,19 +560,19 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-CxLlhA6E.js",
+    "file": "assets/FarmLandApp-qeb6bGmZ.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
+      "_preload-helper-BB2FBftw.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js"
     ],
@@ -604,51 +584,48 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-0uFEWVG9.js",
+    "file": "assets/FieldReportApp-qXTEtmJQ.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
-      "_LineItemsEditor-CaivOZz-.js",
-      "_FieldReportDay-CWBoW7-T.js",
-      "_ListPage-BgazWe26.js",
+      "_ListPage-Bbh8WC0Y.js",
+      "_FieldAssignments-DAb862gK.js",
       "_use-desktop-workspace-BngrhkO-.js",
       "_SearchSelect-CwGs6rln.js"
     ],
     "css": [
-      "assets/FieldReportApp-BM4cMYrX.css"
+      "assets/FieldReportApp-C8L8E5po.css"
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-DJiE52YM.js",
+    "file": "assets/FinanceApp-BXksmPWW.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
       "_SignerPicker-DiGCpJfy.js",
-      "_LineItemsEditor-CaivOZz-.js",
-      "_use-reason-dialog-BC7hNTH5.js",
-      "_WorkspaceSummaryStrip-Bn0KTyfa.js",
-      "_ListPage-BgazWe26.js"
+      "_ListPage-Bbh8WC0Y.js",
+      "_use-reason-dialog-CSMSoLPw.js",
+      "_WorkspaceSummaryStrip-Bn0KTyfa.js"
     ],
     "css": [
       "assets/FinanceApp-hMMY4DdZ.css",
@@ -656,19 +633,18 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-k1jWJIRx.js",
+    "file": "assets/HrApp-3RBHdhpV.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
@@ -676,52 +652,51 @@
       "_LotusSignatureTimeline-C3cwEF9N.js",
       "_WorkspaceSummaryStrip-Bn0KTyfa.js",
       "_WorkspaceListToolbar-L7dMfiXt.js",
-      "_work-farm-CHwXQayi.js",
-      "_cccd-issuer-B49ziuz5.js"
+      "_work-farm-nu8LcqeF.js",
+      "_cccd-issuer-BJr7ZjgD.js"
     ],
     "css": [
       "assets/HrApp-DIzGYy-Q.css"
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-DVy1z_90.js",
+    "file": "assets/StockApp-C5753u9f.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_procurement-navigation-IIG82_Pn.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
-      "_StockDocumentDetail-BqGs4Dma.js",
-      "_ListPage-BgazWe26.js",
+      "_ListPage-Bbh8WC0Y.js",
+      "_StockDocumentDetail-BTRuJH9T.js",
       "_use-desktop-workspace-BngrhkO-.js"
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-BRGtfESR.js",
+    "file": "assets/TimekeepingApp-UIqox9xx.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
-      "_ModalForm-W_BryHBY.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
       "_WorkspaceListToolbar-L7dMfiXt.js",
-      "_work-farm-CHwXQayi.js",
+      "_work-farm-nu8LcqeF.js",
       "_attendance-presence-CabBKBzO.js"
     ],
     "css": [
@@ -729,35 +704,35 @@
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-D79PpaRE.js",
+    "file": "assets/UserAdminApp-CGCOBN1q.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
+      "_use-workspace-confirm-D_E7fmrv.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
-      "_preload-helper-BKR7BmEq.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "index.html",
       "_WorkspaceListToolbar-L7dMfiXt.js",
       "_SearchSelect-CwGs6rln.js"
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-Baznsrss.js",
+    "file": "assets/OneDriveProcessWorkspace-BWxVaM9D.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
       "_use-confirm-core-BO-iYwD1.js",
       "_button-D2L27bEQ.js",
       "_format-BuT7aDHa.js",
-      "_WorkspaceModal-DEiDEb-x.js",
+      "_DataTable-DuMhGRKh.js",
+      "_hr-catalog-labels-DqdPTssF.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "index.html",
       "_SearchSelect-CwGs6rln.js"
@@ -767,14 +742,14 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-BirskWKJ.js",
+    "file": "assets/OpsList-vCEyge_g.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-workspace-confirm-CA754ClR.js",
       "_format-BuT7aDHa.js",
+      "_DataTable-DuMhGRKh.js",
       "index.html"
     ]
   },
@@ -800,7 +775,7 @@
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-Bas3iFZw.js",
+    "file": "assets/work-mobile-DtnwnBGx.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
@@ -812,7 +787,7 @@
       "_LotusMobileDialog-BEXJskPg.js",
       "_mobile-ui-CYCipj71.js",
       "_use-mobile-confirm-K23r-ucv.js",
-      "_FieldReportDay-CWBoW7-T.js"
+      "_FieldAssignments-DAb862gK.js"
     ],
     "css": [
       "assets/work-mobile-B_AFOnp_.css",

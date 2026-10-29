@@ -51,12 +51,35 @@ class FieldReportRulesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "CN"):
             r.check_line({"farm_block": "A1", "qty": 1})
 
-    def test_one_lot_is_paid_once_a_day(self):
-        line = {"pay_kind": "Piece", "basis": "Area", "work_type": "CL", "farm_block": "A8", "lot_area_ha": 4.48, "lot_trees": 10668}
-        self.assertIsNone(r.over_whole_lot([dict(line, qty=2.48), dict(line, qty=2)]), "two tổ split the lot")
-        self.assertEqual(r.over_whole_lot([dict(line, qty=4.48), dict(line, qty=4.48)]), ("CL", "A8", 8.96, 4.48))
-        self.assertIsNone(r.over_whole_lot([dict(line, qty=4.48), dict(line, work_type="DC", qty=4.48)]), "different work")
-        self.assertIsNone(r.over_whole_lot([dict(line, basis="Count", qty=500), dict(line, basis="Count", qty=500)]), "counted work")
+    def test_round_is_paid_once_on_xong(self):
+        self.assertEqual(r.round_amount("Area", False, 1.2, 4.48, 300000), 0, "progress day: nothing paid")
+        self.assertEqual(r.round_amount("Area", True, 0.5, 4.48, 300000), 1344000, "Xong: the whole lot")
+        self.assertEqual(r.round_amount("Trees", True, None, 10668, 300), 3200400)
+        self.assertEqual(r.round_amount("Count", False, 1062, None, 200), 212400, "counted work is paid as reported")
+        self.assertEqual(r.paid_qty("Area", True, 0.5, 4.48), 4.48)
+        self.assertEqual(r.paid_qty("Area", False, 0.5, 4.48), 0)
+        self.assertEqual(r.paid_qty("Count", True, 410, None), 410)
+
+    def test_display_state(self):
+        today = "2026-10-29"
+        self.assertEqual(r.display_state("Open", None, today), "Assigned")
+        self.assertEqual(r.display_state("Open", "2026-10-30", today, reported=True), "Working")
+        self.assertEqual(r.display_state("Open", "2026-10-28", today, reported=True), "Late")
+        self.assertEqual(r.display_state("Open", "2026-10-28", today, reported=True, reported_done=True), "Reported")
+        self.assertEqual(r.display_state("Done", "2026-10-28", today), "Done")
+        self.assertEqual(r.display_state("Cancelled", None, today), "Cancelled")
+
+    def test_bunch_cannot_exceed_cut_bud_of_its_colour(self):
+        cut = {("A1", "W44"): 40}
+        done = {("A1", "W44", "Bag"): 30}
+        row = {"farm_block": "A1", "bunch_tag": "W44", "stage": "Bag", "qty": 10}
+        self.assertEqual(r.bunch_over_cut(cut, done, [row]), {}, "exactly the cut count")
+        self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, qty=15)]), {("A1", "W44", "Bag"): (45.0, 40.0)})
+        self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, stage="Prop", qty=40)]), {}, "another stage counts apart")
+        self.assertIn(("A1", "W45", "Bag"), r.bunch_over_cut(cut, done, [dict(row, bunch_tag="W45", qty=1)]), "nothing cut of that colour")
+        self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, stage="Cut Bud", qty=99)]), {}, "cắt bắp itself is not capped")
+        self.assertFalse(r.cap_blocks("2026-11-30"))
+        self.assertTrue(r.cap_blocks(date(2026, 12, 1)))
 
     def test_crew_zones(self):
         self.assertEqual(r.crew_zones("A + B"), ["A", "B"])
