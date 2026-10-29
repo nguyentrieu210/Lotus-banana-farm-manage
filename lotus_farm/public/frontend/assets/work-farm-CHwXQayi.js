@@ -1,0 +1,1 @@
+import{M as e}from"./use-workspace-confirm-CA754ClR.js";function t(){try{return e().farm||``}catch{return``}}export{t};
