@@ -1,38 +1,31 @@
-# Lotus 222 – lịch màu dây theo hai đợt trong tuần
+# Lotus 222 – lịch màu dây 12 màu theo tuần
 
-Nguồn: bảng màu do vận hành cung cấp ngày 28/10/2026.
-Mốc bắt đầu: tuần ISO 43/2026, thứ Hai 19/10/2026.
-**Quy ước tạm theo thứ tự 1 → 2**:
-- Đợt 1: thứ Hai–thứ Năm (4 ngày).
-- Đợt 2: thứ Sáu–Chủ nhật (3 ngày).
+Nguồn: bảng màu người dùng gửi ngày 29/10/2026 (thay bảng ngày 28/10, chưa từng dùng).
+Mỗi tuần ISO một màu, xoay vòng 12 tuần, bắt đầu tuần 43/2026 (thứ Hai 19/10/2026):
 
-Khi vận hành xác nhận ranh giới khác, phải lập lịch thay thế có đối chiếu
-trước khi thay ngày các màu đã dùng. Số 1/2 là phân kỳ tuần, **không phải
-số lượng màu**. Các ô thiếu ký hiệu 1/2 ở cuối bảng được ánh xạ theo trình tự
-2 rồi 1 trước đó.
-
-| Tuần | Đợt 1, T2–T5 | Đợt 2, T6–CN |
+| Thứ tự | Màu | Tuần đầu |
 |---|---|---|
-| 43 (19–25/10) | Cam | Cam |
-| 44 (26/10–01/11) | Đen | Đen |
-| 45 (02–08/11) | Xanh dương | Xanh dương |
-| 46 (09–15/11) | Đỏ – Xanh lá | Đỏ – Xanh lá |
-| 47 (16–22/11) | Trắng – Xanh lá | Trắng – Xanh lá |
-| 48 (23–29/11) | Tím – Xanh lá | Tím – Xanh lá |
-| 49 (30/11–06/12) | Cam – Xanh lá | Cam – Xanh lá |
-| 50 (07–13/12) | Xanh lá – Xanh dương | Đen – Xanh lá |
+| 1 | Đỏ | 43/2026 |
+| 2 | Trắng | 44/2026 |
+| 3 | Tím | 45/2026 |
+| 4 | Cam | 46/2026 |
+| 5 | Đen | 47/2026 |
+| 6 | Xanh dương | 48/2026 |
+| 7 | Đỏ – Xanh lá | 49/2026 |
+| 8 | Trắng – Xanh lá | 50/2026 |
+| 9 | Tím – Xanh lá | 51/2026 |
+| 10 | Cam – Xanh lá | 52/2026 |
+| 11 | Đen – Xanh lá | 53/2026 |
+| 12 | Xanh lá – Xanh dương | 01/2027 |
 
-Dữ liệu lịch Lotus độc lập nguồn OneDrive (17 màu mỗi 5 ngày). Import:
-- Chỉ tác động Vườn **LOTUS-222**, không sửa LOTUS-180.
-- Vô hiệu hóa 12 thẻ tham chiếu trùng ngày tuần 43–50, không xóa.
-- Trước khi sửa, kiểm tra không có nguồn gắn với các thẻ bị thay.
-- Tạo 16 thẻ có mã tuần + đợt ổn định; chạy lại không tạo trùng.
-- Trong quá trình ghi nhận thực tế, chứng từ cắt bắp dùng màu đang hiệu lực
-  tại ngày cắt. Chích bắp dùng mốc ngày dự kiến cắt bắp sau 14 ngày.
-- Mỗi tuần được hiểu là **7 ngày liên tục**, từ thứ Hai đến Chủ nhật;
-  hai nhãn 1/2 chỉ để phân biệt đầu và cuối tuần, không phải chu kỳ 5 ngày.
-- Từ tuần 43, không còn dùng bất cứ màu nào thuộc lịch tham chiếu 5 ngày
-  ở LOTUS-222. Các bản ghi cũ chỉ dùng tra cứu lịch sử, không xóa.
-- Sau tuần 50, chưa có lịch màu thực tế thì để trống, không tự phát hành
-  một đợt 5 ngày hay tự suy ra màu cho tuần kế tiếp.
-- LOTUS-180 không bị thay đổi khi cập nhật lịch LOTUS-222.
+Tuần 02/2027 quay lại Đỏ; lịch đã nạp đến hết tuần 52/2027.
+
+- Ngoài vườn mỗi tuần buộc hai lần ("2 dây" rồi "1 dây") nhưng **cùng màu, cùng lứa**.
+  Hệ thống vẫn lưu hai nửa tuần (thứ Hai–thứ Năm, thứ Sáu–Chủ nhật) vì Bunch Tag kiểm tra
+  lịch Lotus theo nửa tuần; hai nửa có cùng mã màu.
+- Màu dây gắn ở **cắt bắp**; chứng từ cắt bắp dùng màu đang hiệu lực tại ngày cắt.
+- Lịch tham chiếu 17 màu / 5 ngày đã **xóa hẳn** ngày 29/10/2026 theo yêu cầu (440 thẻ, không thẻ nào
+  có chứng từ; bản sao lưu nằm ngoài repo).
+- Nạp lại: `bench --site <site> execute lotus_farm.lotus_weekly_ribbon_2026.apply` (chạy lại không tạo trùng;
+  thẻ lịch tuần cũ không còn trong bảng bị xóa nếu chưa có chứng từ).
+- Lịch thuần (`lotus_farm/ribbon_cycle.py`) có test `tests/test_ribbon_cycle.py`.
