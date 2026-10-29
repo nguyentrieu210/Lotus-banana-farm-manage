@@ -2,11 +2,20 @@
 from datetime import datetime, time
 
 
+POLICY='before-0700-after-1700-v1'
+
+
+def presence_session(moment):
+    if moment.time()<time(7):return 'morning'
+    if moment.time()>time(17):return 'afternoon'
+    return None
+
+
 def presence_status(day, checkins):
     moments=sorted({datetime.fromisoformat(str(c['time']).replace(' ','T')[:19]) for c in checkins})
     moments=[m for m in moments if m.date()==day]
-    morning=next((m for m in moments if m.time()<time(12)),None)
-    afternoon=next((m for m in moments if m.time()>=time(12)),None)
+    morning=next((m for m in moments if presence_session(m)=='morning'),None)
+    afternoon=next((m for m in moments if presence_session(m)=='afternoon'),None)
     count=int(bool(morning))+int(bool(afternoon))
     return dict(status=('Absent','Half Day','Present')[count],working_hours=count*4,workdays=count/2,
         morning_present=int(bool(morning)),afternoon_present=int(bool(afternoon)),

@@ -43,7 +43,7 @@ async function save(){
   <div class="tk-pair"><FormField label="Giờ vào" v-slot="f"><UiInput v-bind="f" v-model="form.in_time" type="datetime-local"/></FormField><FormField label="Giờ ra" hint="Ca đêm: chọn ngày hôm sau" v-slot="f"><UiInput v-bind="f" v-model="form.out_time" type="datetime-local"/></FormField></div>
   </template>
   <div class="tk-pair"><FormField v-if="!row.daily_presence" label="Giờ làm" :hint="hours!==null?'Theo giờ vào/ra: '+hours+' giờ':''" v-slot="f"><UiInput v-bind="f" v-model.number="form.working_hours" type="number" min="0" max="24" step="0.25"/></FormField>
-   <FormField label="Giờ tăng ca được duyệt" v-slot="f"><UiInput v-bind="f" v-model.number="form.overtime_hours" type="number" min="0" max="16" step="0.25" :disabled="form.status==='Absent'"/></FormField></div>
+   <FormField v-if="!row.daily_presence" label="Giờ tăng ca được duyệt" v-slot="f"><UiInput v-bind="f" v-model.number="form.overtime_hours" type="number" min="0" max="16" step="0.25" :disabled="form.status==='Absent'"/></FormField></div>
   <FormField label="Ghi chú" v-slot="f"><UiInput v-bind="f" v-model="form.note" maxlength="2000"/></FormField>
   <FormField label="Lý do sửa" required hint="Lưu cùng phiếu sửa và phiếu cũ" v-slot="f"><UiTextarea v-bind="f" v-model="form.reason" minlength="5" maxlength="2000" required/></FormField>
   <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="emit('update:modelValue',false)">Quay lại</UiButton><UiButton type="submit" :disabled="saving||String(form.reason||'').trim().length<5">{{saving?'Đang lưu…':'Lưu bản sửa'}}</UiButton></div>

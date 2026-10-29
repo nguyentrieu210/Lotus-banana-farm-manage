@@ -36,15 +36,28 @@ def rejected(fn,*args,**kwargs):
 
 try:
     a,b,c,d=[employee(label) for label in ('both','morning','afternoon','none')]
-    punch(a,'06:46:00');punch(a,'13:01:00')  # Two IN labels are two session presences.
-    punch(b,'07:00:00');punch(b,'08:00:00','OUT');punch(b,'11:00:00')
-    punch(c,'17:00:00','OUT')
+    punch(a,'06:46:00');punch(a,'17:01:00')  # Two IN labels are two session presences.
+    punch(b,'06:59:59');punch(b,'08:00:00','OUT');punch(b,'11:00:00')
+    punch(c,'17:01:00','OUT')
+    punch(d,'07:00:00');punch(d,'12:50:00');punch(d,'17:00:00')
     rows={r['employee']:r for r in board()['rows']}
     assert len(rows)==4 and len({r['row_key'] for r in rows.values()})==4
     assert rows[a]['working_hours']==8 and rows[a]['workdays']==1
     assert rows[b]['working_hours']==rows[c]['working_hours']==4
-    assert rows[d]['workdays']==0
-    assert rows[a]['morning_time']==day+' 06:46:00' and rows[a]['afternoon_time']==day+' 13:01:00'
+    assert rows[d]['workdays']==0 and not rows[d]['matches']
+    assert all(r['machine']['suggested_overtime']==0 for r in rows.values())
+    invalid=dict(employee=d,morning_present=1,afternoon_present=0,morning_time=day+' 07:00:00')
+    assert rejected(t.save_staff,company,day,[invalid],'invalid-'+tag,daily_presence=1)
+    from lotus_farm import daily_attendance as daily
+    policy=daily.POLICY
+    try:
+        daily.POLICY='previous-noon-policy'
+        old=next(r for r in board()['rows'] if r['employee']==a)
+    finally:daily.POLICY=policy
+    assert rejected(ad.approve_matching,company,day,'old-policy-'+tag,
+        reviewed_rows=[dict(row_key=old['row_key'],review_hash=old['review_hash'])],daily_presence=1)
+    report['strict_0700_1700_policy_and_old_review_rejection']='passed'
+    assert rows[a]['morning_time']==day+' 06:46:00' and rows[a]['afternoon_time']==day+' 17:01:00'
     tokens=[dict(row_key=rows[p]['row_key'],review_hash=rows[p]['review_hash']) for p in (a,b)]
     approved=ad.approve_matching(company,day,'presence-'+tag,reviewed_rows=tokens,daily_presence=1)
     assert approved['approved']==2
@@ -61,7 +74,7 @@ try:
     report['one_daily_record_and_payroll_credit']='passed'
 
     token=dict(row_key=rows[c]['row_key'],review_hash=rows[c]['review_hash'])
-    punch(c,'07:30:00')
+    punch(c,'06:30:00')
     assert rejected(ad.approve_matching,company,day,'stale-'+tag,reviewed_rows=[token],daily_presence=1)
     current=next(r for r in board()['rows'] if r['employee']==c)
     entry={k:current[k] for k in ('employee','name','modified','morning_present','afternoon_present','morning_time','afternoon_time')}

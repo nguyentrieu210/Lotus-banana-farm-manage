@@ -11,7 +11,7 @@ globalThis.fetch=async(url,options={})=>{
 }
 const Attendance=await load('components/hr/HrMobileAttendance.vue')
 const row=(employee,am,pm)=>({employee,row_key:employee,employee_name:employee,daily_presence:true,status:am&&pm?'Present':'Half Day',working_hours:(am+pm)*4,docstatus:0,
- morning_present:am,afternoon_present:pm,morning_time:am?'2026-10-20 06:46:00':null,afternoon_time:pm?'2026-10-20 13:01:00':null,
+ morning_present:am,afternoon_present:pm,morning_time:am?'2026-10-20 06:46:00':null,afternoon_time:pm?'2026-10-20 17:01:00':null,
  matches:!!(am&&pm),machine:{checkins:am+pm,status:am&&pm?'Present':'Half Day',needs_review:0}})
 const base={
  'lotus_farm.timekeeping.bootstrap':{can_manage_shifts:true,capabilities:{Attendance:{read:true,create:true,submit:true}}},
@@ -24,7 +24,7 @@ test('phone shows one row per employee, two session stamps, and a half-day filte
  const view=mount(Attendance,{company:'Lotus',today:'2026-10-20'});await tick();await tick();await tick()
  assert.equal(view.root.querySelectorAll('.hr-att__row').length,3)
  assert.equal(view.root.querySelectorAll('.hr-att__group h3').length,0)
- assert.match(view.root.textContent,/Sáng 06:46 · Chiều 13:01/)
+ assert.match(view.root.textContent,/Sáng 06:46 · Chiều 17:01/)
  assert.equal(Number(calls.find(c=>c.method.endsWith('.board')).args.daily_presence),1)
  view.root.querySelectorAll('.hr-att__stats button')[1].click();await tick()
  assert.deepEqual([...view.root.querySelectorAll('.hr-att__row strong')].map(s=>s.textContent),['Bình','Chi'])
@@ -39,6 +39,7 @@ test('phone edits the two presences together, with no shift selection',async()=>
  const view=mount(Attendance,{company:'Lotus',today:'2026-10-20'});await tick();await tick();await tick()
  view.root.querySelector('.hr-att__row').click();await tick();await tick()
  assert.ok(![...document.querySelectorAll('button')].some(b=>b.textContent==='Đổi ca'))
+ assert.doesNotMatch(document.querySelector('.hr-att__sheet').textContent,/tăng ca/i)
  const afternoon=document.body.querySelector('.hr-att__sheet select[aria-label="Chiều"]')
  afternoon.value='0';afternoon.dispatchEvent(new Event('change',{bubbles:true}));await tick()
  assert.match(document.querySelector('.hr-att__sheet').textContent,/0.5 công/)
