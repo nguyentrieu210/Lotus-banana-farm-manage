@@ -168,6 +168,13 @@ def blockers(company, begin, end):
     gaps = missing_attendance(people, records, begin, end, holidays.days if holidays else {}, getdate(nowdate()))
     names = {p.name: p.employee_name for p in people}
     rows = close_blockers(drafts, crew, punches, gaps, has_calendar=bool(holidays))
+    if frappe.db.exists('DocType', 'Lotus Field Report'):
+        pending = frappe.get_all('Lotus Field Report', filters={'company': company,
+            'posting_date': ['between', [begin, end]], 'state': ['!=', 'Confirmed']}, pluck='name', limit_page_length=0)
+        pieces = frappe.get_all('Lotus Field Report Line', filters={'parent': ['in', pending],
+            'parenttype': 'Lotus Field Report', 'pay_kind': 'Piece'}, pluck='parent', limit_page_length=0) if pending else []
+        if pieces:
+            rows.append(dict(code='draft_piece_reports', label='Báo cáo ngày có công khoán chưa xác nhận', count=len(set(pieces))))
     for row in rows:
         if row.get('employees'):
             row['employees'] = [dict(name=n, employee_name=names.get(n, n), days=[str(d) for d in gaps[n]][:31]) for n in row['employees']]

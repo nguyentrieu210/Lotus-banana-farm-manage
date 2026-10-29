@@ -24,3 +24,8 @@ Lịch vận hành được người dùng xác nhận: toàn bộ nhân viên c
 `tests/test_hr_audit_rules.py` bao phủ log thiếu cặp, ca đêm, hiệu lực lao động, mức lương tương lai/giữa tháng và thiếu mức lịch sử. `tests/integration/verify_hr_audit_fixes.py` chỉ chạy trên site disposable có cờ bảo vệ, kiểm tra API thật, quyền chỉ đọc, hai ca/ngày, log muộn của người nghỉ việc, lương và ký khóa kỳ; fixture rollback.
 
 Frontend dùng test mount cho hai dòng cùng nhân viên, giữ lựa chọn theo ca, chặn duyệt khi đang sửa, beforeunload, gửi phiên bản đã xem và xếp nhiều ca. Chạy bộ tests frontend, build và kiểm tra desktop/PWA trước phát hành.
+## Tích hợp bản báo cáo ngày mới
+
+Bản phát hành giữ các thay đổi báo cáo ngày trong `99bc35e`. Báo cáo còn công khoán chưa xác nhận
+sẽ chặn khóa kỳ. Ghi báo cáo khóa Company trước khi kiểm tra tháng đã khóa, cùng thứ tự khóa
+với bước ký cuối kỳ. Kiểm thử database bao phủ thêm nguồn công khoán này.
