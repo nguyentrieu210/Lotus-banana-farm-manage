@@ -48,16 +48,8 @@ def catalog(farm, include_disabled=0):
             monday = getdate(row.valid_from) - timedelta(days=getdate(row.valid_from).weekday())
             row["week_from"] = str(monday)
             row["week_to"] = str(monday + timedelta(days=6))
+    # The 17-colour reference calendar was removed on 29/10/2026, so no reference programme is offered for generation.
     programs = []
-    if not weekly_mode and frappe.has_permission("Lotus Process Adoption", "read"):
-        programs = frappe.get_list(
-            "Lotus Process Adoption",
-            filters={"farm": farm, "approval_state": "Approved"},
-            fields=["name", "version", "valid_from", "valid_to", "color_anchor",
-                    "color_anchor_code", "color_period_days"],
-            order_by="valid_from desc",
-            limit_page_length=100,
-        )
     return {
         "rows": rows,
         "colors": [{"code": c["code"], "label": c["label"]} for c in source["colors"]] + [

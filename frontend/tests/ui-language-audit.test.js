@@ -11,7 +11,8 @@ import {internalWorkspaceTarget,workspaceModules} from '../src/workspace-routes.
 test('cross-module links stay inside the workspace and preserve their query',()=>{
  const origin='http://localhost:8080'
  for(const path of Object.keys(workspaceModules))assert.deepEqual(internalWorkspaceTarget('/lotus/'+path+'?farm=LOTUS-222',origin),{path:'/'+path,query:{farm:'LOTUS-222'}})
- assert.deepEqual(internalWorkspaceTarget('/lotus/giao-viec?farm=F1',origin),{path:'/cong-viec',query:{farm:'F1',action:'assign'}})
+ assert.deepEqual(internalWorkspaceTarget('/lotus/giao-viec?farm=F1',origin),{path:'/cong-viec',query:{farm:'F1'}})
+ assert.deepEqual(internalWorkspaceTarget('/lotus/nhat-ky-cong-viec?farm=F1',origin),{path:'/cong-viec',query:{farm:'F1'}})
  assert.equal(internalWorkspaceTarget('https://example.com/lotus/kho',origin),null)
  assert.equal(internalWorkspaceTarget('/private/files/report.pdf',origin),null)
 })

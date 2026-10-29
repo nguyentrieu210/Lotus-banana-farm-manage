@@ -22,7 +22,7 @@ lịch mới được duyệt (không sửa hồi tố chương trình đã phá
 - Màu đã liên kết chứng từ cắt bắp không được sửa ngày/màu hoặc xóa.
 - Kỳ đã dùng giữ liên kết Bunch Operation, không cập nhật ngược khi quay vòng màu.
 - Xem và tạo phụ thuộc quyền Frappe + phạm vi vườn; không dùng giao diện để thay thế kiểm tra quyền ở máy chủ.
-- Chưa tự đưa màu vào `Work Daily Journal` hoặc `ReportsWorkspace`; đó là bước nối nghiệp vụ riêng.
+- Báo cáo ngày (`Lotus Field Report`) tự gắn màu đang hiệu lực vào dòng cắt bắp.
 
 Kiểm tra thuần Python: `python -m unittest tests.test_bunch_tag_rules`. Nghiệm thu
 thao tác tạo lịch trên site thử trước khi đưa lên live.

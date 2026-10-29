@@ -431,6 +431,15 @@ def _sheet(company, month, begin, end):
         item['workdays'] += flt(row.workdays)
         item['person_days'] += cint(row.present)
         item['amount'] += flt(row.amount)
+    # Công khoán confirmed in the đội daily reports (báo cáo ngày) is owed to the tổ the same way.
+    from lotus_farm.field_report import confirmed_piece_lines
+    for row in confirmed_piece_lines(company, begin, end):
+        key = (row.work_team, row.work_type or '', row.uom or '', flt(row.rate))
+        item = crews.setdefault(key, dict(work_team=row.work_team, work_type=row.work_type, uom=row.uom, unit_rate=flt(row.rate),
+                                          completed_qty=0.0, workdays=0.0, person_days=0, amount=0.0))
+        item['completed_qty'] += flt(row.qty)
+        item['workdays'] += flt(row.workdays)
+        item['amount'] += flt(row.amount)
     teams = {t.name: t for t in frappe.get_all('Work Team', filters={'name': ['in', list({k[0] for k in crews}) or ['']]},
                                                 fields=['name', 'team_name', 'lotus_foreman', 'lotus_foreman_phone'])}
     works = {w.name: w.work_name for w in frappe.get_all('Work Type', filters={'name': ['in', list({k[1] for k in crews}) or ['']]},

@@ -59,8 +59,6 @@ test('old material request print route and mobile apps open the new print layout
  assert.match(warehouse,/screen\.value='done'/)
 })
 test('actual Lotus plan-based material requirements print the issue request, not a stock entry',()=>{
- const work=read('lotus_farm/work_mobile.py')
- const field=read('frontend/src/WorkMobile.vue')
  const schema=JSON.parse(read('lotus_farm/lotus_farm/doctype/material_requirement/material_requirement.json'))
  assert.ok(schema.fields.some(f=>f.fieldname==='lines'))
  assert.match(py,/def _requirement\(name\)/)
@@ -68,7 +66,4 @@ test('actual Lotus plan-based material requirements print the issue request, not
  assert.match(py,/qty=flt\(line\.required_qty\)/)
  assert.match(py,/norm=flt\(line\.norm_qty\)/)
  assert.match(py,/stock=None/)
- assert.match(work,/task\["material_requirement"\] = requirements\.get\(line\)/)
- assert.match(field,/In phiếu đề xuất cấp vật tư \/ PDF/)
- assert.match(field,/canPrepare&&selected\.material_requirement/)
 })

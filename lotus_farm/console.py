@@ -69,8 +69,8 @@ def bootstrap():
     from lotus_farm.hr_workspace import _is_hr_manager
     session['capabilities']['hr_manage']=session['capabilities']['hr'] and _is_hr_manager()
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
-    from lotus_farm.work_journal import capabilities as journal_capabilities
-    session['capabilities'].update(journal_capabilities())
+    from lotus_farm.field_report import farm_names as report_farms
+    session['capabilities']['field_report']=frappe.session.user=='Administrator' or (has_role('Lotus Farm Manager','Lotus Field Supervisor','Lotus Team Leader') and bool(report_farms()))
     from lotus_farm.finance.setup import can_view as finance_view
     from lotus_farm.signing_rules import CHIEF_ACCOUNTANTS, DIRECTORS
     installed=bool(frappe.db.exists('DocType','Lotus Finance Settings'))
@@ -80,10 +80,9 @@ def bootstrap():
     session['capabilities']['purchasing']=bool(frappe.has_permission('Purchase Order','read') or frappe.has_permission('Material Request','read')) and all(frappe.has_permission(dt,'read') for dt in ('Company','Warehouse','Item'))
     session['capabilities']['purchasing_finance']=installed and (finance_view() or has_role('Lotus Purchase Approver','Lotus Farm Manager'))
     session['capabilities']['purchasing_invoice_read']=session['capabilities']['purchasing_finance'] and frappe.has_permission('Purchase Invoice','read')
-    if session['capabilities']['work_journal.read']:
-        from lotus_farm.work_journal import farm_names
+    if session['capabilities']['field_report']:
         existing = {f['name'] for f in session['farms']}
-        session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in farm_names() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
+        session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in report_farms() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
     return session
 
 

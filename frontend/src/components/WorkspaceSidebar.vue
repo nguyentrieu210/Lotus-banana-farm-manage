@@ -8,7 +8,7 @@ import {sidebarCollapsed} from '../workspace'
 import {sectionedModules} from '../module-navigation.js'
 
 // Preserve permissions from the app router. Menu grouping never grants page access.
-const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'},buyingView:String,stockView:String,financeView:String})
+const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'},buyingView:String,stockView:String,financeView:String,fieldView:String})
 const emit=defineEmits(['go'])
 const session=useSession(),scope=useScope()
 const groups=computed(()=>{
@@ -86,7 +86,7 @@ const isActive=group=>group.items.some(item=>itemActive(item))
     </div>
    </section>
   </nav>
-  <a v-if="session.commands.work&&session.modules.work?.length" class="field-link" :href="'/lotus/giao-viec'+(scope.farm?'?farm='+encodeURIComponent(scope.farm):'')">Giao việc nhanh trên điện thoại ↗</a>
+  <a v-if="session.capabilities?.field_report" class="field-link" href="/work">Báo cáo ngày trên điện thoại ↗</a>
   <a class="field-link" :href="'/assets/lotus_farm/field/index.html'">Giao diện hiện trường dự phòng ↗</a>
   <small>{{session.user}}</small>
  </aside>
