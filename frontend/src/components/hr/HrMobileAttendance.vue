@@ -34,10 +34,10 @@ async function load(){if(!props.company||!date.value)return;busy.value=true
  catch(e){emit('error',e.message)}finally{busy.value=false}}
 async function approveMatching(){
  saving.value=true
- try{const r=await call('lotus_farm.attendance_day.approve_matching',{company:props.company,date:date.value,client_event_id:crypto.randomUUID()},true);emit('notice','Đã duyệt '+r.approved+' người khớp máy chấm.');await load()}
+ try{const reviewed_rows=(data.value?.rows||[]).filter(r=>r.matches).map(r=>({row_key:r.row_key,review_hash:r.review_hash}));const r=await call('lotus_farm.attendance_day.approve_matching',{company:props.company,date:date.value,client_event_id:crypto.randomUUID(),reviewed_rows},true);emit('notice','Đã duyệt '+r.approved+' dòng công khớp máy chấm.');await load()}
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 function open(r){person.value=r;mode.value=r.docstatus===1?'correct':'day';const m=r.machine||{}
- Object.assign(form,{status:r.status||m.status||'Present',working_hours:Number(r.working_hours||m.working_hours||0),overtime_hours:Number(r.overtime_hours||m.suggested_overtime||0),
+ Object.assign(form,{status:r.status||m.status||'Present',working_hours:Number(r.name?r.working_hours:m.working_hours||0),overtime_hours:Number(r.name?r.overtime_hours||0:m.suggested_overtime||0),
   note:r.note||'',reason:'',shift:r.shift||m.shift||'',from:date.value,to:date.value,in_time:r.in_time||m.in_time||null,out_time:r.out_time||m.out_time||null,late_entry:r.late_entry??m.late_entry??0,early_exit:r.early_exit??m.early_exit??0})
  sheet.value.showModal()}
 async function saveDay(){const r=person.value;saving.value=true
@@ -62,6 +62,7 @@ defineExpose({load})
 <section class="hr-att">
  <div class="hr-att__date"><LotusMobileButton plain aria-label="Ngày trước" @click="shiftDay(-1)">‹</LotusMobileButton><LotusMobileInput v-model="date" type="date" :max="today" aria-label="Ngày công"/><LotusMobileButton plain aria-label="Ngày sau" :disabled="date>=today" @click="shiftDay(1)">›</LotusMobileButton></div>
  <LotusMobileFeedback v-if="locked" kind="warning">Tháng này đã khóa công, chỉ xem.</LotusMobileFeedback>
+ <LotusMobileFeedback v-if="data?.missing_shift_count&&!locked" kind="warning">{{data.missing_shift_count}} nhân viên chưa phân ca; công máy chờ kiểm tra.</LotusMobileFeedback>
  <LotusMobileFeedback v-if="data?.synced?.synced" kind="info">Máy chấm vừa gửi thêm {{data.synced.synced}} lượt.</LotusMobileFeedback>
  <div class="hr-att__stats">
   <button type="button" :class="{on:filter==='matching'}" @click="filter=filter==='matching'?'all':'matching'"><strong>{{counts.matching||0}}</strong><span>Khớp máy</span></button>
@@ -70,11 +71,11 @@ defineExpose({load})
   <button type="button" :class="{on:filter==='approved'}" @click="filter=filter==='approved'?'all':'approved'"><strong>{{counts.approved||0}}</strong><span>Đã duyệt</span></button>
  </div>
  <p v-if="late" class="hr-att__hint">{{late}} người đi muộn hôm nay.</p>
- <LotusMobileButton v-if="canSubmit&&!locked&&data?.counts?.matching" variant="primary" block :loading="saving" @click="approveMatching">Duyệt {{data.counts.matching}} người khớp máy</LotusMobileButton>
+ <LotusMobileButton v-if="canSubmit&&!locked&&data?.counts?.matching" variant="primary" block :loading="saving" @click="approveMatching">Duyệt {{data.counts.matching}} dòng công khớp máy</LotusMobileButton>
  <LotusMobileFeedback v-if="busy" kind="loading">Đang tải công…</LotusMobileFeedback>
  <section v-for="[name,list] in groups" :key="name" class="hr-att__group">
   <h3>{{name}} <small>{{list.length}} người</small></h3>
-  <button v-for="r in list" :key="r.employee" type="button" class="hr-att__row" :class="'is-'+kind(r)" @click="open(r)">
+  <button v-for="r in list" :key="r.row_key||r.employee" type="button" class="hr-att__row" :class="'is-'+kind(r)" @click="open(r)">
    <span class="hr-att__who"><strong>{{r.employee_name}}</strong><small>{{KINDS[kind(r)]}}<template v-if="r.docstatus===1||r.status"> · {{statusLabel(r.status)}}</template></small></span>
    <span class="hr-att__clock"><b>{{r.machine?.in_time?hhmm(r.machine.in_time):'––:––'}} → {{r.machine?.out_time?hhmm(r.machine.out_time)+plus(r.machine.out_time):'––:––'}}</b>
     <small><template v-if="r.machine?.late_minutes&&r.machine.late_entry">Muộn {{r.machine.late_minutes}}′ </template><template v-if="r.machine?.suggested_overtime">TC {{r.machine.suggested_overtime}}h</template><template v-if="r.machine?.needs_review">{{r.machine.reason}}</template></small></span>

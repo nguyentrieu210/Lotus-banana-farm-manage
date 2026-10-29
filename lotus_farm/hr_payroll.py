@@ -34,6 +34,9 @@ def install_fields():
     if not frappe.db.exists('DocType', 'Salary Slip'):
         return
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+    if frappe.db.exists('DocType','Salary Structure Assignment'):
+        create_custom_fields({'Salary Structure Assignment':[dict(fieldname='lotus_payment_basis',label='Lotus · Cơ chế lương tại ngày hiệu lực',fieldtype='Select',
+            options='\nMonthly\nDaywork\nPiecework\nMixed',read_only=1,no_copy=1,allow_on_submit=1)]},update=True,ignore_validate=True)
     fields = [dict(fieldname='lotus_hours_section', label='Lotus · Giờ công', fieldtype='Section Break', insert_after='payment_days')]
     previous = 'lotus_hours_section'
     for name, label in zip(SLIP_FIELDS, SLIP_LABELS):
@@ -145,8 +148,7 @@ def assign_salary(employee, from_date=None):
     if not frappe.db.exists('Salary Structure', {'name': name, 'docstatus': 1}):
         return None
     base = pay_base(employee.lotus_payment_basis, employee.lotus_base_salary, employee.lotus_daily_rate)
-    if employee.lotus_payment_basis == 'Piecework' or base <= 0:
-        return None
+    if base<0:frappe.throw('Mức lương không hợp lệ.')
     from lotus_farm.hr_period import is_closed
     joined = getdate(employee.date_of_joining) if employee.date_of_joining else None
     if from_date:
@@ -158,8 +160,8 @@ def assign_salary(employee, from_date=None):
     if joined and start < joined:
         start = joined
     current = frappe.get_all('Salary Structure Assignment', filters={'employee': employee.name, 'docstatus': 1, 'from_date': ['<=', start]},
-                             fields=['name', 'salary_structure', 'base', 'from_date'], order_by='from_date desc', limit=1)
-    if current and current[0].salary_structure == name and abs(flt(current[0].base) - base) < 0.5:
+                             fields=['name', 'salary_structure', 'base', 'from_date','lotus_payment_basis'], order_by='from_date desc', limit=1)
+    if current and current[0].salary_structure == name and abs(flt(current[0].base) - base) < 0.5 and (current[0].lotus_payment_basis or 'Monthly')==employee.lotus_payment_basis:
         return current[0].name
     if is_closed(employee.company, start):
         frappe.throw('Tháng ' + str(start)[:7] + ' đã khóa công. Chọn ngày hiệu lực lương từ tháng chưa khóa.')
@@ -168,6 +170,7 @@ def assign_salary(employee, from_date=None):
     doc = frappe.get_doc(dict(doctype='Salary Structure Assignment', employee=employee.name, salary_structure=name,
                               company=employee.company, currency=frappe.get_cached_value('Company', employee.company, 'default_currency'),
                               from_date=start, base=base,
+                              lotus_payment_basis=employee.lotus_payment_basis,
                               payroll_payable_account=frappe.get_cached_value('Company', employee.company, 'default_payroll_payable_account')))
     doc.insert()
     doc.submit()
@@ -235,7 +238,6 @@ def payroll_run(company, month):
                             net=sum(flt(s.net_pay) for s in slips)))
 
 
-@frappe.whitelist(methods=['POST'])
 def _finance_posts_payroll():
     """With Lotus finance switched on, payroll is posted once, from Tài chính – Kế toán (lotus_farm.finance.payroll)."""
     if frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.db.get_single_value('Lotus Finance Settings', 'finance_enabled'):
@@ -243,6 +245,7 @@ def _finance_posts_payroll():
                      'Không dùng phiếu lương HRMS để tránh ghi sổ hai lần.')
 
 
+@frappe.whitelist(methods=['POST'])
 def create_payroll(company, month):
     """Payroll Entry for a closed month: lists employees with a salary assignment and creates draft Salary Slips."""
     _hr_manager()

@@ -3,7 +3,7 @@ import {workFarm} from './work-farm'
 import WorkspaceListToolbar from './components/WorkspaceListToolbar.vue'
 import {hrCatalogLabel} from "./hr-catalog-labels"
 const props=defineProps({embedded:Boolean,navigationKey:String})
-import {computed,nextTick,onMounted,reactive,ref} from 'vue'
+import {computed,nextTick,onMounted,onBeforeUnmount,onActivated,onDeactivated,reactive,ref} from 'vue'
 import ModalForm from './components/form/ModalForm.vue'
 import FormGrid from './components/form/FormGrid.vue'
 import LotusField from './components/form/LotusField.vue'
@@ -39,7 +39,7 @@ const correcting=ref(null),correctionOpen=ref(false)
 const canCorrect=computed(()=>!!session.value?.can_manage_shifts&&!locked.value)
 function openCorrection(row){correcting.value=row;correctionOpen.value=true}
 async function corrected(r){notice.value='Đã sửa công ('+r.amended_from+' → '+r.name+').';await load()}
-const crew=reactive({}),master=reactive({}),crewBaseline=ref('')
+const crew=reactive({}),master=reactive({}),crewBaseline=ref(''),masterBaseline=ref('')
 const crewSnapshot=()=>JSON.stringify(Object.fromEntries(['work_type','headcount','present','workdays','completed_qty','uom','unit_rate','rate_override_reason','notes'].map(f=>[f,crew[f]])))
 
 const cap=computed(()=>session.value?.capabilities||{})
@@ -47,11 +47,22 @@ const dirty=computed(()=>staff.value.some(r=>r.edited))
 const locked=computed(()=>!!dayInfo.value.period_closed)
 const canEditStaff=computed(()=>!locked.value&&!!(cap.value.Attendance?.create||cap.value.Attendance?.write))
 const selected=computed(()=>staff.value.filter(r=>r.selected))
+const rowKey=row=>row.row_key||row.employee
+const hasChanges=()=>dirty.value||(crewDialog.value.open&&crewSnapshot()!==crewBaseline.value)||(masterDialog.value.open&&JSON.stringify(master)!==masterBaseline.value)||!!setup.value?.hasChanges?.()||!!correction.value?.hasChanges?.()
+const correction=ref(null)
+function discardChanges(){for(const row of staff.value){row.edited=false;row.selected=false}crewDialog.value.close();masterDialog.value.close();correctionOpen.value=false;setup.value?.discardChanges?.();load()}
+defineExpose({hasChanges,discardChanges,isSaving:saving})
+let active=true
+function beforeUnload(event){if(active&&hasChanges()){event.preventDefault();event.returnValue=''}}
+onMounted(()=>window.addEventListener('beforeunload',beforeUnload))
+onBeforeUnmount(()=>window.removeEventListener('beforeunload',beforeUnload))
+onActivated(()=>{active=true})
+onDeactivated(()=>{active=false})
 const statuses={'Present':'Có mặt','Half Day':'Nửa ngày','Absent':'Vắng','Work From Home':'Làm từ xa','On Leave':'Nghỉ phép'}
 const editableStatuses=Object.entries(statuses).filter(([key])=>key!=='On Leave')
 const attendanceCellActions={
- getRow:data=>staff.value.find(r=>r.employee===data.employee)||data,
- saving:()=>saving.value,
+ getRow:data=>staff.value.find(r=>rowKey(r)===rowKey(data))||data,
+ saving:()=>saving.value||busy.value,
  canEditStaff:()=>canEditStaff.value,
  canCorrect:()=>canCorrect.value,
  chooseStatus:row=>chooseStatus(row),
@@ -120,9 +131,9 @@ async function load(){if(!company.value)return;const id=++version;busy.value=tru
  try{
   if(tab.value==='staff'){
    // The board syncs the day's device punches first and returns each row with its device reading.
-   const keep=new Set(staff.value.filter(r=>r.selected&&r.date===date.value).map(r=>r.employee))
+   const keep=new Set(staff.value.filter(r=>r.selected&&r.date===date.value).map(rowKey))
    const result=await call('lotus_farm.attendance_day.board',{company:company.value,date:date.value,shift:shift.value,search:search.value})
-   if(id===version){staff.value=result.rows.map(r=>({...r,date:result.date,selected:keep.has(r.employee),edited:false}));dayInfo.value={holiday:result.holiday,has_calendar:result.has_calendar,period_closed:result.period_closed,counts:result.counts,synced:result.synced};eventId.value=crypto.randomUUID()}
+   if(id===version){staff.value=result.rows.map(r=>({...r,row_key:rowKey(r),date:result.date,selected:keep.has(rowKey(r)),edited:false}));dayInfo.value={holiday:result.holiday,has_calendar:result.has_calendar,period_closed:result.period_closed,counts:result.counts,synced:result.synced,missing_shift_count:result.missing_shift_count||0};eventId.value=crypto.randomUUID()}
   }
   if(tab.value==='crew'){const result=await api('crew_day',{company:company.value,date:date.value,farm:farm.value});if(id===version){crews.value=result.rows;availableTeams.value=result.teams}}
   if(tab.value==='month'){
@@ -136,25 +147,25 @@ async function init(){busy.value=true
  try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=session.value.companies[0]?.name||'';date.value=session.value.today;month.value=date.value.slice(0,7);tab.value=tabs.value[0]?.id||'setup';if(company.value){await loadCatalog();await load()}}
  catch(e){error.value=e.message}finally{busy.value=false}}
 async function changeCompany(){farm.value='';shift.value='';staff.value=[];await loadCatalog();await load()}
-function chooseTab(value){if(dirty.value){error.value='Lưu hoặc bỏ thay đổi bảng công trước khi chuyển màn hình.';return}tab.value=value;notice.value='';load()}
+function chooseTab(value){if(hasChanges()){error.value='Lưu hoặc bỏ thay đổi trước khi chuyển màn hình.';return}tab.value=value;notice.value='';load()}
 
 function edit(row){row.selected=true;row.edited=true}
-function chooseStatus(row){row.working_hours=row.status==='Half Day'?4:row.status==='Absent'?0:8;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
+function chooseStatus(row){const s=catalog.value.shifts.find(s=>s.name===row.shift);const minutes=v=>{const p=String(v).split(':').map(Number);return p[0]*60+p[1]};const duration=s?((minutes(s.end_time)-minutes(s.start_time)+1440)%1440)/60||8:8;row.working_hours=row.status==='Half Day'?duration/2:row.status==='Absent'?0:duration;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
 function markPresent(){for(const row of staff.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.status){row.status='Present';chooseStatus(row)}}
 // The shared table owns the single tick column; keep the existing timekeeping
 // selected flags because save/approve/cancel use those very same employee records.
 function chooseStaffRows(rows,selectedValue){
- const selectedEmployees=new Set(rows.map(row=>row.employee))
- for(const row of staff.value)if(selectedEmployees.has(row.employee))row.selected=selectedValue
+ const selectedEmployees=new Set(rows.map(rowKey))
+ for(const row of staff.value)if(selectedEmployees.has(rowKey(row)))row.selected=selectedValue
 }
 function toggleAll(){const value=!allChecked.value;chooseStaffRows(shown.value,value)}
-function selectAttendanceRow({id,selected}){chooseStaffRows([{employee:id}],selected)}
+function selectAttendanceRow({id,selected}){const row=staff.value.find(r=>rowKey(r)===id);if(row)chooseStaffRows([row],selected)}
 function selectAttendancePage({rows,selected}){chooseStaffRows(rows,selected)}
 function clearAttendanceSelection(){for(const row of staff.value)row.selected=false}
 // Copies the device reading into one row (never silently over a hand-edited value).
 function useMachine(row){const p=row.machine;if(!p?.status||row.docstatus!==0)return
  Object.assign(row,{shift:p.shift||row.shift,status:p.status,working_hours:p.working_hours,overtime_hours:p.suggested_overtime,in_time:p.in_time,out_time:p.out_time,late_entry:p.late_entry,early_exit:p.early_exit});edit(row)}
-async function askMatching(){if(!dayInfo.value.counts.matching)return;confirmation.value={type:'matching',action:'submit',count:dayInfo.value.counts.matching};reason.value='';await nextTick();confirmDialog.value.showModal()}
+async function askMatching(){if(dirty.value||!dayInfo.value.counts.matching)return;const rows=staff.value.filter(r=>r.matches).map(r=>({row_key:r.row_key,review_hash:r.review_hash}));confirmation.value={type:'matching',action:'submit',count:rows.length,reviewed_rows:rows};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function saveStaff(){
  const rows=selected.value.filter(r=>r.docstatus===0&&r.status&&r.status!=='On Leave')
  if(!rows.length){error.value='Chọn nhân viên và trạng thái để lưu nháp.';return}
@@ -168,7 +179,7 @@ async function askStaff(action){
 async function askCrew(row,action){if(action==='submit'&&crewSnapshot()!==crewBaseline.value){error.value='Lưu thay đổi trước khi duyệt phiếu công.';return}confirmation.value={type:'crew',action,name:row.name,modified:row.modified};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function act(){saving.value=true;error.value=''
  if(confirmation.value?.type==='matching'){
-  try{const r=await call('lotus_farm.attendance_day.approve_matching',{company:company.value,date:date.value,shift:shift.value,client_event_id:eventId.value},true);confirmDialog.value.close();notice.value='Đã lưu và duyệt '+r.approved+' dòng khớp máy chấm.';await load()}
+  try{if(dirty.value)throw Error('Lưu thay đổi trước khi duyệt khớp máy.');const r=await call('lotus_farm.attendance_day.approve_matching',{company:company.value,date:date.value,shift:shift.value,client_event_id:eventId.value,reviewed_rows:confirmation.value.reviewed_rows},true);confirmDialog.value.close();notice.value='Đã lưu và duyệt '+r.approved+' dòng khớp máy chấm.';await load()}
   catch(e){error.value=e.message}finally{saving.value=false}
   return}
  try{const item=confirmation.value;await api(item.type==='staff'?'staff_action':'crew_action',{company:company.value,...item,reason:reason.value},true);confirmDialog.value.close();if(item.type==='crew')crewDialog.value.close();notice.value=item.action==='submit'?'Đã duyệt bảng công.':item.action==='cancel'?'Đã hủy phiếu công.':'Đã xóa phiếu nháp.';await load()}
@@ -181,7 +192,7 @@ async function saveCrew(){saving.value=true;error.value='';try{const {client_eve
 const masterTitle={employee:'Thêm nhân sự chính thức',team:'Đội khoán / đầu câu',farm:'Thêm vườn'}
 async function openMaster(kind){error.value='';masterKind.value=kind;for(const key of Object.keys(master))delete master[key]
  Object.assign(master,kind==='employee'?{employee_name:'',gender:'',date_of_birth:'',date_of_joining:date.value,designation:'',department:''}:kind==='team'?{farm:farm.value||catalog.value.farms[0]?.name||'',name:'',code:'',foreman:'',phone:''}:{code:'',name:''})
- await nextTick();masterDialog.value.showModal()}
+ masterBaseline.value=JSON.stringify(master);await nextTick();masterDialog.value.showModal()}
 async function saveMaster(){saving.value=true;error.value=''
  try{if(masterKind.value==='farm')await api('create_farm',{company:company.value,...master},true);else await api(masterKind.value==='employee'?'create_employee':'create_team',{company:company.value,values:{...master}},true)
   masterDialog.value.close();notice.value='Đã tạo '+({employee:'nhân viên',team:'đội khoán',farm:'vườn'})[masterKind.value]+'.';await loadCatalog();await load()}
@@ -211,11 +222,12 @@ useNoticeToast(notice)
 
   <template v-if="tab==='staff'">
    <p v-if="locked" class="tk-banner is-lock" role="status"><LotusIcon name="lock"/>Tháng {{date.slice(0,7)}} đã khóa công. Chỉ xem; HR Manager mở lại kỳ ở Hồ sơ nhân sự › Kỳ công & bảng lương.</p>
-   <p v-else-if="dayInfo.holiday" class="tk-banner is-holiday" role="status"><LotusIcon name="flag"/>{{dayInfo.holiday.weekly_off?'Ngày nghỉ hằng tuần':'Ngày lễ: '+dayInfo.holiday.description}}. Giờ làm ngày này tính hệ số {{dayInfo.holiday.weekly_off?'200%':'300%'}}.</p>
-   <p v-else-if="!dayInfo.has_calendar" class="tk-banner is-info" role="status"><LotusIcon name="calendar"/>Chưa có lịch nghỉ năm nay. Tạo ở tab Thiết lập › Lịch nghỉ năm để tính lễ và khóa kỳ.</p>
+   <p v-if="dayInfo.missing_shift_count&&!locked" class="tk-banner is-info" role="status">{{dayInfo.missing_shift_count}} nhân viên chưa phân ca. Công máy chờ kiểm tra.<UiButton v-if="session?.can_manage_shifts" variant="link" @click="chooseTab('setup')">Phân ca</UiButton></p>
+   <p v-if="!locked&&dayInfo.holiday" class="tk-banner is-holiday" role="status"><LotusIcon name="flag"/>{{dayInfo.holiday.weekly_off?'Ngày nghỉ hằng tuần':'Ngày lễ: '+dayInfo.holiday.description}}. Giờ làm ngày này tính hệ số {{dayInfo.holiday.weekly_off?'200%':'300%'}}.</p>
+   <p v-else-if="!locked&&!dayInfo.has_calendar" class="tk-banner is-info" role="status"><LotusIcon name="calendar"/>Chưa có lịch nghỉ năm nay. Tạo ở tab Thiết lập › Lịch nghỉ năm để tính lễ và khóa kỳ.</p>
    <div class="tk-views" role="tablist" aria-label="Lọc theo trạng thái công"><UiButton v-for="[id,label] in views" :key="id" type="button" variant="ghost" role="tab" :aria-selected="view===id?'true':'false'" :class="['is-'+id,{active:view===id}]" @click="view=id">{{label}}<strong>{{counts[id]}}</strong></UiButton></div>
    <div class="attendance-toolbar tk-actions">
-    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" :disabled="saving||busy" @click="askMatching"><LotusIcon name="tick"/>Duyệt {{dayInfo.counts.matching}} dòng khớp máy</UiButton>
+    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt {{dayInfo.counts.matching}} dòng khớp máy</UiButton>
     <span v-if="dayInfo.synced" class="tk-hint tk-synced">Máy chấm: đã cập nhật {{dayInfo.synced.synced}} lượt mới{{dayInfo.synced.needs_review?', '+dayInfo.synced.needs_review+' lượt chưa ghép được':''}}</span>
     <span class="tk-actions__spacer"></span>
     <span v-if="selected.length" class="tk-actions__count">Đã chọn {{selected.length}}</span>
@@ -232,8 +244,8 @@ useNoticeToast(notice)
     </DropdownMenu>
    </div>
    <section class="stock-panel attendance-roster tk-roster" aria-label="Bảng chấm công trong ngày">
-    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="employee" storage-key="timekeeping-attendance" :row-class="attendanceRowClass"
-      :selected-row-keys="selected.map(row=>row.employee)" @row-selection-change="selectAttendanceRow" @page-selection-change="selectAttendancePage" @selection-clear="clearAttendanceSelection" />
+    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" row-key="row_key" storage-key="timekeeping-attendance" :row-class="attendanceRowClass"
+      :selected-row-keys="selected.map(rowKey)" @row-selection-change="selectAttendanceRow" @page-selection-change="selectAttendancePage" @selection-clear="clearAttendanceSelection" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>
      <template v-else>Chưa có nhân viên đang làm trong công ty này.<UiButton v-if="cap.Employee?.create" variant="link" @click="openMaster('employee')">Thêm nhân sự</UiButton></template>
@@ -306,7 +318,7 @@ useNoticeToast(notice)
   </FormGrid>
  </ModalForm>
 
- <TkCorrection v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
+ <TkCorrection ref="correction" v-model="correctionOpen" :company="company" :row="correcting" :shifts="catalog.shifts" @saved="corrected"/>
  <ModalForm v-model="confirmDialog.open" :title="confirmation?.type==='matching'?'Duyệt công khớp máy chấm':confirmation?.action==='submit'?'Duyệt công':confirmation?.action==='cancel'?'Hủy công đã duyệt':'Xóa công nháp'" :busy="saving" :error="error" width="560px" cancel-label="Quay lại" submit-label="Xác nhận" @submit="act">
   <p v-if="confirmation?.type==='staff'">{{confirmation.rows.length}} phiếu công đã chọn.</p>
   <p v-if="confirmation?.type==='matching'">Lưu và duyệt {{confirmation.count}} người có đủ giờ vào/ra trên máy, chưa bị chỉnh tay. Tăng ca lấy theo đề xuất (ra quá ca từ 30 phút, làm tròn 15 phút). Các dòng cần kiểm tra hoặc đã chỉnh tay giữ nguyên để bạn xem.</p>

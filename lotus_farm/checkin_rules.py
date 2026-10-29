@@ -55,6 +55,14 @@ def day_status(day, checkins, shift=None, is_holiday=False):
         return result
     ins = [t for t, kind in punches if kind == 'IN']
     outs = [t for t, kind in punches if kind == 'OUT']
+    labelled = any(kind for _, kind in punches)
+    if labelled and (not ins or not outs or any(kind and kind not in ('IN', 'OUT') for _, kind in punches)):
+        result.update(in_time=ins[0] if ins else None, out_time=outs[-1] if outs else None,
+                      needs_review=1, reason='Thiếu cặp lượt vào/ra hợp lệ')
+        return result
+    if labelled and (punches[0][1] != 'IN' or punches[-1][1] != 'OUT'):
+        result.update(in_time=ins[0], out_time=outs[-1], needs_review=1, reason='Thứ tự lượt vào/ra không hợp lệ')
+        return result
     # Without IN/OUT labels the first punch opens and the last one closes the day.
     first_in = min(ins) if ins else punches[0][0]
     last_out = max(outs) if outs else punches[-1][0]

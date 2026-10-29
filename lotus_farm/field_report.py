@@ -117,6 +117,8 @@ def validate_rate(doc):
 
 def _closed(company, day):
     from lotus_farm.hr_period import is_closed
+    # Serialize the new crew-pay source with the final HR period signature.
+    lock("Company", company)
     if is_closed(company, day):
         frappe.throw("Tháng công đã khóa sổ, không sửa báo cáo ngày này.")
 
@@ -457,6 +459,10 @@ def _store(doc):
 
 
 def _load(name, expected_modified):
+    source = frappe.db.get_value("Lotus Field Report", name, ["company", "posting_date"], as_dict=True)
+    if not source:
+        frappe.throw("Không tìm thấy báo cáo ngày.", frappe.DoesNotExistError)
+    _closed(source.company, source.posting_date)
     doc = frappe.get_doc("Lotus Field Report", name, for_update=True)
     require_farm(doc.farm)
     if str(doc.modified) != str(expected_modified or ""):
@@ -464,7 +470,6 @@ def _load(name, expected_modified):
     rights = access(doc.farm, doc.crew)
     if not rights.supervisor:
         frappe.throw("Chỉ đội trưởng của đội (hoặc quản lý vườn) làm việc này.", frappe.PermissionError)
-    _closed(doc.company, doc.posting_date)
     return doc, rights
 
 

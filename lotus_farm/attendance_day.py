@@ -5,6 +5,8 @@ Device data is synced into HRMS Employee Checkin every 10 minutes (sync_recent) 
 so the morning view needs no trip to the device screen. Nothing is approved without the manager's click.
 """
 from datetime import timedelta
+import hashlib
+import json
 
 import frappe
 from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime, nowdate
@@ -12,7 +14,7 @@ from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetim
 from lotus_farm import timekeeping as t
 from lotus_farm.timekeeping_rules import overtime_suggestion
 
-COMPARED = ('status', 'working_hours', 'in_time', 'out_time')
+COMPARED = ('status', 'working_hours', 'in_time', 'out_time', 'shift', 'late_entry', 'early_exit', 'overtime_hours')
 
 
 def _minutes(a, b):
@@ -41,14 +43,24 @@ def _machine_row(day, proposal, shift):
 def _same(saved, machine):
     """A saved draft still equals what the device says (so it was not edited by hand)."""
     for field in COMPARED:
-        a, b = saved.get(field), machine.get(field)
+        a = saved.get(field)
+        b = machine.get('suggested_overtime') if field == 'overtime_hours' else machine.get(field)
         if field in ('in_time', 'out_time'):
-            a, b = (str(get_datetime(a))[:16] if a else ''), (str(get_datetime(b))[:16] if b else '')
-        elif field == 'working_hours':
+            a, b = (str(get_datetime(a)) if a else ''), (str(get_datetime(b)) if b else '')
+        elif field in ('working_hours','overtime_hours'):
             a, b = round(flt(a), 2), round(flt(b), 2)
+        elif field in ('late_entry','early_exit'):
+            a,b=cint(a),cint(b)
+        elif field=='shift':
+            a,b=a or '',b or ''
         if a != b:
             return False
     return True
+
+
+def _review_hash(row):
+    return hashlib.sha256(json.dumps(dict(row_key=row['row_key'],name=row.get('name'),modified=str(row.get('modified') or ''),
+        machine=row.get('machine')),sort_keys=True,default=str).encode()).hexdigest()
 
 
 def _can_sync():
@@ -73,17 +85,28 @@ def board(company, date, shift=None, search=None, sync=1):
     synced = sync_day(company, day) if cint(sync) else None
     result = t.staff_day(company, str(day), shift, search)
     machine = {}
+    machine_readable=False
     if frappe.has_permission('Employee Checkin', 'read'):
-        proposals = t.propose_from_checkins(company, str(day), shift)
+        try:
+            proposals = t.propose_from_checkins(company, str(day), shift)
+            machine_readable=True
+        except frappe.PermissionError:
+            # Native permlevel on punch times stays enforced; attendance itself is still readable.
+            proposals={'rows':[]}
         settings = {}
         for row in proposals['rows']:
             name = row.get('shift')
             if name and name not in settings:
                 settings[name] = frappe.db.get_value('Shift Type', name, ['start_time', 'end_time'], as_dict=True) or {}
-            machine[row['employee']] = _machine_row(day, row, settings.get(name))
+            machine[row['row_key']] = _machine_row(day, row, settings.get(name))
+    unassigned_saved={r['employee'] for r in result['rows'] if r.get('name') and not r.get('shift')}
+    if shift:
+        unassigned_saved.update(frappe.get_list('Attendance',filters={'company':company,'attendance_date':day,'docstatus':['<',2],'shift':['is','not set']},pluck='employee',limit_page_length=0))
     counts = dict(matching=0, review=0, manual=0)
     for row in result['rows']:
-        found = machine.get(row['employee'])
+        found = machine.get(row['row_key'])
+        if found and row.get('shift') and row['employee'] in unassigned_saved:
+            found.update(clean=False,needs_review=1,reason='Ngày đã có phiếu chưa gắn ca; đối soát phiếu cũ trước khi tạo công theo ca')
         row['machine'] = found
         row['manual'] = bool(found and row.get('name') and row.get('docstatus') == 0 and found.get('clean') and not _same(row, found))
         row['matches'] = bool(found and found['clean'] and row.get('status') != 'On Leave' and row.get('docstatus') == 0
@@ -91,17 +114,28 @@ def board(company, date, shift=None, search=None, sync=1):
         counts['matching'] += row['matches']
         counts['review'] += bool(found and found.get('needs_review') and row.get('docstatus') == 0)
         counts['manual'] += row['manual']
-    result.update(counts=counts, synced=synced, can_sync=_can_sync())
+        row['review_hash']=_review_hash(row)
+    result.update(counts=counts, synced=synced, can_sync=_can_sync(),machine_readable=machine_readable)
     return result
 
 
 @frappe.whitelist(methods=['POST'])
-def approve_matching(company, date, client_event_id, shift=None):
+def approve_matching(company, date, client_event_id, shift=None, reviewed_rows=None):
     """Save and approve, in one step, every row the device fully explains (see board.matches)."""
     if not (frappe.has_permission('Attendance', 'create') and frappe.has_permission('Attendance', 'submit')):
         frappe.throw('Chưa có quyền lưu và duyệt chấm công.', frappe.PermissionError)
+    t._company(company)
+    from lotus_farm.controls import lock
+    lock('Company',company)
+    reviewed_rows=frappe.parse_json(reviewed_rows) if isinstance(reviewed_rows,str) else reviewed_rows
+    if not isinstance(reviewed_rows,list) or not 1<=len(reviewed_rows)<=300:
+        frappe.throw('Tải lại bảng công rồi chọn các dòng khớp máy để duyệt.')
+    reviewed={r['row_key']:r['review_hash'] for r in reviewed_rows}
+    if len(reviewed)!=len(reviewed_rows):frappe.throw('Danh sách duyệt bị trùng.')
     data = board(company, date, shift, None, sync=0)
-    rows = [r for r in data['rows'] if r['matches']]
+    rows = [r for r in data['rows'] if r['row_key'] in reviewed]
+    if len(rows)!=len(reviewed) or any(not r['matches'] or r['review_hash']!=reviewed[r['row_key']] for r in rows):
+        frappe.throw('Dữ liệu chấm công đã thay đổi sau khi xem. Tải lại và kiểm tra trước khi duyệt.')
     if not rows:
         return dict(approved=0)
     payload = []

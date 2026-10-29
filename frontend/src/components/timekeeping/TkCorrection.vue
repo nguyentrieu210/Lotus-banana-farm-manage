@@ -11,12 +11,13 @@ import {call} from '../../api'
 
 const props=defineProps({modelValue:Boolean,company:String,row:{type:Object,default:null},shifts:{type:Array,default:()=>[]}})
 const emit=defineEmits(['update:modelValue','saved'])
-const form=reactive({}),saving=ref(false),error=ref('')
+const form=reactive({}),saving=ref(false),error=ref(''),baseline=ref('')
 const local=v=>v?String(v).replace(' ','T').slice(0,16):''
 const statuses=[['Present','Có mặt'],['Half Day','Nửa ngày'],['Absent','Vắng'],['Work From Home','Làm từ xa']]
 const hours=computed(()=>{if(!form.in_time||!form.out_time)return null;const h=(new Date(form.out_time)-new Date(form.in_time))/36e5;return h>0?Math.round(h*100)/100:null})
 watch(()=>props.modelValue,open=>{if(!open||!props.row)return;error.value='';const r=props.row
- Object.assign(form,{status:r.status,shift:r.shift||'',in_time:local(r.in_time),out_time:local(r.out_time),working_hours:Number(r.working_hours||0),overtime_hours:Number(r.overtime_hours||r.lotus_overtime_hours||0),note:r.note||r.lotus_note||'',reason:''})},{immediate:true})
+ Object.assign(form,{status:r.status,shift:r.shift||'',in_time:local(r.in_time),out_time:local(r.out_time),working_hours:Number(r.working_hours||0),overtime_hours:Number(r.overtime_hours??r.lotus_overtime_hours??0),note:r.note||r.lotus_note||'',reason:''});baseline.value=JSON.stringify(form)},{immediate:true})
+defineExpose({hasChanges:()=>props.modelValue&&baseline.value!==JSON.stringify(form)})
 async function save(){
  saving.value=true;error.value=''
  try{

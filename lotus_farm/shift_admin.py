@@ -217,15 +217,24 @@ def set_roster(company, changes):
             begin = getdate(change.get('from'))
             end = getdate(change['to']) if change.get('to') else None
             shift = change.get('shift') or None
-            if shift and shift not in shift_names:
-                frappe.throw('Ca không tồn tại: ' + str(shift))
+            multiple=change.get('shifts')
+            if multiple is not None and (not isinstance(multiple,list) or not 1<=len(multiple)<=6 or len(set(multiple))!=len(multiple)):
+                frappe.throw('Chọn từ 1 đến 6 ca khác nhau.')
+            requested=multiple if multiple is not None else ([shift] if shift else [])
+            for selected in requested:
+                if selected not in shift_names:frappe.throw('Ca không tồn tại: '+str(selected))
+            if multiple:
+                from hrms.hr.doctype.shift_assignment.shift_assignment import has_overlapping_timings
+                if any(has_overlapping_timings(a,b) for i,a in enumerate(multiple) for b in multiple[i+1:]):
+                    frappe.throw('Các ca trong cùng ngày không được chồng giờ.')
             _guard(company, begin, end)
-            plan = rules.plan_roster(_assignments(company, employee.name), begin, end, shift)
+            plan = rules.plan_roster(_assignments(company, employee.name), begin, end, None if multiple is not None else shift)
+            if multiple is not None:plan['create'].extend((name,begin,end) for name in multiple)
             _apply(company, employee.name, plan)
             worked = frappe.get_all('Attendance', filters={'employee': employee.name, 'docstatus': ['<', 2],
                                                            'attendance_date': ['between', [begin, end or add_days(nowdate(), 1)]]},
                                     fields=['attendance_date', 'shift'], limit_page_length=0)
-            different = [r for r in worked if (r.shift or None) != shift]
+            different = [r for r in worked if (r.shift or None) not in (requested or [None])]
             if different:
                 warnings.append(dict(employee=employee.name, employee_name=label, days=len(different),
                                      message=label + ': ' + str(len(different)) + ' ngày đã có công theo ca cũ — kiểm tra lại công các ngày đó.'))
@@ -249,7 +258,7 @@ def roster(company, start, days=7, search=None, department=None):
     filters = {'company': company, 'status': 'Active'}
     if department:
         filters['department'] = department
-    people = frappe.get_list('Employee', filters=filters, fields=['name', 'employee_name', 'department', 'designation'],
+    people = frappe.get_list('Employee', filters=filters, fields=['name', 'employee_name', 'department', 'designation','default_shift'],
                              order_by='employee_name', limit_page_length=0)
     if search:
         needle = str(search).casefold()
@@ -267,8 +276,9 @@ def roster(company, start, days=7, search=None, department=None):
         cells = []
         mine = [a for a in assignments if a.employee == person.name]
         for day in dates:
-            hit = next((a for a in mine if getdate(a.start_date) <= getdate(day) and (not a.end_date or getdate(a.end_date) >= getdate(day))), None)
-            cells.append(dict(date=str(day), shift=hit.shift_type if hit else '', worked=(person.name, str(day)) in done))
+            hits=list(dict.fromkeys(a.shift_type for a in mine if getdate(a.start_date)<=getdate(day) and (not a.end_date or getdate(a.end_date)>=getdate(day))))
+            if not hits and person.default_shift:hits=[person.default_shift]
+            cells.append(dict(date=str(day), shift=hits[0] if hits else '',shifts=hits, worked=(person.name, str(day)) in done))
         rows.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department or '',
                          designation=person.designation or '', cells=cells))
     from lotus_farm.hr_period import holiday_map

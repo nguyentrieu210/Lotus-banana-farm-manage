@@ -25,6 +25,7 @@ const sections=computed(()=>[
 const section=ref('')
 watch(sections,list=>{if(!list.some(s=>s.id===section.value))section.value=list[0]?.id||''},{immediate:true})
 const busy=ref(false),saving=ref(false)
+const roster=ref(null),calendarBaseline=ref('')
 const fail=e=>emit('error',e.message||String(e))
 const hhmm=v=>String(v||'').slice(0,5)
 
@@ -47,6 +48,7 @@ async function loadCalendar(){
  const weekly=[...new Set(result.holidays.filter(h=>h.weekly_off).map(h=>result.weekdays[(new Date(h.date+'T00:00:00').getDay()+6)%7]))]
  weeklyOff.value=weekly.length?weekly:['Sunday']
  holidays.value=result.holidays.filter(h=>!h.weekly_off).map(h=>({date:h.date,description:h.description}))
+ calendarBaseline.value=JSON.stringify([weeklyOff.value,holidays.value,year.value])
 }
 function toggleDay(day){weeklyOff.value=weeklyOff.value.includes(day)?weeklyOff.value.filter(d=>d!==day):[...weeklyOff.value,day]}
 async function saveCalendar(){
@@ -61,13 +63,13 @@ const teamColumns=[{field:'team_name',headerName:'Đội khoán',minWidth:190},{
 
 async function load(){if(!props.company)return;busy.value=true;try{if(section.value==='shifts')await loadShifts();if(section.value==='calendar')await loadCalendar()}catch(e){fail(e)}finally{busy.value=false}}
 watch(()=>[section.value,props.company,props.month],load,{immediate:true})
-defineExpose({load})
+defineExpose({load,hasChanges:()=>!!shiftOpen.value||!!roster.value?.hasChanges?.()||(!!info.value&&calendarBaseline.value!==JSON.stringify([weeklyOff.value,holidays.value,year.value])),discardChanges:()=>{shiftOpen.value=false;roster.value?.discardChanges?.();load()}})
 </script>
 <template>
 <div class="tk-setup">
  <nav class="tk-subnav" aria-label="Thiết lập chấm công"><button v-for="s in sections" :key="s.id" type="button" :aria-current="section===s.id?'page':undefined" :class="{active:section===s.id}" @click="section=s.id"><LotusIcon :name="s.icon"/>{{s.label}}</button></nav>
 
- <TkRoster v-if="section==='schedule'" :company="company" :today="session?.today" :shifts="catalog.shifts||[]" :departments="catalog.departments||[]" @notice="emit('notice',$event)" @error="emit('error',$event)"/>
+ <TkRoster v-if="section==='schedule'" ref="roster" :company="company" :today="session?.today" :shifts="catalog.shifts||[]" :departments="catalog.departments||[]" @notice="emit('notice',$event)" @error="emit('error',$event)"/>
 
  <section v-if="section==='shifts'" class="tk-card" aria-label="Ca làm việc">
   <header class="tk-card__head"><h3>Ca làm việc</h3><span class="tk-actions__spacer"></span><UiButton v-if="session?.can_manage_shifts" variant="outline" @click="openShift()"><LotusIcon name="plus"/>Thêm ca</UiButton></header>

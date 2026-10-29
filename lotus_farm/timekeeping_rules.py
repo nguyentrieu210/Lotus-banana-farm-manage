@@ -17,6 +17,17 @@ def status_days(status):
     return {'Present':1,'Work From Home':1,'Half Day':0.5}.get(status,0)
 
 
+def employed_on(person, day):
+    day = _as_date(day)
+    joined, left = _as_date(person.get('date_of_joining')), _as_date(person.get('relieving_date'))
+    return (person.get('status') in ('Active', 'Left') and (not joined or joined <= day)
+            and (not left or day <= left) and (person.get('status') != 'Left' or bool(left)))
+
+
+def attendance_key(employee, shift=None):
+    return str(employee) + '::' + str(shift or '')
+
+
 def month_range(month):
     """'YYYY-MM' -> (first day, last day); anything else raises ValueError."""
     import calendar
