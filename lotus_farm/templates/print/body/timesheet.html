@@ -1,12 +1,15 @@
-{#- Bảng công tháng (nhân sự / đội khoán), landscape. Weekly days off and holidays are shaded and marked. -#}
+{#- Bảng công tháng (nhân sự / đội khoán), landscape. Weekly days off and holidays are shaded and marked. Staff are listed
+by tổ / bộ phận, only those with a day recorded in the month; + marks a day with phụ cấp công việc. -#}
 {% set f = p.fmt %}
 <table class="lp-table lp-table--compact lp-grid">
- <colgroup><col style="width:{{ 13 if p.staff else 15 }}%">{% for d in p.day_list %}<col>{% endfor %}<col style="width:4.5%"><col style="width:{{ 5 if p.staff else 7.5 }}%"></colgroup>
- <thead><tr><th>{{ 'Nhân viên' if p.staff else 'Đội khoán / đầu câu' }}</th>{% for d in p.day_list %}<th class="center{% if d.off %} lp-off{% endif %}">{{ d.day }}{% if d.off %}<small>{{ d.off }}</small>{% endif %}</th>{% endfor %}<th class="num">Tổng công</th><th class="num">{{ 'Giờ làm' if p.staff else 'Giá trị khoán' }}</th></tr></thead>
- <tbody>{% for row in p.rows %}<tr><td>{% if p.staff %}<b>{{ row.employee_name }}</b><small>{{ row.employee }}</small>{% else %}<b>{{ row.team_name }}</b>{% if row.foreman %}<small>{{ row.foreman }}</small>{% endif %}{% endif %}</td>
-  {% for d in p.day_list %}<td class="center{% if d.off %} lp-off{% endif %}">{% for e in row.days.get(d.day|string, []) %}{{ '*' if e.docstatus == 0 else '' }}{{ p.codes.get(e.status, '—') if p.staff else f.number(e.workdays) }}{% if not loop.last %}/{% endif %}{% endfor %}</td>{% endfor %}
-  <td class="num"><b>{{ f.number(row.workdays, 2) }}</b></td><td class="num">{{ f.number(row.working_hours, 1) if p.staff else f.number(row.amount, 0) }}</td></tr>{% endfor %}
- {% if p.rows %}<tr class="lp-total"><td>Cộng {{ p.rows|length }} {{ 'người' if p.staff else 'đội' }}</td><td colspan="{{ p.day_list|length }}"></td><td class="num">{{ f.number(p.rows|sum(attribute='workdays'), 2) }}</td><td class="num">{{ f.number(p.rows|sum(attribute='working_hours'), 1) if p.staff else f.number(p.rows|sum(attribute='amount'), 0) }}</td></tr>{% endif %}</tbody>
+ <colgroup><col style="width:{{ 13 if p.staff else 15 }}%">{% for d in p.day_list %}<col>{% endfor %}<col style="width:4.5%"><col style="width:{{ 4.5 if p.staff else 7.5 }}%"></colgroup>
+ <thead><tr><th>{{ 'Nhân viên' if p.staff else 'Đội khoán / đầu câu' }}</th>{% for d in p.day_list %}<th class="center{% if d.off %} lp-off{% endif %}">{{ d.day }}{% if d.off %}<small>{{ d.off }}</small>{% endif %}</th>{% endfor %}<th class="num">Tổng công</th><th class="num">{{ 'Ngày phụ cấp' if p.staff else 'Giá trị khoán' }}</th></tr></thead>
+ <tbody>{% for row in p.rows %}
+  {% if p.staff and (loop.first or row.group != loop.previtem.group) %}<tr class="lp-group"><td colspan="{{ p.day_list|length + 3 }}"><b>{{ row.group }}</b></td></tr>{% endif %}
+  <tr><td>{% if p.staff %}<b>{{ row.employee_name }}</b><small>{{ row.employee }}</small>{% else %}<b>{{ row.team_name }}</b>{% if row.foreman %}<small>{{ row.foreman }}</small>{% endif %}{% endif %}</td>
+  {% for d in p.day_list %}<td class="center{% if d.off %} lp-off{% endif %}">{% for e in row.days.get(d.day|string, []) %}{{ '*' if e.docstatus == 0 else '' }}{{ p.codes.get(e.status, '—') if p.staff else f.number(e.workdays) }}{% if p.staff and e.lotus_allowance %}<sup>+</sup>{% endif %}{% if not loop.last %}/{% endif %}{% endfor %}</td>{% endfor %}
+  <td class="num"><b>{{ f.number(row.workdays, 2) }}</b></td><td class="num">{{ (f.number(row.allowance_days, 1) if row.allowance_days else '') if p.staff else f.number(row.amount, 0) }}</td></tr>{% endfor %}
+ {% if p.rows %}<tr class="lp-total"><td>Cộng {{ p.rows|length }} {{ 'người' if p.staff else 'đội' }}</td><td colspan="{{ p.day_list|length }}"></td><td class="num">{{ f.number(p.rows|sum(attribute='workdays'), 2) }}</td><td class="num">{{ f.number(p.rows|sum(attribute='allowance_days'), 1) if p.staff else f.number(p.rows|sum(attribute='amount'), 0) }}</td></tr>{% endif %}</tbody>
 </table>
 {% if not p.rows %}<p class="lp-legend">Chưa có dữ liệu trong phạm vi này.</p>{% endif %}
-<p class="lp-legend">{% if p.staff %}X: có mặt · V: vắng · ½: nửa ngày · TX: làm từ xa · P: nghỉ phép · {% endif %}CN: nghỉ tuần · L: ngày lễ (cột tô xám) · *: phiếu nháp, chưa tính tổng · ô trống: chưa chấm. Tổng công chỉ tính phiếu đã duyệt.{% if not p.staff %} Giá trị khoán chưa phải chứng từ thanh toán.{% endif %}</p>
+<p class="lp-legend">{% if p.staff %}X: có mặt · V: vắng · ½: nửa ngày · TX: làm từ xa · P: nghỉ phép · +: có phụ cấp công việc · {% endif %}CN: nghỉ tuần · L: ngày lễ (cột tô xám) · *: phiếu nháp, chưa tính tổng · ô trống: chưa chấm. Tổng công chỉ tính phiếu đã duyệt.{% if not p.staff %} Giá trị khoán chưa phải chứng từ thanh toán.{% endif %}</p>

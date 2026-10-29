@@ -21,6 +21,13 @@ def build(company, month, kind='staff', farm=None):
         frappe.throw('Chưa có quyền in bảng công.', frappe.PermissionError)
     _company(company)
     data = monthly(company, month) if kind == 'staff' else crew_monthly(company, month, farm)
+    if kind == 'staff':
+        # Only people with a day recorded in the month, listed by tổ (or bộ phận) for each tổ to check and sign.
+        teams = {t.name: t.team_name for t in frappe.get_all('Work Team', filters={'name': ['in', list({r.get('work_team') for r in data['rows'] if r.get('work_team')}) or ['']]},
+                                                           fields=['name', 'team_name'])}
+        for row in data['rows']:
+            row['group'] = teams.get(row.get('work_team')) or (row.get('department') or '').rsplit(' - ', 1)[0] or 'Chưa xếp tổ'
+        data['rows'] = sorted([r for r in data['rows'] if r['days']], key=lambda r: (r['group'] == 'Chưa xếp tổ', r['group'], r['employee_name'] or ''))
     holidays = data.get('holidays') or {}
     days = [dict(day=d, off=('CN' if holidays.get(str(d)) else 'L') if str(d) in holidays else '') for d in range(1, data['days'] + 1)]
     year, number = str(month).split('-')

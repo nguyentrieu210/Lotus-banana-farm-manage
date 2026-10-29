@@ -11,7 +11,7 @@ from lotus_farm.presence_rules import POLICY,presence_session,presence_status
 
 FIELDS=['name','employee','status','working_hours','docstatus','modified','shift','in_time','out_time',
     'lotus_note','lotus_overtime_hours','lotus_presence_mode','lotus_morning_present','lotus_afternoon_present',
-    'lotus_morning_punch','lotus_afternoon_punch']
+    'lotus_morning_punch','lotus_afternoon_punch','lotus_allowance','lotus_allowance_amount']
 
 
 def values(day,entry):
@@ -100,12 +100,13 @@ def board(company,date,search=None,sync=1):
         row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,
             row_key=person.name,name=None,modified=None,status='',working_hours=0,overtime_hours=0,note='',docstatus=0,
             shift=None,in_time=None,out_time=None,late_entry=0,early_exit=0,daily_presence=True,records=docs,
-            morning_present=0,afternoon_present=0,morning_time=None,afternoon_time=None)
+            morning_present=0,afternoon_present=0,morning_time=None,afternoon_time=None,allowance=0,allowance_amount=0)
         if proposal:
             row.update({k:proposal[k] for k in ('status','working_hours','morning_present','afternoon_present','morning_time','afternoon_time')})
         if record:
             row.update(name=record.name,modified=str(record.modified),status=record.status,working_hours=flt(record.working_hours),
                 overtime_hours=flt(record.lotus_overtime_hours),note=record.lotus_note or '',docstatus=record.docstatus,
+                allowance=cint(record.get('lotus_allowance')),allowance_amount=flt(record.get('lotus_allowance_amount')),
                 **saved_presence(record))
         row['legacy_conflict']=len(docs)>1
         if row['legacy_conflict']:
@@ -146,7 +147,11 @@ def save(company,date,rows,client_event_id):
         seen.add(employee.name);presence=values(day,entry)
         overtime=_number(entry.get('overtime_hours') or 0,'Giờ tăng ca',allow_zero=True)
         if overtime>16 or (presence['status']=='Absent' and overtime):frappe.throw('Giờ tăng ca không hợp lệ.')
-        payload=dict(company=company,date=str(day),employee=employee.name,overtime=overtime,note=str(entry.get('note') or '')[:2000],**presence)
+        # Clients that do not send allowance keep what the day already has.
+        allowance=None if entry.get('allowance') is None else cint(entry.get('allowance'))
+        if allowance and presence['status']=='Absent':frappe.throw(employee.employee_name+': vắng cả ngày, không có phụ cấp.')
+        payload=dict(company=company,date=str(day),employee=employee.name,overtime=overtime,note=str(entry.get('note') or '')[:2000],
+            allowance=allowance,**presence)
         key,digest=t._request(str(client_event_id)+':presence:'+employee.name,payload)
         retry=frappe.db.get_value('Attendance',{'lotus_client_key':key},['name','lotus_payload_hash'],as_dict=True)
         if retry:
@@ -164,7 +169,7 @@ def save(company,date,rows,client_event_id):
             doc=frappe.new_doc('Attendance')
         doc.update(dict(company=company,employee=employee.name,attendance_date=day,status=presence['status'],working_hours=presence['working_hours'],
             lotus_overtime_hours=overtime,lotus_note=payload['note'],lotus_client_key=key,lotus_payload_hash=digest))
-        set_presence(doc,presence);doc.save();names.append(doc.name)
+        set_presence(doc,presence);set_allowance_values(doc,company,day,doc.get('lotus_allowance') if allowance is None else allowance);doc.save();names.append(doc.name)
     return dict(names=names)
 
 
@@ -178,9 +183,37 @@ def approve(company,date,client_event_id,reviewed_rows):
     data=board(company,date,sync=0);rows=[r for r in data['rows'] if r['row_key'] in wanted]
     if len(wanted)!=len(reviewed) or len(rows)!=len(reviewed) or any(not r['matches'] or r['review_hash']!=wanted[r['row_key']] for r in rows):
         frappe.throw('Dữ liệu chấm công đã thay đổi sau khi xem. Tải lại và kiểm tra trước khi duyệt.')
-    entries=[dict(employee=r['employee'],name=r['name'],modified=r['modified'],note=r['note'],overtime_hours=0,
+    entries=[dict(employee=r['employee'],name=r['name'],modified=r['modified'],note=r['note'],overtime_hours=0,allowance=r['allowance'],
         **{k:r['machine'][k] for k in ('morning_present','afternoon_present','morning_time','afternoon_time')}) for r in rows]
     saved=save(company,date,entries,client_event_id)
     docs=[frappe.get_doc('Attendance',name) for name in saved['names']]
     t.staff_action(company,[dict(name=d.name,modified=str(d.modified)) for d in docs if d.docstatus==0],'submit')
     return dict(approved=len(docs),names=[d.name for d in docs])
+
+
+def set_allowance_values(doc,company,day,allowance):
+    """Phụ cấp công việc of the day, fixed on the record at the rate in force that day (lotus_farm.work_allowance)."""
+    from lotus_farm.work_allowance import amount_for
+    allowance=cint(allowance) if doc.status!='Absent' else 0
+    doc.lotus_allowance=allowance
+    doc.lotus_allowance_amount=amount_for(company,day,allowance,min(flt(doc.working_hours),8)/8)
+
+
+def set_allowance(company,date,rows,allowance):
+    """Tick or clear Phụ cấp on days already saved (draft or approved) while the month is open. rows: employee, name, modified."""
+    from lotus_farm.hr_period import is_closed
+    t._company(company);day=t._date(date);entries=frappe.parse_json(rows)
+    if not isinstance(entries,list) or not 1<=len(entries)<=300:frappe.throw('Chọn từ 1 đến 300 nhân viên.')
+    if is_closed(company,day):frappe.throw('Tháng công đã khóa, không sửa phụ cấp.')
+    lock('Company',company);changed=[]
+    for entry in entries:
+        doc=frappe.get_doc('Attendance',entry.get('name'))
+        doc.check_permission('write' if doc.docstatus==0 else 'submit')
+        if doc.company!=company or str(doc.attendance_date)!=str(day) or doc.docstatus>1 or str(doc.modified)!=str(entry.get('modified')):
+            frappe.throw('Phiếu công đã thay đổi. Tải lại trước khi sửa phụ cấp.')
+        if cint(allowance) and doc.status=='Absent':frappe.throw(frappe.db.get_value('Employee',doc.employee,'employee_name')+': vắng cả ngày, không có phụ cấp.')
+        if cint(doc.get('lotus_allowance'))==cint(allowance):continue
+        set_allowance_values(doc,company,day,allowance)
+        doc.add_comment('Comment',('Tick' if cint(allowance) else 'Bỏ')+' phụ cấp công việc.')
+        doc.save();changed.append(doc.name)
+    return dict(changed=len(changed),names=changed)

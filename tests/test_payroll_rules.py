@@ -64,3 +64,19 @@ class PayrollRules(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class WorkAllowance(unittest.TestCase):
+    rows = [dict(valid_from='2026-10-01', rate=20000), dict(valid_from='2027-01-01', rate=25000)]
+
+    def test_rate_in_force_on_the_day(self):
+        self.assertEqual(pr.rate_in_force(self.rows, '2026-12-31'), 20000)
+        self.assertEqual(pr.rate_in_force(self.rows, date(2027, 1, 1)), 25000)
+        self.assertEqual(pr.rate_in_force(self.rows, '2026-09-30'), 0, 'no rate before the first one')
+        self.assertEqual(pr.rate_in_force([], '2026-10-10'), 0)
+
+    def test_half_a_day_gets_half_the_allowance(self):
+        self.assertEqual(pr.allowance_amount(20000, 1), 20000)
+        self.assertEqual(pr.allowance_amount(20000, 0.5), 10000)
+        self.assertEqual(pr.allowance_amount(20000, 0), 0, 'absent: nothing')
+        self.assertEqual(pr.allowance_amount(20000, 1.5), 20000, 'never more than one day')

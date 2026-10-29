@@ -1,0 +1,78 @@
+{
+  "doctype": "DocType",
+  "name": "Lotus Pay Rate",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "sort_field": "valid_from",
+  "field_order": [
+    "company",
+    "kind",
+    "rate",
+    "valid_from",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Công ty",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "kind",
+      "label": "Loại mức",
+      "fieldtype": "Select",
+      "options": "Allowance\nDaywork",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "rate",
+      "label": "Mức (đ/ngày)",
+      "fieldtype": "Currency",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "valid_from",
+      "label": "Áp dụng từ ngày",
+      "fieldtype": "Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "HR User",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}
