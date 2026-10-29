@@ -77,9 +77,12 @@ def sync_day(company, day):
 
 
 @frappe.whitelist()
-def board(company, date, shift=None, search=None, sync=1):
+def board(company, date, shift=None, search=None, sync=1,daily_presence=0):
     """staff_day rows, each with the device reading next to it (`machine`) and whether it may be approved
     in one step (`matches`: the device fully explains the day and nobody changed it by hand)."""
+    if cint(daily_presence):
+        from lotus_farm.daily_attendance import board as daily_board
+        return daily_board(company,date,search,sync)
     t._company(company)
     day = t._date(date)
     synced = sync_day(company, day) if cint(sync) else None
@@ -120,8 +123,11 @@ def board(company, date, shift=None, search=None, sync=1):
 
 
 @frappe.whitelist(methods=['POST'])
-def approve_matching(company, date, client_event_id, shift=None, reviewed_rows=None):
+def approve_matching(company, date, client_event_id, shift=None, reviewed_rows=None,daily_presence=0):
     """Save and approve, in one step, every row the device fully explains (see board.matches)."""
+    if cint(daily_presence):
+        from lotus_farm.daily_attendance import approve
+        return approve(company,date,client_event_id,reviewed_rows)
     if not (frappe.has_permission('Attendance', 'create') and frappe.has_permission('Attendance', 'submit')):
         frappe.throw('Chưa có quyền lưu và duyệt chấm công.', frappe.PermissionError)
     t._company(company)

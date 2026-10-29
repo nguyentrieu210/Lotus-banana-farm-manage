@@ -9,7 +9,7 @@ const fixtures=()=>({
  'lotus_farm.timekeeping.bootstrap':{user:'synthetic-hr',today:'2026-10-20',csrf_token:'test',companies:[{name:'SYNTHETIC',default_currency:'VND'}],capabilities:{Employee:all,Attendance:all,'Lotus Crew Attendance':all}},
  'lotus_farm.timekeeping.catalogue':{farms:[],teams:[],works:[],shifts:[{name:'A',start_time:'07:00',end_time:'11:00'},{name:'B',start_time:'13:00',end_time:'17:00'}],employees:[],departments:[],genders:[],uoms:[]},
  'lotus_farm.attendance_day.board':{date:'2026-10-20',has_calendar:true,holiday:null,period_closed:false,counts:{matching:2,review:0,manual:0},
-  rows:['A','B'].map(shift=>({employee:'E1',employee_name:'Synthetic An',row_key:'E1::'+shift,shift,review_hash:'review-'+shift,name:'ATT-'+shift,modified:'version-1',status:'Present',working_hours:4,overtime_hours:0,docstatus:0,matches:true,machine:machine(shift)}))},
+  rows:['E1','E2'].map(employee=>({employee,employee_name:'Synthetic '+employee,row_key:employee,review_hash:'review-'+employee,name:'ATT-'+employee,modified:'version-1',status:'Present',working_hours:8,overtime_hours:0,morning_present:1,afternoon_present:1,daily_presence:true,docstatus:0,matches:true,machine:machine('')}))},
  'lotus_farm.attendance_day.approve_matching':{approved:2,names:['ATT-A','ATT-B']},
  'lotus_farm.timekeeping.save_staff':{names:['ATT-A']}
 })
@@ -26,7 +26,7 @@ const ready=async()=>{routes=fixtures();calls.length=0;const view=mount(Timekeep
 
 test('unsaved attendance blocks matching approval and browser unload',async()=>{
  const view=await ready()
- const input=view.root.querySelector('.ag-row[row-id="E1::A"] input[type=number]')
+ const input=view.root.querySelector('.ag-row[row-id="E1"] input[type=number]')
  input.value='3';input.dispatchEvent(new Event('input',{bubbles:true}));await tick()
  assert.match(view.root.textContent,/Chưa lưu/)
  assert.equal(button(view.root,'Duyệt 2 dòng khớp máy').disabled,true)
@@ -36,26 +36,45 @@ test('unsaved attendance blocks matching approval and browser unload',async()=>{
  view.unmount()
 })
 
-test('editing one shift selects and saves only that employee-shift row',async()=>{
+test('one employee/day has two session controls and saves half a day after clearing afternoon',async()=>{
  const view=await ready()
- const input=view.root.querySelector('.ag-row[row-id="E1::A"] input[type=number]')
- input.value='3';input.dispatchEvent(new Event('input',{bubbles:true}));await tick()
+ assert.equal(view.root.querySelector('select[aria-label="Ca làm việc"]'),null)
+ const afternoon=view.root.querySelector('.ag-row[row-id="E1"] [aria-label="Chiều Synthetic E1"]')
+ afternoon.click();await tick()
  button(view.root,'Lưu nháp').click();await tick();await tick()
  const saved=calls.find(c=>c.method.endsWith('save_staff'))
  assert.equal(saved.args.rows.length,1)
- assert.equal(saved.args.rows[0].shift,'A')
- assert.equal(saved.args.rows[0].working_hours,3)
- assert.equal(view.root.querySelector('.ag-row[row-id="E1::B"] input[type=number]').value,'4')
+ assert.equal(saved.args.daily_presence,1)
+ assert.equal(saved.args.rows[0].morning_present,1)
+ assert.equal(saved.args.rows[0].afternoon_present,0)
+ assert.equal(view.root.querySelector('.ag-row[row-id="E2"] [aria-label="Chiều Synthetic E2"]').getAttribute('data-state'),'checked')
  view.unmount()
 })
 
-test('matching approval sends the reviewed version of each distinct shift',async()=>{
+test('matching approval sends one reviewed version per employee/day',async()=>{
  const view=await ready()
  button(view.root,'Duyệt 2 dòng khớp máy').click();await tick()
  document.querySelector('dialog[open] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))
  await tick();await tick()
  const approved=calls.find(c=>c.method.endsWith('approve_matching'))
- assert.deepEqual(approved.args.reviewed_rows,[{row_key:'E1::A',review_hash:'review-A'},{row_key:'E1::B',review_hash:'review-B'}])
+ assert.equal(approved.args.daily_presence,1)
+ assert.deepEqual(approved.args.reviewed_rows,[{row_key:'E1',review_hash:'review-E1'},{row_key:'E2',review_hash:'review-E2'}])
+ view.unmount()
+})
+
+test('the common header tick selects rows for a morning action and one daily save',async()=>{
+ routes=fixtures();calls.length=0
+ for(const row of routes['lotus_farm.attendance_day.board'].rows)Object.assign(row,{name:null,status:'Absent',working_hours:0,morning_present:0,afternoon_present:0,matches:false})
+ const view=mount(Timekeeping,{embedded:true});await tick();await tick();await tick()
+ for(let i=0;i<12&&!view.root.querySelector('.lotus-grid-select-header button');i++)await tick()
+ view.root.querySelector('.lotus-grid-select-header button').click();await tick()
+ assert.match(view.root.textContent,/Đã chọn 2/)
+ button(view.root,'Chấm sáng').click();await tick()
+ assert.equal(button(view.root,'Lưu nháp').disabled,false)
+ button(view.root,'Lưu nháp').click();await tick();await tick()
+ const saved=calls.find(c=>c.method.endsWith('save_staff'))
+ assert.equal(saved.args.rows.length,2)
+ assert.ok(saved.args.rows.every(row=>row.morning_present===1&&row.afternoon_present===0))
  view.unmount()
 })
 

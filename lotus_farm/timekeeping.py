@@ -14,6 +14,11 @@ def install_fields():
     fields={'Work Team':[dict(fieldname='lotus_team_type',label='Loại đội',fieldtype='Select',options='Internal\nContractor',default='Internal'),dict(fieldname='lotus_foreman',label='Đầu câu / người phụ trách',fieldtype='Data'),dict(fieldname='lotus_foreman_phone',label='Điện thoại đầu câu',fieldtype='Data')]}
     if frappe.db.exists('DocType','Attendance'):
         fields['Attendance']=[dict(fieldname='lotus_note',label='Ghi chú Lotus',fieldtype='Small Text'),dict(fieldname='lotus_cancel_reason',label='Lý do hủy Lotus',fieldtype='Small Text',allow_on_submit=1),dict(fieldname='lotus_client_key',label='Lotus request identity',fieldtype='Data',hidden=1,read_only=1,no_copy=1,unique=1),dict(fieldname='lotus_payload_hash',label='Lotus request content',fieldtype='Data',hidden=1,read_only=1,no_copy=1),dict(fieldname='lotus_overtime_hours',label='Lotus · Giờ tăng ca được duyệt',fieldtype='Float',insert_after='working_hours')]
+    if 'Attendance' in fields:
+        fields['Attendance'] += [dict(fieldname='lotus_presence_mode',label='Lotus · Chấm theo buổi',fieldtype='Check',read_only=1,no_copy=1)]
+        for session,label in [('morning','Sáng'),('afternoon','Chiều')]:
+            fields['Attendance'] += [dict(fieldname='lotus_'+session+'_present',label=label+' · Có mặt',fieldtype='Check',read_only=1),
+                dict(fieldname='lotus_'+session+'_punch',label=label+' · Lượt chấm thực tế',fieldtype='Datetime',read_only=1)]
     create_custom_fields(fields,update=True,ignore_validate=True)
     from frappe.permissions import add_permission,update_permission_property
     for role in ('HR Manager','HR User'):
@@ -216,7 +221,10 @@ def end_shift(company,name,end_date):
 
 
 @frappe.whitelist(methods=['POST'])
-def save_staff(company,date,rows,client_event_id,shift=None):
+def save_staff(company,date,rows,client_event_id,shift=None,daily_presence=0):
+    if cint(daily_presence):
+        from lotus_farm.daily_attendance import save
+        return save(company,date,rows,client_event_id)
     _company(company);date=_date(date);entries=frappe.parse_json(rows)
     _request(client_event_id,[])
     if not isinstance(entries,list) or not 1<=len(entries)<=300:frappe.throw('Chọn từ 1 đến 300 nhân viên.')
