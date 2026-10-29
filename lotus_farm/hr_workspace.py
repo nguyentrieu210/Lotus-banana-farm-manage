@@ -8,7 +8,7 @@ import hashlib
 import hmac
 
 import frappe
-from frappe.utils import cint, getdate, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 
 from lotus_farm.hr_rules import (
     PAYMENT_BASES, WORKER_CATEGORIES, normalize_cccd,
@@ -133,6 +133,8 @@ def employee_identity_guard(doc, method=None):
     company = doc.get("company")
     if company:
         _farm(doc.get("lotus_farm"), company)
+        from lotus_farm.controls import lock
+        lock('Company',company)
     team = doc.get("lotus_work_team")
     if team:
         if not doc.get("lotus_farm"):
@@ -458,10 +460,25 @@ def save_employee(company, values, employee=None, modified=None):
     doc.check_permission("create" if new else "write")
     if not new and str(doc.modified) != str(modified):
         frappe.throw("Hồ sơ đã thay đổi. Tải lại trước khi cập nhật.")
+    from lotus_farm.controls import lock
+    lock('Company',company)
+    rate_changed=(('lotus_payment_basis' in values and values['lotus_payment_basis']!=doc.lotus_payment_basis)
+        or any(k in values and flt(values[k])!=flt(doc.get(k)) for k in ('lotus_base_salary','lotus_daily_rate')))
+    if not new and doc.status=='Active' and rate_changed:
+        from lotus_farm.hr_payroll import assign_salary,structure_name
+        if not frappe.db.exists('Salary Structure',{'name':structure_name(company),'docstatus':1}):
+            frappe.throw('Cài đặt cấu trúc lương HRMS trước khi thay đổi mức lương có ngày hiệu lực.')
+        # Preserve the previous approved rate before updating Employee, including the first change.
+        previous=frappe.db.exists('Salary Structure Assignment',{'employee':doc.name,'docstatus':1})
+        if not previous:
+            from lotus_farm.hr_period import is_closed
+            joined=getdate(doc.date_of_joining) if doc.date_of_joining else getdate(nowdate()).replace(day=1)
+            baseline=getdate(nowdate()).replace(day=1) if is_closed(company,joined) else joined
+            assign_salary(doc,baseline)
     _apply_employee(doc, values, company, new)
     doc.save() if not new else doc.insert()
     assignment = None
-    if doc.status == "Active":
+    if doc.status == "Active" and rate_changed:
         # A changed pay rate becomes a new HRMS Salary Structure Assignment from the chosen date.
         from lotus_farm.hr_payroll import assign_salary
         assignment = assign_salary(doc, values.get("pay_from_date"))
@@ -680,6 +697,8 @@ def offboard_employee(company, employee, relieving_date, reason, modified):
     reason = str(reason or "").strip()
     if not last_day or not reason:
         frappe.throw("Nhập ngày nghỉ việc và lý do.")
+    if last_day>getdate(nowdate()):
+        frappe.throw('Chỉ ghi nhận nghỉ việc khi đã đến ngày hiệu lực.')
     if doc.date_of_joining and last_day < getdate(doc.date_of_joining):
         frappe.throw("Ngày nghỉ việc không được trước ngày vào làm.")
     later = frappe.db.count("Attendance", {"employee": doc.name, "attendance_date": [">", last_day], "docstatus": ["<", 2]})
@@ -696,8 +715,9 @@ def offboard_employee(company, employee, relieving_date, reason, modified):
         for name in frappe.get_all(doctype, filters={"employee": doc.name, "valid_to": ["is", "not set"]}, pluck="name"):
             item = frappe.get_doc(doctype, name)
             item.valid_to = max(last_day, getdate(item.get(start))) if item.get(start) else last_day
-            if doctype == "Lotus Attendance Identity":
-                item.active = 0
+            # Keep the bounded identity available for punches uploaded late for a day before leaving.
+            if doctype=='Lotus Attendance Identity' and item.get(start) and getdate(item.get(start))>last_day:
+                item.active=0
             item.save()
             closed += 1
     return dict(name=doc.name, status=doc.status, closed=closed)

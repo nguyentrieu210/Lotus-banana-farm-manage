@@ -6,11 +6,12 @@ const attendance=readFileSync(new URL('../src/TimekeepingApp.vue',import.meta.ur
 const styles=readFileSync(new URL('../src/timekeeping.css',import.meta.url),'utf8')
 const pager=readFileSync(new URL('../src/components/ui/pagination/Pagination.vue',import.meta.url),'utf8')
 
-test('attendance uses one checkbox column and links to the same employee selection as save/approve',()=>{
+test('attendance uses one checkbox column and links selection to employee-shift rows',()=>{
  const columns=attendance.slice(attendance.indexOf('const attendanceColumns='),attendance.indexOf('const rowState='))
  assert.doesNotMatch(columns,/field:'selected',headerName:'Chọn'/)
  assert.doesNotMatch(attendance,/label="Chọn tất cả nhân viên đang hiện"/)
- assert.match(attendance,/:selected-row-keys="selected.map\(row=>row.employee\)"/)
+ assert.match(attendance,/:selected-row-keys="selected.map\(rowKey\)"/)
+ assert.match(attendance,/row-key="row_key"/)
  assert.match(attendance,/@row-selection-change="selectAttendanceRow"/)
  assert.match(attendance,/@page-selection-change="selectAttendancePage"/)
  assert.match(attendance,/@selection-clear="clearAttendanceSelection"/)

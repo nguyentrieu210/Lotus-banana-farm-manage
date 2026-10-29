@@ -6,7 +6,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import add_days,get_datetime,getdate,nowdate,flt,cint
 from lotus_farm.controls import lock,check_farm,require_role,command
-from lotus_farm.timekeeping_rules import crew_values,status_days
+from lotus_farm.timekeeping_rules import crew_values,status_days,employed_on,attendance_key
 
 
 def install_fields():
@@ -34,10 +34,32 @@ def _company(name):
     doc=frappe.get_doc('Company',name);doc.check_permission('read');return doc
 
 
-def _employee(name,company,active=True):
+def _employee(name,company,active=True,day=None):
     doc=frappe.get_doc('Employee',name);doc.check_permission('read')
-    if doc.company!=company or (active and doc.status!='Active'):frappe.throw('Nhân viên phải đang làm việc tại công ty đã chọn.')
+    if doc.company!=company or (day is not None and not employed_on(doc,day)) or (day is None and active and doc.status!='Active'):frappe.throw('Nhân viên phải thuộc thời gian làm việc tại công ty đã chọn.')
     return doc
+
+
+def _day_people(company, day):
+    return [p for p in frappe.get_list('Employee', filters={'company':company,'status':['in',['Active','Left']]},
+        fields=['name','employee_name','department','designation','status','date_of_joining','relieving_date','default_shift'],
+        order_by='employee_name',limit_page_length=0) if employed_on(p,day)]
+
+
+def _scheduled_shifts(company, day, employees):
+    """All effective submitted shifts; Employee.default_shift is only a fallback, never a filter override."""
+    if not employees:return {}
+    result={}
+    if frappe.db.exists('DocType','Shift Assignment'):
+        rows=frappe.get_all('Shift Assignment',filters={'company':company,'employee':['in',employees],'docstatus':1,'status':'Active','start_date':['<=',day]},
+            fields=['employee','shift_type','end_date'],order_by='start_date desc, name',limit_page_length=0)
+        for row in rows:
+            if not row.end_date or getdate(row.end_date)>=getdate(day):
+                shifts=result.setdefault(row.employee,[])
+                if row.shift_type not in shifts:shifts.append(row.shift_type)
+    for person in frappe.get_list('Employee',filters={'company':company,'name':['in',employees]},fields=['name','default_shift'],limit_page_length=0):
+        if person.default_shift and person.name not in result:result[person.name]=[person.default_shift]
+    return result
 
 
 def _date(value):
@@ -80,39 +102,44 @@ def catalogue(company):
 def staff_day(company,date,shift=None,search=None):
     _company(company);date=_date(date)
     if not frappe.has_permission('Attendance','read'):frappe.throw('Chưa có quyền đọc chấm công.',frappe.PermissionError)
-    people=frappe.get_list('Employee',filters={'company':company,'status':'Active'},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
+    people=_day_people(company,date)
     # A shift filter shows that shift only; otherwise each employee appears once with the scheduled shift.
     filters={'company':company,'attendance_date':date,'docstatus':['<',2]}
     if shift:filters['shift']=shift
     attendance=frappe.get_list('Attendance',filters=filters,fields=['name','employee','status','working_hours','docstatus','modified','lotus_note','actual_overtime_duration','lotus_overtime_hours','in_time','out_time','late_entry','early_exit','leave_type','shift'],order_by='docstatus desc',limit_page_length=0)
     by_employee={}
-    for record in attendance:by_employee.setdefault(record.employee,record)
-    scheduled={} if shift else assigned_shifts(company,date,[p.name for p in people]);rows=[]
+    for record in attendance:by_employee.setdefault(record.employee,{})[record.shift or '']=record
+    scheduled=_scheduled_shifts(company,date,[p.name for p in people]);rows=[]
     for person in people:
         if search and str(search).casefold() not in (person.name+' '+person.employee_name).casefold():continue
-        row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,name=None,status='',working_hours=0,overtime_hours=0,in_time=None,out_time=None,late_entry=0,early_exit=0,note='',docstatus=0,modified=None,shift=shift or scheduled.get(person.name) or '')
-        if person.name in by_employee:
-            entry=by_employee[person.name];row.update(dict(entry));row['note']=entry.lotus_note or '';row['overtime_hours']=flt(entry.lotus_overtime_hours)
-        rows.append(row)
+        saved=by_employee.get(person.name,{})
+        shifts=list(dict.fromkeys(scheduled.get(person.name,[])+list(saved))) or ['']
+        for name in shifts:
+            if shift and name!=shift:continue
+            row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,name=None,status='',working_hours=0,overtime_hours=0,in_time=None,out_time=None,late_entry=0,early_exit=0,note='',docstatus=0,modified=None,shift=name,row_key=attendance_key(person.name,name))
+            if name in saved:
+                entry=saved[name];row.update(dict(entry));row['note']=entry.lotus_note or '';row['overtime_hours']=flt(entry.lotus_overtime_hours)
+            rows.append(row)
     from lotus_farm.hr_period import holiday_map,is_closed
     holidays=holiday_map(company,date,date)
     holiday=frappe.db.get_value('Holiday',{'parent':holidays.name,'holiday_date':date},['description','weekly_off'],as_dict=True) if holidays else None
-    return dict(rows=rows,date=str(date),holiday=dict(holiday) if holiday else None,has_calendar=bool(holidays),period_closed=is_closed(company,date))
+    return dict(rows=rows,date=str(date),holiday=dict(holiday) if holiday else None,has_calendar=bool(holidays),period_closed=is_closed(company,date),missing_shift_count=sum(not scheduled.get(p.name) for p in people))
 
 
 @frappe.whitelist()
 def propose_from_checkins(company,date,shift=None):
     """Device check-ins of one day -> proposed status per active employee. Nothing is saved here."""
     _company(company);date=_date(date)
-    if not (frappe.has_permission('Attendance','create') and frappe.has_permission('Employee Checkin','read')):frappe.throw('Chưa có quyền lấy công từ máy chấm.',frappe.PermissionError)
+    if not (frappe.has_permission('Attendance','read') and frappe.has_permission('Employee Checkin','read')):frappe.throw('Chưa có quyền đọc công từ máy chấm.',frappe.PermissionError)
     from datetime import datetime,timedelta
     from lotus_farm.checkin_rules import day_status,shift_window
     from lotus_farm.hr_period import holiday_map
-    people=frappe.get_list('Employee',filters={'company':company,'status':'Active'},pluck='name',limit_page_length=0)
+    people=[p.name for p in _day_people(company,date)]
     # Each employee is read against the chosen shift, else the scheduled one, else the whole calendar day.
-    plan={p:shift for p in people} if shift else assigned_shifts(company,date,people)
+    scheduled=_scheduled_shifts(company,date,people)
+    plan=[(p,s) for p in people for s in (scheduled.get(p) or ['']) if not shift or s==shift]
     settings={}
-    for name in set(plan.values())-{None,''}:
+    for name in {s for _,s in plan}-{None,''}:
         doc=frappe.get_doc('Shift Type',name);doc.check_permission('read');settings[name]=doc.as_dict()
     def window(name):
         begin,end=shift_window(date,settings.get(name) or {})
@@ -120,31 +147,28 @@ def propose_from_checkins(company,date,shift=None):
             begin=datetime.combine(date,datetime.min.time());return begin,begin+timedelta(days=1)-timedelta(seconds=1)
         conf=settings[name]
         return begin-timedelta(minutes=cint(conf.get('begin_check_in_before_shift_start_time'))),end+timedelta(minutes=cint(conf.get('allow_check_out_after_shift_end_time')))
-    windows={p:window(plan.get(p)) for p in people}
+    windows={(p,s):window(s) for p,s in plan}
     first=min([w[0] for w in windows.values()] or [datetime.combine(date,datetime.min.time())]);last=max([w[1] for w in windows.values()] or [first])
     checkins=frappe.get_list('Employee Checkin',filters={'employee':['in',people or ['']],'time':['between',[first,last]]},fields=['employee','time','log_type'],order_by='time',limit_page_length=0)
     by_employee={}
     for row in checkins:
-        begin,end=windows[row.employee]
-        if begin<=get_datetime(row.time)<=end:by_employee.setdefault(row.employee,[]).append(row)
+        by_employee.setdefault(row.employee,[]).append(row)
     holidays=holiday_map(company,date,date)
     off=bool(holidays and date in holidays.days)
     rows=[]
-    for employee in people:
-        proposal=day_status(date,by_employee.get(employee,[]),settings.get(plan.get(employee)) or {},is_holiday=off)
-        rows.append(dict(employee=employee,shift=plan.get(employee) or '',checkins=len(by_employee.get(employee,[])),**{k:(str(v) if hasattr(v,'hour') else v) for k,v in proposal.items()}))
-    return dict(rows=rows,date=str(date),shift=shift or '',checkins=sum(len(v) for v in by_employee.values()))
+    for employee,name in plan:
+        begin,end=windows[(employee,name)]
+        punches=[r for r in by_employee.get(employee,[]) if begin<=get_datetime(r.time)<=end]
+        proposal=day_status(date,punches,settings.get(name) or {},is_holiday=off)
+        if not name:
+            proposal.update(needs_review=1,reason='Chưa phân ca; kiểm tra và xếp ca trước khi duyệt theo máy')
+        rows.append(dict(employee=employee,shift=name,row_key=attendance_key(employee,name),checkins=len(punches),**{k:(str(v) if hasattr(v,'hour') else v) for k,v in proposal.items()}))
+    return dict(rows=rows,date=str(date),shift=shift or '',checkins=sum(r['checkins'] for r in rows))
 
 
 def assigned_shifts(company,date,employees):
     """{employee: Shift Type} from submitted, active HRMS Shift Assignments covering the date."""
-    if not employees or not frappe.db.exists('DocType','Shift Assignment'):return {}
-    rows=frappe.get_all('Shift Assignment',filters={'company':company,'employee':['in',employees],'docstatus':1,'status':'Active','start_date':['<=',date]},
-        fields=['employee','shift_type','end_date'],order_by='start_date desc',limit_page_length=0)
-    result={}
-    for row in rows:
-        if not row.end_date or getdate(row.end_date)>=date:result.setdefault(row.employee,row.shift_type)
-    return result
+    return {employee:shifts[0] for employee,shifts in _scheduled_shifts(company,date,employees).items()}
 
 
 @frappe.whitelist()
@@ -199,11 +223,15 @@ def save_staff(company,date,rows,client_event_id,shift=None):
     if shift:frappe.get_doc('Shift Type',shift).check_permission('read')
     lock('Company',company);saved=[];seen=set()
     for entry in sorted(entries,key=lambda r:str(r.get('employee'))):
-        employee=_employee(entry.get('employee'),company)
-        if employee.name in seen:frappe.throw('Nhân viên bị trùng trong danh sách.')
-        seen.add(employee.name)
+        employee=_employee(entry.get('employee'),company,day=date)
         # Without a shift filter each row carries the employee's scheduled shift.
-        row_shift=shift or entry.get('shift') or None
+        if shift and entry.get('shift') and entry['shift']!=shift:frappe.throw('Ca của dòng không khớp bộ lọc. Tải lại bảng công.')
+        row_shift=entry.get('shift') or shift or None
+        row_key=attendance_key(employee.name,row_shift)
+        if row_key in seen:frappe.throw('Nhân viên/ca bị trùng trong danh sách.')
+        seen.add(row_key)
+        if row_shift and not entry.get('name') and row_shift not in _scheduled_shifts(company,date,[employee.name]).get(employee.name,[]):
+            frappe.throw('Nhân viên chưa được phân ca này. Xếp ca rồi tải lại bảng công.')
         if row_shift and row_shift!=shift:frappe.get_doc('Shift Type',row_shift).check_permission('read')
         if date<getdate(employee.date_of_joining):frappe.throw('Ngày công trước ngày vào làm của '+employee.employee_name)
         status=entry.get('status')
@@ -223,7 +251,7 @@ def save_staff(company,date,rows,client_event_id,shift=None):
         if clock.get('in_time') and clock.get('out_time') and clock['out_time']<=clock['in_time']:frappe.throw('Giờ ra phải sau giờ vào.')
         payload=dict(company=company,date=str(date),employee=employee.name,status=status,hours=hours,overtime=overtime,shift=row_shift or '',note=str(entry.get('note') or '')[:2000],
             late=cint(entry.get('late_entry')),early=cint(entry.get('early_exit')),**clock)
-        key,digest=_request(str(client_event_id)+':'+employee.name,payload)
+        key,digest=_request(str(client_event_id)+':'+hashlib.sha256(row_key.encode()).hexdigest(),payload)
         retry=frappe.db.get_value('Attendance',{'lotus_client_key':key},['name','lotus_payload_hash'],as_dict=True)
         if retry:
             doc=frappe.get_doc('Attendance',retry.name);doc.check_permission('read')
@@ -281,7 +309,7 @@ def monthly(company,month):
         for entry in entries:days.setdefault(str(getdate(entry.attendance_date).day),[]).append(dict(entry))
         # A person can have multiple non-overlapping shifts. Never count more than one workday per calendar day.
         workdays=sum(min(1,sum(status_days(r.status) for r in approved if getdate(r.attendance_date).day==day)) for day in range(1,end.day+1))
-        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) or flt(r.actual_overtime_duration) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
+        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
     from lotus_farm.hr_period import is_closed
     return dict(rows=rows,days=end.day,month=str(month),company=company,period_closed=is_closed(company,begin),holidays=_month_holidays(company,begin,end))
 

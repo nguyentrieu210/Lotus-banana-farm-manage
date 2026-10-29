@@ -1,0 +1,1 @@
+import{L as e,vt as t}from"./vue.runtime.esm-bundler-Dx9eLHme.js";import{t as n}from"./use-confirm-core-DBX-p_C_.js";function r(){let r=t(null);return{dialog:r,...n({onShow:()=>e(()=>r.value?.showModal()),onHide:()=>r.value?.close()})}}export{r as t};

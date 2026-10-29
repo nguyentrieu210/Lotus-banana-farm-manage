@@ -276,3 +276,42 @@ def hourly_pay(basis, summary, base_salary=0, daily_rate=0, insured=False, param
                   insurance_parts=dict(employee=parts['employee'], employer=parts['employer']) if parts else None,
                   net=gross - employee - withheld['pit'])
     return result
+
+
+def salary_segments(rows, begin, end, fallback=None):
+    """Effective salary intervals. A future assignment never supplies an earlier day's wage."""
+    rows=sorted(rows,key=lambda r:(_day(r['from_date']),str(r.get('name') or '')))
+    if not rows and fallback:
+        rows=[fallback]
+    starts=sorted({begin}|{_day(r['from_date']) for r in rows if begin<_day(r['from_date'])<=end})
+    result=[]
+    for index,start in enumerate(starts):
+        hit=next((r for r in reversed(rows) if _day(r['from_date'])<=start),None)
+        result.append(dict(start=start,end=starts[index+1]-timedelta(days=1) if index+1<len(starts) else end,
+            base=_num(hit.get('base')) if hit else 0,basis=(hit.get('lotus_payment_basis') or 'Monthly') if hit else 'Monthly',
+            source=hit.get('name') if hit else None,missing=hit is None))
+    return result
+
+
+def segmented_pay(segments, insured=False, params=None, region=None, tax=None):
+    """Earn each interval at its effective rate; deduct monthly insurance and tax once."""
+    if not segments:return hourly_pay('',empty_summary())
+    last=segments[-1]
+    result=hourly_pay(last['basis'],empty_summary(),last['base'],last['base']/STANDARD_DAYS,
+        insured=insured,params=params,region=region,tax=tax)
+    earnings={k:0 for k in ('regular_pay','paid_pay','night_pay','overtime_pay')}
+    issues=[];exempt=0
+    for segment in segments:
+        pay=hourly_pay(segment['basis'],segment['summary'],segment['base'],segment['base']/STANDARD_DAYS)
+        for key in earnings:earnings[key]+=pay[key]
+        issues.extend(pay['issues'])
+        if segment.get('missing'):issues.append('Thiếu mức lương có hiệu lực từ '+str(segment['start'])+' đến '+str(segment['end']))
+        hours=segment['summary'];rate=segment['base']/HOURS_BASE
+        exempt+=pay['night_pay']+max(0,pay['overtime_pay']-round(rate*sum(hours.get('ot_'+k,0) for k in OT_RATES)))
+    gross=sum(earnings.values());employee=result['employee_insurance']
+    withheld=income_tax(gross,exempt,employee,(tax or {}).get('method'),params or {},(tax or {}).get('dependents'),(tax or {}).get('commitment'))
+    result.update(earnings)
+    result.update(withheld,gross=gross,net=gross-employee-withheld['pit'],pit_exempt=exempt,
+        via_crew=all(s['basis']=='Piecework' for s in segments),issues=list(dict.fromkeys(issues)),
+        rate_history=[dict(start=str(s['start']),end=str(s['end']),base=s['base'],basis=s['basis'],source=s['source']) for s in segments])
+    return result

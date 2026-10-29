@@ -35,7 +35,7 @@ test('today on the phone: rows by shift with device times, night shift marked, o
  ;[...view.root.querySelectorAll('.hr-att__stats button')][1].click();await tick()
  assert.deepEqual([...view.root.querySelectorAll('.hr-att__row strong')].map(s=>s.textContent),['Bình'],'the review filter keeps only rows to check')
  ;[...view.root.querySelectorAll('.hr-att__stats button')][1].click();await tick()
- button(view.root,'Duyệt 1 người khớp máy').click();await tick();await tick()
+ button(view.root,'Duyệt 1 dòng công khớp máy').click();await tick();await tick()
  assert.ok(calls.some(c=>c.method==='lotus_farm.attendance_day.approve_matching'&&c.args.date==='2026-10-20'))
  view.unmount()
 })
