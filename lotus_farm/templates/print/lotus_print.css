@@ -46,6 +46,7 @@
 .lp-table .center{text-align:center}
 .lp-table .stt{width:9mm;text-align:center;color:#4a5260}
 .lp-table tr.lp-total td{font-weight:bold;border-top:1.5px solid #1d2430;border-bottom:0;background:#fff!important}
+.lp-table tr.lp-group td{background:#eef1f4!important;font-weight:bold;border-bottom:1px solid #c3c9d0;padding-top:5px}
 .lp-table--compact{font-size:8pt}
 .lp-table--compact th{font-size:7.5pt;padding:4px 3px;vertical-align:bottom}
 .lp-table--compact td{padding:3px}

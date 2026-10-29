@@ -24,6 +24,7 @@ const canManage=computed(()=>!!boot.value?.can_manage_shifts)
 const canSubmit=computed(()=>!!boot.value?.capabilities?.Attendance?.submit)
 const canEdit=computed(()=>!!(boot.value?.capabilities?.Attendance?.create||boot.value?.capabilities?.Attendance?.write))
 const presenceOptions=[{value:1,label:'Có mặt'},{value:0,label:'Vắng'}]
+const allowanceOptions=[{value:0,label:'Không'},{value:1,label:'Có phụ cấp'}]
 const locked=computed(()=>!!data.value?.period_closed)
 const kind=r=>r.legacy_conflict?'review':r.docstatus===1?'approved':r.machine?.needs_review?'review':r.matches?'matching':r.morning_present||r.afternoon_present?'partial':r.machine&&r.machine.status==='Absent'?'absent':'none'
 const KINDS={matching:'Đủ công',partial:'Nửa công',review:'Cần kiểm tra',approved:'Đã duyệt',present:'Có lượt chấm',absent:'Chưa chấm',none:'Chưa có dữ liệu'}
@@ -40,16 +41,21 @@ async function approveMatching(){
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 function open(r){person.value=r;mode.value=r.docstatus===1?'correct':'day';const m=r.machine||{}
  Object.assign(form,{status:r.status||m.status||'Present',working_hours:Number(r.name?r.working_hours:m.working_hours||0),overtime_hours:Number(r.name?r.overtime_hours||0:m.suggested_overtime||0),
-  note:r.note||'',reason:'',shift:r.shift||m.shift||'',from:date.value,to:date.value,in_time:r.in_time||m.in_time||null,out_time:r.out_time||m.out_time||null,late_entry:r.late_entry??m.late_entry??0,early_exit:r.early_exit??m.early_exit??0,...presencePayload(r)})
+  note:r.note||'',reason:'',allowance:Number(r.allowance)?1:0,shift:r.shift||m.shift||'',from:date.value,to:date.value,in_time:r.in_time||m.in_time||null,out_time:r.out_time||m.out_time||null,late_entry:r.late_entry??m.late_entry??0,early_exit:r.early_exit??m.early_exit??0,...presencePayload(r)})
  sheet.value.showModal()}
 async function saveDay(){const r=person.value;saving.value=true
  try{
   if(mode.value==='day'){await call('lotus_farm.timekeeping.save_staff',{company:props.company,date:date.value,daily_presence:1,client_event_id:crypto.randomUUID(),rows:[{employee:r.employee,name:r.name,modified:r.modified,...presencePayload(form),status:form.status,
-    working_hours:form.status==='Absent'?0:form.working_hours,overtime_hours:form.status==='Absent'?0:form.overtime_hours,in_time:form.in_time,out_time:form.out_time,late_entry:form.late_entry?1:0,early_exit:form.early_exit?1:0,shift:form.shift||null,note:form.note}]},true);emit('notice','Đã lưu nháp công của '+r.employee_name+'.')}
+    working_hours:form.status==='Absent'?0:form.working_hours,overtime_hours:form.status==='Absent'?0:form.overtime_hours,allowance:Number(form.allowance)?1:0,in_time:form.in_time,out_time:form.out_time,late_entry:form.late_entry?1:0,early_exit:form.early_exit?1:0,shift:form.shift||null,note:form.note}]},true);emit('notice','Đã lưu nháp công của '+r.employee_name+'.')}
   if(mode.value==='correct'){await call('lotus_farm.shift_admin.correct_attendance',{company:props.company,name:r.name,modified:r.modified,reason:form.reason,values:{daily_presence:1,...presencePayload(form),status:form.status,working_hours:form.working_hours,overtime_hours:form.overtime_hours,note:form.note}},true);emit('notice','Đã sửa công đã duyệt của '+r.employee_name+'.')}
   if(mode.value==='shift'){const res=await call('lotus_farm.shift_admin.set_roster',{company:props.company,changes:[{employee:r.employee,from:form.from,to:form.to||null,shift:form.shift}]},true)
    if(res.errors.length)throw Error(res.errors[0].message);emit('notice','Đã đổi ca cho '+r.employee_name+(res.warnings.length?'. '+res.warnings[0].message:'.'))}
   sheet.value.close();await load()}
+ catch(e){emit('error',e.message)}finally{saving.value=false}}
+// Phụ cấp công việc on an approved day is written at once while the month is open (no correction needed).
+async function toggleApprovedAllowance(){const r=person.value;saving.value=true
+ try{await call('lotus_farm.attendance_day.set_allowance',{company:props.company,date:date.value,rows:[{employee:r.employee,name:r.name,modified:r.modified}],allowance:Number(r.allowance)?0:1},true)
+  emit('notice',(Number(r.allowance)?'Đã bỏ':'Đã tick')+' phụ cấp của '+r.employee_name+'.');sheet.value.close();await load()}
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 function shiftDay(days){const d=new Date(date.value+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+days);const v=d.toISOString().slice(0,10);if(v<=props.today)date.value=v}
 watch(date,load)
@@ -76,7 +82,7 @@ defineExpose({load})
  <LotusMobileFeedback v-if="busy" kind="loading">Đang tải công…</LotusMobileFeedback>
  <section class="hr-att__group">
   <button v-for="r in rows" :key="r.row_key||r.employee" type="button" class="hr-att__row" :class="'is-'+kind(r)" @click="open(r)">
-   <span class="hr-att__who"><strong>{{r.employee_name}}</strong><small>{{KINDS[kind(r)]}}<template v-if="r.name"> · {{statusLabel(r.status)}}</template></small></span>
+   <span class="hr-att__who"><strong>{{r.employee_name}}</strong><small>{{KINDS[kind(r)]}}<template v-if="r.name"> · {{statusLabel(r.status)}}</template><template v-if="Number(r.allowance)"> · Có phụ cấp</template></small></span>
    <span class="hr-att__clock"><b>Sáng {{r.morning_time?hhmm(r.morning_time):r.morning_present?'Có':'—'}} · Chiều {{r.afternoon_time?hhmm(r.afternoon_time):r.afternoon_present?'Có':'—'}}</b><small>{{r.working_hours/8}} công</small>
     <small v-if="r.machine?.needs_review">{{r.machine.reason}}</small></span>
   </button>
@@ -94,6 +100,8 @@ defineExpose({load})
    <template v-if="mode!=='shift'">
     <LotusMobileSelect v-model="form.morning_present" label="Sáng" :options="presenceOptions" :disabled="locked||!canEdit||person.legacy_conflict||person.status==='On Leave'||person.docstatus===1&&!canManage" @update:model-value="applyPresence(form)"/>
     <LotusMobileSelect v-model="form.afternoon_present" label="Chiều" :options="presenceOptions" :disabled="locked||!canEdit||person.legacy_conflict||person.status==='On Leave'||person.docstatus===1&&!canManage" @update:model-value="applyPresence(form)"/>
+    <LotusMobileSelect v-if="mode==='day'" v-model="form.allowance" label="Phụ cấp công việc" :options="allowanceOptions" :disabled="locked||!canEdit||person.legacy_conflict||person.status==='On Leave'||!form.working_hours" hint="Cả ngày đủ mức, một buổi nửa mức"/>
+    <LotusMobileButton v-if="mode==='correct'&&canEdit&&!locked&&(Number(person.allowance)||person.working_hours>0)" block :loading="saving" @click="toggleApprovedAllowance">{{Number(person.allowance)?'Bỏ phụ cấp công việc':'Tick phụ cấp công việc'}}</LotusMobileButton>
     <LotusMobileInput v-model="form.note" label="Ghi chú" maxlength="2000"/>
     <LotusMobileInput v-if="mode==='correct'" v-model="form.reason" label="Lý do sửa" required minlength="5" placeholder="VD: tổ trưởng xác nhận có mặt"/>
    </template>

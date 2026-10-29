@@ -56,6 +56,10 @@ def setup():
     install_warehouse_roles()
     from lotus_farm.timekeeping import install_fields as install_timekeeping_fields
     install_timekeeping_fields()
+    from lotus_farm.work_allowance import install_fields as install_allowance_fields
+    install_allowance_fields()
+    from lotus_farm.work_allowance import seed_rates
+    seed_rates()
     from lotus_farm.hr_workspace import install_fields as install_hr_fields
     install_hr_fields()
     from lotus_farm.hr_setup import install_fields as install_org_fields

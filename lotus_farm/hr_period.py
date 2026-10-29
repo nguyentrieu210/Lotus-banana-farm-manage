@@ -467,6 +467,21 @@ def _sheet(company, month, begin, end):
                               tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
                               dependents=tax['dependents'], pit_commitment=tax['commitment'],
                               onboarding=person.lotus_onboarding_state, status=person.status, **summary, **pay))
+    # Phụ cấp công việc (not taxed, outside the insurance base) is added after the tax; tạm ứng is deducted from it.
+    from lotus_farm.work_allowance import month_advances, month_allowance
+    names = [e['employee'] for e in employees]
+    allowances, advances = month_allowance(company, begin, end, names), month_advances(company, month)
+    team_names = {t.name: t.team_name for t in frappe.get_all('Work Team', filters={'name': ['in', list({e['work_team'] for e in employees if e['work_team']}) or ['']]},
+                                                               fields=['name', 'team_name'])}
+    for e in employees:
+        extra = allowances.get(e['employee']) or {}
+        e['wage'] = flt(e['gross'])
+        e['allowance_days'], e['allowance'] = round(flt(extra.get('days')), 2), round(flt(extra.get('amount')))
+        e['gross'] = flt(e['gross']) + e['allowance']
+        e['net'] = flt(e['net']) + e['allowance']
+        e['advance'] = round(flt(advances.get(e['employee'])))
+        e['take_home'] = e['net'] - e['advance']
+        e['group'] = team_names.get(e['work_team']) or e['work_team'] or (e['department'] or '').rsplit(' - ', 1)[0] or 'Chưa xếp tổ'
     crews = {}
     for row in frappe.get_all('Lotus Crew Attendance', filters={'company': company, 'posting_date': ['between', [begin, end]], 'docstatus': 1},
                               fields=['work_team', 'work_type', 'uom', 'unit_rate', 'completed_qty', 'workdays', 'present', 'amount'],
@@ -508,7 +523,9 @@ def _sheet(company, month, begin, end):
                             employee_insurance=sum(e['employee_insurance'] for e in employees),
                             employer_insurance=sum(e['employer_insurance'] for e in employees),
                             pit=sum(e.get('pit') or 0 for e in employees), union_fee=sum(e.get('union_fee') or 0 for e in employees),
-                            crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees)))
+                            crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees),
+                            allowance=sum(e['allowance'] for e in employees), advance=sum(e['advance'] for e in employees),
+                            take_home=sum(e['take_home'] for e in employees)))
 
 
 @frappe.whitelist()
@@ -539,12 +556,11 @@ def export_payroll(company, month):
     banner = 'BẢN NHÁP — kỳ chưa khóa, số liệu còn thay đổi' if data['draft'] else 'Kỳ đã khóa lúc ' + str(data['closed_at'])[:16]
     labels = {'Monthly': 'Lương tháng', 'Daywork': 'Công nhật', 'Piecework': 'Khoán sản lượng', 'Mixed': 'Hỗn hợp'}
 
-    def sheet(ws, title, header, rows):
+    def sheet(ws, title, header, rows, note='Tiền công = công đã duyệt × đơn giá công. Phụ cấp công việc không tính thuế TNCN, '
+              'không tính vào lương đóng BHXH. Thực lĩnh = tiền công + phụ cấp − BH người LĐ − thuế TNCN − tạm ứng đã chi.'):
         ws.title = title
         ws.append(['Bảng lương ' + str(month) + ' · ' + str(company) + ' · ' + banner])
-        ws.append(['Lương CB cho ' + str(data['standard_days']) + ' công × 8 giờ: đơn giá giờ = lương CB ÷ ' + str(data['hours_base'])
-                   + '. Ca đêm +30%; tăng ca 150% / 200% / 300%. Thuế TNCN: lũy tiến sau giảm trừ gia cảnh (HĐ từ 3 tháng), '
-                   + '10% tại nguồn (thời vụ, thử việc, HĐ dưới 3 tháng; miễn khi có cam kết 08). Phần lương đêm, tăng ca cao hơn giờ thường không chịu thuế.'])
+        ws.append([note])
         ws.append(header)
         for cell in ws[3]:
             cell.font = Font(bold=True)
@@ -552,18 +568,28 @@ def export_payroll(company, month):
             ws.append([_cell(v) for v in row])
         ws.freeze_panes = 'C4'
 
-    sheet(book.active, 'Nhân sự',
+    from lotus_farm.www.lotus_payroll_print import layout
+    plan = layout(data)
+    sheet(book.active, 'Công nhân',
+          ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Ngày phụ cấp', 'Phụ cấp', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+          [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['allowance_days'], e['allowance'],
+            e['pit'], e['advance'], e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
+    sheet(book.create_sheet(), 'Lương tháng',
+          ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'BH người LĐ', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+          [[e['group'], e['employee'], e['employee_name'], e['base'], e['workdays'], e['wage'], e['allowance'], e['employee_insurance'],
+            e['pit'], e['advance'], e['take_home'], ''] for e in plan['staff_rows']])
+    sheet(book.create_sheet(), 'Chi tiết (kế toán)',
           ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Lương CB (26 công)', 'Đơn giá giờ',
            'Công', 'Giờ công thường', 'Giờ đêm', 'Giờ TC ngày thường', 'Giờ làm ngày nghỉ tuần', 'Giờ làm ngày lễ',
            'Phép có lương (ngày)', 'Lễ hưởng lương (ngày)', 'Nghỉ không lương', 'Vắng',
-           'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Tổng thu nhập',
+           'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Phụ cấp công việc', 'Tổng thu nhập',
            'BHXH+BHYT+BHTN NLĐ', 'Người phụ thuộc', 'Thu nhập tính thuế', 'Thuế TNCN', 'Thực lĩnh',
            'BH doanh nghiệp đóng', 'KPCĐ 2% (DN)', 'MST', 'Số BHXH', 'Ghi chú'],
           [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
             labels.get(e['payment_basis'], e['payment_basis']), e['base'], e['hour_rate'],
             e['workdays'], e['regular_hours'], e['night_hours'], e['ot_regular'], e['ot_weekly_off'], e['ot_holiday'],
             e['paid_leave_days'], e['paid_holiday_days'], e['unpaid_leave_days'], e['absent_days'],
-            e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e['gross'],
+            e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e.get('allowance') or 0, e['gross'],
             e['employee_insurance'], e.get('dependents') or 0, e.get('taxable_income') or 0, e.get('pit') or 0, e['net'],
             e['employer_insurance'], e.get('union_fee') or 0, e['tax_code'], e['social_insurance_no'],
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])

@@ -123,6 +123,13 @@ def board(company, date, shift=None, search=None, sync=1,daily_presence=0):
 
 
 @frappe.whitelist(methods=['POST'])
+def set_allowance(company, date, rows, allowance):
+    """Tick or clear Phụ cấp công việc on saved days (draft or approved) of an open month."""
+    from lotus_farm.daily_attendance import set_allowance as apply
+    return apply(company, date, rows, allowance)
+
+
+@frappe.whitelist(methods=['POST'])
 def approve_matching(company, date, client_event_id, shift=None, reviewed_rows=None,daily_presence=0):
     """Save and approve, in one step, every row the device fully explains (see board.matches)."""
     if cint(daily_presence):

@@ -89,9 +89,9 @@ try:
     hp.export_payroll(company, month)
     from openpyxl import load_workbook
     book = load_workbook(io.BytesIO(frappe.local.response.filecontent))
-    assert book.sheetnames == ['Nhân sự', 'Đội khoán', 'Kiểm tra'], book.sheetnames
-    exported = next(r for r in book['Nhân sự'].iter_rows(min_row=4, values_only=True) if r[0] == employee)
-    assert exported[22] == row['gross'], exported
+    assert book.sheetnames == ['Công nhân', 'Lương tháng', 'Chi tiết (kế toán)', 'Đội khoán', 'Kiểm tra'], book.sheetnames
+    exported = next(r for r in book['Chi tiết (kế toán)'].iter_rows(min_row=4, values_only=True) if r[0] == employee)
+    assert exported[23] == row['gross'], exported
 
     made = pay.create_payroll(company, month)
     slip = next(s for s in pay.payroll_run(company, month)['slips'] if s['employee'] == employee)

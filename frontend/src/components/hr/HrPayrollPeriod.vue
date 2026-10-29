@@ -13,6 +13,8 @@ import {Button as UiButton} from '../ui/button'
 import {Textarea as UiTextarea} from '../ui/textarea'
 import {FormField} from '../ui/form-field'
 import {useWorkspaceConfirm} from '../../use-workspace-confirm'
+import ModalForm from '../form/ModalForm.vue'
+import LotusField from '../form/LotusField.vue'
 import {call} from '../../api'
 // /lotus/nhan-su › Kỳ công & bảng lương: the month runs in four steps — complete attendance, send the frozen
 // sheet to the named HR person and director (the director's signature closes the period), HRMS salary slips
@@ -49,11 +51,12 @@ const steps=computed(()=>{
   {id:'post',title:'Duyệt & hạch toán',state:posted.value?'done':run.value?.entry?'current':'todo',text:posted.value?'Đã hạch toán '+run.value.journal_entries.join(', '):drafts.value?drafts.value+' phiếu nháp':'Chưa hạch toán'},
  ]
 })
-const tabs=computed(()=>[['sheet','Bảng lương',sheet.value?.employees?.length||0],['slips','Phiếu lương HRMS',run.value?.slips?.length||0],['crews','Phải trả đội khoán',sheet.value?.crews?.length||0],['issues','Cần kiểm tra',issues.value.length]])
+const tabs=computed(()=>[['sheet','Bảng lương',sheet.value?.employees?.length||0],['rates','Phụ cấp & đơn giá công',rates.value?.missing_daily_rate||0],['slips','Phiếu lương HRMS',run.value?.slips?.length||0],['crews','Phải trả đội khoán',sheet.value?.crews?.length||0],['issues','Cần kiểm tra',issues.value.length]])
 let version=0
 async function load(){if(!props.company)return;const id=++version;busy.value=true
  try{const args={company:props.company,month:month.value};const [r,p,s,h]=await Promise.all([hrApi('payroll_readiness',args),periodApi('period_status',args),periodApi('payroll_sheet',args),payrollApi('payroll_run',args)])
-  if(id===version){readiness.value=r;period.value=p;sheet.value=s;run.value=h}}
+  const q=await call('lotus_farm.work_allowance.pay_rates',{company:props.company}).catch(()=>null)
+  if(id===version){readiness.value=r;period.value=p;sheet.value=s;run.value=h;rates.value=q}}
  catch(e){emit('error',e.message)}finally{if(id===version)busy.value=false}}
 const asks={setup_payroll:()=>'Tạo thành phần lương, tài khoản và cấu trúc lương giờ công trong HRMS?',
  create_payroll:m=>'Tạo bảng lương HRMS và phiếu lương nháp cho '+label(m)+'?',
@@ -82,15 +85,32 @@ async function reopen(){saving.value=true
  try{await periodApi('reopen_period',{company:props.company,month:month.value,reason:reopenReason.value},true);reopenOpen.value=false;reopenReason.value='';emit('notice','Đã mở lại kỳ '+label(month.value)+'.');await load()}
  catch(e){emit('error',e.message)}finally{saving.value=false}}
 
+// Phụ cấp công việc and the common đơn giá công nhật, each by effective date (lotus_farm.work_allowance).
+const rates=ref(null),rateForm=ref(null),rateError=ref('')
+const rateKinds=[{value:'Allowance',label:'Phụ cấp công việc (đ/ngày)'},{value:'Daywork',label:'Đơn giá công nhật chung (đ/công)'}]
+const rateRows=computed(()=>Object.entries(rates.value?.rates||{}).flatMap(([kind,r])=>r.history.map(h=>({...h,kind,label:r.label}))))
+function newRate(){rateError.value='';rateForm.value={kind:'Allowance',rate:null,valid_from:props.today||'',notes:''}}
+async function saveRate(){saving.value=true;rateError.value=''
+ try{await call('lotus_farm.work_allowance.save_pay_rate',{company:props.company,...rateForm.value},true);rateForm.value=null;emit('notice','Đã lưu mức mới.');await load()}
+ catch(e){rateError.value=e.message}finally{saving.value=false}}
+async function fillRates(){
+ const r=rates.value?.rates?.Daywork
+ if(!await askConfirm('Ghi đơn giá công '+money(r?.current)+' cho '+rates.value.missing_daily_rate+' công nhân chưa có đơn giá?'))return
+ saving.value=true
+ try{const x=await call('lotus_farm.work_allowance.fill_daily_rates',{company:props.company},true);emit('notice','Đã ghi đơn giá công cho '+x.updated+' người.');await load()}
+ catch(e){emit('error',e.message)}finally{saving.value=false}}
 const pcol=(field,headerName,format)=>({field,headerName,minWidth:130,...(format?{valueFormatter:p=>format(p.value,p.data)}:{})})
 const pmoney=(field,label)=>pcol(field,label,v=>money(v))
 const pnum=(field,label)=>pcol(field,label,v=>num(v))
+const rateCols=[pcol('label','Loại'),pmoney('rate','Mức'),pcol('valid_from','Áp dụng từ'),pcol('notes','Ghi chú')]
+// By công: no hour or overtime columns. Sheets frozen before phụ cấp existed read their missing keys as zero.
 const sheetCols=[
- pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee+' · '+(bases[r.payment_basis]||'Chưa chọn cơ chế')),
- pmoney('base','Lương CB'),pnum('workdays','Công'),pnum('regular_hours','Giờ thường'),pnum('night_hours','Giờ đêm'),
- pcol('ot_regular','Giờ tăng ca',(_,r)=>num(Number(r.ot_regular||0)+Number(r.ot_weekly_off||0)+Number(r.ot_holiday||0))),
- pnum('paid_hours','Lễ, phép (giờ)'),pmoney('gross','Thu nhập'),pmoney('employee_insurance','BH người LĐ'),
- pcol('pit','Thuế TNCN',(_,r)=>r.pit?money(r.pit)+(r.pit_method==='flat'?' (10%)':''):r.pit_method==='commitment'?'Cam kết 08':''),pmoney('net','Thực lĩnh'),
+ pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee),
+ pcol('group','Tổ / bộ phận',(_,r)=>r.group||r.department||''),pcol('payment_basis','Cơ chế',v=>bases[v]||'Chưa chọn'),
+ pnum('workdays','Công'),pcol('daily_rate','Đơn giá công / lương CB',(_,r)=>r.payment_basis==='Daywork'?money(r.daily_rate):money(r.base)),
+ pcol('wage','Tiền công',(_,r)=>money(r.wage??r.gross)),pmoney('allowance','Phụ cấp'),pmoney('employee_insurance','BH người LĐ'),
+ pcol('pit','Thuế TNCN',(_,r)=>r.pit?money(r.pit)+(r.pit_method==='flat'?' (10%)':''):r.pit_method==='commitment'?'Cam kết 08':''),
+ pmoney('advance','Tạm ứng'),pcol('take_home','Thực lĩnh',(_,r)=>money(r.take_home??r.net)),
  pcol('issues','Ghi chú',(_,r)=>(r.via_crew?'Trả qua đội khoán; ':'')+(r.issues||[]).join('; '))
 ]
 function slipLink(params){const a=document.createElement('a');a.href='/app/salary-slip/'+encodeURIComponent(params.data.name);a.target='_blank';a.rel='noopener';a.textContent=params.data.name;return a}
@@ -155,10 +175,10 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
 
  <div v-if="sheet" class="hr-pay__stats">
   <div><span>Nhân viên</span><strong>{{sheet.totals.employees}}</strong></div>
-  <div><span>Tổng thu nhập</span><strong>{{money(sheet.totals.gross)}}</strong></div>
+  <div><span>Tổng thu nhập</span><strong>{{money(sheet.totals.gross)}}</strong><small v-if="sheet.totals.allowance">Phụ cấp {{money(sheet.totals.allowance)}}</small></div>
   <div><span>BH người lao động</span><strong>{{money(sheet.totals.employee_insurance)}}</strong></div>
   <div><span>Thuế TNCN khấu trừ</span><strong>{{money(sheet.totals.pit||0)}}</strong></div>
-  <div><span>Thực lĩnh</span><strong>{{money(sheet.totals.net)}}</strong></div>
+  <div><span>Thực lĩnh</span><strong>{{money(sheet.totals.take_home??sheet.totals.net)}}</strong><small v-if="sheet.totals.advance">Đã trừ tạm ứng {{money(sheet.totals.advance)}}</small></div>
   <div><span>BH doanh nghiệp đóng</span><strong>{{money(sheet.totals.employer_insurance)}}</strong><small v-if="sheet.totals.union_fee">KPCĐ {{money(sheet.totals.union_fee)}}</small></div>
   <div><span>Phải trả đội khoán</span><strong>{{money(sheet.totals.crew_amount)}}</strong></div>
  </div>
@@ -166,9 +186,16 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
  <nav class="tk-subnav" aria-label="Chi tiết bảng lương"><button v-for="[id,text,count] in tabs" :key="id" type="button" :class="{active:view===id}" :aria-current="view===id?'page':undefined" @click="view=id">{{text}}<span class="hr-pay__count">{{count}}</span></button></nav>
 
  <section v-if="view==='sheet'&&sheet" class="tk-card hr-pay__table" aria-label="Bảng lương nhân sự">
-  <header class="tk-card__head"><h3>Bảng lương {{label(sheet.month)}}</h3><span class="tk-pill" :class="sheet.draft?'is-draft':'is-approved'">{{sheet.draft?'Bản nháp':'Đã chốt'}}</span><span class="tk-hint">Đơn giá giờ = lương CB ÷ {{sheet.hours_base}} · ca đêm +30% · tăng ca 150/200/300%</span></header>
+  <header class="tk-card__head"><h3>Bảng lương {{label(sheet.month)}}</h3><span class="tk-pill" :class="sheet.draft?'is-draft':'is-approved'">{{sheet.draft?'Bản nháp':'Đã chốt'}}</span><span class="tk-hint">Tiền công = công × đơn giá công (lương tháng: lương CB ÷ 26 × công) · phụ cấp không tính thuế · thực lĩnh đã trừ tạm ứng</span></header>
   <div class="hr-pay__scroll"><DataTable :rows="sheet.employees" :columns="sheetCols" row-key="employee" storage-key="payroll-sheet" empty="Chưa có nhân viên trong tháng."/>
    <p v-if="!sheet.employees.length" class="tk-empty">Chưa có nhân viên trong tháng này.</p></div>
+ </section>
+
+ <section v-if="view==='rates'&&rates" class="tk-card hr-pay__table" aria-label="Phụ cấp và đơn giá công">
+  <header class="tk-card__head"><h3>Phụ cấp &amp; đơn giá công</h3><span class="tk-hint">Phụ cấp hiện tại {{money(rates.rates.Allowance?.current)}}/ngày (một buổi nửa mức) · đơn giá công nhật chung {{money(rates.rates.Daywork?.current)}}/công</span>
+   <UiButton v-if="rates.can_edit" size="sm" variant="outline" :disabled="saving||busy" @click="newRate">Đổi mức</UiButton>
+   <UiButton v-if="rates.can_edit&&rates.missing_daily_rate" size="sm" :disabled="saving||busy||!rates.rates.Daywork?.current" @click="fillRates">Ghi đơn giá chung cho {{rates.missing_daily_rate}} công nhân chưa có</UiButton></header>
+  <div class="hr-pay__scroll"><DataTable :rows="rateRows" :columns="rateCols" row-key="name" storage-key="payroll-rates" empty="Chưa đặt mức."/></div>
  </section>
 
  <section v-if="view==='slips'&&run" class="tk-card hr-pay__table" aria-label="Phiếu lương HRMS">
@@ -198,6 +225,14 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
   <form @submit.prevent="reopen"><FormField label="Lý do mở lại" required hint="Lý do được lưu trong lịch sử kỳ công." v-slot="f"><UiTextarea v-bind="f" v-model="reopenReason" minlength="5" maxlength="500"/></FormField>
    <div class="hr-form-footer"><UiButton type="button" variant="outline" :disabled="saving" @click="reopenOpen=false">Quay lại</UiButton><UiButton type="submit" :disabled="saving">Mở lại kỳ</UiButton></div></form>
  </WorkspaceModal>
+ <ModalForm :model-value="!!rateForm" title="Đổi mức phụ cấp / đơn giá công" width="520px" :busy="saving" :error="rateError" submit-label="Lưu mức" @update:model-value="v=>!v&&(rateForm=null)" @submit="saveRate">
+  <template v-if="rateForm">
+   <LotusField v-model="rateForm.kind" label="Loại" type="select" :searchable="false" :options="rateKinds" required/>
+   <LotusField v-model="rateForm.rate" label="Mức mới (đ)" type="money" required/>
+   <LotusField v-model="rateForm.valid_from" label="Áp dụng từ ngày" type="date" required hint="Ngày đã chấm trước ngày này giữ mức cũ."/>
+   <LotusField v-model="rateForm.notes" label="Ghi chú" type="textarea" maxlength="500"/>
+  </template>
+ </ModalForm>
  <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" :alert-only="confirmAlert" @answer="finishConfirm"/>
 </div>
 </template>

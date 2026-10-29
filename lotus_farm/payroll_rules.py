@@ -158,6 +158,23 @@ def pay_base(basis, base_salary=0, daily_rate=0):
     return _num(base_salary)
 
 
+def rate_in_force(rows, on_date):
+    """The rate of the latest row (dicts with valid_from, rate) whose valid_from is on or before on_date, else 0."""
+    day = _day(on_date)
+    found = None
+    for row in rows or []:
+        start = _day(row['valid_from'])
+        if start <= day and (found is None or start > _day(found['valid_from'])):
+            found = row
+    return _num(found['rate']) if found else 0.0
+
+
+def allowance_amount(rate, workdays):
+    """Phụ cấp công việc for one day: the full rate for a whole day present, half of it for one session (buổi)."""
+    days = min(max(_num(workdays), 0.0), 1.0)
+    return round(_num(rate) * days) if days else 0
+
+
 def load_params(path=PARAMS_FILE):
     return json.loads(Path(path).read_text(encoding='utf-8'))
 

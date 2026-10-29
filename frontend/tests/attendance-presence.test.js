@@ -10,3 +10,12 @@ test('one session earns half, both sessions one day, preserving real stamps',()=
  assert.equal(presencePayload(row).afternoon_time,'2026-10-29 13:01:00')
  row.morning_present=0;applyPresence(row);assert.equal(row.morning_time,null);assert.equal(row.workdays,.5)
 })
+
+test('a day with no công loses its phụ cấp tick',()=>{
+ const row={morning_present:1,afternoon_present:0,allowance:1}
+ applyPresence(row)
+ assert.equal(row.allowance,1,'half a day keeps it (paid at half the rate)')
+ row.morning_present=0
+ applyPresence(row)
+ assert.equal(row.allowance,0)
+})

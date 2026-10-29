@@ -76,6 +76,7 @@ const attendanceCellActions={
  editableStatuses:()=>editableStatuses,
  onEdit:edit,
  onPresence:row=>{applyPresence(row);edit(row)},
+ onAllowance:row=>toggleAllowance(row),
  punchFlags:row=>punchFlags(row),
  punchText:row=>punchText(row),
  useMachine:row=>useMachine(row),
@@ -94,6 +95,7 @@ const attendanceColumns=[
  {field:'morning_present',headerName:'Sáng · ½',headerTooltip:'Trước 07:00 · ½ công',width:104,minWidth:104,maxWidth:104,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
  {field:'afternoon_present',headerName:'Chiều · ½',headerTooltip:'Sau 17:00 · ½ công',width:104,minWidth:104,maxWidth:104,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
  {field:'workdays',headerName:'Công',width:72,minWidth:72,maxWidth:72,flex:0,valueGetter:p=>Number(p.data.working_hours||0)/8},
+ {field:'allowance',headerName:'Phụ cấp',headerTooltip:'Phụ cấp công việc · cả ngày đủ mức, một buổi nửa mức',width:112,minWidth:112,maxWidth:112,flex:0,cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions},
  {field:'row_state',headerName:'Trạng thái',width:154,minWidth:154,maxWidth:154,flex:0,valueGetter:p=>stateLabel[rowState(p.data)],cellRenderer:TimekeepingGridCell,cellRendererParams:attendanceCellActions}
 ]
 
@@ -168,6 +170,24 @@ function toggleAll(){const value=!allChecked.value;chooseStaffRows(shown.value,v
 function markSession(session){
  for(const row of selected.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.legacy_conflict){row[session+'_present']=1;applyPresence(row);edit(row)}
 }
+// Phụ cấp công việc: drafts carry the tick to Lưu nháp; on approved days it is written at once (open month only).
+function toggleAllowance(row){
+ if(row.docstatus===1)return setApprovedAllowance([row],!Number(row.allowance))
+ if(row.legacy_conflict||row.status==='On Leave'||!presenceDays(row))return
+ row.allowance=Number(row.allowance)?0:1;edit(row)
+}
+async function markAllowance(value){
+ const rows=selected.value.filter(r=>!r.legacy_conflict&&r.status!=='On Leave'&&(!value||presenceDays(r)>0))
+ for(const row of rows)if(row.docstatus===0&&!!Number(row.allowance)!==value){row.allowance=value?1:0;edit(row)}
+ const approved=rows.filter(r=>r.docstatus===1&&!!Number(r.allowance)!==value)
+ if(approved.length)await setApprovedAllowance(approved,value)
+}
+async function setApprovedAllowance(rows,value){
+ if(dirty.value){error.value='Lưu nháp trước khi sửa phụ cấp của phiếu đã duyệt.';return}
+ saving.value=true;error.value=''
+ try{const r=await call('lotus_farm.attendance_day.set_allowance',{company:company.value,date:date.value,rows:rows.map(x=>({employee:x.employee,name:x.name,modified:x.modified})),allowance:value?1:0},true);notice.value=(value?'Đã tick':'Đã bỏ')+' phụ cấp cho '+r.changed+' người.';await load()}
+ catch(e){error.value=e.message}finally{saving.value=false}
+}
 function selectAttendanceRow({id,selected}){const row=staff.value.find(r=>rowKey(r)===id);if(row)chooseStaffRows([row],selected)}
 function selectAttendancePage({rows,selected}){chooseStaffRows(rows,selected)}
 function clearAttendanceSelection(){for(const row of staff.value)row.selected=false}
@@ -179,7 +199,7 @@ async function saveStaff(){
  const rows=staff.value.filter(r=>r.edited&&r.docstatus===0&&r.status&&r.status!=='On Leave'&&!r.legacy_conflict)
  if(!rows.length){error.value='Chọn nhân viên và trạng thái để lưu nháp.';return}
  saving.value=true;error.value=''
- try{await api('save_staff',{company:company.value,date:date.value,daily_presence:1,client_event_id:eventId.value,rows:rows.map(r=>({employee:r.employee,name:r.name,modified:r.modified,...presencePayload(r),overtime_hours:r.overtime_hours||0,note:r.note}))},true);notice.value='Đã lưu '+rows.length+' dòng công nháp.';await load();return true}
+ try{await api('save_staff',{company:company.value,date:date.value,daily_presence:1,client_event_id:eventId.value,rows:rows.map(r=>({employee:r.employee,name:r.name,modified:r.modified,...presencePayload(r),allowance:Number(r.allowance)?1:0,overtime_hours:r.overtime_hours||0,note:r.note}))},true);notice.value='Đã lưu '+rows.length+' dòng công nháp.';await load();return true}
  catch(e){error.value=e.message}finally{saving.value=false}}
 async function askStaff(action){
  const rows=selected.value
@@ -236,6 +256,8 @@ useNoticeToast(notice)
    <div class="attendance-toolbar tk-actions tk-daily-actions">
     <UiButton v-if="canEditStaff" variant="outline" :disabled="saving||busy||!selected.length" title="Chấm sáng cho các nhân viên đã chọn" @click="markSession('morning')">Chấm sáng</UiButton>
     <UiButton v-if="canEditStaff" variant="outline" :disabled="saving||busy||!selected.length" title="Chấm chiều cho các nhân viên đã chọn" @click="markSession('afternoon')">Chấm chiều</UiButton>
+    <UiButton v-if="canEditStaff" variant="outline" :disabled="saving||busy||!selected.length" title="Tick phụ cấp công việc cho các nhân viên đã chọn (người vắng cả ngày bỏ qua)" @click="markAllowance(true)">Phụ cấp</UiButton>
+    <UiButton v-if="canEditStaff" variant="ghost" :disabled="saving||busy||!selected.length" title="Bỏ phụ cấp công việc của các nhân viên đã chọn" @click="markAllowance(false)">Bỏ phụ cấp</UiButton>
     <div ref="attendanceTools" class="tk-daily-tools"></div>
     <span class="tk-actions__spacer"></span>
     <span v-if="editedCount" class="tk-actions__count">{{editedCount}} thay đổi</span>

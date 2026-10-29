@@ -301,13 +301,14 @@ def staff_action(company,rows,action,reason=None):
 def monthly(company,month):
     _company(company)
     begin=getdate(str(month)+'-01');end=begin.replace(day=calendar.monthrange(begin.year,begin.month)[1])
-    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration','lotus_overtime_hours','in_time','out_time','late_entry','early_exit','shift','modified'],limit_page_length=0)
+    extra=['lotus_allowance','lotus_allowance_amount'] if frappe.get_meta('Attendance').has_field('lotus_allowance') else []
+    records=frappe.get_list('Attendance',filters={'company':company,'attendance_date':['between',[begin,end]],'docstatus':['<',2]},fields=['name','employee','attendance_date','status','docstatus','working_hours','actual_overtime_duration','lotus_overtime_hours','in_time','out_time','late_entry','early_exit','shift','modified']+extra,limit_page_length=0)
     # Employees working in the month: active and joined by its end, or with attendance in it (left later).
-    people=[p for p in frappe.get_list('Employee',filters={'company':company,'status':['!=','Inactive']},fields=['name','employee_name','department','designation','status','date_of_joining','relieving_date'],order_by='employee_name',limit_page_length=0)
+    people=[p for p in frappe.get_list('Employee',filters={'company':company,'status':['!=','Inactive']},fields=['name','employee_name','department','designation','status','date_of_joining','relieving_date','lotus_work_team'],order_by='employee_name',limit_page_length=0)
             if (not p.date_of_joining or getdate(p.date_of_joining)<=end) and (not p.relieving_date or getdate(p.relieving_date)>=begin)]
     known={p.name for p in people}
     worked={r.employee for r in records}-known
-    if worked:people+=frappe.get_list('Employee',filters={'name':['in',list(worked)]},fields=['name','employee_name','department','designation'],order_by='employee_name',limit_page_length=0)
+    if worked:people+=frappe.get_list('Employee',filters={'name':['in',list(worked)]},fields=['name','employee_name','department','designation','lotus_work_team'],order_by='employee_name',limit_page_length=0)
     by_employee={}
     for record in records:by_employee.setdefault(record.employee,[]).append(record)
     rows=[]
@@ -317,7 +318,8 @@ def monthly(company,month):
         for entry in entries:days.setdefault(str(getdate(entry.attendance_date).day),[]).append(dict(entry))
         # A person can have multiple non-overlapping shifts. Never count more than one workday per calendar day.
         workdays=sum(min(1,sum(status_days(r.status) for r in approved if getdate(r.attendance_date).day==day)) for day in range(1,end.day+1))
-        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) for r in approved),draft_count=sum(r.docstatus==0 for r in entries)))
+        rows.append(dict(employee=employee.name,employee_name=employee.employee_name,department=employee.department,work_team=employee.get('lotus_work_team'),days=days,workdays=workdays,working_hours=sum(flt(r.working_hours) for r in approved),overtime_hours=sum(flt(r.lotus_overtime_hours) for r in approved),draft_count=sum(r.docstatus==0 for r in entries),
+            allowance_days=sum(min(flt(r.working_hours),8)/8 for r in approved if cint(r.get('lotus_allowance'))),allowance_amount=sum(flt(r.get('lotus_allowance_amount')) for r in approved)))
     from lotus_farm.hr_period import is_closed
     return dict(rows=rows,days=end.day,month=str(month),company=company,period_closed=is_closed(company,begin),holidays=_month_holidays(company,begin,end))
 
