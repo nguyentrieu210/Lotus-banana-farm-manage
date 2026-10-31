@@ -148,6 +148,9 @@ def lines(company, mode, name):
         doc = approved(dt, source, company)
         for row in (doc.lines if dt == 'Material Requirement' else doc.items):
             info = source_line(dt, source, row.name, company, name if mode == 'Plan' else None)
+            from lotus_farm.warehouse_masters import item_uoms
+            item = frappe.get_doc('Item', info['item'])
+            info.update(stock_uom=item.stock_uom, uoms=item_uoms(item))
             info['allocated_qty'] = allocated(dt, source, row.name)
             info['remaining_qty'] = max(0, info['required_qty'] - info['allocated_qty'])
             if info['remaining_qty'] > 0:

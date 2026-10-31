@@ -11,6 +11,7 @@ import StockEvidence from './StockEvidence.vue'
 import DocumentReader from '../DocumentReader.vue'
 import {unitLabel} from '../../units'
 import {fmt} from '../../stock-columns'
+import {itemUnits,conversionFactor,stockQuantity,quantityLimit} from '../../stock-units'
 // Phiếu nhập không theo đơn · xuất kho · chuyển kho · kiểm kê, saved as an ERPNext draft (lotus_farm.warehouse.create_draft).
 // open(kind) starts a new draft; edit(detail) reopens a draft from the detail dialog.
 // openQuick() is Mua hàng › Mua nhanh: goods already bought, reason fixed to Purchase, saved and posted to stock at once
@@ -39,23 +40,28 @@ const title=computed(()=>(form.existing_name?'Sửa phiếu nháp · ':'')+(quic
 
 async function searchItems(search){
  const result=await api('overview',{company:props.company,warehouse:form.kind==='count'?form.target:form.source||form.target||props.warehouse,search})
- return result.items.map(item=>({value:item.name,label:item.item_name,uom:item.stock_uom,pack_uom:item.pack_uom,pack_factor:item.pack_factor,actual_qty:item.actual_qty}))
+ return result.items.map(item=>({value:item.name,label:item.item_name,uom:item.stock_uom,uoms:item.uoms,pack_uom:item.pack_uom,pack_factor:item.pack_factor,actual_qty:item.actual_qty}))
 }
 function selectItem(row,option){
- Object.assign(row,{item_name:option.label,uom:option.uom,stock_uom:option.uom,pack_uom:option.pack_uom||'',pack_factor:Number(option.pack_factor)||0,actual_qty:option.actual_qty})
+ Object.assign(row,{item_name:option.label,uom:option.uom,stock_uom:option.uom,uoms:option.uoms||[],pack_uom:option.pack_uom||'',pack_factor:Number(option.pack_factor)||0,actual_qty:option.actual_qty})
  // Kiểm kê starts from the book quantity of the counted warehouse.
  if(form.kind==='count'&&form.target)row.qty=option.actual_qty??row.qty
+}
+function changeUnit(row,unit){
+ const quantity=stockQuantity(row)
+ row.uom=unit
+ if(!manual.value&&Number.isFinite(quantity))row.qty=quantity/conversionFactor(row)
 }
 const lineColumns=computed(()=>{
  const count=form.kind==='count',issue=form.kind==='issue'
  const cols=[{field:'item',label:'Vật tư',type:'combobox',fetchOptions:searchItems,displayValue:r=>r.item_name||'',required:true,readonly:()=>!manual.value,onSelect:selectItem,props:{hideValues:true,placeholder:'Chọn vật tư…'},width:'minmax(220px,2.2fr)'},
   {field:'qty',label:count?'Tồn thực đếm':'Số lượng',type:'number',required:true,width:'minmax(110px,1fr)',
-   props:r=>({min:count||!manual.value?0:0.000001,max:!manual.value?r.remaining_qty:undefined}),
-   hint:r=>form.kind==='receipt'&&r.uom&&r.stock_uom&&r.uom!==r.stock_uom?'= '+fmt(Number(r.qty||0)*Number(r.pack_factor||1))+' '+unitLabel(r.stock_uom):unitLabel(r.uom||r.stock_uom)||''}]
- if(form.kind==='receipt')cols.push({field:'uom',label:'Đơn vị nhập hàng',type:'select',required:true,width:'minmax(120px,1fr)',options:row=>[{value:row.stock_uom||row.uom,label:unitLabel(row.stock_uom||row.uom)},...(row.pack_uom&&Number(row.pack_factor)>0?[{value:row.pack_uom,label:unitLabel(row.pack_uom)+' (1 = '+fmt(row.pack_factor)+' '+unitLabel(row.stock_uom)+')'}]:[])].filter(o=>o.value),props:{emptyOption:null}})
+   props:r=>({min:count||!manual.value?0:0.000001,max:!manual.value?quantityLimit(r):undefined}),
+   hint:r=>['receipt','issue'].includes(form.kind)&&r.uom&&r.stock_uom&&r.uom!==r.stock_uom?'= '+fmt(stockQuantity(r))+' '+unitLabel(r.stock_uom):unitLabel(r.uom||r.stock_uom)||''}]
+ if(form.kind==='receipt'||issue)cols.push({field:'uom',label:issue?'Đơn vị xuất':'Đơn vị nhập hàng',type:'select',required:true,width:'minmax(150px,1fr)',options:row=>itemUnits(row).map(u=>({value:u.uom,label:unitLabel(u.uom)+(u.uom!==row.stock_uom?' (1 = '+fmt(u.conversion_factor)+' '+unitLabel(row.stock_uom)+')':'')})),props:{emptyOption:null}})
  if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
  if(issue||(form.kind==='receipt'&&form.receipt_reason==='Recovery'))cols.push({field:'area',label:issue?'Khu vực / lô sử dụng':'Lô thu hồi về',type:'combobox',options:blockCodes.value.map(b=>({value:b.code,label:b.label||b.code})),required:true,width:'minmax(160px,1.4fr)',readonly:r=>!manual.value&&r.fixed_area,props:{allowCustom:true,placeholder:'VD: A-1 / thửa 2'},
-  hint:r=>manual.value?'Bắt đầu bằng mã lô để chi phí vào đúng lô.':'Duyệt '+fmt(r.required_qty)+' · Đã cấp/giữ '+fmt(r.allocated_qty)+' · Còn '+fmt(r.remaining_qty)})
+  hint:r=>manual.value?'Bắt đầu bằng mã lô để chi phí vào đúng lô.':'Duyệt '+fmt(r.required_qty)+' · Đã cấp/giữ '+fmt(r.allocated_qty)+' · Còn '+fmt(r.remaining_qty)+' '+unitLabel(r.stock_uom||r.uom)})
  return cols
 })
 const costColumns=computed(()=>[{field:'description',label:'Khoản chi phí',required:true,props:{maxlength:140,placeholder:'Vận chuyển, bốc xếp…'},width:'minmax(180px,1.6fr)'},{field:'amount',label:'Số tiền ('+money.value+')',type:'money',required:true,props:{min:0.000001},width:'minmax(140px,1fr)'},{field:'expense_account',label:'Tài khoản chi phí',type:'select',required:true,options:accounts.value.map(a=>({value:a.name,label:a.account_name})),width:'minmax(180px,1.4fr)'}])
@@ -153,7 +159,9 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
    <p v-if="issueNote" class="lotus-form-note">{{issueNote}}</p>
   </FormSection>
   <FormSection>
-   <LineItemsEditor v-model="form.lines" title="Hàng hóa trên phiếu" add-label="Thêm vật tư" :columns="lineColumns" :new-row="newLine" :fixed="!manual" :empty-text="issueSource&&!issueLoading?'Nguồn này chưa có nhu cầu vật tư đã duyệt còn được cấp. Không có dòng nào để xuất.':'Chưa có dòng nào.'"/>
+   <LineItemsEditor v-model="form.lines" title="Hàng hóa trên phiếu" add-label="Thêm vật tư" :columns="lineColumns" :new-row="newLine" :fixed="!manual" :empty-text="issueSource&&!issueLoading?'Nguồn này chưa có nhu cầu vật tư đã duyệt còn được cấp. Không có dòng nào để xuất.':'Chưa có dòng nào.'">
+    <template #cell-uom="{row,index,column}"><LotusField :model-value="row.uom" :aria-label="column.label+' dòng '+(index+1)" :options="column.options(row)" :empty-option="null" :disabled="!row.item" required @update:model-value="unit=>changeUnit(row,unit)"/></template>
+   </LineItemsEditor>
   </FormSection>
   <div v-if="form.kind==='receipt'&&!showCosts&&!form.additional_costs.length"><button type="button" class="lotus-link-button" @click="showCosts=true">+ Thêm chi phí vận chuyển, bốc xếp</button></div>
   <FormSection v-if="form.kind==='receipt'&&(showCosts||form.additional_costs.length)" title="Chi phí nhập kho" description="Phân bổ chi phí theo giá trị vật tư. Cần có đơn giá để tính phân bổ.">

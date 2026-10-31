@@ -30,5 +30,5 @@ test('receipt permits package quantities and correctly scales entered unit price
  assert.match(api,/entry_uom=str\(row\.get\('uom'\)/)
  assert.match(api,/values\['basic_rate'\] = rate\/factor/)
  assert.match(api,/basic_total \+= qty \* rate/)
- assert.match(api,/doc\.stock_entry_type!='Material Receipt'/)
+ assert.match(api,/doc\.stock_entry_type not in \('Material Receipt','Material Issue'\)/)
 })

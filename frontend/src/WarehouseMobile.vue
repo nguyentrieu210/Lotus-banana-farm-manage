@@ -23,6 +23,7 @@ import LotusMobileAction from './components/LotusMobileAction.vue'
 import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
 import {call,setCSRF,upload} from './api'
 import {unitLabel} from './units'
+import {stockQuantity} from './stock-units'
 import MobileLinkField from './components/MobileLinkField.vue'
 import MobileLiveSearch from './components/MobileLiveSearch.vue'
 import SigningPanel from './components/SigningPanel.vue'
@@ -297,7 +298,7 @@ function searchMatches(r){
  return items.value.filter(i=>i.item_name.toLocaleLowerCase('vi').includes(q)||i.name.toLocaleLowerCase('vi').includes(q)).slice(0,6)
 }
 function queryChanged(r){if(r.item&&r.query!==iname(r.item))r.item=''}
-function chooseItem(r,i){r.item=i.name;r.query=i.item_name;r.uom=i.stock_uom}
+function chooseItem(r,i){r.item=i.name;r.query=i.item_name;r.uom=i.stock_uom;r.stock_uom=i.stock_uom;r.uoms=(setup.value?.conversions||[]).filter(u=>u.parent===i.name)}
 // AI-read delivery note / invoice (Nhập không theo đơn): fill supplier, reason and lines; the photo becomes evidence after saving.
 function applyDocument(result,stored){
  const f=form.value;if(!f)return
@@ -591,7 +592,8 @@ onUnmounted(()=>{
      <div class="mobile-line" v-for="(r,i) in form.lines" :key="r._key">
       <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="form.lines.length>1" type="button" @click="form.lines.splice(i,1)">Xóa</LotusMobileButton></div>
       <MobileLinkField label="Tên hàng" :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hoặc mã hàng…" required @update:modelValue="code=>chooseByCode(r,code)"/>
-      <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/><LotusMobileSelect label="Đơn vị" v-model="r.uom" :disabled="kind!=='receipt'"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></div>
+      <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" v-model="r.qty" type="number" min="0.000001" step="any" inputmode="decimal" required/><LotusMobileSelect label="Đơn vị" v-model="r.uom" :disabled="kind==='transfer'||!r.item"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></div>
+      <small v-if="kind==='issue'&&r.item&&r.uom!==r.stock_uom" class="mobile-subtle">Trừ tồn: {{fmt(stockQuantity(r))}} {{unitLabel(r.stock_uom)}}</small>
       <LotusMobileInput v-if="kind==='receipt'" :label="form.receipt_reason==='Purchase'?'Đơn giá mua':'Đơn giá (nếu có)'" v-model="r.rate" type="money" :required="form.receipt_reason==='Purchase'"/>
       <LotusMobileInput v-if="kind==='issue'||kind==='receipt'&&form.receipt_reason==='Recovery'" :label="(kind==='receipt'?'Lô thu hồi vật tư':'Lô / nơi sử dụng')" v-model="r.area" placeholder="Ví dụ: Lô A01" required/>
      </div>
@@ -604,7 +606,7 @@ onUnmounted(()=>{
    <template v-if="screen==='stock-review'&&createdDocDetails">
     
     <div class="mobile-summary"><span>Số phiếu <b>{{createdDocDetails.name}}</b></span><span>Ngày <b>{{createdDocDetails.posting_date}}</b></span></div>
-    <div class="mobile-list-card" v-for="(r,i) in createdDocDetails.items" :key="i"><strong>{{r.item_name}}</strong><div class="mobile-inline"><span>{{wname(r.source)}} {{r.source&&r.target?'→':''}} {{wname(r.target)}}</span><b>{{fmt(r.qty)}} {{unitLabel(r.uom)}}</b></div></div>
+    <div class="mobile-list-card" v-for="(r,i) in createdDocDetails.items" :key="i"><strong>{{r.item_name}}</strong><div class="mobile-inline"><span>{{wname(r.source)}} {{r.source&&r.target?'→':''}} {{wname(r.target)}}</span><b>{{fmt(r.qty)}} {{unitLabel(r.uom)}}</b></div><small v-if="kind==='issue'&&r.uom!==r.stock_uom">Trừ tồn: {{fmt(r.stock_qty)}} {{unitLabel(r.stock_uom)}}</small></div>
     <StockEvidence class="mobile-evidence" :doctype="createdDocDetails.doctype" :name="createdDocDetails.name" :title="createdDocDetails.kind==='Material Issue'?'Ảnh bằng chứng xuất kho':'Ảnh hàng, phiếu giao hàng'"/>
     <div class="mobile-confirm"><p>Phiếu mới chỉ là nháp. Bấm xác nhận để cập nhật tồn kho.</p><LotusMobileCheck v-model="confirmed" :disabled="saving">Đã kiểm tra đúng hàng và số lượng</LotusMobileCheck><LotusMobileButton class="mobile-submit" type="button" :disabled="!online||saving||!confirmed" @click="postStock">Ghi sổ phiếu</LotusMobileButton></div>
    </template>

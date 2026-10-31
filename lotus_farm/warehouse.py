@@ -157,7 +157,7 @@ def _simple_doc(doc):
     if doc.doctype=='Stock Entry':
         if len({r.get('s_warehouse') for r in doc.items if r.get('s_warehouse')})>1 or len({r.get('t_warehouse') for r in doc.items if r.get('t_warehouse')})>1:
             return False
-        if any((flt(r.conversion_factor)!=1 or r.uom!=r.stock_uom) and doc.stock_entry_type!='Material Receipt' for r in doc.items):return False
+        if any((flt(r.conversion_factor)!=1 or r.uom!=r.stock_uom) and doc.stock_entry_type not in ('Material Receipt','Material Issue') for r in doc.items):return False
     elif len({r.warehouse for r in doc.items})>1:return False
     for row in doc.items:
         item = frappe.get_doc('Item', row.item_code)
@@ -170,7 +170,7 @@ def _simple_doc(doc):
 @frappe.whitelist()
 def document(doctype, name):
     doc = _stock_doc(doctype, name)
-    from lotus_farm.warehouse_masters import item_pack
+    from lotus_farm.warehouse_masters import item_pack, item_uoms
     return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
                 receipt_reason=doc.get('lotus_receipt_reason') or '', supplier=doc.get('lotus_supplier') or '',
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
@@ -186,13 +186,15 @@ def document(doctype, name):
                 can_write=doc.docstatus == 0 and doc.has_permission('write') and _simple_doc(doc),
                 can_delete=doc.docstatus == 0 and doc.has_permission('delete') and _simple_doc(doc),
                 items=[dict(item=row.item_code, item_name=row.item_name,
-                            uom=(row.get('uom') if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else row.get('stock_uom') or row.get('uom')),
-                            qty=(flt(row.qty) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty),
+                            uom=(row.get('uom') if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('stock_uom') or row.get('uom')),
+                            qty=(flt(row.qty) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty),
                             stock_uom=row.get('stock_uom'),conversion_factor=flt(row.get('conversion_factor') or 1),
+                            stock_qty=flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty,
+                            uoms=item_uoms(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else [],
                             **(item_pack(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else {}),
                             source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
                             area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
-                            rate=(flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
+                            rate=(flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
                             valuation_rate=row.get('valuation_rate'), amount=row.get('amount'))
                        for row in doc.items])
@@ -449,11 +451,12 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
     for balance in bins:
         actual_by_item[balance.item_code] = actual_by_item.get(balance.item_code, 0) + flt(balance.actual_qty)
     stocked_count = sum(qty > 0 for qty in actual_by_item.values())
-    from lotus_farm.warehouse_masters import item_pack
+    from lotus_farm.warehouse_masters import item_pack, item_uoms
     conversions = frappe.get_all('UOM Conversion Detail',
         filters={'parenttype':'Item', 'parent':['in',[i.name for i in items] or ['__none__']]},
         fields=['parent','uom','conversion_factor'],limit_page_length=0)
     for item in items:
+        item.uoms=item_uoms(item, conversions)
         rows = [b for b in bins if b.item_code == item.name]
         item.actual_qty = sum(flt(b.actual_qty) for b in rows)
         global_qty=sum(flt(b.actual_qty) for b in all_bins if b.item_code==item.name)
@@ -649,13 +652,13 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         qty = _number(row.get('qty'), 'Số lượng', allow_zero=kind == 'count')
         entry_uom=item.stock_uom
         factor=1.0
-        if kind=='receipt':
+        if kind in ('receipt','issue'):
             entry_uom=str(row.get('uom') or item.stock_uom)
             if entry_uom!=item.stock_uom:
                 conversion=next((r for r in item.uoms if r.uom==entry_uom),None)
-                if not conversion or flt(conversion.conversion_factor)<=0:
-                    frappe.throw('Đơn vị nhập chưa được khai báo quy đổi cho vật tư '+item.name)
-                factor=flt(conversion.conversion_factor)
+                if not conversion:
+                    frappe.throw('Đơn vị '+('xuất' if kind=='issue' else 'nhập')+' chưa được khai báo quy đổi cho vật tư '+item.name)
+                factor=_number(conversion.conversion_factor, 'Hệ số quy đổi')
         # Existing clients can omit rates; new receipt forms send explicit prices.
         existing_rate = frappe.db.get_value('Bin', {'item_code': item.name, 'warehouse': target or source}, 'valuation_rate') or item.get('valuation_rate') or 0
         rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)

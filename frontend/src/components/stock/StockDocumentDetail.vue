@@ -7,7 +7,8 @@ import LotusField from '../form/LotusField.vue'
 import DataTable from '../DataTable.vue'
 import SigningPanel from '../SigningPanel.vue'
 import {Button as UiButton} from '../ui/button'
-import {detailColumns,receiptDetailColumns,statusLabel,entryTypeLabel} from '../../stock-columns'
+import {detailColumns,receiptDetailColumns,statusLabel,entryTypeLabel,fmt} from '../../stock-columns'
+import {unitLabel} from '../../units'
 // Chi tiết phiếu kho: in, sửa / xóa nháp, ghi sổ (cập nhật tồn kho) và ký số sau ghi sổ.
 const props=defineProps({warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['changed','edit'])
@@ -18,7 +19,11 @@ const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||
 const money=computed(()=>props.session?.companies?.find(c=>c.name===detail.value?.company)?.default_currency||'VND')
 const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:money.value})
 const receipt=computed(()=>detail.value?.kind==='Material Receipt')
-const columns=computed(()=>receipt.value?[...detailColumns(warehouseLabel),...receiptDetailColumns(cash)]:detailColumns(warehouseLabel))
+const columns=computed(()=>{
+ const columns=receipt.value?[...detailColumns(warehouseLabel),...receiptDetailColumns(cash)]:detailColumns(warehouseLabel)
+ if(detail.value?.kind==='Material Issue'&&detail.value.items.some(r=>r.uom!==r.stock_uom))columns.splice(4,0,{headerName:'Trừ tồn kho',minWidth:140,valueGetter:p=>fmt(p.data.stock_qty)+' '+unitLabel(p.data.stock_uom)})
+ return columns
+})
 const canEdit=computed(()=>detail.value?.docstatus===0&&detail.value.can_write&&(detail.value.kind!=='Material Issue'||!detail.value.issue_mode||detail.value.issue_mode==='Manual'))
 const printURL=computed(()=>detail.value?'/lotus/in-phieu?'+new URLSearchParams({doctype:detail.value.doctype,name:detail.value.name}):'')
 async function show(doctype,name){
