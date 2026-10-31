@@ -133,6 +133,22 @@ def item_pack(item):
     return dict(pack_uom='', pack_factor=0)
 
 
+def item_uoms(item, conversions=None):
+    """Return this item's configured units, always relative to its stock unit."""
+    import math
+    from frappe.utils import flt
+    result = [dict(uom=item.stock_uom, conversion_factor=1)]
+    seen = {item.stock_uom}
+    for row in conversions if conversions is not None else item.get('uoms') or []:
+        if row.get('parent') and row.get('parent') != item.name:
+            continue
+        unit, factor = row.get('uom'), flt(row.get('conversion_factor'))
+        if unit and unit not in seen and math.isfinite(factor) and factor > 0:
+            result.append(dict(uom=unit, conversion_factor=factor))
+            seen.add(unit)
+    return result
+
+
 def configure_pack(item, values):
     if 'pack_uom' not in values and 'pack_factor' not in values:
         return
