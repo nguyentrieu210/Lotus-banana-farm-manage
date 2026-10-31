@@ -30,6 +30,10 @@ def _work_rows(company, month):
         left join `tabDaily Work Plan Line` pl on pl.name=r.work_plan_line
         where r.docstatus=1 and r.company=%s and r.posting_date between %s and %s and ifnull(l.employee,'')!=''
         group by l.employee, r.farm, r.farm_block, r.crop_cycle, pl.work_type""", (company, start, end), as_dict=True)
+    # Buổi on phiếu giao việc (công việc ngoài vườn) place a person's day on a lô and việc directly.
+    from lotus_farm.field_report import work_rows
+    if frappe.db.table_exists('Lotus Work Session'):
+        actual = list(actual) + [frappe._dict(r) for r in work_rows(company, start, end)]
     seen = {r.employee for r in actual}
     planned = frappe.db.sql("""select a.employee, sum(a.allocated_workdays) workdays, a.farm lotus_farm, a.farm_block lotus_farm_block,
             a.crop_cycle lotus_crop_cycle, pl.work_type lotus_work_type

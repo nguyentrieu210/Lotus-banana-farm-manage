@@ -5,15 +5,15 @@ lotus_farm.www.lotus_payroll_print.layout; only people with công or pay in the 
 {% for g in p.worker_groups %}
 <h2 class="lp-section"{% if not loop.first %} style="page-break-before:always;break-before:page"{% endif %}>Công nhân công nhật — {{ g.name }}</h2>
 <table class="lp-table lp-table--compact">
- <colgroup><col style="width:3%"><col style="width:19%"><col style="width:6%"><col style="width:8%"><col style="width:10%"><col style="width:5%"><col style="width:8%"><col style="width:7%"><col style="width:8%"><col style="width:11%"><col style="width:15%"></colgroup>
- <thead><tr><th class="stt">TT</th><th>Họ và tên</th><th class="num">Công</th><th class="num">Đơn giá công</th><th class="num">Tiền công</th><th class="num">Ngày PC</th><th class="num">Phụ cấp</th><th class="num">Thuế TNCN</th><th class="num">Tạm ứng</th><th class="num">Thực lĩnh</th><th class="center">Ký nhận</th></tr></thead>
+ <colgroup><col style="width:3%"><col style="width:16%"><col style="width:5%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:6%"><col style="width:4%"><col style="width:6%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:15%"></colgroup>
+ <thead><tr><th class="stt">TT</th><th>Họ và tên</th><th class="num">Công</th><th class="num">Đơn giá công</th><th class="num">Tiền công</th><th class="num">Tiền khoán</th><th class="num">Bù lương tối thiểu</th><th class="num">Ngày PC</th><th class="num">Phụ cấp</th><th class="num">Thuế TNCN</th><th class="num">Tạm ứng</th><th class="num">Thực lĩnh</th><th class="center">Ký nhận</th></tr></thead>
  <tbody>{% for e in g.rows %}<tr>
   <td class="stt">{{ loop.index }}</td><td><b>{{ e.employee_name }}</b><small>{{ e.employee }}</small></td>
   <td class="num">{{ f.number(e.workdays, 2) }}</td><td class="num">{{ f.number(e.daily_rate, 0) if e.daily_rate else '' }}</td>
-  <td class="num">{{ f.number(e.wage, 0) }}</td><td class="num">{{ f.number(e.allowance_days, 1) if e.allowance_days else '' }}</td>
+  <td class="num">{{ f.number(e.wage, 0) }}{% if e.khoan_sessions %}<small>trừ {{ e.khoan_sessions }} buổi khoán</small>{% endif %}</td><td class="num">{{ f.number(e.piece, 0) if e.piece else '' }}</td><td class="num">{{ f.number(e.topup, 0) if e.topup else '' }}</td><td class="num">{{ f.number(e.allowance_days, 1) if e.allowance_days else '' }}</td>
   <td class="num">{{ f.number(e.allowance, 0) if e.allowance else '' }}</td><td class="num">{{ f.number(e.pit, 0) if e.pit else '' }}</td>
   <td class="num">{{ f.number(e.advance, 0) if e.advance else '' }}</td><td class="num"><b>{{ f.number(e.take_home, 0) }}</b></td><td></td></tr>{% endfor %}
- <tr class="lp-total"><td></td><td>Cộng {{ g.name }} · {{ g.rows|length }} người</td><td class="num">{{ f.number(g.workdays, 2) }}</td><td></td><td class="num">{{ f.number(g.wage, 0) }}</td><td></td><td class="num">{{ f.number(g.allowance, 0) }}</td><td class="num">{{ f.number(g.pit, 0) }}</td><td class="num">{{ f.number(g.advance, 0) }}</td><td class="num">{{ f.number(g.take_home, 0) }}</td><td></td></tr></tbody>
+ <tr class="lp-total"><td></td><td>Cộng {{ g.name }} · {{ g.rows|length }} người</td><td class="num">{{ f.number(g.workdays, 2) }}</td><td></td><td class="num">{{ f.number(g.wage, 0) }}</td><td class="num">{{ f.number(g.piece, 0) }}</td><td class="num">{{ f.number(g.topup, 0) }}</td><td></td><td class="num">{{ f.number(g.allowance, 0) }}</td><td class="num">{{ f.number(g.pit, 0) }}</td><td class="num">{{ f.number(g.advance, 0) }}</td><td class="num">{{ f.number(g.take_home, 0) }}</td><td></td></tr></tbody>
 </table>
 <div class="lp-sign"><div><b>Người chấm công</b><div class="lp-sign__space">&nbsp;</div></div><div><b>Tổ trưởng</b><div class="lp-sign__space">&nbsp;</div></div></div>
 {% endfor %}
@@ -43,4 +43,4 @@ lotus_farm.www.lotus_payroll_print.layout; only people with công or pay in the 
  <tr class="lp-total"><td></td><td colspan="5">Cộng đội khoán</td><td class="num">{{ f.number(p.totals.crew_amount, 0) }}</td><td colspan="2"></td></tr></tbody>
 </table>
 {% endif %}
-<p class="lp-legend">Tiền công = công đã duyệt × đơn giá công (công nhật) hoặc lương CB ÷ 26 × công (lương tháng). Phụ cấp công việc: tick trên bảng chấm công, cả ngày đủ mức, một buổi nửa mức; không tính thuế TNCN, không tính vào lương đóng BHXH. Thực lĩnh = tiền công + phụ cấp − BH người LĐ − thuế TNCN − tạm ứng đã chi. BH doanh nghiệp đóng: {{ f.number(p.totals.employer_insurance, 0) }} đồng.</p>
+<p class="lp-legend">Tiền công = công đã duyệt × đơn giá công (công nhật) hoặc lương CB ÷ 26 × công (lương tháng); buổi làm trên phiếu khoán không tính công nhật. Tiền khoán = phần chia theo buổi của các phiếu khoán khoá trong tháng; bù lương tối thiểu khi tiền khoán quy ra giờ thấp hơn mức vùng. Phụ cấp công việc: tick trên bảng chấm công, cả ngày đủ mức, một buổi nửa mức; không tính thuế TNCN, không tính vào lương đóng BHXH. Thực lĩnh = tiền công + phụ cấp − BH người LĐ − thuế TNCN − tạm ứng đã chi. BH doanh nghiệp đóng: {{ f.number(p.totals.employer_insurance, 0) }} đồng.</p>

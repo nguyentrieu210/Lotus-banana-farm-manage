@@ -168,13 +168,6 @@ def blockers(company, begin, end):
     gaps = missing_attendance(people, records, begin, end, holidays.days if holidays else {}, getdate(nowdate()))
     names = {p.name: p.employee_name for p in people}
     rows = close_blockers(drafts, crew, punches, gaps, has_calendar=bool(holidays))
-    if frappe.db.exists('DocType', 'Lotus Field Report'):
-        pending = frappe.get_all('Lotus Field Report', filters={'company': company,
-            'posting_date': ['between', [begin, end]], 'state': ['!=', 'Confirmed']}, pluck='name', limit_page_length=0)
-        pieces = frappe.get_all('Lotus Field Report Line', filters={'parent': ['in', pending],
-            'parenttype': 'Lotus Field Report', 'pay_kind': 'Piece'}, pluck='parent', limit_page_length=0) if pending else []
-        if pieces:
-            rows.append(dict(code='draft_piece_reports', label='Báo cáo ngày có công khoán chưa xác nhận', count=len(set(pieces))))
     for row in rows:
         if row.get('employees'):
             row['employees'] = [dict(name=n, employee_name=names.get(n, n), days=[str(d) for d in gaps[n]][:31]) for n in row['employees']]
@@ -439,6 +432,7 @@ def _sheet(company, month, begin, end):
     region = frappe.db.get_single_value('Lotus Finance Settings', 'minimum_wage_region') \
         if frappe.db.exists('DocType', 'Lotus Finance Settings') and frappe.get_meta('Lotus Finance Settings').has_field('minimum_wage_region') else None
     employees = []
+    taxes = {}
     rates={}
     for rate in frappe.get_all('Salary Structure Assignment',filters={'company':company,'employee':['in',[p.name for p in people] or ['']],'docstatus':1},
             fields=['name','employee','base','from_date','lotus_payment_basis'],order_by='from_date asc, name',limit_page_length=0):
@@ -451,6 +445,7 @@ def _sheet(company, month, begin, end):
             months = span.days / 30.4
         tax = dict(method=tax_method(person.lotus_worker_category, months), dependents=cint(person.lotus_dependents),
                    commitment=bool(cint(person.lotus_pit_commitment)))
+        taxes[person.name] = tax
         fallback=dict(name='Employee:'+person.name,from_date=person.date_of_joining or begin,
             base=pay_base(person.lotus_payment_basis,person.lotus_base_salary,person.lotus_daily_rate),lotus_payment_basis=person.lotus_payment_basis)
         rate_begin=max(begin,getdate(person.date_of_joining)) if person.date_of_joining else begin
@@ -467,15 +462,35 @@ def _sheet(company, month, begin, end):
                               tax_code=person.lotus_tax_code, social_insurance_no=person.lotus_social_insurance_no,
                               dependents=tax['dependents'], pit_commitment=tax['commitment'],
                               onboarding=person.lotus_onboarding_state, status=person.status, **summary, **pay))
+    # Khoán (lotus_farm.field_report): a buổi worked on a khoán phiếu is not paid as công nhật; the shares of the phiếu
+    # locked this month are paid instead, topped up to the regional minimum per hour. Both are taxed like wages.
+    from lotus_farm.field_report import month_piece
+    from lotus_farm.field_report_rules import minimum_topup
+    from lotus_farm.payroll_rules import income_tax
+    from lotus_farm.work_allowance import MINIMUM_HOURLY, month_advances, month_allowance, rate_on
+    pieces, hourly_minimum = month_piece(company, begin, end), rate_on(company, MINIMUM_HOURLY, end)
+    for e in employees:
+        p = pieces.get(e['employee']) or {}
+        sessions = cint(p.get('khoan_sessions'))
+        deduct = min(round(sessions * flt(e.get('daily_rate')) / 2), round(flt(e.get('regular_pay')))) if e['payment_basis'] == 'Daywork' else 0
+        piece = round(flt(p.get('piece')))
+        topup = minimum_topup(piece, p.get('piece_sessions'), hourly_minimum) if piece or p.get('piece_sessions') else 0
+        e.update(wage=round(flt(e['gross'])) - deduct, khoan_sessions=sessions, khoan_deduction=deduct, piece=piece,
+                 piece_sessions=cint(p.get('piece_sessions')), topup=topup)
+        if deduct or piece or topup:
+            gross = e['wage'] + piece + topup
+            tax = taxes.get(e['employee']) or {}
+            if params:
+                e.update(income_tax(gross, e.get('pit_exempt') or 0, e['employee_insurance'], tax.get('method'), params,
+                                    tax.get('dependents'), tax.get('commitment')))
+            e['gross'], e['net'] = gross, gross - e['employee_insurance'] - (e.get('pit') or 0)
     # Phụ cấp công việc (not taxed, outside the insurance base) is added after the tax; tạm ứng is deducted from it.
-    from lotus_farm.work_allowance import month_advances, month_allowance
     names = [e['employee'] for e in employees]
     allowances, advances = month_allowance(company, begin, end, names), month_advances(company, month)
     team_names = {t.name: t.team_name for t in frappe.get_all('Work Team', filters={'name': ['in', list({e['work_team'] for e in employees if e['work_team']}) or ['']]},
                                                                fields=['name', 'team_name'])}
     for e in employees:
         extra = allowances.get(e['employee']) or {}
-        e['wage'] = flt(e['gross'])
         e['allowance_days'], e['allowance'] = round(flt(extra.get('days')), 2), round(flt(extra.get('amount')))
         e['gross'] = flt(e['gross']) + e['allowance']
         e['net'] = flt(e['net']) + e['allowance']
@@ -492,15 +507,6 @@ def _sheet(company, month, begin, end):
         item['completed_qty'] += flt(row.completed_qty)
         item['workdays'] += flt(row.workdays)
         item['person_days'] += cint(row.present)
-        item['amount'] += flt(row.amount)
-    # Công khoán confirmed in the đội daily reports (báo cáo ngày) is owed to the tổ the same way.
-    from lotus_farm.field_report import confirmed_piece_lines
-    for row in confirmed_piece_lines(company, begin, end):
-        key = (row.work_team, row.work_type or '', row.uom or '', flt(row.rate))
-        item = crews.setdefault(key, dict(work_team=row.work_team, work_type=row.work_type, uom=row.uom, unit_rate=flt(row.rate),
-                                          completed_qty=0.0, workdays=0.0, person_days=0, amount=0.0))
-        item['completed_qty'] += flt(row.qty)
-        item['workdays'] += flt(row.workdays)
         item['amount'] += flt(row.amount)
     teams = {t.name: t for t in frappe.get_all('Work Team', filters={'name': ['in', list({k[0] for k in crews}) or ['']]},
                                                 fields=['name', 'team_name', 'lotus_foreman', 'lotus_foreman_phone'])}
@@ -525,6 +531,7 @@ def _sheet(company, month, begin, end):
                             pit=sum(e.get('pit') or 0 for e in employees), union_fee=sum(e.get('union_fee') or 0 for e in employees),
                             crew_amount=sum(c['amount'] for c in crew_rows), workdays=sum(e['workdays'] for e in employees),
                             allowance=sum(e['allowance'] for e in employees), advance=sum(e['advance'] for e in employees),
+                            piece=sum(e['piece'] for e in employees), topup=sum(e['topup'] for e in employees),
                             take_home=sum(e['take_home'] for e in employees)))
 
 
@@ -571,8 +578,10 @@ def export_payroll(company, month):
     from lotus_farm.www.lotus_payroll_print import layout
     plan = layout(data)
     sheet(book.active, 'Công nhân',
-          ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Ngày phụ cấp', 'Phụ cấp', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
-          [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['allowance_days'], e['allowance'],
+          ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Buổi khoán', 'Tiền khoán', 'Bù lương tối thiểu', 'Ngày phụ cấp',
+           'Phụ cấp', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+          [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['khoan_sessions'], e['piece'], e['topup'],
+            e['allowance_days'], e['allowance'],
             e['pit'], e['advance'], e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
     sheet(book.create_sheet(), 'Lương tháng',
           ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'BH người LĐ', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],

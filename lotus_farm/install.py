@@ -12,6 +12,7 @@ ROLES = (
     "Lotus Price Approver",
     "Lotus Team Leader",
     "Lotus Field Supervisor",
+    "Lotus Field Inspector",
 )
 
 

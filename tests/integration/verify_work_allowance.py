@@ -87,7 +87,7 @@ def run():
         book = load_workbook(io.BytesIO(frappe.local.response.filecontent))
         assert book.sheetnames[:3] == ['Công nhân', 'Lương tháng', 'Chi tiết (kế toán)'], book.sheetnames
         exported = next(r for r in book['Công nhân'].iter_rows(min_row=4, values_only=True) if r[1] == full)
-        assert exported[7] == 20000 and exported[10] == e['take_home'], exported
+        assert exported[10] == 20000 and exported[13] == e['take_home'], exported
 
         # The common đơn giá công goes onto công nhân without one.
         before = wa.pay_rates(company)['missing_daily_rate']

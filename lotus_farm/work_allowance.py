@@ -13,8 +13,9 @@ from frappe.utils import cint, flt, getdate, nowdate
 from lotus_farm.payroll_rules import allowance_amount, rate_in_force
 
 RATE = 'Lotus Pay Rate'
-ALLOWANCE, DAYWORK = 'Allowance', 'Daywork'
-KIND_LABELS = {ALLOWANCE: 'Phụ cấp công việc', DAYWORK: 'Đơn giá công nhật chung'}
+ALLOWANCE, DAYWORK, MINIMUM_HOURLY = 'Allowance', 'Daywork', 'MinimumHourly'
+KIND_LABELS = {ALLOWANCE: 'Phụ cấp công việc', DAYWORK: 'Đơn giá công nhật chung',
+               MINIMUM_HOURLY: 'Lương tối thiểu theo giờ (bù khoán)'}
 
 
 def install_fields():
@@ -28,8 +29,10 @@ def install_fields():
 
 
 # The farm's rates from 01/10/2026: phụ cấp chăm buồng / phun thuốc and đơn giá công nhật of the F222 plan.
-DEFAULTS = ((ALLOWANCE, 20000, 'Phụ cấp chăm buồng / phun thuốc'), (DAYWORK, 290000, 'Đơn giá công nhật kế hoạch F222'))
-DEFAULT_FROM = '2026-10-01'
+# The minimum per hour is vùng II (xã Thuận Lợi, Đồng Nai) of Nghị định 293/2025 from 01/01/2026.
+DEFAULTS = ((ALLOWANCE, 20000, 'Phụ cấp chăm buồng / phun thuốc', '2026-10-01'),
+            (DAYWORK, 290000, 'Đơn giá công nhật kế hoạch F222', '2026-10-01'),
+            (MINIMUM_HOURLY, 22700, 'Lương tối thiểu giờ vùng II, Nghị định 293/2025', '2026-01-01'))
 
 
 def seed_rates():
@@ -37,10 +40,10 @@ def seed_rates():
     if not frappe.db.exists('DocType', RATE):
         return
     for company in frappe.get_all('Company', pluck='name'):
-        for kind, rate, notes in DEFAULTS:
+        for kind, rate, notes, start in DEFAULTS:
             if not frappe.db.exists(RATE, {'company': company, 'kind': kind}):
                 doc = frappe.new_doc(RATE)
-                doc.update(dict(company=company, kind=kind, rate=rate, valid_from=DEFAULT_FROM, notes=notes))
+                doc.update(dict(company=company, kind=kind, rate=rate, valid_from=start, notes=notes))
                 # Runs in migrate as Administrator, outside an HR session: the agreed defaults, not a user's edit.
                 doc.flags.seed = True
                 doc.insert(ignore_permissions=True)

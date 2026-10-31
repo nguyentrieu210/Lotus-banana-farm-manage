@@ -4,7 +4,7 @@ const items = [
   {group:'Quản trị',id:'users',label:'Người dùng & phân quyền',detail:'Tài khoản, vai trò và phạm vi vườn',icon:'people',href:'/lotus/nguoi-dung',capability:'user_admin'},
   {group:'Nhân sự và chấm công',id:'hr',label:'Hồ sơ nhân sự',detail:'Nhân viên, tuyển dụng và tiếp nhận',icon:'people',href:'/lotus/nhan-su',capability:'hr'},
   {group:'Nhân sự và chấm công',id:'attendance',label:'Chấm công',detail:'Công ngày, đội khoán và bảng công tháng',icon:'clock',href:'/lotus/cham-cong',capability:'attendance'},
-  {group:'Công việc ngoài Vườn',id:'farm-work',label:'Báo cáo ngày',detail:'Tổ trưởng nhập, đội trưởng xác nhận',icon:'check',href:'/work',capability:'field_report'},
+  {group:'Công việc ngoài Vườn',id:'farm-work',label:'Việc hôm nay',detail:'Phiếu giao việc theo lô, báo cáo, nghiệm thu',icon:'check',href:'/work',capability:'field_report'},
   {group:'Xưởng và vật tư',id:'stock',label:'Quản lý kho',detail:'Tồn, nhập xuất và kiểm kê',icon:'warehouse',href:'/lotus/kho',capability:'stock'},
   {group:'Nhân sự và chấm công',id:'labor',label:'Bố trí nhân công',detail:'Phân bổ lao động theo công việc',icon:'people',path:'labor',module:'labor'},
   {group:'Công việc ngoài Vườn',id:'disease',label:'Kiểm tra sâu bệnh',detail:'Ghi nhận tình hình vườn',icon:'leaf',path:'work',module:'work',doctype:'Disease Observation',create:'Disease Observation'},

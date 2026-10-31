@@ -21,17 +21,18 @@ def layout(sheet):
     for raw in sheet['employees']:
         e = dict(raw)
         e.setdefault('wage', flt(e.get('gross')))
-        for key in ('allowance', 'allowance_days', 'advance', 'pit', 'employee_insurance', 'daily_rate', 'base'):
+        for key in ('allowance', 'allowance_days', 'advance', 'pit', 'employee_insurance', 'daily_rate', 'base', 'piece', 'topup',
+                    'khoan_sessions'):
             e[key] = flt(e.get(key))
         e.setdefault('take_home', flt(e.get('net')) - e['advance'])
         e.setdefault('group', e.get('work_team') or (e.get('department') or '').rsplit(' - ', 1)[0] or 'Chưa xếp tổ')
-        if not (flt(e.get('workdays')) or flt(e['wage']) or e['allowance']):
+        if not (flt(e.get('workdays')) or flt(e['wage']) or e['allowance'] or e['piece']):
             continue
         if e.get('payment_basis') == 'Daywork':
             workers.setdefault(e['group'], []).append(e)
         else:
             staff.append(e)
-    keys = ('workdays', 'wage', 'allowance', 'pit', 'advance', 'take_home', 'employee_insurance')
+    keys = ('workdays', 'wage', 'piece', 'topup', 'allowance', 'pit', 'advance', 'take_home', 'employee_insurance')
     total = lambda rows: frappe._dict({k: sum(flt(r.get(k)) for r in rows) for k in keys})
     groups = [frappe._dict(name=name, rows=rows, **total(rows)) for name, rows in sorted(workers.items(), key=lambda g: (g[0] == 'Chưa xếp tổ', g[0]))]
     everyone = [r for g in groups for r in g.rows] + staff

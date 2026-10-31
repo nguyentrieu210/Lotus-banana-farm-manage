@@ -87,7 +87,7 @@ async function reopen(){saving.value=true
 
 // Phụ cấp công việc and the common đơn giá công nhật, each by effective date (lotus_farm.work_allowance).
 const rates=ref(null),rateForm=ref(null),rateError=ref('')
-const rateKinds=[{value:'Allowance',label:'Phụ cấp công việc (đ/ngày)'},{value:'Daywork',label:'Đơn giá công nhật chung (đ/công)'}]
+const rateKinds=[{value:'Allowance',label:'Phụ cấp công việc (đ/ngày)'},{value:'Daywork',label:'Đơn giá công nhật chung (đ/công)'},{value:'MinimumHourly',label:'Lương tối thiểu theo giờ (bù khoán)'}]
 const rateRows=computed(()=>Object.entries(rates.value?.rates||{}).flatMap(([kind,r])=>r.history.map(h=>({...h,kind,label:r.label}))))
 function newRate(){rateError.value='';rateForm.value={kind:'Allowance',rate:null,valid_from:props.today||'',notes:''}}
 async function saveRate(){saving.value=true;rateError.value=''
@@ -108,7 +108,8 @@ const sheetCols=[
  pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee),
  pcol('group','Tổ / bộ phận',(_,r)=>r.group||r.department||''),pcol('payment_basis','Cơ chế',v=>bases[v]||'Chưa chọn'),
  pnum('workdays','Công'),pcol('daily_rate','Đơn giá công / lương CB',(_,r)=>r.payment_basis==='Daywork'?money(r.daily_rate):money(r.base)),
- pcol('wage','Tiền công',(_,r)=>money(r.wage??r.gross)),pmoney('allowance','Phụ cấp'),pmoney('employee_insurance','BH người LĐ'),
+ pcol('wage','Tiền công',(_,r)=>money(r.wage??r.gross)+(r.khoan_sessions?' (trừ '+r.khoan_sessions+' buổi khoán)':'')),
+ pmoney('piece','Tiền khoán'),pmoney('topup','Bù lương tối thiểu'),pmoney('allowance','Phụ cấp'),pmoney('employee_insurance','BH người LĐ'),
  pcol('pit','Thuế TNCN',(_,r)=>r.pit?money(r.pit)+(r.pit_method==='flat'?' (10%)':''):r.pit_method==='commitment'?'Cam kết 08':''),
  pmoney('advance','Tạm ứng'),pcol('take_home','Thực lĩnh',(_,r)=>money(r.take_home??r.net)),
  pcol('issues','Ghi chú',(_,r)=>(r.via_crew?'Trả qua đội khoán; ':'')+(r.issues||[]).join('; '))

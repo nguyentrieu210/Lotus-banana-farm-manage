@@ -17,7 +17,10 @@ const allowanceOn=computed(()=>!!Number(row.value.allowance))
 <template>
  <div class="tk-grid-cell" :class="{'tk-grid-cell--presence':['morning_present','afternoon_present','allowance'].includes(field)}">
   <strong v-if="field==='employee_name'" :title="row.employee_name+' · '+row.employee">{{row.employee_name}}</strong>
-  <TkPresenceToggle v-else-if="field==='morning_present'||field==='afternoon_present'" :row="row" :session="field==='morning_present'?'morning':'afternoon'" :disabled="disabled" @toggle="toggle"/>
+  <template v-else-if="field==='morning_present'||field==='afternoon_present'">
+   <TkPresenceToggle :row="row" :session="field==='morning_present'?'morning':'afternoon'" :disabled="disabled" @toggle="toggle"/>
+   <small v-if="(row.khoan_sessions||[]).includes(field==='morning_present'?'morning':'afternoon')" class="tk-khoan" title="Buổi này làm phiếu khoán: trả theo phiếu, không tính công nhật">Khoán</small>
+  </template>
   <Button v-else-if="field==='allowance'" type="button" variant="outline" size="sm" class="tk-presence-toggle tk-allowance-toggle" :class="{'is-present':allowanceOn}" :aria-label="'Phụ cấp '+row.employee_name" :aria-pressed="allowanceOn" :disabled="allowanceDisabled" :title="allowanceOn?'Có phụ cấp công việc'+(row.allowance_amount&&!row.edited?' · '+Number(row.allowance_amount).toLocaleString('vi-VN')+' đ':''):'Bấm để tick phụ cấp công việc'" @click.stop="a.onAllowance(row)">
    <LotusIcon :name="allowanceOn?'tick':'plus'"/><span>{{allowanceOn?'Có PC':'Không'}}</span>
   </Button>
@@ -32,6 +35,7 @@ const allowanceOn=computed(()=>!!Number(row.value.allowance))
 .tk-daily-roster .tk-grid-cell{height:100%;display:flex;align-items:center;gap:var(--lotus-space-2);min-width:0;width:100%}
 .tk-daily-roster .tk-grid-cell strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .tk-daily-roster .tk-grid-cell--presence{justify-content:center}
+.tk-daily-roster .tk-khoan{padding:1px 5px;border-radius:999px;background:var(--lotus-warning-soft);font-size:var(--lotus-text-xs,11px);font-weight:600;color:var(--lotus-text-strong)}
 .tk-daily-roster .tk-daily-detail-button{width:26px;height:26px;min-height:26px;margin-left:auto;padding:0;color:var(--lotus-muted)}
 .tk-daily-roster .tk-daily-detail-button .lotus-icon{width:16px;height:16px}
 </style>
