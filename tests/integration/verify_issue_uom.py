@@ -16,6 +16,10 @@ from lotus_farm import warehouse
 def close(actual,expected):
     assert math.isclose(flt(actual),expected,rel_tol=1e-9,abs_tol=1e-6),(actual,expected)
 
+def post(result):
+    doc=frappe.get_doc('Stock Entry',result['name'])
+    return warehouse.submit_document('Stock Entry',doc.name,modified=str(doc.modified))
+
 def rejects(callback, phrase):
     frappe.db.savepoint('invalid_issue')
     try:
@@ -34,16 +38,20 @@ try:
     group=frappe.db.get_value('Item Group',{'is_group':0},'name')
     employee=frappe.db.get_value('Employee',{'company':company,'status':'Active'},'name')
     assert store and group and employee
+    from lotus_farm.finance.stock import block_codes
+    areas=block_codes(warehouse=store)
+    assert areas, 'Warehouse needs a valid usage block in the clone'
+    area=areas[0]['code']
     code='UAT-ISSUE-UOM-'+frappe.generate_hash(length=8)
     warehouse.create_master(company,'item',dict(code=code,name='Vật tư thử quy đổi xuất kho',group=group,uom='Kg',pack_uom='Bao',pack_factor=25,minimum_stock=0))
     receipt=warehouse.create_draft(company=company,kind='receipt',posting_date=nowdate(),target=store,
         receipt_reason='Surplus',notes='Disposable stock UOM acceptance',lines=[dict(item=code,qty=20,uom='Bao',rate=25000)])
-    warehouse.submit_document('Stock Entry',receipt['name'])
+    post(receipt)
     close(frappe.db.get_value('Bin',{'item_code':code,'warehouse':store},'actual_qty'),500)
 
     def issue(qty=2,unit='Bao',**overrides):
         values=dict(company=company,kind='issue',posting_date=nowdate(),source=store,receiver_employee=employee,
-            issue_mode='Manual',notes='Acceptance only',lines=[dict(item=code,qty=qty,uom=unit,area='A01',conversion_factor=999,stock_uom='Nos')])
+            issue_mode='Manual',notes='Acceptance only',lines=[dict(item=code,qty=qty,uom=unit,area=area,conversion_factor=999,stock_uom='Nos')])
         values.update(overrides)
         return warehouse.create_draft(**values)
 
@@ -77,18 +85,18 @@ try:
 
     request=frappe.get_doc(dict(doctype='Material Request',company=company,material_request_type='Material Issue',
         transaction_date=nowdate(),schedule_date=nowdate(),items=[dict(item_code=code,qty=50,uom='Kg',stock_uom='Kg',conversion_factor=1,
-        warehouse=store,schedule_date=nowdate(),lotus_usage_area='A01')])).insert()
+        warehouse=store,schedule_date=nowdate(),lotus_usage_area=area)])).insert()
     request.submit()
     available=warehouse.issue_lines(company,'Request',request.name)['rows'][0]
     close(available['remaining_qty'],50)
     assert available['stock_uom']=='Kg' and any(u['uom']=='Bao' for u in available['uoms'])
     def from_request(qty):
         return warehouse.create_draft(company=company,kind='issue',posting_date=nowdate(),source=store,
-            receiver_employee=employee,issue_mode='Request',notes='Request UOM acceptance',lines=[dict(item=code,qty=qty,uom='Bao',area='A01',material_request=request.name,material_request_item=request.items[0].name)])
+            receiver_employee=employee,issue_mode='Request',notes='Request UOM acceptance',lines=[dict(item=code,qty=qty,uom='Bao',area=area,material_request=request.name,material_request_item=request.items[0].name)])
     held=from_request(1)
     close(warehouse.issue_lines(company,'Request',request.name)['rows'][0]['remaining_qty'],25)
     rejects(lambda:from_request(2),'vượt phần còn được cấp')
-    warehouse.submit_document('Stock Entry',held['name'])
+    post(held)
     close(warehouse.issue_lines(company,'Request',request.name)['rows'][0]['remaining_qty'],25)
     print('PASS request issue: 50 kg cap, 1 bao holds/posts 25 kg, second 2-bao allocation rejected despite sufficient physical stock')
 
@@ -98,10 +106,10 @@ try:
     warehouse.create_master(company,'item',dict(code=liquid,name='Chất lỏng thử 0,5 lít/can',group=group,uom=litre,pack_uom='Can',pack_factor=0.5,minimum_stock=0))
     liquid_receipt=warehouse.create_draft(company=company,kind='receipt',posting_date=nowdate(),target=store,receipt_reason='Surplus',notes='Liquid fixture',
         lines=[dict(item=liquid,qty=10,uom=litre,rate=10000)])
-    warehouse.submit_document('Stock Entry',liquid_receipt['name'])
+    post(liquid_receipt)
     liquid_issue=warehouse.create_draft(company=company,kind='issue',posting_date=nowdate(),source=store,receiver_employee=employee,notes='Liquid issue',
-        lines=[dict(item=liquid,qty=3,uom='Can',area='A01')])
-    warehouse.submit_document('Stock Entry',liquid_issue['name'])
+        lines=[dict(item=liquid,qty=3,uom='Can',area=area)])
+    post(liquid_issue)
     close(frappe.db.get_value('Bin',{'item_code':liquid,'warehouse':store},'actual_qty'),8.5)
     print('PASS fractional conversion: 3 can at 0.5 litre/can deducts 1.5 litres')
 finally:
