@@ -86,7 +86,7 @@ const isActive=group=>group.items.some(item=>itemActive(item))
     </div>
    </section>
   </nav>
-  <a v-if="session.capabilities?.field_report" class="field-link" href="/work">Báo cáo ngày trên điện thoại ↗</a>
+  <a v-if="session.capabilities?.field_report" class="field-link" href="/work">Công việc ngoài vườn trên điện thoại ↗</a>
   <a class="field-link" :href="'/assets/lotus_farm/field/index.html'">Giao diện hiện trường dự phòng ↗</a>
   <small>{{session.user}}</small>
  </aside>

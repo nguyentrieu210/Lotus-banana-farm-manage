@@ -1,4 +1,4 @@
-"""One-off setup of the đội daily report for Vườn 222 (LOTUS-222), agreed with the user on 29/10/2026.
+"""One-off setup of công việc ngoài vườn for Vườn 222 (LOTUS-222), agreed with the user on 29 and 31/10/2026.
 
 - Work types + giá khoán from "HẠNG MỤC KHOÁN VÀ GIÁ KHOÁN TẠI VƯỜN CHUỐI 222" (21/10/2026). Chuối ép uses the
   chuối F price; items with two levels (chống đổ 2/3 dây, rải tro 3/5 kg) are two work types. Công nhật column →
@@ -43,6 +43,53 @@ WORKS = [
     ("F222-26", "Sửa ống nước", "Chăm sóc vườn / Tưới nước", "Ha", None, 0, 0, 0, "", "Công nhật"),
 ]
 
+# How each việc is paid, agreed 31/10/2026: (nhóm, cách trả, trần, bắt buộc vật tư). Khoán only what an independent
+# count can check (Count), or a whole lô an inspector accepts (Lot); the rest is công nhật. Cắt bắp stays công nhật:
+# its count is the base every bunch cap is checked against.
+MODES = {
+    "F222-01": ("Bunch", "Count", "CutBud", 0), "F222-02": ("Bunch", "Count", "CutBud", 0),
+    "F222-03": ("Bunch", "Count", "CutBud", 0), "F222-04": ("Bunch", "Count", "CutBud", 0),
+    "F222-05": ("Bunch", "Daywork", "None", 0), "F222-06": ("Bunch", "Daywork", "None", 0),
+    "F222-07": ("Field", "Lot", "LotArea", 0), "F222-08": ("Field", "Lot", "LotArea", 0),
+    "F222-09": ("Field", "Lot", "LotArea", 0), "F222-10": ("Field", "Lot", "LotArea", 0),
+    "F222-11": ("Field", "Count", "None", 0),
+    "F222-12": ("Protection", "Count", "LotTrees", 1), "F222-13": ("Protection", "Count", "LotTrees", 1),
+    "F222-14": ("Protection", "Count", "LotTrees", 1), "F222-15": ("Protection", "Count", "LotTrees", 1),
+    "F222-16": ("Protection", "Count", "LotTrees", 1),
+    "F222-17": ("Field", "Lot", "LotArea", 0), "F222-18": ("Field", "Count", "LotTrees", 0),
+    "F222-19": ("Protection", "Daywork", "None", 1),
+    "F222-20": ("Field", "Lot", "LotTrees", 0), "F222-21": ("Field", "Lot", "LotTrees", 0), "F222-22": ("Field", "Lot", "LotTrees", 0),
+    "F222-23": ("Field", "Count", "LotTrees", 0), "F222-24": ("Field", "Lot", "LotArea", 0),
+    "F222-25": ("Field", "Daywork", "None", 0), "F222-26": ("Field", "Daywork", "None", 0),
+}
+
+
+def _modes(code):
+    group, pay, cap, material = MODES[code]
+    return {"lotus_work_group": group, "lotus_pay_mode": pay, "lotus_cap_basis": cap, "lotus_requires_material": material}
+
+
+def apply_modes(commit=0):
+    """Give the F222 work types their group and pay mode (after the 31/10/2026 redesign). Dry run unless commit=1."""
+    frappe.only_for("System Manager")
+    changed = []
+    for code in MODES:
+        name = frappe.db.get_value("Work Type", {"work_code": code})
+        if not name:
+            continue
+        doc = frappe.get_doc("Work Type", name)
+        doc.update(_modes(code))
+        if doc.has_value_changed("lotus_pay_mode") or doc.has_value_changed("lotus_work_group") or doc.is_new():
+            changed.append(code)
+        doc.save(ignore_permissions=True)
+    print("Work types with a pay mode:", len(MODES), "| changed:", len(changed))
+    if int(commit):
+        frappe.db.commit()
+    else:
+        frappe.db.rollback()
+        print("Dry run only. Run with commit=1 to write.")
+    return changed
+
 
 def _category(name):
     found = frappe.db.get_value("Work Category", {"category_name": name})
@@ -79,7 +126,8 @@ def apply(commit=0):
         doc = frappe.get_doc("Work Type", w["existing"]) if w["existing"] else frappe.new_doc("Work Type")
         doc.update({"work_code": w["code"], "work_name": w["name"], "category": w["category"], "uom": w["uom"], "active": 1,
                     "allow_daywork": 1, "allow_piecework": 1 if w["rate"] else 0, "piecework_rate": w["rate"] or 0,
-                    "productivity_per_workday": w["low"] or w["high"] or 1, "lotus_farm": FARM, "lotus_bunch_stage": w["stage"] or None})
+                    "productivity_per_workday": w["low"] or w["high"] or 1, "lotus_farm": FARM, "lotus_bunch_stage": w["stage"] or None,
+                    **_modes(w["code"])})
         doc.save(ignore_permissions=True)
         if w["basis"] and not w["priced"]:
             frappe.get_doc({"doctype": "Lotus Piece Rate", "farm": FARM, "work_type": doc.name, "basis": w["basis"],

@@ -70,7 +70,7 @@ def bootstrap():
     session['capabilities']['hr_manage']=session['capabilities']['hr'] and _is_hr_manager()
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
     from lotus_farm.field_report import farm_names as report_farms
-    session['capabilities']['field_report']=frappe.session.user=='Administrator' or (has_role('Lotus Farm Manager','Lotus Field Supervisor','Lotus Team Leader') and bool(report_farms()))
+    session['capabilities']['field_report']=frappe.session.user=='Administrator' or (has_role('Lotus Farm Manager','Lotus Field Supervisor','Lotus Team Leader','Lotus Field Inspector') and bool(report_farms()))
     from lotus_farm.finance.setup import can_view as finance_view
     from lotus_farm.signing_rules import CHIEF_ACCOUNTANTS, DIRECTORS
     installed=bool(frappe.db.exists('DocType','Lotus Finance Settings'))

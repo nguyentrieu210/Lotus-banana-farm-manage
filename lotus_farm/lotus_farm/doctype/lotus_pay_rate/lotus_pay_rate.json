@@ -25,7 +25,7 @@
       "fieldname": "kind",
       "label": "Loại mức",
       "fieldtype": "Select",
-      "options": "Allowance\nDaywork",
+      "options": "Allowance\nDaywork\nMinimumHourly",
       "reqd": 1,
       "in_list_view": 1
     },

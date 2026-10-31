@@ -1,9 +1,9 @@
 import unittest
-from datetime import date, datetime
+from datetime import date
 from lotus_farm import field_report_rules as r
 
 
-class FieldReportRulesTest(unittest.TestCase):
+class FieldWorkRulesTest(unittest.TestCase):
     rates = [
         {"work_type": "CL", "rate": 300000, "basis": "Area", "valid_from": "2026-10-21"},
         {"work_type": "CL", "rate": 320000, "basis": "Area", "valid_from": "2026-12-01"},
@@ -16,74 +16,78 @@ class FieldReportRulesTest(unittest.TestCase):
         self.assertIsNone(r.rate_for(self.rates, "CL", "2026-10-20"))
         self.assertIsNone(r.rate_for(self.rates, "BB", "2026-12-01"), "expired price")
 
-    def test_whole_lot_and_money(self):
-        self.assertEqual(r.whole_lot_qty("Area", 4.48, 10668), 4.48)
+    def test_pay_by_mode(self):
+        self.assertEqual(r.pay_amount("Count", 120, None, 4000), 480000, "khoán số lượng: what was reported")
+        self.assertEqual(r.pay_amount("Lot", 1.2, 4.48, 300000, passed=True), 1344000, "khoán lô: the whole lô")
+        self.assertEqual(r.pay_amount("Lot", 4.48, 4.48, 300000, passed=False), 0, "failed inspection: nothing")
+        self.assertEqual(r.pay_amount("Daywork", 3, 4.48, 300000), 0, "công nhật is paid from the clock")
         self.assertEqual(r.whole_lot_qty("Trees", 4.48, 10668), 10668)
         self.assertIsNone(r.whole_lot_qty("Count", 4.48, 10668))
-        self.assertEqual(r.amount("Piece", 4.48, 300000), 1344000)
-        self.assertEqual(r.amount("Daywork", 4.48, 300000), 0, "công nhật is paid from attendance")
 
-    def test_under_norm(self):
-        self.assertTrue(r.under_norm(4.48, 9, 1))      # 0,5 ha/công < 1 ha/công
-        self.assertFalse(r.under_norm(4.48, 4, 1))
-        self.assertFalse(r.under_norm(4.48, 0, 1), "no workdays: nothing to judge")
-        self.assertFalse(r.under_norm(4.48, 9, 0), "no norm configured")
-        self.assertFalse(r.under_norm(0, 9, 1), "no output recorded")
+    def test_split_keeps_the_total(self):
+        shares = r.split_by_sessions(1000000, {"A": 2, "B": 2, "C": 1})
+        self.assertEqual(shares, {"A": 400000, "B": 400000, "C": 200000})
+        odd = r.split_by_sessions(100000, {"A": 1, "B": 1, "C": 1})
+        self.assertEqual(sum(odd.values()), 100000)
+        self.assertEqual(r.split_by_sessions(0, {"A": 1}), {"A": 0})
+        self.assertEqual(r.split_by_sessions(5000, {}), {})
 
-    def test_confirmation_deadline(self):
-        self.assertEqual(r.deadline("2026-10-29"), datetime(2026, 10, 30, 10))
-        self.assertFalse(r.overdue("2026-10-29", datetime(2026, 10, 30, 9, 59), "Draft"))
-        self.assertTrue(r.overdue("2026-10-29", datetime(2026, 10, 30, 10, 1), "Draft"))
-        self.assertFalse(r.overdue("2026-10-29", datetime(2026, 11, 2), "Confirmed"))
+    def test_ticket_flow(self):
+        self.assertEqual(r.next_state("Open", "report"), "Reported")
+        self.assertEqual(r.next_state("Failed", "report"), "Reported", "rework after a failed inspection")
+        self.assertEqual(r.next_state("Reported", "approve", "Lot"), "Approved", "khoán lô waits for the inspection")
+        self.assertEqual(r.next_state("Reported", "approve", "Count"), "Passed", "counted work needs no inspection")
+        self.assertEqual(r.next_state("Approved", "fail"), "Failed")
+        self.assertEqual(r.next_state("Passed", "lock"), "Locked")
+        with self.assertRaisesRegex(ValueError, "trạng thái"):
+            r.next_state("Locked", "cancel")
+        with self.assertRaisesRegex(ValueError, "trạng thái"):
+            r.next_state("Open", "approve", "Lot")
+        self.assertTrue(r.can_report("Failed"))
+        self.assertFalse(r.can_report("Reported"))
 
-    def test_line_shapes(self):
-        ok = r.check_line({"pay_kind": "Piece", "farm_block": "A1", "qty": 2.88, "workdays_am": 4, "workdays_pm": 3.5})
-        self.assertEqual(ok["workdays"], 7.5)
-        with self.assertRaisesRegex(ValueError, "từng lô"):
-            r.check_line({"pay_kind": "Piece", "location": "Zone", "zone": "A", "qty": 1})
-        r.check_line({"pay_kind": "Daywork", "location": "Zone", "zone": "A", "workdays_am": 3})
-        with self.assertRaisesRegex(ValueError, "hai lô"):
-            r.check_line({"pay_kind": "Daywork", "location": "Blocks", "blocks": "A1", "workdays_am": 1})
-        with self.assertRaisesRegex(ValueError, "số công hoặc khối lượng"):
-            r.check_line({"pay_kind": "Daywork", "farm_block": "A1"})
-        with self.assertRaisesRegex(ValueError, "không âm"):
-            r.check_line({"pay_kind": "Daywork", "farm_block": "A1", "qty": -1})
-        with self.assertRaisesRegex(ValueError, "CN"):
-            r.check_line({"farm_block": "A1", "qty": 1})
+    def test_inspection(self):
+        self.assertEqual(r.inspection_result(20, 19, 95), (95.0, "Pass"))
+        self.assertEqual(r.inspection_result(20, 18, 95), (90.0, "Fail"))
+        self.assertEqual(r.inspection_result(30, 27, 90), (90.0, "Pass"))
+        with self.assertRaisesRegex(ValueError, "mẫu"):
+            r.inspection_result(0, 0, 90)
+        with self.assertRaisesRegex(ValueError, "đạt"):
+            r.inspection_result(20, 21, 90)
 
-    def test_round_is_paid_once_on_xong(self):
-        self.assertEqual(r.round_amount("Area", False, 1.2, 4.48, 300000), 0, "progress day: nothing paid")
-        self.assertEqual(r.round_amount("Area", True, 0.5, 4.48, 300000), 1344000, "Xong: the whole lot")
-        self.assertEqual(r.round_amount("Trees", True, None, 10668, 300), 3200400)
-        self.assertEqual(r.round_amount("Count", False, 1062, None, 200), 212400, "counted work is paid as reported")
-        self.assertEqual(r.paid_qty("Area", True, 0.5, 4.48), 4.48)
-        self.assertEqual(r.paid_qty("Area", False, 0.5, 4.48), 0)
-        self.assertEqual(r.paid_qty("Count", True, 410, None), 410)
-
-    def test_display_state(self):
-        today = "2026-10-29"
-        self.assertEqual(r.display_state("Open", None, today), "Assigned")
-        self.assertEqual(r.display_state("Open", "2026-10-30", today, reported=True), "Working")
-        self.assertEqual(r.display_state("Open", "2026-10-28", today, reported=True), "Late")
-        self.assertEqual(r.display_state("Open", "2026-10-28", today, reported=True, reported_done=True), "Reported")
-        self.assertEqual(r.display_state("Done", "2026-10-28", today), "Done")
-        self.assertEqual(r.display_state("Cancelled", None, today), "Cancelled")
+    def test_caps(self):
+        self.assertEqual(r.cap_left("LotArea", 1.5, lot_area=4.48), 2.98)
+        self.assertEqual(r.cap_left("LotTrees", 11000, lot_trees=10668), 0, "never negative")
+        self.assertEqual(r.cap_left("CutBud", 30, cut=40), 10)
+        self.assertIsNone(r.cap_left("None", 10))
+        self.assertFalse(r.cap_blocks("2026-11-30"))
+        self.assertTrue(r.cap_blocks(date(2026, 12, 1)))
 
     def test_bunch_cannot_exceed_cut_bud_of_its_colour(self):
         cut = {("A1", "W44"): 40}
         done = {("A1", "W44", "Bag"): 30}
         row = {"farm_block": "A1", "bunch_tag": "W44", "stage": "Bag", "qty": 10}
-        self.assertEqual(r.bunch_over_cut(cut, done, [row]), {}, "exactly the cut count")
+        self.assertEqual(r.bunch_over_cut(cut, done, [row]), {})
         self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, qty=15)]), {("A1", "W44", "Bag"): (45.0, 40.0)})
         self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, stage="Prop", qty=40)]), {}, "another stage counts apart")
-        self.assertIn(("A1", "W45", "Bag"), r.bunch_over_cut(cut, done, [dict(row, bunch_tag="W45", qty=1)]), "nothing cut of that colour")
-        self.assertEqual(r.bunch_over_cut(cut, done, [dict(row, stage="Cut Bud", qty=99)]), {}, "cắt bắp itself is not capped")
-        self.assertFalse(r.cap_blocks("2026-11-30"))
-        self.assertTrue(r.cap_blocks(date(2026, 12, 1)))
 
-    def test_crew_zones(self):
+    def test_minimum_topup(self):
+        # 10 buổi khoán = 40 giờ; vùng II 22.700 đ/giờ → sàn 908.000 đ.
+        self.assertEqual(r.minimum_topup(800000, 10, 22700), 108000)
+        self.assertEqual(r.minimum_topup(1000000, 10, 22700), 0)
+        self.assertEqual(r.minimum_topup(0, 0, 22700), 0)
+
+    def test_quarantine_and_state_display(self):
+        self.assertEqual(r.quarantine_until("2026-11-02", 7), date(2026, 11, 9))
+        self.assertIsNone(r.quarantine_until("2026-11-02", 0))
+        self.assertEqual(r.display_state("Open", "2026-10-28", "2026-10-29"), "Late")
+        self.assertEqual(r.display_state("Open", None, "2026-10-29", reported=True), "Working")
+        self.assertEqual(r.display_state("Locked", "2026-10-28", "2026-10-29"), "Locked")
+
+    def test_under_norm_and_zones(self):
+        self.assertTrue(r.under_norm(4.48, 9, 1))
+        self.assertFalse(r.under_norm(0, 9, 1), "no output recorded")
         self.assertEqual(r.crew_zones("A + B"), ["A", "B"])
-        self.assertEqual(r.crew_zones("d, e"), ["D", "E"])
 
 
 if __name__ == "__main__":

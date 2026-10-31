@@ -159,23 +159,7 @@ try:
     assert frappe.db.get_value(hp.PERIOD,period.name,'status')=='Open'
     raw=frappe.get_all('Lotus Attendance Punch',filters={'device':dev2},pluck='name')
     ad.ignore_punches(org,raw,'AUDIT explicitly ignored test punch')
-    # The newer field-report release contributes crew pay too. Insert isolated source fixtures
-    # directly so this HR check does not depend on the field-report entry/price setup workflow.
-    pending='AUDIT-PENDING-'+tag
-    frappe.get_doc(dict(doctype='Lotus Field Report',name=pending,company=org,farm=farm2,crew=team,
-        posting_date='2026-09-30',state='Draft')).db_insert()
-    frappe.get_doc(dict(doctype='Lotus Field Report Line',name=pending+'-LINE',parent=pending,
-        parenttype='Lotus Field Report',parentfield='lines',pay_kind='Piece')).db_insert()
-    frappe.db.set_value('Work Team',team,'lotus_team_level','Crew')
-    from lotus_farm.field_report import _load
-    version=str(frappe.db.get_value('Lotus Field Report',pending,'modified'))
-    assert _load(pending,version)[0].name==pending
-    assert rejected(_load,pending,'stale-version')
-    assert any(b['code']=='draft_piece_reports' for b in hp.blockers(org,begin,end))
-    assert hp._frozen(org,'2026-09',begin,end)[1]==digest
-    assert rejected(hp.sign_period,org,'2026-09')
-    frappe.db.delete('Lotus Field Report Line',{'parent':pending})
-    frappe.db.delete('Lotus Field Report',{'name':pending})
+    # Field work (lotus_farm.field_report) pays khoán in the month a phiếu is locked; it does not hold the period open.
     hp.sign_period(org,'2026-09')
     assert frappe.db.get_value(hp.PERIOD,period.name,'status')=='Closed'
     from lotus_farm.field_report import _closed

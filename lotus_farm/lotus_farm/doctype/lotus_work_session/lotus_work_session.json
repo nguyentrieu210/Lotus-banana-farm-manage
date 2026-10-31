@@ -1,0 +1,134 @@
+{
+  "name": "Lotus Work Session",
+  "autoname": "hash",
+  "sort_field": "posting_date",
+  "fields": [
+    {
+      "fieldname": "employee",
+      "fieldtype": "Link",
+      "label": "Công nhân",
+      "options": "Employee",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "fieldtype": "Date",
+      "label": "Ngày",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "session",
+      "fieldtype": "Select",
+      "label": "Buổi",
+      "options": "Morning\nAfternoon",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "entry",
+      "fieldtype": "Link",
+      "label": "Báo cáo phiếu",
+      "options": "Lotus Work Entry",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "assignment",
+      "fieldtype": "Link",
+      "label": "Phiếu giao",
+      "options": "Lotus Work Assignment",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "pay_mode",
+      "fieldtype": "Select",
+      "label": "Cách trả",
+      "options": "\nCount\nLot\nDaywork",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "options": "Company",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô",
+      "options": "Farm Block",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "work_type",
+      "fieldtype": "Link",
+      "label": "Công việc",
+      "options": "Work Type",
+      "ignore_user_permissions": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Inspector",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "doctype": "DocType",
+  "module": "Lotus Farm",
+  "field_order": [
+    "employee",
+    "posting_date",
+    "session",
+    "entry",
+    "assignment",
+    "pay_mode",
+    "farm",
+    "company",
+    "farm_block",
+    "work_type"
+  ]
+}

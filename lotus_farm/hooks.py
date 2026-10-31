@@ -38,10 +38,11 @@ has_permission = {name: "lotus_farm.controls.farm_permission" for name in _scope
 permission_query_conditions = {
     name: "lotus_farm.permissions." + name.lower().replace(" ", "_") for name in _scoped_doctypes
 }
-has_permission["Lotus Field Report"] = "lotus_farm.field_report.permission"
-permission_query_conditions["Lotus Field Report"] = "lotus_farm.field_report.report_query"
-has_permission["Lotus Work Assignment"] = "lotus_farm.field_report.permission"
-permission_query_conditions["Lotus Work Assignment"] = "lotus_farm.field_report.assignment_query"
+# Công việc ngoài vườn: written only through lotus_farm.field_report, read by farm.
+for _name, _query in (("Lotus Work Assignment", "assignment_query"), ("Lotus Work Entry", "entry_query"),
+                      ("Lotus Work Session", "session_query"), ("Lotus Work Inspection", "inspection_query")):
+    has_permission[_name] = "lotus_farm.field_report.permission"
+    permission_query_conditions[_name] = "lotus_farm.field_report." + _query
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
 doc_events['Farm Block']['before_validate']='lotus_farm.block_forecast.sync_block_dates'
 doc_events["Farm"]["before_save"] = "lotus_farm.install.validate_reference_company"
@@ -243,6 +244,7 @@ for _dt, _event, _handler in (
     ('Plan Cohort', 'validate', 'lotus_farm.onedrive_workspace.validate_handover_link'),
     ('Fruit Measurement', 'validate', 'lotus_farm.onedrive_workspace.tag_lineage'),
     ('Harvest Actual', 'validate', 'lotus_farm.onedrive_workspace.tag_lineage'),
+    ('Harvest Actual', 'validate', 'lotus_farm.field_report.harvest_guard'),
     ('Bunch Operation', 'validate', 'lotus_farm.onedrive_workspace.preserve_cut_source'),
     ('Bunch Operation', 'before_cancel', 'lotus_farm.onedrive_workspace.preserve_cut_source'),
 ):

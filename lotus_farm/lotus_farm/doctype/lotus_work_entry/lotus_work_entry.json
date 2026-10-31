@@ -1,0 +1,198 @@
+{
+  "name": "Lotus Work Entry",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "assignment",
+  "sort_field": "posting_date",
+  "fields": [
+    {
+      "fieldname": "assignment",
+      "fieldtype": "Link",
+      "label": "Phiếu giao",
+      "options": "Lotus Work Assignment",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "options": "Company",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "crew",
+      "fieldtype": "Link",
+      "label": "Đội",
+      "options": "Work Team",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "work_team",
+      "fieldtype": "Link",
+      "label": "Tổ",
+      "options": "Work Team",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô",
+      "options": "Farm Block",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_type",
+      "fieldtype": "Link",
+      "label": "Công việc",
+      "options": "Work Type",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "posting_date",
+      "fieldtype": "Date",
+      "label": "Ngày",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "qty",
+      "fieldtype": "Float",
+      "label": "Khối lượng hôm nay",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "bunch_tag",
+      "fieldtype": "Link",
+      "label": "Màu dây",
+      "options": "Bunch Tag",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "over_cut",
+      "fieldtype": "Check",
+      "label": "Vượt số cắt bắp (cảnh báo)"
+    },
+    {
+      "fieldname": "done",
+      "fieldtype": "Check",
+      "label": "Báo xong lô"
+    },
+    {
+      "fieldname": "morning_people",
+      "fieldtype": "Int",
+      "label": "Số người buổi sáng",
+      "read_only": 1
+    },
+    {
+      "fieldname": "afternoon_people",
+      "fieldtype": "Int",
+      "label": "Số người buổi chiều",
+      "read_only": 1
+    },
+    {
+      "fieldname": "under_norm",
+      "fieldtype": "Check",
+      "label": "Chưa đạt năng suất",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
+    },
+    {
+      "fieldname": "entered_by",
+      "fieldtype": "Link",
+      "label": "Người nhập",
+      "options": "User",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "people",
+      "fieldtype": "Table",
+      "label": "Người làm",
+      "options": "Lotus Work Entry Person"
+    },
+    {
+      "fieldname": "materials",
+      "fieldtype": "Table",
+      "label": "Vật tư",
+      "options": "Lotus Work Entry Material"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Inspector",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "doctype": "DocType",
+  "module": "Lotus Farm",
+  "field_order": [
+    "assignment",
+    "farm",
+    "company",
+    "crew",
+    "work_team",
+    "farm_block",
+    "work_type",
+    "posting_date",
+    "qty",
+    "bunch_tag",
+    "over_cut",
+    "done",
+    "morning_people",
+    "afternoon_people",
+    "under_norm",
+    "notes",
+    "entered_by",
+    "people",
+    "materials"
+  ]
+}

@@ -2,7 +2,7 @@ import {visibleHrNavigation,hrHref,normalizeHrView} from './hr-navigation.js'
 // One permission-checked directory for all Lotus desktop entrypoints.
 export function workspaceDirectory(session){
  const links=[{id:'global-home',label:'Tổng quan',href:'/lotus/reports'}]
- if(session?.capabilities?.field_report)links.push({id:'global-field-report',label:'Báo cáo ngày',href:'/lotus/cong-viec'})
+ if(session?.capabilities?.field_report)links.push({id:'global-field-report',label:'Công việc ngoài vườn',href:'/lotus/cong-viec'})
  if(session?.capabilities?.user_admin)links.push({id:'global-users',label:'Người dùng & phân quyền',href:'/lotus/nguoi-dung'})
  for(const item of visibleHrNavigation(session))links.push({id:item.id==='employees'?'global-hr':item.id==='attendance'?'global-attendance':'global-hr-'+item.id,label:item.label,href:hrHref(item)})
  if(session?.modules?.labor?.length)links.push({id:'global-labor',label:'Bố trí nhân công',href:'/lotus/labor'})

@@ -90,6 +90,12 @@ def board(company,date,search=None,sync=1):
             readable=True
         except frappe.PermissionError:pass
     closed=is_closed(company,day);result=[];counts=dict(matching=0,review=0,manual=0)
+    # Buổi worked on a khoán phiếu (công việc ngoài vườn) are paid by the phiếu, not as công nhật.
+    khoan={}
+    if frappe.db.table_exists('Lotus Work Session'):
+        for s in frappe.get_all('Lotus Work Session',filters={'company':company,'posting_date':day,'pay_mode':['in',['Count','Lot']]},
+                fields=['employee','session'],limit_page_length=0):
+            khoan.setdefault(s.employee,[]).append('morning' if s.session=='Morning' else 'afternoon')
     for person in people:
         if search and str(search).casefold() not in (person.name+' '+person.employee_name).casefold():continue
         docs=saved.get(person.name,[]);record=docs[0] if len(docs)==1 else None
@@ -108,6 +114,7 @@ def board(company,date,search=None,sync=1):
                 overtime_hours=flt(record.lotus_overtime_hours),note=record.lotus_note or '',docstatus=record.docstatus,
                 allowance=cint(record.get('lotus_allowance')),allowance_amount=flt(record.get('lotus_allowance_amount')),
                 **saved_presence(record))
+        row['khoan_sessions']=khoan.get(person.name,[])
         row['legacy_conflict']=len(docs)>1
         if row['legacy_conflict']:
             row.update(status='Present' if sum(flt(d.working_hours) for d in docs)>=8 else 'Half Day',

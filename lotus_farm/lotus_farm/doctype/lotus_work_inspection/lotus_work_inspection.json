@@ -1,0 +1,160 @@
+{
+  "name": "Lotus Work Inspection",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "assignment",
+  "sort_field": "inspected_on",
+  "fields": [
+    {
+      "fieldname": "assignment",
+      "fieldtype": "Link",
+      "label": "Phiếu giao",
+      "options": "Lotus Work Assignment",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô",
+      "options": "Farm Block",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "work_type",
+      "fieldtype": "Link",
+      "label": "Công việc",
+      "options": "Work Type",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "inspector",
+      "fieldtype": "Link",
+      "label": "Người nghiệm thu",
+      "options": "User",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "inspected_on",
+      "fieldtype": "Date",
+      "label": "Ngày nghiệm thu",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sample_size",
+      "fieldtype": "Int",
+      "label": "Số cây mẫu",
+      "reqd": 1
+    },
+    {
+      "fieldname": "passed_count",
+      "fieldtype": "Int",
+      "label": "Số cây đạt",
+      "reqd": 1
+    },
+    {
+      "fieldname": "score",
+      "fieldtype": "Percent",
+      "label": "Điểm (%)",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "pass_mark",
+      "fieldtype": "Percent",
+      "label": "Mức đạt (%)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result",
+      "fieldtype": "Select",
+      "label": "Kết quả",
+      "options": "Pass\nFail",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "sample_rows",
+      "fieldtype": "Small Text",
+      "label": "Hàng / cây được chọn kiểm",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
+    },
+    {
+      "fieldname": "photo",
+      "fieldtype": "Attach Image",
+      "label": "Ảnh"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Inspector",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "doctype": "DocType",
+  "module": "Lotus Farm",
+  "field_order": [
+    "assignment",
+    "farm",
+    "farm_block",
+    "work_type",
+    "inspector",
+    "inspected_on",
+    "sample_size",
+    "passed_count",
+    "score",
+    "pass_mark",
+    "result",
+    "sample_rows",
+    "notes",
+    "photo"
+  ]
+}

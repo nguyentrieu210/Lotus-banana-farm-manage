@@ -20,7 +20,7 @@ def exercise():
     team, other = teams[0]["name"], teams[1]["name"]
     before = {dt: frappe.db.count(dt) for dt in
               ("Daily Work Plan","Daily Work Result","Labor Allocation",
-               "Salary Slip","Stock Entry","Lotus Field Report")}
+               "Salary Slip","Stock Entry","Lotus Work Entry")}
     key = str(uuid.uuid4())
     args = dict(farm=farm, farm_block=block, work_team=team,
                 work_type=selected["name"], tracking_mode="Completion",
@@ -57,7 +57,7 @@ def lifecycle():
     assert row["status"] == "Accepted"
     before = {dt: frappe.db.count(dt) for dt in
               ("Daily Work Plan","Daily Work Result","Labor Allocation",
-               "Salary Slip","Stock Entry","Lotus Field Report")}
+               "Salary Slip","Stock Entry","Lotus Work Entry")}
     assert all(isinstance(v,int) for v in before.values())
     return {"lifecycle":"Open > reassign > Doing > Reported > Accepted",
             "catalog_count":len(cat["works"])}
