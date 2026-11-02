@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from './table-pagination'
 import LotusField from './components/form/LotusField.vue'
 import {FormField} from './components/ui/form-field'
 import {unitLabel} from './units'
@@ -137,13 +138,13 @@ async function load(){const version=++loadVersion;if(!session.ready||page.value=
   const farmLevel=/^(farm|farms)\//.test(page.value),blockLevel=/^(block|blocks)\//.test(page.value)
   const type=farmLevel||blockLevel?'Farm Block':'Farm'
   const id=decodeURIComponent(page.value.split('/')[1]||'')
-  tree.value=(await loadConsole('listing',{doctype:type,farm:type==='Farm Block'&&farmLevel?id:scope.farm,block:blockLevel?id:scope.block,company:scope.company,zone:scope.zone||null,start:start.value,length:pageSize.value,include_filter_values:1,column_filters:JSON.stringify(columnFilters.value)}));return
+  tree.value=(await tablePage(args=>loadConsole('listing',args),{doctype:type,farm:type==='Farm Block'&&farmLevel?id:scope.farm,block:blockLevel?id:scope.block,company:scope.company,zone:scope.zone||null,start:start.value,include_filter_values:1,column_filters:JSON.stringify(columnFilters.value)},{pageSize:pageSize.value}));return
  }
  if(page.value==='process'){processData.value=await loadCall('lotus_farm.onedrive_workspace.board',{company:scope.company||null,farm:scope.farm||null,zone:scope.zone||null,block:scope.block||null,cycle:scope.cycle||null,from_date:scope.date});return}
  if(route.query.doctype&&types.value.includes(route.query.doctype))doctype.value=String(route.query.doctype)
  else if(!types.value.includes(doctype.value))doctype.value=types.value[0]||''
  if(!doctype.value)return
- list.value=await loadConsole('listing',{doctype:doctype.value,...scopeArgs.value,start:start.value,length:pageSize.value,search:search.value,sort:sort.value,status:key.value==='work'?null:scope.status,include_filter_values:1,column_filters:JSON.stringify(columnFilters.value)})
+ list.value=await tablePage(args=>loadConsole('listing',args),{doctype:doctype.value,...scopeArgs.value,start:start.value,search:search.value,sort:sort.value,status:key.value==='work'?null:scope.status,include_filter_values:1,column_filters:JSON.stringify(columnFilters.value)},{pageSize:pageSize.value})
  if(key.value==='daily-close'&&!scope.farm)data.value=await loadCall('lotus_farm.reporting.dashboard',{company:scope.company||null,from_date:scope.date,to_date:scope.date})
  if(scope.farm&&['work','labor'].includes(key.value)){overview.value=await loadCall('lotus_farm.daily_api.daily_overview',{farm:scope.farm,posting_date:scope.date,zone:scope.zone||null,block:scope.block||null,plot:null,cycle:scope.cycle||null,status:scope.status||null,view:scope.view});if(key.value==='labor')staff.value=await loadCall('lotus_farm.field.available_labor',{farm:scope.farm,posting_date:scope.date})}
  if(scope.farm&&key.value==='materials')material.value=await loadConsole('material_status',{farm:scope.farm,posting_date:scope.date,zone:scope.zone||null,block:scope.block||null,plot:null,cycle:scope.cycle||null})

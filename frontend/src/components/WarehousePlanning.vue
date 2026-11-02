@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../table-pagination'
 import {computed,onMounted,onUnmounted,ref,watch} from 'vue'
 import {unitLabel} from '../units'
 import {updateColumnFilter,shiftISODate} from '../stock-filter-state'
@@ -23,7 +24,7 @@ const fmt=value=>value==null?'—':Number(value).toLocaleString('vi-VN',{maximum
 const warehouseLabel=id=>data.value?.warehouses?.find(w=>w.name===id)?.warehouse_name||id||'—'
 const unit=unitLabel
 const views=[{id:'coverage',label:'Nhu cầu vật tư'},{id:'requests',label:'Đề nghị mua'},{id:'orders',label:'Hàng chờ về'}]
-async function load(reset=false){if(reset)start.value=0;if(!props.company)return;if(from.value&&to.value&&from.value>to.value){error.value='Từ ngày không được sau đến ngày.';return}const id=++version;busy.value=true;error.value='';try{const result=await api('overview',{company:props.company,warehouse:props.warehouse,from_date:from.value,to_date:to.value,search:search.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sortModel.value),column_filters:JSON.stringify(filters.value)});if(id===version)data.value=result}catch(e){if(id===version)error.value='Không tải được danh sách mới: '+e.message}finally{if(id===version)busy.value=false}}
+async function load(reset=false){if(reset)start.value=0;if(!props.company)return;if(from.value&&to.value&&from.value>to.value){error.value='Từ ngày không được sau đến ngày.';return}const id=++version;busy.value=true;error.value='';if(pageSize.value===0)data.value=null;try{const result=await tablePage(args=>api('overview',args),{company:props.company,warehouse:props.warehouse,from_date:from.value,to_date:to.value,search:search.value,start:start.value,sort_model:JSON.stringify(sortModel.value),column_filters:JSON.stringify(filters.value)},{pageSize:pageSize.value,rowsKey:'rows',sizeKey:'length',isCurrent:()=>id===version});if(id===version)data.value=result}catch(e){if(id===version)error.value='Không tải được danh sách mới: '+e.message}finally{if(id===version)busy.value=false}}
 watch(()=>[props.company,props.warehouse],()=>{filters.value={};load(true)})
 watch([from,to],()=>load(true))
 onMounted(()=>load(true))

@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../table-pagination'
 import {unitLabel} from '../units'
 import {groupNumber} from '../grid-format'
 import {stateLabel} from '../labels'
@@ -126,7 +127,7 @@ let loadVersion=0
 async function load(){
  if(!company.value)return
  const version=++loadVersion,view=tab.value,selectedCompany=company.value
- busy.value=true;error.value=''
+ busy.value=true;error.value='';if(queryPageSize.value===0&&isPaged.value)rows.value=[]
  try{
   let resultRows=[],resultReport=null,resultQuery=null,resultFinance=null
   if(view==='compare')return  // ProcurementCompare loads its own matrix
@@ -139,7 +140,7 @@ async function load(){
    const filters={company:selectedCompany,supplier:supplier.value||null,search:search.value,start:queryStart.value,page_length:queryPageSize.value}
    if(view==='payables')filters.as_of=asof.value
    else Object.assign(filters,{state:queryState.value||null,from_date:fromDate.value||null,to_date:toDate.value||null})
-   resultQuery=await method('procurement_queries',view,filters);resultRows=resultQuery.rows
+   resultQuery=await tablePage(args=>method('procurement_queries',view,args),filters,{pageSize:queryPageSize.value,sizeKey:'page_length',isCurrent:()=>version===loadVersion});resultRows=resultQuery.rows
    if(view==='payments'&&catalog.value.can_finance)resultFinance=await api('payment_data',{company:selectedCompany})
   }
   if(view==='reports'){resultReport=await method('procurement_reports','report',reportFilters());resultRows=resultReport.rows}

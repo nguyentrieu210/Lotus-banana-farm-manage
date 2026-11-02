@@ -86,15 +86,16 @@ const shell=ref(null),fitHeight=ref(0)
 function fit(){const el=shell.value;if(props.fill<0||!el)return;fitHeight.value=Math.max(280,Math.floor(window.innerHeight-el.getBoundingClientRect().top-props.fill-(props.paginate?56:0)))}
 // Pager: the same one on every table. AG Grid pages the sorted rows (so sorting covers all pages); lists paged by the server pass paginate=false.
 const pageStart=ref(0),currentPageSize=ref(props.pageSize)
+const isPaginated=computed(()=>props.paginate&&currentPageSize.value>0)
 function changePageSize(size){currentPageSize.value=size;pageStart.value=0;nextTick(()=>{gridApi.value?.paginationGoToFirstPage();refreshSelection()})}
 watch(()=>props.pageSize,changePageSize)
 // Fixed height (scrolling grid) above 10 rows, or always when the list has other pages: a short last page must not
 // pull the pager up under the cursor.
 const tall=computed(()=>props.keepHeight||visibleRows.value.length>10)
-const pageRows=computed(()=>props.paginate?visibleRows.value.slice(pageStart.value,pageStart.value+currentPageSize.value):visibleRows.value)
+const pageRows=computed(()=>isPaginated.value?visibleRows.value.slice(pageStart.value,pageStart.value+currentPageSize.value):visibleRows.value)
 watch(()=>rowIdentity.value,()=>{pageStart.value=0})
-function pageChanged(event){const page=event.api?.paginationGetCurrentPage?.();if(props.paginate&&Number.isInteger(page))pageStart.value=page*currentPageSize.value;nextTick(refreshSelection)}
-function goPage(start){pageStart.value=start;gridApi.value?.paginationGoToPage(Math.floor(start/currentPageSize.value))}
+function pageChanged(event){const page=event.api?.paginationGetCurrentPage?.();if(isPaginated.value&&Number.isInteger(page))pageStart.value=page*currentPageSize.value;nextTick(refreshSelection)}
+function goPage(start){pageStart.value=start;gridApi.value?.paginationGoToPage(Math.floor(start/Math.max(1,currentPageSize.value)))}
 onMounted(()=>{if(props.fill>=0){window.addEventListener('resize',fit);nextTick(fit)}})
 onBeforeUnmount(()=>window.removeEventListener('resize',fit))
 watch(()=>[visibleRows.value.length>10,rowIdentity.value,props.loading],()=>nextTick(fit))
@@ -178,8 +179,8 @@ function setRowSelected(row,selected){
 function rowsInCurrentPage(){
  const api=gridApi.value
  if(!api)return props.paginate?pageRows.value:visibleRows.value
- const start=props.paginate?(api.paginationGetCurrentPage?.()||0)*currentPageSize.value:0
- const end=props.paginate?start+currentPageSize.value:Infinity
+ const start=isPaginated.value?(api.paginationGetCurrentPage?.()||0)*currentPageSize.value:0
+ const end=isPaginated.value?start+currentPageSize.value:Infinity
  const result=[]
  api.forEachNodeAfterFilterAndSort(node=>{
   if(node.data&&!node.rowPinned&&node.rowIndex>=start&&node.rowIndex<end)result.push(node.data)
@@ -313,7 +314,7 @@ async function downloadExcel(){
    <template v-if="hasLocalFilters||$slots['empty-actions']" #actions><UiButton v-if="hasLocalFilters" type="button" variant="outline" size="sm" @click="localFilters={}">Xóa bộ lọc</UiButton><slot name="empty-actions"/></template>
   </DesktopEmptyState>
   <template v-else>
-   <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':tall,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&tall?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="tall?'normal':'autoHeight'" :pagination="paginate" :pagination-page-size="currentPageSize" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
+   <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':tall,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&tall?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="tall?'normal':'autoHeight'" :pagination="isPaginated" :pagination-page-size="currentPageSize||visibleRows.length||1" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
    <div v-if="rows.length>5||Object.keys(activeFilters).length" class="lotus-mobile-filter"><UiSelect v-model="mobileFilter" aria-label="Lọc theo cột"><option value="">Lọc theo cột…</option><option v-for="col in filterable" :key="key(col)" :value="key(col)">{{uiFarmLabel(col.headerName)}}{{activeFilters[key(col)]?' · đang lọc':''}}</option></UiSelect><ExcelHeader v-if="mobileFilterParams" :key="mobileFilter" :params="mobileFilterParams"/></div>
    <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p>
     <div v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record-entry" :class="{'lotus-mobile-record-entry--selectable':selectionEnabled}">

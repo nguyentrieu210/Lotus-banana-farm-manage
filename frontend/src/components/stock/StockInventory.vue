@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../../table-pagination'
 import {computed,onUnmounted,ref,watch} from 'vue'
 import {call} from '../../api'
 import ListPage from '../ListPage.vue'
@@ -18,9 +19,9 @@ let version=0,timer=null
 async function load(reset=false){
  if(reset)start.value=0
  if(!props.company){version++;data.value=null;return}
- const request=++version;busy.value=true;error.value=''
+ const request=++version;busy.value=true;error.value='';if(pageSize.value===0)data.value=null
  try{
-  const result=await api('overview',{company:props.company,warehouse:props.warehouse,search:search.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value),from_date:demandFrom.value,to_date:demandTo.value})
+  const result=await tablePage(args=>api('overview',args),{company:props.company,warehouse:props.warehouse,search:search.value,start:start.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value),from_date:demandFrom.value,to_date:demandTo.value},{pageSize:pageSize.value,rowsKey:'items',sizeKey:'length',isCurrent:()=>request===version})
   if(request!==version)return
   data.value=result
   // A filter can leave the current page empty: jump back to the last page with rows.

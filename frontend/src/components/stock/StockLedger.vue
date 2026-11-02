@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../../table-pagination'
 import {computed,onUnmounted,ref,watch} from 'vue'
 import {call} from '../../api'
 import ListPage from '../ListPage.vue'
@@ -21,9 +22,9 @@ let version=0,timer=null
 async function load(reset=false){
  if(reset)start.value=0
  if(!props.company){version++;data.value=null;return}
- const request=++version;busy.value=true;error.value=''
+ const request=++version;busy.value=true;error.value='';if(pageSize.value===0)data.value=null
  try{
-  const result=await call('lotus_farm.warehouse.movements',{company:props.company,warehouse:props.warehouse,search:search.value,from_date:from.value,to_date:to.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value)})
+  const result=await tablePage(args=>call('lotus_farm.warehouse.movements',args),{company:props.company,warehouse:props.warehouse,search:search.value,from_date:from.value,to_date:to.value,start:start.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value)},{pageSize:pageSize.value,rowsKey:'rows',sizeKey:'length',isCurrent:()=>request===version})
   if(request===version)data.value=result
  }catch(e){if(request===version)error.value='Không tải được sổ kho: '+e.message}
  finally{if(request===version)busy.value=false}

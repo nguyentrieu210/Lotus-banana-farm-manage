@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../table-pagination'
 import {unitLabel} from '../units'
 import {hrCatalogLabel} from '../hr-catalog-labels'
 import '../procurement.css'
@@ -28,8 +29,8 @@ const addLabel=computed(()=>suppliers.value?'Thêm nhà cung cấp':'Thêm hàng
 const groupOptions=computed(()=>(suppliers.value?options.value.supplier_groups||[]:options.value.item_groups||[]).map(r=>({value:r.name,label:hrCatalogLabel(r.name)})))
 const stateOptions=[{value:'active',label:'Đang dùng'},{value:'disabled',label:'Ngừng dùng'},{value:'all',label:'Tất cả'}]
 const historyLinks=[['quotes','Báo giá'],['orders','Đơn mua'],['receipts','Phiếu nhận'],['invoices','Hóa đơn'],['payments','Thanh toán'],['payables','Công nợ']]
-let timer
-async function load(){busy.value=true;error.value='';try{const r=await api('listing',{company:props.company,kind:props.kind,search:search.value,state:state.value,group:group.value,start:start.value,page_length:pageSize.value});rows.value=r.rows;total.value=r.total_count;more.value=r.has_more}catch(e){error.value=e.message}finally{busy.value=false}}
+let timer,loadVersion=0
+async function load(){const version=++loadVersion;busy.value=true;error.value='';if(pageSize.value===0)rows.value=[];try{const r=await tablePage(args=>api('listing',args),{company:props.company,kind:props.kind,search:search.value,state:state.value,group:group.value,start:start.value},{pageSize:pageSize.value,rowsKey:'rows',sizeKey:'page_length',isCurrent:()=>version===loadVersion});if(version!==loadVersion)return;rows.value=r.rows;total.value=r.total_count;more.value=r.has_more}catch(e){if(version===loadVersion)error.value=e.message}finally{if(version===loadVersion)busy.value=false}}
 async function open(row){selected.value=row?.name||'';editing.value=true;history.value=null;setDirty(false);if(row&&suppliers.value)try{history.value=await call('lotus_farm.procurement_queries.supplier_history',{company:props.company,supplier:row.name})}catch(e){error.value=e.message}}
 function setDirty(v){dirty.value=v;emit('dirty',v)}
 function close(){editing.value=false;selected.value='';setDirty(false)}

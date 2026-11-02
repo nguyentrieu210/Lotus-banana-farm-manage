@@ -1,4 +1,5 @@
 <script setup>
+import {tablePage} from '../table-pagination'
 import LotusField from './form/LotusField.vue'
 import {computed,onMounted,ref,watch} from 'vue'
 import {call,upload} from '../api'
@@ -87,7 +88,7 @@ async function createTags(){
  await run(async()=>{const r=await call('lotus_farm.onedrive_workspace.generate_tags',{process_adoption:adoption.value,from_date:colorFrom.value,to_date:colorTo.value},true);notice.value=`Đã tạo ${r.created} đợt màu; ${r.existing} đợt đã có.`;emit('reload')})
 }
 async function loadForecast(){const request=++forecastRequest;await run(async()=>{const result=await call('lotus_farm.onedrive_workspace.forecast',{company:props.company||null,farm:props.farm||null,zone:props.zone||null,block:props.block||null,cycle:props.cycle||null,from_date:props.fromDate,include_handover:scenario.value?1:0});if(request===forecastRequest)forecast.value=result})}
-async function loadReference(start=0){referenceStart.value=start;await run(async()=>{referenceRows.value=await call('lotus_farm.onedrive_workspace.reference_table',{table:reference.value,start,length:referencePageSize.value,search:referenceSearch.value||null})})}
+async function loadReference(start=0){referenceStart.value=start;if(referencePageSize.value===0)referenceRows.value=null;await run(async()=>{referenceRows.value=await tablePage(args=>call('lotus_farm.onedrive_workspace.reference_table',args),{table:reference.value,start,search:referenceSearch.value||null},{pageSize:referencePageSize.value})})}
 onMounted(()=>{if(props.forecastOnly)loadForecast()})
 function workflowOpen(row){if(!row.can_read)return;if(['handover','selection','forecast'].includes(row.key)){tab.value=row.key;return}emit('navigate',row.route,{doctype:row.doctype})}
 function openSource(row){if(row.url)window.open(row.url,'_blank','noopener')}

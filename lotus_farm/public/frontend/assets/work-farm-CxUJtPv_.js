@@ -1,0 +1,1 @@
+import{l as e}from"./use-workspace-confirm-Q4V-wpkM.js";function t(){try{return e().farm||``}catch{return``}}export{t};

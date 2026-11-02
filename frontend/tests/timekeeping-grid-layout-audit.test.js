@@ -30,6 +30,6 @@ test('attendance scroll exists only in the shared grid, not nested in the panel'
  assert.match(table,/class="lotus-ag-grid-shell"/)
 })
 test('single page still displays range without disabled previous/next buttons',()=>{
- assert.match(pager,/<PaginationRoot v-if="total && total>pageSize"/)
- assert.match(pager,/<div v-else-if="!total&&\(start>0\|\|hasMore\)"/)
+ assert.match(pager,/<PaginationRoot v-if="pageSize>0 && total && total>pageSize"/)
+ assert.match(pager,/<div v-else-if="pageSize>0&&!total&&\(start>0\|\|hasMore\)"/)
 })

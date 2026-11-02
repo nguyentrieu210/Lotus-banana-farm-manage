@@ -1,22 +1,25 @@
 <script setup>
 import {computed} from 'vue'
 import {PaginationRoot,PaginationList,PaginationListItem,PaginationEllipsis,PaginationPrev,PaginationNext} from 'reka-ui'
+import {Button as UiButton} from '../button'
 import UiSelect from '../select/Select.vue'
 import LotusIcon from '../../LotusIcon.vue'
 // Offset pagination for lists. With `total` it shows numbered pages; Frappe listings usually only know
 // `hasMore`, so then it shows the visible range with Trước/Tiếp. v-model:start is the row offset.
 const props=defineProps({start:{type:Number,default:0},count:{type:Number,default:0},pageSize:{type:Number,default:50},total:Number,hasMore:Boolean,disabled:Boolean,sizeSelectable:{type:Boolean,default:true}})
 const emit=defineEmits(['update:start','update:pageSize'])
-const page=computed(()=>Math.floor(props.start/props.pageSize)+1)
+const effectivePageSize=computed(()=>props.pageSize||Math.max(1,props.total||props.count))
+const page=computed(()=>Math.floor(props.start/effectivePageSize.value)+1)
 const range=computed(()=>props.count?`${props.start+1}–${props.start+props.count}`:'0 bản ghi')
-function changeSize(value){const size=Number(value);if([20,50,100].includes(size)&&size!==props.pageSize)emit('update:pageSize',size)}
-const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
+function changeSize(value){const size=Number(value);if([0,20,50,100].includes(size)&&size!==props.pageSize)emit('update:pageSize',size)}
+const go=nextPage=>emit('update:start',(nextPage-1)*effectivePageSize.value)
 </script>
 <template>
  <nav class="lotus-pagination" aria-label="Phân trang">
-  <label v-if="sizeSelectable" class="lotus-pagination__size"><span>Dòng/trang</span><UiSelect :model-value="pageSize" :disabled="disabled" aria-label="Số dòng mỗi trang" @update:model-value="changeSize"><option v-if="![20,50,100].includes(pageSize)" :value="pageSize">{{pageSize}}</option><option v-for="size in [20,50,100]" :key="size" :value="size">{{size}}</option></UiSelect></label>
+  <label v-if="sizeSelectable" class="lotus-pagination__size"><span>Dòng/trang</span><UiSelect :model-value="pageSize" :disabled="disabled" aria-label="Số dòng mỗi trang" @update:model-value="changeSize"><option v-if="![20,50,100].includes(pageSize)" :value="pageSize">{{pageSize===0?'Tất cả':pageSize}}</option><option v-for="size in [20,50,100]" :key="size" :value="size">{{size}}</option></UiSelect></label>
+  <UiButton v-if="sizeSelectable" type="button" variant="outline" size="sm" :disabled="disabled||pageSize===0" @click="changeSize(0)">Hiện toàn bộ</UiButton>
   <span class="lotus-pagination__range" aria-live="polite">{{range}}<template v-if="total"> / {{total.toLocaleString('vi-VN')}}</template></span>
-  <PaginationRoot v-if="total && total>pageSize" :page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" show-edges :disabled="disabled" @update:page="go">
+  <PaginationRoot v-if="pageSize>0 && total && total>pageSize" :page="page" :total="total" :items-per-page="effectivePageSize" :sibling-count="1" show-edges :disabled="disabled" @update:page="go">
    <PaginationList v-slot="{items}" class="lotus-pagination__list">
     <PaginationPrev class="lotus-pagination__button" aria-label="Trang trước"><LotusIcon name="chevron-left"/></PaginationPrev>
     <template v-for="(item,index) in items" :key="index">
@@ -26,7 +29,7 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
     <PaginationNext class="lotus-pagination__button" aria-label="Trang sau"><LotusIcon name="chevron"/></PaginationNext>
    </PaginationList>
   </PaginationRoot>
-  <div v-else-if="!total&&(start>0||hasMore)" class="lotus-pagination__list">
+  <div v-else-if="pageSize>0&&!total&&(start>0||hasMore)" class="lotus-pagination__list">
    <button type="button" class="lotus-pagination__button" :disabled="disabled||!start" aria-label="Trang trước" @click="emit('update:start',Math.max(0,start-pageSize))"><LotusIcon name="chevron-left"/>Trước</button>
    <button type="button" class="lotus-pagination__button" :disabled="disabled||!hasMore" aria-label="Trang sau" @click="emit('update:start',start+pageSize)">Tiếp<LotusIcon name="chevron"/></button>
   </div>

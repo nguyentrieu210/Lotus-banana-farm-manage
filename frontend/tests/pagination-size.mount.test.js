@@ -7,7 +7,7 @@ const settle=async()=>{await tick();await tick()}
 const selectSize=async(root,size)=>{
  const select=root.querySelector('select[aria-label="Số dòng mỗi trang"]')
  assert.ok(select,'shared pager exposes its row limit')
- assert.deepEqual([...select.options].map(option=>option.value),['20','50','100'])
+ assert.deepEqual([...select.options].map(option=>option.value).filter(value=>value!=='0'),['20','50','100'])
  select.value=String(size);select.dispatchEvent(new window.Event('change',{bubbles:true}));await settle()
 }
 
@@ -30,6 +30,14 @@ test('changing local page size resets the offset, grid selection and mobile rows
    assert.match(view.root.querySelector('.lotus-pagination__range').textContent,new RegExp(`${size+1}–${Math.min(135,size*2)}`))
   }
   assert.match(view.root.querySelector('.lotus-mobile-total dt').textContent,/135 dòng/,'total still includes all filtered rows')
+  view.root.querySelector('.lotus-pagination button:not([aria-label])').click();await settle()
+  assert.equal(view.root.querySelectorAll('.lotus-mobile-record-entry').length,135)
+  assert.match(view.root.querySelector('.lotus-pagination__range').textContent,/1–135/)
+  assert.equal(view.root.querySelector('[aria-label="Trang sau"]'),null)
+  view.root.querySelector('.ag-header-cell[col-id="__lotus_select"] button').click();await settle()
+  assert.match(view.root.querySelector('.lotus-data-table__selected').textContent,/135 dòng đã chọn/)
+  await selectSize(view.root,20)
+  assert.equal(view.root.querySelectorAll('.lotus-mobile-record-entry').length,20)
  }finally{view.unmount()}
 })
 
@@ -61,6 +69,16 @@ for(const [path,props,parameter] of [
     assert.match(view.root.querySelector('.lotus-pagination__range').textContent,new RegExp(`1–${size}`))
     assert.equal(view.root.querySelectorAll('.lotus-pagination').length,1,'server pages have one pager')
    }
+   const beforeAll=calls.length
+   const showAll=[...view.root.querySelectorAll('button')].find(button=>button.textContent==='Hiện toàn bộ')
+   showAll.click();await settle()
+   assert.deepEqual(calls.slice(beforeAll).map(args=>[Number(args.start),Number(args[parameter])]),[[0,100],[100,100]])
+   assert.equal(view.root.querySelectorAll('.lotus-mobile-record-entry').length,135)
+   assert.match(view.root.querySelector('.lotus-pagination__range').textContent,/1–135/)
+   assert.equal(view.root.querySelector('[aria-label="Trang sau"]'),null)
+   await selectSize(view.root,20)
+   assert.equal(Number(calls.at(-1).start),0)
+   assert.equal(Number(calls.at(-1)[parameter]),20)
   }finally{view.unmount()}
  })
 }
