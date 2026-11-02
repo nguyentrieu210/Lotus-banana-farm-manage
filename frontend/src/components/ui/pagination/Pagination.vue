@@ -37,7 +37,7 @@ const go=nextPage=>emit('update:start',(nextPage-1)*effectivePageSize.value)
 </template>
 <style>
 .lotus-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:var(--lotus-text-md)}
-.lotus-pagination__size{display:flex;align-items:center;gap:var(--lotus-space-2);white-space:nowrap;font:inherit;color:var(--lotus-muted)}
+.lotus-pagination__size{display:flex;flex-direction:row;align-items:center;gap:var(--lotus-space-2);white-space:nowrap;font:inherit;color:var(--lotus-muted)}
 .lotus-pagination__size select{width:auto;min-width:72px;height:32px;min-height:32px;padding-block:0}
 .lotus-pagination__range{color:var(--lotus-muted);font-variant-numeric:tabular-nums}
 .lotus-pagination__list{display:flex;align-items:center;gap:4px}
