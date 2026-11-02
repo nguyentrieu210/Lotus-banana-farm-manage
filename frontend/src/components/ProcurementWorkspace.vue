@@ -43,7 +43,7 @@ const api=(method,args={},write=false)=>purchaseRequest(call,'lotus_farm.procure
 const method=(module,name,args={},write=false)=>purchaseRequest(call,'lotus_farm.'+module+'.'+name,args,write)
 const router=inject(routerKey,null),route=inject(routeLocationKey,null)
 const masterView=ref(null),quickMaster=ref(''),quickLine=ref(0),masterDialog=ref(null),masterSaving=ref(null),receivingView=ref(null)
-const queryStart=ref(0),queryTotal=ref(0),queryMore=ref(false),queryState=ref(''),fromDate=ref(''),toDate=ref(''),debt=ref(null),fundingRows=ref([]),deliveryReason=ref(''),deliveryDate=ref('')
+const queryStart=ref(0),queryPageSize=ref(50),queryTotal=ref(0),queryMore=ref(false),queryState=ref(''),fromDate=ref(''),toDate=ref(''),debt=ref(null),fundingRows=ref([]),deliveryReason=ref(''),deliveryDate=ref('')
 const isPaged=computed(()=>['invoices','payments','payables'].includes(tab.value))
 const isMaster=computed(()=>['suppliers','items'].includes(tab.value))
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
@@ -136,7 +136,7 @@ async function load(){
   if(view==='orders')resultRows=await method('purchasing','orders',{company:selectedCompany})
   if(view==='receipts')resultRows=await api('receipts',{company:selectedCompany})
   if(['invoices','payments','payables'].includes(view)){
-   const filters={company:selectedCompany,supplier:supplier.value||null,search:search.value,start:queryStart.value}
+   const filters={company:selectedCompany,supplier:supplier.value||null,search:search.value,start:queryStart.value,page_length:queryPageSize.value}
    if(view==='payables')filters.as_of=asof.value
    else Object.assign(filters,{state:queryState.value||null,from_date:fromDate.value||null,to_date:toDate.value||null})
    resultQuery=await method('procurement_queries',view,filters);resultRows=resultQuery.rows
@@ -294,7 +294,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <ProcurementCompare v-else-if="tab==='compare'" :key="'compare-'+company" :company="company" :mobile="mobile" :can-create="catalog.can_create" :api="api" @created="compareCreated"/>
 
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
-   :paged="isPaged" :start="queryStart" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
+   :paged="isPaged" :start="queryStart" :page-size="queryPageSize" @update:page-size="value=>{queryPageSize=value;queryReset()}" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
    :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
   <template #filters>
    <LotusField v-if="companyOptions.length>1" v-model="company" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" @update:model-value="companyChanged"/>
@@ -347,7 +347,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <dl v-if="summary.length" class="procurement-totals"><div v-for="s in summary" :key="s.label"><dt>{{s.label}}</dt><dd>{{s.value}}</dd></div></dl>
   <CellGroup :border="false"><Cell v-for="(r,i) in shownRows" :key="r.name+'-'+i" :title="r.item_name||r.voucher_name||r.name" :label="[r.supplier_name||r.supplier,r.status||r.stage_label,r.date||r.delivery_date].filter(Boolean).join(' · ')" :value="money(tab==='quotes'?r.gross:r.amount)" :is-link="tab!=='reports'" @click="open(r)"/><Cell v-if="!shownRows.length" :title="busy?'Đang tải…':'Chưa có dữ liệu.'"/></CellGroup>
   <template v-if="tab==='payments'&&finance?.vouchers?.length"><h3>Phiếu chờ ký</h3><component :is="button" v-for="v in finance.vouchers" :key="v.name" @click="current=v;detailType='voucher'">{{v.name}} · {{money(v.amount)}} · {{v.signing?.waiting_for}}</component></template>
-  <div v-if="isPaged" class="procurement-actions"><span>{{queryTotal?queryStart+1:0}}–{{queryStart+rows.length}} / {{queryTotal}}</span><component :is="button" :disabled="!queryStart||busy" @click="queryStart-=50;load()">Trước</component><component :is="button" :disabled="!queryMore||busy" @click="queryStart+=50;load()">Sau</component></div>
+  <div v-if="isPaged" class="procurement-actions"><span>{{queryTotal?queryStart+1:0}}–{{queryStart+rows.length}} / {{queryTotal}}</span><component :is="button" :disabled="!queryStart||busy" @click="queryStart-=queryPageSize;load()">Trước</component><component :is="button" :disabled="!queryMore||busy" @click="queryStart+=queryPageSize;load()">Sau</component></div>
  </template>
 
  <ResponsiveForm :mobile="mobile" :model-value="!!current&&!form" :title="detailTitle" readonly width="1080px" :busy="saving" :error="error" @update:model-value="value=>!value&&(current=null)">

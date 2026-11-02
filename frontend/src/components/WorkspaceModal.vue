@@ -9,7 +9,7 @@ import {dismissOnBackdrop} from '../dialogs'
 //   through a template ref (showModal(), close(), .open) — for existing forms whose CSS is scoped to their screen.
 // Both: Esc and backdrop clicks are ignored while `busy`, and an open dialog closes when its KeepAlive screen is hidden.
 defineOptions({inheritAttrs:false})
-const props=defineProps({modelValue:{type:Boolean,default:undefined},title:{type:String,required:true},busy:Boolean,width:{type:String,default:'960px'},bare:Boolean})
+const props=defineProps({modelValue:{type:Boolean,default:undefined},title:{type:String,required:true},busy:Boolean,width:{type:String,default:'960px'},bare:Boolean,expanded:{type:Boolean,default:true}})
 const emit=defineEmits(['update:modelValue','cancel','close'])
 const dialog=ref(null)
 let inactive=false
@@ -26,8 +26,8 @@ function closed(event){emit('close',event);if(!inactive&&controlled()&&props.mod
 defineExpose({showModal(){if(!dialog.value?.open)dialog.value?.showModal()},close(){dialog.value?.close()},get open(){return !!dialog.value?.open},get el(){return dialog.value}})
 </script>
 <template>
- <dialog v-if="bare" ref="dialog" v-bind="$attrs" class="workspace-modal workspace-modal--bare lotus-ui" :aria-label="$attrs['aria-label']||title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)"><slot/></dialog>
- <Teleport v-else to="body"><dialog ref="dialog" v-bind="$attrs" class="workspace-modal lotus-ui" :style="{width:'min('+width+', calc(100vw - 24px))'}" :aria-label="title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)">
+ <dialog v-if="bare" ref="dialog" v-bind="$attrs" class="workspace-modal workspace-modal--bare lotus-ui" :class="{'workspace-modal--expanded':expanded}" :aria-label="$attrs['aria-label']||title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)"><slot/></dialog>
+ <Teleport v-else to="body"><dialog ref="dialog" v-bind="$attrs" class="workspace-modal lotus-ui" :class="{'workspace-modal--expanded':expanded}" :style="{width:'min('+width+', calc(100vw - 24px))'}" :aria-label="title" @close="closed" @cancel="cancel" @click="dismissOnBackdrop($event,busy)">
   <header class="workspace-modal__header"><h2>{{title}}</h2><UiButton type="button" variant="outline" :disabled="busy" :aria-label="'Đóng '+title" @click="requestClose"><LotusIcon name="x"/>Đóng</UiButton></header>
   <div class="workspace-modal__body" :aria-busy="busy"><fieldset :disabled="busy"><slot/></fieldset></div>
  </dialog></Teleport>

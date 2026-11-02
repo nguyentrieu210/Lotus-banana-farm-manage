@@ -1,0 +1,14 @@
+# Build context: app/ from git archive, with the tested frontend build overlaid.
+# The two read-only warehouse APIs accept a bounded length (default remains 50).
+ARG BASE_IMAGE=lotus-release-base:verified
+FROM ${BASE_IMAGE}
+ARG REVISION
+ARG BASE_IMAGE_ID
+USER root
+COPY --chown=frappe:root app/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/frontend/
+COPY --chown=frappe:root app/lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+COPY --chown=frappe:root app/lotus_farm/warehouse.py app/lotus_farm/warehouse_planning.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/
+LABEL org.opencontainers.image.revision=${REVISION} \
+      com.lotus.base.image.id=${BASE_IMAGE_ID} \
+      org.opencontainers.image.source=https://github.com/nguyentrieu210/Lotus-banana-farm-manage
+USER frappe

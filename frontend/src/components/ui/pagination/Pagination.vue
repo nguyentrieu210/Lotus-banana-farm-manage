@@ -1,17 +1,20 @@
 <script setup>
 import {computed} from 'vue'
 import {PaginationRoot,PaginationList,PaginationListItem,PaginationEllipsis,PaginationPrev,PaginationNext} from 'reka-ui'
+import UiSelect from '../select/Select.vue'
 import LotusIcon from '../../LotusIcon.vue'
 // Offset pagination for lists. With `total` it shows numbered pages; Frappe listings usually only know
 // `hasMore`, so then it shows the visible range with Trước/Tiếp. v-model:start is the row offset.
-const props=defineProps({start:{type:Number,default:0},count:{type:Number,default:0},pageSize:{type:Number,default:50},total:Number,hasMore:Boolean,disabled:Boolean})
-const emit=defineEmits(['update:start'])
+const props=defineProps({start:{type:Number,default:0},count:{type:Number,default:0},pageSize:{type:Number,default:50},total:Number,hasMore:Boolean,disabled:Boolean,sizeSelectable:{type:Boolean,default:true}})
+const emit=defineEmits(['update:start','update:pageSize'])
 const page=computed(()=>Math.floor(props.start/props.pageSize)+1)
 const range=computed(()=>props.count?`${props.start+1}–${props.start+props.count}`:'0 bản ghi')
+function changeSize(value){const size=Number(value);if([20,50,100].includes(size)&&size!==props.pageSize)emit('update:pageSize',size)}
 const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
 </script>
 <template>
  <nav class="lotus-pagination" aria-label="Phân trang">
+  <label v-if="sizeSelectable" class="lotus-pagination__size"><span>Dòng/trang</span><UiSelect :model-value="pageSize" :disabled="disabled" aria-label="Số dòng mỗi trang" @update:model-value="changeSize"><option v-if="![20,50,100].includes(pageSize)" :value="pageSize">{{pageSize}}</option><option v-for="size in [20,50,100]" :key="size" :value="size">{{size}}</option></UiSelect></label>
   <span class="lotus-pagination__range" aria-live="polite">{{range}}<template v-if="total"> / {{total.toLocaleString('vi-VN')}}</template></span>
   <PaginationRoot v-if="total && total>pageSize" :page="page" :total="total" :items-per-page="pageSize" :sibling-count="1" show-edges :disabled="disabled" @update:page="go">
    <PaginationList v-slot="{items}" class="lotus-pagination__list">
@@ -31,6 +34,8 @@ const go=nextPage=>emit('update:start',(nextPage-1)*props.pageSize)
 </template>
 <style>
 .lotus-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:var(--lotus-text-md)}
+.lotus-pagination__size{display:flex;align-items:center;gap:var(--lotus-space-2);white-space:nowrap;font:inherit;color:var(--lotus-muted)}
+.lotus-pagination__size select{width:auto;min-width:72px;height:32px;min-height:32px;padding-block:0}
 .lotus-pagination__range{color:var(--lotus-muted);font-variant-numeric:tabular-nums}
 .lotus-pagination__list{display:flex;align-items:center;gap:4px}
 .lotus-pagination__button{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:32px;height:32px;padding:0 8px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font:inherit;cursor:pointer}

@@ -8,7 +8,7 @@ import {Pagination} from './ui/pagination'
 // Every other attribute/listener goes to DataTable (storage-key, server-sort, filter-values, server-filters, interactive, empty, @open, @sort, @filter).
 defineOptions({inheritAttrs:false})
 defineProps({rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,title:String,search:{type:String,default:''},searchable:{type:Boolean,default:true},searchPlaceholder:{type:String,default:'Tìm kiếm…'},summary:Array,error:String,paged:Boolean,start:{type:Number,default:0},total:Number,hasMore:Boolean,pageSize:{type:Number,default:50}})
-const emit=defineEmits(['update:search','update:start','refresh'])
+const emit=defineEmits(['update:search','update:start','update:pageSize','refresh'])
 // Custom cells (#cell-<field>) pass straight through to DataTable.
 const slots=useSlots()
 const cellSlots=computed(()=>Object.keys(slots).filter(name=>name.startsWith('cell-')))
@@ -26,7 +26,7 @@ const tools=ref(null)
   <WorkspaceSummaryStrip v-if="summary?.length" :items="summary"/>
   <slot name="before"/>
   <DataTable :fill="paged?76:24" :tools-target="tools" :auto-hide-empty="!paged" :paginate="!paged" :page-size="pageSize" :row-index-offset="paged?start:0" :keep-height="paged&&(start>0||hasMore||(total||0)>rows.length)" v-bind="$attrs" :rows="rows" :columns="columns" :loading="loading" :totals-label="paged&&(hasMore||(total||0)>rows.length)?'Tổng trang này':'Tổng'"><template v-for="name in cellSlots" :key="name" #[name]="scope"><slot :name="name" v-bind="scope"/></template></DataTable>
-  <Pagination v-if="paged" :start="start" :count="rows.length" :total="total" :has-more="hasMore" :page-size="pageSize" :disabled="loading" @update:start="emit('update:start',$event)"/>
+  <Pagination v-if="paged" :start="start" :count="rows.length" :total="total" :has-more="hasMore" :page-size="pageSize" :disabled="loading" @update:page-size="emit('update:pageSize',$event)" @update:start="emit('update:start',$event)"/>
   <slot/>
  </section>
 </template>

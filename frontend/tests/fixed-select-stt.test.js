@@ -26,7 +26,7 @@ test('Selection is keyed by row identity and does not trigger opening the docume
 test('STT follows grid row order and starts after server pagination offset',()=>{
  assert.match(table,/props.rowIndexOffset\+params.node.rowIndex\+1/)
  assert.match(list,/:row-index-offset="paged\?start:0"/)
- assert.match(table,/props.paginate\?\(api.paginationGetCurrentPage\?\.\(\)\|\|0\)\*props.pageSize:0/)
+ assert.match(table,/props.paginate\?\(api.paginationGetCurrentPage\?\.\(\)\|\|0\)\*currentPageSize.value:0/)
 })
 test('Farm lot selection is connected to existing bulk editing, without duplicate tick column',()=>{
  assert.doesNotMatch(farm,/field:'__picked'/)

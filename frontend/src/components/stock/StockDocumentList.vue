@@ -17,7 +17,7 @@ const creators={
  transfers:[{kind:'transfer',label:'Tạo phiếu chuyển',icon:'transfer',doctype:'Stock Entry'}],
  counts:[{kind:'count',label:'Tạo phiếu kiểm kê',icon:'check',doctype:'Stock Reconciliation'}]
 }
-const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),sort=ref([]),filters=ref({}),from=ref(''),to=ref('')
+const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),sort=ref([]),filters=ref({}),from=ref(''),to=ref('')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
 const columns=computed(()=>documentColumns(warehouseLabel))
 let version=0,timer=null
@@ -26,7 +26,7 @@ async function load(reset=false){
  if(!props.company){version++;data.value=null;return}
  const request=++version;busy.value=true;error.value=''
  try{
-  const result=await call('lotus_farm.warehouse.documents',{company:props.company,warehouse:props.warehouse,kind:props.kind,search:search.value,from_date:from.value,to_date:to.value,start:start.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value)})
+  const result=await call('lotus_farm.warehouse.documents',{company:props.company,warehouse:props.warehouse,kind:props.kind,search:search.value,from_date:from.value,to_date:to.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value)})
   if(request===version)data.value=result
  }catch(e){if(request===version)error.value='Không tải được danh sách phiếu: '+e.message}
  finally{if(request===version)busy.value=false}
@@ -43,7 +43,7 @@ defineExpose({refresh:()=>load()})
 
 <template>
  <ListPage :title="titles[kind]" :rows="data?.rows||[]" :columns="columns" :loading="busy" :error="error" v-model:search="searchDraft" search-placeholder="Tìm số phiếu…"
-   paged :start="start" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}" @refresh="load()"
+   paged :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}" @refresh="load()"
    :storage-key="'lotus-stock-documents-'+kind" show-empty-headers server-sort interactive :filter-values="data?.filter_values" :server-filters="filters" empty="Không có phiếu phù hợp. Thử bỏ lọc hoặc thay đổi khoảng ngày."
    @sort="model=>{sort=model;load(true)}" @filter="({field,values})=>{filters=updateColumnFilter(filters,field,values);load(true)}" @open="row=>emit('open-document',row.doctype,row.name)">
   <template #filters><StockScope dates v-model:from="from" v-model:to="to" :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session?.companies||[]" :disabled="busy" @update:warehouse="emit('update:warehouse',$event)" @update:company="emit('update:company',$event)"/><UiButton v-if="hasFilters" variant="outline" @click="clearFilters">Bỏ lọc</UiButton></template>

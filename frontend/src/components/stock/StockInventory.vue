@@ -11,7 +11,7 @@ import {updateColumnFilter,shiftISODate,hasStockSearchFilters,stockEmptyKind} fr
 const props=defineProps({company:String,warehouse:String,session:Object,warehouses:{type:Array,default:()=>[]},refreshKey:Number,canCreate:Boolean,showPurchase:Boolean})
 const emit=defineEmits(['update:warehouse','update:company','create','receive','purchase','edit-master'])
 const api=(name,args={})=>call('lotus_farm.warehouse.'+name,args)
-const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),sort=ref([]),filters=ref({})
+const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),sort=ref([]),filters=ref({})
 const demandWindowDays=7
 const demandFrom=ref(props.session?.today||''),demandTo=ref(props.session?.today?shiftISODate(props.session.today,demandWindowDays-1):'')
 let version=0,timer=null
@@ -20,11 +20,11 @@ async function load(reset=false){
  if(!props.company){version++;data.value=null;return}
  const request=++version;busy.value=true;error.value=''
  try{
-  const result=await api('overview',{company:props.company,warehouse:props.warehouse,search:search.value,start:start.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value),from_date:demandFrom.value,to_date:demandTo.value})
+  const result=await api('overview',{company:props.company,warehouse:props.warehouse,search:search.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sort.value),column_filters:JSON.stringify(filters.value),from_date:demandFrom.value,to_date:demandTo.value})
   if(request!==version)return
   data.value=result
   // A filter can leave the current page empty: jump back to the last page with rows.
-  if(start.value>0&&!result.items?.length&&result.total_count>0){start.value=Math.floor((result.total_count-1)/50)*50;return load()}
+  if(start.value>0&&!result.items?.length&&result.total_count>0){start.value=Math.floor((result.total_count-1)/pageSize.value)*pageSize.value;return load()}
  }catch(e){if(request===version)error.value='Không tải được dữ liệu mới: '+e.message}
  finally{if(request===version)busy.value=false}
 }
@@ -43,7 +43,7 @@ defineExpose({refresh:()=>load()})
 
 <template>
  <ListPage title="Tồn kho" class="stock-inventory-table" :rows="data?.items||[]" :columns="stockColumns" :loading="busy" :error="error" v-model:search="searchDraft" search-placeholder="Tìm vật tư…"
-   paged :start="start" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}" @refresh="load()"
+   paged :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}" @refresh="load()"
    storage-key="lotus-stock-inventory" :show-empty-headers="(data?.catalogue_count??0)>0" server-sort interactive :filter-values="data?.filter_values" :server-filters="filters" :empty="empty"
    @sort="model=>{sort=model;load(true)}" @filter="({field,values})=>{filters=updateColumnFilter(filters,field,values);load(true)}" @open="row=>emit('edit-master','item',row.name)">
   <template #filters><StockScope :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session?.companies||[]" :disabled="busy" @update:warehouse="emit('update:warehouse',$event)" @update:company="emit('update:company',$event)"/><UiButton v-if="hasFilters" variant="outline" @click="clearFilters">Bỏ lọc</UiButton></template>

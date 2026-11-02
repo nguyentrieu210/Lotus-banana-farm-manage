@@ -228,7 +228,8 @@ def delete_draft(doctype,name,modified):
 
 
 @frappe.whitelist()
-def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None,kind=None):
+def documents(company,warehouse=None,from_date=None,to_date=None,search=None,start=0,column_filters=None,sort_model=None,kind=None,length=50):
+    length=max(1,min(cint(length) or 50,100))
     from lotus_farm.table_filters import faceted_distinct,selections,matches
     _access();_company(company)
     stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0},pluck='name',limit_page_length=0)
@@ -265,7 +266,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     from lotus_farm.table_filters import sorted_rows
     rows=sorted_rows(rows,sort_model,fields)
     start=max(0,cint(start))
-    return dict(rows=rows[start:start+50],total_count=len(rows),has_more=len(rows)>start+50,filter_values=choices)
+    return dict(rows=rows[start:start+length],total_count=len(rows),has_more=len(rows)>start+length,filter_values=choices)
 
 
 @frappe.whitelist()
@@ -294,7 +295,8 @@ def stock_summary(company,warehouse=None,from_date=None,to_date=None,search=None
 
 
 @frappe.whitelist()
-def movements(company, warehouse=None, search=None, from_date=None,to_date=None,start=0,column_filters=None,sort_model=None):
+def movements(company, warehouse=None, search=None, from_date=None,to_date=None,start=0,column_filters=None,sort_model=None,length=50):
+    length=max(1,min(cint(length) or 50,100))
     from lotus_farm.table_filters import selections, matches, faceted_distinct
     _access()
     _company(company)
@@ -416,11 +418,12 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
     from lotus_farm.table_filters import sorted_rows
     rows=sorted_rows(rows,sort_model,fields,{'item_code':'item_name'})
     start = max(0, cint(start))
-    return dict(rows=rows[start:start+50], total_count=len(rows), has_more=len(rows)>start+50, filter_values=choices)
+    return dict(rows=rows[start:start+length], total_count=len(rows), has_more=len(rows)>start+length, filter_values=choices)
 
 
 @frappe.whitelist()
-def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None,sort_model=None):
+def overview(company, warehouse=None, search=None, start=0, column_filters=None,from_date=None,to_date=None,sort_model=None,length=50):
+    length=max(1,min(cint(length) or 50,100))
     from lotus_farm.table_filters import selections, matches, faceted_distinct
     _access()
     company_doc = _company(company)
@@ -487,14 +490,14 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
     items = [item for item in items if matches(item, selected)]
     from lotus_farm.table_filters import sorted_rows
     items=sorted_rows(items,sort_model,fields,{'name':'item_name'})
-    visible_items = items[start:start+50]
+    visible_items = items[start:start+length]
     entries = frappe.get_list('Stock Entry', filters={'company': company},
                               fields=['name', 'stock_entry_type', 'posting_date', 'docstatus'],
                               order_by='modified desc', limit_page_length=20)
     reconciliations = (frappe.get_list('Stock Reconciliation', filters={'company': company},
                        fields=['name', 'posting_date', 'docstatus'], order_by='modified desc', limit_page_length=10)
                        if frappe.has_permission('Stock Reconciliation', 'read') else [])
-    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+50, filter_values=choices, total_count=len(items),catalogue_count=catalogue_count,stocked_count=stocked_count,
+    return dict(warehouses=warehouses, items=visible_items, has_more=len(items) > start+length, filter_values=choices, total_count=len(items),catalogue_count=catalogue_count,stocked_count=stocked_count,
                 entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency,coverage_warnings=coverage['warnings'],demand_from=coverage['from_date'],demand_to=coverage['to_date'])
 
 

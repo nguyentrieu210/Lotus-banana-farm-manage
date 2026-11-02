@@ -286,3 +286,8 @@
 .workspace-bar .workspace-farm select:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:none}
 .lotus-ui .workspace-bar .workspace-farm select option{color:var(--lotus-neutral-900);background:var(--lotus-neutral-0)}
 @media(max-width:720px){.lotus-ui .workspace-bar .workspace-farm select:not([type=checkbox]):not([type=radio]){min-width:0;max-width:120px}}
+
+/* Desktop entry forms open across the viewport, including legacy bare modal forms. */
+@media(min-width:901px){
+ :root:root dialog.workspace-modal--expanded{width:calc(100vw - var(--lotus-space-6))!important;max-width:calc(100vw - var(--lotus-space-6))!important;resize:none}
+}

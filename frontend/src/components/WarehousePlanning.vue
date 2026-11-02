@@ -15,7 +15,7 @@ import {Button as UiButton} from './ui/button'
 const props=defineProps({company:String,warehouse:String,today:String})
 const emit=defineEmits(['receive','open-receipt'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse_planning.'+name,args,write)
-const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),from=ref(props.today||''),to=ref(shiftISODate(props.today,6)||''),search=ref(''),searchDraft=ref(''),start=ref(0),filters=ref({}),view=ref('coverage')
+const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),from=ref(props.today||''),to=ref(shiftISODate(props.today,6)||''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),filters=ref({}),view=ref('coverage')
 const detail=ref(null),detailOpen=ref(false),selectedStores=ref({}),request=ref(null),requestOpen=ref(false),confirmAction=ref('')
 const sortModel=ref([])
 let version=0
@@ -23,7 +23,7 @@ const fmt=value=>value==null?'—':Number(value).toLocaleString('vi-VN',{maximum
 const warehouseLabel=id=>data.value?.warehouses?.find(w=>w.name===id)?.warehouse_name||id||'—'
 const unit=unitLabel
 const views=[{id:'coverage',label:'Nhu cầu vật tư'},{id:'requests',label:'Đề nghị mua'},{id:'orders',label:'Hàng chờ về'}]
-async function load(reset=false){if(reset)start.value=0;if(!props.company)return;if(from.value&&to.value&&from.value>to.value){error.value='Từ ngày không được sau đến ngày.';return}const id=++version;busy.value=true;error.value='';try{const result=await api('overview',{company:props.company,warehouse:props.warehouse,from_date:from.value,to_date:to.value,search:search.value,start:start.value,sort_model:JSON.stringify(sortModel.value),column_filters:JSON.stringify(filters.value)});if(id===version)data.value=result}catch(e){if(id===version)error.value='Không tải được danh sách mới: '+e.message}finally{if(id===version)busy.value=false}}
+async function load(reset=false){if(reset)start.value=0;if(!props.company)return;if(from.value&&to.value&&from.value>to.value){error.value='Từ ngày không được sau đến ngày.';return}const id=++version;busy.value=true;error.value='';try{const result=await api('overview',{company:props.company,warehouse:props.warehouse,from_date:from.value,to_date:to.value,search:search.value,start:start.value,length:pageSize.value,sort_model:JSON.stringify(sortModel.value),column_filters:JSON.stringify(filters.value)});if(id===version)data.value=result}catch(e){if(id===version)error.value='Không tải được danh sách mới: '+e.message}finally{if(id===version)busy.value=false}}
 watch(()=>[props.company,props.warehouse],()=>{filters.value={};load(true)})
 watch([from,to],()=>load(true))
 onMounted(()=>load(true))
@@ -67,7 +67,7 @@ defineExpose({refresh:()=>load(true),openReceipt})
    <div v-for="source in unresolved" :key="source.name+source.line"><span>{{source.name}} · {{source.item_name}} · {{fmt(source.remaining_qty)}} {{unit(source.uom)}} · {{source.area}}</span><LotusField v-if="source.can_assign" v-model="selectedStores[source.name]" aria-label="Kho cấp cho nhu cầu" :options="storeOptions" :searchable="false" empty-option="Chọn kho cấp"/><UiButton v-if="source.can_assign" variant="outline" :disabled="saving||!selectedStores[source.name]" @click="assign(source)">Gán kho</UiButton></div>
   </section>
   <ListPage :title="views.find(v=>v.id===view).label" :rows="listRows" :columns="listColumns" :loading="busy" :error="error" v-model:search="searchDraft" search-placeholder="Tìm vật tư, phiếu…" @refresh="load(true)"
-    :paged="view==='coverage'" :start="start" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}"
+    :paged="view==='coverage'" :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}"
     :storage-key="'lotus-stock-planning-'+view" show-empty-headers interactive :server-sort="view==='coverage'" :filter-values="view==='coverage'?data?.filter_values:undefined" :server-filters="view==='coverage'?filters:{}" :empty="empty[view]"
     @sort="model=>{sortModel=model;load(true)}" @filter="filter" @open="openRow">
    <template #filters><slot name="scope"/><DateRangePicker v-model:from="from" v-model:to="to"/><UiButton v-if="hasFilters" variant="outline" @click="resetFilters">Bỏ lọc</UiButton></template>

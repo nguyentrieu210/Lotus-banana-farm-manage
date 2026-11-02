@@ -22,7 +22,7 @@ const selectionDetail=ref(null)
 const forecastDetail=ref(null),supplySource=ref(null),supplyMonth=ref('')
 const showColorHistory=ref(false)
 const sourceColors=computed(()=>(props.payload.library?.color_history||[]).map(r=>({...r,injection_from:day(r.valid_from,-14),injection_to:day(r.valid_to,-14),harvest_from:day(r.valid_from,55),harvest_to:day(r.valid_to,70)})))
-const reference=ref(''),referenceSearch=ref(''),referenceRows=ref(null),referenceStart=ref(0)
+const reference=ref(''),referenceSearch=ref(''),referenceRows=ref(null),referenceStart=ref(0),referencePageSize=ref(100)
 const referenceLabels={tsSXKD:'Hệ số gốc',tsSXKD6:'Hệ số đánh giá vườn',tsRaHoa:'Phân bổ cắt bắp / thu hoạch',tsKHTH_R:'Thông số riêng theo thửa nguồn',tsKHTH_C:'Thông số chung theo tuổi cây',tsPC_C:'Phẩm cấp theo tháng',tsPC_R:'Phẩm cấp riêng',dmKHTH_C:'Tuổi và số vụ',ts_NMSoi:'Định mức phụ phẩm sợi'}
 const referenceOptions=computed(()=>(props.payload.library?.references||[]).map(r=>({value:r.table,label:`${referenceLabels[r.table]||r.table} · ${fmt(r.row_count,0)} dòng`})))
 let forecastRequest=0,uploadRequest=0
@@ -87,7 +87,7 @@ async function createTags(){
  await run(async()=>{const r=await call('lotus_farm.onedrive_workspace.generate_tags',{process_adoption:adoption.value,from_date:colorFrom.value,to_date:colorTo.value},true);notice.value=`Đã tạo ${r.created} đợt màu; ${r.existing} đợt đã có.`;emit('reload')})
 }
 async function loadForecast(){const request=++forecastRequest;await run(async()=>{const result=await call('lotus_farm.onedrive_workspace.forecast',{company:props.company||null,farm:props.farm||null,zone:props.zone||null,block:props.block||null,cycle:props.cycle||null,from_date:props.fromDate,include_handover:scenario.value?1:0});if(request===forecastRequest)forecast.value=result})}
-async function loadReference(start=0){referenceStart.value=start;await run(async()=>{referenceRows.value=await call('lotus_farm.onedrive_workspace.reference_table',{table:reference.value,start,length:100,search:referenceSearch.value||null})})}
+async function loadReference(start=0){referenceStart.value=start;await run(async()=>{referenceRows.value=await call('lotus_farm.onedrive_workspace.reference_table',{table:reference.value,start,length:referencePageSize.value,search:referenceSearch.value||null})})}
 onMounted(()=>{if(props.forecastOnly)loadForecast()})
 function workflowOpen(row){if(!row.can_read)return;if(['handover','selection','forecast'].includes(row.key)){tab.value=row.key;return}emit('navigate',row.route,{doctype:row.doctype})}
 function openSource(row){if(row.url)window.open(row.url,'_blank','noopener')}
@@ -129,7 +129,7 @@ function inheritedCycle(){emit('edit','Crop Cycle',null,{farm:props.farm,farm_bl
    <DataTable :rows="filter(payload.adoptions)" :columns="adoptionCols" interactive @open="openConfig"/>
    <DataTable :rows="filter(payload.library?.defaults)" :columns="parameterCols"/>
    <div class="process-toolbar"><SearchSelect v-model="reference" :options="referenceOptions" label="Bảng thông số chi tiết" @change="loadReference()"/><UiInput v-model="referenceSearch" aria-label="Tìm thông số nguồn" placeholder="Tìm mã thửa, vườn, năm…" @keyup.enter="loadReference()"/><UiButton variant="outline" :disabled="!reference||busy" @click="loadReference()">Đọc thông số chi tiết</UiButton></div>
-   <template v-if="referenceRows"><p class="notice">{{fmt(referenceRows.total,0)}} dòng tham chiếu nguồn · dữ liệu của đơn vị nguồn được giữ riêng.</p><DataTable :rows="referenceRows.rows" :columns="referenceRows.columns.map(field=>col(field,field==='_source_row'?'Dòng nguồn':field))"/><Pagination :start="referenceStart" :count="referenceRows.rows.length" :has-more="referenceRows.has_more" :page-size="100" @update:start="loadReference"/></template>
+   <template v-if="referenceRows"><p class="notice">{{fmt(referenceRows.total,0)}} dòng tham chiếu nguồn · dữ liệu của đơn vị nguồn được giữ riêng.</p><DataTable :paginate="false" :row-index-offset="referenceStart" :rows="referenceRows.rows" :columns="referenceRows.columns.map(field=>col(field,field==='_source_row'?'Dòng nguồn':field))"/><Pagination :start="referenceStart" :count="referenceRows.rows.length" :has-more="referenceRows.has_more" :page-size="referencePageSize" :disabled="busy" @update:page-size="value=>{referencePageSize=value;loadReference()}" @update:start="loadReference"/></template>
   </template>
   <template v-else-if="tab==='forecast'">
    <div class="process-toolbar"><UiButton :disabled="busy" @click="loadForecast">Tính 36 tháng</UiButton><UiButton variant="outline" :disabled="!cutSources.length" @click="forecastDetail={}">Nguồn buồng cắt bắp</UiButton><LotusField type="checkbox" label="Mô phỏng riêng từ cây cũ bàn giao" v-model="scenario"  @change="loadForecast"/></div>

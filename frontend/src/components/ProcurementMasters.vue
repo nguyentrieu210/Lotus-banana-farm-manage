@@ -16,7 +16,7 @@ import {money} from '../procurement'
 // Nhà cung cấp / Hàng mua: server-paged list; a record opens in the standard dialog (desktop) or inline (phone).
 const props=defineProps({company:String,kind:String,mobile:Boolean})
 const emit=defineEmits(['navigate','dirty'])
-const rows=ref([]),search=ref(''),state=ref('active'),group=ref(''),start=ref(0),total=ref(0),more=ref(false),busy=ref(false),error=ref(''),options=ref({}),editing=ref(false),selected=ref(''),history=ref(null),dirty=ref(false)
+const rows=ref([]),search=ref(''),state=ref('active'),group=ref(''),start=ref(0),pageSize=ref(50),total=ref(0),more=ref(false),busy=ref(false),error=ref(''),options=ref({}),editing=ref(false),selected=ref(''),history=ref(null),dirty=ref(false)
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const api=(m,args={})=>call('lotus_farm.procurement_masters.'+m,args)
 const suppliers=computed(()=>props.kind==='suppliers')
@@ -29,7 +29,7 @@ const groupOptions=computed(()=>(suppliers.value?options.value.supplier_groups||
 const stateOptions=[{value:'active',label:'Đang dùng'},{value:'disabled',label:'Ngừng dùng'},{value:'all',label:'Tất cả'}]
 const historyLinks=[['quotes','Báo giá'],['orders','Đơn mua'],['receipts','Phiếu nhận'],['invoices','Hóa đơn'],['payments','Thanh toán'],['payables','Công nợ']]
 let timer
-async function load(){busy.value=true;error.value='';try{const r=await api('listing',{company:props.company,kind:props.kind,search:search.value,state:state.value,group:group.value,start:start.value});rows.value=r.rows;total.value=r.total_count;more.value=r.has_more}catch(e){error.value=e.message}finally{busy.value=false}}
+async function load(){busy.value=true;error.value='';try{const r=await api('listing',{company:props.company,kind:props.kind,search:search.value,state:state.value,group:group.value,start:start.value,page_length:pageSize.value});rows.value=r.rows;total.value=r.total_count;more.value=r.has_more}catch(e){error.value=e.message}finally{busy.value=false}}
 async function open(row){selected.value=row?.name||'';editing.value=true;history.value=null;setDirty(false);if(row&&suppliers.value)try{history.value=await call('lotus_farm.procurement_queries.supplier_history',{company:props.company,supplier:row.name})}catch(e){error.value=e.message}}
 function setDirty(v){dirty.value=v;emit('dirty',v)}
 function close(){editing.value=false;selected.value='';setDirty(false)}
@@ -44,7 +44,7 @@ defineExpose({hasChanges:()=>dirty.value,close})
 <template>
  <template v-if="!mobile">
   <ListPage :title="suppliers?'Nhà cung cấp':'Hàng mua'" :rows="rows" :columns="columns" :loading="busy" :error="error" v-model:search="search" search-placeholder="Tên, mã, MST, điện thoại…" @refresh="load"
-    paged :start="start" :total="total" :has-more="more" @update:start="value=>{start=value;load()}" :storage-key="'procurement-master-'+kind" show-empty-headers interactive empty="Chưa có hồ sơ phù hợp." @open="open">
+    paged :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="total" :has-more="more" @update:start="value=>{start=value;load()}" :storage-key="'procurement-master-'+kind" show-empty-headers interactive empty="Chưa có hồ sơ phù hợp." @open="open">
    <template #filters><slot name="scope"/><LotusField v-model="state" aria-label="Trạng thái" :options="stateOptions" :searchable="false" :empty-option="null" @update:model-value="reset"/><LotusField v-model="group" aria-label="Nhóm" :options="groupOptions" :searchable="false" empty-option="Tất cả nhóm" @update:model-value="reset"/></template>
    <template #actions><Button v-if="canCreate" @click="open()">{{addLabel}}</Button></template>
   </ListPage>

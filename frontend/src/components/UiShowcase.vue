@@ -56,8 +56,8 @@ async function fetchItems(search){await new Promise(r=>setTimeout(r,250));return
   <section><h2>Bảng (lọc cột, chế độ xem)</h2><DataTable :rows="stockRows" :columns="stockColumns" storage-key="showcase-stock"/></section>
   <section><h2>Tab, phân trang, tải, trống</h2>
    <WorkspaceTabs v-model="tab" :items="[{id:'a',label:'Tồn kho'},{id:'b',label:'Lịch sử'},{id:'c',label:'Nhập xuất'}]" label="Ví dụ tab"/>
-   <Pagination v-model:start="start" :count="50" has-more/>
-   <Pagination v-model:start="start2" :count="50" :total="1234"/>
+   <Pagination :size-selectable="false" v-model:start="start" :count="50" has-more/>
+   <Pagination :size-selectable="false" v-model:start="start2" :count="50" :total="1234"/>
    <div class="grid"><div><UiSkeleton style="height:34px;margin-bottom:8px"/><UiSkeleton style="height:34px;margin-bottom:8px"/><UiSkeleton style="height:34px"/></div>
    <DesktopEmptyState title="Chưa có phiếu nhập" description="Tạo phiếu đầu tiên hoặc đổi bộ lọc."><template #actions><UiButton size="sm">Tạo phiếu nhập</UiButton><UiButton size="sm" variant="outline">Xóa bộ lọc</UiButton></template></DesktopEmptyState></div>
   </section>

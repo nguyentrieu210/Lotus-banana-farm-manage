@@ -10,7 +10,7 @@ function close(){if(!props.busy)emit('update:modelValue',false)}
 function submit(){if(!props.busy&&!props.readonly&&!props.submitDisabled)emit('submit')}
 </script>
 <template>
- <WorkspaceModal :model-value="modelValue" :title="title" :busy="busy" :width="width" @update:model-value="value=>emit('update:modelValue',value)" @cancel="emit('cancel',$event)">
+ <WorkspaceModal :model-value="modelValue" :title="title" :busy="busy" :width="width" :expanded="!readonly" @update:model-value="value=>emit('update:modelValue',value)" @cancel="emit('cancel',$event)">
   <form class="lotus-modal-form" @submit.prevent="submit">
    <p v-if="description" class="lotus-modal-form__description">{{description}}</p>
    <p v-if="error" class="lotus-modal-form__error" role="alert">{{error}}</p>
