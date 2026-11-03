@@ -17,6 +17,9 @@ Preserve each source catalog's existing copyright and license notices.
 
 Catalog coverage: Frappe 6,340; ERPNext 10,300; HRMS 2,172 nonempty messages.
 The metadata audit covered 819 doctypes and 7,462 UI strings across both sites.
+The final frontend audit also covers 354 filter captions/choices in 179 DML reports.
+The DML repository's `translations/vi-reports.csv` supplies report captions absent
+from upstream, and both packs use Vietnamese stock-unit, serial-number and batch labels.
 Remaining untranslated human UI strings: zero in that captured inventory.
 Technical IDs, document codes, numbering series, brands and format identifiers
 remain unchanged. This inventory is a bounded check, not a claim about arbitrary

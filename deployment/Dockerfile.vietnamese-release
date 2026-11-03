@@ -12,6 +12,9 @@ COPY --chown=frappe:root app/lotus_farm/vietnamese.py /home/frappe/frappe-bench/
 COPY --chown=frappe:root app/deployment/translations/frappe-vi.po /home/frappe/frappe-bench/apps/frappe/frappe/locale/vi.po
 COPY --chown=frappe:root app/deployment/translations/erpnext-vi.po /home/frappe/frappe-bench/apps/erpnext/erpnext/locale/vi.po
 COPY --chown=frappe:root app/deployment/translations/hrms-vi.po /home/frappe/frappe-bench/apps/hrms/hrms/locale/vi.po
+RUN chmod 644 /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/vietnamese.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/translations/vi.csv /home/frappe/frappe-bench/apps/frappe/frappe/locale/vi.po /home/frappe/frappe-bench/apps/erpnext/erpnext/locale/vi.po /home/frappe/frappe-bench/apps/hrms/hrms/locale/vi.po \
+ && find /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend -type d -exec chmod 755 {} + \
+ && find /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend -type f -exec chmod 644 {} +
 LABEL org.opencontainers.image.revision=${REVISION} \
       com.lotus.dml.revision=${DML_REVISION} \
       com.lotus.base.image.id=${BASE_IMAGE_ID} \

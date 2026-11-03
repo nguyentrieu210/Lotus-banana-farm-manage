@@ -1,1 +1,0 @@
-import{l as e}from"./use-workspace-confirm-BJfZSSnt.js";function t(){try{return e().farm||``}catch{return``}}export{t};
