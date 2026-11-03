@@ -32,8 +32,12 @@ the source catalogs.
 
 Deployment uses `Dockerfile.vietnamese-release` from exact Lotus/DML git archives
 and the tested frontend builds, with the verified previous release as its base.
-Compile only Vietnamese catalogs using `frappe.gettext.translate.compile_translations`
-after switching the application image. No application/schema upgrade is needed.
+Compile and read back Vietnamese catalogs during the image build using
+`deployment/compile_vietnamese.py`. In this deployment, `sites/assets` resolves to
+`/home/frappe/frappe-bench/assets`, outside the persistent sites volume. Runtime
+compilation alone is lost when containers are replaced. Verify the image with
+`python /tmp/compile_vietnamese.py --check-only` in a fresh container.
+No application/schema upgrade is needed.
 
 For **each** backed-up site, first run
 `lotus_farm.vietnamese.install_vietnamese` with its default `dry_run=True`.
