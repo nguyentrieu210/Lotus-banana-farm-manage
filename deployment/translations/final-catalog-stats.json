@@ -1,0 +1,37 @@
+{
+  "stats": [
+    {
+      "app": "frappe",
+      "messages": 6340,
+      "translated": 6340
+    },
+    {
+      "app": "erpnext",
+      "messages": 10300,
+      "translated": 10300
+    },
+    {
+      "app": "hrms",
+      "messages": 2172,
+      "translated": 2172
+    }
+  ],
+  "invalid": [],
+  "literal_percent_labels": [
+    "Use % for any non empty value.",
+    "% Finished Item Quantity",
+    "% of Component Cost",
+    "% of materials billed against this Sales Order",
+    "% of materials delivered against this Pick List",
+    "% of materials delivered against this Sales Order",
+    "Check if this tax is not applicable to items (distinct from 0% rate)",
+    "In this case, the amount will be calculated as 25% of the transaction amount. If the transaction amount is 200, then this will be calculated as 200 * 0.25 = 50.",
+    "Maximum discount % allowed when selling this item. Eg: if set to 20%, a discount greater than 20% cannot be applied in sales transactions.",
+    "Progress % for a task cannot be more than 100.",
+    "Row #{0}: % of Component Cost needs a BOM secondary item. Choose Valuation Rate or Manual for {1}.",
+    "Row #{0}: Process Loss Percentage should be less than 100% for {1} Item {2}",
+    "Valuation Rate and Manual value this item on its own and deduct that cost from the raw material cost, like the pre-v16 scrap items. % of Component Cost allocates a percentage of the remaining raw material cost.",
+    "{0}% of total invoice value will be given as discount.",
+    "For a day of leave taken, if you still pay (say) 50% of the daily salary, then enter 0.50 in this field."
+  ]
+}

@@ -1,4 +1,5 @@
 // Vietnamese display labels; stored document identifiers remain unchanged.
+import {systemLabel} from './system-translations.js'
 const names={
   "Genderqueer": "Đa dạng giới",
   "Non-Conforming": "Không theo chuẩn giới",
@@ -83,4 +84,4 @@ Object.assign(names,{
   "Fixed-term": "Hợp đồng xác định hạn",
   "Seasonal": "Thời vụ"
 })
-export const hrCatalogLabel=value=>{if(!value)return value;const parts=value.match(/^(.*) - ([^-]+)$/);return names[value]||(parts&&names[parts[1]]?names[parts[1]]+' - '+parts[2]:value)}
+export const hrCatalogLabel=value=>{if(!value)return value;const parts=value.match(/^(.*) - ([^-]+)$/);return names[value]||(parts&&names[parts[1]]?names[parts[1]]+' - '+parts[2]:systemLabel(value))}
