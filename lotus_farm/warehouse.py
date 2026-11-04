@@ -185,6 +185,7 @@ def document(doctype, name):
                 can_submit=doc.docstatus == 0 and doc.has_permission('submit') and _simple_doc(doc),
                 can_write=doc.docstatus == 0 and doc.has_permission('write') and _simple_doc(doc),
                 can_delete=doc.docstatus == 0 and doc.has_permission('delete') and _simple_doc(doc),
+                can_cancel=doc.docstatus == 1 and doc.has_permission('cancel') and _simple_doc(doc),
                 items=[dict(item=row.item_code, item_name=row.item_name,
                             uom=(row.get('uom') if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('stock_uom') or row.get('uom')),
                             qty=(flt(row.qty) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else flt(row.get('transfer_qty')) if doc.doctype=='Stock Entry' else row.qty),
@@ -244,6 +245,36 @@ def submit_document(doctype, name,modified=None):
 
 
 @frappe.whitelist(methods=['POST'])
+def cancel_document(doctype, name, modified, reason):
+    """Hủy phiếu đã ghi sổ: ERPNext reverses the stock ledger and the journal. Only for accounts ERPNext lets cancel
+    (the Kho role cannot); the reason is kept as a comment on the document."""
+    from lotus_farm.controls import lock
+    if doctype not in ('Stock Entry', 'Stock Reconciliation'):
+        frappe.throw('Loại phiếu không hợp lệ.')
+    lock(doctype, name)
+    doc = _stock_doc(doctype, name)
+    doc.check_permission('cancel')
+    if not _simple_doc(doc):
+        frappe.throw('Phiếu có nghiệp vụ nâng cao; hủy trong ERPNext.')
+    if doc.docstatus == 2:
+        return dict(name=doc.name, docstatus=2)
+    if doc.docstatus != 1:
+        frappe.throw('Chỉ hủy được phiếu đã ghi sổ. Phiếu nháp thì xóa.')
+    if str(doc.modified) != str(modified):
+        frappe.throw('Phiếu đã thay đổi. Mở lại trước khi hủy.')
+    reason = _text(reason, 'Lý do hủy')
+    if doc.get('lotus_purchase_invoice'):
+        frappe.throw('Phiếu đã có hóa đơn mua ' + doc.lotus_purchase_invoice + '. Hủy hóa đơn trước.')
+    correction = frappe.db.get_value('Stock Reconciliation', {'docstatus': 1, 'lotus_client_key': ['like', 'lotus-cost-of-receipt:' + doc.name + ':%']}, 'name') \
+        if doctype == 'Stock Entry' and frappe.get_meta('Stock Reconciliation').has_field('lotus_client_key') else None
+    if correction:
+        frappe.throw('Phiếu có điều chỉnh giá ' + correction + '. Hủy phiếu điều chỉnh giá trước.')
+    doc.add_comment('Comment', 'Hủy phiếu: ' + reason)
+    doc.cancel()
+    return dict(name=doc.name, docstatus=doc.docstatus)
+
+
+@frappe.whitelist(methods=['POST'])
 def delete_draft(doctype,name,modified):
     doc=_stock_doc(doctype,name);doc.check_permission('delete')
     if doc.docstatus!=0 or not _simple_doc(doc):frappe.throw('Chỉ xóa phiếu nháp đơn giản chưa ghi sổ.')
@@ -277,12 +308,20 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     for dt,entry_types in scope.items():
         if not frappe.has_permission(dt,'read'):continue
         dt_filters=dict(filters,stock_entry_type=['in',entry_types]) if entry_types else filters
-        for entry in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified'],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0):
-            if search and str(search).casefold() not in entry.name.casefold():continue
-            doc=frappe.get_doc(dt,entry.name)
-            names={r.get(f) for r in doc.items for f in ('s_warehouse','t_warehouse','warehouse') if r.get(f)}
+        entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified']+(['stock_entry_type'] if dt=='Stock Entry' else []),order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
+                 if not search or str(search).casefold() in e.name.casefold()]
+        # Warehouses of every listed document in one read of the item table (parents are already permission-filtered).
+        child,wh_fields={'Stock Entry':('Stock Entry Detail',['s_warehouse','t_warehouse']),'Stock Reconciliation':('Stock Reconciliation Item',['warehouse']),'Purchase Receipt':('Purchase Receipt Item',['warehouse'])}[dt]
+        by_parent={}
+        parents=[e.name for e in entries]
+        for offset in range(0,len(parents),500):
+            for line in frappe.get_all(child,filters={'parenttype':dt,'parent':['in',parents[offset:offset+500]]},fields=['parent',*wh_fields],limit_page_length=0):
+                by_parent.setdefault(line.parent,set()).update(line.get(f) for f in wh_fields if line.get(f))
+        for entry in entries:
+            names=by_parent.get(entry.name,set())
             if not names.issubset(allowed) or (warehouse and warehouse not in names):continue
-            entry.doctype=dt;entry.kind=kinds.get(doc.get('stock_entry_type'),doc.get('stock_entry_type')) if dt=='Stock Entry' else ('Nhập mua' if dt=='Purchase Receipt' else 'Kiểm kê')
+            entry_type=entry.pop('stock_entry_type',None)
+            entry.doctype=dt;entry.kind=kinds.get(entry_type,entry_type) if dt=='Stock Entry' else ('Nhập mua' if dt=='Purchase Receipt' else 'Kiểm kê')
             entry.warehouses=' · '.join(sorted(names));rows.append(entry)
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
     fields=['name','kind','posting_date','docstatus','warehouses']
@@ -319,6 +358,25 @@ def stock_summary(company,warehouse=None,from_date=None,to_date=None,search=None
     return dict(from_date=str(from_date),to_date=str(to_date),rows=rows,totals=totals,item_count=len({r['item_code'] for r in rows}))
 
 
+def _count_changes(rows):
+    """A stock count (Stock Reconciliation) stores the quantity after the count and leaves actual_qty at 0.
+    Its change is the gap to the line before it for the same item and warehouse, as in finance.statements.ledger_summary.
+    `rows` are newest first; the line before the oldest one in the list is read from the ledger."""
+    previous = {}
+    for row in reversed(rows):
+        key = (row.item_code, row.warehouse)
+        if row.voucher_type == 'Stock Reconciliation' and not flt(row.actual_qty):
+            if key not in previous:
+                before = frappe.db.sql('''select qty_after_transaction from `tabStock Ledger Entry`
+                    where item_code=%s and warehouse=%s and is_cancelled=0
+                      and (posting_datetime<%s or (posting_datetime=%s and creation<%s))
+                    order by posting_datetime desc, creation desc limit 1''',
+                    (row.item_code, row.warehouse, row.posting_datetime, row.posting_datetime, row.creation))
+                previous[key] = flt(before[0][0]) if before else 0
+            row.actual_qty = flt(row.qty_after_transaction) - previous[key]
+        previous[key] = flt(row.qty_after_transaction)
+
+
 @frappe.whitelist()
 def movements(company, warehouse=None, search=None, from_date=None,to_date=None,start=0,column_filters=None,sort_model=None,length=50):
     length=max(1,min(cint(length) or 50,100))
@@ -349,9 +407,10 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         filters['posting_date'] = ['<=', getdate(to_date)]
     rows = frappe.get_list('Stock Ledger Entry', filters=filters,
         fields=['name', 'posting_date', 'posting_time', 'item_code', 'warehouse', 'voucher_type', 'voucher_no',
-                'voucher_detail_no', 'actual_qty', 'qty_after_transaction', 'stock_uom'],
+                'voucher_detail_no', 'actual_qty', 'qty_after_transaction', 'stock_uom', 'posting_datetime', 'creation'],
         order_by='posting_datetime desc, creation desc, name desc', limit_page_length=0)
     query = str(search or '').strip().casefold()[:100]
+    _count_changes(rows)
     for row in rows:
         row.item_name = labels[row.item_code]
         row.in_qty = max(0, flt(row.actual_qty))
@@ -536,6 +595,24 @@ def _number(value, label, allow_zero=False):
     return result
 
 
+def _stock_rate(item, company, warehouse=None):
+    """Current cost of one stock unit: the warehouse's valuation, else the average over the company's warehouses
+    holding stock, else the item's last ledger rate in the company, else the item master's valuation rate."""
+    if warehouse:
+        rate = flt(frappe.db.get_value('Bin', {'item_code': item, 'warehouse': warehouse}, 'valuation_rate'))
+        if rate > 0:
+            return rate
+    qty, value = frappe.db.sql('''select coalesce(sum(b.actual_qty),0), coalesce(sum(b.stock_value),0) from tabBin b
+        join tabWarehouse w on w.name=b.warehouse where b.item_code=%s and w.company=%s and b.actual_qty>0''', (item, company))[0]
+    if flt(qty) > 0 and flt(value) > 0:
+        return flt(value) / flt(qty)
+    last = frappe.db.sql('''select valuation_rate from `tabStock Ledger Entry` where item_code=%s and company=%s
+        and is_cancelled=0 and valuation_rate>0 order by posting_datetime desc, creation desc limit 1''', (item, company))
+    if last:
+        return flt(last[0][0])
+    return flt(frappe.db.get_value('Item', item, 'valuation_rate'))
+
+
 @frappe.whitelist()
 def receipt_accounts(company):
     _access()
@@ -639,6 +716,10 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         doc.stock_entry_type = types[kind]
         doc.remarks = str(notes or '')[:2000]
         if kind == 'receipt' and doc.meta.has_field('lotus_receipt_reason'):
+            if existing_name and not receipt_reason:
+                # Editing a draft without naming the reason keeps the saved reason and supplier.
+                receipt_reason = doc.get('lotus_receipt_reason')
+                supplier = supplier or doc.get('lotus_supplier')
             if receipt_reason and receipt_reason not in ('Purchase', 'Recovery', 'Surplus'):
                 frappe.throw('Lý do nhập kho không hợp lệ.')
             # The finance rules (lotus_farm.finance.stock) decide the credited account from the reason.
@@ -687,16 +768,29 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                 if not conversion:
                     frappe.throw('Đơn vị '+('xuất' if kind=='issue' else 'nhập')+' chưa được khai báo quy đổi cho vật tư '+item.name)
                 factor=_number(conversion.conversion_factor, 'Hệ số quy đổi')
-        # Existing clients can omit rates; new receipt forms send explicit prices.
-        existing_rate = frappe.db.get_value('Bin', {'item_code': item.name, 'warehouse': target or source}, 'valuation_rate') or item.get('valuation_rate') or 0
-        rate = _number(row.get('rate', existing_rate), 'Định giá', allow_zero=True)
-        if kind == 'receipt' and receipt_reason == 'Purchase' and rate <= 0:
+        # Prices are per entry unit (rate/factor = per stock unit). Older clients may omit them.
+        given = row.get('rate')
+        rate = _number(given, 'Định giá', allow_zero=True) if given not in (None, '') else None
+        if kind == 'receipt' and receipt_reason == 'Purchase' and not rate:
             frappe.throw('Nhập giá mua cho ' + item.item_name + '.')
+        if kind == 'receipt' and not rate:
+            # Thu hồi / thừa without a price come in at the current cost: a 0 price would dilute the average cost
+            # and post nothing (no credit to the lot's 621 or to 3381).
+            rate = _stock_rate(item.name, company, target) * factor
+            if rate <= 0:
+                frappe.throw('Chưa có giá vốn của ' + item.item_name + ' ở kho nào. Nhập đơn giá cho dòng này.')
+        elif rate is None:
+            rate = _stock_rate(item.name, company, target or source) * factor
         values = dict(item_code=item.name, qty=qty, allow_zero_valuation_rate=1)
         if kind == 'count':
             if count_purpose=='Stock Reconciliation':
                 from erpnext.stock.utils import get_stock_balance
                 _,rate=get_stock_balance(item.name,target,getdate(posting_date),with_valuation_rate=True)
+                if qty>0 and flt(rate)<=0:
+                    # Found stock of an item this warehouse never valued: use its cost elsewhere so the surplus posts to 3381.
+                    rate=_stock_rate(item.name,company)
+                    if rate<=0:
+                        frappe.throw('Chưa có giá vốn của '+item.item_name+' ở kho nào. Lập phiếu Nhập kho lý do "Thừa khi kiểm kê" có đơn giá cho hàng thừa này.')
                 values.update(warehouse=target,valuation_rate=flt(rate))
             else:
                 if qty>0 and rate<=0:frappe.throw('Tồn đầu kỳ cần đơn giá lớn hơn 0 cho '+item.name)

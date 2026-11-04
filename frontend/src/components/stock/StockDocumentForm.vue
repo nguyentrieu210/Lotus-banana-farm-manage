@@ -59,7 +59,7 @@ const lineColumns=computed(()=>{
    props:r=>({min:count||!manual.value?0:0.000001,max:!manual.value?quantityLimit(r):undefined}),
    hint:r=>['receipt','issue'].includes(form.kind)&&r.uom&&r.stock_uom&&r.uom!==r.stock_uom?'= '+fmt(stockQuantity(r))+' '+unitLabel(r.stock_uom):unitLabel(r.uom||r.stock_uom)||''}]
  if(form.kind==='receipt'||issue)cols.push({field:'uom',label:issue?'Đơn vị xuất':'Đơn vị nhập hàng',type:'select',required:true,width:'minmax(150px,1fr)',options:row=>itemUnits(row).map(u=>({value:u.uom,label:unitLabel(u.uom)+(u.uom!==row.stock_uom?' (1 = '+fmt(u.conversion_factor)+' '+unitLabel(row.stock_uom)+')':'')})),props:{emptyOption:null}})
- if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
+ if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>form.kind==='receipt'&&form.receipt_reason!=='Purchase'&&!Number(r.rate)?'Để 0: lấy giá vốn hiện tại':'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
  if(issue||(form.kind==='receipt'&&form.receipt_reason==='Recovery'))cols.push({field:'area',label:issue?'Khu vực / lô sử dụng':'Lô thu hồi về',type:'combobox',options:blockCodes.value.map(b=>({value:b.code,label:b.label||b.code})),required:true,width:'minmax(160px,1.4fr)',readonly:r=>!manual.value&&r.fixed_area,props:{allowCustom:true,placeholder:'VD: A-1 / thửa 2'},
   hint:r=>manual.value?'Bắt đầu bằng mã lô để chi phí vào đúng lô.':'Duyệt '+fmt(r.required_qty)+' · Đã cấp/giữ '+fmt(r.allocated_qty)+' · Còn '+fmt(r.remaining_qty)+' '+unitLabel(r.stock_uom||r.uom)})
  return cols

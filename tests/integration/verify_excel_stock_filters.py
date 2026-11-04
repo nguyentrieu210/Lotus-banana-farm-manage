@@ -1,7 +1,7 @@
 """Read-only integration check for Excel-style filters against real Frappe site."""
 import os, json, frappe
 os.chdir('/home/frappe/frappe-bench/sites')
-frappe.init(site='frontend')
+frappe.init(site=__import__('os').environ.get('SITE','frontend'))
 frappe.connect()
 frappe.set_user('Administrator')
 from lotus_farm.table_filters import faceted_distinct, matches
@@ -24,8 +24,9 @@ try:
 
     company=frappe.db.get_value('Company', {}, 'name')
     base=warehouse.overview(company)
-    assert base['catalogue_count']==55
-    assert len(base['warehouses'])==4
+    catalogue=frappe.db.count('Item',{'disabled':0,'is_stock_item':1})
+    assert base['catalogue_count']==catalogue,(base['catalogue_count'],catalogue)
+    assert len(base['warehouses'])==frappe.db.count('Warehouse',{'company':company,'is_group':0,'disabled':0})
     names=[r['value'] for r in base['filter_values']['item_group'] if r['value']]
     assert names
     group=names[0]
@@ -43,7 +44,7 @@ try:
 
     missing=warehouse.overview(company,column_filters=json.dumps({'item_group':['__NOT_EXIST__']}))
     assert missing['total_count']==0
-    assert missing['catalogue_count']==55
+    assert missing['catalogue_count']==catalogue
     assert '__NOT_EXIST__' in [v['value'] for v in missing['filter_values']['item_group']]
     print('PASS no-match state preserves catalogue and selected filter')
 finally:
