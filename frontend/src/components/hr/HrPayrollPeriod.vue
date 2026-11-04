@@ -3,6 +3,7 @@ import WorkspaceListToolbar from '../WorkspaceListToolbar.vue'
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusIcon from '../LotusIcon.vue'
 import {unitLabel} from '../../units'
+import {formatDate} from '../../format'
 import DataTable from '../DataTable.vue'
 import MonthPicker from '../MonthPicker.vue'
 import WorkspaceModal from '../WorkspaceModal.vue'
@@ -102,7 +103,7 @@ async function fillRates(){
 const pcol=(field,headerName,format)=>({field,headerName,minWidth:130,...(format?{valueFormatter:p=>format(p.value,p.data)}:{})})
 const pmoney=(field,label)=>pcol(field,label,v=>money(v))
 const pnum=(field,label)=>pcol(field,label,v=>num(v))
-const rateCols=[pcol('label','Loại'),pmoney('rate','Mức'),pcol('valid_from','Áp dụng từ'),pcol('notes','Ghi chú')]
+const rateCols=[pcol('label','Loại'),pmoney('rate','Mức'),pcol('valid_from','Áp dụng từ',v=>formatDate(v)),pcol('notes','Ghi chú')]
 // By công: no hour or overtime columns. Sheets frozen before phụ cấp existed read their missing keys as zero.
 const sheetCols=[
  pcol('employee_name','Nhân viên',(_,r)=>r.employee_name+' · '+r.employee),

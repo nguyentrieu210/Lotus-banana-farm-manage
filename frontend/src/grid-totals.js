@@ -1,6 +1,6 @@
 // Sum row for the shared DataTable. A column is summed when it says sum:true, or when every filled value is a number
 // and the column is not a price, rate, running balance, code or date-like figure.
-const NOT_ADDITIVE=/đơn giá|giá thành|giá bán|giá mua|^giá(?! trị)|tỷ lệ|tỉ lệ|%|\/ ?(kg|ha|buồng|cây|tháng|ngày)|bình quân|trung bình|số dư|lũy kế|luỹ kế|sau giao dịch|tồn sau|mã|stt|số thứ tự|hệ số|định mức|điểm|hạng|thứ tự|tối thiểu|tối đa|mức|trạng thái|tình trạng|^(năm|tháng|kỳ|tuần|vụ|tuổi)(\s|$)|^ngày$|tuổi/i
+const NOT_ADDITIVE=/đơn giá|giá thành|giá bán|giá mua|^giá(?! trị)|tỷ lệ|tỉ lệ|%|\/ ?(kg|ha|buồng|cây|tháng|ngày)|bình quân|trung bình|số dư|lũy kế|luỹ kế|sau giao dịch|tồn sau|tồn trước|mã|stt|số thứ tự|hệ số|định mức|điểm|hạng|thứ tự|tối thiểu|tối đa|mức|trạng thái|tình trạng|^(năm|tháng|kỳ|tuần|vụ|tuổi)(\s|$)|^ngày$|tuổi/i
 const NOT_ADDITIVE_FIELD=/(^|_)(rate|price|percent|pct|ratio|idx|year|age|month|week|day|no|code|balance|after|avg|average|per|min|max|level|status|state)(_|$)|after_transaction|^(docstatus|disabled|enabled|is_|has_|must_)/i
 import {unitColumn} from './grid-format.js'
 // Quantities in different units (kg, lít, ml) have no meaningful total.

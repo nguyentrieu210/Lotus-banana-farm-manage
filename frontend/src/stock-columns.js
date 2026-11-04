@@ -14,7 +14,7 @@ export const stockColumns=[
  {field:'item_group',headerName:'Nhóm hàng',minWidth:130},
  {field:'stock_uom',headerName:'ĐVT',minWidth:78,valueFormatter:p=>unitLabel(p.value)},
  number('actual_qty','Tồn kho',105),
- {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,tooltip:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
+ {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,sum:false,tooltip:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
  number('minimum_stock','Tối thiểu chung',135),
  number('shortage_qty','Thiếu tối thiểu',125),
  {field:'stock_status',headerName:'Cảnh báo tồn',minWidth:125},
@@ -26,13 +26,27 @@ export const stockColumns=[
  {field:'coverage_status',headerName:'Tình trạng nhu cầu',minWidth:150,cellClass:p=>'lotus-coverage-state '+({'Đủ hàng':'is-covered','Chờ nhập':'is-incoming','Cần mua':'is-short'}[p.value]||'')}
 ]
 
-export function documentColumns(warehouseLabel){return [
- {field:'posting_date',headerName:'Ngày',minWidth:110,valueFormatter:p=>formatDate(p.value)},
- {field:'name',headerName:'Số phiếu',minWidth:215,flex:1.5},
- {field:'kind',headerName:'Loại phiếu',minWidth:125},
- {field:'warehouses',headerName:'Kho liên quan',minWidth:210,valueFormatter:p=>String(p.value||'').split(' · ').map(warehouseLabel).join(' · ')},
- {field:'docstatus',headerName:'Trạng thái',minWidth:120,valueFormatter:p=>statusLabel(p.value)}
-]}
+// One column set per document list: what the storekeeper looks for without opening the document.
+export function documentColumns(warehouseLabel,kind){
+ const col={
+  date:{field:'posting_date',headerName:'Ngày',minWidth:110,valueFormatter:p=>formatDate(p.value)},
+  name:{field:'name',headerName:'Số phiếu',minWidth:190,flex:1.2},
+  kind:{field:'kind',headerName:'Loại phiếu',minWidth:125},
+  warehouses:label=>({field:'warehouses',headerName:label,minWidth:190,valueFormatter:p=>String(p.value||'').split(' · ').map(warehouseLabel).join(' · ')}),
+  reason:{field:'reason',headerName:'Lý do nhập',minWidth:130},
+  supplier:{field:'supplier',headerName:'Nhà cung cấp',minWidth:170,flex:1},
+  receiver:{field:'receiver',headerName:'Người nhận',minWidth:160,flex:1},
+  areas:{field:'areas',headerName:'Khu / lô sử dụng',minWidth:150},
+  notes:{field:'notes',headerName:'Ghi chú',minWidth:200,flex:1.4,tooltip:p=>p.data?.notes||''},
+  status:{field:'docstatus',headerName:'Trạng thái',minWidth:115,valueFormatter:p=>statusLabel(p.value)}
+ }
+ return {
+  receipts:[col.date,col.name,col.kind,col.reason,col.supplier,col.warehouses('Kho nhận'),col.notes,col.status],
+  issues:[col.date,col.name,col.receiver,col.areas,col.warehouses('Kho xuất'),col.notes,col.status],
+  transfers:[col.date,col.name,col.warehouses('Kho liên quan'),col.notes,col.status],
+  counts:[col.date,col.name,{...col.kind,headerName:'Loại kiểm kê'},col.warehouses('Kho'),col.notes,col.status]
+ }[kind]||[col.date,col.name,col.kind,col.warehouses('Kho liên quan'),col.status]
+}
 
 export function movementColumns(warehouseLabel){return [
  {field:'posting_date',headerName:'Ngày giờ',minWidth:142,valueFormatter:p=>p.value?formatDate(p.value)+(p.data?.posting_time?' · '+String(p.data.posting_time).slice(0,5):''):'—'},
@@ -43,7 +57,7 @@ export function movementColumns(warehouseLabel){return [
  {field:'item_code',headerName:'Mã vật tư',minWidth:135},
  {field:'warehouse',headerName:'Kho',minWidth:150,valueFormatter:p=>warehouseLabel(p.value)},
  {field:'stock_uom',headerName:'ĐVT',minWidth:85,valueFormatter:p=>unitLabel(p.value)},
- number('opening_qty','Tồn trước',100),
+ {...number('opening_qty','Tồn trước',100),sum:false},
  number('in_qty','Nhập',90),
  number('out_qty','Xuất',90),
  number('qty_after_transaction','Tồn sau',105),
@@ -78,7 +92,7 @@ export function receiptDetailColumns(cash){return [
 ]}
 
 export const masterColumns={
- warehouses:[{field:'warehouse_name',headerName:'Tên kho',minWidth:180,flex:1.2},{field:'name',headerName:'Mã kho',minWidth:160},{field:'lotus_address',headerName:'Địa chỉ kho',minWidth:220,flex:1.4},{field:'lotus_contact_name',headerName:'Người phụ trách',minWidth:150},{field:'lotus_contact_phone',headerName:'Liên hệ',minWidth:120},{field:'lotus_default_lead_days',headerName:'Chờ hàng (ngày)',minWidth:120,type:'numericColumn'}],
+ warehouses:[{field:'warehouse_name',headerName:'Tên kho',minWidth:180,flex:1.2},{field:'name',headerName:'Mã kho',minWidth:160},{field:'lotus_address',headerName:'Địa chỉ kho',minWidth:220,flex:1.4},{field:'lotus_contact_name',headerName:'Người phụ trách',minWidth:150},{field:'lotus_contact_phone',headerName:'Liên hệ',minWidth:120},{field:'lotus_default_lead_days',headerName:'Chờ hàng (ngày)',minWidth:120,type:'numericColumn',sum:false}],
  items:[{field:'item_name',headerName:'Tên vật tư',minWidth:220,flex:1.6},{field:'name',headerName:'Mã vật tư',minWidth:160},{field:'item_group',headerName:'Nhóm vật tư',minWidth:140,valueFormatter:p=>hrCatalogLabel(p.value)},{field:'stock_uom',headerName:'ĐVT gốc',minWidth:90,valueFormatter:p=>unitLabel(p.value)},{field:'pack_uom',headerName:'Quy đổi',minWidth:150,valueFormatter:p=>p.value?'1 '+unitLabel(p.value)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'—'},number('minimum_stock','Tồn tối thiểu',120),{field:'disabled',headerName:'Trạng thái',minWidth:110,valueFormatter:p=>p.value?'Ngừng dùng':'Đang dùng'}],
  groups:[{field:'name',headerName:'Nhóm vật tư',minWidth:200,flex:1.4,valueFormatter:p=>hrCatalogLabel(p.value)},{field:'parent_item_group',headerName:'Thuộc nhóm',minWidth:180,valueFormatter:p=>hrCatalogLabel(p.value)}],
  uoms:[{field:'name',headerName:'Mã đơn vị',minWidth:160},{headerName:'Tên hiển thị',minWidth:160,flex:1,valueGetter:p=>unitLabel(p.data.name)},{field:'must_be_whole_number',headerName:'Chỉ số nguyên',minWidth:120,valueFormatter:p=>p.value?'Có':'Không'},{field:'enabled',headerName:'Trạng thái',minWidth:120,valueFormatter:p=>p.value?'Đang dùng':'Ngừng dùng'}]

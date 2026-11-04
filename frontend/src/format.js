@@ -6,6 +6,11 @@ export function formatDate(value,empty='—'){
  const m=parts(value);if(!m||!m[3])return value?String(value):empty
  return dayFormat.format(Date.UTC(+m[1],+m[2]-1,+m[3]))
 }
+// 'YYYY-MM-DD HH:mm[:ss]' → 'dd/mm/yyyy HH:mm[:ss]' (punch times, logs).
+export function formatDateTime(value,empty='—'){
+ const day=formatDate(value,empty),time=/[ T](\d{2}:\d{2}(?::\d{2})?)/.exec(String(value||''))
+ return time&&day!==empty?day+' '+time[1]:day
+}
 export function formatMonthShort(value,empty='—'){
  const m=parts(value);if(!m)return value?String(value):empty
  // compact axis label: MM/YY (Intl vi-VN would print 'tháng 03, 26')

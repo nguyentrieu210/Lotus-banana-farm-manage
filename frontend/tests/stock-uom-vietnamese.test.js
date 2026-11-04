@@ -35,6 +35,6 @@ test('both stock and packaging UOM selectors are curated and conversion is a vis
  assert.match(stock,/v-model="master\.pack_uom" label="Đơn vị đóng gói \/ quy đổi" :options="packOptions"/)
  assert.doesNotMatch(stock,/catalog\.uoms\.filter\(u=>u\.name!==master\.uom\)/)
  assert.match(stock,/field:'pack_actual_qty',headerName:'Tồn quy đổi'/)
- assert.match(stock,/minWidth:132,tooltip:/)
+ assert.match(stock,/minWidth:132,sum:false,tooltip:/) // pack units differ per item: no total
  assert.ok(stock.indexOf("field:'pack_actual_qty'")>stock.indexOf("number('actual_qty'"))
 })

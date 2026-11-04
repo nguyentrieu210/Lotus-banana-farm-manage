@@ -11,6 +11,7 @@ import ModalForm from './form/ModalForm.vue'
 import FormGrid from './form/FormGrid.vue'
 import LotusField from './form/LotusField.vue'
 import DataTable from './DataTable.vue'
+import {formatDate,formatDateTime} from '../format'
 import LotusGridEditCell from './LotusGridEditCell.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 import HrDevicePanel from './hr/HrDevicePanel.vue'
@@ -21,26 +22,33 @@ const punchActions={
  isChecked:p=>selected.value.includes(p.name),
  toggle:(p,checked)=>{selected.value=checked?[...new Set([...selected.value,p.name])]:selected.value.filter(n=>n!==p.name)}
 }
+const employeeName=id=>org.value?.employees?.find(e=>e.name===id)?.employee_name||id||'—'
+const importLabels={department_name:'Tên bộ phận',parent_department:'Bộ phận cha',designation_name:'Tên chức danh',farm:'Vườn',team_code:'Mã tổ/đội',team_name:'Tên tổ/đội',
+ employee:'Nhân viên',department:'Bộ phận',designation:'Chức danh',work_team:'Tổ/đội',role_title:'Chức vụ',valid_from:'Từ ngày',valid_to:'Đến ngày',approver:'Người duyệt',
+ shift_name:'Tên ca',start_time:'Giờ bắt đầu',end_time:'Giờ kết thúc',shift_type:'Loại ca',start_date:'Từ ngày',end_date:'Đến ngày',
+ employee_name:'Họ tên',gender:'Giới tính',date_of_birth:'Ngày sinh',date_of_joining:'Ngày vào làm',lotus_farm:'Vườn',lotus_work_team:'Tổ/đội',attendance_device_id:'Mã chấm công',
+ device:'Máy',device_user_id:'Mã trên máy',punched_at:'Thời gian chấm',log_type:'Vào / Ra',source_event_id:'Mã sự kiện'}
 const punchColumns=[
  {field:'select_log',headerName:'Chọn',minWidth:100,sortable:false,cellRenderer:LotusGridEditCell,cellRendererParams:punchActions},
- {field:'punched_at',headerName:'Thời gian',minWidth:165},
+ {field:'punched_at',headerName:'Thời gian',minWidth:165,valueFormatter:p=>formatDateTime(p.value)},
  {field:'device',headerName:'Máy',minWidth:140},
  {field:'device_user_id',headerName:'Mã trên máy',minWidth:150},
- {field:'employee',headerName:'Nhân viên',minWidth:150,valueGetter:p=>p.data.employee||'Chưa ghép'},
+ {field:'employee',headerName:'Nhân viên',minWidth:170,valueGetter:p=>p.data.employee?(employeeName(p.data.employee)):'Chưa ghép',tooltip:p=>p.data?.employee||''},
  {field:'log_type',headerName:'Vào / Ra',valueGetter:p=>stateLabel(p.data.log_type||'Unknown'),minWidth:115},
  {field:'state',headerName:'Trạng thái',valueGetter:p=>stateLabel(p.data.state),minWidth:125}
 ]
 const assignmentColumns=[
- {field:'employee',headerName:'Nhân viên',valueGetter:p=>org.value?.employees?.find(e=>e.name===p.data.employee)?.employee_name||p.data.employee},
- {field:'farm',headerName:'Vườn'},
+ {field:'employee',headerName:'Nhân viên',valueGetter:p=>employeeName(p.data.employee)},
+ {field:'farm',headerName:'Vườn',valueGetter:p=>org.value?.farms?.find(f=>f.name===p.data.farm)?.farm_name||p.data.farm||'—'},
  {field:'work_team',headerName:'Tổ/đội',valueGetter:p=>org.value?.teams?.find(t=>t.name===p.data.work_team)?.team_name||'—'},
  {field:'role_title',headerName:'Chức vụ'},
- {field:'valid_from',headerName:'Từ ngày'},
- {field:'valid_to',headerName:'Đến ngày',valueGetter:p=>p.data.valid_to||'Hiện tại'}
+ {field:'valid_from',headerName:'Từ ngày',valueFormatter:p=>formatDate(p.value)},
+ {field:'valid_to',headerName:'Đến ngày',valueFormatter:p=>p.value?formatDate(p.value):'Hiện tại'}
 ]
 const previewColumns=computed(()=>[
  {field:'row',headerName:'Dòng'},
- ...(columns[kind.value]||[]).map(field=>({field,headerName:field,valueGetter:p=>p.data.values[field]||'—'}))
+ // Vietnamese header; the template column name stays in the tooltip so the Excel file can be matched.
+ ...(columns[kind.value]||[]).map(field=>({field,headerName:importLabels[field]||field,headerTooltip:'Cột Excel: '+field,valueGetter:p=>p.data.values[field]||'—'}))
 ])
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,finish:finishConfirm}=useWorkspaceConfirm()
 // view: render one area as its own page tab (organization | import | devices = machines + punches); empty keeps the inner tabs.

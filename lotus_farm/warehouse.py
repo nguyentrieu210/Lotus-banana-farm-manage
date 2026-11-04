@@ -197,7 +197,9 @@ def document(doctype, name):
                             area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
                             rate=(flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
-                            valuation_rate=row.get('valuation_rate'), amount=row.get('amount'))
+                            valuation_rate=row.get('valuation_rate'), amount=row.get('amount'),
+                            # Kiểm kê: book quantity ERPNext computed when the count was saved, to show the difference.
+                            current_qty=flt(row.get('current_qty')) if doc.doctype=='Stock Reconciliation' else None)
                        for row in doc.items])
 
 
@@ -299,6 +301,8 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     elif from_date:filters['posting_date']=['>=',getdate(from_date)]
     elif to_date:filters['posting_date']=['<=',getdate(to_date)]
     kinds={'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói'}
+    count_kinds={'Stock Reconciliation':'Kiểm kê','Opening Stock':'Tồn đầu kỳ'}
+    reasons={'Purchase':'Mua ngoài','Recovery':'Thu hồi từ lô','Surplus':'Thừa kiểm kê','Harvest':'Thu hoạch'}
     # Kho menu: one list per kind of document (Nhập kho · Xuất kho · Chuyển kho · Kiểm kê); no kind = every stock document.
     scopes={'receipts':{'Purchase Receipt':None,'Stock Entry':['Material Receipt']},'issues':{'Stock Entry':['Material Issue']},
             'transfers':{'Stock Entry':['Material Transfer']},'counts':{'Stock Reconciliation':None}}
@@ -308,27 +312,44 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     for dt,entry_types in scope.items():
         if not frappe.has_permission(dt,'read'):continue
         dt_filters=dict(filters,stock_entry_type=['in',entry_types]) if entry_types else filters
-        entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified']+(['stock_entry_type'] if dt=='Stock Entry' else []),order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
+        # Business columns per list (lý do / NCC / người nhận / ghi chú), read only where the doctype has the field.
+        meta=frappe.get_meta(dt)
+        extra=[f for f in {'Stock Entry':['stock_entry_type','lotus_receipt_reason','lotus_supplier','lotus_receiver','remarks'],
+                           'Purchase Receipt':['supplier_name','remarks'],'Stock Reconciliation':['purpose','remarks']}[dt]
+               if f=='stock_entry_type' or meta.has_field(f)]
+        entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified',*extra],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
                  if not search or str(search).casefold() in e.name.casefold()]
         # Warehouses of every listed document in one read of the item table (parents are already permission-filtered).
         child,wh_fields={'Stock Entry':('Stock Entry Detail',['s_warehouse','t_warehouse']),'Stock Reconciliation':('Stock Reconciliation Item',['warehouse']),'Purchase Receipt':('Purchase Receipt Item',['warehouse'])}[dt]
-        by_parent={}
+        by_parent={};areas={}
+        area_field=['lotus_usage_area'] if dt=='Stock Entry' and frappe.get_meta(child).has_field('lotus_usage_area') else []
         parents=[e.name for e in entries]
         for offset in range(0,len(parents),500):
-            for line in frappe.get_all(child,filters={'parenttype':dt,'parent':['in',parents[offset:offset+500]]},fields=['parent',*wh_fields],limit_page_length=0):
+            for line in frappe.get_all(child,filters={'parenttype':dt,'parent':['in',parents[offset:offset+500]]},fields=['parent',*wh_fields,*area_field],limit_page_length=0):
                 by_parent.setdefault(line.parent,set()).update(line.get(f) for f in wh_fields if line.get(f))
+                if line.get('lotus_usage_area'):areas.setdefault(line.parent,[]).append(line.lotus_usage_area)
         for entry in entries:
             names=by_parent.get(entry.name,set())
             if not names.issubset(allowed) or (warehouse and warehouse not in names):continue
             entry_type=entry.pop('stock_entry_type',None)
-            entry.doctype=dt;entry.kind=kinds.get(entry_type,entry_type) if dt=='Stock Entry' else ('Nhập mua' if dt=='Purchase Receipt' else 'Kiểm kê')
-            entry.warehouses=' · '.join(sorted(names));rows.append(entry)
+            entry.doctype=dt;entry.kind=kinds.get(entry_type,entry_type) if dt=='Stock Entry' else ('Nhập mua' if dt=='Purchase Receipt' else count_kinds.get(entry.pop('purpose',None),'Kiểm kê'))
+            entry.warehouses=' · '.join(sorted(names))
+            entry.reason=('Theo đơn mua' if dt=='Purchase Receipt' else reasons.get(entry.pop('lotus_receipt_reason',None),'')) if entry_type in (None,'Material Receipt') and dt!='Stock Reconciliation' else ''
+            entry.pop('lotus_receipt_reason',None)
+            entry.supplier=entry.pop('supplier_name',None) or entry.pop('lotus_supplier',None) or ''
+            entry.pop('lotus_supplier',None)
+            entry.receiver=entry.pop('lotus_receiver',None) or ''
+            entry.areas=' · '.join(dict.fromkeys(areas.get(entry.name,[])))
+            entry.notes=str(entry.pop('remarks',None) or '').strip()[:200]
+            rows.append(entry)
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
-    fields=['name','kind','posting_date','docstatus','warehouses']
+    fields=['name','kind','posting_date','docstatus','warehouses','reason','supplier','receiver','areas','notes']
     selected=selections(column_filters,fields);choices=faceted_distinct(rows,fields,selected)
     rows=[r for r in rows if matches(r,selected)]
     from lotus_farm.table_filters import sorted_rows
-    rows=sorted_rows(rows,sort_model,fields)
+    # Ngày sorts by date and time (posting_sort), so documents of one day keep their real order.
+    for r in rows:r.posting_sort=str(r.posting_date)+' '+str(r.posting_time or '')
+    rows=sorted_rows(rows,sort_model,fields,{'posting_date':'posting_sort'})
     start=max(0,cint(start))
     return dict(rows=rows[start:start+length],total_count=len(rows),has_more=len(rows)>start+length,filter_values=choices)
 
@@ -500,7 +521,10 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
     choices = faceted_distinct(rows, fields, selected, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
     rows = [row for row in rows if matches(row, selected)]
     from lotus_farm.table_filters import sorted_rows
-    rows=sorted_rows(rows,sort_model,fields,{'item_code':'item_name'})
+    # Ngày giờ sorts by the full posting datetime: sorting by date alone kept each day newest-first, so the
+    # running balance (Tồn trước / Tồn sau) jumped around when the card was read oldest-first.
+    for r in rows:r.posting_sort=str(r.posting_datetime)+' '+str(r.creation)  # same second: ledger creation order
+    rows=sorted_rows(rows,sort_model,fields,{'item_code':'item_name','posting_date':'posting_sort'})
     start = max(0, cint(start))
     return dict(rows=rows[start:start+length], total_count=len(rows), has_more=len(rows)>start+length, filter_values=choices)
 

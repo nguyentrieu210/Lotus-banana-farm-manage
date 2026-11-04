@@ -14,6 +14,12 @@ const emit=defineEmits(['update:warehouse','update:company','create','receive','
 const api=(name,args={})=>call('lotus_farm.warehouse.'+name,args)
 const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),sort=ref([]),filters=ref({})
 const demandWindowDays=7
+// Quick column sets (Cột hiển thị). The first one is what a table never customised shows: keep every column.
+const columnPresets=[
+ {id:'full',label:'Đầy đủ',visible:stockColumns.map(c=>c.field)},
+ {id:'stock',label:'Tồn kho',visible:['name','item_group','stock_uom','actual_qty','pack_actual_qty','minimum_stock','shortage_qty','stock_status']},
+ {id:'demand',label:'Nhu cầu 7 ngày',visible:['name','stock_uom','actual_qty','demand_qty','available_qty','demand_shortage_qty','incoming_qty','to_buy_qty','coverage_status']}
+]
 const demandFrom=ref(props.session?.today||''),demandTo=ref(props.session?.today?shiftISODate(props.session.today,demandWindowDays-1):'')
 let version=0,timer=null
 async function load(reset=false){
@@ -45,7 +51,7 @@ defineExpose({refresh:()=>load()})
 <template>
  <ListPage title="Tồn kho" class="stock-inventory-table" :rows="data?.items||[]" :columns="stockColumns" :loading="busy" :error="error" v-model:search="searchDraft" search-placeholder="Tìm vật tư…"
    paged :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}" @refresh="load()"
-   storage-key="lotus-stock-inventory" :show-empty-headers="(data?.catalogue_count??0)>0" server-sort interactive :filter-values="data?.filter_values" :server-filters="filters" :empty="empty"
+   storage-key="lotus-stock-inventory" :column-presets="columnPresets" :show-empty-headers="(data?.catalogue_count??0)>0" server-sort interactive :filter-values="data?.filter_values" :server-filters="filters" :empty="empty"
    @sort="model=>{sort=model;load(true)}" @filter="({field,values})=>{filters=updateColumnFilter(filters,field,values);load(true)}" @open="row=>emit('edit-master','item',row.name)">
   <template #filters><StockScope :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session?.companies||[]" :disabled="busy" @update:warehouse="emit('update:warehouse',$event)" @update:company="emit('update:company',$event)"/><UiButton v-if="hasFilters" variant="outline" @click="clearFilters">Bỏ lọc</UiButton></template>
   <template #actions><div class="stock-quick-actions" role="group" aria-label="Thao tác kho nhanh">

@@ -20,7 +20,7 @@ const creators={
 }
 const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),sort=ref([]),filters=ref({}),from=ref(''),to=ref('')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
-const columns=computed(()=>documentColumns(warehouseLabel))
+const columns=computed(()=>documentColumns(warehouseLabel,props.kind))
 let version=0,timer=null
 async function load(reset=false){
  if(reset)start.value=0

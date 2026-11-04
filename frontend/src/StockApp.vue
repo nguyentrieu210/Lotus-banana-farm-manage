@@ -114,7 +114,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
     <UiButton v-for="tab in tabs" :key="tab.id" type="button" variant="ghost" :class="{active:view===tab.id}" :aria-current="view===tab.id?'page':undefined" @click="go(tab.id)">{{tab.label}}</UiButton>
    </nav>
   </component>
-  <WarehouseReceiving ref="receivingView" :company="company" :warehouse="warehouse" :today="session?.today" :confirm="confirm.ask" @changed="changed"/>
+  <WarehouseReceiving ref="receivingView" :company="company" :warehouse="warehouse" :warehouses="warehouses" :today="session?.today" :confirm="confirm.ask" @changed="changed"/>
   <StockDocumentForm ref="documentForm" :company="company" :warehouse="warehouse" :warehouses="warehouses" :session="session" @saved="documentSaved"/>
   <StockDocumentDetail ref="documentDetail" :warehouses="warehouses" :session="session" @changed="changed" @edit="current=>documentForm.edit(current)"/>
   <StockMasterForm ref="masterForm" :company="company" :session="session" @saved="masterSaved"/>

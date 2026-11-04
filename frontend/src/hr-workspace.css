@@ -68,3 +68,5 @@ form>.hr-form-section:first-child{margin-top:4px;padding-top:0;border-top:0}
 .hr-ops-tabs button.active{border-color:var(--lotus-primary);background:var(--lotus-primary-subtle);color:var(--lotus-primary-text)}
 .hr-ops .lotus-date{min-width:150px}
 .hr-ops-actions label{display:grid;gap:4px;font-size:var(--lotus-text-sm)}
+/* Grid cell needing attention (contract due, …). */
+.lotus-ag-grid .lotus-grid-warn{color:var(--lotus-warning-800);font-weight:600}

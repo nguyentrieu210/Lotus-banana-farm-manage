@@ -17,7 +17,8 @@ import {Button as UiButton} from './ui/button'
 // Nhận hàng theo đơn mua: chọn đơn đã duyệt → nhập số thực nhận (nhận nhiều lần được) → Ghi nhận hàng (lập và ghi sổ một bước).
 // Người không có quyền ghi sổ chỉ lập được phiếu nháp; thủ kho ghi sổ sau bằng nút Ghi sổ nhận hàng.
 // Desktop uses the standard ModalForm; the phone PWAs keep their own dialog with the same fields.
-const props=defineProps({company:String,warehouse:String,today:String,mobile:Boolean,confirm:Function})
+const props=defineProps({company:String,warehouse:String,today:String,mobile:Boolean,confirm:Function,warehouses:{type:Array,default:()=>[]}})
+const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
 const emit=defineEmits(['changed'])
 const open=ref(false),mobileDialog=ref(null),stage=ref('picker'),orders=ref([]),order=ref(null),receipt=ref(null),selected=ref(''),lines=ref([]),date=ref(''),error=ref(''),busy=ref(false),key=ref('')
 const costs=ref([]),accounts=ref([]),defaultAccount=ref('')
@@ -27,7 +28,7 @@ const api=(m,args={},write=false)=>purchaseRequest(call,'lotus_farm.warehouse_pl
 const selectedQty=computed(()=>Object.fromEntries(lines.value.filter(r=>Number(r.receive)>0).map(r=>[r.line,Number(r.receive)])))
 const orderOptions=computed(()=>orders.value.map(r=>({value:r.name,label:r.name+' · '+r.supplier})))
 const lineColumns=[{field:'item',label:'Hàng trên đơn',width:'minmax(260px,3fr)'},{field:'receive',label:'Thực nhận',type:'number',width:'minmax(140px,1fr)',disabled:r=>!r.remaining_qty||busy.value,props:r=>({min:0,max:r.remaining_qty}),hint:r=>'Còn nhận '+fmt(r.remaining_qty)+' '+unitLabel(r.uom)}]
-const receiptColumns=[{field:'item_name',headerName:'Vật tư',minWidth:220,flex:2},{field:'qty',headerName:'Số lượng',type:'numericColumn',valueFormatter:p=>fmt(p.value)},{field:'uom',headerName:'Đơn vị',valueFormatter:p=>unitLabel(p.value)},{field:'warehouse',headerName:'Kho nhận',minWidth:160}]
+const receiptColumns=[{field:'item_name',headerName:'Vật tư',minWidth:220,flex:2},{field:'qty',headerName:'Số lượng',type:'numericColumn',valueFormatter:p=>fmt(p.value)},{field:'uom',headerName:'Đơn vị',valueFormatter:p=>unitLabel(p.value)},{field:'warehouse',headerName:'Kho nhận',minWidth:160,valueFormatter:p=>warehouseLabel(p.value)}]
 const titles={picker:'Nhận hàng theo đơn',order:'Nhận hàng',receipt:'Phiếu nhận hàng'}
 const title=computed(()=>stage.value==='order'?'Nhận hàng · '+(order.value?.name||'')+' · '+(order.value?.supplier||''):stage.value==='receipt'?'Phiếu nhận hàng · '+(receipt.value?.name||''):titles.picker)
 const submitLabel=computed(()=>stage.value==='picker'?'Mở đơn nhận hàng':'Ghi nhận hàng')

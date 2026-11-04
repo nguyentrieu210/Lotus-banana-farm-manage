@@ -71,7 +71,7 @@ const candidateColumns=[
  {field:'applicant_name',headerName:'Ứng viên',minWidth:180,valueGetter:p=>p.data.applicant_name+' · '+formatDate(p.data.applied_on)},
  {field:'phone',headerName:'Liên hệ',minWidth:135},
  {field:'designation',headerName:'Chức danh',valueGetter:p=>hrCatalogLabel(p.data.designation),minWidth:155},
- {field:'farm',headerName:'Vườn',minWidth:125},
+ {field:'farm',headerName:'Vườn',minWidth:125,valueGetter:p=>catalog.value.farms.find(f=>f.name===p.data.farm)?.farm_name||p.data.farm||'—'},
  {field:'source',headerName:'Nguồn',minWidth:125},
  {field:'status',headerName:'Trạng thái',valueGetter:p=>stages[p.data.status]||p.data.status,minWidth:150},
  {field:'candidate_action',headerName:'Thao tác',valueGetter:p=>isManager.value&&p.data.status==='Offered'&&!p.data.employee?'Tiếp nhận':'Xử lý',minWidth:115,sortable:false}
@@ -84,13 +84,18 @@ function candidateCellAction(event){
 const employeeColumns=computed(()=>[
  {field:'name',headerName:'Mã',minWidth:160},
  {field:'employee_name',headerName:'Họ tên',minWidth:200,flex:1.5},
+ {field:'cell_number',headerName:'Điện thoại',minWidth:125},
  {field:'department',headerName:'Phòng ban',minWidth:170,valueFormatter:p=>hrCatalogLabel(p.value)||'—'},
  {field:'designation',headerName:'Chức danh',minWidth:170,valueGetter:p=>hrCatalogLabel(p.data.designation)||'—'},
  {field:'lotus_farm',headerName:'Vườn',minWidth:150,valueGetter:p=>catalog.value.farms.find(f=>f.name===p.data.lotus_farm)?.farm_name||p.data.lotus_farm||'—'},
+ {field:'lotus_work_team',headerName:'Tổ/đội',minWidth:150,valueGetter:p=>catalog.value.teams.find(t=>t.name===p.data.lotus_work_team)?.team_name||p.data.lotus_work_team||'Chưa phân tổ'},
  {field:'lotus_worker_category',headerName:'Loại lao động',minWidth:170,valueGetter:p=>cats[p.data.lotus_worker_category]||contractTypeNames[p.data.employment_type]||p.data.employment_type||'—'},
  {field:'lotus_payment_basis',headerName:'Cơ chế lương',minWidth:150,valueGetter:p=>bases[p.data.lotus_payment_basis]||'Chưa cấu hình'},
+ {field:'date_of_joining',headerName:'Ngày vào làm',minWidth:120,valueFormatter:p=>p.value?formatDate(p.value):'—'},
  {field:'lotus_onboarding_state',headerName:'Tiếp nhận',minWidth:165,cellClass:'lotus-grid-status',valueGetter:p=>p.data.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'},
- {field:'status',headerName:'Trạng thái',minWidth:180,valueGetter:p=>stateLabel(p.data.status)+(contractDue(p.data)?' · Hợp đồng đến hạn '+formatDate(p.data.contract_end_date):'')},
+ // Contract end has its own column: folding it into Trạng thái gave the status filter one choice per date.
+ {field:'status',headerName:'Trạng thái',minWidth:130,valueGetter:p=>stateLabel(p.data.status)},
+ {field:'contract_end_date',headerName:'Hết hạn HĐ',minWidth:125,valueFormatter:p=>p.value?formatDate(p.value):'—',cellClass:p=>p.data&&contractDue(p.data)?'lotus-grid-warn':'',tooltip:p=>p.data&&contractDue(p.data)?'Hợp đồng đã đến hạn':''},
 ])
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}
 function resetPanels(){revealedCccd.value='';cccdScanOpen.value=false;editEmployee.value=false;editCandidate.value=false;candidateHire.value=null;selectedEmployee.value=null;selectedCandidate.value=null;error.value=''}
@@ -222,7 +227,7 @@ useNoticeToast(notice)
 
   <template v-if="tab==='employees'||tab==='onboarding'">
    <section class="stock-panel workspace-employee-list" :aria-label="tab==='onboarding'?'Nhân viên chờ tiếp nhận':'Hồ sơ nhân viên'">
-    <DataTable :fill="24" :key="company+':'+tab" :storage-key="'hr-employees:'+company+':'+tab" :rows="filteredEmployees" :columns="employeeColumns" :loading="busy" :interactive="isManager" :empty="tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'" @open="openEmployee"/>
+    <DataTable :fill="24" :key="company+':'+tab" :storage-key="'hr-employees:'+tab" :rows="filteredEmployees" :columns="employeeColumns" :loading="busy" :interactive="isManager" :empty="tab==='onboarding'?'Không còn nhân viên chờ tiếp nhận.':'Không có nhân viên trong phạm vi này.'" @open="openEmployee"/>
    </section>
   </template>
 

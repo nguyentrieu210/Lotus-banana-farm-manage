@@ -131,6 +131,24 @@ try:
     ok('danh sách: loại + kho', row.kind == 'Chuyển kho' and row.warehouses == ' · '.join(sorted([A, B])), (row.kind, row.warehouses))
     ok('lọc theo kho B', all(B in r.warehouses for r in w.documents(company, warehouse=B)['rows']))
 
+    # Cột nghiệp vụ của từng danh sách phiếu
+    rec = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r1['name'])
+    ok('phiếu nhập: lý do + NCC', rec.reason == 'Mua ngoài' and rec.supplier == supplier, (rec.reason, rec.supplier))
+    rec4 = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r4['name'])
+    ok('phiếu thu hồi: lý do', rec4.reason == 'Thu hồi từ lô', rec4.reason)
+    iss = next(r for r in w.documents(company, kind='issues', warehouse=A)['rows'] if r.name == i1['name'])
+    ok('phiếu xuất: người nhận + lô + ghi chú', iss.receiver and iss.areas == area and iss.notes == 'E2E xuất', (iss.receiver, iss.areas, iss.notes))
+    cnt = next(r for r in w.documents(company, kind='counts')['rows'] if r.name == c1['name'])
+    ok('kiểm kê: loại', cnt.kind == 'Kiểm kê', cnt.kind)
+    got = w.documents(company, kind='issues', column_filters=frappe.as_json({'receiver': [iss.receiver]}))['rows']
+    ok('lọc theo người nhận', got and all(r.receiver == iss.receiver for r in got), len(got))
+    # Chi tiết kiểm kê: tồn sổ sách + thực đếm
+    line = w.document('Stock Reconciliation', c1['name'])['items'][0]
+    ok('chi tiết kiểm kê có tồn sổ sách', abs(flt(line['current_qty']) - 25) < 1e-6 and abs(flt(line['qty']) - 22) < 1e-6, (line['current_qty'], line['qty']))
+    # Sổ kho sắp ngày tăng dần: trong cùng ngày theo giờ, số dư nối tiếp nhau
+    asc = [r for r in w.movements(company, warehouse=A, sort_model=frappe.as_json([{'colId': 'posting_date', 'sort': 'asc'}]))['rows'] if r.item_code == X]
+    ok('sổ kho tăng dần: tồn trước = tồn sau dòng trước', all(abs(asc[i].opening_qty - asc[i - 1].qty_after_transaction) < 1e-6 for i in range(1, len(asc))),
+       [(r.voucher_no, r.opening_qty, r.qty_after_transaction) for r in asc])
     # Hủy phiếu đã ghi sổ
     blocked('hủy cần lý do', lambda: w.cancel_document('Stock Entry', t1['name'], w.document('Stock Entry', t1['name'])['modified'], ''), 'Lý do hủy')
     ok('chi tiết báo được hủy', w.document('Stock Entry', t1['name'])['can_cancel'])

@@ -22,6 +22,9 @@ test('HR team screen shows actual employees, teams, and supports bulk assignment
  assert.match(assignment,/t\.lotus_team_type==='Internal'/)
  assert.match(assignment,/Lưu phân tổ/)
  assert.match(assignment,/Chưa phân tổ/)
- assert.match(assignment,/employee\.lotus_work_team/)
+ assert.match(assignment,/p\.data\.lotus_work_team/)
+ // Employees are picked in the shared DataTable (sort, filters, pager) with its native tick column.
+ assert.match(assignment,/<DataTable :rows="rows" :columns="peopleColumns" row-key="name"/)
+ assert.match(assignment,/:selected-row-keys="checked"/)
  assert.match(assignment,/e\.modified/)
 })

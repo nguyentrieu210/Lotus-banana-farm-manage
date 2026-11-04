@@ -286,7 +286,7 @@ def overview(company):
         "Employee", filters={"company": company},
         fields=["name", "employee_name", "status", "department", "designation",
                 "employment_type", "lotus_worker_category", "lotus_payment_basis",
-                "lotus_farm", "lotus_work_team", "lotus_onboarding_state",
+                "lotus_farm", "lotus_work_team", "lotus_onboarding_state", "cell_number",
                 "date_of_joining", "contract_end_date", "modified"],
         order_by="employee_name asc", limit_page_length=0,
     )

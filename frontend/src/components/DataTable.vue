@@ -18,6 +18,7 @@ import {loadColumnWidths,saveColumnWidths} from '../grid-state'
 import {gridRowId} from '../grid-row-id'
 import ModalForm from './form/ModalForm.vue'
 import {summableColumn,totalsRow} from '../grid-totals'
+import {GRID_APP_KEYS} from '../grid-app-keys'
 import {numberFormatter,emptyColumn} from '../grid-format'
 import {sortExcelChoices} from '../excel-filter-state'
 import {buildXlsx,exportExcelFile} from '../excel-export'
@@ -67,7 +68,7 @@ const pinnedRenderer=c=>({cellRendererSelector:p=>p.node?.rowPinned?{component:p
 const defs=computed(()=>orderedColumns(props.columns,viewLayout.value).map(formatted).map(c=>{
  const {tooltipValueGetter,tooltipField,headerTooltipValueGetter,...column}=c
  // App-only flags (read from props.columns) must not reach AG Grid: it warns #307/#310 on unknown colDef keys.
- for(const k of ['mobileValue','unitField','autoHide','groupNumbers','suppressExport','hideOnMobile','filterable','defaultHidden','columnChooserLocked'])delete column[k]
+ for(const k of GRID_APP_KEYS)delete column[k]
  const tooltip=c.tooltip??tooltipValueGetter??(tooltipField?({data})=>data?.[tooltipField]:true)
  const headerTooltip=c.headerTooltip??headerTooltipValueGetter??uiFarmLabel(c.headerName)
  return {...column,...pinnedSafe(c),colId:c.colId||key(c),hide:Boolean(c.hide||selectedHidden.value.includes(columnId(c))),pinned:effectiveLayout.value.pinned.includes(columnId(c))?'left':null,headerName:uiFarmLabel(c.headerName),headerTooltip,tooltip,flex:c.flex??1,minWidth:c.minWidth||90,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)}

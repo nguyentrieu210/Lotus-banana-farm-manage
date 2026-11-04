@@ -4,6 +4,7 @@ import {workFarm} from '../work-farm'
 import {call} from '../api'
 import {Button as UiButton} from './ui/button'
 import LotusField from './form/LotusField.vue'
+import DataTable from './DataTable.vue'
 import {hrCatalogLabel} from '../hr-catalog-labels'
 
 const props=defineProps({
@@ -48,6 +49,14 @@ watch(()=>props.farms,(farms)=>{
 watch(farm,()=>{targetTeam.value='';filterTeam.value='';checked.value=[];notice.value='';error.value=''})
 watch([filterTeam,query],()=>{checked.value=[]})
 watch(()=>props.employees,()=>{checked.value=[]})
+function pickRows(list,yes){const names=list.map(r=>r.name);checked.value=yes?[...new Set([...checked.value,...names])]:checked.value.filter(n=>!names.includes(n))}
+const peopleColumns=[
+ {field:'employee_name',headerName:'Nhân viên',minWidth:190,flex:1.4},
+ {field:'name',headerName:'Mã',minWidth:140},
+ {field:'designation',headerName:'Chức danh',minWidth:150,valueFormatter:p=>hrCatalogLabel(p.value)||'Chưa có chức vụ'},
+ {field:'department',headerName:'Phòng ban',minWidth:140,valueFormatter:p=>hrCatalogLabel(p.value)||'—'},
+ {field:'lotus_work_team',headerName:'Tổ/đội hiện tại',minWidth:150,valueGetter:p=>lookup.value[p.data.lotus_work_team]||'Chưa phân tổ'}
+]
 function pickAll(){checked.value=allChecked.value?[]:rows.value.map(r=>r.name)}
 function pick(name,yes){checked.value=yes?[...new Set([...checked.value,name])]:checked.value.filter(n=>n!==name)}
 function chooseTeam(name){filterTeam.value=name;targetTeam.value=name;checked.value=[]}
@@ -95,17 +104,13 @@ async function save(){
  <div class="team-assign__workspace">
   <div class="team-assign__people">
    <div class="team-assign__list-head">
-    <label><input type="checkbox" :checked="allChecked" :disabled="!manager||!rows.length||saving" @change="pickAll"/> Chọn tất cả {{rows.length}} người đang hiển thị</label>
+    <UiButton variant="outline" size="sm" :disabled="!manager||!rows.length||saving" @click="pickAll">{{allChecked?'Bỏ chọn tất cả':'Chọn tất cả '+rows.length+' người đang hiển thị'}}</UiButton>
     <b>Đã chọn {{selected.length}}</b>
    </div>
-   <div v-if="!rows.length" class="team-assign__empty">Không có nhân viên phù hợp bộ lọc.</div>
-   <div v-for="employee in rows" :key="employee.name" class="team-assign__person">
-    <label>
-     <input type="checkbox" :checked="checked.includes(employee.name)" :disabled="!manager||saving" @change="pick(employee.name,$event.target.checked)"/>
-     <span><strong>{{employee.employee_name}}</strong><small>{{employee.name}} · {{hrCatalogLabel(employee.designation)||'Chưa có chức vụ'}}</small></span>
-    </label>
-    <span class="team-assign__team">{{lookup[employee.lotus_work_team]||'Chưa phân tổ'}}</span>
-   </div>
+   <!-- Shared table: sort, column filters, export and the pager like every list; ticks persist across pages. -->
+   <DataTable :rows="rows" :columns="peopleColumns" row-key="name" storage-key="hr-team-assign" :row-detail="false" :totals="false"
+     empty="Không có nhân viên phù hợp bộ lọc." :selected-row-keys="checked"
+     @row-selection-change="({id,selected:on})=>pick(id,on)" @page-selection-change="({rows:page,selected:on})=>pickRows(page,on)" @selection-clear="checked=[]"/>
   </div>
   <aside class="team-assign__side">
    <h3>Chuyển vào tổ/đội</h3>
@@ -132,8 +137,8 @@ async function save(){
 .team-assign__stats b{font-variant-numeric:tabular-nums}
 .team-assign__workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:14px}
 .team-assign__people,.team-assign__side{border:1px solid var(--lotus-border);border-radius:10px;background:var(--lotus-surface);overflow:hidden}
-.team-assign__people{max-height:65vh;overflow:auto}
-.team-assign__list-head{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;gap:12px;padding:12px;background:var(--lotus-soft);border-bottom:1px solid var(--lotus-border);font-size:.85rem}
+.team-assign__people{display:grid;gap:8px;padding:10px;min-width:0}
+.team-assign__list-head{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.85rem}
 .team-assign label{display:flex;align-items:center;gap:10px;cursor:pointer}
 .team-assign input[type=checkbox]{width:17px;height:17px;accent-color:var(--lotus-primary);flex-shrink:0}
 .team-assign__person{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:9px 12px;border-bottom:1px solid var(--lotus-border)}

@@ -40,6 +40,8 @@ export function loadColumnLayout(key,columns){
  let saved={}
  if(key){try{saved=JSON.parse(localStorage.getItem(layoutPrefix+key)||'{}')||{}}catch{}}
  if(!Array.isArray(saved.hidden))saved.hidden=loadHiddenColumns(key)
+ // Not pinned by the user yet: a column defined with pinned:'left' (name column of a 31-day sheet) starts pinned.
+ if(!Array.isArray(saved.pinned))saved.pinned=columns.filter(c=>c.pinned==='left'||c.pinned===true).map(columnId)
  return normalizeColumnLayout(columns,saved)
 }
 export function saveColumnLayout(key,columns,layout){

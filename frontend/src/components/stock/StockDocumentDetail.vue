@@ -26,6 +26,15 @@ const columns=computed(()=>{
   if(originalRate)originalRate.headerName='Đơn giá phiếu gốc'
   columns.push({field:'adjusted_rate',headerName:'Đơn giá sau điều chỉnh',minWidth:180,type:'numericColumn',valueFormatter:p=>cash(p.value)})
  }
+ // Kiểm kê / tồn đầu kỳ: counted quantity next to the book quantity and the difference (thừa +, thiếu −).
+ if(['Stock Reconciliation','Opening Stock'].includes(detail.value?.kind)){
+  const qty=columns.findIndex(c=>c.field==='qty')
+  if(qty>=0){
+   columns[qty]={...columns[qty],headerName:'Thực đếm'}
+   columns.splice(qty,0,{field:'current_qty',headerName:'Tồn sổ sách',type:'numericColumn',valueFormatter:p=>fmt(p.value)})
+   columns.splice(qty+2,0,{colId:'difference',headerName:'Chênh lệch',type:'numericColumn',unitField:'uom',valueGetter:p=>Number(p.data?.qty||0)-Number(p.data?.current_qty||0),valueFormatter:p=>p.value>0?'+'+fmt(p.value):fmt(p.value),cellClass:p=>p.value>0?'stock-diff-plus':p.value<0?'stock-diff-minus':''})
+  }
+ }
  if(detail.value?.kind==='Material Issue'&&detail.value.items.some(r=>r.uom!==r.stock_uom))columns.splice(4,0,{headerName:'Trừ tồn kho',minWidth:140,valueGetter:p=>fmt(p.data.stock_qty)+' '+unitLabel(p.data.stock_uom)})
  return columns
 })
@@ -91,4 +100,6 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
 .stock-detail-costs div{display:flex;justify-content:space-between;gap:12px}
 .stock-detail-costs dt{color:var(--lotus-muted)}
 .stock-detail-costs dd{margin:0;font-variant-numeric:tabular-nums}
+.lotus-ag-grid .stock-diff-plus{color:var(--lotus-success)}
+.lotus-ag-grid .stock-diff-minus{color:var(--lotus-danger)}
 </style>
