@@ -10,7 +10,7 @@ const {useSession}=await loadModule('store.js')
 
 test('shared HR targets preserve existing paths and distinguish quick-search destinations',()=>{
  const manager={capabilities:{hr:true,hr_manage:true,attendance:true}}
- assert.equal(visibleHrNavigation(manager).length,8)
+ assert.equal(visibleHrNavigation(manager).length,9)
  assert.equal(hrHref(hrNavigation[0]),'/lotus/nhan-su')
  assert.equal(hrHref(hrNavigation[1]),'/lotus/nhan-su?hr_view=candidates')
  assert.equal(hrHref(hrNavigation[3]),'/lotus/cham-cong')
@@ -19,7 +19,7 @@ test('shared HR targets preserve existing paths and distinguish quick-search des
  const links=workspaceDirectory(manager)
  const merged=mergeWorkspaceActions([{label:'Tuyển dụng',href:'/lotus/nhan-su?hr_view=candidates&company=A'}],links)
  assert.equal(merged.filter(a=>a.label==='Tuyển dụng').length,1)
- assert.equal(merged.filter(a=>a.href?.startsWith('/lotus/nhan-su')).length,7)
+ assert.equal(merged.filter(a=>a.href?.startsWith('/lotus/nhan-su')).length,8)
  assert.ok(!permittedRoute('/nhan-su',{capabilities:{hr:true}}, {hr_view:'payroll'}))
  assert.ok(permittedRoute('/nhan-su',manager,{hr_view:'payroll'}))
 })

@@ -5,6 +5,7 @@ export const hrNavigation=[
  {id:'onboarding',label:'Tiếp nhận',icon:'check',path:'nhan-su',capability:'hr'},
  {id:'attendance',label:'Chấm công',icon:'clock',path:'cham-cong',capability:'attendance'},
  {id:'payroll',label:'Kỳ công & bảng lương',icon:'wallet',path:'nhan-su',capability:'hr',manager:true},
+ {id:'teams',label:'Phân tổ/đội',icon:'users',path:'nhan-su',capability:'hr',manager:true,setup:true},
  {id:'organization',label:'Cơ cấu & chức danh',icon:'people',path:'nhan-su',capability:'hr',setup:true},
  {id:'devices',label:'Máy chấm công',icon:'clock',path:'nhan-su',capability:'hr',setup:true},
  {id:'import',label:'Nhập dữ liệu nhân sự',icon:'upload',path:'nhan-su',capability:'hr',setup:true},

@@ -10,11 +10,11 @@ function itemCell(params){const cell=document.createElement('span');cell.classNa
 
 // Natural reading order: item identity → actual stock → global minimum → demand/arrival.
 export const stockColumns=[
- {field:'name',valueGetter:p=>p.data.item_name,headerName:'Tên hàng',minWidth:200,flex:1.6,cellRenderer:itemCell,tooltipValueGetter:p=>p.data.item_name+' · '+p.data.name,mobileValue:r=>r.item_name+' · '+r.name},
+ {field:'name',valueGetter:p=>p.data.item_name,headerName:'Tên hàng',minWidth:200,flex:1.6,cellRenderer:itemCell,tooltip:p=>p.data.item_name+' · '+p.data.name,mobileValue:r=>r.item_name+' · '+r.name},
  {field:'item_group',headerName:'Nhóm hàng',minWidth:130},
  {field:'stock_uom',headerName:'ĐVT',minWidth:78,valueFormatter:p=>unitLabel(p.value)},
  number('actual_qty','Tồn kho',105),
- {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,tooltipValueGetter:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
+ {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,tooltip:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
  number('minimum_stock','Tối thiểu chung',135),
  number('shortage_qty','Thiếu tối thiểu',125),
  {field:'stock_status',headerName:'Cảnh báo tồn',minWidth:125},

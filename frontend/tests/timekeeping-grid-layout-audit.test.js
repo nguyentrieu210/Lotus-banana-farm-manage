@@ -16,8 +16,8 @@ test('attendance uses one checkbox column and links selection to employee-day ro
  assert.match(attendance,/@page-selection-change="selectAttendancePage"/)
  assert.match(attendance,/@selection-clear="clearAttendanceSelection"/)
  assert.match(attendance,/function chooseStaffRows\(rows,selectedValue\)/)
- assert.match(attendance,/const selected=computed\(\(\)=>staff.value.filter\(r=>r.selected\)\)/)
- assert.match(attendance,/const rows=staff.value.filter\(/)
+ assert.match(attendance,/const selected=computed\(\(\)=>shown.value.filter\(r=>r.selected\)\)/)
+ assert.match(attendance,/const rows=shown.value.filter\(/)
 })
 test('two shared utility columns are compact and totals label is not placed in a checkbox cell',()=>{
  assert.match(table,/const selectDef=\{colId:'__lotus_select',headerName:'Chọn',width:42,minWidth:42,maxWidth:42/)

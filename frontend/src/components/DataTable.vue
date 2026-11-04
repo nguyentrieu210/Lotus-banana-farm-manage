@@ -1,5 +1,5 @@
 <script setup>
-import {computed,getCurrentInstance,inject,nextTick,onBeforeUnmount,onMounted,reactive,ref,useSlots,watch} from 'vue'
+import {computed,getCurrentInstance,inject,nextTick,onBeforeUnmount,onMounted,reactive,ref,shallowRef,useSlots,watch} from 'vue'
 import {compactGridTheme,desktopGridThemes} from '../grid-theme'
 import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import ExcelHeader from './ExcelHeader.vue'
@@ -64,11 +64,18 @@ const pinnedSafe=c=>({...(c.valueGetter?{valueGetter:p=>p.node?.rowPinned?p.data
 // Sum/pinned rows are plain text in every column, whatever renderer (inputs, buttons, slots) the column uses for real rows.
 const pinnedText=p=>document.createTextNode(String(p.valueFormatted??p.value??''))
 const pinnedRenderer=c=>({cellRendererSelector:p=>p.node?.rowPinned?{component:pinnedText}:c.cellRendererSelector?.(p)})
-const defs=computed(()=>orderedColumns(props.columns,viewLayout.value).map(formatted).map(c=>({...c,...pinnedSafe(c),colId:c.colId||key(c),hide:Boolean(c.hide||selectedHidden.value.includes(columnId(c))),pinned:effectiveLayout.value.pinned.includes(columnId(c))?'left':null,headerName:uiFarmLabel(c.headerName),headerTooltip:c.headerTooltip||uiFarmLabel(c.headerName),tooltipValueGetter:c.tooltipValueGetter||((p)=>p.valueFormatted??p.value??''),flex:c.flex??1,minWidth:c.minWidth||90,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)})))
+const defs=computed(()=>orderedColumns(props.columns,viewLayout.value).map(formatted).map(c=>{
+ const {tooltipValueGetter,tooltipField,headerTooltipValueGetter,...column}=c
+ // App-only flags (read from props.columns) must not reach AG Grid: it warns #307/#310 on unknown colDef keys.
+ for(const k of ['mobileValue','unitField','autoHide','groupNumbers','suppressExport','hideOnMobile','filterable','defaultHidden','columnChooserLocked'])delete column[k]
+ const tooltip=c.tooltip??tooltipValueGetter??(tooltipField?({data})=>data?.[tooltipField]:true)
+ const headerTooltip=c.headerTooltip??headerTooltipValueGetter??uiFarmLabel(c.headerName)
+ return {...column,...pinnedSafe(c),colId:c.colId||key(c),hide:Boolean(c.hide||selectedHidden.value.includes(columnId(c))),pinned:effectiveLayout.value.pinned.includes(columnId(c))?'left':null,headerName:uiFarmLabel(c.headerName),headerTooltip,tooltip,flex:c.flex??1,minWidth:c.minWidth||90,sortable:c.sortable!==false,filter:false,resizable:true,headerComponent:ExcelHeader,headerComponentParams:headerParams(c),...((slots['cell-'+key(c)]||slots.cell)?{cellRenderer:slotRenderer(key(c))}:{}),...pinnedRenderer(c)}
+}))
 
 function value(row,column){const col=formatted(column);if(col.mobileValue)return col.mobileValue(row);const value=col.valueGetter?col.valueGetter({data:row}):row[col.field];return col.valueFormatter?col.valueFormatter({value,data:row}):value??'—'}
 let restoring=false
-function sorted(event){sortState.value=event.api.getColumnState().filter(c=>c.sort).map(c=>({colId:c.colId,sort:c.sort,sortIndex:c.sortIndex}));if(props.serverSort&&!restoring)emit('sort',event.api.getColumnState().filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
+function sorted(event){const api=liveApi(event.api);if(!api)return;const state=api.getColumnState();sortState.value=state.filter(c=>c.sort).map(c=>({colId:c.colId,sort:c.sort,sortIndex:c.sortIndex}));if(props.serverSort&&!restoring)emit('sort',state.filter(c=>c.sort).sort((a,b)=>(a.sortIndex||0)-(b.sortIndex||0)).map(c=>({colId:c.colId,sort:c.sort})))}
 // Row click: screens that handle @open / @cell-open / @row-double-open keep their own behaviour; every other table opens a read-only detail of the row.
 const listeners=getCurrentInstance()?.vnode.props||{}
 const ownsClick=()=>Boolean(listeners.onOpen||listeners.onCellOpen||listeners.onRowDoubleOpen)
@@ -87,15 +94,15 @@ function fit(){const el=shell.value;if(props.fill<0||!el)return;fitHeight.value=
 // Pager: the same one on every table. AG Grid pages the sorted rows (so sorting covers all pages); lists paged by the server pass paginate=false.
 const pageStart=ref(0),currentPageSize=ref(props.pageSize)
 const isPaginated=computed(()=>props.paginate&&currentPageSize.value>0)
-function changePageSize(size){currentPageSize.value=size;pageStart.value=0;nextTick(()=>{gridApi.value?.paginationGoToFirstPage();refreshSelection()})}
+function changePageSize(size){currentPageSize.value=size;pageStart.value=0;nextTick(()=>{currentApi()?.paginationGoToFirstPage();refreshSelection()})}
 watch(()=>props.pageSize,changePageSize)
 // Fixed height (scrolling grid) above 10 rows, or always when the list has other pages: a short last page must not
 // pull the pager up under the cursor.
 const tall=computed(()=>props.keepHeight||visibleRows.value.length>10)
 const pageRows=computed(()=>isPaginated.value?visibleRows.value.slice(pageStart.value,pageStart.value+currentPageSize.value):visibleRows.value)
 watch(()=>rowIdentity.value,()=>{pageStart.value=0})
-function pageChanged(event){const page=event.api?.paginationGetCurrentPage?.();if(isPaginated.value&&Number.isInteger(page))pageStart.value=page*currentPageSize.value;nextTick(refreshSelection)}
-function goPage(start){pageStart.value=start;gridApi.value?.paginationGoToPage(Math.floor(start/Math.max(1,currentPageSize.value)))}
+function pageChanged(event){const page=liveApi(event.api)?.paginationGetCurrentPage?.();if(isPaginated.value&&Number.isInteger(page))pageStart.value=page*currentPageSize.value;nextTick(refreshSelection)}
+function goPage(start){pageStart.value=start;currentApi()?.paginationGoToPage(Math.floor(start/Math.max(1,currentPageSize.value)))}
 onMounted(()=>{if(props.fill>=0){window.addEventListener('resize',fit);nextTick(fit)}})
 onBeforeUnmount(()=>window.removeEventListener('resize',fit))
 watch(()=>[visibleRows.value.length>10,rowIdentity.value,props.loading],()=>nextTick(fit))
@@ -128,8 +135,8 @@ const viewLayout=computed(()=>autoHidden.value.length?normalizeColumnLayout(prop
 const selectedHidden=computed(()=>viewLayout.value.hidden)
 const activeDisplayColumns=computed(()=>displayedColumns(props.columns,viewLayout.value))
 const activeColumns=computed(()=>activeDisplayColumns.value.filter(c=>columnId(c)!==nativeSelectId.value&&!c.suppressExport&&!c.columnChooserLocked))
-function applyColumnLayout(api=gridApi.value){
- if(!api)return
+function applyColumnLayout(api=currentApi()){
+ if(!liveApi(api))return
  const cols=orderedColumns(props.columns,viewLayout.value).filter(c=>columnId(c)!==nativeSelectId.value)
  api.applyColumnState({state:[{colId:nativeSelectId.value||'__lotus_select',pinned:'left',hide:false,width:42},{colId:'__lotus_stt',pinned:'left',width:52},...cols.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col))),pinned:effectiveLayout.value.pinned.includes(columnId(col))?'left':null}))],applyOrder:true})
 }
@@ -154,7 +161,12 @@ function applyColumnPreset(id){
  if(preset)setColumnLayout(setVisibleColumns(props.columns,effectiveLayout.value,preset.visible||[]))
 }
 watch(viewLayout,()=>nextTick(()=>applyColumnLayout()))
-const gridApi=ref(null),sortState=ref([])
+// AG Grid có thể huỷ và tạo lại bảng khi đổi danh sách; không giữ API cũ.
+const gridApi=shallowRef(null),sortState=ref([])
+const liveApi=api=>api&&!api.isDestroyed?.()?api:null
+const currentApi=()=>liveApi(gridApi.value)
+function gridPreDestroyed(event){if(gridApi.value===event.api)gridApi.value=null}
+onBeforeUnmount(()=>{gridApi.value=null})
 
 // Two fixed utility columns are independent of business columns, filters and Excel exports.
 const selectedLocal=ref(new Set())
@@ -162,8 +174,8 @@ const selectedIds=computed(()=>new Set(props.selectedRowKeys??[...selectedLocal.
 const selectedCount=computed(()=>selectedIds.value.size)
 const getSelectionId=row=>gridRowId(row,props.rowKey)
 function refreshSelection(){
- gridApi.value?.refreshCells?.({force:true,columns:['__lotus_select']})
- gridApi.value?.refreshHeader?.()
+ currentApi()?.refreshCells?.({force:true,columns:['__lotus_select']})
+ currentApi()?.refreshHeader?.()
 }
 watch(()=>props.selectedRowKeys,()=>nextTick(refreshSelection),{deep:true})
 function setRowSelected(row,selected){
@@ -177,7 +189,7 @@ function setRowSelected(row,selected){
  nextTick(refreshSelection)
 }
 function rowsInCurrentPage(){
- const api=gridApi.value
+ const api=currentApi()
  if(!api)return props.paginate?pageRows.value:visibleRows.value
  const start=isPaginated.value?(api.paginationGetCurrentPage?.()||0)*currentPageSize.value:0
  const end=isPaginated.value?start+currentPageSize.value:Infinity
@@ -277,13 +289,13 @@ function applyView(view){
  const next=view.filters||{}
  if(props.filterValues){for(const field of new Set([...Object.keys(activeFilters.value),...Object.keys(next)]))if(JSON.stringify(activeFilters.value[field]??null)!==JSON.stringify(next[field]??null))emit('filter',{field,values:next[field]??null})}
  else localFilters.value={...next}
- gridApi.value?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})
+ currentApi()?.applyColumnState({state:view.sort||[],defaultState:{sort:null}})
 }
 // The grid is rebuilt when its rows change (filters, reload): bring back saved widths and the current sort without re-asking the server.
-function restoreWidths(event){gridApi.value=event.api;const widths=loadColumnWidths(widthKey.value);if(widths.length)event.api.applyColumnState({state:widths});applyColumnLayout(event.api);nextTick(refreshSelection)
- if(sortState.value.length){restoring=true;try{event.api.applyColumnState({state:sortState.value,defaultState:{sort:null}})}finally{restoring=false}}}
-function resized(event){if(event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,event.api.getColumnState())}
-function reportVisible(event){const records=[];event.api.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)});emit('visible-rows',records)}
+function restoreWidths(event){const api=liveApi(event.api);if(!api)return;gridApi.value=api;const widths=loadColumnWidths(widthKey.value);if(widths.length)api.applyColumnState({state:widths});applyColumnLayout(api);nextTick(refreshSelection)
+ if(sortState.value.length){restoring=true;try{if(liveApi(api))api.applyColumnState({state:sortState.value,defaultState:{sort:null}})}finally{restoring=false}}}
+function resized(event){const api=liveApi(event.api);if(api&&event.finished&&event.source!=='api')saveColumnWidths(widthKey.value,api.getColumnState())}
+function reportVisible(event){const api=liveApi(event.api);if(!api)return;const records=[];api.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)});emit('visible-rows',records)}
 const exporting=ref(false),exportError=ref('')
 async function downloadExcel(){
  if(exporting.value)return
@@ -291,7 +303,7 @@ async function downloadExcel(){
  try{
   const records=[]
   if(props.exportRows)records.push(...await props.exportRows())
-  else if(gridApi.value)gridApi.value.forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)})
+  else if(currentApi())currentApi().forEachNodeAfterFilterAndSort(node=>{if(node.data)records.push(node.data)})
   else records.push(...visibleRows.value)
   if(!records.length)throw new Error('Bảng hiện không có dữ liệu để xuất.')
   const bytes=buildXlsx(activeColumns.value,records)
@@ -314,7 +326,7 @@ async function downloadExcel(){
    <template v-if="hasLocalFilters||$slots['empty-actions']" #actions><UiButton v-if="hasLocalFilters" type="button" variant="outline" size="sm" @click="localFilters={}">Xóa bộ lọc</UiButton><slot name="empty-actions"/></template>
   </DesktopEmptyState>
   <template v-else>
-   <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':tall,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&tall?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="tall?'normal':'autoHeight'" :pagination="isPaginated" :pagination-page-size="currentPageSize||visibleRows.length||1" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
+   <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':tall,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&tall?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="tall?'normal':'autoHeight'" :pagination="isPaginated" :pagination-page-size="currentPageSize||visibleRows.length||1" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @grid-pre-destroyed="gridPreDestroyed" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
    <div v-if="rows.length>5||Object.keys(activeFilters).length" class="lotus-mobile-filter"><UiSelect v-model="mobileFilter" aria-label="Lọc theo cột"><option value="">Lọc theo cột…</option><option v-for="col in filterable" :key="key(col)" :value="key(col)">{{uiFarmLabel(col.headerName)}}{{activeFilters[key(col)]?' · đang lọc':''}}</option></UiSelect><ExcelHeader v-if="mobileFilterParams" :key="mobileFilter" :params="mobileFilterParams"/></div>
    <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p>
     <div v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record-entry" :class="{'lotus-mobile-record-entry--selectable':selectionEnabled}">

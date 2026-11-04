@@ -14,6 +14,7 @@ import WorkspaceConfirm from './components/WorkspaceConfirm.vue'
 import LotusIcon from './components/LotusIcon.vue'
 import {useWorkspaceConfirm} from './use-workspace-confirm'
 import HrOperations from './components/HrOperations.vue'
+import HrTeamAssignments from './components/HrTeamAssignments.vue'
 import HrPayrollPeriod from './components/hr/HrPayrollPeriod.vue'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {Button as UiButton} from './components/ui/button'
@@ -231,6 +232,7 @@ useNoticeToast(notice)
     <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
   </template>
 
+  <HrTeamAssignments v-if="tab==='teams'" :company="company" :farms="catalog.farms" :teams="catalog.teams" :employees="overview.employees" :manager="isManager" :busy="busy" @saved="refresh"/>
   <template v-if="tab==='organization'">
    <HrOperations ref="ops" :company="company" :manager="isManager" view="organization"/>
    <section class="tk-card hr-roles" aria-label="Danh mục chức danh">

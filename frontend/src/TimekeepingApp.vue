@@ -24,13 +24,14 @@ import {sidebarCollapsed} from './workspace'
 import {unitLabel} from './units'
 import {formatDate} from './format'
 import {applyPresence,presenceDays,presencePayload} from './attendance-presence'
+import {filterAttendanceOrganization,organizationOptions,UNASSIGNED} from './attendance-org-filters'
 
 // /lotus/cham-cong: daily staff attendance (HRMS Attendance, filled from device check-ins), contractor crew sheets,
 // the month sheet and setup. Drafts are reviewed and submitted here; a closed month is read-only.
 const api=(name,args={},write=false)=>call('lotus_farm.timekeeping.'+name,args,write)
-const session=ref(null),company=ref(''),date=ref(''),month=ref(''),shift=ref(''),farm=ref(workFarm()),tab=ref('staff'),search=ref(''),view=ref('all')
+const session=ref(null),company=ref(''),date=ref(''),month=ref(''),shift=ref(''),farm=ref(workFarm()),tab=ref('staff'),search=ref(''),view=ref('all'),roleFilter=ref(''),departmentFilter=ref(''),divisionFilter=ref('')
 const busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
-const catalog=ref({farms:[],teams:[],shifts:[],employees:[],works:[],genders:[],departments:[],uoms:[]})
+const catalog=ref({farms:[],teams:[],shifts:[],employees:[],works:[],genders:[],departments:[],department_tree:[],uoms:[]})
 const staff=ref([]),crews=ref([]),availableTeams=ref([]),monthData=ref(null),crewMonth=ref(null),eventId=ref(crypto.randomUUID())
 const dayInfo=ref({holiday:null,has_calendar:true,period_closed:false,counts:{matching:0,review:0,manual:0},synced:null})
 // Dialog handles keep the native-dialog calls (showModal / close) while ModalForm binds to .open.
@@ -48,7 +49,7 @@ const cap=computed(()=>session.value?.capabilities||{})
 const dirty=computed(()=>staff.value.some(r=>r.edited))
 const locked=computed(()=>!!dayInfo.value.period_closed)
 const canEditStaff=computed(()=>!locked.value&&!!(cap.value.Attendance?.create||cap.value.Attendance?.write))
-const selected=computed(()=>staff.value.filter(r=>r.selected))
+const selected=computed(()=>shown.value.filter(r=>r.selected))
 const editedCount=computed(()=>staff.value.filter(r=>r.edited).length)
 const attendanceTools=ref(null),detailRow=ref(null)
 function openDetails(row){detailRow.value=row}
@@ -101,11 +102,19 @@ const attendanceColumns=[
 
 const rowState=r=>r.legacy_conflict?'review':r.docstatus===1?'approved':r.edited?'draft':r.machine?.needs_review?'review':r.matches?'matching':!r.name?(r.morning_present||r.afternoon_present?'partial':'empty'):'draft'
 const stateLabel={empty:'Chưa chấm',partial:'Nửa công',draft:'Nháp',approved:'Đã duyệt',review:'Cần kiểm tra',matching:'Khớp máy'}
-const counts=computed(()=>{const c={all:staff.value.length,empty:0,partial:0,draft:0,approved:0,review:0,matching:0};for(const r of staff.value)c[rowState(r)]++;return c})
-const views=computed(()=>[['all','Tất cả',staff.value.length],['full','Đủ công',staff.value.filter(r=>presenceDays(r)===1).length],['partial','Nửa công',staff.value.filter(r=>presenceDays(r)===.5).length],['empty','Chưa chấm',counts.value.empty],['draft','Nháp',counts.value.draft],['approved','Đã duyệt',counts.value.approved],...(counts.value.review?[['review','Cần kiểm tra',counts.value.review]]:[])].map(([value,label,count])=>({value,label:label+' ('+count+')'})))
+const orgParents=computed(()=>Object.fromEntries((catalog.value.department_tree||[]).map(d=>[d.name,d.parent_department])))
+const selectedOrg=computed(()=>({designation:roleFilter.value,department:departmentFilter.value,division:divisionFilter.value}))
+const filteredStaff=computed(()=>filterAttendanceOrganization(staff.value,selectedOrg.value,orgParents.value))
+const roleOptions=computed(()=>organizationOptions(staff.value,'designation',orgParents.value,'Chưa có chức vụ'))
+const departmentOptions=computed(()=>organizationOptions(filterAttendanceOrganization(staff.value,{designation:roleFilter.value},orgParents.value),'department',orgParents.value,'Chưa phân phòng ban'))
+const divisionOptions=computed(()=>organizationOptions(filterAttendanceOrganization(staff.value,{designation:roleFilter.value,department:departmentFilter.value},orgParents.value),'division',orgParents.value,'Chưa phân bộ phận'))
+function changeOrgFilter(field){clearAttendanceSelection();if(field==='department')divisionFilter.value=''}
+const counts=computed(()=>{const c={all:filteredStaff.value.length,empty:0,partial:0,draft:0,approved:0,review:0,matching:0};for(const r of filteredStaff.value)c[rowState(r)]++;return c})
+const views=computed(()=>[['all','Tất cả',filteredStaff.value.length],['full','Đủ công',filteredStaff.value.filter(r=>presenceDays(r)===1).length],['partial','Nửa công',filteredStaff.value.filter(r=>presenceDays(r)===.5).length],['empty','Chưa chấm',counts.value.empty],['draft','Nháp',counts.value.draft],['approved','Đã duyệt',counts.value.approved],...(counts.value.review?[['review','Cần kiểm tra',counts.value.review]]:[])].map(([value,label,count])=>({value,label:label+' ('+count+')'})))
 // Rows needing a decision come first: device problems, then hand-edited drafts, then the rest.
 const rank=r=>r.machine?.needs_review&&r.docstatus===0?0:r.manual?1:r.matches?2:r.docstatus===1?4:3
-const shown=computed(()=>(view.value==='all'?staff.value:staff.value.filter(r=>view.value==='full'?presenceDays(r)===1:view.value==='partial'?presenceDays(r)===.5:rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
+const shown=computed(()=>(view.value==='all'?filteredStaff.value:filteredStaff.value.filter(r=>view.value==='full'?presenceDays(r)===1:view.value==='partial'?presenceDays(r)===.5:rowState(r)===view.value)).slice().sort((a,b)=>rank(a)-rank(b)))
+const visibleMatching=computed(()=>shown.value.filter(r=>r.matches).length)
 const allChecked=computed(()=>shown.value.length>0&&shown.value.every(r=>r.selected))
 
 const genderLabel=name=>({Male:'Nam',Female:'Nữ',Other:'Khác',Transgender:'Chuyển giới',Genderqueer:'Phi nhị nguyên',"Prefer not to say":'Không khai báo'})[name]||hrCatalogLabel(name)
@@ -154,12 +163,12 @@ async function load(){if(!company.value)return;const id=++version;busy.value=tru
 async function init(){busy.value=true
  try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=session.value.companies[0]?.name||'';date.value=session.value.today;month.value=date.value.slice(0,7);tab.value=tabs.value[0]?.id||'setup';if(company.value){await loadCatalog();await load()}}
  catch(e){error.value=e.message}finally{busy.value=false}}
-async function changeCompany(){farm.value='';shift.value='';staff.value=[];await loadCatalog();await load()}
+async function changeCompany(){farm.value='';shift.value='';roleFilter.value='';departmentFilter.value='';divisionFilter.value='';staff.value=[];await loadCatalog();await load()}
 function chooseTab(value){if(hasChanges()){error.value='Lưu hoặc bỏ thay đổi trước khi chuyển màn hình.';return}tab.value=value;notice.value='';load()}
 
 function edit(row){row.edited=true}
 function chooseStatus(row){const s=catalog.value.shifts.find(s=>s.name===row.shift);const minutes=v=>{const p=String(v).split(':').map(Number);return p[0]*60+p[1]};const duration=s?((minutes(s.end_time)-minutes(s.start_time)+1440)%1440)/60||8:8;row.working_hours=row.status==='Half Day'?duration/2:row.status==='Absent'?0:duration;if(row.status==='Absent')row.overtime_hours=0;edit(row)}
-function markPresent(){for(const row of staff.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.name&&!row.morning_present&&!row.afternoon_present){row.morning_present=1;row.afternoon_present=1;applyPresence(row);edit(row)}}
+function markPresent(){for(const row of shown.value)if(row.docstatus===0&&row.status!=='On Leave'&&!row.name&&!row.morning_present&&!row.afternoon_present){row.morning_present=1;row.afternoon_present=1;applyPresence(row);edit(row)}}
 // The shared table owns the single tick column; keep the existing timekeeping
 // selected flags because save/approve/cancel use those very same employee records.
 function chooseStaffRows(rows,selectedValue){
@@ -194,7 +203,7 @@ function clearAttendanceSelection(){for(const row of staff.value)row.selected=fa
 // Copies the device reading into one row (never silently over a hand-edited value).
 function useMachine(row){const p=row.machine;if(!p?.status||row.docstatus!==0)return
  Object.assign(row,{...presencePayload(p),status:p.status,working_hours:p.working_hours,overtime_hours:p.suggested_overtime});edit(row)}
-async function askMatching(){if(dirty.value||!dayInfo.value.counts.matching)return;const rows=staff.value.filter(r=>r.matches).map(r=>({row_key:r.row_key,review_hash:r.review_hash}));confirmation.value={type:'matching',action:'submit',count:rows.length,reviewed_rows:rows};reason.value='';await nextTick();confirmDialog.value.showModal()}
+async function askMatching(){if(dirty.value||!visibleMatching.value)return;const rows=shown.value.filter(r=>r.matches).map(r=>({row_key:r.row_key,review_hash:r.review_hash}));confirmation.value={type:'matching',action:'submit',count:rows.length,reviewed_rows:rows};reason.value='';await nextTick();confirmDialog.value.showModal()}
 async function saveStaff(){
  const rows=staff.value.filter(r=>r.edited&&r.docstatus===0&&r.status&&r.status!=='On Leave'&&!r.legacy_conflict)
  if(!rows.length){error.value='Chọn nhân viên và trạng thái để lưu nháp.';return}
@@ -245,7 +254,10 @@ useNoticeToast(notice)
    <LotusField v-else-if="tab==='month'" v-model="month" aria-label="Tháng" type="month" :max="session?.today?.slice(0,7)" :disabled="busy||saving" @update:model-value="load"/>
    <LotusField v-if="['crew','month'].includes(tab)" v-model="farm" aria-label="Vườn" :options="catalog.farms.map(f=>({value:f.name,label:f.farm_name}))" :searchable="false" empty-option="Tất cả được phân quyền" :disabled="busy||saving" @update:model-value="load"/>
    <LotusField v-if="tab==='staff'" v-model="search" aria-label="Tìm nhân viên" class="stock-search" type="search" placeholder="Tên hoặc mã nhân viên" :disabled="busy||dirty" @keyup.enter="load"/>
-   <LotusField v-if="tab==='staff'" v-model="view" aria-label="Lọc công" :options="views" :searchable="false" :empty-option="null"/>
+   <LotusField v-if="tab==='staff'" v-model="roleFilter" aria-label="Lọc chức vụ" :options="roleOptions" :searchable="false" empty-option="Tất cả chức vụ" @update:model-value="changeOrgFilter('designation')"/>
+    <LotusField v-if="tab==='staff'" v-model="departmentFilter" aria-label="Lọc phòng ban" :options="departmentOptions" :searchable="false" empty-option="Tất cả phòng ban" @update:model-value="changeOrgFilter('department')"/>
+    <LotusField v-if="tab==='staff'" v-model="divisionFilter" aria-label="Lọc bộ phận" :options="divisionOptions" :searchable="false" empty-option="Tất cả bộ phận" @update:model-value="changeOrgFilter('division')"/>
+    <LotusField v-if="tab==='staff'" v-model="view" aria-label="Lọc công" :options="views" :searchable="false" :empty-option="null"/>
    </template>
   </WorkspaceListToolbar>
 
@@ -261,7 +273,7 @@ useNoticeToast(notice)
     <div ref="attendanceTools" class="tk-daily-tools"></div>
     <span class="tk-actions__spacer"></span>
     <span v-if="editedCount" class="tk-actions__count">{{editedCount}} thay đổi</span>
-    <UiButton v-if="cap.Attendance?.submit&&!locked&&dayInfo.counts.matching" variant="outline" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt khớp máy ({{dayInfo.counts.matching}})</UiButton>
+    <UiButton v-if="cap.Attendance?.submit&&!locked&&visibleMatching" variant="outline" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt khớp máy ({{visibleMatching}})</UiButton>
     <UiButton v-if="canEditStaff" :disabled="saving||busy||!dirty" @click="saveStaff">Lưu nháp</UiButton>
     <UiButton v-if="cap.Attendance?.submit&&!locked&&selected.length" variant="outline" :disabled="saving||busy||dirty" :title="dirty?'Lưu nháp trước khi duyệt':''" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
     <DropdownMenu v-if="!locked&&(cap.Attendance?.create||cap.Attendance?.cancel||cap.Attendance?.delete||dirty)">

@@ -287,7 +287,7 @@ def overview(company):
         fields=["name", "employee_name", "status", "department", "designation",
                 "employment_type", "lotus_worker_category", "lotus_payment_basis",
                 "lotus_farm", "lotus_work_team", "lotus_onboarding_state",
-                "date_of_joining", "contract_end_date"],
+                "date_of_joining", "contract_end_date", "modified"],
         order_by="employee_name asc", limit_page_length=0,
     )
     candidates = frappe.get_list(
@@ -446,6 +446,51 @@ def check_cccd(company, cccd, employee=None):
         "Employee", {"lotus_cccd_hash": _id_digest(value), "name": ["!=", employee or ""]}
     )
     return {"duplicate": bool(duplicate)}
+
+
+
+
+@frappe.whitelist(methods=["POST"])
+def assign_teams(company, farm, team, employees):
+    """Bulk assign an existing internal team to Employees; never change their farm or salary."""
+    _manager()
+    _company(company)
+    _farm(farm, company)
+    selected = frappe.parse_json(employees) if isinstance(employees, str) else employees
+    if not isinstance(selected, list) or not 1 <= len(selected) <= 100:
+        frappe.throw("Chọn từ 1 đến 100 nhân viên mỗi lần phân tổ.")
+    ids = [x.get("name") for x in selected if isinstance(x, dict)]
+    if len(ids) != len(selected) or len(set(ids)) != len(ids) or not all(ids):
+        frappe.throw("Danh sách nhân viên trùng hoặc không hợp lệ.")
+    team = str(team or "").strip()
+    if team:
+        group = frappe.get_doc("Work Team", team)
+        group.check_permission("read")
+        if group.farm != farm or group.get("lotus_team_type") != "Internal" or not group.active:
+            frappe.throw("Chỉ được phân vào tổ/đội nội bộ đang hoạt động của đúng vườn.")
+    else:
+        group = None
+    docs = []
+    for row in selected:
+        doc = _choose("Employee", row["name"], company)
+        doc.check_permission("write")
+        if doc.status != "Active" or doc.get("lotus_farm") != farm:
+            frappe.throw("Nhân viên %s không đang làm tại vườn đã chọn. Kiểm tra hồ sơ trước." % doc.name)
+        if not row.get("modified") or str(doc.modified) != str(row["modified"]):
+            frappe.throw("Hồ sơ %s vừa thay đổi. Tải lại danh sách trước khi phân tổ." % doc.name)
+        docs.append(doc)
+    updated = []
+    for doc in docs:
+        previous = doc.get("lotus_work_team") or ""
+        if previous == team:
+            continue
+        doc.lotus_work_team = team
+        doc.save()
+        doc.add_comment("Comment", "Phân tổ/đội nội bộ: %s → %s; vườn %s." % (
+            previous or "Chưa phân", team or "Chưa phân", farm))
+        updated.append(doc.name)
+    return {"updated": len(updated), "unchanged": len(docs)-len(updated),
+            "employees": updated, "team": team, "farm": farm}
 
 
 @frappe.whitelist(methods=["POST"])

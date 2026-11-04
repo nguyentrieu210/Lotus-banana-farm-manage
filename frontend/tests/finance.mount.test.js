@@ -166,3 +166,22 @@ test('cost report by lot lists materials, labour and services',async()=>{
  assert.match(text(view.root),/A-1 · LOTUS-222\s*300\.000\s*2\.000\.000\s*500\.000\s*100\.000\s*2\.900\.000\s*1\.000\.000/)
  view.unmount()
 })
+
+test('bank reconciliation has its own page, and opens the bank ledger without making a voucher',async()=>{
+ calls.length=0
+ routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:{...lookups,accounts:[{name:'112 - Tiền gửi không kỳ hạn - LT',account_number:'112',account_name:'Tiền gửi không kỳ hạn'}]},
+  [F+'statements.general_ledger']:{label:'112 - Tiền gửi không kỳ hạn',account:'112 - Tiền gửi không kỳ hạn - LT',opening:0,debit:0,credit:0,closing:0,lines:[]}}
+ const view=await open('/tai-chinh?tab=bank')
+ const page=text(view.root)
+ assert.match(page,/Ngân hàng – Đối chiếu/)
+ assert.match(page,/Tải sao kê ngân hàng hoặc sổ quỹ Excel/)
+ assert.match(page,/Dữ liệu chỉ dùng để kiểm tra, chưa tự ghi vào sổ kế toán/)
+ const openLedger=button(view.root,'Xem sổ tiền gửi 112')
+ assert.ok(openLedger)
+ openLedger.click()
+ for(let i=0;i<6;i++)await tick()
+ assert.equal(view.router.currentRoute.value.query.tab,'reports')
+ assert.ok(calls.some(c=>c.method===F+'statements.general_ledger'&&c.args.account==='112 - Tiền gửi không kỳ hạn - LT'))
+ assert.equal(calls.some(c=>c.method.includes('prepare_supplier_payment')||c.method.includes('sign_payment')),false)
+ view.unmount()
+})

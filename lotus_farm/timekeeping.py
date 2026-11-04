@@ -47,7 +47,7 @@ def _employee(name,company,active=True,day=None):
 
 def _day_people(company, day):
     return [p for p in frappe.get_list('Employee', filters={'company':company,'status':['in',['Active','Left']]},
-        fields=['name','employee_name','department','designation','status','date_of_joining','relieving_date','default_shift'],
+        fields=['name','employee_name','department','designation','lotus_work_team','status','date_of_joining','relieving_date','default_shift'],
         order_by='employee_name',limit_page_length=0) if employed_on(p,day)]
 
 
@@ -100,7 +100,7 @@ def catalogue(company):
     farms=rows('Farm',{'company':company,'active':1},['name','farm_name'])
     return dict(farms=farms,teams=rows('Work Team',{'active':1,'lotus_team_type':'Contractor','farm':['in',[f.name for f in farms]]},['name','team_name','farm','lotus_foreman','lotus_foreman_phone']),
         works=rows('Work Type',{'active':1,'allow_piecework':1},['name','work_name','uom','piecework_rate']),
-        shifts=rows('Shift Type',{},['name','start_time','end_time','late_entry_grace_period','early_exit_grace_period','working_hours_threshold_for_half_day','working_hours_threshold_for_absent','begin_check_in_before_shift_start_time','allow_check_out_after_shift_end_time','lotus_color']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
+        shifts=rows('Shift Type',{},['name','start_time','end_time','late_entry_grace_period','early_exit_grace_period','working_hours_threshold_for_half_day','working_hours_threshold_for_absent','begin_check_in_before_shift_start_time','allow_check_out_after_shift_end_time','lotus_color']),employees=rows('Employee',{'company':company,'status':'Active'},['name','employee_name']),departments=rows('Department',{'company':company,'is_group':0},['name','department_name']),department_tree=rows('Department',{'company':company},['name','parent_department','is_group']),genders=rows('Gender',{},['name']),uoms=rows('UOM',{'enabled':1},['name']))
 
 
 @frappe.whitelist()
@@ -121,7 +121,7 @@ def staff_day(company,date,shift=None,search=None):
         shifts=list(dict.fromkeys(scheduled.get(person.name,[])+list(saved))) or ['']
         for name in shifts:
             if shift and name!=shift:continue
-            row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,name=None,status='',working_hours=0,overtime_hours=0,in_time=None,out_time=None,late_entry=0,early_exit=0,note='',docstatus=0,modified=None,shift=name,row_key=attendance_key(person.name,name))
+            row=dict(employee=person.name,employee_name=person.employee_name,department=person.department,designation=person.designation,work_team=person.lotus_work_team or '',name=None,status='',working_hours=0,overtime_hours=0,in_time=None,out_time=None,late_entry=0,early_exit=0,note='',docstatus=0,modified=None,shift=name,row_key=attendance_key(person.name,name))
             if name in saved:
                 entry=saved[name];row.update(dict(entry));row['note']=entry.lotus_note or '';row['overtime_hours']=flt(entry.lotus_overtime_hours)
             rows.append(row)

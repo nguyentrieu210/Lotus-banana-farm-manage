@@ -28,7 +28,7 @@ const columns=computed(()=>[
   valueGetter:p=>cell(p.data,day.d).text,
   cellClass:p=>[cell(p.data,day.d).cls,day.off?'is-off':'',day.holiday?'is-holiday':''].filter(Boolean).join(' '),
   headerClass:[day.off?'is-off':'',day.holiday?'is-holiday':''].filter(Boolean).join(' '),
-  tooltipValueGetter:p=>cell(p.data,day.d).title})),
+  tooltip:p=>cell(p.data,day.d).title})),
  {field:'workdays',headerName:'Công',minWidth:85,valueFormatter:p=>fmt(p.value)},
  ...(props.kind==='staff'?[{field:'working_hours',headerName:'Giờ',valueFormatter:p=>fmt(p.value)},{field:'overtime_hours',headerName:'Tăng ca',valueFormatter:p=>fmt(p.value)}]:[{field:'amount',headerName:'Giá trị khoán',valueFormatter:p=>cash(p.value)}]),
  {field:'draft_count',headerName:'Nháp',valueFormatter:p=>p.value||'',cellClass:p=>p.value?'is-warn':''}
