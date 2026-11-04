@@ -81,6 +81,16 @@ try:
     w.delete_draft('Stock Entry', d1['name'], w.document('Stock Entry', d1['name'])['modified'])
     ok('xóa nháp', not frappe.db.exists('Stock Entry', d1['name']))
 
+    # Mục đích xuất: hủy không cần lô / người nhận nhưng cần lý do; ghi chi phí khác, không vào 621 của lô
+    blocked('xuất hủy cần lý do', lambda: w.create_draft(company, 'issue', today, [dict(item=Y, qty=1)], source=A, issue_purpose='Disposal'), 'lý do')
+    h = w.create_draft(company, 'issue', today, [dict(item=Y, qty=1)], source=A, issue_purpose='Disposal', notes='E2E hàng hỏng')
+    post('Stock Entry', h['name'])
+    hd = frappe.get_doc('Stock Entry', h['name'])
+    ok('xuất hủy ghi sổ, không lô, mục đích Disposal', hd.docstatus == 1 and hd.get('lotus_issue_purpose') == 'Disposal' and not hd.get('lotus_issue_mode'), (hd.get('lotus_issue_purpose'), hd.get('lotus_issue_mode')))
+    ok('xuất hủy không vào 621', not hd.items[0].expense_account.startswith('621'), hd.items[0].expense_account)
+    ok('chi tiết + danh sách thấy mục đích', w.document('Stock Entry', h['name'])['issue_purpose'] == 'Disposal' and any(r.name == h['name'] and r.purpose.startswith('Xuất hủy') for r in w.documents(company, kind='issues', warehouse=A)['rows']))
+    blocked('xuất sản xuất vẫn bắt chọn lô', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, receiver_employee=emp, notes='x'), 'Khu vực')
+    blocked('mục đích khác chỉ xuất thủ công', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, issue_purpose='Sale', issue_mode='Plan', notes='x'), 'kế hoạch')
     # Chuyển kho + chống gửi trùng
     ev = 'e2e-' + tag
     t1 = w.create_draft(company, 'transfer', today, [dict(item=X, qty=5)], source=A, target=B, client_event_id=ev)
@@ -94,7 +104,7 @@ try:
     c1 = w.create_draft(company, 'count', today, [dict(item=X, qty=22)], target=A)
     post('Stock Reconciliation', c1['name'])
     ok('kiểm kê thiếu 3 kg -> 1381', abs(qty(X, A) - 22) < 1e-6 and frappe.db.get_value('Stock Reconciliation', c1['name'], 'expense_account').startswith('1381'), qty(X, A))
-    blocked('kiểm kê lẫn thừa và thiếu', lambda: post('Stock Reconciliation', w.create_draft(company, 'count', today, [dict(item=X, qty=23), dict(item=Y, qty=9)], target=A)['name']), 'riêng')
+    blocked('kiểm kê lẫn thừa và thiếu', lambda: post('Stock Reconciliation', w.create_draft(company, 'count', today, [dict(item=X, qty=23), dict(item=Y, qty=8)], target=A)['name']), 'riêng')
     c2 = w.create_draft(company, 'count', today, [dict(item=Y, qty=3)], target=B)
     ok('thừa ở kho chưa có giá lấy giá kho khác', abs(flt(frappe.get_doc('Stock Reconciliation', c2['name']).items[0].valuation_rate) - 60000) < 0.01,
        frappe.get_doc('Stock Reconciliation', c2['name']).items[0].valuation_rate)

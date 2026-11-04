@@ -28,8 +28,9 @@ try:
     company = frappe.db.get_value('Company', {}, 'name')
     ok('bảng chống gửi trùng đã tạo (migrate)', frappe.db.table_exists('Lotus ERP Command'))
     cat = e.catalog()
-    ok('danh mục đủ 8 phân hệ', len(cat['modules']) == 8, [m['label'] for m in cat['modules']])
-    ok('danh mục kèm công ty', any(c['name'] == company for c in cat['companies']))
+    stock = {sct['id']: sct for sct in cat['sections'].get('stock', [])}
+    ok('Kho có Lô & hạn dùng, Chi phí sau nhập, báo cáo kho', {'batches', 'landed-costs', 'reports'} <= set(stock), list(stock))
+    ok('báo cáo kho không lên sidebar (nằm trong màn Báo cáo)', stock.get('reports', {}).get('nav') is False)
 
     # ---- Bán hàng: khách → đơn bán → giao → hóa đơn → thu tiền --------------------------------------
     cust = e.document('Customer', company=company)['doc']

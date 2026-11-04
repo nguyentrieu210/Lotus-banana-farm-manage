@@ -13,6 +13,7 @@ export function permittedRoute(path,session,query={}){
  if(page==='nhan-su')return hrViewAllowed(query.hr_view,session)
  if(page==='mua-hang'){
   const item=procurementNavigation.find(r=>r.id===normalizeBuyingView(query.buying_view))
+  if(!item)return !!session.capabilities?.purchasing  // an ERP section (Yêu cầu báo giá…), already permission-filtered
   return !!session.capabilities?.purchasing&&(!item.finance||!!session.capabilities?.purchasing_finance)&&(!item.invoice||!!session.capabilities?.purchasing_invoice_read)
  }
  if(workspaceModules[page]){const module=workspaceModules[page];return module.capability?!!session.capabilities?.[module.capability]:!!session.modules?.[module.module]?.length}

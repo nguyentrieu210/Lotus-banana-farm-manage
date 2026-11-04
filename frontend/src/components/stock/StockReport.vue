@@ -1,5 +1,9 @@
 <script setup>
-import {computed,onUnmounted,ref,watch} from 'vue'
+import {computed,inject,onUnmounted,ref,watch} from 'vue'
+import {routerKey,routeLocationKey} from 'vue-router'
+import LotusField from '../form/LotusField.vue'
+import ErpReport from '../erp/ErpReport.vue'
+import {erpSection} from '../../erp-sections.js'
 import {call} from '../../api'
 import ListPage from '../ListPage.vue'
 import StockScope from './StockScope.vue'
@@ -7,6 +11,14 @@ import {reportColumns,fmt} from '../../stock-columns'
 // Báo cáo nhập – xuất – tồn theo số lượng (kỳ, kho). The value version is in Kế toán → Báo cáo → Nhập – xuất – tồn.
 const props=defineProps({company:String,warehouse:String,session:Object,warehouses:{type:Array,default:()=>[]},refreshKey:Number})
 const emit=defineEmits(['update:warehouse','update:company'])
+// Loại báo cáo: the quantity NXT below, or one of the other stock reports (tồn dự kiến, tuổi tồn, đặt hàng lại, lô…)
+// run natively by ERPNext inside this screen; ?erp_tab= keeps the choice in the address.
+const router=inject(routerKey,null),route=inject(routeLocationKey,null)
+const otherReports=computed(()=>erpSection('stock','erp-reports')?.tabs||[])
+const reportOptions=computed(()=>[{value:'',label:'Nhập – xuất – tồn (số lượng)'},...otherReports.value.map(t=>({value:t.name,label:t.label}))])
+const selected=computed(()=>otherReports.value.find(t=>t.name===route?.query?.erp_tab)||null)
+function pickReport(value){if(router)router.replace({path:route.path,query:{...route.query,erp_tab:value||undefined}})}
+const companyCurrency=computed(()=>props.session?.companies?.find(c=>c.name===props.company)?.default_currency||'VND')
 const monthStart=day=>day?day.slice(0,8)+'01':''
 const data=ref(null),busy=ref(false),error=ref(''),search=ref(''),searchDraft=ref(''),from=ref(monthStart(props.session?.today)),to=ref(props.session?.today||'')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
@@ -30,9 +42,18 @@ defineExpose({refresh:load})
 </script>
 
 <template>
- <ListPage title="Báo cáo nhập – xuất – tồn" :rows="data?.rows||[]" :columns="columns" :loading="busy" :error="error" :summary="summary" v-model:search="searchDraft" search-placeholder="Tìm vật tư, nhóm…" @refresh="load"
+ <section class="stock-report-host">
+ <LotusField v-if="otherReports.length" class="stock-report-kind" type="select" label="Loại báo cáo" :model-value="selected?.name||''" :options="reportOptions" :searchable="false" :empty-option="null" @update:model-value="pickReport"/>
+ <ErpReport v-if="selected" :key="selected.name" :name="selected.name" :label="selected.label" :company="company" :currency="companyCurrency" :show-back="false"/>
+ <ListPage v-else title="Báo cáo nhập – xuất – tồn" :rows="data?.rows||[]" :columns="columns" :loading="busy" :error="error" :summary="summary" v-model:search="searchDraft" search-placeholder="Tìm vật tư, nhóm…" @refresh="load"
    storage-key="lotus-stock-report" show-empty-headers empty="Không có phát sinh trong kỳ. Đổi khoảng ngày hoặc kho.">
   <template #filters><StockScope dates v-model:from="from" v-model:to="to" :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session?.companies||[]" :disabled="busy" @update:warehouse="emit('update:warehouse',$event)" @update:company="emit('update:company',$event)"/></template>
   <p class="stock-report-note">Báo cáo theo số lượng của đơn vị tồn kho gốc. Giá trị nhập – xuất – tồn xem tại Kế toán → Báo cáo.</p>
  </ListPage>
+ </section>
 </template>
+
+<style>
+.stock-report-host{display:grid;gap:10px;min-width:0}
+.stock-report-kind{max-width:360px}
+</style>

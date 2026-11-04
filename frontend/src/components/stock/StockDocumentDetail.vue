@@ -14,6 +14,7 @@ const props=defineProps({warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['changed','edit'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const issueModes={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
+const issuePurposes={Disposal:'Xuất hủy / hư hỏng / hết hạn',Packing:'Xuất bao bì / vật liệu đóng gói',Sale:'Xuất bán / phụ phẩm',Shortage:'Thiếu khi kiểm kê (chờ xử lý)'}
 const open=ref(false),detail=ref(null),busy=ref(false),error=ref(''),confirmPost=ref(false),deleting=ref(false),cancelling=ref(false),cancelReason=ref('')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
 const money=computed(()=>props.session?.companies?.find(c=>c.name===detail.value?.company)?.default_currency||'VND')
@@ -81,6 +82,7 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
    <dl v-if="detail.additional_costs?.length" class="stock-detail-costs"><div v-for="(cost,index) in detail.additional_costs" :key="index"><dt>{{cost.description}}</dt><dd>{{cash(cost.amount)}}</dd></div></dl>
    <p class="lotus-form-note">Giá trị nhập gồm chi phí phân bổ. Công nợ nhà cung cấp ghi nhận bằng hóa đơn mua hàng.</p>
   </template>
+  <p v-if="issuePurposes[detail.issue_purpose]" class="lotus-form-note">Mục đích: {{issuePurposes[detail.issue_purpose]}}</p>
   <p v-if="detail.receiver" class="lotus-form-note">Người nhận: {{detail.receiver}} · {{issueModes[detail.issue_mode]||issueModes.Manual}}</p>
   <p v-if="detail.notes" class="lotus-form-note">{{detail.notes}}</p>
   <StockEvidence :doctype="detail.doctype" :name="detail.name"/>

@@ -21,6 +21,8 @@ import StockDocumentForm from './components/stock/StockDocumentForm.vue'
 import StockDocumentDetail from './components/stock/StockDocumentDetail.vue'
 import StockMasterForm from './components/stock/StockMasterForm.vue'
 import StockScope from './components/stock/StockScope.vue'
+import ErpSection from './components/erp/ErpSection.vue'
+import {erpSection} from './erp-sections.js'
 import {Button as UiButton} from './components/ui/button'
 // Kho workspace shell: session, company/warehouse scope and the view chosen in the sidebar (?stock_view=).
 // Each view is its own component; the forms (phiếu kho, chi tiết, danh mục, nhận hàng theo đơn) are shared by every view.
@@ -35,6 +37,8 @@ const documentForm=ref(null),documentDetail=ref(null),masterForm=ref(null),recei
 const warehouses=computed(()=>scope.value?.warehouses||[])
 const canCreate=computed(()=>!!company.value&&warehouses.value.length>0&&!!scope.value?.catalogue_count)
 const masterViews=['warehouses','items','groups','uoms']
+const erpView=computed(()=>erpSection('stock',view.value))
+const erpHost=ref(null)
 const warehousePwa=window.location.pathname.replace(/\/$/,'')==='/warehouse'
 const mobileViews=['stock','receipts','issues','movements']
 
@@ -53,7 +57,9 @@ async function initialize(){
 }
 onMounted(initialize)
 
-function query(extra={}){return {...(route?.query||{}),stock_view:view.value,company:company.value||undefined,warehouse:warehouse.value||undefined,...extra}}
+// ERP section keys (erp_tab, name, new, erp_doctype) belong to the section being left; they never follow to another view.
+const erpKeys=new Set(['erp_tab','name','new','erp_doctype'])
+function query(extra={}){return {...Object.fromEntries(Object.entries(route?.query||{}).filter(([k])=>!erpKeys.has(k))),stock_view:view.value,company:company.value||undefined,warehouse:warehouse.value||undefined,...extra}}
 async function go(next){
  if(hasChanges()&&!await confirm.ask('Bỏ phần chưa lưu và chuyển mục?'))return
  discardChanges();view.value=normalizeStockView(next);notice.value=''
@@ -80,7 +86,7 @@ async function documentSaved(result){
  await openDocument(result.doctype,result.name)
 }
 async function masterSaved(result){notice.value=result.deleted?'Đã xóa danh mục.':'Đã lưu danh mục '+result.name+'.';changed();await loadScope()}
-function hasChanges(){return !!documentForm.value?.hasChanges()||!!masterForm.value?.hasChanges()||!!receivingView.value?.hasChanges()}
+function hasChanges(){return !!erpHost.value?.hasChanges()||!!documentForm.value?.hasChanges()||!!masterForm.value?.hasChanges()||!!receivingView.value?.hasChanges()}
 function discardChanges(){documentForm.value?.discardChanges();masterForm.value?.discardChanges();documentDetail.value?.discardChanges();receivingView.value?.discardChanges()}
 defineExpose({hasChanges,discardChanges,scopeParams:()=>({company:company.value,warehouse:warehouse.value||undefined})})
 watch(()=>props.stockView,value=>{const next=normalizeStockView(value);if(next!==view.value)view.value=next})
@@ -109,6 +115,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
      <template #scope><StockScope :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session.companies||[]" @update:warehouse="setWarehouse" @update:company="setCompany"/></template>
     </WarehousePlanning>
     <StockMasterList v-else-if="masterViews.includes(view)" :kind="view" :company="company" :session="session" :refresh-key="refreshKey" @new-master="kind=>masterForm.open(kind)" @edit-master="(kind,name)=>masterForm.open(kind,name)"/>
+    <ErpSection v-else-if="erpView" ref="erpHost" :key="erpView.id" :section="erpView" view-param="stock_view" :company="company"/>
    </template>
    <nav v-if="warehousePwa" class="warehouse-pwa-bottom-nav" aria-label="Điều hướng Kho điện thoại">
     <UiButton v-for="tab in tabs" :key="tab.id" type="button" variant="ghost" :class="{active:view===tab.id}" :aria-current="view===tab.id?'page':undefined" @click="go(tab.id)">{{tab.label}}</UiButton>

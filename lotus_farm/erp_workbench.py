@@ -87,33 +87,30 @@ def _fields(meta, parent=None):
 
 @frappe.whitelist()
 def catalog():
-    """ERP areas for the sidebar: only documents and reports that exist here and this user may read."""
+    """ERP sections added into the Lotus modules (lotus_farm.erp_catalog): only tabs that exist here and this user may open."""
     _access()
-    from lotus_farm.erp_catalog import MODULES
-    reports = {r.name: r for r in frappe.get_all('Report', filters={'disabled': 0}, fields=['name', 'ref_doctype', 'report_type'], limit_page_length=0)}
-    modules = []
-    for module in MODULES:
-        groups = []
-        for group in module['groups']:
-            items = []
-            for kind, name, label in group['items']:
+    from lotus_farm.erp_catalog import SECTIONS
+    reports = {r.name: r for r in frappe.get_all('Report', filters={'disabled': 0}, fields=['name', 'ref_doctype'], limit_page_length=0)}
+    result = {}
+    for module, sections in SECTIONS.items():
+        shown = []
+        for section in sections:
+            tabs = []
+            for kind, name, label in section['tabs']:
                 if kind == 'doctype':
                     if not frappe.db.exists('DocType', name) or not frappe.has_permission(name, 'read'):
                         continue
                     meta = frappe.get_meta(name)
-                    items.append(dict(kind=kind, name=name, label=label, submittable=bool(meta.is_submittable), tree=bool(meta.is_tree),
-                                      single=bool(meta.issingle), create=bool(frappe.has_permission(name, 'create'))))
+                    tabs.append(dict(kind=kind, name=name, label=label, create=bool(frappe.has_permission(name, 'create')) and not meta.issingle))
                 else:
                     report = reports.get(name)
                     if not report or (report.ref_doctype and not frappe.has_permission(report.ref_doctype, 'report')):
                         continue
-                    items.append(dict(kind=kind, name=name, label=label))
-            if items:
-                groups.append(dict(label=group['label'], items=items))
-        if groups:
-            modules.append(dict(id=module['id'], label=module['label'], lotus=module['lotus'], groups=groups))
-    companies = frappe.get_list('Company', fields=['name', 'default_currency'], order_by='name', limit_page_length=100)
-    return dict(modules=modules, companies=companies)
+                    tabs.append(dict(kind=kind, name=name, label=label))
+            if tabs:
+                shown.append(dict(id=section['id'], label=section['label'], icon=section['icon'], setup=bool(section.get('setup')), nav=section.get('nav', True), tabs=tabs))
+        result[module] = shown
+    return dict(sections=result)
 
 
 @frappe.whitelist()

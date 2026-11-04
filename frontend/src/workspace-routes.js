@@ -10,7 +10,6 @@ export const workspaceModules={
  forecast:{label:'Dự thu',module:'forecast'},
  'mau-day':{label:'Danh mục màu dây',module:'mau-day'},
  'tai-chinh':{label:'Tài chính – Kế toán',capability:'finance'},
- erp:{label:'Nghiệp vụ ERP',capability:'erp'},
 }
 export function internalWorkspaceTarget(href,origin){
  let url

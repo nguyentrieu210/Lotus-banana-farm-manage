@@ -1,3 +1,4 @@
+import {erpSection,erpNavItems} from './erp-sections.js'
 // Mua hàng sidebar: one entry per job. Views that belong together (báo giá + so sánh, đơn + nhận hàng, the accounting
 // views) share one entry and switch with the tabs at the top of the page; `group` names the entry a view lives under.
 export const procurementNavigation=[
@@ -14,11 +15,11 @@ export const procurementNavigation=[
  {id:'suppliers',label:'Nhà cung cấp',icon:'people',setup:true},
  {id:'items',label:'Hàng mua',icon:'boxes',setup:true},
 ].map(r=>({...r,path:'mua-hang'}))
-export const normalizeBuyingView=value=>procurementNavigation.some(r=>r.id===value)?value:'orders'
+export const normalizeBuyingView=value=>procurementNavigation.some(r=>r.id===value)||erpSection('buying',value)?value:'orders'
 // The sidebar entry a view is shown under (quotes → compare).
-export const buyingMenu=value=>{const id=normalizeBuyingView(value);return procurementNavigation.find(r=>r.id===id).group||id}
+export const buyingMenu=value=>{const id=normalizeBuyingView(value);return procurementNavigation.find(r=>r.id===id)?.group||id}
 // The views of one sidebar entry, in order: the tabs at the top of that page.
-export const buyingGroupViews=value=>{const menu=buyingMenu(value);return procurementNavigation.filter(r=>r.id===menu||r.group===menu)}
+export const buyingGroupViews=value=>{const menu=buyingMenu(value);return erpSection('buying',menu)?[]:procurementNavigation.filter(r=>r.id===menu||r.group===menu)}
 const allowed=(r,session)=>(!r.finance||session.capabilities?.purchasing_finance)&&(!r.invoice||session.capabilities?.purchasing_invoice_read)
 export function visibleBuyingNavigation(session){
  // An accounting entry whose first view is hidden (no invoice right) still opens on its first visible view.
@@ -26,7 +27,7 @@ export function visibleBuyingNavigation(session){
   if(allowed(r,session))return [{...r,menu:r.id}]
   const first=procurementNavigation.find(v=>v.group===r.id&&allowed(v,session))
   return first?[{...first,label:r.label,menu:r.id}]:[]
- })
+ }).concat(erpNavItems('buying',{path:'mua-hang'}).map(r=>({...r,menu:r.id})))
 }
 export const buyingQuery=id=>({buying_view:id})
 // Kho navigation moved to stock-navigation.js; re-exported for older imports.

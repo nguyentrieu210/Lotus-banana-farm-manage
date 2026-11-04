@@ -9,7 +9,7 @@ import {erp,erpFileUrl} from '../../erp-api'
 import {display,evaluate} from '../../erp-meta'
 import {systemLabel} from '../../system-translations.js'
 // A native ERPNext/HRMS report: its filters (parsed from the installed report, never its JavaScript), result and summary.
-const props=defineProps({name:{type:String,required:true},label:String,company:String,currency:String})
+const props=defineProps({name:{type:String,required:true},label:String,company:String,currency:String,showBack:{type:Boolean,default:true}})
 const emit=defineEmits(['back'])
 const definition=ref(null),values=reactive({}),result=ref(null),busy=ref(false),error=ref('')
 async function load(){
@@ -61,7 +61,7 @@ function exportExcel(){window.open(erpFileUrl('export_report',{name:props.name,f
 <template>
  <section class="erp-report" :aria-label="label||name">
   <header class="erp-report__header">
-   <UiButton variant="ghost" size="sm" aria-label="Về phân hệ" title="Về phân hệ" @click="emit('back')"><LotusIcon name="arrow-left"/></UiButton>
+   <UiButton v-if="showBack" variant="ghost" size="sm" aria-label="Về phân hệ" title="Về phân hệ" @click="emit('back')"><LotusIcon name="arrow-left"/></UiButton>
    <h2>{{label||name}}</h2>
    <div class="erp-report__actions"><UiButton :disabled="busy||!definition" @click="run"><LotusIcon name="refresh"/>{{busy?'Đang chạy…':'Chạy báo cáo'}}</UiButton>
     <UiButton v-if="definition?.can_export" variant="outline" :disabled="busy" @click="exportExcel"><LotusIcon name="download"/>Xuất Excel</UiButton></div>

@@ -176,6 +176,7 @@ def document(doctype, name):
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
                 issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'),
+                issue_purpose=doc.get('lotus_issue_purpose') or ('Production' if doc.get('lotus_issue_mode') else ''),
                 receiver_employee=doc.get('lotus_receiver_employee'), work_plan=doc.get('lotus_work_plan'),
                 basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
                 additional_total=flt(doc.get('total_additional_costs')),
@@ -314,7 +315,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
         dt_filters=dict(filters,stock_entry_type=['in',entry_types]) if entry_types else filters
         # Business columns per list (lý do / NCC / người nhận / ghi chú), read only where the doctype has the field.
         meta=frappe.get_meta(dt)
-        extra=[f for f in {'Stock Entry':['stock_entry_type','lotus_receipt_reason','lotus_supplier','lotus_receiver','remarks'],
+        extra=[f for f in {'Stock Entry':['stock_entry_type','lotus_receipt_reason','lotus_supplier','lotus_receiver','remarks','lotus_issue_purpose','lotus_issue_mode'],
                            'Purchase Receipt':['supplier_name','remarks'],'Stock Reconciliation':['purpose','remarks']}[dt]
                if f=='stock_entry_type' or meta.has_field(f)]
         entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified',*extra],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
@@ -339,11 +340,13 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
             entry.supplier=entry.pop('supplier_name',None) or entry.pop('lotus_supplier',None) or ''
             entry.pop('lotus_supplier',None)
             entry.receiver=entry.pop('lotus_receiver',None) or ''
+            mode,issue_purpose=entry.pop('lotus_issue_mode',None),entry.pop('lotus_issue_purpose',None)
+            entry.purpose=ISSUE_PURPOSES.get('Production' if mode else issue_purpose,'') if entry_type=='Material Issue' else ''
             entry.areas=' · '.join(dict.fromkeys(areas.get(entry.name,[])))
             entry.notes=str(entry.pop('remarks',None) or '').strip()[:200]
             rows.append(entry)
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
-    fields=['name','kind','posting_date','docstatus','warehouses','reason','supplier','receiver','areas','notes']
+    fields=['name','kind','posting_date','docstatus','warehouses','reason','supplier','receiver','areas','notes','purpose']
     selected=selections(column_filters,fields);choices=faceted_distinct(rows,fields,selected)
     rows=[r for r in rows if matches(r,selected)]
     from lotus_farm.table_filters import sorted_rows
@@ -609,6 +612,11 @@ def overview(company, warehouse=None, search=None, start=0, column_filters=None,
                 entries=entries, reconciliations=reconciliations, currency=company_doc.default_currency,coverage_warnings=coverage['warnings'],demand_from=coverage['from_date'],demand_to=coverage['to_date'])
 
 
+# Mục đích xuất kho shown in the Kho issue form (values = Stock Entry.lotus_issue_purpose options).
+ISSUE_PURPOSES = {'Production': 'Xuất cho sản xuất (vào lô)', 'Disposal': 'Xuất hủy / hư hỏng / hết hạn', 'Packing': 'Xuất bao bì / vật liệu đóng gói',
+                  'Sale': 'Xuất bán / phụ phẩm', 'Shortage': 'Thiếu khi kiểm kê (chờ xử lý)'}
+
+
 def _number(value, label, allow_zero=False):
     try:
         result = float(value)
@@ -681,7 +689,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0,issue_purpose=None):
     """post=1 (Mua nhanh): a new receipt is posted to stock in the same request when the user may submit it;
     otherwise it stays a draft for the storekeeper (docstatus 0 in the result)."""
     _access()
@@ -698,7 +706,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         from lotus_farm.controls import lock
         event=_text(client_event_id,'Mã yêu cầu')
         client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,**(dict(receipt_reason=receipt_reason,supplier=supplier) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,issue_purpose=issue_purpose or 'Production',**(dict(receipt_reason=receipt_reason,supplier=supplier) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
         lock('Company',company)
         existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
         if existing:
@@ -757,15 +765,34 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         if kind == 'issue':
             if issue_mode not in ('Manual', 'Plan', 'Request'):
                 frappe.throw('Hình thức xuất kho không hợp lệ.')
-            doc.lotus_issue_mode = issue_mode
-            doc.lotus_work_plan = work_plan if issue_mode == 'Plan' else None
+            # Mục đích xuất: production goes to the lot's 621 (lotus_issue_mode); the others post by lotus_issue_purpose
+            # (finance.stock: hủy 811, bán 632, thiếu kiểm kê 1381, bao bì chi phí đóng gói) and need no lot or receiver.
+            purpose = issue_purpose or (doc.get('lotus_issue_purpose') if existing_name and not doc.get('lotus_issue_mode') else None) or 'Production'
+            if purpose not in ISSUE_PURPOSES:
+                frappe.throw('Mục đích xuất kho không hợp lệ.')
             from lotus_farm.warehouse_masters import employee_contact
             staff=employee_contact(company,receiver_employee)
-            if staff:
-                doc.lotus_receiver_employee=staff.name
-                doc.lotus_receiver=staff.employee_name
-            elif not (existing_name and doc.get('lotus_receiver')):
-                frappe.throw('Chọn người nhận vật tư trong danh sách nhân sự HRMS.')
+            if purpose != 'Production':
+                if issue_mode != 'Manual':
+                    frappe.throw('Xuất theo kế hoạch / yêu cầu chỉ dùng cho xuất sản xuất.')
+                if not str(notes or '').strip():
+                    frappe.throw('Ghi lý do xuất (' + ISSUE_PURPOSES[purpose].lower() + ').')
+                doc.lotus_issue_mode = None
+                doc.lotus_work_plan = None
+                if doc.meta.has_field('lotus_issue_purpose'):
+                    doc.lotus_issue_purpose = purpose
+                doc.lotus_receiver_employee = staff.name if staff else None
+                doc.lotus_receiver = staff.employee_name if staff else (doc.get('lotus_receiver') if existing_name else None)
+            else:
+                doc.lotus_issue_mode = issue_mode
+                doc.lotus_work_plan = work_plan if issue_mode == 'Plan' else None
+                if doc.meta.has_field('lotus_issue_purpose'):
+                    doc.lotus_issue_purpose = None
+                if staff:
+                    doc.lotus_receiver_employee=staff.name
+                    doc.lotus_receiver=staff.employee_name
+                elif not (existing_name and doc.get('lotus_receiver')):
+                    frappe.throw('Chọn người nhận vật tư trong danh sách nhân sự HRMS.')
     seen = set()
     basic_total = 0
     for row in rows:
@@ -832,7 +859,8 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             if kind == 'receipt' and receipt_reason == 'Recovery':
                 values['lotus_usage_area'] = _text(row.get('area'), 'Lô thu hồi vật tư')
             if kind == 'issue':
-                values['lotus_usage_area'] = _text(row.get('area'), 'Khu vực / lô sử dụng')
+                # Only production must name the lot; hủy / bán / bao bì may note an area.
+                values['lotus_usage_area'] = _text(row.get('area'), 'Khu vực / lô sử dụng') if doc.get('lotus_issue_mode') else (str(row.get('area') or '').strip()[:140] or None)
                 if issue_mode == 'Plan':
                     values['lotus_requirement'] = row.get('requirement')
                     values['lotus_requirement_line'] = row.get('requirement_line')

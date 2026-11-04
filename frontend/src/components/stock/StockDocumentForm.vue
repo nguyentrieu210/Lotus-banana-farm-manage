@@ -21,8 +21,12 @@ const emit=defineEmits(['saved'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const titles={receipt:'Nhập kho không theo đơn',issue:'Xuất kho',transfer:'Chuyển kho',count:'Kiểm kê kho'}
 const issueModes={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
+// Mục đích xuất (kế toán ghi theo mục đích: sản xuất → 621 của lô, hủy → 811, bao bì → chi phí đóng gói, bán → 632, thiếu → 1381).
+const issuePurposes=[{value:'Production',label:'Xuất cho sản xuất (vào lô)'},{value:'Disposal',label:'Xuất hủy / hư hỏng / hết hạn'},{value:'Packing',label:'Xuất bao bì / vật liệu đóng gói'},{value:'Sale',label:'Xuất bán / phụ phẩm'},{value:'Shortage',label:'Thiếu khi kiểm kê (chờ xử lý)'}]
+const production=computed(()=>form.kind!=='issue'||form.issue_purpose==='Production')
+function changeIssuePurpose(value){form.issue_purpose=value;if(value!=='Production'&&form.issue_mode!=='Manual')changeIssueMode('Manual')}
 const open=ref(false),saving=ref(false),error=ref(''),reasonFields=ref(null),quick=ref(false),showCosts=ref(false)
-const form=reactive({kind:'receipt',receipt_reason:'',supplier:'',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:''})
+const form=reactive({kind:'receipt',receipt_reason:'',supplier:'',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:''})
 const employees=ref([]),blockCodes=ref([]),accounts=ref([]),defaultAccount=ref(''),accountsLoading=ref(false)
 const issueSources=ref([]),issueSource=ref(''),issueNote=ref(''),issueLoading=ref(false)
 let issueVersion=0
@@ -60,7 +64,7 @@ const lineColumns=computed(()=>{
    hint:r=>['receipt','issue'].includes(form.kind)&&r.uom&&r.stock_uom&&r.uom!==r.stock_uom?'= '+fmt(stockQuantity(r))+' '+unitLabel(r.stock_uom):unitLabel(r.uom||r.stock_uom)||''}]
  if(form.kind==='receipt'||issue)cols.push({field:'uom',label:issue?'Đơn vị xuất':'Đơn vị nhập hàng',type:'select',required:true,width:'minmax(150px,1fr)',options:row=>itemUnits(row).map(u=>({value:u.uom,label:unitLabel(u.uom)+(u.uom!==row.stock_uom?' (1 = '+fmt(u.conversion_factor)+' '+unitLabel(row.stock_uom)+')':'')})),props:{emptyOption:null}})
  if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>form.kind==='receipt'&&form.receipt_reason!=='Purchase'&&!Number(r.rate)?'Để 0: lấy giá vốn hiện tại':'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
- if(issue||(form.kind==='receipt'&&form.receipt_reason==='Recovery'))cols.push({field:'area',label:issue?'Khu vực / lô sử dụng':'Lô thu hồi về',type:'combobox',options:blockCodes.value.map(b=>({value:b.code,label:b.label||b.code})),required:true,width:'minmax(160px,1.4fr)',readonly:r=>!manual.value&&r.fixed_area,props:{allowCustom:true,placeholder:'VD: A-1 / thửa 2'},
+ if(issue||(form.kind==='receipt'&&form.receipt_reason==='Recovery'))cols.push({field:'area',label:issue?(production.value?'Khu vực / lô sử dụng':'Khu vực (nếu có)'):'Lô thu hồi về',type:'combobox',options:blockCodes.value.map(b=>({value:b.code,label:b.label||b.code})),required:production.value,width:'minmax(160px,1.4fr)',readonly:r=>!manual.value&&r.fixed_area,props:{allowCustom:true,placeholder:'VD: A-1 / thửa 2'},
   hint:r=>manual.value?'Bắt đầu bằng mã lô để chi phí vào đúng lô.':'Duyệt '+fmt(r.required_qty)+' · Đã cấp/giữ '+fmt(r.allocated_qty)+' · Còn '+fmt(r.remaining_qty)+' '+unitLabel(r.stock_uom||r.uom)})
  return cols
 })
@@ -107,7 +111,7 @@ async function start(kind){
  pendingFiles.value=[]
  issueVersion++;error.value='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false
  const first=props.warehouse||props.warehouses[0]?.name||''
- Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',work_plan:'',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],lines:[newLine()]})
+ Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],lines:[newLine()]})
  if(kind==='issue')employees.value=await call('lotus_farm.warehouse_masters.employee_choices',{company:props.company})
  open.value=true
  if(kind==='receipt')await loadAccounts()
@@ -120,7 +124,7 @@ async function openQuick(){
 async function edit(current){
  const kind={'Material Receipt':'receipt','Material Issue':'issue','Material Transfer':'transfer'}[current.kind]||'count'
  await openNew(kind);await nextTick()
- Object.assign(form,{receipt_reason:current.receipt_reason||'',supplier:current.supplier||'',existing_name:current.name,base_modified:current.modified,posting_date:current.posting_date,count_purpose:current.kind,source:current.items[0]?.source||'',target:current.items[0]?.target||'',notes:current.notes||'',receiver:current.receiver||'',receiver_employee:current.receiver_employee||'',issue_mode:current.issue_mode||'Manual',additional_costs:(current.additional_costs||[]).map(row=>({...row})),lines:current.items.map(row=>({...row,rate:row.rate||0}))})
+ Object.assign(form,{receipt_reason:current.receipt_reason||'',supplier:current.supplier||'',issue_purpose:current.issue_purpose||'Production',existing_name:current.name,base_modified:current.modified,posting_date:current.posting_date,count_purpose:current.kind,source:current.items[0]?.source||'',target:current.items[0]?.target||'',notes:current.notes||'',receiver:current.receiver||'',receiver_employee:current.receiver_employee||'',issue_mode:current.issue_mode||'Manual',additional_costs:(current.additional_costs||[]).map(row=>({...row})),lines:current.items.map(row=>({...row,rate:row.rate||0}))})
 }
 async function save(){
  if(saving.value)return
@@ -147,13 +151,14 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
    <DocumentReader v-if="form.kind==='receipt'&&manual" :camera="quick" :disabled="saving" label="Đọc phiếu giao hàng / hóa đơn bằng AI" @read="applyDocument"/>
    <StockReceiptReason v-if="form.kind==='receipt'" ref="reasonFields" :fixed="quick" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier"/>
    <FormGrid :columns="3">
-    <LotusField v-if="form.kind==='issue'" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
+    <LotusField v-if="form.kind==='issue'" :model-value="form.issue_purpose" label="Mục đích xuất" :options="issuePurposes" :searchable="false" :empty-option="null" :disabled="saving" @update:model-value="changeIssuePurpose"/>
+    <LotusField v-if="form.kind==='issue'&&production" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
     <LotusField v-if="form.kind==='issue'&&form.issue_mode!=='Manual'" :model-value="issueSource" :label="form.issue_mode==='Plan'?'Kế hoạch đã duyệt':'Yêu cầu vật tư đã duyệt'" :options="issueSources.map(r=>({value:r.name,label:r.name+' · '+r.date}))" :searchable="false" :empty-option="issueLoading?'Đang tải…':form.issue_mode==='Plan'?'Chọn kế hoạch':'Chọn yêu cầu'" :disabled="issueLoading||saving" required @update:model-value="selectIssueSource"/>
     <LotusField v-model="form.posting_date" label="Ngày" type="date" required/>
     <LotusField v-if="form.kind==='count'" v-model="form.count_purpose" label="Loại kiểm kê" :options="[{value:'Stock Reconciliation',label:'Kiểm kê định kỳ'},{value:'Opening Stock',label:'Tồn đầu kỳ khi bắt đầu'}]" :searchable="false" :empty-option="null"/>
     <LotusField v-if="needsSource" v-model="form.source" label="Kho xuất" :options="warehouseOptions" :searchable="false" empty-option="Chọn kho" required/>
     <LotusField v-if="needsTarget" v-model="form.target" :label="form.kind==='count'?'Kho kiểm kê':'Kho nhận'" :options="warehouseOptions" :searchable="false" empty-option="Chọn kho" required/>
-    <LotusField v-if="form.kind==='issue'" v-model="form.receiver_employee" label="Người nhận vật tư (HRMS)" :options="employeeOptions" empty-option="Chọn nhân viên đang làm việc" :required="!form.existing_name||!form.receiver" :hint="form.existing_name&&form.receiver&&!form.receiver_employee?'Phiếu cũ: '+form.receiver+'. Chọn một nhân viên HRMS để cập nhật.':''"/>
+    <LotusField v-if="form.kind==='issue'" v-model="form.receiver_employee" :label="production?'Người nhận vật tư (HRMS)':'Người chịu trách nhiệm (nếu có)'" :options="employeeOptions" empty-option="Chọn nhân viên đang làm việc" :required="production&&(!form.existing_name||!form.receiver)" :hint="form.existing_name&&form.receiver&&!form.receiver_employee?'Phiếu cũ: '+form.receiver+'. Chọn một nhân viên HRMS để cập nhật.':''"/>
    </FormGrid>
    <p v-if="form.kind==='issue'&&form.issue_mode!=='Manual'&&!issueLoading&&!issueSources.length" class="lotus-form-note">{{form.issue_mode==='Plan'?'Chưa có kế hoạch đã duyệt trong công ty này.':'Chưa có yêu cầu cấp vật tư đã duyệt trong công ty này.'}}</p>
    <p v-if="issueNote" class="lotus-form-note">{{issueNote}}</p>
@@ -173,7 +178,7 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
    <StockEvidence ref="evidence" v-model:pending="pendingFiles" :doctype="form.kind==='count'?'Stock Reconciliation':'Stock Entry'" :name="form.existing_name||''" :disabled="saving" :title="form.kind==='issue'?'Ảnh bằng chứng xuất kho':form.kind==='receipt'?'Chứng từ nhập kho (phiếu giao hàng, hóa đơn, ảnh)':'Chứng từ, ảnh bằng chứng'"/>
   </FormSection>
   <FormSection v-if="form.kind!=='count'">
-   <LotusField v-model="form.notes" :label="form.kind==='issue'&&form.issue_mode==='Manual'?'Lý do xuất thủ công':'Ghi chú'" type="textarea" maxlength="2000" :required="form.kind==='issue'&&form.issue_mode==='Manual'" placeholder="Mục đích cấp vật tư…"/>
+   <LotusField v-model="form.notes" :label="form.kind==='issue'&&form.issue_mode==='Manual'?(production?'Lý do xuất thủ công':'Lý do xuất (hàng hỏng, hết hạn, bán cho ai…)'):'Ghi chú'" type="textarea" maxlength="2000" :required="form.kind==='issue'&&form.issue_mode==='Manual'" placeholder="Mục đích cấp vật tư…"/>
   </FormSection>
  </ModalForm>
 </template>

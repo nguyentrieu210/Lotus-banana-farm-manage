@@ -80,10 +80,9 @@ def bootstrap():
     session['capabilities']['purchasing']=bool(frappe.has_permission('Purchase Order','read') or frappe.has_permission('Material Request','read')) and all(frappe.has_permission(dt,'read') for dt in ('Company','Warehouse','Item'))
     session['capabilities']['purchasing_finance']=installed and (finance_view() or has_role('Lotus Purchase Approver','Lotus Farm Manager'))
     session['capabilities']['purchasing_invoice_read']=session['capabilities']['purchasing_finance'] and frappe.has_permission('Purchase Invoice','read')
-    # ERP areas (lotus_farm.erp_catalog) with at least one document or report this user may read; drives the sidebar.
+    # ERPNext/HRMS sections added into Kho, Mua hàng, Tài chính, Nhân sự (lotus_farm.erp_catalog), filtered by permission.
     from lotus_farm import erp_workbench
-    session['erp_modules']=[dict(id=m['id'],label=m['label']) for m in erp_workbench.catalog()['modules']] if erp_workbench.can_access() else []
-    session['capabilities']['erp']=bool(session['erp_modules'])
+    session['erp_sections']=erp_workbench.catalog()['sections'] if erp_workbench.can_access() else {}
     if session['capabilities']['field_report']:
         existing = {f['name'] for f in session['farms']}
         session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in report_farms() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
