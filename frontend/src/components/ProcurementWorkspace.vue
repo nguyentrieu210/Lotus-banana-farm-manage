@@ -22,6 +22,9 @@ import ListPage from './ListPage.vue'
 import LotusField from './form/LotusField.vue'
 import FormGrid from './form/FormGrid.vue'
 import FormSection from './form/FormSection.vue'
+import ErpSection from './erp/ErpSection.vue'
+import ErpReport from './erp/ErpReport.vue'
+import {erpSection} from '../erp-sections.js'
 import LineItemsEditor from './form/LineItemsEditor.vue'
 import ResponsiveForm from './form/ResponsiveForm.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
@@ -46,6 +49,13 @@ const router=inject(routerKey,null),route=inject(routeLocationKey,null)
 const masterView=ref(null),quickMaster=ref(''),quickLine=ref(0),masterDialog=ref(null),masterSaving=ref(null),receivingView=ref(null)
 const queryStart=ref(0),queryPageSize=ref(50),queryTotal=ref(0),queryMore=ref(false),queryState=ref(''),fromDate=ref(''),toDate=ref(''),debt=ref(null),fundingRows=ref([]),deliveryReason=ref(''),deliveryDate=ref('')
 const isPaged=computed(()=>['invoices','payments','payables'].includes(tab.value))
+// Yêu cầu báo giá, Nhóm NCC & điều khoản: ERPNext documents opened inside Mua hàng; the Báo cáo screen also offers
+// ERPNext's purchase reports (sổ mua hàng, theo dõi mua hàng…) in its "Loại báo cáo" picker.
+const erpView=computed(()=>erpSection('buying',tab.value))
+const erpReports=computed(()=>erpSection('buying','erp-reports')?.tabs||[])
+const erpReportName=ref('')
+const reportKinds=computed(()=>[{value:'',label:'Báo cáo mua hàng tháng'},...erpReports.value.map(t=>({value:t.name,label:t.label}))])
+const erpReportSel=computed(()=>erpReports.value.find(t=>t.name===erpReportName.value)||null)
 const isMaster=computed(()=>['suppliers','items'].includes(tab.value))
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 // Links look like buttons on desktop; the phone PWA keeps plain links.
@@ -125,7 +135,7 @@ function success(text){notice.value=text;if(!props.mobile){toast.success(text);n
 async function run(fn){if(saving.value)return;saving.value=true;error.value='';try{return await fn()}catch(e){error.value=e.message}finally{saving.value=false}}
 let loadVersion=0
 async function load(){
- if(!company.value)return
+ if(!company.value||erpSection('buying',tab.value))return
  const version=++loadVersion,view=tab.value,selectedCompany=company.value
  busy.value=true;error.value='';if(queryPageSize.value===0&&isPaged.value)rows.value=[]
  try{
@@ -292,6 +302,13 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
  <ProcurementMasters v-if="isMaster" ref="masterView" :key="company+tab" :company="company" :kind="tab" :mobile="mobile" @navigate="navigateMaster"><template #scope><LotusField v-if="companyOptions.length>1" v-model="company" :mobile="mobile" :label="mobile?'Công ty':undefined" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" :disabled="hasChanges()" @update:model-value="companyChanged"/></template></ProcurementMasters>
 
+ <ErpSection v-else-if="erpView" :key="erpView.id" :section="erpView" view-param="buying_view" :company="company"/>
+
+ <section v-else-if="tab==='reports'&&erpReportSel&&!mobile" class="procurement-erp-report">
+  <LotusField v-model="erpReportName" class="procurement-erp-report__kind" label="Loại báo cáo" :options="reportKinds" :searchable="false" :empty-option="null"/>
+  <ErpReport :key="erpReportSel.name" :name="erpReportSel.name" :label="erpReportSel.label" :company="company" :show-back="false"/>
+ </section>
+
  <ProcurementCompare v-else-if="tab==='compare'" :key="'compare-'+company" :company="company" :mobile="mobile" :can-create="catalog.can_create" :api="api" @created="compareCreated"/>
 
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
@@ -305,6 +322,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
     <template v-else><DateRangePicker v-model:from="fromDate" v-model:to="toDate" @change="queryReset"/><LotusField v-model="queryState" aria-label="Trạng thái" :options="stateOptions" :searchable="false" empty-option="Mọi trạng thái" @update:model-value="queryReset"/></template>
    </template>
    <template v-if="tab==='reports'">
+    <LotusField v-if="erpReports.length" v-model="erpReportName" aria-label="Loại báo cáo" :options="reportKinds" :searchable="false" :empty-option="null"/>
     <LotusField v-model="period" aria-label="Tháng" type="month" :max="asof.slice(0,7)"/>
     <LotusField v-model="asof" aria-label="Chốt đến" type="date"/>
     <LotusField v-model="supplier" aria-label="Nhà cung cấp" :options="supplierOptions" placeholder="Tất cả nhà cung cấp"/>
@@ -480,3 +498,8 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <WorkspaceConfirm v-if="!mobile" :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" confirm-label="Xác nhận" cancel-label="Quay lại" @answer="workspaceConfirm.finish"/>
  <LotusMobileDialog v-else ref="mobileDialog" @cancel="mobileConfirm.finish(false)"><h3>Xác nhận</h3><p>{{mobileMessage}}</p><LotusMobileButton @click="mobileConfirm.finish(false)">Quay lại</LotusMobileButton><LotusMobileButton @click="mobileConfirm.finish(true)">Xác nhận</LotusMobileButton></LotusMobileDialog>
 </section></template>
+
+<style>
+.procurement-erp-report{display:grid;gap:10px;min-width:0}
+.procurement-erp-report__kind{max-width:360px}
+</style>

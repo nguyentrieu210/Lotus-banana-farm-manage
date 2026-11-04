@@ -201,7 +201,7 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
  </section>
 
  <section v-if="view==='slips'&&run" class="tk-card hr-pay__table" aria-label="Phiếu lương HRMS">
-  <header class="tk-card__head"><h3>Phiếu lương HRMS</h3><span class="tk-hint">Thuế TNCN chưa tự tính: kế toán nhập Additional Salary (Income Tax) trước khi duyệt.</span></header>
+  <header class="tk-card__head"><h3>Phiếu lương HRMS</h3><span class="tk-hint">Thuế TNCN chưa tự tính: nhập thuế, thưởng hoặc khấu trừ của kỳ ở <a href="/lotus/nhan-su?hr_view=erp-pay-changes&amp;erp_tab=Additional%20Salary">Thưởng &amp; khấu trừ</a> trước khi duyệt.</span></header>
   <div class="hr-pay__scroll"><DataTable v-if="run.slips.length" :rows="run.slips" :columns="slipCols" row-key="name" storage-key="payroll-slips"/>
    <p v-else class="tk-empty">{{run.structure?'Chưa có phiếu lương HRMS cho tháng này.':'Cài đặt lương HRMS ở bước 3 trước.'}}</p></div>
  </section>

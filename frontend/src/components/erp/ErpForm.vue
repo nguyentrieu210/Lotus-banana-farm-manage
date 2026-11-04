@@ -8,8 +8,8 @@ import {docstatusLabel,layout,required,visible} from '../../erp-meta'
 import {systemLabel} from '../../system-translations.js'
 // One ERP document: native metadata, permissions, workflow and controllers on the server (lotus_farm.erp_workbench).
 // Save / submit / cancel go through one idempotent action (client key); "Tạo tiếp" uses the native mappers.
-const props=defineProps({doctype:{type:String,required:true},name:String,label:String,company:String,currency:String,confirm:{type:Function,required:true}})
-const emit=defineEmits(['saved','open-new','back','dirty'])
+const props=defineProps({doctype:{type:String,required:true},name:String,label:String,company:String,currency:String,confirm:{type:Function,required:true},modal:Boolean})
+const emit=defineEmits(['saved','open-new','back','dirty','title'])
 // Documents whose rows ERPNext prices from the item (get_item_details) and whose totals/taxes it recomputes.
 const ITEM_TYPES=['Purchase Order','Purchase Receipt','Purchase Invoice','Supplier Quotation','Sales Order','Delivery Note','Sales Invoice','Quotation','Material Request','Stock Entry','Stock Reconciliation']
 const PREVIEW_TYPES=['Purchase Order','Purchase Receipt','Purchase Invoice','Supplier Quotation','Sales Order','Delivery Note','Sales Invoice','Quotation']
@@ -45,6 +45,8 @@ const docstatus=computed(()=>Number(doc.value?.docstatus||0))
 const canWrite=computed(()=>docstatus.value===0?!!(isNew.value?permissions.value.create:permissions.value.write):docstatus.value===1)
 const locked=computed(()=>docstatus.value>0)
 const title=computed(()=>{const d=doc.value;if(!d)return props.label||props.doctype;const t=schema.value?.title_field&&d[schema.value.title_field];return isNew.value?'Mới · '+(props.label||props.doctype):(t&&t!==d.name?t+' · '+d.name:d.name)})
+// In a modal the dialog header shows the title; keep it in step with the document.
+watch(()=>title.value,value=>emit('title',value),{immediate:true})
 const statusText=computed(()=>{const d=doc.value;if(!d)return '';const s=d.status||d.workflow_state;return [schema.value?.is_submittable?docstatusLabel(docstatus.value):'',s?systemLabel(s):''].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' · ')})
 
 // Required fields left empty (visible ones only), checked before the server does.
@@ -132,8 +134,8 @@ defineExpose({hasChanges:()=>dirty.value})
 <template>
  <section class="erp-form" :aria-label="title" :aria-busy="busy">
   <header class="erp-form__header">
-   <UiButton variant="ghost" size="sm" class="erp-form__back" aria-label="Về danh sách" title="Về danh sách" @click="emit('back')"><LotusIcon name="arrow-left"/></UiButton>
-   <div class="erp-form__title"><h2>{{title}}</h2><span v-if="statusText" class="erp-form__status" :class="'erp-form__status--'+docstatus">{{statusText}}</span><span v-if="dirty" class="erp-form__dirty">Chưa lưu</span></div>
+   <UiButton v-if="!modal" variant="ghost" size="sm" class="erp-form__back" aria-label="Về danh sách" title="Về danh sách" @click="emit('back')"><LotusIcon name="arrow-left"/></UiButton>
+   <div class="erp-form__title"><h2 v-if="!modal">{{title}}</h2><span v-if="statusText" class="erp-form__status" :class="'erp-form__status--'+docstatus">{{statusText}}</span><span v-if="dirty" class="erp-form__dirty">Chưa lưu</span></div>
    <div v-if="doc" class="erp-form__actions" role="group" aria-label="Thao tác chứng từ">
     <UiButton v-if="docstatus===0&&canWrite" :disabled="busy" :variant="schema?.is_submittable?'outline':'default'" @click="run('save')">{{busy?'Đang lưu…':'Lưu'}}</UiButton>
     <UiButton v-if="docstatus===0&&schema?.is_submittable&&permissions.submit" :disabled="busy" @click="run('submit')">Ghi sổ</UiButton>

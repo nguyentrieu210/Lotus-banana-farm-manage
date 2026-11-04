@@ -12,6 +12,9 @@ import SignerPicker from './components/SignerPicker.vue'
 import DataTable from './components/DataTable.vue'
 import FinanceGuide from './components/finance/FinanceGuide.vue'
 import FinanceAssets from './components/finance/FinanceAssets.vue'
+import ErpSection from './components/erp/ErpSection.vue'
+import ErpReport from './components/erp/ErpReport.vue'
+import {erpSection} from './erp-sections.js'
 import FinancePlanning from './components/finance/FinancePlanning.vue'
 import FinanceMasterImport from './components/finance/FinanceMasterImport.vue'
 import {DateRangePicker} from './components/ui/date-picker'
@@ -52,6 +55,12 @@ const ledgerUser=computed(()=>!!session.capabilities?.finance_ledger)
 const tab=computed(()=>ledgerUser.value?String(route.query.tab||'overview'):'sign')
 const busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const overview=ref(null),pendingData=ref(null),journalRows=ref([]),payData=ref(null),cash=ref(null),mine=ref([]),settings=ref(null),lookups=ref(null)
+// Hóa đơn & đơn bán, Bút toán, Nghiệp vụ tài sản, Danh mục kế toán: ERPNext documents opened inside this page.
+const erpView=computed(()=>erpSection('finance',tab.value))
+// The report picker also offers ERPNext's own reports (sổ cái, phải thu/phải trả chi tiết, lãi gộp, tồn kho giá trị…) as 'erp:<name>'.
+const erpReports=computed(()=>erpSection('finance','erp-reports')?.tabs||[])
+const reportOptions=computed(()=>[...REPORTS.map(([value,label])=>({value,label})),...erpReports.value.map(t=>({value:'erp:'+t.name,label:t.label}))])
+const erpReportSel=computed(()=>String(report.value).startsWith('erp:')?erpReports.value.find(t=>'erp:'+t.name===report.value)||null:null)
 const report=ref('trial_balance'),reportData=ref(null),groupBy=ref('lotus_farm_block'),ledgerAccount=ref('')
 const today=String(session.today||new Date().toISOString().slice(0,10))
 const range=ref({from:today.slice(0,8)+'01',to:today})
@@ -78,6 +87,7 @@ async function load(){
  })
 }
 async function loadReport(){
+ if(String(report.value).startsWith('erp:'))return  // run by ErpReport itself
  const args={from_date:range.value.from,to_date:range.value.to}
  if(reportData.value?.__report!==report.value)reportData.value=null
  if(report.value==='trial_balance')reportData.value=await call(F+'reports.trial_balance',args)
@@ -544,8 +554,8 @@ useNoticeToast(notice)
  <template v-else-if="tab==='reports'">
   <div class="fin-report-toolbar">
    <div class="fin-report-toolbar__filters">
-    <LotusField :model-value="report" aria-label="Báo cáo" :options="REPORTS.map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" class="fin-wide" @update:model-value="chooseReport"/>
-    <DateRangePicker v-model:from="range.from" v-model:to="range.to"/>
+    <LotusField :model-value="report" aria-label="Báo cáo" :options="reportOptions" :searchable="false" :empty-option="null" class="fin-wide" @update:model-value="chooseReport"/>
+    <DateRangePicker v-if="!erpReportSel" v-model:from="range.from" v-model:to="range.to"/>
     <LotusField v-if="report==='costs'" v-model="groupBy" aria-label="Nhóm theo" :options="[{value:'lotus_farm',label:'Theo vườn'},{value:'lotus_farm_block',label:'Theo lô'},{value:'lotus_crop_cycle',label:'Theo vụ'},{value:'lotus_work_type',label:'Theo công việc'}]" :searchable="false" :empty-option="null"/>
     <LotusField v-if="report==='ledger'" v-model="ledgerAccount" aria-label="Tài khoản" :options="(lookups?.accounts||[]).map(a=>({value:a.name,label:a.name}))" placeholder="Chọn tài khoản…" class="fin-wide"/>
     <LotusField v-if="report==='ledger'" v-model="ledgerParty" aria-label="Đối tượng" placeholder="Mã đối tượng (tùy chọn)"/>
@@ -553,11 +563,12 @@ useNoticeToast(notice)
     <LotusField v-if="report==='bank'" aria-label="Sao kê ngân hàng (.xlsx)" type="file" accept=".xlsx" :disabled="saving" @update:model-value="readStatement"/>
    </div>
    <div class="fin-report-toolbar__actions">
-    <UiButton v-if="report!=='bank'" variant="outline" @click="run(loadReport)">Xem</UiButton>
-    <UiButton v-if="!['reconciliation','bank','vat','costing'].includes(report)" variant="outline" :disabled="(report==='ledger'&&!ledgerAccount)||(report==='party'&&!partyAccount)" @click="exportReport(report)"><LotusIcon name="download"/>Xuất Excel</UiButton>
+    <UiButton v-if="report!=='bank'&&!erpReportSel" variant="outline" @click="run(loadReport)">Xem</UiButton>
+    <UiButton v-if="!['reconciliation','bank','vat','costing'].includes(report)&&!erpReportSel" variant="outline" :disabled="(report==='ledger'&&!ledgerAccount)||(report==='party'&&!partyAccount)" @click="exportReport(report)"><LotusIcon name="download"/>Xuất Excel</UiButton>
     <UiButton v-if="report==='vat'&&reportData?.summary" variant="outline" @click="exportVat"><LotusIcon name="download"/>Xuất bảng kê Excel</UiButton>
    </div>
   </div>
+  <ErpReport v-if="erpReportSel" :key="erpReportSel.name" :name="erpReportSel.name" :label="erpReportSel.label" :company="overview?.company" :show-back="false"/>
   <template v-if="STATEMENTS.includes(report)&&reportData?.rows">
    <FormSection :title="reportData.title+' · Mẫu '+reportData.form+' · '+(report==='b01'?'tại ngày '+vnDate(reportData.on_date):'từ '+vnDate(reportData.from_date)+' đến '+vnDate(reportData.to_date))" :description="report==='b01'?'Ngày báo cáo lấy theo ngày &quot;Đến&quot;; số đầu năm là số dư ngày 31/12 năm trước.':report==='b02'?'Kỳ theo ô Từ – Đến; cột so sánh là cùng kỳ năm trước. Không gồm bút toán kết chuyển 911.':'Phương pháp gián tiếp, kỳ theo ô Từ – Đến.'">
     <template #actions><span :class="reportData.checks.every(c=>c.ok)?'fin-ok':'land-bad'">{{reportData.checks.every(c=>c.ok)?'Cân, khớp sổ':'Có chênh lệch'}}</span></template>
@@ -615,6 +626,7 @@ useNoticeToast(notice)
  <FinancePlanning v-else-if="tab==='planning'" @notice="notice=$event"/>
  <FinanceAssets v-else-if="tab==='assets'" :view="String(route.query.asset_view||'assets')" @view-change="router.replace({query:{...route.query,asset_view:$event}})" @go-settings="go('settings')" @notice="notice=$event"/>
  <FinanceGuide v-else-if="tab==='guide'" @go="go"/>
+ <ErpSection v-else-if="erpView" :key="erpView.id" :section="erpView" view-param="tab" :company="overview?.company"/>
 
  <template v-else-if="tab==='settings'&&settings">
   <FormSection title="Hệ thống tài khoản" :description="settings.coa_version?'Đã áp dụng '+settings.coa_version+' lúc '+vnDate(settings.coa_applied_at.slice(0,10))+' ('+settings.coa_applied_by+').':'Chưa áp dụng. Xem trước để kiểm tra danh mục tài khoản Thông tư 99, tài khoản kho và bút toán chuyển số dư từ hệ thống tài khoản cũ.'">

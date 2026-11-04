@@ -16,6 +16,8 @@ import {useWorkspaceConfirm} from './use-workspace-confirm'
 import HrOperations from './components/HrOperations.vue'
 import HrTeamAssignments from './components/HrTeamAssignments.vue'
 import HrPayrollPeriod from './components/hr/HrPayrollPeriod.vue'
+import ErpSection from './components/erp/ErpSection.vue'
+import {erpSection} from './erp-sections.js'
 import CccdQrScanner from './components/CccdQrScanner.vue'
 import {Button as UiButton} from './components/ui/button'
 import {Input as UiInput} from './components/ui/input'
@@ -35,6 +37,8 @@ const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:conf
 // /lotus/nhan-su: employee records, recruitment, onboarding, organisation, imports, attendance devices and the
 // monthly period / payroll (HR Manager). Native HRMS stays the source of truth for Employee and payroll.
 const api=(name,args={},write=false)=>call('lotus_farm.hr_workspace.'+name,args,write)
+// Nghỉ phép, Biến động, Thưởng & khấu trừ, thiết lập lương…: HRMS documents opened inside this page (erp-sections.js).
+const erpView=computed(()=>erpSection('hr',tab.value))
 const session=ref(null),company=ref(''),tab=ref(normalizeHrView(props.hrView)),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const router=props.embedded?useRouter():null
 const catalog=ref({farms:[],departments:[],designations:[],teams:[],grades:[],employment_types:[],genders:[],openings:[],designation_groups:{},worker_categories:[],payment_bases:[]})
@@ -213,14 +217,14 @@ useNoticeToast(notice)
  <component :is="embedded?'section':'main'" class="stock-main">
   <p v-if="error&&!editEmployee&&!editCandidate&&!offboardOpen" class="stock-error" role="alert">{{error}}</p>
 
-  <WorkspaceListToolbar v-if="tab!=='payroll'" v-model="search" :searchable="listTab" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="reload">
+  <WorkspaceListToolbar v-if="tab!=='payroll'&&!erpView" v-model="search" :searchable="listTab" placeholder="Tìm tên, mã, chức danh hoặc số liên lạc…" :busy="busy||saving" @refresh="reload">
    <template #filters><UiSelect v-if="(session?.companies?.length||0)>1" aria-label="Công ty" v-model="company" :disabled="busy||saving" @change="Object.keys(employeeFilters).forEach(k=>employeeFilters[k]='');resetPanels();refresh()"><option v-for="c in session?.companies" :key="c.name" :value="c.name">{{c.name}}</option></UiSelect>
    <template v-if="listTab"><UiSelect aria-label="Vườn" v-model="employeeFilters.farm" @change="employeeFilters.team='' "><option value="">Tất cả vườn</option><option v-for="f in catalog.farms" :key="f.name" :value="f.name">{{f.farm_name||f.name}}</option></UiSelect>
    <template v-if="tab!=='candidates'"><UiSelect aria-label="Phòng ban" v-model="employeeFilters.department"><option value="">Tất cả phòng ban</option><option v-for="d in catalog.departments" :key="d.name" :value="d.name">{{hrCatalogLabel(d.department_name||d.name)}}</option></UiSelect><UiSelect aria-label="Tổ/đội" v-model="employeeFilters.team"><option value="">Tất cả tổ/đội</option><option v-for="t in catalog.teams.filter(t=>!employeeFilters.farm||t.farm===employeeFilters.farm)" :key="t.name" :value="t.name">{{t.team_name||t.name}}</option></UiSelect><UiSelect aria-label="Loại lao động" v-model="employeeFilters.category"><option value="">Tất cả loại lao động</option><option v-for="(label,key) in cats" :key="key" :value="key">{{label}}</option></UiSelect><UiSelect aria-label="Trạng thái" v-model="employeeFilters.status"><option value="">Tất cả trạng thái</option><option v-for="s in ['Active','Inactive','Suspended','Left']" :key="s" :value="s">{{stateLabel(s)}}</option></UiSelect></template>
    <UiSelect v-else aria-label="Trạng thái ứng viên" v-model="employeeFilters.stage"><option value="">Tất cả trạng thái</option><option v-for="(label,key) in stages" :key="key" :value="key">{{label}}</option></UiSelect></template>
    </template>
    <template v-if="['employees','onboarding'].includes(tab)"><UiButton v-if="isManager" :disabled="saving" @click="emptyEmployee"><LotusIcon name="plus"/>Thêm nhân viên</UiButton><a class="workspace-secondary-link" href="/hr-mobile">Ứng dụng điện thoại ↗</a><a class="workspace-secondary-link" href="/app/employee-transfer">Điều chuyển ↗</a></template>
-   <template v-if="tab==='candidates'"><UiButton :disabled="saving" @click="emptyCandidate"><LotusIcon name="plus"/>Thêm ứng viên</UiButton><a class="workspace-secondary-link" href="/app/job-opening">Tin tuyển dụng ↗</a></template>
+   <template v-if="tab==='candidates'"><UiButton :disabled="saving" @click="emptyCandidate"><LotusIcon name="plus"/>Thêm ứng viên</UiButton><a class="workspace-secondary-link" href="/lotus/nhan-su?hr_view=erp-job-openings">Vị trí tuyển dụng</a></template>
    <template v-if="tab==='organization'&&isManager"><UiButton variant="outline" :disabled="saving" @click="seed">Tạo chức danh Lotus còn thiếu</UiButton></template>
   </WorkspaceListToolbar>
   <WorkspaceSummaryStrip v-if="listTab" :items="[{label:'Hồ sơ nhân sự',value:overview.employees.length},{label:'Chờ tiếp nhận',value:missingCount},{label:'Ứng viên đang xử lý',value:overview.candidates.filter(x=>!['Hired','Rejected'].includes(x.status)).length}]"/>
@@ -247,6 +251,7 @@ useNoticeToast(notice)
   </template>
   <HrOperations v-if="tab==='import'" ref="ops" :company="company" :manager="isManager" view="import"/>
   <HrOperations v-if="tab==='devices'" :key="'devices'" ref="ops" :company="company" :manager="isManager" view="devices"/>
+  <ErpSection v-if="erpView" :key="erpView.id" :section="erpView" view-param="hr_view" :company="company"/>
   <HrPayrollPeriod v-if="tab==='payroll'&&isManager" ref="payroll" :company="company" :today="today" @notice="notice=$event" @error="error=$event"/>
 
   <WorkspaceModal v-model="editCandidate" :title="selectedCandidate?'Cập nhật ứng viên':'Thêm ứng viên'" :busy="saving">

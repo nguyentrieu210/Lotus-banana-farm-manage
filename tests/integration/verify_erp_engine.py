@@ -31,6 +31,21 @@ try:
     stock = {sct['id']: sct for sct in cat['sections'].get('stock', [])}
     ok('Kho có Lô & hạn dùng, Chi phí sau nhập, báo cáo kho', {'batches', 'landed-costs', 'reports'} <= set(stock), list(stock))
     ok('báo cáo kho không lên sidebar (nằm trong màn Báo cáo)', stock.get('reports', {}).get('nav') is False)
+    ok('đủ 4 module Lotus có nghiệp vụ bổ sung', {'stock', 'hr', 'buying', 'finance'} <= set(cat['sections']), list(cat['sections']))
+    # Every tab of every section opens: documents (schema, list, new form) and reports (filters + run with defaults).
+    broken = []
+    for module, sections in cat['sections'].items():
+        for sct in sections:
+            for t in sct['tabs']:
+                try:
+                    if t['kind'] == 'doctype':
+                        e.schema(t['name']); e.listing(t['name'], company=company); e.document(t['name'], company=company)
+                    else:
+                        d = e.report_definition(t['name'], company); e.run_report(t['name'], json.dumps(d['defaults']), company)
+                except Exception as x:
+                    broken.append('%s/%s/%s: %s' % (module, sct['id'], t['name'], str(x)[:120]))
+                frappe.db.rollback()
+    ok('mọi tab của Kho / Nhân sự / Mua hàng / Tài chính mở được', not broken, broken)
 
     # ---- Bán hàng: khách → đơn bán → giao → hóa đơn → thu tiền --------------------------------------
     cust = e.document('Customer', company=company)['doc']
