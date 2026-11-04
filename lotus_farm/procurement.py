@@ -136,8 +136,17 @@ def quick_purchases(company):
     if rows:
         for r in frappe.get_all('Stock Entry Detail', filters={'parent': ['in', [r.name for r in rows]]}, fields=['parent', 't_warehouse'], limit_page_length=0):
             stores.setdefault(r.parent, set()).add(r.t_warehouse)
+    # The stock entry keeps its original amount; posted price-only corrections
+    # are separate vouchers in 3388 and must be reflected in Mua nhanh as well.
+    corrections = {}
+    if rows:
+        from lotus_farm.finance import setup as finance_setup
+        if company == finance_setup.company():
+            from lotus_farm.finance.payments import _receipt_cost_corrections
+            corrections = _receipt_cost_corrections([r.name for r in rows if r.docstatus == 1])
     return [dict(name=r.name, date=str(r.posting_date), supplier=r.lotus_supplier, supplier_name=names.get(r.lotus_supplier, r.lotus_supplier),
-                 warehouse=', '.join(sorted(w for w in stores.get(r.name, ()) if w)), amount=flt(r.total_incoming_value), docstatus=r.docstatus,
+                 warehouse=', '.join(sorted(w for w in stores.get(r.name, ()) if w)), amount=flt(r.total_incoming_value) + (corrections.get(r.name, 0) if r.docstatus == 1 else 0), docstatus=r.docstatus,
+                 price_correction=corrections.get(r.name, 0) if r.docstatus == 1 else 0,
                  invoice=r.get('lotus_purchase_invoice') or '', notes=r.remarks or '', owner=r.owner,
                  status='Nháp, chưa nhập kho' if r.docstatus == 0 else ('Đã có hóa đơn' if r.get('lotus_purchase_invoice') else 'Đã nhập kho, chờ hóa đơn'))
             for r in rows]

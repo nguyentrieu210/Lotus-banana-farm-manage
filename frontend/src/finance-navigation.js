@@ -8,6 +8,7 @@ export const financeNavigation=[
  {id:'sales',label:'Bán hàng – Phải thu',icon:'receive'},
  {id:'payables',label:'Công nợ phải trả',icon:'issue'},
  {id:'cash',label:'Thu / Chi',icon:'wallet'},
+ {id:'bank',label:'Ngân hàng – Đối chiếu',icon:'landmark'},
  {id:'assets',label:'Tài sản cố định',icon:'package'},
  {id:'reports',label:'Báo cáo',icon:'chart'},
  {id:'settings',label:'Thiết lập',icon:'settings',setup:true},

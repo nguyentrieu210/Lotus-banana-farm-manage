@@ -275,36 +275,104 @@ def ledger_summary(company, from_date, to_date, warehouses=None):
 # Bank statement match -------------------------------------------------------------------------------------
 
 def _statement_rows(content):
-    """Excel statement: a header row naming Ngày, Số tiền vào / ra (or one signed Số tiền), Số tham chiếu, Nội dung."""
-    from openpyxl import load_workbook
-    raw = base64.b64decode(content.split(',', 1)[1] if ',' in str(content)[:100] else content)
-    sheet = load_workbook(BytesIO(raw), read_only=True, data_only=True).active
-    rows = list(sheet.iter_rows(values_only=True))
-    norm = lambda v: str(v or '').strip().lower()
-    head_index = next((i for i, r in enumerate(rows[:20]) if any('ngày' in norm(c) for c in r) and any('tiền' in norm(c) or 'ghi' in norm(c) for c in r)), None)
-    if head_index is None:
-        frappe.throw('Không tìm thấy dòng tiêu đề (cần cột "Ngày" và "Số tiền" / "Ghi có" / "Ghi nợ").')
-    head = [norm(c) for c in rows[head_index]]
+    """Read-only preview of bank statements AND Lotus's monthly cashbook spreadsheets.
 
-    def col(*names):
-        return next((i for i, h in enumerate(head) if any(n in h for n in names)), None)
-    c_date, c_in, c_out = col('ngày'), col('ghi có', 'tiền vào', 'phát sinh có', 'credit'), col('ghi nợ', 'tiền ra', 'phát sinh nợ', 'debit')
-    c_amount, c_ref, c_desc = col('số tiền'), col('tham chiếu', 'số ct', 'mã giao dịch', 'reference'), col('nội dung', 'diễn giải', 'description')
-    out = []
-    for r in rows[head_index + 1:]:
-        if c_date is None or r[c_date] in (None, ''):
-            continue
-        try:
-            when = getdate(r[c_date]) if not isinstance(r[c_date], str) else getdate('-'.join(reversed(r[c_date].strip()[:10].replace('.', '/').split('/'))))
-        except Exception:
-            continue
-        number = lambda v: flt(str(v).replace('.', '').replace(',', '')) if isinstance(v, str) else flt(v)
-        amount = number(r[c_in]) - number(r[c_out]) if c_in is not None or c_out is not None else number(r[c_amount]) if c_amount is not None else 0
-        if not amount:
-            continue
-        out.append(dict(date=str(when), amount=round(amount), reference=str(r[c_ref] or '') if c_ref is not None else '',
-                        description=str(r[c_desc] or '')[:200] if c_desc is not None else ''))
-    return out
+    The source is not posted as accounting entries. An Excel attachment may have a
+    summary as its first sheet, so locate the actual transaction table by its headers.
+    """
+    import re
+    from datetime import datetime, date
+    from openpyxl import load_workbook
+
+    encoded = str(content or '').split(',', 1)[1] if ',' in str(content or '')[:100] else str(content or '')
+    if not encoded or len(encoded) > 8_000_000:
+        frappe.throw('File sao kê trống hoặc quá lớn (tối đa 5 MB).')
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except Exception:
+        frappe.throw('Dữ liệu Excel không hợp lệ.')
+    if len(raw) > 5_000_000 or raw[:2] != b'PK':
+        frappe.throw('Chỉ hỗ trợ file Excel .xlsx tối đa 5 MB.')
+
+    def norm(v):
+        return re.sub(r'\s+', ' ', str(v or '').strip().lower())
+
+    def column(headers, labels):
+        return next((i for i, h in enumerate(headers) if any(label in h for label in labels)), None)
+
+    def parse_day(value):
+        if isinstance(value, (datetime, date)):
+            return str(value.date() if isinstance(value, datetime) else value)
+        txt = str(value or '').strip().split(' ')[0][:10]
+        for fmt in ('%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y', '%Y-%m-%d', '%Y/%m/%d'):
+            try:
+                return datetime.strptime(txt, fmt).date().isoformat()
+            except ValueError:
+                pass
+        return None
+
+    def number(v):
+        if isinstance(v, (int, float)):
+            return flt(v)
+        txt = re.sub(r'(?i)(vnd|vnđ|đ|\s)', '', str(v or '')).strip()
+        if not txt:
+            return 0
+        negative = txt.startswith('(') and txt.endswith(')')
+        txt = txt.strip('()')
+        if not re.fullmatch(r'[+-]?[\d.,]+', txt):
+            return 0
+        # Bank statements in VND normally use comma or dot as thousands separator.
+        # Preserve the decimal separator only when the final group has 1-2 digits.
+        if ',' in txt and '.' in txt:
+            last = max(txt.rfind('.'), txt.rfind(','))
+            separator = txt[last]
+            fractional = len(txt) - last - 1 in (1, 2)
+            txt = txt[:last].replace('.', '').replace(',', '') + ('.' + txt[last+1:] if fractional else txt[last:].replace('.', '').replace(',', ''))
+        elif txt.count(',') or txt.count('.'):
+            separator = ',' if ',' in txt else '.'
+            pieces = txt.split(separator)
+            txt = ''.join(pieces) if len(pieces[-1]) == 3 or len(pieces) > 2 else '.'.join(pieces)
+        amount = flt(txt)
+        return -amount if negative else amount
+
+    try:
+        book = load_workbook(BytesIO(raw), read_only=True, data_only=True)
+    except Exception:
+        frappe.throw('Không đọc được file Excel. Kiểm tra định dạng .xlsx.')
+    try:
+        sheets = sorted(book.worksheets, key=lambda s: (0 if 'sổ quỹ' in s.title.lower() or 'sao kê' in s.title.lower() else 1))
+        for sheet in sheets:
+            header = None
+            for row_no, row in enumerate(sheet.iter_rows(min_row=1, max_row=25, values_only=True), start=1):
+                headings = [norm(c) for c in row]
+                d = column(headings, ('ngày', 'date'))
+                credit = column(headings, ('ghi có', 'thu (có)', 'tiền vào', 'phát sinh có', 'credit', 'tiền thu'))
+                debit = column(headings, ('ghi nợ', 'chi (nợ)', 'tiền ra', 'phát sinh nợ', 'debit', 'tiền chi'))
+                amount = column(headings, ('số tiền', 'amount'))
+                if d is not None and ((credit is not None or debit is not None) or amount is not None):
+                    header = (row_no, d, credit, debit, amount,
+                              column(headings, ('tham chiếu', 'số ct', 'mã giao dịch', 'reference', 'chứng từ', 'mã')),
+                              column(headings, ('nội dung', 'diễn giải', 'description', 'ghi chú')))
+                    break
+            if not header:
+                continue
+            row_no, d, credit, debit, amount_col, ref, description = header
+            results = []
+            for row in sheet.iter_rows(min_row=row_no+1, max_row=min(sheet.max_row, 20025), values_only=True):
+                day = parse_day(row[d] if len(row) > d else None)
+                if not day:
+                    continue
+                val = lambda index: row[index] if index is not None and len(row) > index else None
+                value = number(val(credit)) - number(val(debit)) if credit is not None or debit is not None else number(val(amount_col))
+                if not value:
+                    continue
+                results.append(dict(date=day, amount=round(value), reference=str(val(ref) or '')[:100],
+                                    description=str(val(description) or '')[:200]))
+            if results:
+                return results
+        frappe.throw('Không tìm được bảng thu–chi có cột Ngày, Thu/Chi hoặc Ghi nợ/Ghi có.')
+    finally:
+        book.close()
 
 
 @frappe.whitelist(methods=['POST'])
@@ -313,6 +381,14 @@ def bank_match(content, account=None, days=3):
     setup.require_view()
     company = setup.company()
     account = account or setup.mapping().get('bank')
+    try:
+        days = int(days)
+    except (ValueError, TypeError):
+        frappe.throw('Khoảng ngày đối chiếu không hợp lệ.')
+    if days < 0 or days > 7:
+        frappe.throw('Chỉ được đối chiếu trong khoảng 0–7 ngày.')
+    if not frappe.db.exists('Account', {'name': account, 'company': company, 'is_group': 0, 'account_type': 'Bank'}):
+        frappe.throw('Chỉ được đối chiếu với tài khoản tiền gửi ngân hàng thuộc công ty.')
     statement = _statement_rows(content)
     if not statement:
         frappe.throw('Sao kê không có dòng giao dịch.')
@@ -322,8 +398,8 @@ def bank_match(content, account=None, days=3):
                     coalesce(max(pe.reference_no), max(je.cheque_no), '') reference
                 from `tabGL Entry` g left join `tabPayment Entry` pe on pe.name=g.voucher_no left join `tabJournal Entry` je on je.name=g.voucher_no
                 where g.company=%s and g.account=%s and g.is_cancelled=0 and g.posting_date between %s and %s
-                group by g.posting_date, g.voucher_no, g.voucher_type""", (company, account, add_days(start, -int(days)), add_days(end, int(days))), as_dict=True)]
-    result = rules.match_bank(statement, ledger, int(days))
+                group by g.posting_date, g.voucher_no, g.voucher_type""", (company, account, add_days(start, -days), add_days(end, days)), as_dict=True)]
+    result = rules.match_bank(statement, ledger, days)
     return dict(account=account, from_date=start, to_date=end, statement=len(statement), **result,
                 statement_total=sum(s['amount'] for s in statement), ledger_total=sum(l['amount'] for l in ledger if start <= l['date'] <= end))
 

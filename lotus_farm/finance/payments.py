@@ -50,6 +50,37 @@ def _duplicate(supplier, bill_no):
         frappe.throw('Hóa đơn số %s của nhà cung cấp này đã được nhập (%s).' % (bill_no, other))
 
 
+# A posted price-only stock reconciliation adjusts the value of an unbilled
+# goods receipt without creating additional stock quantity. Corrections can
+# raise OR lower the provisional cost; the 3388 liability changes accordingly.
+_CORRECTION_KEY = 'lotus-cost-of-receipt:'
+
+
+def _receipt_cost_corrections(names):
+    if not names:
+        return {}
+    wanted = {str(name) for name in names}
+    corrections = frappe.get_all(
+        'Stock Reconciliation',
+        filters={'company': setup.company(), 'docstatus': 1, 'purpose': 'Stock Reconciliation',
+                 'lotus_client_key': ['like', _CORRECTION_KEY + '%'],
+                 'expense_account': setup.mapping()['received_not_billed']},
+        fields=['name', 'lotus_client_key', 'difference_amount'], limit_page_length=0,
+    )
+    values = {}
+    for row in corrections:
+        origin = row.lotus_client_key[len(_CORRECTION_KEY):].split(':v', 1)[0]
+        if origin not in wanted:
+            continue
+        # More than one price correction would require an explicit review.
+        if origin in values:
+            frappe.throw('Phiếu nhập %s có nhiều lần bổ sung giá. Kế toán kiểm tra lại.' % origin)
+        if abs(flt(row.difference_amount)) < 0.01:
+            frappe.throw('Phiếu điều chỉnh giá %s không có chênh lệch giá trị.' % row.name)
+        values[origin] = flt(row.difference_amount)
+    return values
+
+
 @frappe.whitelist()
 def receipts_to_bill(supplier=None):
     """Submitted receipts not fully invoiced, with their unbilled amount: purchase receipts of orders, and goods bought
@@ -70,10 +101,15 @@ def receipts_to_bill(supplier=None):
         if supplier:
             se_filters['lotus_supplier'] = supplier
         names = {s_.name: s_.supplier_name for s_ in frappe.get_all('Supplier', fields=['name', 'supplier_name'], limit_page_length=0)}
-        for e in frappe.get_all('Stock Entry', filters=se_filters, fields=['name', 'lotus_supplier', 'posting_date', 'total_incoming_value'],
-                                order_by='posting_date, name', limit_page_length=500):
+        stock_receipts = frappe.get_all('Stock Entry', filters=se_filters,
+                                       fields=['name', 'lotus_supplier', 'posting_date', 'total_incoming_value'],
+                                       order_by='posting_date, name', limit_page_length=500)
+        corrections = _receipt_cost_corrections([r.name for r in stock_receipts])
+        for e in stock_receipts:
+            amount = flt(e.total_incoming_value) + corrections.get(e.name, 0)
             rows.append(dict(name=e.name, doctype='Stock Entry', supplier=e.lotus_supplier, supplier_name=names.get(e.lotus_supplier, e.lotus_supplier),
-                             posting_date=str(e.posting_date), grand_total=flt(e.total_incoming_value), per_billed=0, to_bill=round(flt(e.total_incoming_value))))
+                             posting_date=str(e.posting_date), grand_total=amount, per_billed=0, to_bill=round(amount),
+                             cost_correction=corrections.get(e.name, 0)))
     return rows
 
 
@@ -139,10 +175,26 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
     posting.check_open(docs[0].company, posting_date, PI)
     m = setup.mapping()
     cost_center = frappe.get_cached_value('Company', docs[0].company, 'cost_center')
-    items = [dict(item_code=r.item_code, item_name=r.item_name, qty=r.transfer_qty, uom=r.stock_uom, stock_uom=r.stock_uom, conversion_factor=1,
-                  rate=flt(r.amount) / flt(r.transfer_qty) if flt(r.transfer_qty) else 0, expense_account=m['received_not_billed'], cost_center=cost_center,
-                  description='%s (phiếu nhập %s)' % (r.item_name or r.item_code, d.name))
-             for d in docs for r in d.items]
+    corrections = _receipt_cost_corrections(names)
+    # Lowering a receipt to a documented VAT-inclusive payment total must not
+    # cause the accountant to accidentally ADD VAT a second time.
+    if any(corrections.get(d.name, 0) < 0 for d in docs) and str(vat_code or '').upper() not in ('KCT', '0'):
+        frappe.throw('Phiếu nhận đã điều chỉnh giảm theo số tiền thanh toán gồm VAT. Không được tự cộng VAT lần hai. Đối chiếu hóa đơn hợp lệ và tách thuế trước khi ghi sổ.')
+    items = []
+    for d in docs:
+        extra = corrections.get(d.name, 0)
+        if extra and len(d.items) != 1:
+            frappe.throw('Phiếu nhập %s được bổ sung giá cho nhiều mặt hàng; cần đối chiếu riêng từng dòng.' % d.name)
+        for r in d.items:
+            amount = flt(r.amount) + extra
+            if flt(r.transfer_qty) <= 0:
+                frappe.throw('Phiếu nhập %s có số lượng quy đổi không hợp lệ.' % d.name)
+            items.append(dict(item_code=r.item_code, item_name=r.item_name, qty=r.transfer_qty,
+                              uom=r.stock_uom, stock_uom=r.stock_uom, conversion_factor=1,
+                              rate=amount / flt(r.transfer_qty), expense_account=m['received_not_billed'],
+                              cost_center=cost_center,
+                              description='%s (phiếu nhập %s%s)' % (r.item_name or r.item_code, d.name,
+                                  ', bổ sung giá qua kiểm kê' if extra else '')))
     pi = frappe.get_doc(dict(doctype=PI, company=docs[0].company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
     apply_vat(pi, vat_code, bill_date, m['input_vat'])

@@ -152,6 +152,41 @@ def reconciliation_accounts(doc, method=None):
     if doc.purpose == 'Opening Stock':
         doc.expense_account = m['opening_equity']
         return
+    # A price-only correction to a purchased, unbilled receipt is neither
+    # stock surplus nor stock shortage. Both higher and lower valuation
+    # must adjust 3388 (unbilled goods), not 3381/1381.
+    # Strictly restrict this path to a single-line, posted, still-unbilled
+    # purchase receipt, explicitly linked by the idempotent client key.
+    cost_key = 'lotus-cost-of-receipt:'
+    client_key = str(doc.get('lotus_client_key') or '')
+    if client_key.startswith(cost_key):
+        origin = client_key[len(cost_key):].split(':v', 1)[0]
+        receipt = frappe.get_doc('Stock Entry', origin)
+        if (doc.purpose != 'Stock Reconciliation' or doc.company != receipt.company
+                or receipt.docstatus != 1 or receipt.stock_entry_type != 'Material Receipt'
+                or receipt.get('lotus_receipt_reason') != 'Purchase'
+                or receipt.get('lotus_purchase_invoice') or not receipt.get('lotus_supplier')
+                or len(doc.items) != 1 or len(receipt.items) != 1):
+            frappe.throw('Phiếu bổ sung giá phải liên kết đúng một phiếu nhập mua chưa có hóa đơn.')
+        original = receipt.items[0]
+        changed = doc.items[0]
+        delta = flt(changed.amount_difference)
+        if (str(doc.posting_date) < str(receipt.posting_date)
+                or original.item_code != changed.item_code
+                or original.t_warehouse != changed.warehouse
+                or abs(flt(changed.qty) - flt(changed.current_qty)) > 0.00001
+                or abs(delta) < 0.01
+                or flt(changed.valuation_rate) < 0
+                or flt(receipt.total_incoming_value) + delta <= 0):
+            frappe.throw('Điều chỉnh giá không được thay số lượng, sai mặt hàng hoặc làm giá trị mua không hợp lệ.')
+        already = frappe.get_all('Stock Reconciliation',
+            filters={'company': receipt.company, 'docstatus': 1,
+                     'lotus_client_key': ['like', cost_key + origin + ':%']},
+            pluck='name', limit_page_length=2)
+        if already:
+            frappe.throw('Phiếu nhập %s đã có điều chỉnh giá %s. Không được nhập trùng.' % (origin, already[0]))
+        doc.expense_account = m['received_not_billed']
+        return
     difference = sum(flt(r.amount_difference) for r in doc.items)
     doc.expense_account = m['stock_shortage'] if difference < 0 else m['stock_adjustment']
     if any(flt(r.amount_difference) > 0 for r in doc.items) and any(flt(r.amount_difference) < 0 for r in doc.items):

@@ -275,21 +275,27 @@ def coverage(lines, parts):
 
 
 def match_bank(statement, ledger, days=3):
-    """Bank statement lines (date, amount + in / - out, reference, description) against ledger lines on the bank account
-    (date, amount = debit - credit, voucher, reference): same amount and reference first, then same amount nearest in date
-    within `days`. Returns matched pairs and what is left on each side."""
+    """Compare without silently pairing identical amounts from unrelated dates.
+
+    Reference + amount is strongest, but still requires an in-range date.
+    If references conflict, do not label a row as matched. For a missing
+    reference, match only when there is exactly one near candidate.
+    """
     from datetime import date as _date
     day = lambda v: v if isinstance(v, _date) else _date.fromisoformat(str(v)[:10])
     free = list(range(len(ledger)))
     matched, left = [], []
     for s in statement:
         amount = int(round(s['amount']))
-        same = [i for i in free if int(round(ledger[i]['amount'])) == amount]
         ref = str(s.get('reference') or '').strip().lower()
-        pick = next((i for i in same if ref and ref in str(ledger[i].get('reference') or '').lower()), None)
-        if pick is None:
-            near = sorted((abs((day(ledger[i]['date']) - day(s['date'])).days), i) for i in same)
-            pick = near[0][1] if near and near[0][0] <= days else None
+        near = [i for i in free if int(round(ledger[i]['amount'])) == amount
+                and abs((day(ledger[i]['date']) - day(s['date'])).days) <= days]
+        exact = [i for i in near if ref and ref == str(ledger[i].get('reference') or '').strip().lower()]
+        if len(exact) == 1:
+            pick = exact[0]
+        else:
+            unreferenced = [i for i in near if not ref or not str(ledger[i].get('reference') or '').strip()]
+            pick = unreferenced[0] if len(unreferenced) == 1 and not exact else None
         if pick is None:
             left.append(s)
         else:

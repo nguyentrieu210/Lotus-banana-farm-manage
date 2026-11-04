@@ -40,7 +40,7 @@ import './finance.css'
 defineProps({embedded:Boolean,navigationKey:String})
 const F='lotus_farm.finance.'
 const accountImportOpen=ref(false)
-const TABS=[['overview','Tổng quan'],['planning','Kế hoạch tài chính'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
+const TABS=[['overview','Tổng quan'],['planning','Kế hoạch tài chính'],['pending','Chờ hạch toán'],['journal','Nhật ký kế toán'],['sales','Bán hàng – Phải thu'],['payables','Công nợ phải trả'],['cash','Thu / Chi'],['bank','Ngân hàng – Đối chiếu'],['assets','Tài sản cố định'],['reports','Báo cáo'],['settings','Thiết lập'],['guide','Hướng dẫn']]
 const REPORTS=[['b01','B01 Tình hình tài chính'],['b02','B02 Kết quả kinh doanh'],['b03','B03 Lưu chuyển tiền tệ'],['trial_balance','Bảng cân đối phát sinh'],
  ['general_journal','Nhật ký chung'],['ledger','Sổ cái / sổ quỹ / tiền gửi'],['party','Công nợ theo đối tượng'],['stock','Nhập – xuất – tồn'],
  ['costs','Chi phí theo vườn / lô'],['costing','Giá thành theo lô'],['vat','Thuế GTGT'],['bank','Đối chiếu ngân hàng'],['reconciliation','Đối chiếu']]
@@ -72,6 +72,7 @@ async function load(){
   if(tab.value==='payables'){await ensureLookups();payData.value=await call(F+'reports.payables');await ensureVat()}
   if(tab.value==='sales'){await ensureLookups();await ensureVat();salesData.value=await call(F+'sales.receivables')}
   if(tab.value==='cash'){cash.value=await call(F+'payments.vouchers');mine.value=await call(F+'payments.my_vouchers')}
+  if(tab.value==='bank'){await ensureLookups();reportData.value=bankResult.value?{...bankResult.value,__report:'bank'}:null}
   if(tab.value==='reports'){await ensureLookups();await loadReport()}
   if(tab.value==='settings'){settings.value=await call(F+'api.settings');staff.value=await call(F+'api.people');await ensureLookups();await loadChecklist()}
  })
@@ -130,11 +131,13 @@ function exportReport(kind){const q={kind,from_date:range.value.from,to_date:ran
  if(books[kind]){q.kind=books[kind];if(kind==='ledger'){q.account=ledgerAccount.value;if(ledgerParty.value)q.party=ledgerParty.value}if(kind==='party')q.account=partyAccount.value
   location.href='/api/method/lotus_farm.finance.statements.export?'+new URLSearchParams(q);return}
  location.href='/api/method/lotus_farm.finance.reports.export?'+new URLSearchParams(q)}
-const ledgerParty=ref(''),partyAccount=ref(''),bankResult=ref(null)
-async function readStatement(file){if(!file)return;saving.value=true
+const ledgerParty=ref(''),partyAccount=ref(''),bankResult=ref(null),bankFilter=ref('all'),bankFileName=ref('')
+async function readStatement(file){if(!file)return;saving.value=true;error.value='';bankResult.value=null;reportData.value=null;bankFileName.value=file.name||'';bankFilter.value='all'
  try{const content=await new Promise((ok,fail)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=fail;r.readAsDataURL(file)})
   bankResult.value=await call(F+'statements.bank_match',{content},true);reportData.value={...bankResult.value,__report:'bank'}}
  catch(e){error.value=e.message}finally{saving.value=false}}
+function openBankLedger(){const account=(lookups.value?.accounts||[]).find(a=>a.account_number==='112'&&a.name);if(!account){error.value='Không tìm thấy tài khoản ngân hàng 112 của công ty.';return}
+ ledgerAccount.value=account.name;ledgerParty.value='';report.value='ledger';go('reports')}
 const indent=p=>'   '.repeat(Math.max(0,(p.data.level||1)-1))+p.data.name
 const statementCell=p=>p.data?.total?'fin-cell-total':''
 const statementColumns=computed(()=>{const value=(field,headerName)=>({field,headerName,minWidth:150,type:'numericColumn',cellClass:statementCell,
@@ -154,10 +157,11 @@ const stockColumns=computed(()=>[{field:'item_name',headerName:'Hàng',minWidth:
  {field:'opening_qty',headerName:'Tồn đầu',minWidth:100,type:'numericColumn',valueFormatter:qty},moneyCol('opening_value','Giá trị đầu'),{field:'in_qty',headerName:'Nhập',minWidth:90,type:'numericColumn',valueFormatter:qty},
  moneyCol('in_value','Giá trị nhập'),{field:'out_qty',headerName:'Xuất',minWidth:90,type:'numericColumn',valueFormatter:qty},moneyCol('out_value','Giá trị xuất'),
  {field:'closing_qty',headerName:'Tồn cuối',minWidth:100,type:'numericColumn',valueFormatter:qty},moneyCol('closing_value','Giá trị cuối')])
-const bankRows=computed(()=>report.value!=='bank'||!reportData.value?[]:[
+const bankRows=computed(()=>(tab.value!=='bank'&&report.value!=='bank')||!reportData.value||reportData.value.__report!=='bank'?[]:[
  ...reportData.value.matched.map((x,i)=>({__key:'m'+i,state:'Khớp',date:x.statement.date,amount:x.statement.amount,reference:x.statement.reference||x.ledger.reference,description:x.statement.description||'',voucher:x.ledger.voucher})),
  ...reportData.value.statement_only.map((x,i)=>({__key:'s'+i,state:'Chỉ có trên sao kê',date:x.date,amount:x.amount,reference:x.reference,description:x.description,voucher:''})),
  ...reportData.value.ledger_only.map((x,i)=>({__key:'l'+i,state:'Chỉ có trên sổ',date:x.date,amount:x.amount,reference:x.reference,description:x.remarks,voucher:x.voucher}))])
+const bankFilteredRows=computed(()=>bankFilter.value==='all'?bankRows.value:bankRows.value.filter(row=>row.state===bankFilter.value))
 const bankColumns=computed(()=>[{field:'state',headerName:'Kết quả',minWidth:150,cellClass:p=>p.value==='Khớp'?'fin-cell-ok':'fin-cell-warn'},dateCol('date','Ngày'),moneyCol('amount','Số tiền (+ vào / − ra)',{valueFormatter:p=>num(p.value)}),
  {field:'reference',headerName:'Tham chiếu',minWidth:130},{field:'description',headerName:'Nội dung',minWidth:220,flex:2},{field:'voucher',headerName:'Chứng từ trên sổ',minWidth:170}])
 
@@ -516,6 +520,25 @@ useNoticeToast(notice)
     <template #cell-__reverse="{row}"><UiButton v-if="row.state==='Đã chi'&&overview?.is_chief" size="sm" variant="outline" @click.stop="reverse(row.posting,row.name)">Đảo</UiButton></template>
    </DataTable>
   </FormSection>
+ </template>
+
+ <template v-else-if="tab==='bank'">
+  <div class="fin-report-toolbar">
+   <div class="fin-report-toolbar__filters">
+    <LotusField aria-label="Tải sao kê hoặc sổ quỹ Excel" type="file" accept=".xlsx" :disabled="saving" @update:model-value="readStatement"/>
+    <LotusField v-if="bankResult" v-model="bankFilter" aria-label="Lọc kết quả đối chiếu" :options="[{value:'all',label:'Tất cả giao dịch'},{value:'Khớp',label:'Đã khớp'},{value:'Chỉ có trên sao kê',label:'Chỉ có trong Excel'},{value:'Chỉ có trên sổ',label:'Chỉ có trong sổ Lotus'}]" :searchable="false" :empty-option="null"/>
+   </div>
+   <div class="fin-report-toolbar__actions"><UiButton variant="outline" @click="openBankLedger">Xem sổ tiền gửi 112</UiButton></div>
+  </div>
+  <template v-if="bankResult">
+   <WorkspaceSummaryStrip :items="[{label:'Đã khớp',value:String(bankResult.matched.length)},{label:'Chỉ có trong Excel',value:String(bankResult.statement_only.length)},{label:'Chỉ có trong Lotus',value:String(bankResult.ledger_only.length)}]"/>
+   <FormSection :title="'Đối chiếu '+vnDate(bankResult.from_date)+' – '+vnDate(bankResult.to_date)" :description="'File: '+bankFileName+' · Tổng phát sinh trên file '+vnd(bankResult.statement_total)+' · Trong sổ '+vnd(bankResult.ledger_total)+' (cùng kỳ)'">
+    <p v-if="bankResult.statement_only.length||bankResult.ledger_only.length" class="land-warn">Các dòng chưa khớp cần kiểm tra chứng từ, ngày và số tiền. Đối chiếu không tự tạo phiếu thu/chi hoặc thay đổi sổ kế toán.</p>
+    <p v-else class="fin-ok">Các dòng đã đối chiếu khớp. Kiểm tra số dư đầu và cuối kỳ trước khi xác nhận sổ.</p>
+    <DataTable :rows="bankFilteredRows" :columns="bankColumns" row-key="__key" storage-key="fin-bank-main" empty="Không có giao dịch ở trạng thái đã chọn."/>
+   </FormSection>
+  </template>
+  <p v-else-if="!saving" class="fin-muted">Tải sao kê ngân hàng hoặc sổ quỹ Excel để đối chiếu với tài khoản 112. Dữ liệu chỉ dùng để kiểm tra, chưa tự ghi vào sổ kế toán.</p>
  </template>
 
  <template v-else-if="tab==='reports'">

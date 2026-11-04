@@ -171,7 +171,7 @@ def _simple_doc(doc):
 def document(doctype, name):
     doc = _stock_doc(doctype, name)
     from lotus_farm.warehouse_masters import item_pack, item_uoms
-    return dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
+    result = dict(name=doc.name, doctype=doc.doctype, company=doc.company, docstatus=doc.docstatus, modified=str(doc.modified),
                 receipt_reason=doc.get('lotus_receipt_reason') or '', supplier=doc.get('lotus_supplier') or '',
                 posting_date=doc.posting_date, kind=doc.get('stock_entry_type') or doc.purpose,
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
@@ -198,6 +198,31 @@ def document(doctype, name):
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
                             valuation_rate=row.get('valuation_rate'), amount=row.get('amount'))
                        for row in doc.items])
+
+
+    if (doc.doctype == 'Stock Entry' and doc.docstatus == 1
+            and doc.stock_entry_type == 'Material Receipt'
+            and doc.get('lotus_receipt_reason') == 'Purchase'):
+        from lotus_farm.finance.payments import _receipt_cost_corrections
+        correction = _receipt_cost_corrections([doc.name]).get(doc.name, 0)
+        if correction:
+            if len(result['items']) != 1:
+                frappe.throw('Phiếu %s có điều chỉnh giá nhiều dòng cần kiểm tra riêng.' % doc.name)
+            row = result['items'][0]
+            original_amount = flt(row.get('amount'))
+            adjusted_amount = original_amount + correction
+            if adjusted_amount <= 0 or flt(row['qty']) <= 0:
+                frappe.throw('Giá sau điều chỉnh của phiếu %s không hợp lệ.' % doc.name)
+            result['price_correction'] = correction
+            result['adjusted_incoming_total'] = flt(result['incoming_total']) + correction
+            row['adjusted_rate'] = adjusted_amount / flt(row['qty'])
+            row['adjusted_amount'] = adjusted_amount
+            result['price_correction_voucher'] = frappe.db.get_value(
+                'Stock Reconciliation',
+                {'company': doc.company, 'docstatus': 1,
+                 'lotus_client_key': ['like', 'lotus-cost-of-receipt:' + doc.name + ':%']},
+                'name')
+    return result
 
 
 @frappe.whitelist(methods=['POST'])

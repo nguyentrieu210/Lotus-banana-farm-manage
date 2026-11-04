@@ -21,6 +21,11 @@ const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:mon
 const receipt=computed(()=>detail.value?.kind==='Material Receipt')
 const columns=computed(()=>{
  const columns=receipt.value?[...detailColumns(warehouseLabel),...receiptDetailColumns(cash)]:detailColumns(warehouseLabel)
+ if(receipt.value&&detail.value?.price_correction){
+  const originalRate=columns.find(c=>c.field==='rate')
+  if(originalRate)originalRate.headerName='Đơn giá phiếu gốc'
+  columns.push({field:'adjusted_rate',headerName:'Đơn giá sau điều chỉnh',minWidth:180,type:'numericColumn',valueFormatter:p=>cash(p.value)})
+ }
  if(detail.value?.kind==='Material Issue'&&detail.value.items.some(r=>r.uom!==r.stock_uom))columns.splice(4,0,{headerName:'Trừ tồn kho',minWidth:140,valueGetter:p=>fmt(p.data.stock_qty)+' '+unitLabel(p.data.stock_uom)})
  return columns
 })
@@ -53,7 +58,8 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
   <SigningPanel v-if="detail.docstatus===1" :doctype="detail.doctype" :name="detail.name" :company="detail.company" @notice="error=''" @error="error=$event"/>
   <DataTable :rows="detail.items" :columns="columns"/>
   <template v-if="receipt">
-   <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(detail.basic_total)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(detail.additional_total)}}</dd></div><div><dt>Giá trị nhập</dt><dd>{{cash(detail.incoming_total)}}</dd></div></dl>
+   <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(detail.basic_total)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(detail.additional_total)}}</dd></div><div><dt>{{detail.price_correction?'Giá trị phiếu gốc':'Giá trị nhập'}}</dt><dd>{{cash(detail.incoming_total)}}</dd></div><div v-if="detail.price_correction"><dt>Điều chỉnh giá đã ghi sổ</dt><dd>{{cash(detail.price_correction)}}</dd></div><div v-if="detail.price_correction"><dt>Giá trị sau điều chỉnh</dt><dd>{{cash(detail.adjusted_incoming_total)}}</dd></div></dl>
+   <p v-if="detail.price_correction" class="lotus-form-note">Giá đã điều chỉnh bằng phiếu {{detail.price_correction_voucher}}. Phiếu nhập gốc được giữ nguyên để kiểm tra lịch sử; không nhập hàng thêm lần nữa.</p>
    <dl v-if="detail.additional_costs?.length" class="stock-detail-costs"><div v-for="(cost,index) in detail.additional_costs" :key="index"><dt>{{cost.description}}</dt><dd>{{cash(cost.amount)}}</dd></div></dl>
    <p class="lotus-form-note">Giá trị nhập gồm chi phí phân bổ. Công nợ nhà cung cấp ghi nhận bằng hóa đơn mua hàng.</p>
   </template>
