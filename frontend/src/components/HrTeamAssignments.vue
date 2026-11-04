@@ -11,7 +11,8 @@ const props=defineProps({
  farms:{type:Array,default:()=>[]},
  teams:{type:Array,default:()=>[]},
  employees:{type:Array,default:()=>[]},
- manager:Boolean,busy:Boolean
+ manager:Boolean,busy:Boolean,
+ confirm:{type:Function,required:true}  // in-app dialog (HrApp askConfirm), never window.confirm
 })
 const emit=defineEmits(['saved'])
 const farm=ref('')
@@ -58,7 +59,7 @@ async function save(){
  if(!farmTeamOptions.value.some(t=>t.value===targetTeam.value)){error.value='Tổ/đội không thuộc vườn đang chọn.';return}
  const remove=targetTeam.value==='__remove__'
  const label=remove?'Chưa phân tổ':(lookup.value[targetTeam.value]||targetTeam.value)
- if(!window.confirm('Xác nhận '+(remove?'bỏ phân':'phân')+' tổ '+label+' cho '+selected.value.length+' nhân viên?'))return
+ if(!await props.confirm('Xác nhận '+(remove?'bỏ phân':'phân')+' tổ '+label+' cho '+selected.value.length+' nhân viên?','Phân tổ/đội'))return
  saving.value=true
  try{
   const names=selected.value.map(e=>({name:e.name,modified:e.modified}))
@@ -145,7 +146,7 @@ async function save(){
 .team-assign__team-item:hover,.team-assign__team-item.is-active{border-color:var(--lotus-primary);background:var(--lotus-soft)}
 .team-assign__team-item b{white-space:nowrap}
 .team-assign__empty{padding:20px;color:var(--lotus-muted);font-size:.88rem}
-.team-assign__error{color:#b91c1c}.team-assign__ok{color:#15803d}
+.team-assign__error{color:var(--lotus-danger)}.team-assign__ok{color:var(--lotus-success)}
 @media(max-width:850px){.team-assign__filters{grid-template-columns:1fr 1fr}.team-assign__workspace{grid-template-columns:1fr}}
 @media(max-width:530px){.team-assign__filters{grid-template-columns:1fr}.team-assign__person{align-items:flex-start;flex-direction:column;gap:5px}}
 </style>

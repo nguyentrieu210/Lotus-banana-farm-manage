@@ -71,12 +71,12 @@ test('unknown permitted pages remain reachable and group changes do not create r
  view.unmount()
 })
 
-test('HR exposes all eight destinations in order with a non-interactive setup label',async()=>{
+test('HR exposes all nine destinations in order with a non-interactive setup label',async()=>{
  const session=useSession();Object.assign(session,{user:'manager',capabilities:{hr:true,hr_manage:true,attendance:true},commands:{},modules:{}})
  const visited=[]
  const view=mount(WorkspaceSidebar,{nav:pages.filter(([p])=>['nhan-su','cham-cong'].includes(p)),page:'nhan-su',hrView:'devices',onGo:(...args)=>visited.push(args)})
  await tick()
- assert.deepEqual([...view.root.querySelectorAll('.nav-child .nav-label')].map(n=>n.textContent),['Hồ sơ nhân viên','Tuyển dụng','Tiếp nhận','Chấm công','Kỳ công & bảng lương','Cơ cấu & chức danh','Máy chấm công','Nhập dữ liệu nhân sự'])
+ assert.deepEqual([...view.root.querySelectorAll('.nav-child .nav-label')].map(n=>n.textContent),['Hồ sơ nhân viên','Tuyển dụng','Tiếp nhận','Chấm công','Kỳ công & bảng lương','Phân tổ/đội','Cơ cấu & chức danh','Máy chấm công','Nhập dữ liệu nhân sự'])
  const heading=view.root.querySelector('.nav-subsection');assert.equal(heading.textContent,'Thiết lập nhân sự');assert.equal(heading.tagName,'SPAN')
  assert.equal(view.root.querySelectorAll('[aria-current=page]').length,1)
  assert.equal(view.root.querySelector('[aria-current=page]').getAttribute('aria-label'),'Máy chấm công')

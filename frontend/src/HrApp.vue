@@ -232,7 +232,7 @@ useNoticeToast(notice)
     <p v-if="!filteredCandidates.length" class="stock-empty">Chưa có ứng viên trong danh sách.</p></section>
   </template>
 
-  <HrTeamAssignments v-if="tab==='teams'" :company="company" :farms="catalog.farms" :teams="catalog.teams" :employees="overview.employees" :manager="isManager" :busy="busy" @saved="refresh"/>
+  <HrTeamAssignments v-if="tab==='teams'" :company="company" :farms="catalog.farms" :teams="catalog.teams" :employees="overview.employees" :manager="isManager" :busy="busy" :confirm="askConfirm" @saved="refresh"/>
   <template v-if="tab==='organization'">
    <HrOperations ref="ops" :company="company" :manager="isManager" view="organization"/>
    <section class="tk-card hr-roles" aria-label="Danh mục chức danh">
