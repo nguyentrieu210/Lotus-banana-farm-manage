@@ -177,6 +177,8 @@ def document(doctype, name):
                 notes=doc.get('remarks'), currency=frappe.get_cached_value('Company', doc.company, 'default_currency'),
                 issue_mode=doc.get('lotus_issue_mode'), receiver=doc.get('lotus_receiver'),
                 issue_purpose=doc.get('lotus_issue_purpose') or ('Production' if doc.get('lotus_issue_mode') else ''),
+                invoice_series=doc.get('lotus_einvoice_series') or '', invoice_no=doc.get('lotus_einvoice_no') or '', invoice_date=doc.get('lotus_invoice_date'),
+                invoice_total=flt(doc.get('lotus_invoice_total')) or None, vat_in_cost=bool(doc.get('lotus_vat_in_cost')),
                 receiver_employee=doc.get('lotus_receiver_employee'), work_plan=doc.get('lotus_work_plan'),
                 basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
                 additional_total=flt(doc.get('total_additional_costs')),
@@ -196,9 +198,10 @@ def document(doctype, name):
                             **(item_pack(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else {}),
                             source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
                             area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
-                            rate=(flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
+                            rate=(flt(row.get('lotus_invoice_rate')) if row.get('lotus_line_vat') and row.get('lotus_invoice_rate') else flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
                             valuation_rate=row.get('valuation_rate'), amount=row.get('amount'),
+                            vat=row.get('lotus_line_vat') or '', net_amount=row.get('lotus_net_amount'), vat_amount=row.get('lotus_vat_amount'),
                             # Kiểm kê: book quantity ERPNext computed when the count was saved, to show the difference.
                             current_qty=flt(row.get('current_qty')) if doc.doctype=='Stock Reconciliation' else None)
                        for row in doc.items])
@@ -617,6 +620,37 @@ ISSUE_PURPOSES = {'Production': 'Xuất cho sản xuất (vào lô)', 'Disposal'
                   'Sale': 'Xuất bán / phụ phẩm', 'Shortage': 'Thiếu khi kiểm kê (chờ xử lý)'}
 
 
+def _dong(value):
+    """Whole đồng, half up (as invoices print and as the form shows), not Python's banker's rounding."""
+    return math.floor(flt(value) + 0.5)
+
+
+def _purchase_invoice_lines(doc, invoice_total, vat_in_cost):
+    """Reconcile the lines with the total printed on the invoice and set each line's cost.
+    A difference of a few đồng (rounding by the supplier's software) goes to the last taxed line's VAT; a larger one means a
+    wrong quantity, price or rate and is refused. Cost per stock unit = thành tiền (+ thuế when VAT is not deductible).
+    Returns the goods value used to spread additional costs (vận chuyển…)."""
+    lines = [r for r in doc.items if r.get('lotus_line_vat')]
+    computed = sum(flt(r.lotus_net_amount) + flt(r.lotus_vat_amount) for r in lines)
+    if invoice_total not in (None, '') and lines:
+        total = _dong(_number(invoice_total, 'Tổng cộng trên hóa đơn'))
+        diff = total - computed
+        if abs(diff) > max(2, len(lines)):
+            vnd = lambda n: '{:,.0f}'.format(n).replace(',', '.')
+            frappe.throw('Tổng tính ra {} đ khác tổng cộng trên hóa đơn {} đ (lệch {} đ). Kiểm tra số lượng, đơn giá và thuế suất từng dòng.'
+                         .format(vnd(computed), vnd(total), vnd(diff)))
+        if diff:
+            target = next((r for r in reversed(lines) if flt(r.lotus_vat_amount)), lines[-1])
+            field = 'lotus_vat_amount' if flt(target.lotus_vat_amount) else 'lotus_net_amount'
+            target.set(field, flt(target.get(field)) + diff)
+    value = 0
+    for r in lines:
+        cost = flt(r.lotus_net_amount) + (flt(r.lotus_vat_amount) if vat_in_cost else 0)
+        r.basic_rate = cost / (flt(r.qty) * flt(r.conversion_factor or 1))
+        value += cost
+    return value
+
+
 def _number(value, label, allow_zero=False):
     try:
         result = float(value)
@@ -689,7 +723,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0,issue_purpose=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0,issue_purpose=None,invoice_series=None,invoice_no=None,invoice_date=None,invoice_total=None):
     """post=1 (Mua nhanh): a new receipt is posted to stock in the same request when the user may submit it;
     otherwise it stays a draft for the storekeeper (docstatus 0 in the result)."""
     _access()
@@ -706,7 +740,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         from lotus_farm.controls import lock
         event=_text(client_event_id,'Mã yêu cầu')
         client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,issue_purpose=issue_purpose or 'Production',**(dict(receipt_reason=receipt_reason,supplier=supplier) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,issue_purpose=issue_purpose or 'Production',**(dict(receipt_reason=receipt_reason,supplier=supplier,invoice_series=invoice_series,invoice_no=invoice_no,invoice_date=str(invoice_date or ''),invoice_total=invoice_total) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
         lock('Company',company)
         existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
         if existing:
@@ -795,6 +829,10 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                     frappe.throw('Chọn người nhận vật tư trong danh sách nhân sự HRMS.')
     seen = set()
     basic_total = 0
+    # Goods bought with a supplier invoice (Mua nhanh / nhập mua ngoài): per-line VAT and invoice totals, when installed.
+    purchase_vat = kind == 'receipt' and receipt_reason == 'Purchase' and frappe.get_meta('Stock Entry Detail').has_field('lotus_line_vat')
+    if purchase_vat:
+        from lotus_farm.finance import setup as fin_setup, rules as fin_rules
     for row in rows:
         if not isinstance(row, dict):
             frappe.throw('Dòng vật tư không hợp lệ.')
@@ -856,6 +894,15 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                 values['basic_rate'] = rate/factor
                 values['set_basic_rate_manually'] = 1
                 basic_total += qty * rate
+                if purchase_vat:
+                    # Supplier invoice line in whole đồng, as printed: thành tiền = SL × đơn giá, thuế = thành tiền × thuế suất.
+                    code = str(row.get('vat') or 'KCT')
+                    try:
+                        fraction = fin_rules.vat_rate(code, invoice_date or posting_date)
+                    except ValueError as error:
+                        frappe.throw(str(error))
+                    net = _dong(qty * rate)
+                    values.update(lotus_line_vat=code, lotus_invoice_rate=rate, lotus_net_amount=net, lotus_vat_amount=_dong(net * fraction))
             if kind == 'receipt' and receipt_reason == 'Recovery':
                 values['lotus_usage_area'] = _text(row.get('area'), 'Lô thu hồi vật tư')
             if kind == 'issue':
@@ -868,6 +915,16 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
                     values['material_request'] = row.get('material_request')
                     values['material_request_item'] = row.get('material_request_item')
         doc.append('items', values)
+    if purchase_vat:
+        basic_total = _purchase_invoice_lines(doc, invoice_total, fin_setup.vat_in_cost())
+        for field, value in (('lotus_einvoice_series', invoice_series), ('lotus_einvoice_no', invoice_no), ('lotus_invoice_date', invoice_date), ('lotus_invoice_total', invoice_total)):
+            if doc.meta.has_field(field):
+                doc.set(field, (str(value).strip()[:140] if isinstance(value, str) else value) or None)
+        if doc.meta.has_field('lotus_vat_in_cost'):
+            doc.lotus_vat_in_cost = 1 if fin_setup.vat_in_cost() else 0
+        if invoice_no:
+            from lotus_farm.finance.payments import _duplicate
+            _duplicate(supplier, str(invoice_no).strip(), series=invoice_series, exclude_entry=doc.name)
     if kind == 'receipt':
         for cost in _receipt_costs(company, additional_costs, basic_total):
             doc.append('additional_costs', cost)

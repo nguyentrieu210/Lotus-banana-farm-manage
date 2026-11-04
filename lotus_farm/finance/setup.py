@@ -79,6 +79,27 @@ def company():
     return settings().company or frappe.defaults.get_global_default('company') or frappe.get_all('Company', pluck='name', limit_page_length=1)[0]
 
 
+def vat_in_cost():
+    """Household business (not VAT-registered for deduction): input VAT is part of the cost of what was bought."""
+    return bool(settings().get('vat_in_cost'))
+
+
+def valuation_tax_account(company):
+    """Clearing account for VAT carried into stock value on a goods receipt (Có on the receipt, Nợ on the supplier invoice,
+    so it returns to zero once billed). ERPNext item tax templates need an account typed for valuation, which 3388 is not:
+    use the company's own one, else create 33881 next to 3388."""
+    name = frappe.db.get_value('Account', {'company': company, 'account_type': 'Expenses Included In Valuation', 'is_group': 0, 'disabled': 0}, 'name')
+    if name:
+        return name
+    base = mapping().get('received_not_billed')
+    parent = base and frappe.db.get_value('Account', base, 'parent_account')
+    if not parent:
+        return None
+    return frappe.get_doc(dict(doctype='Account', company=company, parent_account=parent, account_number='33881',
+                               account_name='Thuế GTGT tính vào giá vốn (chờ hóa đơn)', account_type='Expenses Included In Valuation',
+                               is_group=0)).insert(ignore_permissions=True).name
+
+
 def mapping(doc=None):
     doc = doc or settings()
     return {key: doc.get('acct_' + key) for key in rules.KEYS}
@@ -184,8 +205,24 @@ def install():
                  insert_after='lotus_purchase_invoice'),
             dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage\nPacking',
                  insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
+            # Supplier's invoice behind a direct purchase (Mua nhanh): what is printed on it, and whether its VAT went into cost.
+            dict(fieldname='lotus_einvoice_series', label='Ký hiệu hóa đơn', fieldtype='Data', insert_after='lotus_issue_purpose', depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
+            dict(fieldname='lotus_einvoice_no', label='Số hóa đơn', fieldtype='Data', insert_after='lotus_einvoice_series', depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
+            dict(fieldname='lotus_invoice_date', label='Ngày hóa đơn', fieldtype='Date', insert_after='lotus_einvoice_no', depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
+            dict(fieldname='lotus_invoice_total', label='Tổng cộng trên hóa đơn', fieldtype='Currency', insert_after='lotus_invoice_date', depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
+            dict(fieldname='lotus_vat_in_cost', label='VAT tính vào giá vốn', fieldtype='Check', read_only=1, insert_after='lotus_invoice_total', depends_on="eval:doc.lotus_receipt_reason=='Purchase'"),
         ],
-        'Purchase Invoice': [dict(fieldname='lotus_vat_code', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='bill_date')],
+        'Stock Entry Detail': [
+            dict(fieldname='lotus_line_vat', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='basic_rate'),
+            dict(fieldname='lotus_invoice_rate', label='Đơn giá trên hóa đơn', fieldtype='Float', precision='9', read_only=1, insert_after='lotus_line_vat'),
+            dict(fieldname='lotus_net_amount', label='Thành tiền trước thuế', fieldtype='Currency', read_only=1, insert_after='lotus_invoice_rate'),
+            dict(fieldname='lotus_vat_amount', label='Tiền thuế GTGT', fieldtype='Currency', read_only=1, insert_after='lotus_net_amount'),
+        ],
+        'Purchase Invoice': [dict(fieldname='lotus_vat_code', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='bill_date'),
+                             dict(fieldname='lotus_einvoice_series', label='Ký hiệu hóa đơn', fieldtype='Data', insert_after='lotus_vat_code'),
+                             dict(fieldname='lotus_cqt_code', label='Mã của cơ quan thuế', fieldtype='Data', insert_after='lotus_einvoice_series'),
+                             dict(fieldname='lotus_invoice_total', label='Tổng cộng trên hóa đơn', fieldtype='Currency', insert_after='lotus_cqt_code'),
+                             dict(fieldname='lotus_invoice_vat', label='Tiền thuế trên hóa đơn', fieldtype='Currency', insert_after='lotus_invoice_total')],
         'Sales Invoice': [
             dict(fieldname='lotus_vat_code', label='Thuế suất GTGT', fieldtype='Select', options=VAT_OPTIONS, insert_after='due_date'),
             dict(fieldname='lotus_einvoice_series', label='Ký hiệu hóa đơn điện tử', fieldtype='Data', insert_after='lotus_vat_code'),

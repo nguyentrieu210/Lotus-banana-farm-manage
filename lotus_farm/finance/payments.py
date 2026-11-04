@@ -44,10 +44,22 @@ def apply_vat(doc, code, on_date, account):
         doc.append('taxes', row)
 
 
-def _duplicate(supplier, bill_no):
-    other = frappe.db.get_value(PI, {'supplier': supplier, 'bill_no': bill_no, 'docstatus': ['<', 2]})
-    if other:
-        frappe.throw('Hóa đơn số %s của nhà cung cấp này đã được nhập (%s).' % (bill_no, other))
+def _duplicate(supplier, bill_no, series=None, exclude_entry=None, linked_entries=()):
+    """A supplier invoice is seller + ký hiệu + số: the same number under another series is another invoice. A record that
+    has no series yet is treated as the same invoice (cannot tell them apart). Mua nhanh receipts carrying the invoice count
+    too, except those being invoiced now (linked_entries) or the receipt being saved (exclude_entry)."""
+    series = str(series or '').strip()
+    same = lambda other: not series or not str(other or '').strip() or str(other).strip() == series
+    with_series = frappe.get_meta(PI).has_field('lotus_einvoice_series')
+    for row in frappe.get_all(PI, filters={'supplier': supplier, 'bill_no': bill_no, 'docstatus': ['<', 2]},
+                              fields=['name'] + (['lotus_einvoice_series'] if with_series else [])):
+        if same(row.get('lotus_einvoice_series')):
+            frappe.throw('Hóa đơn %s%s của nhà cung cấp này đã được nhập (%s).' % (series + ' ' if series else '', bill_no, row.name))
+    if frappe.get_meta('Stock Entry').has_field('lotus_einvoice_no'):
+        for row in frappe.get_all('Stock Entry', filters={'lotus_supplier': supplier, 'lotus_einvoice_no': bill_no, 'docstatus': ['<', 2],
+                                                          'name': ['!=', exclude_entry or '']}, fields=['name', 'lotus_einvoice_series']):
+            if row.name not in linked_entries and same(row.lotus_einvoice_series):
+                frappe.throw('Hóa đơn %s%s của nhà cung cấp này đã ghi ở phiếu nhập %s.' % (series + ' ' if series else '', bill_no, row.name))
 
 
 # A posted price-only stock reconciliation adjusts the value of an unbilled
@@ -169,7 +181,8 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
     if len(suppliers) != 1 or None in suppliers:
         frappe.throw('Các phiếu nhập phải cùng một nhà cung cấp.')
     supplier = docs[0].lotus_supplier
-    _duplicate(supplier, bill_no)
+    series = next((d.get('lotus_einvoice_series') for d in docs if d.get('lotus_einvoice_series')), None)
+    _duplicate(supplier, bill_no, series=series, linked_entries=names)
     posting_date = posting_date or bill_date
     setup.check_cutover(posting_date)
     posting.check_open(docs[0].company, posting_date, PI)
@@ -197,7 +210,28 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
                                   ', bổ sung giá qua kiểm kê' if extra else '')))
     pi = frappe.get_doc(dict(doctype=PI, company=docs[0].company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
-    apply_vat(pi, vat_code, bill_date, m['input_vat'])
+    # VAT recorded per line on the receipts (Mua nhanh): household mode already has it inside the stock value (no tax row,
+    # nothing on 1331); otherwise the exact VAT of the invoice lines goes to input VAT, whatever mix of rates. Older receipts
+    # without line VAT keep the single rate chosen here.
+    line_vat = sum(flt(r.get('lotus_vat_amount')) for d in docs for r in d.items)
+    if any(d.get('lotus_vat_in_cost') for d in docs):
+        pi.lotus_vat_code = 'KCT'
+    elif line_vat:
+        pi.append('taxes', dict(charge_type='Actual', account_head=m['input_vat'], tax_amount=line_vat, description='Thuế GTGT theo hóa đơn',
+                                category='Total', add_deduct_tax='Add', cost_center=cost_center))
+    else:
+        apply_vat(pi, vat_code, bill_date, m['input_vat'])
+    if pi.meta.has_field('lotus_einvoice_series'):
+        pi.lotus_einvoice_series = series
+        pi.lotus_invoice_total = sum(flt(d.get('lotus_invoice_total')) for d in docs) or None
+    # Rates per stock unit are rounded to the currency precision (26.571,428625 đ/kg → 26.571,43): the cents that leaves go
+    # back to 3388 so the invoice clears exactly what the receipts credited there.
+    pi.set_missing_values()
+    pi.calculate_taxes_and_totals()
+    gap = round(sum(flt(r['rate']) * flt(r['qty']) for r in items) - flt(pi.net_total), 2)
+    if abs(gap) >= 0.005:
+        pi.append('taxes', dict(charge_type='Actual', account_head=m['received_not_billed'], tax_amount=gap, description='Làm tròn theo phiếu nhập',
+                                category='Total', add_deduct_tax='Add', cost_center=cost_center))
     pi.flags.ignore_permissions = True
     pi.insert()
     pi.submit()

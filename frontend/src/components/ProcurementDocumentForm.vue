@@ -91,7 +91,7 @@ watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of pro
    <template #footer>
     <component :is="button" v-if="type!=='need'&&catalog.can_create_supplier" type="button" variant="outline" size="sm" @click="emit('add-supplier')">Thêm nhà cung cấp mới</component>
     <component :is="button" v-if="catalog.can_create_item" type="button" variant="outline" size="sm" @click="emit('add-item',modelValue.items.length-1)">Thêm mặt hàng mới</component>
-    <span v-if="type!=='need'" class="lotus-form-note lotus-lines__total">Tổng tạm tính {{money(purchaseTotal(modelValue))}} đ</span>
+    <span v-if="type!=='need'" class="lotus-form-note lotus-lines__total">Tổng tạm tính (gồm VAT) {{money(purchaseTotal(modelValue))}} đ<template v-if="catalog?.vat_in_cost"> · Hộ kinh doanh: VAT tính vào giá vốn khi nhận hàng</template></span>
    </template>
   </LineItemsEditor>
  </FormSection>

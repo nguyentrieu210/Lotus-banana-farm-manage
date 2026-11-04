@@ -25,12 +25,14 @@ MAX_BYTES = 10 * 1024 * 1024
 HOURLY_LIMIT = 60
 PROMPT = """Bạn đọc chứng từ mua hàng của một doanh nghiệp trồng chuối ở Việt Nam (báo giá, hóa đơn GTGT, phiếu giao hàng, đơn đặt hàng).
 Chỉ trả về MỘT đối tượng JSON, không giải thích, theo đúng mẫu:
-{"document_type":"quote|invoice|delivery_note|purchase_order|other","document_no":"","date":"YYYY-MM-DD","supplier":{"name":"","tax_id":"","phone":"","address":""},"lines":[{"name":"","qty":0,"uom":"","rate":0,"amount":0,"vat_percent":null}],"subtotal":0,"vat_amount":0,"total":0,"notes":""}
+{"document_type":"quote|invoice|delivery_note|purchase_order|other","document_no":"","invoice_series":"","tax_authority_code":"","date":"YYYY-MM-DD","payment_method":"","buyer":{"name":"","tax_id":""},"supplier":{"name":"","tax_id":"","phone":"","address":""},"lines":[{"name":"","qty":0,"uom":"","rate":0,"amount":0,"vat_percent":null}],"subtotal":0,"vat_amount":0,"total":0,"notes":""}
 Quy tắc:
 - Số viết kiểu Việt Nam phải đổi sang số JSON: 850.000 → 850000; 1,5 → 1.5.
 - supplier là bên BÁN (người lập báo giá/hóa đơn), không phải bên mua.
 - rate là đơn giá chưa VAT nếu chứng từ có; nếu chỉ có đơn giá đã gồm VAT thì ghi đơn giá đó và nêu trong notes.
-- uom giữ nguyên chữ trên chứng từ (bao, kg, chai, lít, can, thùng, cái…).
+- uom giữ nguyên chữ trên chứng từ (bao, kg, tấn, chai, lít, can, thùng, cái…).
+- Hóa đơn GTGT: document_no là Số (No.), invoice_series là Ký hiệu (Serial, ví dụ 1C26TKN), tax_authority_code là Mã của cơ quan thuế (Mã CQT); vat_percent của từng dòng lấy ở cột Thuế suất (5, 8, 10; 0; không chịu thuế để null).
+- buyer là bên MUA ghi trên chứng từ (họ tên / tên đơn vị, mã số thuế); payment_method là Hình thức thanh toán (TM, CK, TM/CK).
 - Không bịa dòng hay con số; ô không đọc được để "" hoặc null."""
 
 
@@ -239,6 +241,9 @@ def read(file_url):
         date = None
     return dict(
         document=dict(type=found.get('document_type') or 'other', number=found.get('document_no') or '', date=date,
+                      series=str(found.get('invoice_series') or '').strip(), tax_authority_code=str(found.get('tax_authority_code') or '').strip(),
+                      payment_method=str(found.get('payment_method') or '').strip(),
+                      buyer=dict(name=str((found.get('buyer') or {}).get('name') or ''), tax_id=str((found.get('buyer') or {}).get('tax_id') or '')),
                       subtotal=_number(found.get('subtotal')), vat_amount=_number(found.get('vat_amount')), total=_number(found.get('total')), notes=found.get('notes') or ''),
         supplier=dict(text=supplier.get('name') or '', tax_id=supplier.get('tax_id') or '', phone=supplier.get('phone') or '', address=supplier.get('address') or '',
                       match=dict(name=match.name, label=match.supplier_name, score=score) if match else None),

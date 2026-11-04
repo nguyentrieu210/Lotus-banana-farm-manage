@@ -20,6 +20,9 @@ const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||
 const money=computed(()=>props.session?.companies?.find(c=>c.name===detail.value?.company)?.default_currency||'VND')
 const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:money.value})
 const receipt=computed(()=>detail.value?.kind==='Material Receipt')
+const invoiced=computed(()=>receipt.value&&!!detail.value?.items?.some(r=>r.vat))
+const invoiceGoods=computed(()=>(detail.value?.items||[]).reduce((s,r)=>s+Number(r.net_amount||0),0))
+const invoiceVat=computed(()=>(detail.value?.items||[]).reduce((s,r)=>s+Number(r.vat_amount||0),0))
 const columns=computed(()=>{
  const columns=receipt.value?[...detailColumns(warehouseLabel),...receiptDetailColumns(cash)]:detailColumns(warehouseLabel)
  if(receipt.value&&detail.value?.price_correction){
@@ -35,6 +38,11 @@ const columns=computed(()=>{
    columns.splice(qty,0,{field:'current_qty',headerName:'Tồn sổ sách',type:'numericColumn',valueFormatter:p=>fmt(p.value)})
    columns.splice(qty+2,0,{colId:'difference',headerName:'Chênh lệch',type:'numericColumn',unitField:'uom',valueGetter:p=>Number(p.data?.qty||0)-Number(p.data?.current_qty||0),valueFormatter:p=>p.value>0?'+'+fmt(p.value):fmt(p.value),cellClass:p=>p.value>0?'stock-diff-plus':p.value<0?'stock-diff-minus':''})
   }
+ }
+ // Hàng mua có hóa đơn: thuế suất, thành tiền và tiền thuế từng dòng như in trên hóa đơn.
+ if(invoiced.value){
+  const at=columns.findIndex(c=>c.field==='rate')+1||columns.length
+  columns.splice(at,0,{field:'net_amount',headerName:'Thành tiền',minWidth:150,type:'numericColumn',valueFormatter:p=>cash(p.value)},{field:'vat',headerName:'VAT',minWidth:96,valueFormatter:p=>p.value==='KCT'?'KCT':p.value?p.value+'%':''},{field:'vat_amount',headerName:'Tiền thuế',minWidth:140,type:'numericColumn',valueFormatter:p=>cash(p.value)})
  }
  if(detail.value?.kind==='Material Issue'&&detail.value.items.some(r=>r.uom!==r.stock_uom))columns.splice(4,0,{headerName:'Trừ tồn kho',minWidth:140,valueGetter:p=>fmt(p.data.stock_qty)+' '+unitLabel(p.data.stock_uom)})
  return columns
@@ -77,7 +85,10 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
   <SigningPanel v-if="detail.docstatus===1" :doctype="detail.doctype" :name="detail.name" :company="detail.company" @notice="error=''" @error="error=$event"/>
   <DataTable :rows="detail.items" :columns="columns"/>
   <template v-if="receipt">
-   <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(detail.basic_total)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(detail.additional_total)}}</dd></div><div><dt>{{detail.price_correction?'Giá trị phiếu gốc':'Giá trị nhập'}}</dt><dd>{{cash(detail.incoming_total)}}</dd></div><div v-if="detail.price_correction"><dt>Điều chỉnh giá đã ghi sổ</dt><dd>{{cash(detail.price_correction)}}</dd></div><div v-if="detail.price_correction"><dt>Giá trị sau điều chỉnh</dt><dd>{{cash(detail.adjusted_incoming_total)}}</dd></div></dl>
+   <p v-if="detail.invoice_no||detail.invoice_series" class="lotus-form-note">Hóa đơn {{[detail.invoice_series,detail.invoice_no].filter(Boolean).join(' · ')}}{{detail.invoice_date?' ngày '+detail.invoice_date.split('-').reverse().join('/'):''}}{{detail.invoice_total?' · Tổng cộng '+cash(detail.invoice_total):''}}</p>
+   <dl v-if="invoiced" class="lotus-form-totals"><div><dt>Tiền hàng</dt><dd>{{cash(invoiceGoods)}}</dd></div><div><dt>Thuế GTGT</dt><dd>{{cash(invoiceVat)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(detail.additional_total)}}</dd></div><div><dt>Tổng thanh toán NCC</dt><dd>{{cash(invoiceGoods+invoiceVat)}}</dd></div><div><dt>Giá vốn nhập kho</dt><dd>{{cash(detail.incoming_total)}}</dd></div></dl>
+   <p v-if="invoiced&&detail.vat_in_cost" class="lotus-form-note">Hộ kinh doanh không khấu trừ VAT: tiền thuế đã cộng vào giá vốn nhập kho.</p>
+   <dl v-if="!invoiced" class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(detail.basic_total)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(detail.additional_total)}}</dd></div><div><dt>{{detail.price_correction?'Giá trị phiếu gốc':'Giá trị nhập'}}</dt><dd>{{cash(detail.incoming_total)}}</dd></div><div v-if="detail.price_correction"><dt>Điều chỉnh giá đã ghi sổ</dt><dd>{{cash(detail.price_correction)}}</dd></div><div v-if="detail.price_correction"><dt>Giá trị sau điều chỉnh</dt><dd>{{cash(detail.adjusted_incoming_total)}}</dd></div></dl>
    <p v-if="detail.price_correction" class="lotus-form-note">Giá đã điều chỉnh bằng phiếu {{detail.price_correction_voucher}}. Phiếu nhập gốc được giữ nguyên để kiểm tra lịch sử; không nhập hàng thêm lần nữa.</p>
    <dl v-if="detail.additional_costs?.length" class="stock-detail-costs"><div v-for="(cost,index) in detail.additional_costs" :key="index"><dt>{{cost.description}}</dt><dd>{{cash(cost.amount)}}</dd></div></dl>
    <p class="lotus-form-note">Giá trị nhập gồm chi phí phân bổ. Công nợ nhà cung cấp ghi nhận bằng hóa đơn mua hàng.</p>

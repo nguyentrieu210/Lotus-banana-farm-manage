@@ -17,7 +17,7 @@ def settings():
     accounts = frappe.get_all('Account', filters={'company': company, 'is_group': 0, 'disabled': 0},
                               fields=['name', 'account_number', 'account_name', 'root_type', 'account_type'], order_by='account_number, name')
     return dict(enabled=bool(cfg.finance_enabled), company=cfg.company or company, cutover_date=str(cfg.cutover_date or ''),
-                harvest_standard_cost=flt(cfg.get('harvest_standard_cost')), minimum_wage_region=cfg.get('minimum_wage_region') or '',
+                harvest_standard_cost=flt(cfg.get('harvest_standard_cost')), minimum_wage_region=cfg.get('minimum_wage_region') or '', vat_in_cost=bool(cfg.get('vat_in_cost')),
                 payroll_params=_payroll_params(), coa_version=cfg.coa_version or '', coa_applied_at=str(cfg.coa_applied_at or ''), coa_applied_by=cfg.coa_applied_by or '',
                 mapping=setup.mapping(cfg), keys=[dict(key=k, label=v[0], roots=v[1], account_type=v[2]) for k, v in rules.KEYS.items()],
                 errors=setup.mapping_errors(cfg), accounts=accounts, periods=posting.periods(company), is_chief=setup.is_chief())
@@ -97,6 +97,8 @@ def save_settings(values):
     doc.company = doc.company or setup.company()
     if 'cutover_date' in values:
         doc.cutover_date = values.get('cutover_date') or None
+    if 'vat_in_cost' in values:
+        doc.vat_in_cost = 1 if values.get('vat_in_cost') in (1, True, '1', 'true') else 0
     if 'harvest_standard_cost' in values:
         doc.harvest_standard_cost = max(0, flt(values.get('harvest_standard_cost')))
     if 'minimum_wage_region' in values:

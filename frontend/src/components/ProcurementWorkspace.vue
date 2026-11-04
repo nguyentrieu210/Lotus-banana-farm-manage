@@ -73,7 +73,7 @@ const current=ref(null),chain=ref(null),detailType=ref(''),signerOptions=ref(nul
 const period=ref((props.today||new Date().toISOString().slice(0,10)).slice(0,7)),asof=ref(props.today||new Date().toISOString().slice(0,10)),farm=ref(''),supplier=ref(props.initialSupplier||''),kind=ref(''),report=ref(null)
 const sourceType=ref('Purchase Invoice'),source=ref(''),amount=ref(''),mode=ref('bank'),reference=ref(''),date=ref(asof.value)
 const payerType=ref('Employee'),payer=ref(''),classification=ref('Reimbursable'),notes=ref(''),evidence=ref(null),duplicateReason=ref(''),allocations=ref([])
-const bill=ref(''),billdate=ref(asof.value),dueDate=ref(asof.value),quantities=ref({}),receiveInfo=ref(null),fundingName=ref('')
+const bill=ref(''),billSeries=ref(''),cqtCode=ref(''),invoiceTotal=ref(''),invoiceVat=ref(''),billdate=ref(asof.value),dueDate=ref(asof.value),quantities=ref({}),receiveInfo=ref(null),fundingName=ref('')
 const file=ref(null),fileUrl=ref(''),preview=ref(null),mappings=ref({}),importWarehouse=ref(props.warehouse||'')
 const workspaceConfirm=useWorkspaceConfirm(),mobileConfirm=useMobileConfirm()
 const confirmOpen=workspaceConfirm.open,confirmTitle=workspaceConfirm.title,confirmMessage=workspaceConfirm.message
@@ -191,7 +191,7 @@ onUnmounted(()=>clearTimeout(queryTimer))
 
 async function start(type){
  const selectedInvoice=current.value?.doctype==='Purchase Invoice'?current.value.name:''
- error.value='';current.value=null;key.value=newKey();signers.value={};quantities.value={};evidence.value=null;file.value=null;fileUrl.value='';preview.value=null;mappings.value={};duplicateReason.value='';bill.value='';source.value='';amount.value='';reference.value='';notes.value='';allocations.value=[];payer.value=''
+ error.value='';current.value=null;key.value=newKey();signers.value={};quantities.value={};evidence.value=null;file.value=null;fileUrl.value='';preview.value=null;mappings.value={};duplicateReason.value='';bill.value='';billSeries.value='';cqtCode.value='';invoiceTotal.value='';invoiceVat.value='';source.value='';amount.value='';reference.value='';notes.value='';allocations.value=[];payer.value=''
  date.value=asof.value
  if(['order','quote','need'].includes(type)){draft.value=newPurchaseDraft(defaultWarehouse(),asof.value);draft.value.valid_till=asof.value}
  if(['payment','funding','reimburse','refund','accounts'].includes(type)){
@@ -246,7 +246,7 @@ async function submitStage(){await run(async()=>{
  let result
  if(form.value==='return')result=await api('return_receipt',{name:receiveInfo.value.name,posting_date:date.value,quantities:selected,client_key:key.value},true)
  if(form.value==='credit')result=await method('procurement_adjustments','credit_note',{company:company.value,name:receiveInfo.value.name,posting_date:date.value,bill_no:bill.value,bill_date:billdate.value,quantities:selected,client_key:key.value},true)
- if(form.value==='invoice')result=await api('invoice_receipt',{name:receiveInfo.value.name,bill_no:bill.value,bill_date:billdate.value,posting_date:date.value,due_date:dueDate.value,quantities:selected,client_key:key.value},true)
+ if(form.value==='invoice')result=await api('invoice_receipt',{name:receiveInfo.value.name,bill_no:bill.value,bill_date:billdate.value,posting_date:date.value,due_date:dueDate.value,quantities:selected,client_key:key.value,invoice_series:billSeries.value,cqt_code:cqtCode.value,invoice_total:invoiceTotal.value,invoice_vat:invoiceVat.value},true)
  const target=result.invoice?'invoices':'receipts';form.value='';current.value=null;await changeTab(target);await open({name:result.invoice||result.name},target);success('Đã tạo '+(result.name||result.invoice))
 })}
 async function chooseQuotes(){await run(async()=>{const result=await api('select_quotes',{company:company.value,selections:quoteChoices(rows.value,selections.value),client_key:key.value||=newKey()},true);key.value='';tab.value='orders';await load();ordersCreated(result)})}
@@ -435,6 +435,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <ProcurementDocumentForm v-if="['order','quote','need'].includes(form)" v-model="draft" :mobile="mobile" :catalog="catalog" :type="form" :saving="saving" @add-supplier="openQuickMaster('suppliers')" @add-item="openQuickMaster('items',$event)" @request="fromRequest"/>
   <template v-else-if="['return','invoice','credit'].includes(form)">
    <FormGrid :columns="mobile?1:4"><LotusField :mobile="mobile" v-model="date" label="Ngày ghi sổ" type="date" required/><template v-if="['invoice','credit'].includes(form)"><LotusField :mobile="mobile" v-model="bill" label="Số hóa đơn" required/><LotusField :mobile="mobile" v-model="billdate" label="Ngày hóa đơn" type="date" required/><LotusField v-if="form==='invoice'" :mobile="mobile" v-model="dueDate" label="Hạn thanh toán" type="date" required/></template></FormGrid>
+   <FormGrid v-if="form==='invoice'" :columns="mobile?1:4"><LotusField :mobile="mobile" v-model="billSeries" label="Ký hiệu hóa đơn" placeholder="VD: 1C26TKN" maxlength="20"/><LotusField :mobile="mobile" v-model="cqtCode" label="Mã cơ quan thuế" maxlength="60"/><LotusField :mobile="mobile" v-model="invoiceVat" label="Tiền thuế trên hóa đơn" type="money" min="0"/><LotusField :mobile="mobile" v-model="invoiceTotal" label="Tổng cộng trên hóa đơn" type="money" min="0" hint="Nhập đúng số in trên hóa đơn để khớp từng đồng"/></FormGrid>
    <LineItemsEditor :model-value="receiveInfo?.items||[]" :title="form==='return'?'Số lượng trả':'Số lượng lập hóa đơn'" :columns="stageColumns" :mobile="mobile" fixed>
     <template #cell-item_name="{row}"><span class="receiving-line"><strong>{{row.item_name}}</strong><small>{{unitLabel(row.uom)}} · tối đa {{row.remaining_qty??row.qty}}</small></span></template>
     <template #cell-qty="{row}"><LotusField v-model="quantities[row.line]" :mobile="mobile" :aria-label="'Số lượng '+row.item_name" type="number" min="0" :max="row.remaining_qty??row.qty"/></template>

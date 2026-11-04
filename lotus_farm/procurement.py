@@ -52,6 +52,18 @@ def apply_line_taxes(doc):
     from lotus_farm.finance import setup, rules as finance_rules
     mapping = setup.mapping()
     account = mapping.get('input_vat')
+    # Household business (Cài đặt Tài chính): VAT and freight are part of what the goods cost — taxes "Valuation and Total"
+    # on the valuation clearing account instead of 1331 / 6277. A document without stock items has no stock value to carry
+    # them: its VAT then joins the service expense.
+    in_cost = setup.vat_in_cost() and doc.doctype in ('Purchase Order', 'Purchase Receipt', 'Purchase Invoice')
+    has_stock = any(frappe.get_cached_value('Item', r.item_code, 'is_stock_item') for r in doc.items if r.item_code)
+    category = 'Total'
+    if in_cost:
+        if has_stock:
+            account = setup.valuation_tax_account(doc.company)
+            category = 'Valuation and Total'
+        else:
+            account = mapping.get('overhead_service')
     shipping = sum(flt(r.get('lotus_line_freight')) for r in doc.items)
     rates = [finance_rules.vat_rate(r.get('lotus_line_vat') or 'KCT', doc.get('bill_date') or doc.get('posting_date') or doc.get('transaction_date')) * 100 for r in doc.items]
     if any(rates) and not account:
@@ -60,7 +72,7 @@ def apply_line_taxes(doc):
         # item_tax_rate is an ERPNext output and gets rebuilt during validation.
         # A native Item Tax Template is the durable, per-line input.
         if any(rates):
-            title='Lotus purchase VAT '+str(int(rate))+'%'
+            title='Lotus purchase VAT '+str(int(rate))+'%'+(' (giá vốn)' if category!='Total' else ' (chi phí)' if in_cost else '')
             template=frappe.db.get_value('Item Tax Template',{'company':doc.company,'title':title},'name')
             if not template:
                 template=frappe.get_doc(dict(doctype='Item Tax Template',title=title,company=doc.company,
@@ -77,13 +89,41 @@ def apply_line_taxes(doc):
     cc = frappe.get_cached_value('Company', doc.company, 'cost_center')
     if any(rates):
         doc.append('taxes', dict(charge_type='On Net Total', account_head=account, rate=0,
-                                description='Thuế GTGT theo dòng', category='Total', add_deduct_tax='Add', cost_center=cc))
+                                description='Thuế GTGT theo dòng'+(' (tính vào giá vốn)' if in_cost else ''), category=category, add_deduct_tax='Add', cost_center=cc))
     if shipping:
-        freight_account = mapping.get('overhead_service')
+        freight_account = account if category != 'Total' else mapping.get('overhead_service')
         if not freight_account:
             frappe.throw('Thiết lập tài khoản dịch vụ vận chuyển tại Tài chính – Kế toán.')
         doc.append('taxes', dict(charge_type='Actual', account_head=freight_account, tax_amount=shipping,
-                                description='Vận chuyển', category='Total', add_deduct_tax='Add', cost_center=cc))
+                                description='Vận chuyển', category=category, add_deduct_tax='Add', cost_center=cc))
+
+
+def _match_invoice_total(pi, invoice_total):
+    """Make the invoice equal, to the đồng, the total printed by the supplier. Decimal rates leave a few đồng of rounding:
+    that goes in an explicit adjustment row with the VAT (into cost for a household, else input VAT). A bigger gap is a
+    wrong quantity, price or VAT rate and is refused."""
+    if invoice_total in (None, '', 0, '0'):
+        return
+    target = round(flt(invoice_total))
+    diff = round(target - flt(pi.grand_total), 2)
+    if abs(diff) < 0.005:
+        return
+    if abs(diff) > max(5, len(pi.items)):
+        vnd = lambda n: '{:,.0f}'.format(n).replace(',', '.')
+        frappe.throw('Tổng hóa đơn tính ra {} đ khác tổng cộng in trên hóa đơn {} đ. Kiểm tra số lượng, đơn giá và thuế suất.'.format(vnd(flt(pi.grand_total)), vnd(target)))
+    vat = next((t for t in pi.taxes if t.charge_type == 'On Net Total'), None) or (pi.taxes[0] if pi.taxes else None)
+    # Deductible VAT: the đồng of rounding is VAT too. VAT carried into cost (household): the goods are already valued at
+    # receipt, so the rounding is a small cost on the company's round-off account rather than a stray balance on 33881.
+    if vat and vat.category == 'Total':
+        account, cost_center = vat.account_head, vat.cost_center
+    else:
+        account = frappe.get_cached_value('Company', pi.company, 'round_off_account')
+        cost_center = frappe.get_cached_value('Company', pi.company, 'round_off_cost_center') or frappe.get_cached_value('Company', pi.company, 'cost_center')
+    if not account:
+        frappe.throw('Thiết lập tài khoản làm tròn của công ty để khớp tổng hóa đơn.')
+    pi.append('taxes', dict(charge_type='Actual', account_head=account, tax_amount=diff, description='Làm tròn theo hóa đơn',
+                            category='Total', add_deduct_tax='Add', cost_center=cost_center))
+    pi.calculate_taxes_and_totals()
 
 
 def idempotent(dt, key, payload, company):
@@ -115,7 +155,7 @@ def bootstrap(company=None):
                 can_quote=frappe.has_permission('Supplier Quotation','create'),
                 can_need=frappe.has_permission('Material Request','create'),
                 can_invoice=frappe.has_permission('Purchase Invoice','read'),
-                can_quick=frappe.has_permission('Stock Entry','create'),
+                can_quick=frappe.has_permission('Stock Entry','create'), vat_in_cost=finance.vat_in_cost(),
                 farms=frappe.get_list('Farm',filters={'company':company},fields=['name','farm_name'],limit_page_length=0) if frappe.has_permission('Farm','read') else [])
     return data
 
@@ -423,7 +463,7 @@ def billing_source(company, name, kind='invoice'):
 
 
 @frappe.whitelist(methods=['POST'])
-def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantities=None, due_date=None):
+def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantities=None, due_date=None, invoice_series=None, cqt_code=None, invoice_total=None, invoice_vat=None):
     """Partial invoices stay linked to the actual PR lines. Old header-VAT API is unchanged."""
     from lotus_farm.finance import setup, posting, payments
     from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
@@ -433,13 +473,13 @@ def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantiti
     lock('Company', source.company)
     lock('Purchase Receipt', name)
     selected = parse(quantities) if quantities else None
-    payload = [name, bill_no, bill_date, posting_date, selected, due_date]
+    payload = [name, bill_no, bill_date, posting_date, selected, due_date, invoice_series, cqt_code, invoice_total, invoice_vat]
     key, fingerprint, old = idempotent('Purchase Invoice', client_key, payload, source.company)
     if old:
         return dict(invoice=old)
     if source.docstatus != 1 or source.is_return or not str(bill_no or '').strip():
         frappe.throw('Chọn phiếu nhận đã xác nhận và nhập số hóa đơn.')
-    payments._duplicate(source.supplier, bill_no)
+    payments._duplicate(source.supplier, bill_no, series=invoice_series)
     setup.check_cutover(posting_date)
     posting.check_open(source.company, posting_date, 'Purchase Invoice')
     pi = make_purchase_invoice(name)
@@ -467,6 +507,10 @@ def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantiti
     apply_line_taxes(pi)
     pi.set_missing_values()
     pi.calculate_taxes_and_totals()
+    _match_invoice_total(pi, invoice_total)
+    if pi.meta.has_field('lotus_einvoice_series'):
+        pi.update(dict(lotus_einvoice_series=str(invoice_series or '').strip() or None, lotus_cqt_code=str(cqt_code or '').strip() or None,
+                       lotus_invoice_total=flt(invoice_total) or None, lotus_invoice_vat=flt(invoice_vat) or None))
     pi.set_advances()
     pi.set('payment_schedule', [])
     pi.insert()

@@ -9,7 +9,7 @@ import LineItemsEditor from '../form/LineItemsEditor.vue'
 import StockReceiptReason from '../StockReceiptReason.vue'
 import StockEvidence from './StockEvidence.vue'
 import DocumentReader from '../DocumentReader.vue'
-import {unitLabel} from '../../units'
+import {unitLabel,normalizeUnit} from '../../units'
 import {fmt} from '../../stock-columns'
 import {itemUnits,conversionFactor,stockQuantity,quantityLimit} from '../../stock-units'
 // Phiếu nhập không theo đơn · xuất kho · chuyển kho · kiểm kê, saved as an ERPNext draft (lotus_farm.warehouse.create_draft).
@@ -26,7 +26,7 @@ const issuePurposes=[{value:'Production',label:'Xuất cho sản xuất (vào l�
 const production=computed(()=>form.kind!=='issue'||form.issue_purpose==='Production')
 function changeIssuePurpose(value){form.issue_purpose=value;if(value!=='Production'&&form.issue_mode!=='Manual')changeIssueMode('Manual')}
 const open=ref(false),saving=ref(false),error=ref(''),reasonFields=ref(null),quick=ref(false),showCosts=ref(false)
-const form=reactive({kind:'receipt',receipt_reason:'',supplier:'',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:''})
+const form=reactive({kind:'receipt',receipt_reason:'',supplier:'',count_purpose:'Stock Reconciliation',posting_date:'',source:'',target:'',notes:'',lines:[],issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',additional_costs:[],existing_name:'',base_modified:'',client_event_id:'',invoice_series:'',invoice_no:'',invoice_date:'',invoice_total:''})
 const employees=ref([]),blockCodes=ref([]),accounts=ref([]),defaultAccount=ref(''),accountsLoading=ref(false)
 const issueSources=ref([]),issueSource=ref(''),issueNote=ref(''),issueLoading=ref(false)
 let issueVersion=0
@@ -39,6 +39,19 @@ const needsTarget=computed(()=>['receipt','transfer','count'].includes(form.kind
 const manual=computed(()=>form.kind!=='issue'||form.issue_mode==='Manual')
 const priced=computed(()=>form.kind==='receipt'||(form.kind==='count'&&form.count_purpose==='Opening Stock'))
 const basic=computed(()=>form.lines.reduce((sum,row)=>sum+Number(row.qty||0)*Number(row.rate||0),0))
+// Hàng mua có hóa đơn (Mua nhanh / nhập mua ngoài): VAT từng dòng như trên hóa đơn, đồng chẵn. Hộ kinh doanh (Cài đặt Tài
+// chính) không khấu trừ: tiền thuế cộng vào giá vốn nhập kho. The server recomputes and reconciles with the invoice total.
+const vatInfo=ref({vat_in_cost:false,vat_rates:[]})
+const purchase=computed(()=>form.kind==='receipt'&&form.receipt_reason==='Purchase')
+const vatOptions=computed(()=>(vatInfo.value.vat_rates?.length?vatInfo.value.vat_rates:[{code:'KCT',label:'Không chịu thuế'},{code:'0',label:'0%'},{code:'5',label:'5%'},{code:'8',label:'8%'},{code:'10',label:'10%'}]).map(r=>({value:r.code,label:r.label})))
+const vatRate=code=>{const r=vatInfo.value.vat_rates?.find(x=>x.code===String(code||'KCT'));return r?Number(r.rate):code&&code!=='KCT'?Number(code)/100||0:0}
+const lineNet=row=>Math.round(Number(row.qty||0)*Number(row.rate||0))
+const lineVat=row=>Math.round(lineNet(row)*vatRate(row.vat))
+const goods=computed(()=>form.lines.reduce((s,r)=>s+lineNet(r),0))
+const vatTotal=computed(()=>form.lines.reduce((s,r)=>s+lineVat(r),0))
+const payable=computed(()=>goods.value+vatTotal.value)
+const stockCost=computed(()=>goods.value+(vatInfo.value.vat_in_cost?vatTotal.value:0)+charges.value)
+const invoiceGap=computed(()=>form.invoice_total!==''&&form.invoice_total!=null?Math.round(Number(form.invoice_total))-payable.value:0)
 const charges=computed(()=>form.additional_costs.reduce((sum,row)=>sum+Number(row.amount||0),0))
 const title=computed(()=>(form.existing_name?'Sửa phiếu nháp · ':'')+(quick.value?'Mua nhanh':titles[form.kind]))
 
@@ -63,13 +76,14 @@ const lineColumns=computed(()=>{
    props:r=>({min:count||!manual.value?0:0.000001,max:!manual.value?quantityLimit(r):undefined}),
    hint:r=>['receipt','issue'].includes(form.kind)&&r.uom&&r.stock_uom&&r.uom!==r.stock_uom?'= '+fmt(stockQuantity(r))+' '+unitLabel(r.stock_uom):unitLabel(r.uom||r.stock_uom)||''}]
  if(form.kind==='receipt'||issue)cols.push({field:'uom',label:issue?'Đơn vị xuất':'Đơn vị nhập hàng',type:'select',required:true,width:'minmax(150px,1fr)',options:row=>itemUnits(row).map(u=>({value:u.uom,label:unitLabel(u.uom)+(u.uom!==row.stock_uom?' (1 = '+fmt(u.conversion_factor)+' '+unitLabel(row.stock_uom)+')':'')})),props:{emptyOption:null}})
- if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>form.kind==='receipt'&&form.receipt_reason!=='Purchase'&&!Number(r.rate)?'Để 0: lấy giá vốn hiện tại':'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
+ if(priced.value)cols.push({field:'rate',label:'Đơn giá ('+money.value+')',type:'money',required:true,width:'minmax(130px,1fr)',props:{min:0},hint:r=>form.kind==='receipt'&&form.receipt_reason!=='Purchase'&&!Number(r.rate)?'Để 0: lấy giá vốn hiện tại':purchase.value?'Thành tiền '+cash(lineNet(r))+' · Thuế '+cash(lineVat(r)):'Thành tiền '+cash(Number(r.qty||0)*Number(r.rate||0))})
+ if(purchase.value)cols.push({field:'vat',label:'VAT',type:'select',options:vatOptions.value,searchable:false,props:{emptyOption:null},required:true,width:'minmax(130px,.8fr)'})
  if(issue||(form.kind==='receipt'&&form.receipt_reason==='Recovery'))cols.push({field:'area',label:issue?(production.value?'Khu vực / lô sử dụng':'Khu vực (nếu có)'):'Lô thu hồi về',type:'combobox',options:blockCodes.value.map(b=>({value:b.code,label:b.label||b.code})),required:production.value,width:'minmax(160px,1.4fr)',readonly:r=>!manual.value&&r.fixed_area,props:{allowCustom:true,placeholder:'VD: A-1 / thửa 2'},
   hint:r=>manual.value?'Bắt đầu bằng mã lô để chi phí vào đúng lô.':'Duyệt '+fmt(r.required_qty)+' · Đã cấp/giữ '+fmt(r.allocated_qty)+' · Còn '+fmt(r.remaining_qty)+' '+unitLabel(r.stock_uom||r.uom)})
  return cols
 })
 const costColumns=computed(()=>[{field:'description',label:'Khoản chi phí',required:true,props:{maxlength:140,placeholder:'Vận chuyển, bốc xếp…'},width:'minmax(180px,1.6fr)'},{field:'amount',label:'Số tiền ('+money.value+')',type:'money',required:true,props:{min:0.000001},width:'minmax(140px,1fr)'},{field:'expense_account',label:'Tài khoản chi phí',type:'select',required:true,options:accounts.value.map(a=>({value:a.name,label:a.account_name})),width:'minmax(180px,1.4fr)'}])
-const newLine=()=>({item:'',qty:form.kind==='count'?0:1,area:'',rate:0})
+const newLine=()=>({item:'',qty:form.kind==='count'?0:1,area:'',rate:0,vat:'KCT'})
 
 watch(()=>[form.kind,form.source,open.value],async([kind,source,visible])=>{if(!visible||kind!=='issue')return;try{blockCodes.value=await call('lotus_farm.finance.stock.block_codes',{warehouse:source||undefined})}catch{blockCodes.value=[]}})
 async function loadAccounts(){accountsLoading.value=true;try{const result=await api('receipt_accounts',{company:props.company});accounts.value=result.accounts;defaultAccount.value=result.default_account||''}catch(e){error.value=e.message}finally{accountsLoading.value=false}}
@@ -98,12 +112,18 @@ async function applyDocument(result,stored){
   if(!option)continue
   const row={...newLine(),item:option.value};selectItem(row,option)
   row.qty=line.qty||1
-  if(line.uom&&line.uom===option.pack_uom)row.uom=option.pack_uom
+  // Unit as printed (bao, tấn…) when the item has that conversion: tấn reads as the Tonne unit.
+  const printed=normalizeUnit(line.uom),unit=printed&&(option.uoms||[]).map(u=>u.uom).find(u=>normalizeUnit(u)===printed||normalizeUnit(unitLabel(u))===printed)
+  if(unit)row.uom=unit;else if(line.uom&&line.uom===option.pack_uom)row.uom=option.pack_uom
+  if(line.vat_percent!=null&&vatOptions.value.some(o=>o.value===String(line.vat_percent)))row.vat=String(line.vat_percent)
+  else if(line.vat_percent==null&&result.document?.type==='invoice')row.vat='KCT'
   if(line.rate!=null)row.rate=line.rate
   rows.push(row)
  }
  if(rows.length)form.lines=[...form.lines.filter(r=>r.item),...rows]
  const doc=result.document
+ // Invoice identity and total, to reconcile the lines with what the supplier printed.
+ if(doc.type==='invoice'){if(doc.series)form.invoice_series=doc.series;if(doc.number)form.invoice_no=doc.number;if(doc.date)form.invoice_date=doc.date;if(doc.total)form.invoice_total=doc.total}
  if(!form.notes&&(doc.number||result.supplier.text))form.notes=['Theo chứng từ',doc.number&&'số '+doc.number,doc.date&&'ngày '+doc.date.split('-').reverse().join('/'),result.supplier.text&&'của '+result.supplier.text].filter(Boolean).join(' ')
  pendingFiles.value=[...pendingFiles.value,{file_url:stored.file_url,file_name:stored.file_name}]
 }
@@ -111,10 +131,10 @@ async function start(kind){
  pendingFiles.value=[]
  issueVersion++;error.value='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false
  const first=props.warehouse||props.warehouses[0]?.name||''
- Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],lines:[newLine()]})
+ Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',issue_purpose:'Production',work_plan:'',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],invoice_series:'',invoice_no:'',invoice_date:'',invoice_total:'',lines:[newLine()]})
  if(kind==='issue')employees.value=await call('lotus_farm.warehouse_masters.employee_choices',{company:props.company})
  open.value=true
- if(kind==='receipt')await loadAccounts()
+ if(kind==='receipt'){await loadAccounts();call('lotus_farm.finance.stock.receipt_options').then(r=>{vatInfo.value=r}).catch(()=>{})}
 }
 async function openNew(kind){quick.value=false;showCosts.value=true;try{await start(kind)}catch(e){error.value=e.message;open.value=true}}
 async function openQuick(){
@@ -124,7 +144,7 @@ async function openQuick(){
 async function edit(current){
  const kind={'Material Receipt':'receipt','Material Issue':'issue','Material Transfer':'transfer'}[current.kind]||'count'
  await openNew(kind);await nextTick()
- Object.assign(form,{receipt_reason:current.receipt_reason||'',supplier:current.supplier||'',issue_purpose:current.issue_purpose||'Production',existing_name:current.name,base_modified:current.modified,posting_date:current.posting_date,count_purpose:current.kind,source:current.items[0]?.source||'',target:current.items[0]?.target||'',notes:current.notes||'',receiver:current.receiver||'',receiver_employee:current.receiver_employee||'',issue_mode:current.issue_mode||'Manual',additional_costs:(current.additional_costs||[]).map(row=>({...row})),lines:current.items.map(row=>({...row,rate:row.rate||0}))})
+ Object.assign(form,{receipt_reason:current.receipt_reason||'',supplier:current.supplier||'',invoice_series:current.invoice_series||'',invoice_no:current.invoice_no||'',invoice_date:current.invoice_date||'',invoice_total:current.invoice_total??'',issue_purpose:current.issue_purpose||'Production',existing_name:current.name,base_modified:current.modified,posting_date:current.posting_date,count_purpose:current.kind,source:current.items[0]?.source||'',target:current.items[0]?.target||'',notes:current.notes||'',receiver:current.receiver||'',receiver_employee:current.receiver_employee||'',issue_mode:current.issue_mode||'Manual',additional_costs:(current.additional_costs||[]).map(row=>({...row})),lines:current.items.map(row=>({...row,rate:row.rate||0}))})
 }
 async function save(){
  if(saving.value)return
@@ -150,6 +170,12 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
   <FormSection title="Thông tin phiếu">
    <DocumentReader v-if="form.kind==='receipt'&&manual" :camera="quick" :disabled="saving" label="Đọc phiếu giao hàng / hóa đơn bằng AI" @read="applyDocument"/>
    <StockReceiptReason v-if="form.kind==='receipt'" ref="reasonFields" :fixed="quick" v-model:reason="form.receipt_reason" v-model:supplier="form.supplier"/>
+   <FormGrid v-if="purchase" :columns="4">
+    <LotusField v-model="form.invoice_series" label="Ký hiệu hóa đơn" placeholder="VD: 1C26TKN" maxlength="20"/>
+    <LotusField v-model="form.invoice_no" label="Số hóa đơn" maxlength="30"/>
+    <LotusField v-model="form.invoice_date" label="Ngày hóa đơn" type="date"/>
+    <LotusField v-model="form.invoice_total" label="Tổng cộng trên hóa đơn" type="money" min="0" hint="Nhập đúng số in trên hóa đơn để khớp từng đồng"/>
+   </FormGrid>
    <FormGrid :columns="3">
     <LotusField v-if="form.kind==='issue'" :model-value="form.issue_purpose" label="Mục đích xuất" :options="issuePurposes" :searchable="false" :empty-option="null" :disabled="saving" @update:model-value="changeIssuePurpose"/>
     <LotusField v-if="form.kind==='issue'&&production" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
@@ -168,11 +194,20 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
     <template #cell-uom="{row,index,column}"><LotusField :model-value="row.uom" :aria-label="column.label+' dòng '+(index+1)" :options="column.options(row)" :empty-option="null" :disabled="!row.item" required @update:model-value="unit=>changeUnit(row,unit)"/></template>
    </LineItemsEditor>
   </FormSection>
+  <FormSection v-if="purchase" title="Tổng tiền">
+   <dl class="lotus-form-totals">
+    <div><dt>Tiền hàng</dt><dd>{{cash(goods)}}</dd></div><div><dt>Thuế GTGT</dt><dd>{{cash(vatTotal)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(charges)}}</dd></div>
+    <div><dt>Tổng thanh toán NCC</dt><dd>{{cash(payable)}}</dd></div><div><dt>Giá vốn nhập kho</dt><dd>{{cash(stockCost)}}</dd></div>
+   </dl>
+   <p class="lotus-form-note">{{vatInfo.vat_in_cost?'Hộ kinh doanh không khấu trừ VAT: tiền thuế và chi phí cộng vào giá vốn nhập kho.':'Tiền thuế ghi vào thuế GTGT được khấu trừ; giá vốn gồm tiền hàng và chi phí.'}}</p>
+   <p v-if="invoiceGap&&Math.abs(invoiceGap)<=Math.max(2,form.lines.length)" class="lotus-form-note">Lệch {{cash(invoiceGap)}} so với tổng trên hóa đơn do làm tròn: khi lưu sẽ khớp đúng số trên hóa đơn.</p>
+   <p v-else-if="invoiceGap" class="stock-error" role="alert">Tổng tính ra {{cash(payable)}} khác tổng trên hóa đơn {{cash(form.invoice_total)}} (lệch {{cash(invoiceGap)}}). Kiểm tra số lượng, đơn giá, thuế suất.</p>
+  </FormSection>
   <div v-if="form.kind==='receipt'&&!showCosts&&!form.additional_costs.length"><button type="button" class="lotus-link-button" @click="showCosts=true">+ Thêm chi phí vận chuyển, bốc xếp</button></div>
   <FormSection v-if="form.kind==='receipt'&&(showCosts||form.additional_costs.length)" title="Chi phí nhập kho" description="Phân bổ chi phí theo giá trị vật tư. Cần có đơn giá để tính phân bổ.">
    <p v-if="!accountsLoading&&!accounts.length" class="lotus-form-note">Cần quyền đọc tài khoản chi phí của công ty để thêm chi phí.</p>
    <LineItemsEditor v-model="form.additional_costs" title="Các khoản chi phí" add-label="Thêm chi phí" empty-text="Chưa có chi phí vận chuyển, bốc xếp…" :columns="costColumns" :min="0" :max="30" :readonly="accountsLoading||!accounts.length" :new-row="()=>({description:'',amount:0,expense_account:defaultAccount})"/>
-   <dl class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(basic)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(charges)}}</dd></div><div><dt>Tổng giá trị nhập</dt><dd>{{cash(basic+charges)}}</dd></div></dl>
+   <dl v-if="!purchase" class="lotus-form-totals"><div><dt>Tiền vật tư</dt><dd>{{cash(basic)}}</dd></div><div><dt>Chi phí</dt><dd>{{cash(charges)}}</dd></div><div><dt>Tổng giá trị nhập</dt><dd>{{cash(basic+charges)}}</dd></div></dl>
   </FormSection>
   <FormSection>
    <StockEvidence ref="evidence" v-model:pending="pendingFiles" :doctype="form.kind==='count'?'Stock Reconciliation':'Stock Entry'" :name="form.existing_name||''" :disabled="saving" :title="form.kind==='issue'?'Ảnh bằng chứng xuất kho':form.kind==='receipt'?'Chứng từ nhập kho (phiếu giao hàng, hóa đơn, ảnh)':'Chứng từ, ảnh bằng chứng'"/>

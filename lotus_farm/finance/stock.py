@@ -199,7 +199,11 @@ def receipt_options():
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
     cfg = setup.settings()
-    return dict(enabled=bool(cfg.finance_enabled), reasons=[dict(value=k, label=v[0], lot=v[2], supplier=v[3]) for k, v in RECEIPT_REASONS.items()],
+    from frappe.utils import nowdate
+    # VAT choices in force today and whether VAT goes into cost (household business) — the receipt form shows both.
+    vat = [dict(code=r['code'], rate=float(r['rate']), label='Không chịu thuế' if r['code'] == 'KCT' else r['code'] + '%') for r in rules.vat_rates(nowdate())]
+    return dict(enabled=bool(cfg.finance_enabled), vat_in_cost=bool(cfg.get('vat_in_cost')), vat_rates=vat,
+                reasons=[dict(value=k, label=v[0], lot=v[2], supplier=v[3]) for k, v in RECEIPT_REASONS.items()],
                 suppliers=frappe.get_list('Supplier', filters={'disabled': 0}, fields=['name', 'supplier_name'], order_by='supplier_name', limit_page_length=0))
 
 

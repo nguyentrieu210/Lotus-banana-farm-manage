@@ -257,7 +257,7 @@ async function reverse(postingName,label){if(!overview.value?.is_chief)return
 
 // Settings (chief accountant)
 const form=ref({enabled:false,cutover_date:'',mapping:{}}),coa=ref(null),openingPreview=ref(null)
-watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',minimum_wage_region:s.minimum_wage_region||'',mapping:{...s.mapping}}})
+watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',minimum_wage_region:s.minimum_wage_region||'',vat_in_cost:!!s.vat_in_cost,mapping:{...s.mapping}}})
 const paramGroups={pit_progressive:'Thuế TNCN lũy tiến (giảm trừ gia cảnh)',pit_flat:'Thuế TNCN khấu trừ 10%',insurance:'Bảo hiểm, KPCĐ'}
 const pct=v=>num(Math.round(Number(v)*1000)/10,1)+'%',sumOf=o=>Object.values(o||{}).reduce((a,b)=>a+b,0)
 function paramSummary(r){if(r.group==='pit_progressive')return 'Bản thân '+num(r.self)+' · người phụ thuộc '+num(r.dependent)+' · '+r.brackets.map(b=>(b[0]?'đến '+num(b[0]/1e6)+' tr':'phần còn lại')+' '+pct(b[1])).join(', ')
@@ -650,6 +650,7 @@ useNoticeToast(notice)
     <LotusField v-model="form.harvest_standard_cost" label="Giá thành kế hoạch chuối thu hoạch (đ / kg)" type="money" min="0" :disabled="!settings.is_chief" placeholder="Dùng khi lô chưa có giá thành thực tế"/>
     <LotusField v-model="form.minimum_wage_region" label="Vùng lương tối thiểu (trần BHTN)" :options="['I','II','III','IV'].map(v=>({value:v,label:'Vùng '+v}))" :searchable="false" empty-option="Chưa chọn (không áp trần BHTN)" :disabled="!settings.is_chief"/>
     <LotusField v-model="form.enabled" label="Bật ghi sổ kế toán từ Lotus" type="checkbox" :disabled="!settings.is_chief"/>
+    <LotusField v-model="form.vat_in_cost" label="Hộ kinh doanh: VAT đầu vào tính vào giá vốn (không khấu trừ)" type="checkbox" :disabled="!settings.is_chief" hint="Tiền thuế trên hóa đơn mua được ghi lại để đối chiếu và cộng vào giá vốn hàng nhập, không hạch toán 1331."/>
    </FormGrid>
    <div v-if="settings.is_chief" class="fin-actions fin-actions--end"><UiButton :disabled="saving" @click="saveSettings">Lưu cấu hình</UiButton></div>
   </FormSection>
