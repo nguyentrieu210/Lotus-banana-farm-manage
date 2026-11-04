@@ -14,7 +14,7 @@ const props=defineProps({warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['changed','edit'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
 const issueModes={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
-const open=ref(false),detail=ref(null),busy=ref(false),error=ref(''),confirmPost=ref(false),deleting=ref(false)
+const open=ref(false),detail=ref(null),busy=ref(false),error=ref(''),confirmPost=ref(false),deleting=ref(false),cancelling=ref(false),cancelReason=ref('')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'
 const money=computed(()=>props.session?.companies?.find(c=>c.name===detail.value?.company)?.default_currency||'VND')
 const cash=n=>Number(n||0).toLocaleString('vi-VN',{style:'currency',currency:money.value})
@@ -27,7 +27,7 @@ const columns=computed(()=>{
 const canEdit=computed(()=>detail.value?.docstatus===0&&detail.value.can_write&&(detail.value.kind!=='Material Issue'||!detail.value.issue_mode||detail.value.issue_mode==='Manual'))
 const printURL=computed(()=>detail.value?'/lotus/in-phieu?'+new URLSearchParams({doctype:detail.value.doctype,name:detail.value.name}):'')
 async function show(doctype,name){
- error.value='';confirmPost.value=false;deleting.value=false
+ error.value='';confirmPost.value=false;deleting.value=false;cancelling.value=false;cancelReason.value=''
  detail.value=await api('document',{doctype,name});open.value=true
 }
 async function post(){
@@ -41,6 +41,13 @@ async function remove(){
  try{await api('delete_draft',{doctype:detail.value.doctype,name:detail.value.name,modified:detail.value.modified},true);open.value=false;emit('changed')}
  catch(e){error.value=e.message}finally{busy.value=false}
 }
+// Hủy phiếu đã ghi sổ (đảo tồn kho và bút toán); only shown when ERPNext lets this account cancel.
+async function cancelPosted(){
+ if(busy.value||!cancelReason.value.trim())return
+ busy.value=true;error.value=''
+ try{await api('cancel_document',{doctype:detail.value.doctype,name:detail.value.name,modified:detail.value.modified,reason:cancelReason.value.trim()},true);detail.value=await api('document',{doctype:detail.value.doctype,name:detail.value.name});cancelling.value=false;cancelReason.value='';emit('changed')}
+ catch(e){error.value=e.message}finally{busy.value=false}
+}
 function edit(){const current=detail.value;open.value=false;emit('edit',current)}
 defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=false}})
 </script>
@@ -49,7 +56,9 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
  <ModalForm v-if="detail" v-model="open" :title="detail.name" :busy="busy" :error="error" width="1080px" :readonly="!detail.can_submit" submit-label="Ghi sổ phiếu" busy-label="Đang ghi sổ…" :submit-disabled="!confirmPost" @submit="post">
   <p class="lotus-modal-form__description">{{entryTypeLabel(detail.kind)}} · {{detail.posting_date}} · {{detail.company}} · {{statusLabel(detail.docstatus)}}</p>
   <div v-if="deleting" class="lotus-delete-confirm" role="alert"><p>Xác nhận xóa phiếu nháp {{detail.name}}?</p><div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="deleting=false">Giữ lại</UiButton><UiButton type="button" variant="destructive" :disabled="busy" @click="remove">Xác nhận xóa</UiButton></div></div>
+  <div v-if="cancelling" class="lotus-delete-confirm" role="alert"><p>Hủy phiếu {{detail.name}}? Tồn kho và bút toán của phiếu sẽ được đảo lại.</p><LotusField v-model="cancelReason" label="Lý do hủy" type="textarea" rows="2" required maxlength="140"/><div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="cancelling=false">Giữ lại</UiButton><UiButton type="button" variant="destructive" :disabled="busy||!cancelReason.trim()" @click="cancelPosted">Xác nhận hủy phiếu</UiButton></div></div>
   <p v-if="detail.docstatus===1" class="stock-success" role="status">Phiếu đã ghi sổ. Tồn kho đã được cập nhật.</p>
+  <p v-else-if="detail.docstatus===2" class="lotus-form-note" role="status">Phiếu đã hủy. Tồn kho và bút toán đã được đảo lại.</p>
   <SigningPanel v-if="detail.docstatus===1" :doctype="detail.doctype" :name="detail.name" :company="detail.company" @notice="error=''" @error="error=$event"/>
   <DataTable :rows="detail.items" :columns="columns"/>
   <template v-if="receipt">
@@ -64,6 +73,7 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
   <p v-else-if="detail.docstatus===0" class="lotus-form-note">Tài khoản chưa có quyền ghi sổ hoặc phiếu thuộc nghiệp vụ nâng cao chưa hỗ trợ ở đây.</p>
   <template #secondary>
    <UiButton v-if="canEdit" type="button" variant="outline" :disabled="busy" @click="edit">Sửa phiếu nháp</UiButton>
+   <UiButton v-if="detail.docstatus===1&&detail.can_cancel&&!cancelling" type="button" variant="destructive" :disabled="busy" @click="cancelling=true">Hủy phiếu</UiButton>
    <UiButton v-if="detail.docstatus===0&&detail.can_delete&&!deleting" type="button" variant="destructive" :disabled="busy" @click="deleting=true">Xóa phiếu nháp</UiButton>
   </template>
   <template #actions><UiButton as="a" variant="outline" :href="printURL" target="_blank" rel="noopener">In phiếu</UiButton></template>

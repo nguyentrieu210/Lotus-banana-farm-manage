@@ -2,7 +2,7 @@
 import os
 import frappe
 os.chdir('/home/frappe/frappe-bench/sites')
-frappe.init(site='frontend')
+frappe.init(site=__import__('os').environ.get('SITE','frontend'))
 frappe.connect()
 frappe.set_user('Administrator')
 from lotus_farm import warehouse, warehouse_masters

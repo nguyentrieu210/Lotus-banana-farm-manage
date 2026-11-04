@@ -1,6 +1,6 @@
 import frappe,uuid,json
 from frappe.utils import nowdate,add_days
-frappe.init(site='frontend',sites_path='/home/frappe/frappe-bench/sites');frappe.connect();frappe.set_user('Administrator')
+frappe.init(site=__import__('os').environ.get('SITE','frontend'),sites_path='/home/frappe/frappe-bench/sites');frappe.connect();frappe.set_user('Administrator')
 from lotus_farm import warehouse as w,warehouse_planning as p
 if '__install__' in __import__('sys').argv:
  p.install_fields();frappe.db.commit();print('Planning schema installed');frappe.destroy();raise SystemExit
@@ -9,6 +9,7 @@ def post(dt,name):
  return w.submit_document(dt,name,modified=w.document(dt,name)['modified'])
 try:
  tag=uuid.uuid4().hex[:8];today=nowdate();company='Lotus Agritech'
+ emp=frappe.db.get_value('Employee',{'company':company,'status':'Active'})  # issues name an HRMS receiver
  farm=make('Farm',farm_code='AUDIT-'+tag,farm_name='Audit temporary',company=company).name
  variety=make('Banana Variety',variety_code='AUDIT-'+tag,variety_name='Audit temporary').name
  block=make('Farm Block',farm=farm,block_code='AUDIT',block_name='Audit',area_ha=1,variety=variety).name
@@ -18,7 +19,7 @@ try:
  other=make('Warehouse',warehouse_name='Audit other '+tag,company=company).name
  item=make('Item',item_code='AUDIT-'+tag,item_name='Audit temporary material',item_group='All Item Groups',stock_uom='Kg',is_stock_item=1).name
  cat=make('Work Category',category_code='AUDIT-'+tag,category_name='Audit work').name
- work=make('Work Type',work_code='AUDIT-'+tag,work_name='Audit work',category=cat,uom='Kg',productivity_per_workday=100).name
+ work=make('Work Type',work_code='AUDIT-'+tag,work_name='Audit work',category=cat,uom='Kg',productivity_per_workday=100,allow_daywork=1).name
  basis=make('Norm Basis',basis_code='AUDIT-'+tag,basis_name='Audit basis',uom='Kg').name
  norm=make('Material Norm Profile',farm=farm,profile_name='AUDIT-'+tag,version=1,work_type=work,valid_from=add_days(today,-1),valid_to=add_days(today,30),approval_state='Approved',lines=[dict(item=item,uom='Kg',norm_qty=1,norm_basis=basis,basis_qty=1,frequency=1,conversion_factor=1)])
  scope=dict(farm=farm,farm_block=block,farm_plot=plot,crop_cycle=cycle,posting_date=today)
@@ -30,10 +31,10 @@ try:
  missing=p.snapshot(company,from_date=today,to_date=today,farm=farm)
  assert any(s['name']==req.name for s in missing['unmapped']),missing
  p.assign_warehouse(company,req.name,store);req.reload()
- received=w.create_draft(company,'receipt',today,[dict(item=item,qty=100,rate=100)],target=store,client_event_id='receipt-'+tag)
- duplicate=w.create_draft(company,'receipt',today,[dict(item=item,qty=100,rate=100)],target=store,client_event_id='receipt-'+tag)
+ received=w.create_draft(company,'receipt',today,[dict(item=item,qty=100,rate=100)],target=store,receipt_reason='Surplus',client_event_id='receipt-'+tag)
+ duplicate=w.create_draft(company,'receipt',today,[dict(item=item,qty=100,rate=100)],target=store,receipt_reason='Surplus',client_event_id='receipt-'+tag)
  assert received['name']==duplicate['name'],'Network retry duplicated receipt'
- try:w.create_draft(company,'receipt',today,[dict(item=item,qty=101,rate=100)],target=store,client_event_id='receipt-'+tag)
+ try:w.create_draft(company,'receipt',today,[dict(item=item,qty=101,rate=100)],target=store,receipt_reason='Surplus',client_event_id='receipt-'+tag)
  except frappe.ValidationError:pass
  else:raise AssertionError('Changed retry was accepted')
  post(received['doctype'],received['name'])
@@ -42,10 +43,10 @@ try:
   assert not result['warnings'],result['warnings']
   return next(r for r in result['rows'] if r['item']==item)
  assert coverage()['shortage_qty']==0,coverage()
- unrelated=w.create_draft(company,'issue',today,[dict(item=item,qty=30,area='Other audit work')],source=store,receiver='Audit',notes='Audit hold')
+ unrelated=w.create_draft(company,'issue',today,[dict(item=item,qty=30,area='AUDIT / other work')],source=store,receiver_employee=emp,notes='Audit hold')
  assert coverage()['available_qty']==70,coverage()
  line=req.lines[0].name
- own=w.create_draft(company,'issue',today,[dict(item=item,qty=40,area=block+' / '+plot,requirement=req.name,requirement_line=line)],source=store,receiver='Audit',issue_mode='Plan',work_plan=plan.name)
+ own=w.create_draft(company,'issue',today,[dict(item=item,qty=40,area=block+' / '+plot,requirement=req.name,requirement_line=line)],source=store,receiver_employee=emp,issue_mode='Plan',work_plan=plan.name)
  assert coverage()['shortage_qty']==30 and coverage()['own_draft_qty']==40,coverage()
  post(own['doctype'],own['name'])
  row=coverage();assert row['remaining_qty']==60 and row['actual_qty']==60 and row['shortage_qty']==30,row
@@ -53,7 +54,7 @@ try:
  entry=frappe.get_doc('Stock Entry',own['name'])
  use=make('Material Consumption',**scope,work_result=result.name,material_requirement=req.name,item=item,warehouse=store,stock_entry=entry.name,stock_entry_detail=entry.items[0].name,consumed_qty=20);use.submit()
  assert coverage()['remaining_qty']==60,'Consumption deducted from warehouse demand twice'
- returned=w.create_draft(company,'receipt',today,[dict(item=item,qty=20,rate=100)],target=store);post(returned['doctype'],returned['name'])
+ returned=w.create_draft(company,'receipt',today,[dict(item=item,qty=20,rate=100,area='AUDIT')],target=store,receipt_reason='Recovery');post(returned['doctype'],returned['name'])
  return_doc=frappe.get_doc('Stock Entry',returned['name'])
  recovery=make('Material Recovery',**scope,consumption=use.name,recovered_qty=20,stock_entry=return_doc.name,stock_entry_detail=return_doc.items[0].name);recovery.submit()
  row=coverage();assert row['issued_qty']==20 and row['remaining_qty']==80 and row['shortage_qty']==30,row
@@ -62,7 +63,7 @@ try:
  assert coverage()['required_qty']==100,coverage()
  supplier=make('Supplier',supplier_name='Audit supplier '+tag,supplier_type='Company',supplier_group='All Supplier Groups').name
  material=frappe.get_doc('Item',item);material.append('uoms',dict(uom='Box',conversion_factor=10));material.save()
- order=make('Purchase Order',company=company,supplier=supplier,transaction_date=today,schedule_date=today,currency='VND',items=[dict(item_code=item,qty=2,uom='Box',conversion_factor=10,rate=1000,warehouse=store,schedule_date=today)]);order.submit()
+ order=make('Purchase Order',company=company,supplier=supplier,transaction_date=today,schedule_date=today,currency='VND',items=[dict(item_code=item,qty=2,uom='Box',conversion_factor=10,rate=1000,warehouse=store,schedule_date=today)]);frappe.local.lotus_policy_approved=order.name;order.submit();frappe.local.lotus_policy_approved=None
  row=coverage();assert row['incoming_qty']==20 and row['to_buy_qty']==10,row
  main=w.overview(company,warehouse=store,search=item,from_date=today,to_date=today)['items'][0]
  assert (main.demand_qty,main.available_qty,main.demand_shortage_qty,main.incoming_qty,main.to_buy_qty,main.coverage_status)==(80,50,30,20,10,'Cần mua'),main
@@ -96,7 +97,7 @@ try:
  # The print template includes every item, keeps drafts marked, and escapes text.
 
  for kind,lines in [('issue',[dict(item=item,qty=60,area='A'),dict(item=item,qty=40,area='B')]),('transfer',[dict(item=item,qty=100)])]:
-  try:w.create_draft(company,kind,today,lines,source=store,target=other,receiver='QA',notes='Over-stock check')
+  try:w.create_draft(company,kind,today,lines,source=store,target=other,receiver_employee=emp,notes='Over-stock check')
   except frappe.ValidationError as exc:assert 'thiếu' in str(exc),str(exc)
   else:raise AssertionError('Over-stock outbound draft accepted: '+kind)
  from lotus_farm.www.lotus_stock_print import get_context
