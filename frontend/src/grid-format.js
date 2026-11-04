@@ -8,10 +8,14 @@ const UNIT_FIELD=/(^|_)(uom|unit|dvt)$/i
 const UNIT_LABEL=/^(đvt|đơn vị)(\s|$)/i
 export const groupNumber=value=>value.toLocaleString('vi-VN',{maximumFractionDigits:3})
 // Only columns that would otherwise print a raw JavaScript number (802.92, 3651163.508).
+// ISO dates from the server (2026-10-28, 2026-10-28 07:30:00) read as dd/mm/yyyy [HH:mm] in every list.
+const ISO_DATE=/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?(?::\d{2}(?:\.\d+)?)?$/
+export const isoDateText=value=>{const m=typeof value==='string'&&ISO_DATE.exec(value);return m?m[3]+'/'+m[2]+'/'+m[1]+(m[4]?' '+m[4]:''):null}
 export function numberFormatter(col){
- if(col.valueFormatter||col.cellRenderer||col.cellRendererSelector||col.groupNumbers===false)return null
- if(NOT_GROUPED_FIELD.test(String(col.field||col.colId||''))||NOT_GROUPED_LABEL.test(String(col.headerName||'')))return null
- return p=>typeof p.value==='number'&&Number.isFinite(p.value)?groupNumber(p.value):p.value
+ if(col.valueFormatter||col.cellRenderer||col.cellRendererSelector)return null
+ // Codes, years, phone numbers… keep their raw text.
+ if(col.groupNumbers===false||NOT_GROUPED_FIELD.test(String(col.field||col.colId||''))||NOT_GROUPED_LABEL.test(String(col.headerName||'')))return null
+ return p=>typeof p.value==='number'&&Number.isFinite(p.value)?groupNumber(p.value):isoDateText(p.value)??p.value
 }
 // The column holding a quantity column's unit: col.unitField, else a ĐVT/uom column (stock_qty pairs with stock_uom).
 export function unitColumn(col,columns=[]){

@@ -10,26 +10,26 @@ Not included on purpose: manufacturing, CRM, projects, support, subcontracting, 
 
 D, R = 'doctype', 'report'
 
-# module (Lotus navigation key) -> sections: dict(id, label, icon, setup, tabs=[(kind, name, label)])
+# module (Lotus navigation key) -> sections: dict(id, label, icon, setup, after=<Lotus view id it follows in the sidebar>, tabs=[(kind, name, label)])
 SECTIONS = {
     'stock': [
-        dict(id='batches', label='Lô & hạn dùng', icon='calendar', tabs=[(D, 'Batch', 'Lô hàng'), (R, 'Batch Item Expiry Status', 'Hạn dùng theo lô')]),
-        dict(id='landed-costs', label='Chi phí sau nhập', icon='receive', tabs=[(D, 'Landed Cost Voucher', 'Chi phí phát sinh sau nhập')]),
+        dict(id='batches', after='counts', label='Lô & hạn dùng', icon='calendar', tabs=[(D, 'Batch', 'Lô hàng'), (R, 'Batch Item Expiry Status', 'Hạn dùng theo lô')]),
+        dict(id='landed-costs', after='receipts', label='Chi phí sau nhập', icon='receive', tabs=[(D, 'Landed Cost Voucher', 'Chi phí phát sinh sau nhập')]),
         # nav=False: not a sidebar entry; the Kho "Báo cáo nhập – xuất – tồn" screen offers these in its report picker.
         dict(id='reports', label='Báo cáo kho', icon='chart', nav=False, tabs=[
             (R, 'Stock Projected Qty', 'Tồn dự kiến'), (R, 'Stock Ageing', 'Tuổi tồn kho'), (R, 'Itemwise Recommended Reorder Level', 'Mức đặt hàng lại đề xuất'),
             (R, 'Item Shortage Report', 'Vật tư thiếu'), (R, 'Batch-Wise Balance History', 'Tồn theo lô'), (R, 'Batch Item Expiry Status', 'Hạn dùng theo lô')]),
     ],
     'hr': [
-        dict(id='leave', label='Nghỉ phép', icon='calendar', tabs=[
+        dict(id='leave', after='attendance', label='Nghỉ phép', icon='calendar', tabs=[
             (D, 'Leave Application', 'Đơn xin nghỉ'), (D, 'Leave Allocation', 'Cấp ngày phép'), (D, 'Compensatory Leave Request', 'Nghỉ bù'),
             (R, 'Employee Leave Balance', 'Số ngày phép còn lại'), (R, 'Leave Ledger', 'Sổ ngày phép')]),
-        dict(id='movements', label='Biến động nhân sự', icon='transfer', tabs=[
+        dict(id='movements', after='onboarding', label='Biến động nhân sự', icon='transfer', tabs=[
             (D, 'Employee Transfer', 'Điều chuyển'), (D, 'Employee Promotion', 'Thăng chức / đổi chức danh'), (D, 'Shift Request', 'Đề nghị đổi ca')]),
-        dict(id='pay-changes', label='Thưởng & khấu trừ', icon='wallet', tabs=[
+        dict(id='pay-changes', after='payroll', label='Thưởng & khấu trừ', icon='wallet', tabs=[
             (D, 'Additional Salary', 'Thưởng / phạt / khấu trừ'), (D, 'Employee Incentive', 'Khen thưởng'), (D, 'Employee Advance', 'Tạm ứng'),
             (D, 'Expense Claim', 'Thanh toán chi phí / hoàn ứng')]),
-        dict(id='hr-reports', label='Báo cáo nhân sự', icon='chart', tabs=[
+        dict(id='hr-reports', after='payroll', label='Báo cáo nhân sự', icon='chart', tabs=[
             (R, 'Salary Register', 'Sổ lương'), (R, 'Employee Advance Summary', 'Tổng hợp tạm ứng'), (R, 'Employee Analytics', 'Phân tích nhân sự'),
             (R, 'Employee Birthday', 'Sinh nhật nhân viên'), (R, 'Employee Exits', 'Nhân viên nghỉ việc')]),
         dict(id='leave-setup', label='Thiết lập nghỉ phép', icon='calendar', setup=True, tabs=[
@@ -42,7 +42,7 @@ SECTIONS = {
         dict(id='job-openings', label='Vị trí tuyển dụng', icon='users', nav=False, tabs=[(D, 'Job Opening', 'Vị trí tuyển dụng')]),
     ],
     'buying': [
-        dict(id='rfq', label='Yêu cầu báo giá', icon='send', tabs=[(D, 'Request for Quotation', 'Yêu cầu báo giá')]),
+        dict(id='rfq', after='compare', label='Yêu cầu báo giá', icon='send', tabs=[(D, 'Request for Quotation', 'Yêu cầu báo giá')]),
         # nav=False: offered in the "Báo cáo" screen of Mua hàng (Loại báo cáo).
         dict(id='reports', label='Báo cáo mua hàng', icon='chart', nav=False, tabs=[
             (R, 'Purchase Register', 'Sổ mua hàng'), (R, 'Item-wise Purchase Register', 'Sổ mua theo mặt hàng'),
@@ -52,11 +52,11 @@ SECTIONS = {
             (D, 'Supplier Group', 'Nhóm nhà cung cấp'), (D, 'Purchase Taxes and Charges Template', 'Mẫu thuế mua hàng'), (D, 'Payment Terms Template', 'Điều khoản thanh toán')]),
     ],
     'finance': [
-        dict(id='sales-docs', label='Hóa đơn & đơn bán', icon='receive', tabs=[
+        dict(id='sales-docs', after='sales', label='Hóa đơn & đơn bán', icon='receive', tabs=[
             (D, 'Sales Invoice', 'Hóa đơn bán hàng'), (D, 'Sales Order', 'Đơn bán hàng'), (D, 'Delivery Note', 'Phiếu giao hàng'),
             (D, 'Quotation', 'Báo giá'), (D, 'Customer', 'Khách hàng')]),
-        dict(id='entries', label='Bút toán & khóa sổ', icon='document', tabs=[(D, 'Journal Entry', 'Bút toán'), (D, 'Period Closing Voucher', 'Khóa sổ cuối kỳ')]),
-        dict(id='asset-ops', label='Nghiệp vụ tài sản', icon='package', tabs=[
+        dict(id='entries', after='journal', label='Bút toán & khóa sổ', icon='document', tabs=[(D, 'Journal Entry', 'Bút toán'), (D, 'Period Closing Voucher', 'Khóa sổ cuối kỳ')]),
+        dict(id='asset-ops', after='assets', label='Nghiệp vụ tài sản', icon='package', tabs=[
             (D, 'Asset Movement', 'Điều chuyển tài sản'), (D, 'Asset Repair', 'Sửa chữa tài sản'), (D, 'Asset Value Adjustment', 'Đánh giá lại'),
             (D, 'Asset Capitalization', 'Ghi tăng tài sản')]),
         # nav=False: offered in the "Báo cáo" picker of Tài chính – Kế toán.

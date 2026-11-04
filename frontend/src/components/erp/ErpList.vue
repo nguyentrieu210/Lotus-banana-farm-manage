@@ -4,7 +4,7 @@ import ListPage from '../ListPage.vue'
 import LotusIcon from '../LotusIcon.vue'
 import {Button as UiButton} from '../ui/button'
 import {erp} from '../../erp-api'
-import {display,docstatusLabel} from '../../erp-meta'
+import {display,docstatusLabel,tr} from '../../erp-meta'
 // Any ERP document list: server search, sort and pages (native list permissions), columns from the DocType list view.
 const props=defineProps({doctype:{type:String,required:true},label:String,company:String,currency:String,canCreate:Boolean})
 const emit=defineEmits(['open','new'])
@@ -23,7 +23,7 @@ watch(()=>[props.doctype,props.company],()=>{sort.value='modified desc';search.v
 watch(searchDraft,value=>{clearTimeout(timer);timer=setTimeout(()=>{const term=String(value||'').trim();if(term!==search.value){search.value=term;load(true)}},250)})
 onUnmounted(()=>clearTimeout(timer))
 const columns=computed(()=>(data.value?.columns||[]).filter(c=>c.fieldname!=='modified').map(c=>({
- field:c.fieldname,headerName:c.fieldname==='name'?'Số / mã':c.fieldname==='docstatus'?'Trạng thái chứng từ':c.label,
+ field:c.fieldname,headerName:c.fieldname==='name'?'Số / mã':c.fieldname==='docstatus'?'Trạng thái chứng từ':tr(c.label),
  minWidth:c.fieldname==='name'?170:['Currency','Float','Int'].includes(c.fieldtype)?120:130,
  ...(c.fieldname==='name'?{flex:1.2}:{}),
  ...(['Currency','Float','Int','Percent'].includes(c.fieldtype)?{type:'numericColumn'}:{}),

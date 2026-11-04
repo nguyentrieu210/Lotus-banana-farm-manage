@@ -1,4 +1,4 @@
-import {erpSection,erpNavItems} from './erp-sections.js'
+import {erpSection,withErpNav} from './erp-sections.js'
 // Mua hàng sidebar: one entry per job. Views that belong together (báo giá + so sánh, đơn + nhận hàng, the accounting
 // views) share one entry and switch with the tabs at the top of the page; `group` names the entry a view lives under.
 export const procurementNavigation=[
@@ -23,11 +23,11 @@ export const buyingGroupViews=value=>{const menu=buyingMenu(value);return erpSec
 const allowed=(r,session)=>(!r.finance||session.capabilities?.purchasing_finance)&&(!r.invoice||session.capabilities?.purchasing_invoice_read)
 export function visibleBuyingNavigation(session){
  // An accounting entry whose first view is hidden (no invoice right) still opens on its first visible view.
- return procurementNavigation.filter(r=>!r.group).flatMap(r=>{
+ return withErpNav(procurementNavigation.filter(r=>!r.group).flatMap(r=>{
   if(allowed(r,session))return [{...r,menu:r.id}]
   const first=procurementNavigation.find(v=>v.group===r.id&&allowed(v,session))
   return first?[{...first,label:r.label,menu:r.id}]:[]
- }).concat(erpNavItems('buying',{path:'mua-hang'}).map(r=>({...r,menu:r.id})))
+ }),'buying',{path:'mua-hang'}).map(r=>r.erp?{...r,menu:r.id}:r)
 }
 export const buyingQuery=id=>({buying_view:id})
 // Kho navigation moved to stock-navigation.js; re-exported for older imports.

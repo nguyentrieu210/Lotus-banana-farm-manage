@@ -33,7 +33,7 @@ test('source color history remains inspectable alongside the extended Lotus prog
  const view=mount(Process,{payload:{...payload,library:{...payload.library,color_history:[source]}},farm:'F'})
  try{
   button(view.root,'Màu dây').click();await tick();button(view.root,'Xem lịch màu nguồn').click();await tick()
-  assert.match(view.root.textContent,/2023-06-05/);assert.match(view.root.textContent,/2023-05-22/)
+  assert.match(view.root.textContent,/05\/06\/2023/);assert.match(view.root.textContent,/22\/05\/2023/)
   button(view.root,'Lịch áp dụng tại Lotus').click();await tick();assert.doesNotMatch(view.root.textContent,/2023-06-05/)
  }finally{view.unmount()}
 })

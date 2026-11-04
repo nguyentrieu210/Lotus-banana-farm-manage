@@ -31,6 +31,9 @@ try:
     stock = {sct['id']: sct for sct in cat['sections'].get('stock', [])}
     ok('Kho có Lô & hạn dùng, Chi phí sau nhập, báo cáo kho', {'batches', 'landed-costs', 'reports'} <= set(stock), list(stock))
     ok('báo cáo kho không lên sidebar (nằm trong màn Báo cáo)', stock.get('reports', {}).get('nav') is False)
+    tables = lambda dt: {f['fieldname'] for f in e.schema(dt)['fields'] if f['fieldtype'] in ('Table', 'Table MultiSelect')}
+    ok('form có bảng con (hàng hóa, thuế, dòng bút toán, chi tiết điều chuyển)', {'items', 'taxes'} <= tables('Sales Invoice') and 'accounts' in tables('Journal Entry') and 'transfer_details' in tables('Employee Transfer'),
+       (tables('Sales Invoice'), tables('Journal Entry')))
     ok('đủ 4 module Lotus có nghiệp vụ bổ sung', {'stock', 'hr', 'buying', 'finance'} <= set(cat['sections']), list(cat['sections']))
     # Every tab of every section opens: documents (schema, list, new form) and reports (filters + run with defaults).
     broken = []

@@ -1,4 +1,4 @@
-import {erpSection,erpNavItems,erpViewLabel} from './erp-sections.js'
+import {erpSection,withErpNav,erpViewLabel} from './erp-sections.js'
 // Kho destinations for the sidebar, page titles and ?stock_view= routing (same shape as procurement/hr navigation).
 export const stockNavigation=[
  {id:'stock',label:'Tồn kho',icon:'boxes'},
@@ -21,4 +21,4 @@ export function normalizeStockView(value){const id=aliases[value]||value;return 
 export const stockQuery=id=>({stock_view:id})
 export const stockViewTitle=value=>{const id=normalizeStockView(value);return erpViewLabel('stock',id)||stockNavigation.find(r=>r.id===id).label}
 // ERP sections (Lô & hạn dùng, Phiếu kho khác…) follow the Kho entries; setup ones join the Danh mục kho group.
-export function visibleStockNavigation(session){return session?.capabilities?.stock===false?[]:[...stockNavigation,...erpNavItems('stock',{path:'kho'})]}
+export function visibleStockNavigation(session){return session?.capabilities?.stock===false?[]:withErpNav(stockNavigation,'stock',{path:'kho'})}

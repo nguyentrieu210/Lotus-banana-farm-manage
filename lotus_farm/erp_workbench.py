@@ -69,11 +69,23 @@ def _permissions(doc):
     return {p: bool(doc.has_permission(p)) and (bool(doc.meta.is_submittable) if p in ('submit','cancel','amend') else True) for p in ('read', 'create', 'write', 'submit', 'cancel', 'amend', 'delete', 'print', 'export')}
 
 
+def _table_fieldnames(meta, parent, permission_type):
+    """Child-table fields at a permitted permlevel. Frappe's get_permitted_fieldnames lists only fields that hold a value,
+    so tables (items, taxes, transfer details…) would be missing from every form."""
+    tables = [f for f in meta.fields if f.fieldtype in ('Table', 'Table MultiSelect')]
+    if not tables or (meta.istable and not parent):
+        return set()
+    if not meta.get_permissions(parenttype=parent):
+        return {f.fieldname for f in tables}
+    levels = set(meta.get_permlevel_access(permission_type=permission_type, parenttype=parent))
+    return {f.fieldname for f in tables if (f.permlevel or 0) in levels}
+
+
 def _fields(meta, parent=None):
-    readable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='read'))
-    writable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='write'))
+    readable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='read')) | _table_fieldnames(meta, parent, 'read')
+    writable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='write')) | _table_fieldnames(meta, parent, 'write')
     if not writable:
-        writable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='create'))
+        writable = set(meta.get_permitted_fieldnames(parenttype=parent, permission_type='create')) | _table_fieldnames(meta, parent, 'create')
     if meta.name == 'Supplier':
         from lotus_farm.finance import setup
         bank_fields = {f.fieldname for f in meta.fields if 'bank' in f.fieldname}
@@ -81,7 +93,7 @@ def _fields(meta, parent=None):
             readable -= bank_fields
         if not setup.can_post():
             writable -= bank_fields
-    return [{**{k: f.get(k) for k in FIELD_KEYS}, 'label': frappe._(f.label or f.fieldname), 'can_create': bool(f.fieldtype == 'Link' and f.options in ('Supplier', 'Item') and frappe.has_permission(f.options, 'create')), 'read_only': 1 if f.fieldname not in writable else f.read_only}
+    return [{**{k: f.get(k) for k in FIELD_KEYS}, 'label': frappe._(f.label) if f.label else ('' if f.fieldtype in BREAKS else frappe._(f.fieldname.replace('_', ' ').capitalize())), 'can_create': bool(f.fieldtype == 'Link' and f.options in ('Supplier', 'Item') and frappe.has_permission(f.options, 'create')), 'read_only': 1 if f.fieldname not in writable else f.read_only}
             for f in meta.fields if (f.fieldtype in BREAKS or f.fieldname in readable or f.fieldname in writable) and f.fieldtype != 'Password']
 
 
@@ -108,7 +120,7 @@ def catalog():
                         continue
                     tabs.append(dict(kind=kind, name=name, label=label))
             if tabs:
-                shown.append(dict(id=section['id'], label=section['label'], icon=section['icon'], setup=bool(section.get('setup')), nav=section.get('nav', True), tabs=tabs))
+                shown.append(dict(id=section['id'], label=section['label'], icon=section['icon'], setup=bool(section.get('setup')), nav=section.get('nav', True), after=section.get('after'), tabs=tabs))
         result[module] = shown
     return dict(sections=result)
 

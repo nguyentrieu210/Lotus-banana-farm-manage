@@ -1,4 +1,4 @@
-import {erpSection,erpNavItems,erpViewLabel} from './erp-sections.js'
+import {erpSection,withErpNav,erpViewLabel} from './erp-sections.js'
 // Kế toán destinations for the sidebar, page titles and ?tab= routing (same shape as Kho / Mua hàng / Nhân sự).
 // Users without ledger access (payment approvers) only see the vouchers waiting for their signature.
 export const financeNavigation=[
@@ -16,7 +16,7 @@ export const financeNavigation=[
  {id:'guide',label:'Hướng dẫn',icon:'list',setup:true},
 ].map(r=>({...r,path:'tai-chinh'}))
 const signOnly={id:'sign',label:'Phiếu chi chờ ký',icon:'check',path:'tai-chinh'}
-export function visibleFinanceNavigation(session){return session?.capabilities?.finance_ledger?[...financeNavigation,...erpNavItems('finance')]:session?.capabilities?.finance?[signOnly]:[]}
+export function visibleFinanceNavigation(session){return session?.capabilities?.finance_ledger?withErpNav(financeNavigation,'finance'):session?.capabilities?.finance?[signOnly]:[]}
 export function normalizeFinanceView(value,session){if(value==='sign'||session&&!session.capabilities?.finance_ledger)return 'sign';return financeNavigation.some(r=>r.id===value)||erpSection('finance',value)?value:'overview'}
 export const financeQuery=id=>({tab:id})
 export const financeViewTitle=(value,session)=>{const id=normalizeFinanceView(value,session);return id==='sign'?signOnly.label:erpViewLabel('finance',id)||financeNavigation.find(r=>r.id===id).label}

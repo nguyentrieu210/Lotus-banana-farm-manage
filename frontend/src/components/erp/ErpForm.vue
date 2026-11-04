@@ -4,12 +4,12 @@ import LotusIcon from '../LotusIcon.vue'
 import {Button as UiButton} from '../ui/button'
 import ErpFields from './ErpFields.vue'
 import {erp,erpSchema,erpFileUrl,newClientKey,setPendingDocument,takePendingDocument} from '../../erp-api'
-import {docstatusLabel,layout,required,visible} from '../../erp-meta'
+import {docstatusLabel,layout,required,visible,tr} from '../../erp-meta'
 import {systemLabel} from '../../system-translations.js'
 // One ERP document: native metadata, permissions, workflow and controllers on the server (lotus_farm.erp_workbench).
 // Save / submit / cancel go through one idempotent action (client key); "Tạo tiếp" uses the native mappers.
 const props=defineProps({doctype:{type:String,required:true},name:String,label:String,company:String,currency:String,confirm:{type:Function,required:true},modal:Boolean})
-const emit=defineEmits(['saved','open-new','back','dirty','title'])
+const emit=defineEmits(['saved','open-new','back','dirty','title','size'])
 // Documents whose rows ERPNext prices from the item (get_item_details) and whose totals/taxes it recomputes.
 const ITEM_TYPES=['Purchase Order','Purchase Receipt','Purchase Invoice','Supplier Quotation','Sales Order','Delivery Note','Sales Invoice','Quotation','Material Request','Stock Entry','Stock Reconciliation']
 const PREVIEW_TYPES=['Purchase Order','Purchase Receipt','Purchase Invoice','Supplier Quotation','Sales Order','Delivery Note','Sales Invoice','Quotation']
@@ -32,6 +32,8 @@ async function load(){
   const result=pending||await erp('document',{doctype:props.doctype,name:props.name||undefined,company:props.company})
   if(version!==loadVersion)return
   schema.value=meta;adopt(result)
+  // Dialog width follows the form: a few fields → narrow, item grids or many fields → wide.
+  emit('size',{tables:meta.fields.some(f=>['Table','Table MultiSelect'].includes(f.fieldtype)&&!f.hidden),fields:meta.fields.filter(f=>!['Section Break','Column Break','Tab Break'].includes(f.fieldtype)&&!f.hidden).length})
   if(pending)snapshot=''
   clientKey=newClientKey()
  }catch(e){if(version===loadVersion)error.value='Không mở được chứng từ: '+e.message}
@@ -47,15 +49,17 @@ const locked=computed(()=>docstatus.value>0)
 const title=computed(()=>{const d=doc.value;if(!d)return props.label||props.doctype;const t=schema.value?.title_field&&d[schema.value.title_field];return isNew.value?'Mới · '+(props.label||props.doctype):(t&&t!==d.name?t+' · '+d.name:d.name)})
 // In a modal the dialog header shows the title; keep it in step with the document.
 watch(()=>title.value,value=>emit('title',value),{immediate:true})
-const statusText=computed(()=>{const d=doc.value;if(!d)return '';const s=d.status||d.workflow_state;return [schema.value?.is_submittable?docstatusLabel(docstatus.value):'',s?systemLabel(s):''].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' · ')})
+const statusText=computed(()=>{const d=doc.value;if(!d)return '';const s=d.status||d.workflow_state;// The document status (Nháp / Đã ghi sổ / Đã hủy) plus the business status when it says more (Quá hạn, Đã thanh toán…).
+ const extra=s&&!['Draft','Submitted','Cancelled'].includes(s)?tr(s):''
+ return [schema.value?.is_submittable?docstatusLabel(docstatus.value):'',extra].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' · ')})
 
 // Required fields left empty (visible ones only), checked before the server does.
 function missing(){
  const out=[]
  const scan=(fields,record,parent,prefix)=>{for(const f of fields){if(['Section Break','Column Break','Tab Break'].includes(f.fieldtype))continue
   if(!visible(f,record,parent))continue
-  if(['Table','Table MultiSelect'].includes(f.fieldtype)){const child=schema.value.tables[f.options];(record[f.fieldname]||[]).forEach((row,i)=>child&&scan(child.fields,row,record,f.label+' dòng '+(i+1)+': '));if(f.reqd&&!(record[f.fieldname]||[]).length)out.push(prefix+f.label);continue}
-  if(!f.read_only&&required(f,record,parent)&&(record[f.fieldname]==null||record[f.fieldname]===''))out.push(prefix+f.label)}}
+  if(['Table','Table MultiSelect'].includes(f.fieldtype)){const child=schema.value.tables[f.options];(record[f.fieldname]||[]).forEach((row,i)=>child&&scan(child.fields,row,record,tr(f.label)+' dòng '+(i+1)+': '));if(f.reqd&&!(record[f.fieldname]||[]).length)out.push(prefix+tr(f.label));continue}
+  if(!f.read_only&&required(f,record,parent)&&(record[f.fieldname]==null||record[f.fieldname]===''))out.push(prefix+tr(f.label))}}
  scan(schema.value.fields,doc.value,null,'')
  return out
 }
@@ -64,6 +68,8 @@ async function run(action,extra={}){
  if(['save','submit'].includes(action)){const gaps=missing();if(gaps.length){error.value='Cần nhập: '+gaps.slice(0,8).join(', ')+(gaps.length>8?'…':'');return}}
  if(action==='submit'&&!await props.confirm('Ghi sổ '+(props.label||props.doctype)+'? Sau khi ghi sổ, chứng từ chỉ sửa được bằng cách hủy rồi sửa đổi.','Ghi sổ chứng từ'))return
  if(action==='cancel'&&!await props.confirm('Hủy chứng từ '+doc.value.name+'? Sổ kho / sổ cái của chứng từ sẽ được đảo lại.','Hủy chứng từ'))return
+ // The date the user chose is the posting date: without set_posting_time ERPNext resets it to today on save.
+ if(['save','submit'].includes(action)&&docstatus.value===0&&schema.value.fields.some(f=>f.fieldname==='set_posting_time'))doc.value.set_posting_time=1
  busy.value=true;error.value='';notice.value=''
  try{
   const result=await erp('action',{doctype:props.doctype,action,client_key:clientKey,values:doc.value,name:isNew.value?null:doc.value.name,modified:isNew.value?null:doc.value.modified,company:props.company,...extra},true)
@@ -136,7 +142,7 @@ defineExpose({hasChanges:()=>dirty.value})
   <header class="erp-form__header">
    <UiButton v-if="!modal" variant="ghost" size="sm" class="erp-form__back" aria-label="Về danh sách" title="Về danh sách" @click="emit('back')"><LotusIcon name="arrow-left"/></UiButton>
    <div class="erp-form__title"><h2 v-if="!modal">{{title}}</h2><span v-if="statusText" class="erp-form__status" :class="'erp-form__status--'+docstatus">{{statusText}}</span><span v-if="dirty" class="erp-form__dirty">Chưa lưu</span></div>
-   <div v-if="doc" class="erp-form__actions" role="group" aria-label="Thao tác chứng từ">
+   <div v-if="doc&&!modal" class="erp-form__actions" role="group" aria-label="Thao tác chứng từ">
     <UiButton v-if="docstatus===0&&canWrite" :disabled="busy" :variant="schema?.is_submittable?'outline':'default'" @click="run('save')">{{busy?'Đang lưu…':'Lưu'}}</UiButton>
     <UiButton v-if="docstatus===0&&schema?.is_submittable&&permissions.submit" :disabled="busy" @click="run('submit')">Ghi sổ</UiButton>
     <UiButton v-if="docstatus===1&&canWrite&&dirty" :disabled="busy" variant="outline" @click="run('save')">Lưu thay đổi được phép</UiButton>
@@ -152,6 +158,16 @@ defineExpose({hasChanges:()=>dirty.value})
   <p v-if="busy&&!doc" class="erp-form__loading" role="status">Đang mở chứng từ…</p>
   <ErpFields v-if="doc&&schema" :fields="schema.fields" :tables="schema.tables" :doc="doc" :doctype="doctype" :locked="locked" :can-write="canWrite" :company="company||doc.company" :currency="doc.currency||currency" :tabs="tabsCount>1"
     @link-select="linkSelected" @row-link-select="linkSelected"/>
+  <div v-if="doc&&modal" class="erp-form__actions erp-form__actions--footer" role="group" aria-label="Thao tác chứng từ">
+    <UiButton v-if="docstatus===0&&canWrite" :disabled="busy" :variant="schema?.is_submittable?'outline':'default'" @click="run('save')">{{busy?'Đang lưu…':'Lưu'}}</UiButton>
+    <UiButton v-if="docstatus===0&&schema?.is_submittable&&permissions.submit" :disabled="busy" @click="run('submit')">Ghi sổ</UiButton>
+    <UiButton v-if="docstatus===1&&canWrite&&dirty" :disabled="busy" variant="outline" @click="run('save')">Lưu thay đổi được phép</UiButton>
+    <UiButton v-for="t in loaded?.transitions||[]" :key="t.action" variant="outline" :disabled="busy||dirty" @click="run('workflow',{transition:t.action})">{{systemLabel(t.action)}}</UiButton>
+    <UiButton v-for="a in loaded?.actions||[]" :key="a.target" variant="outline" :disabled="busy" @click="next(a)"><LotusIcon name="send"/>{{a.target==='Return'?a.label:a.target==='Payment Entry'?'Tạo phiếu thu/chi':'Tạo '+systemLabel(a.label)}}</UiButton>
+    <UiButton v-if="docstatus===2&&permissions.amend" variant="outline" :disabled="busy" @click="amend">Sửa đổi (tạo bản mới)</UiButton>
+    <UiButton v-if="!isNew&&permissions.print" variant="outline" :disabled="busy" @click="print"><LotusIcon name="printer"/>In</UiButton>
+    <UiButton v-if="docstatus===1&&permissions.cancel" variant="destructive" :disabled="busy" @click="run('cancel')">Hủy chứng từ</UiButton>
+   </div>
  </section>
 </template>
 
@@ -166,6 +182,8 @@ defineExpose({hasChanges:()=>dirty.value})
 .erp-form__status--2{background:var(--lotus-danger-soft);color:var(--lotus-danger)}
 .erp-form__dirty{font-size:var(--lotus-text-sm);color:var(--lotus-warning-800)}
 .erp-form__actions{display:flex;flex-wrap:wrap;gap:6px}
+/* In a dialog the actions sit in a bar at the bottom, like every Lotus form (ModalForm). */
+.erp-form__actions--footer{position:sticky;bottom:0;z-index:5;justify-content:flex-end;margin:0 -2px;padding:10px 2px;border-top:1px solid var(--lotus-border);background:var(--lotus-surface)}
 .erp-form__actions svg{width:15px;height:15px}
 .erp-form__error,.erp-form__notice,.erp-form__loading{margin:0;padding:10px 12px;border-radius:var(--lotus-radius-md);font-size:var(--lotus-text-sm);white-space:pre-wrap}
 .erp-form__error{background:var(--lotus-danger-soft);color:var(--lotus-danger)}

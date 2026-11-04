@@ -168,7 +168,7 @@ async function initialize(){
  try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=props.company||company.value||session.value.companies?.[0]?.name||'';if(!props.today&&session.value.today){asof.value=session.value.today;date.value=asof.value;billdate.value=asof.value;dueDate.value=asof.value;period.value=asof.value.slice(0,7)};if(company.value)await companyChanged()}
  catch(e){error.value=e.message}
 }
-async function companyChanged(){current.value=null;form.value='';catalog.value=await api('bootstrap',{company:company.value});importWarehouse.value=defaultWarehouse();if(!visibleTabs.value.some(([k])=>k===tab.value))tab.value='needs';await load();if(router&&route.query.company!==company.value)await router.replace({path:route.path,query:{...route.query,company:company.value}})}
+async function companyChanged(){current.value=null;form.value='';catalog.value=await api('bootstrap',{company:company.value});importWarehouse.value=defaultWarehouse();if(!erpSection('buying',tab.value)&&!visibleTabs.value.some(([k])=>k===tab.value))tab.value='needs';await load();if(router&&route.query.company!==company.value)await router.replace({path:route.path,query:{...route.query,company:company.value}})}
 async function ask(text){return props.mobile?mobileConfirm.ask(text):workspaceConfirm.ask(text)}
 async function closeForm(){if(saving.value||!await ask('Đóng biểu mẫu và bỏ phần chưa lưu?'))return;form.value='';draft.value=null}
 async function changeTab(next,fromRoute=false){

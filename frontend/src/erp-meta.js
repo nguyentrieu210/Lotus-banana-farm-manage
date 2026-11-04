@@ -7,6 +7,38 @@ import {formatDate,formatDateTime} from './format.js'
 const SKIP=new Set(['HTML','Button','Image','Heading','Fold','Signature','Geolocation','HTML Editor','Barcode','Password','Icon','Autocomplete'])
 const DATA_TYPES=new Set(['Data','Link','Dynamic Link','Select','Date','Datetime','Time','Int','Float','Currency','Percent','Check','Small Text','Text','Long Text','Text Editor','Read Only','Phone','Duration','Rating','Color','Code','JSON','Markdown Editor','Attach','Attach Image'])
 
+// Vietnamese for every label the ERPNext/HRMS screens show: the shared catalogue (system-translations.js) plus the few
+// HRMS/ERPNext labels it does not have yet. Stored values and API names stay unchanged.
+const OVERRIDES={'Age as on':'Tính tuổi đến ngày','Consolidate Leave Types':'Gộp các loại nghỉ','Disable Opening Balance Calculation':'Không tính số dư đầu kỳ',
+ 'Employee Status':'Trạng thái nhân viên','Exit Interview Pending':'Chờ phỏng vấn nghỉ việc','Exit Questionnaire Pending':'Chờ phiếu khảo sát nghỉ việc',
+ 'FnF Pending':'Chờ quyết toán nghỉ việc','Include Revaluation Journals':'Gồm bút toán đánh giá lại','Interview Status':'Trạng thái phỏng vấn','Owner':'Người tạo',
+ 'Show Alternate UOM Balance':'Hiện tồn theo đơn vị quy đổi','Show Employer Contributions':'Hiện phần doanh nghiệp đóng',
+ // ERPNext's own Vietnamese wording that reads wrong in accounting terms
+ 'Ngày đăng':'Ngày hạch toán','Thời gian đăng':'Giờ hạch toán','Mục':'Hàng hóa','Bút toán Kế toán':'Dòng hạch toán',
+ 'Là Trả lại (Bút toán ghi có)':'Hóa đơn trả hàng (ghi giảm)','Là Mục Điều chỉnh Tỷ giá (Bút toán ghi nợ)':'Hóa đơn điều chỉnh giá (ghi tăng)'}
+export const tr=value=>typeof value==='string'&&value?(OVERRIDES[value]??systemLabel(value)):value
+// A section/tab "label" that is only a technical fieldname (section_break_30) is no title at all.
+export const sectionTitle=value=>!value||/^[a-z0-9_]+$/.test(value)?'':tr(value)
+
+// Fields a farm company does not use (POS, inter-company, loyalty, commissions, print setup, barcode scanning…): not shown.
+// Desk still has them; values ERPNext fills by default are kept on save.
+const SME_HIDDEN=new Set(['is_pos','pos_profile','is_consolidated','consolidated_invoice','scan_barcode','letter_head','select_print_heading','language','group_same_items',
+ 'amended_from','represents_company','inter_company_invoice_reference','inter_company_order_reference','inter_company_reference','is_internal_customer','is_internal_supplier',
+ 'loyalty_program','redeem_loyalty_points','loyalty_points','loyalty_amount','loyalty_redemption_account','loyalty_redemption_cost_center','sales_partner','commission_rate',
+ 'total_commission','auto_repeat','subscription','campaign','source','utm_source','utm_medium','utm_campaign','utm_content','set_posting_time','posting_time','is_old_subcontracting_flow',
+ // child tables ERPNext fills itself or a farm does not use: pricing rules applied, per-item tax detail, bundles, project timesheets,
+ // POS payments, sales team commissions, tax withheld at source
+ 'pricing_rules','item_wise_tax_details','packed_items','timesheets','payments','sales_team','tax_withholding_entries','apply_tds','tax_withholding_category'])
+const empty=v=>v==null||v===''||(Array.isArray(v)&&!v.length)
+// Shown in the Lotus form? Desk-only and SME-irrelevant fields, a numbering series already filled by default, and read-only
+// fields with nothing in them (Được sửa đổi từ —, Mã số thuế công ty —) stay out of the way.
+export function lotusShown(f,doc,isReadonly){
+ if(SME_HIDDEN.has(f.fieldname))return false
+ if(f.fieldname==='naming_series'&&!empty((doc||{}).naming_series))return false
+ if(isReadonly&&!['Table','Table MultiSelect'].includes(f.fieldtype)&&empty((doc||{})[f.fieldname]))return false
+ return true
+}
+
 // Small helpers ERPNext metadata expressions use (eval:in_list([...], doc.x), cint(doc.y)…).
 const frappeStub={session:{user:''},user:{has_role:()=>false},boot:{sysdefaults:{}},defaults:{get_default:()=>'',get_user_default:()=>''},
  datetime:{get_today:()=>new Date().toISOString().slice(0,10),nowdate:()=>new Date().toISOString().slice(0,10)},meta:{get_docfield:()=>({})},
@@ -73,7 +105,7 @@ export function control(f){
 
 // Select choices in Vietnamese; the stored value stays the ERPNext one.
 export function selectOptions(f){
- return String(f.options||'').split('\n').map(v=>v.trim()).filter((v,i,all)=>v&&all.indexOf(v)===i).map(value=>({value,label:systemLabel(value)}))
+ return String(f.options||'').split('\n').map(v=>v.trim()).filter((v,i,all)=>v&&all.indexOf(v)===i).map(value=>({value,label:tr(value)}))
 }
 
 const money=(v,currency='VND')=>Number(v||0).toLocaleString('vi-VN',{style:'currency',currency:currency||'VND',maximumFractionDigits:currency==='VND'?0:2})
@@ -87,8 +119,8 @@ export function display(value,f={},currency){
   case 'Check':return Number(value)?'Có':'Không'
   case 'Currency':return money(value,currency)
   case 'Int':case 'Float':case 'Percent':return number(value)+(f.fieldtype==='Percent'?' %':'')
-  case 'Select':return systemLabel(String(value))
-  default:return typeof value==='string'?systemLabel(value):String(value)
+  case 'Select':return tr(String(value))
+  default:return typeof value==='string'?tr(value):String(value)
  }
 }
 export const docstatusLabel=s=>['Nháp','Đã ghi sổ','Đã hủy'][Number(s)]??''

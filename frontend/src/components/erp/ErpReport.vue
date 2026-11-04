@@ -6,7 +6,7 @@ import DataTable from '../DataTable.vue'
 import WorkspaceSummaryStrip from '../WorkspaceSummaryStrip.vue'
 import {Button as UiButton} from '../ui/button'
 import {erp,erpFileUrl} from '../../erp-api'
-import {display,evaluate} from '../../erp-meta'
+import {display,evaluate,tr} from '../../erp-meta'
 import {systemLabel} from '../../system-translations.js'
 // A native ERPNext/HRMS report: its filters (parsed from the installed report, never its JavaScript), result and summary.
 const props=defineProps({name:{type:String,required:true},label:String,company:String,currency:String,showBack:{type:Boolean,default:true}})
@@ -34,7 +34,7 @@ const shown=f=>f.fieldtype==='MultiSelectList'?(values[f.fieldname]||[])[0]||'':
 function set(f,v){values[f.fieldname]=f.fieldtype==='MultiSelectList'?(v?[v]:[]):f.fieldtype==='Check'?(v?1:0):v}
 async function run(){
  const missing=filters.value.filter(f=>f.reqd&&(values[f.fieldname]==null||values[f.fieldname]===''||(Array.isArray(values[f.fieldname])&&!values[f.fieldname].length)))
- if(missing.length){error.value='Chọn: '+missing.map(f=>f.label).join(', ');return}
+ if(missing.length){error.value='Chọn: '+missing.map(f=>tr(f.label)).join(', ');return}
  busy.value=true;error.value=''
  try{result.value=await erp('run_report',{name:props.name,filters:{...values},company:props.company})}
  catch(e){error.value=e.message;result.value=null}finally{busy.value=false}
@@ -50,11 +50,11 @@ const rows=computed(()=>(result.value?.result||[]).filter(r=>r&&typeof r==='obje
 }))
 const currency=row=>row?.currency||row?.account_currency||row?.presentation_currency||values.presentation_currency||props.currency
 const columns=computed(()=>columnDefs.value.map((c,i)=>({
- field:c.fieldname,headerName:systemLabel(c.label),minWidth:i===0?220:['Currency','Float','Int'].includes(c.fieldtype)?120:130,...(i===0?{flex:1.5}:{}),
+ field:c.fieldname,headerName:tr(c.label),minWidth:i===0?220:['Currency','Float','Int'].includes(c.fieldtype)?120:130,...(i===0?{flex:1.5}:{}),
  ...(['Currency','Float','Int','Percent'].includes(c.fieldtype)?{type:'numericColumn'}:{}),sum:false,
  valueFormatter:p=>{const text=display(p.value,c,currency(p.data));return i===0&&p.data?.indent?' '.repeat(Number(p.data.indent))+text:text}
 })))
-const summary=computed(()=>(result.value?.report_summary||[]).map(s=>({label:systemLabel(s.label),value:display(s.value,{fieldtype:s.datatype},s.currency||props.currency)})))
+const summary=computed(()=>(result.value?.report_summary||[]).map(s=>({label:tr(s.label),value:display(s.value,{fieldtype:s.datatype},s.currency||props.currency)})))
 function exportExcel(){window.open(erpFileUrl('export_report',{name:props.name,filters:{...values},company:props.company}),'_blank','noopener')}
 </script>
 
@@ -68,10 +68,10 @@ function exportExcel(){window.open(erpFileUrl('export_report',{name:props.name,f
   </header>
   <form v-if="definition" class="erp-report__filters" @submit.prevent="run">
    <template v-for="f in filters" :key="f.fieldname">
-    <LotusField v-if="kind(f)==='link'" type="combobox" :label="f.label" :model-value="shown(f)" :display-value="shown(f)" :fetch-options="search=>linkOptions(f,search)" :required="!!f.reqd" @update:model-value="v=>set(f,v)"/>
-    <LotusField v-else-if="kind(f)==='select'" type="select" :label="f.label" :model-value="values[f.fieldname]??''" :options="options(f)" :searchable="false" :empty-option="f.reqd?null:'—'" @update:model-value="v=>set(f,v)"/>
-    <LotusField v-else-if="kind(f)==='checkbox'" type="checkbox" :label="f.label" :model-value="!!Number(values[f.fieldname])" @update:model-value="v=>set(f,v)"/>
-    <LotusField v-else :type="kind(f)" :label="f.label" :model-value="values[f.fieldname]??''" :required="!!f.reqd" @update:model-value="v=>set(f,v)"/>
+    <LotusField v-if="kind(f)==='link'" type="combobox" :label="tr(f.label)" :model-value="shown(f)" :display-value="shown(f)" :fetch-options="search=>linkOptions(f,search)" :required="!!f.reqd" @update:model-value="v=>set(f,v)"/>
+    <LotusField v-else-if="kind(f)==='select'" type="select" :label="tr(f.label)" :model-value="values[f.fieldname]??''" :options="options(f)" :searchable="false" :empty-option="f.reqd?null:'—'" @update:model-value="v=>set(f,v)"/>
+    <LotusField v-else-if="kind(f)==='checkbox'" type="checkbox" :label="tr(f.label)" :model-value="!!Number(values[f.fieldname])" @update:model-value="v=>set(f,v)"/>
+    <LotusField v-else :type="kind(f)" :label="tr(f.label)" :model-value="values[f.fieldname]??''" :required="!!f.reqd" @update:model-value="v=>set(f,v)"/>
    </template>
   </form>
   <p v-if="error" class="erp-form__error" role="alert">{{error}}</p>
