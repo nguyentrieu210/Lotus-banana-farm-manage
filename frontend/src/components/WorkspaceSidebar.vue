@@ -8,7 +8,7 @@ import {sidebarCollapsed} from '../workspace'
 import {sectionedModules} from '../module-navigation.js'
 
 // Preserve permissions from the app router. Menu grouping never grants page access.
-const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'},buyingView:String,stockView:String,financeView:String,fieldView:String})
+const props=defineProps({nav:{type:Array,required:true},page:String,hrView:{type:String,default:'employees'},buyingView:String,stockView:String,financeView:String,fieldView:String,erpView:String})
 const emit=defineEmits(['go'])
 const session=useSession(),scope=useScope()
 const groups=computed(()=>{
@@ -35,7 +35,7 @@ const groups=computed(()=>{
  return result.filter(group=>group.items.length)
 })
 const openGroup=ref(null)
-watch([()=>props.page,()=>props.hrView,()=>props.buyingView,()=>props.stockView,()=>props.financeView,groups],([,,,,,visibleGroups])=>{
+watch([()=>props.page,()=>props.hrView,()=>props.buyingView,()=>props.stockView,()=>props.financeView,()=>props.erpView,groups],([,,,,,,visibleGroups])=>{
  const active=visibleGroups.find(group=>group.items.some(item=>itemActive(item)))
  if(active)openGroup.value=active.label
 },{immediate:true})

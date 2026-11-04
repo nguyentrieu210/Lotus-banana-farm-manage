@@ -3,6 +3,7 @@ import {visibleBuyingNavigation,normalizeBuyingView,buyingQuery,buyingMenu} from
 import {visibleStockNavigation,normalizeStockView,stockQuery} from './stock-navigation.js'
 import {visibleFinanceNavigation,normalizeFinanceView,financeQuery} from './finance-navigation.js'
 import {visibleFieldNavigation,normalizeFieldView,fieldQuery} from './field-report-navigation.js'
+import {visibleErpNavigation,normalizeErpView,erpQuery} from './erp-navigation.js'
 // Modules whose sidebar group lists their own views (navGroups[].kind). The sidebar, page titles and active state read this registry.
 // viewPath: the page whose ?param picks the view; items on other paths (HR → cham-cong) are active whenever that page is open.
 // menu (optional): maps a view to the sidebar entry it lives under, for entries that hold several views (item.menu).
@@ -11,6 +12,7 @@ export const sectionedModules={
  buying:{paths:['mua-hang'],viewPath:'mua-hang',prop:'buyingView',items:visibleBuyingNavigation,normalize:normalizeBuyingView,menu:buyingMenu,query:buyingQuery,setupLabel:'Danh mục mua hàng',toggleOnly:true},
  stock:{paths:['kho'],viewPath:'kho',prop:'stockView',items:visibleStockNavigation,normalize:normalizeStockView,query:stockQuery,setupLabel:'Danh mục kho',toggleOnly:true},
  field:{paths:['cong-viec'],viewPath:'cong-viec',prop:'fieldView',items:visibleFieldNavigation,normalize:normalizeFieldView,query:fieldQuery,setupLabel:'Giao lô & danh mục',toggleOnly:true},
+ erp:{paths:['erp'],viewPath:'erp',prop:'erpView',items:visibleErpNavigation,normalize:normalizeErpView,query:erpQuery,toggleOnly:true},
  finance:{paths:['tai-chinh'],viewPath:'tai-chinh',prop:'financeView',items:visibleFinanceNavigation,normalize:normalizeFinanceView,query:financeQuery,setupLabel:'Thiết lập kế toán',toggleOnly:true},
 }
 export function moduleForPath(path){return Object.values(sectionedModules).find(m=>m.paths.includes(path))}
