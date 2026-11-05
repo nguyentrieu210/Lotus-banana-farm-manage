@@ -4,6 +4,7 @@ import {call} from '../../api'
 import ModalForm from '../form/ModalForm.vue'
 import FormGrid from '../form/FormGrid.vue'
 import FormSection from '../form/FormSection.vue'
+import LineItemsEditor from '../form/LineItemsEditor.vue'
 import LotusField from '../form/LotusField.vue'
 import {Button as UiButton} from '../ui/button'
 import {unitLabel,stockItemUomOptions} from '../../units'
@@ -17,7 +18,7 @@ const titles={item:'vật tư',group:'nhóm vật tư',warehouse:'kho',uom:'đơ
 const open=ref(false),kind=ref('item'),editing=ref(null),busy=ref(false),error=ref(''),deleting=ref(false),clearDefaults=ref(false)
 const catalog=ref({groups:[],uoms:[],parents:[]}),employees=ref([])
 // Vật tư: loại hàng quyết định cách ghi sổ. VPP, sửa chữa… là "mua dùng ngay": không theo dõi tồn, hóa đơn vào chi phí 642 / 627.
-const itemBlank={kind:'Material',asset_category:'',disabled:false,is_purchase_item:true,is_sales_item:false,has_batch_no:false,has_expiry_date:false,shelf_life_in_days:0,lead_time_days:0,min_order_qty:0,default_supplier:'',default_warehouse:''}
+const itemBlank={conversions:[],kind:'Material',asset_category:'',disabled:false,is_purchase_item:true,is_sales_item:false,has_batch_no:false,has_expiry_date:false,shelf_life_in_days:0,lead_time_days:0,min_order_qty:0,default_supplier:'',default_warehouse:''}
 const itemKinds=[
  {value:'Material',label:'Vật tư (theo dõi tồn kho)',hint:'Phân bón, thuốc, bao bì… Nhập vào 152, xuất dùng thì tính vào chi phí lô / vườn.'},
  {value:'Tool',label:'Công cụ dụng cụ (theo dõi tồn kho)',hint:'Cuốc, bình phun, kéo… Nhập vào 153, xuất dùng thì phân bổ chi phí.'},
@@ -33,14 +34,16 @@ const money=n=>Number(n||0).toLocaleString('vi-VN')+' đ'
 const title=computed(()=>(editing.value?'Sửa ':'Thêm ')+titles[kind.value])
 const readonly=computed(()=>!!editing.value&&!editing.value.can_write)
 const permissions=computed(()=>props.session?.permissions||{})
-const uomOptions=computed(()=>stockItemUomOptions(catalog.value.uoms,[master.uom,master.pack_uom]).map(u=>({value:u.name,label:unitLabel(u.name)})))
+const uomOptions=computed(()=>stockItemUomOptions(catalog.value.uoms,[master.uom,...(master.conversions||[]).map(r=>r.uom)]).map(u=>({value:u.name,label:unitLabel(u.name)})))
+// Đơn vị quy đổi: 1 đơn vị = hệ số × đơn vị gốc (bao 50 kg, tấn 1.000 kg…). After stock movements a used unit keeps its factor.
+const conversionColumns=computed(()=>[{field:'uom',label:'Đơn vị quy đổi',required:true,options:packOptions.value,searchable:true,disabled:r=>usedFactor(r),width:'minmax(160px,1fr)'},{field:'conversion_factor',label:'1 đơn vị = bao nhiêu '+unitLabel(master.uom),type:'number',required:true,props:{min:0.000001},disabled:r=>usedFactor(r),width:'minmax(160px,1fr)',hint:r=>r.uom&&Number(r.conversion_factor)>0?'1 '+unitLabel(r.uom)+' = '+fmt(r.conversion_factor)+' '+unitLabel(master.uom):''}])
+const usedFactor=row=>editing.value?.has_ledger&&(editing.value.conversions||[]).some(c=>c.uom===row.uom)
 const packOptions=computed(()=>uomOptions.value.filter(u=>u.value!==master.uom))
 const groupOptions=computed(()=>catalog.value.groups.map(g=>({value:g.name,label:g.name})))
 const parentGroupOptions=computed(()=>catalog.value.groups.filter(g=>g.is_group).map(g=>({value:g.name,label:g.name})))
 const parentWarehouseOptions=computed(()=>catalog.value.parents.map(w=>({value:w.name,label:w.warehouse_name})))
 const employeeOptions=computed(()=>employees.value.map(employee=>({value:employee.value,label:employee.label})))
 const warehouseCode=computed(()=>{const n=String(master.name||'').trim(),abbr=props.session?.companies?.find(c=>c.name===props.company)?.abbr;return n&&abbr?(n.endsWith(' - '+abbr)?n:n+' - '+abbr):n})
-const packHint=computed(()=>Number(master.pack_factor)>0?'Ví dụ: 1 '+unitLabel(master.pack_uom)+' = '+fmt(master.pack_factor)+' '+unitLabel(master.uom)+'. Quy đổi theo từng vật tư.':'')
 const deleteBlocked=computed(()=>kind.value==='warehouse'&&(editing.value?.default_item_count||editing.value?.stock_default)&&!clearDefaults.value)
 
 async function show(nextKind,name=''){
@@ -52,7 +55,7 @@ async function show(nextKind,name=''){
    const root=catalog.value.groups.find(g=>g.is_group&&!g.parent_item_group)?.name||catalog.value.groups.find(g=>g.is_group)?.name||''
    Object.assign(master,{uom:catalog.value.uoms.find(u=>u.name==='Kg')?.name||catalog.value.uoms[0]?.name||'',parent:nextKind==='warehouse'?catalog.value.parents[0]?.name||'':root,group_parent:root})}
   if(name){const result=await masterAPI('read_master',{company:props.company,kind:nextKind,name});editing.value=result
-   if(nextKind==='item')Object.assign(master,Object.fromEntries(Object.keys(itemBlank).map(k=>[k,typeof itemBlank[k]==='boolean'?!!result[k]:result[k]??itemBlank[k]])))
+   if(nextKind==='item')Object.assign(master,Object.fromEntries(Object.keys(itemBlank).map(k=>[k,typeof itemBlank[k]==='boolean'?!!result[k]:result[k]??itemBlank[k]])),{conversions:(result.conversions||[]).map(r=>({...r}))})
    Object.assign(master,{name:result.name,code:result.code,group:result.group||'',uom:result.uom||'',parent:result.parent||'',description:result.description||'',minimum_stock:result.minimum_stock||0,pack_uom:result.pack_uom||'',pack_factor:result.pack_factor||0,enabled:result.enabled!==0,must_be_whole_number:!!result.must_be_whole_number,
     ...Object.fromEntries(['lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_receiving_hours','lotus_default_lead_days','lotus_delivery_note'].map(k=>[k,result[k]??blank[k]]))})}
  }catch(e){error.value=e.message}finally{busy.value=false}
@@ -61,6 +64,7 @@ async function save(){
  busy.value=true;error.value=''
  try{
   const values={...master}
+  if(kind.value==='item'){delete values.pack_uom;delete values.pack_factor;values.conversions=(master.conversions||[]).filter(r=>r.uom)}
   const result=editing.value?await masterAPI('save_master',{company:props.company,kind:kind.value,name:editing.value.id,modified:editing.value.modified,values},true):await api('create_master',{company:props.company,kind:kind.value,values},true)
   open.value=false;emit('saved',{kind:kind.value,name:result.name})
  }catch(e){error.value=e.message}finally{busy.value=false}
@@ -88,10 +92,8 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
     <LotusField v-if="!editing&&permissions['Item Group']" v-model="master.new_group" label="Hoặc tạo nhóm mới" maxlength="140" placeholder="Để trống nếu dùng nhóm đã có"/>
     <LotusField v-model="master.kind" label="Loại hàng" :options="kindOptions" :searchable="false" :empty-option="null" :readonly="readonly" required :hint="kindHint" wide/>
     <LotusField v-if="master.kind==='Asset'" v-model="master.asset_category" label="Nhóm tài sản cố định" :options="(catalog.asset_categories||[]).map(c=>({value:c,label:c}))" :readonly="readonly" required hint="Nhóm tài sản quyết định tài khoản nguyên giá, hao mòn và chi phí khấu hao."/>
-    <LotusField v-model="master.uom" :label="stockItem?'Đơn vị tồn kho gốc':'Đơn vị tính'" :options="uomOptions" :searchable="false" :readonly="readonly" required/>
+    <LotusField v-model="master.uom" :label="stockItem?'Đơn vị tồn kho gốc':'Đơn vị tính'" :options="uomOptions" :searchable="false" :readonly="readonly||!!editing?.has_ledger" required :hint="editing?.has_ledger?'Đã nhập / xuất theo đơn vị này nên không đổi được. Mua bán theo đơn vị khác thì thêm ở bảng quy đổi bên dưới.':editing?'Đổi được khi chưa nhập / xuất kho. Hệ số quy đổi bên dưới tính theo đơn vị gốc mới.':''"/>
     <LotusField v-if="stockItem" v-model="master.minimum_stock" :label="'Tồn tối thiểu chung toàn bộ kho ('+unitLabel(master.uom)+')'" type="number" min="0" :readonly="readonly" required hint="Áp dụng trên tổng tồn các kho của công ty, không chọn kho riêng."/>
-    <LotusField v-model="master.pack_uom" label="Đơn vị đóng gói / quy đổi" :options="packOptions" :searchable="false" empty-option="Không sử dụng đơn vị phụ" :readonly="readonly"/>
-    <LotusField v-if="master.pack_uom" v-model="master.pack_factor" :label="'1 '+unitLabel(master.pack_uom)+' = bao nhiêu '+unitLabel(master.uom)+'?'" type="number" min="0.000001" :readonly="readonly" required :hint="packHint"/>
     <LotusField v-model="master.description" label="Ghi chú (không bắt buộc)" type="textarea" wide maxlength="2000" :readonly="readonly" placeholder="Quy cách đóng gói, thông tin nhận biết…"/>
    </template>
    <template v-else-if="kind==='group'">
@@ -117,6 +119,10 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
    </template>
   </FormGrid>
   <template v-if="kind==='item'">
+   <FormSection title="Đơn vị quy đổi" description="Mua, nhập, xuất theo bao, thùng, tấn… mà tồn kho vẫn tính theo đơn vị gốc.">
+    <LineItemsEditor v-model="master.conversions" :columns="conversionColumns" add-label="Thêm đơn vị quy đổi" empty-text="Chưa có đơn vị quy đổi: chỉ dùng đơn vị gốc." :min="0" :readonly="readonly" :new-row="()=>({uom:'',conversion_factor:1})"/>
+    <p v-if="editing?.has_ledger" class="lotus-form-note">Vật tư đã nhập / xuất: đơn vị đã có giữ nguyên hệ số; được thêm đơn vị mới hoặc bỏ đơn vị không dùng nữa.</p>
+   </FormSection>
    <FormSection title="Trạng thái và phạm vi dùng">
     <FormGrid :columns="3">
      <LotusField :model-value="!master.disabled" type="checkbox" label="Đang sử dụng" :readonly="readonly" hint="Bỏ chọn để ngừng dùng: mã không hiện khi lập chứng từ mới, lịch sử vẫn giữ." @update:model-value="master.disabled=!$event"/>

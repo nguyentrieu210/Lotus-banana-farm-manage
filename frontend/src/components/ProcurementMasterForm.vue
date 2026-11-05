@@ -41,10 +41,10 @@ defineExpose({isSaving:()=>saving.value})
   <FormGrid :columns="mobile?1:3">
    <LotusField v-model="data.item_code" :mobile="mobile" label="Mã hàng" :disabled="!!name" required/>
    <LotusField v-model="data.item_name" :mobile="mobile" label="Tên hàng" required/>
-   <LotusField v-model="data.kind" :mobile="mobile" label="Loại hàng" :options="purchaseKinds" :searchable="false" :disabled="!!name" required :hint="{Material:'Vào kho 152, xuất dùng tính chi phí lô / vườn.',Tool:'Vào kho 153, xuất dùng phân bổ chi phí.',Asset:'Không vào kho: nguyên giá 211, trích khấu hao.',Service:'VPP, sửa chữa, vận chuyển…: không theo dõi tồn, hóa đơn vào chi phí 642 (627 khi ghi cho vườn).'}[data.kind]"/>
+   <LotusField v-model="data.kind" :mobile="mobile" label="Loại hàng" :options="purchaseKinds" :searchable="false" :disabled="!!data.used" required :hint="{Material:'Vào kho 152, xuất dùng tính chi phí lô / vườn.',Tool:'Vào kho 153, xuất dùng phân bổ chi phí.',Asset:'Không vào kho: nguyên giá 211, trích khấu hao.',Service:'VPP, sửa chữa, vận chuyển…: không theo dõi tồn, hóa đơn vào chi phí 642 (627 khi ghi cho vườn).'}[data.kind]"/>
    <LotusField v-model="data.group" :mobile="mobile" label="Nhóm hàng" :options="opts(options.item_groups)" required/>
-   <LotusField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="(options.uoms||[]).map(r=>({value:r.name,label:unitLabel(r.name)}))" :disabled="!!name" required/>
-   <LotusField v-if="data.kind==='Asset'" v-model="data.asset_category" :mobile="mobile" label="Nhóm tài sản" :options="opts(options.asset_categories)" :disabled="!!name" required/>
+   <LotusField v-model="data.uom" :mobile="mobile" label="Đơn vị gốc" :options="(options.uoms||[]).map(r=>({value:r.name,label:unitLabel(r.name)}))" :disabled="!!data.has_ledger" required :hint="data.has_ledger?'Đã nhập / xuất theo đơn vị này nên không đổi được; thêm đơn vị quy đổi bên dưới.':''"/>
+   <LotusField v-if="data.kind==='Asset'" v-model="data.asset_category" :mobile="mobile" label="Nhóm tài sản" :options="opts(options.asset_categories)" :disabled="!!data.used" required/>
    <LotusField :model-value="String(data.disabled||0)" :mobile="mobile" label="Trạng thái" :options="[{value:'0',label:'Đang dùng'},{value:'1',label:'Ngừng dùng'}]" :searchable="false" :empty-option="null" @update:model-value="data.disabled=Number($event)"/>
    <LotusField :model-value="data.is_purchase_item!==0&&data.is_purchase_item!==false" :mobile="mobile" type="checkbox" label="Hàng mua" @update:model-value="data.is_purchase_item=$event?1:0"/>
    <LotusField :model-value="!!data.is_sales_item" :mobile="mobile" type="checkbox" label="Hàng bán" @update:model-value="data.is_sales_item=$event?1:0"/>

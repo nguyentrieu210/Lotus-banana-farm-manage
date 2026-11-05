@@ -16,8 +16,8 @@ test('new item has global minimum without choosing a warehouse',()=>{
 })
 
 test('new item uses ERPNext Item UOM Conversion Detail',()=>{
- assert.match(ui,/v-model="master\.pack_uom"/)
- assert.match(ui,/v-model="master\.pack_factor"[^>]*type="number"/)
+ assert.match(ui,/<LineItemsEditor v-model="master\.conversions" :columns="conversionColumns"/)
+ assert.match(ui,/field:'conversion_factor'[^}]*type:'number'/)
  assert.match(config,/item\.append\('uoms'/)
  assert.match(config,/conversion_factor=factor/)
  assert.match(config,/for name in \('Bao', 'Can'\):/)

@@ -188,6 +188,63 @@ def configure_pack(item, values):
         item.append('uoms', dict(uom=pack, conversion_factor=factor))
 
 
+def _unit(uom):
+    from lotus_farm.units import label
+    return label(uom)
+
+
+def item_conversions(item):
+    """Units other than the stock unit, each as 1 unit = factor stock units."""
+    return [dict(uom=r.uom, conversion_factor=float(r.conversion_factor or 0)) for r in item.get('uoms') or [] if r.uom != item.stock_uom]
+
+
+def change_stock_uom(item, uom):
+    """Đổi đơn vị gốc: allowed until the item has stock movements (ERPNext keeps them in the old unit). Returns True when changed;
+    ERPNext then clears the conversion table, so the caller re-applies the conversions after saving."""
+    uom = str(uom or '').strip()
+    if not uom or uom == item.stock_uom:
+        return False
+    doc = frappe.get_doc('UOM', uom); doc.check_permission('read')
+    if not doc.enabled:
+        frappe.throw('Đơn vị tính đã ngừng sử dụng.')
+    if not item.is_new():
+        if frappe.db.exists('Stock Ledger Entry', {'item_code': item.name}):
+            frappe.throw('Vật tư đã nhập / xuất kho theo đơn vị {0} nên không đổi được đơn vị gốc. Thêm đơn vị quy đổi (ví dụ 1 {1} = … {0}) '
+                         'để nhập theo {1}, hoặc tạo mã mới và ngừng dùng mã này.'.format(_unit(item.stock_uom), _unit(uom)))
+        if frappe.db.sql("""select 1 from `tabBin` where item_code=%s and (reserved_qty>0 or ordered_qty>0 or indented_qty>0 or planned_qty>0) limit 1""", item.name):
+            frappe.throw('Vật tư đang có đề nghị / đơn mua chưa hoàn tất theo đơn vị {0}. Hoàn tất hoặc hủy các chứng từ đó rồi mới đổi đơn vị gốc.'.format(_unit(item.stock_uom)))
+    item.stock_uom = uom
+    return True
+
+
+def set_conversions(item, rows, base_changed=False):
+    """Replace the unit conversion table from the form. After stock movements a unit already used keeps its factor (old documents were
+    counted with it); new units can be added and unused ones removed."""
+    from lotus_farm.warehouse import _number
+    if not isinstance(rows, list):
+        frappe.throw('Bảng quy đổi đơn vị không hợp lệ.')
+    clean, seen = [], set()
+    for r in rows:
+        uom = str((r or {}).get('uom') or '').strip()
+        if not uom:
+            continue
+        if uom == item.stock_uom:
+            frappe.throw('Đơn vị quy đổi phải khác đơn vị gốc ({0}).'.format(_unit(uom)))
+        if uom in seen:
+            frappe.throw('Đơn vị {0} bị nhập trùng.'.format(_unit(uom)))
+        seen.add(uom)
+        doc = frappe.get_doc('UOM', uom); doc.check_permission('read')
+        factor = _number(r.get('conversion_factor'), 'Hệ số quy đổi của ' + _unit(uom))
+        clean.append(dict(uom=uom, conversion_factor=factor))
+    if not item.is_new() and not base_changed and frappe.db.exists('Stock Ledger Entry', {'item_code': item.name}):
+        before = {r['uom']: r['conversion_factor'] for r in item_conversions(item)}
+        for r in clean:
+            if r['uom'] in before and abs(before[r['uom']] - r['conversion_factor']) > 1e-9:
+                frappe.throw('Vật tư đã nhập / xuất: giữ hệ số 1 {0} = {1:g} {2}. Quy cách khác thì thêm đơn vị mới (ví dụ "Bao 25kg").'
+                             .format(_unit(r['uom']), before[r['uom']], _unit(item.stock_uom)))
+    item.set('uoms', [dict(uom=item.stock_uom, conversion_factor=1)] + clean)
+
+
 def _doc(company,kind,name):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
@@ -207,7 +264,7 @@ def read_master(company,kind,name):
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
                 **(warehouse_details(doc) if kind=='warehouse' else {}),
-                **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc),**{k:x for k,x in item_profile(doc,company).items() if k!='disabled'}) if kind=='item' else {}),
+                **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc),conversions=item_conversions(doc),**{k:x for k,x in item_profile(doc,company).items() if k!='disabled'}) if kind=='item' else {}),
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
@@ -220,12 +277,14 @@ def master_lists(company):
     _access();_company(company)
     kind_field=['lotus_default_purchase_kind'] if frappe.get_meta('Item').has_field('lotus_default_purchase_kind') else []
     items=frappe.get_list('Item',fields=['name','item_name','item_group','stock_uom','disabled','lotus_minimum_stock_global','is_stock_item','is_fixed_asset','is_purchase_item','is_sales_item','has_batch_no']+kind_field,order_by='item_name',limit_page_length=0)
-    packs={}
+    packs={};allconv={}
     for row in frappe.get_all('UOM Conversion Detail',filters={'parenttype':'Item','parent':['in',[r.name for r in items] or ['__none__']]},fields=['parent','uom','conversion_factor']):
         packs.setdefault(row.parent,row)
+        allconv.setdefault(row.parent,[]).append(dict(uom=row.uom,conversion_factor=float(row.conversion_factor or 0)))
     for row in items:
         pack=packs.get(row.name)
         row.pack_uom,row.pack_factor=((pack.uom,float(pack.conversion_factor or 0)) if pack and pack.uom!=row.stock_uom else ('',0))
+        row.conversions=[c for c in allconv.get(row.name,[]) if c['uom']!=row.stock_uom]
         row.minimum_stock=row.pop('lotus_minimum_stock_global') or 0
         row.kind=item_kind(row)
     return dict(items=items,uoms=frappe.get_list('UOM',fields=['name','enabled','must_be_whole_number'],order_by='name',limit_page_length=0),
@@ -243,14 +302,19 @@ def save_master(company,kind,name,modified,values):
     if not isinstance(values,dict):frappe.throw('Thông tin không hợp lệ.')
     if kind=='item':
         group=frappe.get_doc('Item Group',values.get('group'));group.check_permission('read')
-        uom=frappe.get_doc('UOM',values.get('uom'));uom.check_permission('read')
-        if not uom.enabled:frappe.throw('Đơn vị tính đã bị tắt.')
-        doc.item_name=_text(values.get('name'),'Tên vật tư');doc.item_group=group.name;doc.stock_uom=uom.name
+        doc.item_name=_text(values.get('name'),'Tên vật tư');doc.item_group=group.name
         doc.description=str(values.get('description') or '')[:2000]
+        rows=values['conversions'] if 'conversions' in values else None
+        if rows is None and ('pack_uom' in values or 'pack_factor' in values):
+            rows=[dict(uom=values.get('pack_uom'),conversion_factor=values.get('pack_factor'))] if values.get('pack_uom') else []
+        base_changed=change_stock_uom(doc,values.get('uom'))
         set_minimum(doc,company,values)
-        configure_pack(doc,values)
+        if rows is not None:set_conversions(doc,rows,base_changed)
         apply_item_profile(doc,company,values)
         doc.save()
+        if base_changed:
+            # ERPNext empties the conversion table when the stock unit changes: put the form's conversions back.
+            doc.reload();set_conversions(doc,rows if rows is not None else [],True);doc.save()
     elif kind=='warehouse':
         label=_text(values.get('name'),'Tên kho')
         expected=warehouse_code(label,company)

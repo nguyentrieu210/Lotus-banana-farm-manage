@@ -20,7 +20,7 @@ const info=computed(()=>meta[props.kind])
 const data=ref(null),busy=ref(false),error=ref(''),search=ref('')
 // ERPNext ships ~250 technical units (Abampere, Barleycorn…): by default list only units the items use or that have a Vietnamese name.
 const uomScope=ref('used')
-const usedUoms=computed(()=>new Set((data.value?.items||[]).flatMap(item=>[item.stock_uom,item.pack_uom]).filter(Boolean)))
+const usedUoms=computed(()=>new Set((data.value?.items||[]).flatMap(item=>[item.stock_uom,item.pack_uom,...(item.conversions||[]).map(c=>c.uom)]).filter(Boolean)))
 const rows=computed(()=>{
  let all=data.value?.[props.kind]||[];const q=normalizeUnit(search.value)
  if(props.kind==='uoms'&&uomScope.value==='used'&&!q)all=all.filter(row=>usedUoms.value.has(row.name)||unitLabel(row.name)!==row.name)

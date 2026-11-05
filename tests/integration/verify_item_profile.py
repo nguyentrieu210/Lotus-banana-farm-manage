@@ -67,6 +67,38 @@ try:
     ok('đã nhập kho: form khóa lô', read(b)['has_ledger'] and read(b)['used'])
     blocked('kho mặc định phải thuộc công ty', lambda: save(b, kind='Material', default_warehouse='Không có kho này'), 'Kho mặc định')
 
+    # Đơn vị tính: sửa được ngay trong app, không phải vào ERPNext
+    for name in ('Bao', 'Can'):
+        if not frappe.db.exists('UOM', name):
+            frappe.get_doc(dict(doctype='UOM', uom_name=name)).insert()
+    tonne = 'Tonne' if frappe.db.exists('UOM', 'Tonne') else frappe.get_doc(dict(doctype='UOM', uom_name='Tonne')).insert().name
+    u = 'IP-DVT-' + tag
+    w.create_master(company, 'item', dict(base(u), uom='Kg', conversions=[dict(uom='Bao', conversion_factor=50), dict(uom=tonne, conversion_factor=1000)]))
+    conv = lambda code: {c['uom']: c['conversion_factor'] for c in read(code)['conversions']}
+    ok('tạo vật tư với 2 đơn vị quy đổi', conv(u) == {'Bao': 50, tonne: 1000}, conv(u))
+    m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom=tonne, kind='Material', conversions=[dict(uom='Bao', conversion_factor=0.05)]))
+    ok('đổi đơn vị gốc khi chưa nhập xuất, giữ quy đổi', read(u)['uom'] == tonne and conv(u) == {'Bao': 0.05}, (read(u)['uom'], conv(u)))
+    m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[dict(uom='Bao', conversion_factor=50)]))
+    ok('đổi lại đơn vị gốc Kg', read(u)['uom'] == 'Kg' and conv(u) == {'Bao': 50})
+    m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[]))
+    ok('bỏ hết đơn vị quy đổi', conv(u) == {})
+    m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[dict(uom='Bao', conversion_factor=50)]))
+    w.create_draft(company, 'receipt', nowdate(), [dict(item=u, qty=1, uom='Bao', rate=500000)], target=wh, receipt_reason='Purchase', supplier=supplier, post=1)
+    blocked('đã nhập xuất: không đổi đơn vị gốc (báo tiếng Việt)', lambda: m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom=tonne, kind='Material', conversions=[dict(uom='Bao', conversion_factor=50)])), 'không đổi được đơn vị gốc')
+    blocked('đã nhập xuất: giữ hệ số đơn vị đã dùng', lambda: m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[dict(uom='Bao', conversion_factor=25)])), 'giữ hệ số')
+    m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[dict(uom='Bao', conversion_factor=50), dict(uom='Can', conversion_factor=20)]))
+    ok('đã nhập xuất: vẫn thêm đơn vị mới', conv(u) == {'Bao': 50, 'Can': 20}, conv(u))
+    blocked('đơn vị quy đổi trùng đơn vị gốc bị chặn', lambda: m.save_master(company, 'item', u, read(u)['modified'], dict(base(u), uom='Kg', kind='Material', conversions=[dict(uom='Kg', conversion_factor=1)])), 'phải khác đơn vị gốc')
+
+    # Form Hàng mua (Mua hàng): đổi đơn vị gốc và loại hàng khi chưa có chứng từ
+    from lotus_farm import procurement_masters as pm
+    pcode = 'IP-PM-' + tag
+    d = pm.save(company, 'items', dict(item_code=pcode, item_name=pcode, kind='Material', uom='Kg', group=group, conversions=[dict(uom='Bao', conversion_factor=50)]), uuid.uuid4().hex)
+    d = pm.save(company, 'items', dict(d, uom=tonne, kind='Tool', conversions=[dict(uom='Bao', conversion_factor=0.05)]), uuid.uuid4().hex, name=pcode, modified=d['modified'])
+    item = frappe.get_doc('Item', pcode)
+    ok('Hàng mua: đổi đơn vị gốc + loại hàng sau khi tạo', item.stock_uom == tonne and m.item_kind(item) == 'Tool' and {r.uom: r.conversion_factor for r in item.uoms if r.uom != tonne} == {'Bao': 0.05},
+       (item.stock_uom, m.item_kind(item), [(r.uom, r.conversion_factor) for r in item.uoms]))
+
     lst = {r.name: r for r in m.master_lists(company)['items']}
     ok('danh sách có loại hàng', lst[v].kind == 'Service' and lst[b].kind == 'Material', (lst[v].kind, lst[b].kind))
 except Exception:

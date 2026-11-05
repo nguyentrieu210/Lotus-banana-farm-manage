@@ -32,7 +32,7 @@ test('editing historical item retains custom unit but never exposes unrelated od
 test('both stock and packaging UOM selectors are curated and conversion is a visible stock column',()=>{
  assert.match(stock,/const uomOptions=computed\(\(\)=>stockItemUomOptions/)
  assert.match(stock,/v-model="master\.uom" :label="stockItem\?'Đơn vị tồn kho gốc':'Đơn vị tính'" :options="uomOptions"/)
- assert.match(stock,/v-model="master\.pack_uom" label="Đơn vị đóng gói \/ quy đổi" :options="packOptions"/)
+ assert.match(stock,/field:'uom',label:'Đơn vị quy đổi',required:true,options:packOptions\.value/)
  assert.doesNotMatch(stock,/catalog\.uoms\.filter\(u=>u\.name!==master\.uom\)/)
  assert.match(stock,/field:'pack_actual_qty',headerName:'Tồn quy đổi'/)
  assert.match(stock,/minWidth:132,sum:false,tooltip:/) // pack units differ per item: no total

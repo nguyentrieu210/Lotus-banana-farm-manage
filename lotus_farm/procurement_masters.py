@@ -4,7 +4,7 @@ from frappe.utils import cint, flt
 from lotus_farm.procurement import access, parse
 from lotus_farm.procurement_rules import digest
 from lotus_farm.controls import lock
-from lotus_farm.warehouse_masters import item_profile, apply_item_profile
+from lotus_farm.warehouse_masters import item_profile, apply_item_profile, item_kind, change_stock_uom, set_conversions
 
 TYPES = {'suppliers': 'Supplier', 'items': 'Item'}
 
@@ -231,6 +231,7 @@ def save(company, kind, values, client_key, name=None, modified=None):
             d.insert()
         supplier_profile(d, v)
     else:
+        base_changed = False
         if not name:
             code=text(v.get('item_code'))
             if not code:
@@ -244,28 +245,24 @@ def save(company, kind, values, client_key, name=None, modified=None):
             d.stock_uom=v.get('uom')
             if d.is_fixed_asset:
                 set_link(d, 'asset_category', v.get('asset_category'), 'Asset Category')
-        elif v.get('uom') != d.stock_uom or v.get('kind') not in (('Asset',) if d.is_fixed_asset else ('Material','Tool') if d.is_stock_item else ('Service',)):
-            frappe.throw('Không đổi loại hàng hoặc đơn vị gốc của mã đã tạo.')
+        else:
+            # Loại hàng and đơn vị gốc can still be corrected until documents fix them (same rules as the Kho form).
+            if v.get('kind') and v.get('kind') != item_kind(d):
+                apply_item_profile(d, company, dict(kind=v.get('kind'), asset_category=v.get('asset_category')))
+            base_changed = change_stock_uom(d, v.get('uom'))
         d.item_name=text(v.get('item_name'))
         if not d.item_name:
             frappe.throw('Nhập tên hàng.')
         set_link(d, 'item_group', v.get('group'), 'Item Group')
         d.description=str(v.get('description') or '').strip()
-        conversions=v.get('conversions') or []
-        if not isinstance(conversions, list) or any(flt(r.get('conversion_factor'))<=0 for r in conversions):
-            frappe.throw('Hệ số quy đổi phải lớn hơn 0.')
-        if name and frappe.db.exists('Stock Ledger Entry', {'item_code': d.name}):
-            before={r.uom:flt(r.conversion_factor) for r in d.uoms}
-            after={r['uom']:flt(r['conversion_factor']) for r in conversions}
-            if before != after:
-                frappe.throw('Không đổi quy đổi của hàng đã phát sinh sổ kho.')
-        d.set('uoms', [])
-        for r in conversions:
-            frappe.get_doc('UOM', r.get('uom')).check_permission('read')
-            d.append('uoms', dict(uom=r['uom'], conversion_factor=flt(r['conversion_factor'])))
+        conversions=[r for r in (v.get('conversions') or []) if r.get('uom') != d.stock_uom]
+        set_conversions(d, conversions, base_changed)
         # Hàng mua / bán, lô & hạn dùng, NCC và kho mặc định: the same rules as the Kho item form.
         apply_item_profile(d, company, {k: x for k, x in v.items() if k not in ('kind', 'asset_category', 'disabled')})
     if 'disabled' in v:
         d.disabled=cint(v['disabled'])
     d.save()
+    if kind == 'items' and base_changed:
+        # ERPNext empties the conversion table when the stock unit changes: put the form's conversions back.
+        d.reload(); set_conversions(d, conversions, True); d.save()
     return detail(company, kind, d.name)

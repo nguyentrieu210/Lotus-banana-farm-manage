@@ -128,9 +128,12 @@ def create_master(company, kind, values):
                                   item_name=_text(values.get('name'), 'Tên vật tư'), item_group=group,
                                   stock_uom=uom.name, is_stock_item=1, include_item_in_manufacturing=0,
                                   description=str(values.get('description') or '')[:2000]))
-        from lotus_farm.warehouse_masters import set_minimum, configure_pack, apply_item_profile
+        from lotus_farm.warehouse_masters import set_minimum, configure_pack, apply_item_profile, set_conversions
         set_minimum(doc,company,values)
-        configure_pack(doc,values)
+        if 'conversions' in values:
+            set_conversions(doc,values.get('conversions') or [])
+        else:
+            configure_pack(doc,values)
         apply_item_profile(doc,company,dict(values,kind=values.get('kind') or 'Material'))
         doc.insert()
     return dict(name=doc.name, kind=kind)
