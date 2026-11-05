@@ -144,6 +144,13 @@ def create_master(company, kind, values):
     return dict(name=doc.name, kind=kind, code=doc.name)
 
 
+def user_names(users):
+    """Người tạo: account e-mail -> the person's full name (the e-mail when the account has no name)."""
+    users = {u for u in users if u}
+    names = {u.name: u.full_name for u in frappe.get_all('User', filters={'name': ['in', list(users)]}, fields=['name', 'full_name'])} if users else {}
+    return {u: ('Quản trị hệ thống' if u == 'Administrator' else names.get(u) or u) for u in users}
+
+
 def _stock_doc(doctype, name):
     _access()
     if doctype not in ('Stock Entry', 'Stock Reconciliation'):
@@ -193,6 +200,7 @@ def document(doctype, name):
                 invoice_series=doc.get('lotus_einvoice_series') or '', invoice_no=doc.get('lotus_einvoice_no') or '', invoice_date=doc.get('lotus_invoice_date'),
                 invoice_total=flt(doc.get('lotus_invoice_total')) or None, vat_in_cost=bool(doc.get('lotus_vat_in_cost')),
                 receiver_employee=doc.get('lotus_receiver_employee'), work_plan=doc.get('lotus_work_plan'),
+                created_by=user_names([doc.owner]).get(doc.owner), created_at=str(doc.creation)[:16],
                 basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
                 additional_total=flt(doc.get('total_additional_costs')),
                 incoming_total=flt(doc.get('total_incoming_value')),
@@ -334,7 +342,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
         extra=[f for f in {'Stock Entry':['stock_entry_type','lotus_receipt_reason','lotus_supplier','lotus_receiver','remarks','lotus_issue_purpose','lotus_issue_mode'],
                            'Purchase Receipt':['supplier_name','remarks'],'Stock Reconciliation':['purpose','remarks']}[dt]
                if f=='stock_entry_type' or meta.has_field(f)]
-        entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified',*extra],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
+        entries=[e for e in frappe.get_list(dt,filters=dt_filters,fields=['name','posting_date','posting_time','docstatus','modified','owner',*extra],order_by='posting_date desc, posting_time desc, modified desc',limit_page_length=0)
                  if not search or str(search).casefold() in e.name.casefold()]
         # Warehouses of every listed document in one read of the item table (parents are already permission-filtered).
         child,wh_fields={'Stock Entry':('Stock Entry Detail',['s_warehouse','t_warehouse']),'Stock Reconciliation':('Stock Reconciliation Item',['warehouse']),'Purchase Receipt':('Purchase Receipt Item',['warehouse'])}[dt]
@@ -361,8 +369,10 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
             entry.areas=' · '.join(dict.fromkeys(areas.get(entry.name,[])))
             entry.notes=str(entry.pop('remarks',None) or '').strip()[:200]
             rows.append(entry)
+    people=user_names(r.owner for r in rows)
+    for r in rows:r.created_by=people.get(r.pop('owner',None),'')
     rows.sort(key=lambda r:(str(r.posting_date),str(r.posting_time),str(r.modified)),reverse=True)
-    fields=['name','kind','posting_date','docstatus','warehouses','reason','supplier','receiver','areas','notes','purpose']
+    fields=['name','kind','posting_date','docstatus','warehouses','reason','supplier','receiver','areas','notes','purpose','created_by']
     selected=selections(column_filters,fields);choices=faceted_distinct(rows,fields,selected)
     rows=[r for r in rows if matches(r,selected)]
     from lotus_farm.table_filters import sorted_rows

@@ -68,7 +68,7 @@ const quickForm=ref(null),quickDetail=ref(null),stockWarehouses=ref([])
 const stockSession=computed(()=>({...session.value,today:asof.value,companies:[{name:company.value,default_currency:'VND'}]}))
 const quickColumns=[{field:'name',headerName:'Phiếu nhập',minWidth:170},{field:'date',headerName:'Ngày'},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},
  {field:'warehouse',headerName:'Kho',minWidth:120},{field:'amount',headerName:'Giá trị nhập',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Tình trạng',minWidth:180},
- {field:'invoice',headerName:'Hóa đơn'},{field:'notes',headerName:'Ghi chú',minWidth:200}]
+ {field:'invoice',headerName:'Hóa đơn'},{field:'notes',headerName:'Ghi chú',minWidth:200},{field:'created_by',headerName:'Người tạo',minWidth:150}]
 const current=ref(null),chain=ref(null),detailType=ref(''),signerOptions=ref(null),signers=ref({}),selections=ref({}),finance=ref(null)
 const period=ref((props.today||new Date().toISOString().slice(0,10)).slice(0,7)),asof=ref(props.today||new Date().toISOString().slice(0,10)),farm=ref(''),supplier=ref(props.initialSupplier||''),kind=ref(''),report=ref(null)
 const sourceType=ref('Purchase Invoice'),source=ref(''),amount=ref(''),mode=ref('bank'),reference=ref(''),date=ref(asof.value)

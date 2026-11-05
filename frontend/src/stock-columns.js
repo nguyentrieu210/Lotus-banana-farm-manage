@@ -39,14 +39,15 @@ export function documentColumns(warehouseLabel,kind){
   purpose:{field:'purpose',headerName:'Mục đích',minWidth:170},
   areas:{field:'areas',headerName:'Khu / lô sử dụng',minWidth:150},
   notes:{field:'notes',headerName:'Ghi chú',minWidth:200,flex:1.4,tooltip:p=>p.data?.notes||''},
+  createdBy:{field:'created_by',headerName:'Người tạo',minWidth:150},
   status:{field:'docstatus',headerName:'Trạng thái',minWidth:115,valueFormatter:p=>statusLabel(p.value)}
  }
  return {
-  receipts:[col.date,col.name,col.kind,col.reason,col.supplier,col.warehouses('Kho nhận'),col.notes,col.status],
-  issues:[col.date,col.name,col.purpose,col.receiver,col.areas,col.warehouses('Kho xuất'),col.notes,col.status],
-  transfers:[col.date,col.name,col.warehouses('Kho liên quan'),col.notes,col.status],
-  counts:[col.date,col.name,{...col.kind,headerName:'Loại kiểm kê'},col.warehouses('Kho'),col.notes,col.status]
- }[kind]||[col.date,col.name,col.kind,col.warehouses('Kho liên quan'),col.status]
+  receipts:[col.date,col.name,col.kind,col.reason,col.supplier,col.warehouses('Kho nhận'),col.notes,col.createdBy,col.status],
+  issues:[col.date,col.name,col.purpose,col.receiver,col.areas,col.warehouses('Kho xuất'),col.notes,col.createdBy,col.status],
+  transfers:[col.date,col.name,col.warehouses('Kho liên quan'),col.notes,col.createdBy,col.status],
+  counts:[col.date,col.name,{...col.kind,headerName:'Loại kiểm kê'},col.warehouses('Kho'),col.notes,col.createdBy,col.status]
+ }[kind]||[col.date,col.name,col.kind,col.warehouses('Kho liên quan'),col.createdBy,col.status]
 }
 
 export function movementColumns(warehouseLabel){return [

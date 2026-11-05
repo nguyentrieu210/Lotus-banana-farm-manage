@@ -172,6 +172,8 @@ def quick_purchases(company):
                                    *(['lotus_purchase_invoice'] if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice') else [])],
                            order_by='posting_date desc, creation desc', limit_page_length=500)
     names = {s.name: s.supplier_name for s in frappe.get_all('Supplier', filters={'name': ['in', list({r.lotus_supplier for r in rows if r.lotus_supplier})]}, fields=['name', 'supplier_name'])} if rows else {}
+    from lotus_farm.warehouse import user_names
+    people = user_names(r.owner for r in rows)
     stores = {}
     if rows:
         for r in frappe.get_all('Stock Entry Detail', filters={'parent': ['in', [r.name for r in rows]]}, fields=['parent', 't_warehouse'], limit_page_length=0):
@@ -187,7 +189,7 @@ def quick_purchases(company):
     return [dict(name=r.name, date=str(r.posting_date), supplier=r.lotus_supplier, supplier_name=names.get(r.lotus_supplier, r.lotus_supplier),
                  warehouse=', '.join(sorted(w for w in stores.get(r.name, ()) if w)), amount=flt(r.total_incoming_value) + (corrections.get(r.name, 0) if r.docstatus == 1 else 0), docstatus=r.docstatus,
                  price_correction=corrections.get(r.name, 0) if r.docstatus == 1 else 0,
-                 invoice=r.get('lotus_purchase_invoice') or '', notes=r.remarks or '', owner=r.owner,
+                 invoice=r.get('lotus_purchase_invoice') or '', notes=r.remarks or '', owner=r.owner, created_by=people.get(r.owner, ''),
                  status='Nháp, chưa nhập kho' if r.docstatus == 0 else ('Đã có hóa đơn' if r.get('lotus_purchase_invoice') else 'Đã nhập kho, chờ hóa đơn'))
             for r in rows]
 

@@ -9,6 +9,7 @@ import SigningPanel from '../SigningPanel.vue'
 import {Button as UiButton} from '../ui/button'
 import {detailColumns,receiptDetailColumns,statusLabel,entryTypeLabel,fmt} from '../../stock-columns'
 import {unitLabel} from '../../units'
+import {formatDateTime} from '../../format'
 // Chi tiết phiếu kho: in, sửa / xóa nháp, ghi sổ (cập nhật tồn kho) và ký số sau ghi sổ.
 const props=defineProps({warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['changed','edit'])
@@ -77,7 +78,7 @@ defineExpose({open:show,hasChanges:()=>false,discardChanges:()=>{open.value=fals
 
 <template>
  <ModalForm v-if="detail" v-model="open" :title="detail.name" :busy="busy" :error="error" width="1080px" :readonly="!detail.can_submit" submit-label="Ghi sổ phiếu" busy-label="Đang ghi sổ…" :submit-disabled="!confirmPost" @submit="post">
-  <p class="lotus-modal-form__description">{{entryTypeLabel(detail.kind)}} · {{detail.posting_date}} · {{detail.company}} · {{statusLabel(detail.docstatus)}}</p>
+  <p class="lotus-modal-form__description">{{entryTypeLabel(detail.kind)}} · {{detail.posting_date}} · {{detail.company}} · {{statusLabel(detail.docstatus)}}<template v-if="detail.created_by"> · Người tạo: {{detail.created_by}}<template v-if="detail.created_at"> lúc {{formatDateTime(detail.created_at)}}</template></template></p>
   <div v-if="deleting" class="lotus-delete-confirm" role="alert"><p>Xác nhận xóa phiếu nháp {{detail.name}}?</p><div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="deleting=false">Giữ lại</UiButton><UiButton type="button" variant="destructive" :disabled="busy" @click="remove">Xác nhận xóa</UiButton></div></div>
   <div v-if="cancelling" class="lotus-delete-confirm" role="alert"><p>Hủy phiếu {{detail.name}}? Tồn kho và bút toán của phiếu sẽ được đảo lại.</p><LotusField v-model="cancelReason" label="Lý do hủy" type="textarea" rows="2" required maxlength="140"/><div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="cancelling=false">Giữ lại</UiButton><UiButton type="button" variant="destructive" :disabled="busy||!cancelReason.trim()" @click="cancelPosted">Xác nhận hủy phiếu</UiButton></div></div>
   <p v-if="detail.docstatus===1" class="stock-success" role="status">Phiếu đã ghi sổ. Tồn kho đã được cập nhật.</p>
