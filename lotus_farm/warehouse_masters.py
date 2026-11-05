@@ -1,5 +1,6 @@
 import json
 import frappe
+from frappe.utils import cint, flt
 
 
 def install_fields():
@@ -206,7 +207,7 @@ def read_master(company,kind,name):
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
                 **(warehouse_details(doc) if kind=='warehouse' else {}),
-                **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc)) if kind=='item' else {}),
+                **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc),**{k:x for k,x in item_profile(doc,company).items() if k!='disabled'}) if kind=='item' else {}),
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
@@ -217,7 +218,8 @@ def read_master(company,kind,name):
 def master_lists(company):
     from lotus_farm.warehouse import _access,_company
     _access();_company(company)
-    items=frappe.get_list('Item',fields=['name','item_name','item_group','stock_uom','disabled','lotus_minimum_stock_global'],order_by='item_name',limit_page_length=0)
+    kind_field=['lotus_default_purchase_kind'] if frappe.get_meta('Item').has_field('lotus_default_purchase_kind') else []
+    items=frappe.get_list('Item',fields=['name','item_name','item_group','stock_uom','disabled','lotus_minimum_stock_global','is_stock_item','is_fixed_asset','is_purchase_item','is_sales_item','has_batch_no']+kind_field,order_by='item_name',limit_page_length=0)
     packs={}
     for row in frappe.get_all('UOM Conversion Detail',filters={'parenttype':'Item','parent':['in',[r.name for r in items] or ['__none__']]},fields=['parent','uom','conversion_factor']):
         packs.setdefault(row.parent,row)
@@ -225,6 +227,7 @@ def master_lists(company):
         pack=packs.get(row.name)
         row.pack_uom,row.pack_factor=((pack.uom,float(pack.conversion_factor or 0)) if pack and pack.uom!=row.stock_uom else ('',0))
         row.minimum_stock=row.pop('lotus_minimum_stock_global') or 0
+        row.kind=item_kind(row)
     return dict(items=items,uoms=frappe.get_list('UOM',fields=['name','enabled','must_be_whole_number'],order_by='name',limit_page_length=0),
                 groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
                 warehouses=[dict(row, **warehouse_contact(row)) for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
@@ -246,6 +249,7 @@ def save_master(company,kind,name,modified,values):
         doc.description=str(values.get('description') or '')[:2000]
         set_minimum(doc,company,values)
         configure_pack(doc,values)
+        apply_item_profile(doc,company,values)
         doc.save()
     elif kind=='warehouse':
         label=_text(values.get('name'),'Tên kho')
@@ -301,3 +305,96 @@ def delete_master(company,kind,name,modified,clear_defaults=False):
         from frappe.utils import strip_html
         frappe.throw('Danh mục còn được sử dụng: '+strip_html(str(exc.__context__ or exc)),frappe.LinkExistsError)
     return dict(name=name,deleted=True)
+
+
+ITEM_KINDS = ('Material', 'Tool', 'Asset', 'Service')
+
+
+def item_kind(item):
+    kind = item.get('lotus_default_purchase_kind')
+    return kind if kind in ITEM_KINDS else 'Asset' if item.get('is_fixed_asset') else 'Material' if item.get('is_stock_item') else 'Service'
+
+
+def _item_used(item):
+    """Documents that fix what kind of item this is (stock, asset or service)."""
+    if not item.name or item.is_new():
+        return False
+    if frappe.db.exists('Stock Ledger Entry', {'item_code': item.name}) or frappe.db.exists('Asset', {'item_code': item.name}):
+        return True
+    return any(frappe.db.exists(dt, {'item_code': item.name, 'docstatus': 1}) for dt in ('Purchase Order Item', 'Purchase Receipt Item', 'Purchase Invoice Item', 'Sales Invoice Item'))
+
+
+def item_profile(item, company):
+    """Kind, flags and purchase defaults shown on the item form (Kho and Mua hàng read the same)."""
+    default = next((r for r in item.get('item_defaults') or [] if r.company == company), None)
+    used = _item_used(item)
+    return dict(kind=item_kind(item), asset_category=item.get('asset_category') or '', disabled=cint(item.get('disabled')),
+                is_purchase_item=cint(item.get('is_purchase_item')), is_sales_item=cint(item.get('is_sales_item')),
+                has_batch_no=cint(item.get('has_batch_no')), has_expiry_date=cint(item.get('has_expiry_date')),
+                shelf_life_in_days=cint(item.get('shelf_life_in_days')), lead_time_days=cint(item.get('lead_time_days')),
+                min_order_qty=flt(item.get('min_order_qty')), default_supplier=(default.default_supplier if default else '') or '',
+                default_warehouse=(default.default_warehouse if default else '') or '', last_purchase_rate=flt(item.get('last_purchase_rate')),
+                valuation_rate=flt(item.get('valuation_rate')), used=used,
+                has_ledger=bool(item.name and not item.is_new() and frappe.db.exists('Stock Ledger Entry', {'item_code': item.name})))
+
+
+def apply_item_profile(item, company, values):
+    """Loại hàng (vật tư · công cụ dụng cụ · TSCĐ · dịch vụ), ngừng dùng, hàng mua / bán, lô & hạn dùng and purchase defaults.
+    Only keys present in values change, so older callers keep working."""
+    from lotus_farm.warehouse import _number
+    if 'kind' in values:
+        kind = values.get('kind') or 'Material'
+        if kind not in ITEM_KINDS:
+            frappe.throw('Chọn loại hàng.')
+        old = None if item.is_new() else item_kind(item)
+        if old and kind != old and not {old, kind} <= {'Material', 'Tool'} and _item_used(item):
+            frappe.throw('Mã này đã phát sinh chứng từ nên không đổi giữa hàng tồn kho, tài sản cố định và dịch vụ. Tạo mã mới cho loại hàng khác.')
+        item.is_stock_item = int(kind in ('Material', 'Tool'))
+        item.is_fixed_asset = int(kind == 'Asset')
+        if item.meta.has_field('lotus_default_purchase_kind'):
+            item.lotus_default_purchase_kind = kind
+        if kind == 'Asset':
+            category = str(values.get('asset_category') or '').strip()
+            if not category or not frappe.db.exists('Asset Category', category):
+                frappe.throw('Tài sản cố định phải chọn nhóm tài sản (tài khoản nguyên giá, khấu hao).')
+            item.asset_category = category
+            item.auto_create_assets = 0
+        else:
+            item.asset_category = None
+    if 'disabled' in values:
+        item.disabled = cint(values.get('disabled'))
+    for key in ('is_purchase_item', 'is_sales_item'):
+        if key in values:
+            item.set(key, cint(values.get(key)))
+    if 'has_batch_no' in values or 'has_expiry_date' in values:
+        batch = cint(values.get('has_batch_no')) if item.is_stock_item else 0
+        expiry = cint(values.get('has_expiry_date')) if batch else 0
+        if not item.is_new() and batch != cint(item.get('has_batch_no')) and frappe.db.exists('Stock Ledger Entry', {'item_code': item.name}):
+            frappe.throw('Vật tư đã có nhập xuất nên không bật / tắt quản lý theo lô được nữa.')
+        item.has_batch_no = batch
+        item.has_expiry_date = expiry
+        if batch and not item.get('create_new_batch'):
+            item.create_new_batch = 1
+        # ERPNext v16 keeps lots behind a Stock Settings switch: the first item tracked by lot turns it on.
+        if batch and not frappe.db.get_single_value('Stock Settings', 'enable_serial_and_batch_no_for_item'):
+            frappe.db.set_single_value('Stock Settings', 'enable_serial_and_batch_no_for_item', 1)
+        item.shelf_life_in_days = int(_number(values.get('shelf_life_in_days') or 0, 'Hạn dùng (ngày)', allow_zero=True)) if expiry else 0
+    if 'lead_time_days' in values:
+        item.lead_time_days = int(_number(values.get('lead_time_days') or 0, 'Thời gian chờ hàng', allow_zero=True))
+    if 'min_order_qty' in values:
+        item.min_order_qty = _number(values.get('min_order_qty') or 0, 'Số lượng đặt tối thiểu', allow_zero=True)
+    if 'default_supplier' in values or 'default_warehouse' in values:
+        supplier = str(values.get('default_supplier') or '').strip() or None
+        warehouse = str(values.get('default_warehouse') or '').strip() or None
+        if supplier and not frappe.db.exists('Supplier', supplier):
+            frappe.throw('Nhà cung cấp mặc định không tồn tại.')
+        if warehouse and not frappe.db.exists('Warehouse', {'name': warehouse, 'company': company, 'is_group': 0}):
+            frappe.throw('Kho mặc định phải là kho của công ty đã chọn.')
+        if not item.is_stock_item:
+            warehouse = None
+        row = next((r for r in item.get('item_defaults') or [] if r.company == company), None)
+        if not row and (supplier or warehouse):
+            row = item.append('item_defaults', dict(company=company))
+        if row:
+            row.default_supplier = supplier
+            row.default_warehouse = warehouse

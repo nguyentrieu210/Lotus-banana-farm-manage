@@ -3,6 +3,7 @@ import {computed,reactive,ref} from 'vue'
 import {call} from '../../api'
 import ModalForm from '../form/ModalForm.vue'
 import FormGrid from '../form/FormGrid.vue'
+import FormSection from '../form/FormSection.vue'
 import LotusField from '../form/LotusField.vue'
 import {Button as UiButton} from '../ui/button'
 import {unitLabel,stockItemUomOptions} from '../../units'
@@ -15,8 +16,20 @@ const masterAPI=(name,args={},write=false)=>call('lotus_farm.warehouse_masters.'
 const titles={item:'vật tư',group:'nhóm vật tư',warehouse:'kho',uom:'đơn vị tính'}
 const open=ref(false),kind=ref('item'),editing=ref(null),busy=ref(false),error=ref(''),deleting=ref(false),clearDefaults=ref(false)
 const catalog=ref({groups:[],uoms:[],parents:[]}),employees=ref([])
-const blank={name:'',code:'',group:'',uom:'',parent:'',description:'',new_group:'',group_parent:'',minimum_stock:0,pack_uom:'',pack_factor:0,lotus_address:'',lotus_contact_employee:'',lotus_contact_name:'',lotus_contact_phone:'',lotus_receiving_hours:'',lotus_default_lead_days:0,lotus_delivery_note:'',enabled:true,must_be_whole_number:false}
+// Vật tư: loại hàng quyết định cách ghi sổ. VPP, sửa chữa… là "mua dùng ngay": không theo dõi tồn, hóa đơn vào chi phí 642 / 627.
+const itemBlank={kind:'Material',asset_category:'',disabled:false,is_purchase_item:true,is_sales_item:false,has_batch_no:false,has_expiry_date:false,shelf_life_in_days:0,lead_time_days:0,min_order_qty:0,default_supplier:'',default_warehouse:''}
+const itemKinds=[
+ {value:'Material',label:'Vật tư (theo dõi tồn kho)',hint:'Phân bón, thuốc, bao bì… Nhập vào 152, xuất dùng thì tính vào chi phí lô / vườn.'},
+ {value:'Tool',label:'Công cụ dụng cụ (theo dõi tồn kho)',hint:'Cuốc, bình phun, kéo… Nhập vào 153, xuất dùng thì phân bổ chi phí.'},
+ {value:'Asset',label:'Tài sản cố định (khấu hao)',hint:'Máy móc, xe, nhà lưới… Không vào kho: hóa đơn ghi nguyên giá 211 và trích khấu hao theo nhóm tài sản.'},
+ {value:'Service',label:'Mua dùng ngay – vào chi phí (VPP, dịch vụ…)',hint:'Văn phòng phẩm, sửa chữa, vận chuyển, điện nước… Không theo dõi tồn: hóa đơn vào chi phí quản lý 642, hoặc 627 khi ghi cho vườn / lô.'}]
+const blank={name:'',code:'',group:'',uom:'',parent:'',description:'',new_group:'',group_parent:'',minimum_stock:0,pack_uom:'',pack_factor:0,lotus_address:'',lotus_contact_employee:'',lotus_contact_name:'',lotus_contact_phone:'',lotus_receiving_hours:'',lotus_default_lead_days:0,lotus_delivery_note:'',enabled:true,must_be_whole_number:false,
+ ...itemBlank}
 const master=reactive({...blank})
+const stockItem=computed(()=>['Material','Tool'].includes(master.kind))
+const kindOptions=computed(()=>itemKinds.filter(k=>!editing.value?.used||['Material','Tool'].includes(editing.value.kind)===['Material','Tool'].includes(k.value)&&(['Material','Tool'].includes(k.value)||k.value===editing.value.kind)))
+const kindHint=computed(()=>itemKinds.find(k=>k.value===master.kind)?.hint+(editing.value?.used?' Mã đã phát sinh chứng từ nên chỉ đổi được giữa vật tư và công cụ dụng cụ.':''))
+const money=n=>Number(n||0).toLocaleString('vi-VN')+' đ'
 const title=computed(()=>(editing.value?'Sửa ':'Thêm ')+titles[kind.value])
 const readonly=computed(()=>!!editing.value&&!editing.value.can_write)
 const permissions=computed(()=>props.session?.permissions||{})
@@ -39,6 +52,7 @@ async function show(nextKind,name=''){
    const root=catalog.value.groups.find(g=>g.is_group&&!g.parent_item_group)?.name||catalog.value.groups.find(g=>g.is_group)?.name||''
    Object.assign(master,{uom:catalog.value.uoms.find(u=>u.name==='Kg')?.name||catalog.value.uoms[0]?.name||'',parent:nextKind==='warehouse'?catalog.value.parents[0]?.name||'':root,group_parent:root})}
   if(name){const result=await masterAPI('read_master',{company:props.company,kind:nextKind,name});editing.value=result
+   if(nextKind==='item')Object.assign(master,Object.fromEntries(Object.keys(itemBlank).map(k=>[k,typeof itemBlank[k]==='boolean'?!!result[k]:result[k]??itemBlank[k]])))
    Object.assign(master,{name:result.name,code:result.code,group:result.group||'',uom:result.uom||'',parent:result.parent||'',description:result.description||'',minimum_stock:result.minimum_stock||0,pack_uom:result.pack_uom||'',pack_factor:result.pack_factor||0,enabled:result.enabled!==0,must_be_whole_number:!!result.must_be_whole_number,
     ...Object.fromEntries(['lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_receiving_hours','lotus_default_lead_days','lotus_delivery_note'].map(k=>[k,result[k]??blank[k]]))})}
  }catch(e){error.value=e.message}finally{busy.value=false}
@@ -72,8 +86,10 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
     <LotusField v-model="master.name" label="Tên vật tư" :readonly="readonly" maxlength="140" placeholder="VD: Phân NPK 16-16-8" required/>
     <LotusField v-model="master.group" label="Nhóm vật tư" :options="groupOptions" :required="!master.new_group" :disabled="!!master.new_group||readonly"/>
     <LotusField v-if="!editing&&permissions['Item Group']" v-model="master.new_group" label="Hoặc tạo nhóm mới" maxlength="140" placeholder="Để trống nếu dùng nhóm đã có"/>
-    <LotusField v-model="master.uom" label="Đơn vị tồn kho gốc" :options="uomOptions" :searchable="false" :readonly="readonly" required/>
-    <LotusField v-model="master.minimum_stock" :label="'Tồn tối thiểu chung toàn bộ kho ('+unitLabel(master.uom)+')'" type="number" min="0" :readonly="readonly" required hint="Áp dụng trên tổng tồn các kho của công ty, không chọn kho riêng."/>
+    <LotusField v-model="master.kind" label="Loại hàng" :options="kindOptions" :searchable="false" :empty-option="null" :readonly="readonly" required :hint="kindHint" wide/>
+    <LotusField v-if="master.kind==='Asset'" v-model="master.asset_category" label="Nhóm tài sản cố định" :options="(catalog.asset_categories||[]).map(c=>({value:c,label:c}))" :readonly="readonly" required hint="Nhóm tài sản quyết định tài khoản nguyên giá, hao mòn và chi phí khấu hao."/>
+    <LotusField v-model="master.uom" :label="stockItem?'Đơn vị tồn kho gốc':'Đơn vị tính'" :options="uomOptions" :searchable="false" :readonly="readonly" required/>
+    <LotusField v-if="stockItem" v-model="master.minimum_stock" :label="'Tồn tối thiểu chung toàn bộ kho ('+unitLabel(master.uom)+')'" type="number" min="0" :readonly="readonly" required hint="Áp dụng trên tổng tồn các kho của công ty, không chọn kho riêng."/>
     <LotusField v-model="master.pack_uom" label="Đơn vị đóng gói / quy đổi" :options="packOptions" :searchable="false" empty-option="Không sử dụng đơn vị phụ" :readonly="readonly"/>
     <LotusField v-if="master.pack_uom" v-model="master.pack_factor" :label="'1 '+unitLabel(master.pack_uom)+' = bao nhiêu '+unitLabel(master.uom)+'?'" type="number" min="0.000001" :readonly="readonly" required :hint="packHint"/>
     <LotusField v-model="master.description" label="Ghi chú (không bắt buộc)" type="textarea" wide maxlength="2000" :readonly="readonly" placeholder="Quy cách đóng gói, thông tin nhận biết…"/>
@@ -100,6 +116,34 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
     <LotusField v-if="editing" v-model="master.enabled" type="checkbox" label="Đang sử dụng" :readonly="readonly" hint="Bỏ chọn để ngừng dùng; không ngừng được khi còn là đơn vị gốc của vật tư đang dùng."/>
    </template>
   </FormGrid>
+  <template v-if="kind==='item'">
+   <FormSection title="Trạng thái và phạm vi dùng">
+    <FormGrid :columns="3">
+     <LotusField :model-value="!master.disabled" type="checkbox" label="Đang sử dụng" :readonly="readonly" hint="Bỏ chọn để ngừng dùng: mã không hiện khi lập chứng từ mới, lịch sử vẫn giữ." @update:model-value="master.disabled=!$event"/>
+     <LotusField v-model="master.is_purchase_item" type="checkbox" label="Hàng mua" :readonly="readonly" hint="Hiện trong đề nghị mua, đơn mua, hóa đơn mua."/>
+     <LotusField v-model="master.is_sales_item" type="checkbox" label="Hàng bán" :readonly="readonly" hint="Hiện trong đơn bán, hóa đơn bán (phụ phẩm, vật tư bán lại…)."/>
+    </FormGrid>
+   </FormSection>
+   <FormSection v-if="stockItem" title="Lô và hạn dùng">
+    <FormGrid :columns="3">
+     <LotusField v-model="master.has_batch_no" type="checkbox" label="Quản lý theo lô" :readonly="readonly||editing?.has_ledger" :hint="editing?.has_ledger?'Đã có nhập xuất nên không đổi được.':'Thuốc, phân có số lô của nhà sản xuất.'"/>
+     <LotusField v-if="master.has_batch_no" v-model="master.has_expiry_date" type="checkbox" label="Có hạn sử dụng" :readonly="readonly" hint="Cảnh báo lô sắp hết hạn, xuất lô gần hạn trước."/>
+     <LotusField v-if="master.has_batch_no&&master.has_expiry_date" v-model="master.shelf_life_in_days" label="Hạn dùng kể từ ngày sản xuất (ngày)" type="number" min="0" step="1" :readonly="readonly"/>
+    </FormGrid>
+   </FormSection>
+   <FormSection v-if="master.is_purchase_item" title="Mua hàng">
+    <FormGrid :columns="2">
+     <LotusField v-model="master.default_supplier" label="Nhà cung cấp mặc định" :options="(catalog.suppliers||[]).map(s=>({value:s.name,label:s.supplier_name||s.name}))" empty-option="Chưa chọn" :readonly="readonly"/>
+     <LotusField v-if="stockItem" v-model="master.default_warehouse" label="Kho nhận mặc định" :options="(catalog.warehouses||[]).map(w=>({value:w.name,label:w.warehouse_name}))" empty-option="Chưa chọn" :searchable="false" :readonly="readonly"/>
+     <LotusField v-model="master.lead_time_days" label="Thời gian chờ hàng (ngày)" type="number" min="0" step="1" :readonly="readonly"/>
+     <LotusField v-model="master.min_order_qty" :label="'Số lượng đặt tối thiểu ('+unitLabel(master.uom)+')'" type="number" min="0" :readonly="readonly"/>
+     <template v-if="editing">
+      <LotusField :model-value="editing.last_purchase_rate?money(editing.last_purchase_rate):'Chưa mua'" label="Giá mua gần nhất" readonly/>
+      <LotusField v-if="stockItem" :model-value="editing.valuation_rate?money(editing.valuation_rate):'—'" label="Giá vốn hiện tại" readonly/>
+     </template>
+    </FormGrid>
+   </FormSection>
+  </template>
   <template #secondary><UiButton v-if="editing?.can_delete&&!deleting" type="button" variant="destructive" :disabled="busy" @click="deleting=true">Xóa danh mục</UiButton></template>
  </ModalForm>
 </template>

@@ -4,6 +4,7 @@ from frappe.utils import cint, flt
 from lotus_farm.procurement import access, parse
 from lotus_farm.procurement_rules import digest
 from lotus_farm.controls import lock
+from lotus_farm.warehouse_masters import item_profile, apply_item_profile
 
 TYPES = {'suppliers': 'Supplier', 'items': 'Item'}
 
@@ -92,7 +93,8 @@ def detail(company, kind, name):
         return dict(base, item_code=d.item_code, item_name=d.item_name, group=d.item_group, uom=d.stock_uom,
                     description=d.description, is_stock_item=d.is_stock_item, is_fixed_asset=d.is_fixed_asset,
                     kind=d.get('lotus_default_purchase_kind') or ('Asset' if d.is_fixed_asset else 'Material' if d.is_stock_item else 'Service'),
-                    asset_category=d.asset_category, conversions=[dict(uom=r.uom, conversion_factor=r.conversion_factor) for r in d.uoms])
+                    asset_category=d.asset_category, conversions=[dict(uom=r.uom, conversion_factor=r.conversion_factor) for r in d.uoms],
+                    **{k: v for k, v in item_profile(d, company).items() if k not in ('kind', 'asset_category', 'disabled')})
     a = linked(d, 'supplier_primary_address', 'Address')
     c = linked(d, 'supplier_primary_contact', 'Contact')
     result = dict(base, supplier_id=d.name, supplier_name=d.supplier_name, type=d.supplier_type,
@@ -261,6 +263,8 @@ def save(company, kind, values, client_key, name=None, modified=None):
         for r in conversions:
             frappe.get_doc('UOM', r.get('uom')).check_permission('read')
             d.append('uoms', dict(uom=r['uom'], conversion_factor=flt(r['conversion_factor'])))
+        # Hàng mua / bán, lô & hạn dùng, NCC và kho mặc định: the same rules as the Kho item form.
+        apply_item_profile(d, company, {k: x for k, x in v.items() if k not in ('kind', 'asset_category', 'disabled')})
     if 'disabled' in v:
         d.disabled=cint(v['disabled'])
     d.save()
