@@ -139,8 +139,8 @@
     "file": "assets/ProcurementWorkspace-B5-tLolK.css",
     "src": "_ProcurementWorkspace-B5-tLolK.css"
   },
-  "_ProcurementWorkspace-DzmbRkaW.js": {
-    "file": "assets/ProcurementWorkspace-DzmbRkaW.js",
+  "_ProcurementWorkspace-CyDq5umE.js": {
+    "file": "assets/ProcurementWorkspace-CyDq5umE.js",
     "name": "ProcurementWorkspace",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
@@ -450,7 +450,7 @@
     ]
   },
   "buying.html": {
-    "file": "assets/buying-1edu41yE.js",
+    "file": "assets/buying-gd-tTiOw.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
@@ -466,7 +466,7 @@
       "_LotusMobileAction-BUtwSBKS.js",
       "_SignerPicker-C6v2xPta.js",
       "_LotusSignatureTimeline-D-TceC_H.js",
-      "_ProcurementWorkspace-DzmbRkaW.js"
+      "_ProcurementWorkspace-CyDq5umE.js"
     ],
     "css": [
       "assets/buying-Df07eCaK.css"
@@ -493,7 +493,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-m0xZNofF.js",
+    "file": "assets/index-Bd3T13GB.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -515,7 +515,7 @@
       "src/components/OpsList.vue",
       "src/components/OneDriveProcessWorkspace.vue",
       "_DataTable-cZDMLd79.js",
-      "_ProcurementWorkspace-DzmbRkaW.js",
+      "_ProcurementWorkspace-CyDq5umE.js",
       "src/UserAdminApp.vue",
       "src/HrApp.vue",
       "src/TimekeepingApp.vue",
@@ -553,7 +553,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-Yuow_jpW.js",
+    "file": "assets/BlockForecastApp-BiuyXbd9.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -591,7 +591,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-Ciue0vJA.js",
+    "file": "assets/FarmLandApp-rdpy8zq_.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -615,7 +615,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-CGKq2BcJ.js",
+    "file": "assets/FieldReportApp-DiI6jYeO.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -640,7 +640,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-C2HDRZ8Y.js",
+    "file": "assets/FinanceApp-aJzjTjxd.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -667,7 +667,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-uMBYUvL9.js",
+    "file": "assets/HrApp-ZdAh23K0.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -696,7 +696,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-DkAVFdhv.js",
+    "file": "assets/StockApp-Ca7b_GPk.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -721,7 +721,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-B7ZhgL5-.js",
+    "file": "assets/TimekeepingApp-BDYG38v-.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -762,7 +762,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-BdgDlyxa.js",
+    "file": "assets/OneDriveProcessWorkspace-Cy_hC4Zf.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -783,7 +783,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-BIB4g_AG.js",
+    "file": "assets/OpsList-DGRtbeuV.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,

@@ -372,6 +372,25 @@ def delete_master(company,kind,name,modified,clear_defaults=False):
 
 
 ITEM_KINDS = ('Material', 'Tool', 'Asset', 'Service')
+ITEM_CODE_PREFIX = {'Material': 'VT', 'Tool': 'CC', 'Asset': 'TS', 'Service': 'DV'}
+
+
+def item_code(value, kind):
+    """Mã vật tư: the one typed, else the next VT- / CC- / TS- / DV-00001 for the kind (Frappe series counter, skips codes taken)."""
+    code = str(value or '').strip()
+    if code:
+        if len(code) > 140:
+            frappe.throw('Mã vật tư tối đa 140 ký tự.')
+        if frappe.db.exists('Item', code):
+            frappe.throw('Mã vật tư {0} đã có. Để trống ô mã để hệ thống tự sinh mã mới.'.format(code))
+        return code
+    from frappe.model.naming import make_autoname
+    prefix = ITEM_CODE_PREFIX.get(kind or 'Material', 'VT')
+    for _ in range(1000):
+        code = make_autoname(prefix + '-.#####', 'Item')
+        if not frappe.db.exists('Item', code):
+            return code
+    frappe.throw('Không sinh được mã vật tư mới. Nhập mã thủ công.')
 
 
 def item_kind(item):

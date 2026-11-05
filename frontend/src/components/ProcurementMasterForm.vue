@@ -39,7 +39,7 @@ defineExpose({isSaving:()=>saving.value})
  <MobileSupplierForm v-if="kind==='suppliers'" v-model="data" :mobile="mobile" extended :options="options" :saving="saving||data.can_write===false" @submit="save"/>
  <form v-else class="lotus-inline-form" @submit.prevent="save"><fieldset :disabled="saving||data.can_write===false">
   <FormGrid :columns="mobile?1:3">
-   <LotusField v-model="data.item_code" :mobile="mobile" label="Mã hàng" :disabled="!!name" required/>
+   <LotusField v-model="data.item_code" :mobile="mobile" label="Mã hàng" :disabled="!!name" :placeholder="name?'':'Để trống: tự sinh '+({Material:'VT',Tool:'CC',Asset:'TS',Service:'DV'}[data.kind]||'VT')+'-00001…'"/>
    <LotusField v-model="data.item_name" :mobile="mobile" label="Tên hàng" required/>
    <LotusField v-model="data.kind" :mobile="mobile" label="Loại hàng" :options="purchaseKinds" :searchable="false" :disabled="!!data.used" required :hint="{Material:'Vào kho 152, xuất dùng tính chi phí lô / vườn.',Tool:'Vào kho 153, xuất dùng phân bổ chi phí.',Asset:'Không vào kho: nguyên giá 211, trích khấu hao.',Service:'VPP, sửa chữa, vận chuyển…: không theo dõi tồn, hóa đơn vào chi phí 642 (627 khi ghi cho vườn).'}[data.kind]"/>
    <LotusField v-model="data.group" :mobile="mobile" label="Nhóm hàng" :options="opts(options.item_groups)" required/>

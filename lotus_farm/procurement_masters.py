@@ -4,7 +4,7 @@ from frappe.utils import cint, flt
 from lotus_farm.procurement import access, parse
 from lotus_farm.procurement_rules import digest
 from lotus_farm.controls import lock
-from lotus_farm.warehouse_masters import item_profile, apply_item_profile, item_kind, change_stock_uom, set_conversions
+from lotus_farm.warehouse_masters import item_profile, apply_item_profile, item_kind, change_stock_uom, set_conversions, item_code
 
 TYPES = {'suppliers': 'Supplier', 'items': 'Item'}
 
@@ -233,12 +233,10 @@ def save(company, kind, values, client_key, name=None, modified=None):
     else:
         base_changed = False
         if not name:
-            code=text(v.get('item_code'))
-            if not code:
-                frappe.throw('Nhập mã hàng.')
             category=v.get('kind')
             if category not in ('Material', 'Tool', 'Asset', 'Service'):
                 frappe.throw('Chọn loại mua.')
+            code=item_code(v.get('item_code'), category)
             d.item_code=code; d.is_stock_item=int(category in ('Material','Tool')); d.is_fixed_asset=int(category=='Asset')
             d.lotus_default_purchase_kind=category
             if d.is_fixed_asset: d.auto_create_assets=0

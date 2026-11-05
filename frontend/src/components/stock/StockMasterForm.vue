@@ -28,6 +28,7 @@ const blank={name:'',code:'',group:'',uom:'',parent:'',description:'',new_group:
  ...itemBlank}
 const master=reactive({...blank})
 const stockItem=computed(()=>['Material','Tool'].includes(master.kind))
+const codePrefix=computed(()=>({Material:'VT',Tool:'CC',Asset:'TS',Service:'DV'})[master.kind]||'VT')
 const kindOptions=computed(()=>itemKinds.filter(k=>!editing.value?.used||['Material','Tool'].includes(editing.value.kind)===['Material','Tool'].includes(k.value)&&(['Material','Tool'].includes(k.value)||k.value===editing.value.kind)))
 const kindHint=computed(()=>itemKinds.find(k=>k.value===master.kind)?.hint+(editing.value?.used?' Mã đã phát sinh chứng từ nên chỉ đổi được giữa vật tư và công cụ dụng cụ.':''))
 const money=n=>Number(n||0).toLocaleString('vi-VN')+' đ'
@@ -86,7 +87,7 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
   </div>
   <FormGrid>
    <template v-if="kind==='item'">
-    <LotusField v-model="master.code" label="Mã vật tư" :readonly="!!editing||readonly" maxlength="140" placeholder="VD: PB-NPK-001" required/>
+    <LotusField v-model="master.code" label="Mã vật tư" :readonly="!!editing||readonly" maxlength="140" :placeholder="editing?'':'Để trống: tự sinh '+codePrefix+'-00001…'" :hint="editing?'':'Mã tự sinh theo loại hàng khi lưu; muốn mã riêng thì gõ vào.'"/>
     <LotusField v-model="master.name" label="Tên vật tư" :readonly="readonly" maxlength="140" placeholder="VD: Phân NPK 16-16-8" required/>
     <LotusField v-model="master.group" label="Nhóm vật tư" :options="groupOptions" :required="!master.new_group" :disabled="!!master.new_group||readonly"/>
     <LotusField v-if="!editing&&permissions['Item Group']" v-model="master.new_group" label="Hoặc tạo nhóm mới" maxlength="140" placeholder="Để trống nếu dùng nhóm đã có"/>

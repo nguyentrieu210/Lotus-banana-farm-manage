@@ -99,6 +99,17 @@ try:
     ok('Hàng mua: đổi đơn vị gốc + loại hàng sau khi tạo', item.stock_uom == tonne and m.item_kind(item) == 'Tool' and {r.uom: r.conversion_factor for r in item.uoms if r.uom != tonne} == {'Bao': 0.05},
        (item.stock_uom, m.item_kind(item), [(r.uom, r.conversion_factor) for r in item.uoms]))
 
+    # Mã vật tư tự sinh theo loại hàng khi để trống
+    g1 = w.create_master(company, 'item', dict(base(''), name='Tự sinh VT ' + tag))['name']
+    g2 = w.create_master(company, 'item', dict(base(''), name='Tự sinh VT2 ' + tag))['name']
+    g3 = w.create_master(company, 'item', dict(base(''), name='Tự sinh DV ' + tag, kind='Service'))['name']
+    ok('mã tự sinh VT-xxxxx, tăng dần', g1.startswith('VT-') and g2.startswith('VT-') and int(g2[3:]) > int(g1[3:]), (g1, g2))
+    ok('mua dùng ngay → DV-xxxxx', g3.startswith('DV-'), g3)
+    ok('tên vật tư giữ như nhập', frappe.db.get_value('Item', g1, 'item_name') == 'Tự sinh VT ' + tag)
+    blocked('gõ trùng mã có sẵn bị chặn', lambda: w.create_master(company, 'item', base(g1)), 'đã có')
+    g4 = pm.save(company, 'items', dict(item_code='', item_name='Tự sinh CC ' + tag, kind='Tool', uom='Kg', group=group, conversions=[]), uuid.uuid4().hex)['name']
+    ok('Hàng mua: để trống mã → CC-xxxxx', g4.startswith('CC-'), g4)
+
     lst = {r.name: r for r in m.master_lists(company)['items']}
     ok('danh sách có loại hàng', lst[v].kind == 'Service' and lst[b].kind == 'Material', (lst[v].kind, lst[b].kind))
 except Exception:

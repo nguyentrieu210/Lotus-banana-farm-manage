@@ -124,7 +124,8 @@ def create_master(company, kind, values):
         uom.check_permission('read')
         if not uom.enabled:
             frappe.throw('Đơn vị tính đã bị tắt.')
-        doc = frappe.get_doc(dict(doctype='Item', item_code=_text(values.get('code'), 'Mã vật tư'),
+        from lotus_farm.warehouse_masters import item_code
+        doc = frappe.get_doc(dict(doctype='Item', item_code=item_code(values.get('code'), values.get('kind') or 'Material'),
                                   item_name=_text(values.get('name'), 'Tên vật tư'), item_group=group,
                                   stock_uom=uom.name, is_stock_item=1, include_item_in_manufacturing=0,
                                   description=str(values.get('description') or '')[:2000]))
@@ -136,7 +137,7 @@ def create_master(company, kind, values):
             configure_pack(doc,values)
         apply_item_profile(doc,company,dict(values,kind=values.get('kind') or 'Material'))
         doc.insert()
-    return dict(name=doc.name, kind=kind)
+    return dict(name=doc.name, kind=kind, code=doc.name)
 
 
 def _stock_doc(doctype, name):
