@@ -251,9 +251,22 @@ def _doc(company,kind,name):
     types={'item':'Item','group':'Item Group','warehouse':'Warehouse','uom':'UOM'}
     if kind not in types:frappe.throw('Loại danh mục không hợp lệ.')
     doc=frappe.get_doc(types[kind],name);doc.check_permission('read')
-    if kind=='warehouse' and (doc.company!=company or doc.is_group):frappe.throw('Chỉ sửa kho thuộc công ty đã chọn.')
-    if kind=='group' and doc.is_group:frappe.throw('Nhóm cha được quản lý bằng cấu hình hệ thống.')
+    if kind=='warehouse' and doc.company!=company:frappe.throw('Chỉ sửa kho thuộc công ty đã chọn.')
+    if kind=='warehouse' and doc.is_group and not doc.parent_warehouse:frappe.throw('Kho gốc của công ty do hệ thống quản lý.')
+    if kind=='group' and not doc.parent_item_group:frappe.throw('Nhóm gốc do hệ thống quản lý.')
     return doc
+
+
+def _move_node(doc,parent_field,parent,label):
+    """Chuyển nhóm / kho sang nhóm cha khác (cây NestedSet của ERPNext). Không cho đặt vào chính nó hoặc nhánh con của nó."""
+    parent=str(parent or '').strip()
+    if not parent or parent==doc.get(parent_field):return
+    target=frappe.get_doc(doc.doctype,parent);target.check_permission('read')
+    if not target.is_group:frappe.throw(label+' cha phải là nhóm (có thể chứa mục con).')
+    if doc.doctype=='Warehouse' and target.company!=doc.company:frappe.throw('Kho cha phải thuộc cùng công ty.')
+    if target.name==doc.name or (doc.is_group and target.lft>doc.lft and target.rgt<doc.rgt):
+        frappe.throw('Không chuyển '+label.lower()+' vào chính nó hoặc nhánh con của nó.')
+    doc.set(parent_field,target.name)
 
 
 @frappe.whitelist()
@@ -263,12 +276,33 @@ def read_master(company,kind,name):
                 enabled=doc.get('enabled'),must_be_whole_number=doc.get('must_be_whole_number'),disabled=doc.get('disabled'),
                 group=doc.get('item_group'),uom=doc.get('stock_uom'),description=doc.get('description'),
                 parent=doc.get('parent_warehouse') or doc.get('parent_item_group'),
-                **(warehouse_details(doc) if kind=='warehouse' else {}),
+                **(warehouse_details(doc) if kind=='warehouse' else {}),is_group=doc.get('is_group') or 0,
+                child_count=frappe.db.count(doc.doctype,{'parent_item_group' if kind=='group' else 'parent_warehouse':doc.name}) if kind in ('group','warehouse') else 0,
+                item_count=frappe.db.count('Item',{'item_group':doc.name}) if kind=='group' else 0,
                 **(dict(minimum_stock=doc.get('lotus_minimum_stock_global') or 0,**item_pack(doc),conversions=item_conversions(doc),**{k:x for k,x in item_profile(doc,company).items() if k!='disabled'}) if kind=='item' else {}),
                 default_item_count=frappe.db.count('Item Default',{'default_warehouse':doc.name}) if kind=='warehouse' else 0,
                 stock_default=frappe.db.get_single_value('Stock Settings','default_warehouse')==doc.name if kind=='warehouse' else False,
                 ledger_count=frappe.db.count('Stock Ledger Entry',{'warehouse':doc.name}) if kind=='warehouse' else 0,
                 can_write=doc.has_permission('write'),can_delete=doc.has_permission('delete'))
+
+
+def group_tree():
+    """Every item group, parents first (lft order), with the number of items filed directly in it."""
+    counts={r.item_group:r.n for r in frappe.db.sql('select item_group,count(*) n from tabItem group by item_group',as_dict=True)}
+    active={r.item_group:r.n for r in frappe.db.sql('select item_group,count(*) n from tabItem where disabled=0 group by item_group',as_dict=True)}
+    return [dict(name=g.name,parent=g.parent_item_group or '',is_group=g.is_group,item_count=counts.get(g.name,0),active_count=active.get(g.name,0))
+            for g in frappe.get_list('Item Group',fields=['name','parent_item_group','is_group','lft'],order_by='lft',limit_page_length=0)]
+
+
+def warehouse_tree(company):
+    """The company's warehouses as a tree (groups and stock locations, disabled ones too) with what each one holds."""
+    stock={r.warehouse:r for r in frappe.db.sql(
+        'select b.warehouse,count(*) items,sum(b.stock_value) value from tabBin b join tabWarehouse w on w.name=b.warehouse '
+        'where w.company=%s and b.actual_qty>0 group by b.warehouse',company,as_dict=True)}
+    rows=frappe.get_list('Warehouse',filters={'company':company},fields=['name','warehouse_name','parent_warehouse','is_group','disabled','lft','lotus_contact_name','lotus_address'],order_by='lft',limit_page_length=0)
+    return [dict(name=w.name,label=w.warehouse_name or w.name,parent=w.parent_warehouse or '',is_group=w.is_group,disabled=w.disabled,
+                 contact=w.lotus_contact_name or '',address=w.lotus_address or '',item_count=int(stock[w.name]['items']) if w.name in stock else 0,
+                 stock_value=float(stock[w.name]['value'] or 0) if w.name in stock else 0) for w in rows]
 
 
 @frappe.whitelist()
@@ -287,7 +321,7 @@ def master_lists(company):
         row.conversions=[c for c in allconv.get(row.name,[]) if c['uom']!=row.stock_uom]
         row.minimum_stock=row.pop('lotus_minimum_stock_global') or 0
         row.kind=item_kind(row)
-    return dict(items=items,uoms=frappe.get_list('UOM',fields=['name','enabled','must_be_whole_number'],order_by='name',limit_page_length=0),
+    return dict(items=items,group_tree=group_tree(),warehouse_tree=warehouse_tree(company),uoms=frappe.get_list('UOM',fields=['name','enabled','must_be_whole_number'],order_by='name',limit_page_length=0),
                 groups=frappe.get_list('Item Group',filters={'is_group':0},fields=['name','parent_item_group'],limit_page_length=0),
                 warehouses=[dict(row, **warehouse_contact(row)) for row in frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},
                     fields=['name','company','warehouse_name','lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_default_lead_days'],limit_page_length=0)])
@@ -322,7 +356,8 @@ def save_master(company,kind,name,modified,values):
         if rename_needed and frappe.db.exists('Warehouse',expected):
             frappe.throw('Mã kho từ tên này đã tồn tại.')
         doc.warehouse_name=label
-        update_warehouse_details(doc,values)
+        if not doc.is_group:update_warehouse_details(doc,values)
+        if 'parent' in values:_move_node(doc,'parent_warehouse',values.get('parent'),'Kho')
         doc.save()
         if rename_needed:
             frappe.rename_doc('Warehouse',doc.name,expected,merge=False,force=True)
@@ -336,8 +371,13 @@ def save_master(company,kind,name,modified,values):
         doc.save()
     else:
         new_name=_text(values.get('name'),'Tên nhóm')
+        if 'parent' in values:
+            _move_node(doc,'parent_item_group',values.get('parent'),'Nhóm')
+            doc.save()
         if new_name!=doc.name:
+            if frappe.db.exists('Item Group',new_name):frappe.throw('Đã có nhóm tên '+new_name+'.')
             new_name=frappe.rename_doc('Item Group',doc.name,new_name,merge=False)
+            frappe.db.set_value('Item Group',new_name,'item_group_name',new_name)
             return dict(name=new_name)
     return dict(name=doc.name)
 
@@ -364,6 +404,8 @@ def delete_master(company,kind,name,modified,clear_defaults=False):
                 for row in item.item_defaults:
                     if row.default_warehouse==name:row.default_warehouse=None
                 item.save()
+    if kind in ('group','warehouse') and doc.get('is_group') and frappe.db.exists(doc.doctype,{'parent_item_group' if kind=='group' else 'parent_warehouse':doc.name}):
+        frappe.throw('Nhóm còn mục con. Chuyển hoặc xóa các mục con trước.')
     try:frappe.delete_doc(doc.doctype,doc.name)
     except frappe.LinkExistsError as exc:
         from frappe.utils import strip_html

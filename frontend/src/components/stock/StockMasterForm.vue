@@ -24,7 +24,7 @@ const itemKinds=[
  {value:'Tool',label:'Công cụ dụng cụ (theo dõi tồn kho)',hint:'Cuốc, bình phun, kéo… Nhập vào 153, xuất dùng thì phân bổ chi phí.'},
  {value:'Asset',label:'Tài sản cố định (khấu hao)',hint:'Máy móc, xe, nhà lưới… Không vào kho: hóa đơn ghi nguyên giá 211 và trích khấu hao theo nhóm tài sản.'},
  {value:'Service',label:'Mua dùng ngay – vào chi phí (VPP, dịch vụ…)',hint:'Văn phòng phẩm, sửa chữa, vận chuyển, điện nước… Không theo dõi tồn: hóa đơn vào chi phí quản lý 642, hoặc 627 khi ghi cho vườn / lô.'}]
-const blank={name:'',code:'',group:'',uom:'',parent:'',description:'',new_group:'',group_parent:'',minimum_stock:0,pack_uom:'',pack_factor:0,lotus_address:'',lotus_contact_employee:'',lotus_contact_name:'',lotus_contact_phone:'',lotus_receiving_hours:'',lotus_default_lead_days:0,lotus_delivery_note:'',enabled:true,must_be_whole_number:false,
+const blank={name:'',code:'',group:'',uom:'',parent:'',description:'',new_group:'',group_parent:'',minimum_stock:0,pack_uom:'',pack_factor:0,lotus_address:'',lotus_contact_employee:'',lotus_contact_name:'',lotus_contact_phone:'',lotus_receiving_hours:'',lotus_default_lead_days:0,lotus_delivery_note:'',enabled:true,must_be_whole_number:false,is_group:false,
  ...itemBlank}
 const master=reactive({...blank})
 const stockItem=computed(()=>['Material','Tool'].includes(master.kind))
@@ -40,24 +40,26 @@ const uomOptions=computed(()=>stockItemUomOptions(catalog.value.uoms,[master.uom
 const conversionColumns=computed(()=>[{field:'uom',label:'Đơn vị quy đổi',required:true,options:packOptions.value,searchable:true,disabled:r=>usedFactor(r),width:'minmax(160px,1fr)'},{field:'conversion_factor',label:'1 đơn vị = bao nhiêu '+unitLabel(master.uom),type:'number',required:true,props:{min:0.000001},disabled:r=>usedFactor(r),width:'minmax(160px,1fr)',hint:r=>r.uom&&Number(r.conversion_factor)>0?'1 '+unitLabel(r.uom)+' = '+fmt(r.conversion_factor)+' '+unitLabel(master.uom):''}])
 const usedFactor=row=>editing.value?.has_ledger&&(editing.value.conversions||[]).some(c=>c.uom===row.uom)
 const packOptions=computed(()=>uomOptions.value.filter(u=>u.value!==master.uom))
-const groupOptions=computed(()=>catalog.value.groups.map(g=>({value:g.name,label:g.name})))
-const parentGroupOptions=computed(()=>catalog.value.groups.filter(g=>g.is_group).map(g=>({value:g.name,label:g.name})))
-const parentWarehouseOptions=computed(()=>catalog.value.parents.map(w=>({value:w.name,label:w.warehouse_name})))
+// Nhóm là cây: show the path (Vật tư nông nghiệp › Phân bón); items go in leaf groups, children in parent groups.
+const groupPath=name=>{const byName=new Map(catalog.value.groups.map(g=>[g.name,g]));const parts=[];let cur=byName.get(name);while(cur&&cur.parent_item_group){parts.unshift(cur.name);cur=byName.get(cur.parent_item_group)}return parts.join(' › ')||'Tất cả nhóm hàng (cấp cao nhất)'}
+const groupOptions=computed(()=>catalog.value.groups.filter(g=>!g.is_group).map(g=>({value:g.name,label:groupPath(g.name)})).sort((a,b)=>a.label.localeCompare(b.label,'vi')))
+const parentGroupOptions=computed(()=>catalog.value.groups.filter(g=>g.is_group&&g.name!==editing.value?.id).map(g=>({value:g.name,label:groupPath(g.name)})).sort((a,b)=>a.label.localeCompare(b.label,'vi')))
+const parentWarehouseOptions=computed(()=>catalog.value.parents.filter(w=>w.name!==editing.value?.id).map(w=>({value:w.name,label:w.name.startsWith('All Warehouses')?'Tất cả kho (cấp cao nhất)':w.warehouse_name})))
 const employeeOptions=computed(()=>employees.value.map(employee=>({value:employee.value,label:employee.label})))
 const warehouseCode=computed(()=>{const n=String(master.name||'').trim(),abbr=props.session?.companies?.find(c=>c.name===props.company)?.abbr;return n&&abbr?(n.endsWith(' - '+abbr)?n:n+' - '+abbr):n})
 const deleteBlocked=computed(()=>kind.value==='warehouse'&&(editing.value?.default_item_count||editing.value?.stock_default)&&!clearDefaults.value)
 
-async function show(nextKind,name=''){
+async function show(nextKind,name='',defaults={}){
  kind.value=nextKind;editing.value=null;deleting.value=false;clearDefaults.value=false;error.value='';Object.assign(master,blank)
  busy.value=true;open.value=true
  try{
   if(nextKind==='warehouse')employees.value=await masterAPI('employee_choices',{company:props.company})
   if(nextKind!=='uom'){catalog.value=await api('catalogue',{company:props.company})
    const root=catalog.value.groups.find(g=>g.is_group&&!g.parent_item_group)?.name||catalog.value.groups.find(g=>g.is_group)?.name||''
-   Object.assign(master,{uom:catalog.value.uoms.find(u=>u.name==='Kg')?.name||catalog.value.uoms[0]?.name||'',parent:nextKind==='warehouse'?catalog.value.parents[0]?.name||'':root,group_parent:root})}
+   Object.assign(master,{uom:catalog.value.uoms.find(u=>u.name==='Kg')?.name||catalog.value.uoms[0]?.name||'',parent:defaults.parent||(nextKind==='warehouse'?catalog.value.parents[0]?.name||'':root),group_parent:root})}
   if(name){const result=await masterAPI('read_master',{company:props.company,kind:nextKind,name});editing.value=result
    if(nextKind==='item')Object.assign(master,Object.fromEntries(Object.keys(itemBlank).map(k=>[k,typeof itemBlank[k]==='boolean'?!!result[k]:result[k]??itemBlank[k]])),{conversions:(result.conversions||[]).map(r=>({...r}))})
-   Object.assign(master,{name:result.name,code:result.code,group:result.group||'',uom:result.uom||'',parent:result.parent||'',description:result.description||'',minimum_stock:result.minimum_stock||0,pack_uom:result.pack_uom||'',pack_factor:result.pack_factor||0,enabled:result.enabled!==0,must_be_whole_number:!!result.must_be_whole_number,
+   Object.assign(master,{is_group:!!result.is_group,name:result.name,code:result.code,group:result.group||'',uom:result.uom||'',parent:result.parent||'',description:result.description||'',minimum_stock:result.minimum_stock||0,pack_uom:result.pack_uom||'',pack_factor:result.pack_factor||0,enabled:result.enabled!==0,must_be_whole_number:!!result.must_be_whole_number,
     ...Object.fromEntries(['lotus_address','lotus_contact_employee','lotus_contact_name','lotus_contact_phone','lotus_receiving_hours','lotus_default_lead_days','lotus_delivery_note'].map(k=>[k,result[k]??blank[k]]))})}
  }catch(e){error.value=e.message}finally{busy.value=false}
 }
@@ -99,18 +101,24 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
    </template>
    <template v-else-if="kind==='group'">
     <LotusField v-model="master.name" label="Tên nhóm vật tư" maxlength="140" placeholder="VD: Phân bón" :readonly="readonly" required/>
-    <LotusField v-if="!editing&&parentGroupOptions.length>1" v-model="master.parent" label="Nhóm cha" :options="parentGroupOptions" :searchable="false" :empty-option="null" required/>
+    <LotusField v-model="master.parent" label="Thuộc nhóm cha" :options="parentGroupOptions" :empty-option="null" :readonly="readonly" required :hint="editing?'Đổi để chuyển cả nhóm (và các nhóm con) sang nhánh khác.':''"/>
+    <LotusField v-if="!editing" v-model="master.is_group" type="checkbox" label="Là nhóm cha" hint="Nhóm cha chỉ chứa các nhóm con (VD: Vật tư nông nghiệp › Phân bón); vật tư được xếp vào nhóm con."/>
+    <p v-else-if="editing.is_group" class="lotus-form-note">Nhóm cha: {{editing.child_count}} nhóm con.</p>
+    <p v-else class="lotus-form-note">{{editing.item_count}} mã vật tư trong nhóm này.</p>
    </template>
    <template v-else-if="kind==='warehouse'">
     <LotusField v-model="master.name" label="Tên kho" maxlength="140" placeholder="VD: Kho phân bón farm" :readonly="readonly" required/>
     <LotusField :model-value="warehouseCode" label="Mã kho (tự sinh theo tên)" readonly hint="Mã theo tên kho và viết tắt công ty; khi đổi tên kho, ERPNext cập nhật liên kết liên quan."/>
-    <LotusField v-if="!editing&&parentWarehouseOptions.length>1" v-model="master.parent" label="Thuộc nhóm kho" :options="parentWarehouseOptions" :searchable="false" required/>
+    <LotusField v-model="master.parent" label="Thuộc nhóm kho" :options="parentWarehouseOptions" :searchable="false" :readonly="readonly" required/>
+    <LotusField v-if="!editing" v-model="master.is_group" type="checkbox" label="Là nhóm kho" hint="Nhóm kho chỉ để gom các kho (VD: Kho farm 222 › Kho phân, Kho thuốc); hàng nhập vào kho con."/>
+    <template v-if="!master.is_group&&!editing?.is_group">
     <LotusField v-model="master.lotus_contact_employee" label="Người phụ trách kho (nhân sự HRMS)" :options="employeeOptions" empty-option="Chưa phân công" :readonly="readonly" :hint="employees.length?'':'Chưa có nhân sự đang làm việc, cần tiếp nhận tại module Nhân sự.'"/>
     <LotusField :model-value="master.lotus_contact_phone" label="Số điện thoại người phụ trách" readonly placeholder="Tự lấy từ hồ sơ HRMS" hint="Đồng bộ theo hồ sơ nhân sự khi lưu; không nhập thủ công."/>
     <LotusField v-model="master.lotus_receiving_hours" label="Giờ nhận hàng" maxlength="140" :readonly="readonly" placeholder="Ví dụ: Thứ Hai–Thứ Bảy, 7:00–17:00"/>
     <LotusField v-model="master.lotus_default_lead_days" label="Thời gian chờ hàng mặc định (ngày)" type="number" min="0" max="365" step="1" :readonly="readonly" hint="Chỉ dùng để gợi ý, ngày giao do NCC xác nhận sẽ được ưu tiên."/>
     <LotusField v-model="master.lotus_address" label="Địa chỉ kho / điểm nhận hàng" type="textarea" wide maxlength="500" :readonly="readonly" placeholder="Địa chỉ giao hàng, xã, tỉnh, hướng dẫn đến cổng kho"/>
     <LotusField v-model="master.lotus_delivery_note" label="Ghi chú giao nhận" type="textarea" wide maxlength="500" :readonly="readonly" placeholder="Cổng giao hàng, giờ nghỉ, yêu cầu bốc dỡ…"/>
+    </template>
    </template>
    <template v-else>
     <LotusField v-model="master.name" label="Tên đơn vị tính" maxlength="140" :readonly="!!editing||readonly" placeholder="VD: Thùng" :hint="editing?'Tên đơn vị đã dùng trên chứng từ nên không đổi được.':''" required/>

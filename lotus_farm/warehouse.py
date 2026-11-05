@@ -71,15 +71,18 @@ def _text(value, label):
     return value
 
 
-def _create_group(name, parent):
+def _create_group(name, parent, is_group=0):
     if not frappe.has_permission('Item Group', 'create'):
         frappe.throw('Bạn chưa có quyền thêm nhóm vật tư.', frappe.PermissionError)
     parent_doc = frappe.get_doc('Item Group', parent)
     parent_doc.check_permission('read')
     if not parent_doc.is_group:
         frappe.throw('Nhóm cha phải là nhóm chứa nhóm con.')
-    return frappe.get_doc(dict(doctype='Item Group', item_group_name=_text(name, 'Tên nhóm'),
-                               parent_item_group=parent, is_group=0)).insert()
+    label = _text(name, 'Tên nhóm')
+    if frappe.db.exists('Item Group', label):
+        frappe.throw('Đã có nhóm tên ' + label + '.')
+    return frappe.get_doc(dict(doctype='Item Group', item_group_name=label,
+                               parent_item_group=parent, is_group=1 if is_group else 0)).insert()
 
 
 @frappe.whitelist(methods=['POST'])
@@ -99,7 +102,7 @@ def create_master(company, kind, values):
         doc = frappe.get_doc(dict(doctype='UOM', uom_name=label, enabled=1,
                                   must_be_whole_number=cint(values.get('must_be_whole_number')))).insert()
     elif kind == 'group':
-        doc = _create_group(values.get('name'), values.get('parent'))
+        doc = _create_group(values.get('name'), values.get('parent'), cint(values.get('is_group')))
     elif kind == 'warehouse':
         parent = frappe.get_doc('Warehouse', values.get('parent'))
         parent.check_permission('read')
@@ -110,9 +113,10 @@ def create_master(company, kind, values):
         if frappe.db.exists('Warehouse',warehouse_code(label,company)):
             frappe.throw('Tên kho đã tồn tại trong công ty.')
         doc = frappe.get_doc(dict(doctype='Warehouse', warehouse_name=label,
-                                  parent_warehouse=parent.name, company=company, is_group=0))
+                                  parent_warehouse=parent.name, company=company, is_group=cint(values.get('is_group'))))
         from lotus_farm.warehouse_masters import update_warehouse_details
-        update_warehouse_details(doc, values)
+        if not doc.is_group:
+            update_warehouse_details(doc, values)
         doc.insert()
     else:
         group = values.get('group')

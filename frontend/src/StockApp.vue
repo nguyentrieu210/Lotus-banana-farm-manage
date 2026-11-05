@@ -114,7 +114,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
     <WarehousePlanning v-else-if="view==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session.today" @receive="name=>receivingView.openOrder(name)" @open-receipt="name=>receivingView.openReceipt(name)">
      <template #scope><StockScope :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session.companies||[]" @update:warehouse="setWarehouse" @update:company="setCompany"/></template>
     </WarehousePlanning>
-    <StockMasterList v-else-if="masterViews.includes(view)" :kind="view" :company="company" :session="session" :refresh-key="refreshKey" @new-master="kind=>masterForm.open(kind)" @edit-master="(kind,name)=>masterForm.open(kind,name)"/>
+    <StockMasterList v-else-if="masterViews.includes(view)" :kind="view" :company="company" :session="session" :refresh-key="refreshKey" @new-master="(kind,parent)=>masterForm.open(kind,'',parent?{parent}:{})" @edit-master="(kind,name)=>masterForm.open(kind,name)"/>
     <ErpSection v-else-if="erpView" ref="erpHost" :key="erpView.id" :section="erpView" view-param="stock_view" :company="company"/>
    </template>
    <nav v-if="warehousePwa" class="warehouse-pwa-bottom-nav" aria-label="Điều hướng Kho điện thoại">
