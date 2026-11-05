@@ -134,7 +134,8 @@ def promote(company, days):
     from lotus_farm.hr_operations import _sync_range
     first, last = min(days), max(days)
     end = (datetime.strptime(last, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
-    _sync_range(company, first, end, limit=3000)
+    # The job is queued from the clock's unauthenticated request (Guest): sync as the service user, like the punches themselves.
+    _as_service(_sync_range, company, first, end, 3000)
 
 
 try:

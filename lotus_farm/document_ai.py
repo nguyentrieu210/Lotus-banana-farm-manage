@@ -24,7 +24,7 @@ IMAGES = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_BYTES = 10 * 1024 * 1024
 HOURLY_LIMIT = 60
 PROMPT = """Bạn đọc chứng từ mua hàng của một doanh nghiệp trồng chuối ở Việt Nam (báo giá, hóa đơn GTGT, phiếu giao hàng, đơn đặt hàng).
-Chỉ trả về MỘT đối tượng JSON, không giải thích, theo đúng mẫu:
+Chỉ trả về MỘT đối tượng JSON viết gọn trên một dòng (không xuống dòng, không thụt lề), không giải thích, theo đúng mẫu:
 {"document_type":"quote|invoice|delivery_note|purchase_order|other","document_no":"","invoice_series":"","tax_authority_code":"","date":"YYYY-MM-DD","payment_method":"","buyer":{"name":"","tax_id":""},"supplier":{"name":"","tax_id":"","phone":"","address":""},"lines":[{"name":"","qty":0,"uom":"","rate":0,"amount":0,"vat_percent":null}],"subtotal":0,"vat_amount":0,"total":0,"notes":""}
 Quy tắc:
 - Số viết kiểu Việt Nam phải đổi sang số JSON: 850.000 → 850000; 1,5 → 1.5.
@@ -111,7 +111,7 @@ def _ask(content):
     keys = _keys()
     if not keys:
         frappe.throw('Chưa cấu hình khóa AI trên máy chủ (groq_api_key).')
-    body = json.dumps({'model': MODEL, 'messages': [{'role': 'user', 'content': content}], 'temperature': 0, 'max_tokens': 3000}).encode()
+    body = json.dumps({'model': MODEL, 'messages': [{'role': 'user', 'content': content}], 'temperature': 0, 'max_tokens': 1000, 'reasoning_effort': 'none'}).encode()
     status = None
     # Fall back to the next key when one is rate-limited, rejected, or the provider/network fails for it.
     for index, key in enumerate(keys):

@@ -303,7 +303,9 @@ def _event_content(doc, event):
     return mapping.get((doc.doctype, event))
 
 
-def dispatch_document(doctype, name, event):
+def dispatch_document(doctype, name, event=None, push_event=None):
+    # frappe.enqueue keeps its own `event` argument, so the job receives push_event.
+    event = push_event or event
     doc = frappe.get_doc(doctype, name)
     content = _event_content(doc, event)
     if not content:
@@ -347,7 +349,7 @@ def document_hook(doc, method=None):
         return
     frappe.enqueue("lotus_farm.push_notifications.dispatch_document",
                    queue="short", enqueue_after_commit=True,
-                   doctype=doc.doctype, name=doc.name, event=event)
+                   doctype=doc.doctype, name=doc.name, push_event=event)
 
 def allow_hr_notifications():
     """One-time idempotent metadata update; preserves all existing push devices and alerts."""

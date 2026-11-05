@@ -68,7 +68,8 @@ def saved_presence(record):
     return {k:clocks[k] for k in ('morning_present','afternoon_present','morning_time','afternoon_time')}
 
 
-def board(company,date,search=None,sync=1):
+def board(company,date=None,search=None,sync=1):
+    date = date or frappe.utils.nowdate()
     from lotus_farm import attendance_day as ad
     from lotus_farm.hr_period import holiday_map,is_closed
     t._company(company);day=t._date(date)

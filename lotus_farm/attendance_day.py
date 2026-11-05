@@ -77,9 +77,10 @@ def sync_day(company, day):
 
 
 @frappe.whitelist()
-def board(company, date, shift=None, search=None, sync=1,daily_presence=0):
+def board(company, date=None, shift=None, search=None, sync=1,daily_presence=0):
     """staff_day rows, each with the device reading next to it (`machine`) and whether it may be approved
     in one step (`matches`: the device fully explains the day and nobody changed it by hand)."""
+    date = date or frappe.utils.nowdate()
     if cint(daily_presence):
         from lotus_farm.daily_attendance import board as daily_board
         return daily_board(company,date,search,sync)
