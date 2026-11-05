@@ -5,27 +5,36 @@ export function formatMoneyInput(value){
  const grouped=whole.replace(/^(-?)(\d+)$/,(m,sign,digits)=>sign+digits.replace(/\B(?=(\d{3})+(?!\d))/g,'.'))
  return fraction!==undefined?grouped+','+fraction:grouped
 }
-// Typed text → number ('' while empty). "." groups thousands, "," starts the decimals; a lone trailing "," is kept for typing.
+// Typed or pasted text → number ('' while empty). Accepts every way people write a number here:
+//  "26.571.428,571" (Vietnamese) · "26,571,428.571" (English, pasted from invoices) · "531428,57" · "531428.57" (numpad dot).
+//  Both separators: the last one starts the decimals. Only ",": one comma = decimals, several = thousands.
+//  Only ".": groups of exactly 3 digits are thousands ("1.250.000"), otherwise the last dot starts the decimals ("996.4").
 export function parseMoneyInput(text){
- const clean=String(text??'').replace(/[^\d,.-]/g,'').replace(/\./g,'')
- if(!clean||clean==='-')return ''
- const [whole,...rest]=clean.split(',')
- const number=Number(whole+(rest.length?'.'+rest.join(''):''))
+ let s=String(text??'').replace(/[^\d,.-]/g,'')
+ const negative=s.startsWith('-')
+ s=s.replace(/-/g,'')
+ if(!s)return ''
+ const commas=(s.match(/,/g)||[]).length,dots=(s.match(/\./g)||[]).length
+ const thousands=sep=>s.split(sep).slice(1).every(group=>group.length===3)
+ let decimal=-1
+ if(commas&&dots)decimal=Math.max(s.lastIndexOf(','),s.lastIndexOf('.'))
+ else if(commas)decimal=commas===1||!thousands(',')?s.lastIndexOf(','):-1
+ else if(dots)decimal=thousands('.')?-1:s.lastIndexOf('.')
+ const whole=(decimal<0?s:s.slice(0,decimal)).replace(/[.,]/g,'')
+ const fraction=decimal<0?'':s.slice(decimal+1).replace(/[.,]/g,'')
+ if(!whole&&!fraction)return ''
+ const number=Number((negative?'-':'')+(whole||'0')+(fraction?'.'+fraction:''))
  return Number.isFinite(number)?number:''
 }
-// Re-format while typing and keep the caret after the same number of digits.
+// While typing the text stays exactly as typed (only foreign characters are dropped), so a "." or "," the user is
+// still completing is never re-interpreted halfway; the field shows the grouped form again when it loses focus.
 export function reformatMoneyInput(element){
  const before=element.value,caret=element.selectionStart??before.length
- const significant=text=>text.replace(/[^\d,]/g,'')
- const keep=significant(before.slice(0,caret)).length
- const value=parseMoneyInput(before)
- const comma=before.indexOf(',')
- // Group the whole part; keep the decimals exactly as typed (including a trailing ",").
- let text=value===''?'':formatMoneyInput(Math.trunc(value))
- if(comma>=0)text=(text||'0')+','+before.slice(comma+1).replace(/\D/g,'')
- element.value=text
- let seen=0,position=0
- while(position<text.length&&seen<keep){if(/[\d,]/.test(text[position]))seen++;position++}
- try{element.setSelectionRange(position,position)}catch{}
- return value
+ const clean=before.replace(/[^\d,.\s-]/g,'')
+ if(clean!==before){
+  element.value=clean
+  const position=Math.max(0,caret-(before.length-clean.length))
+  try{element.setSelectionRange(position,position)}catch{}
+ }
+ return parseMoneyInput(clean)
 }

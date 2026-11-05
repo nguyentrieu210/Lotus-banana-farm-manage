@@ -35,7 +35,8 @@ const kind=computed(()=>{
  return 'input'
 })
 const numeric=computed(()=>kind.value==='money'||props.type==='number')
-// Money shows its thousands separators in the field itself (MoneyInput), so no echo hint underneath.
+// Money and numbers use MoneyInput: "," or "." decimals both work (a native number input refuses "," in many browsers).
+// Money shows its thousands separators in the field itself, so no echo hint underneath.
 const hintText=computed(()=>props.hint||undefined)
 const mobileControl=computed(()=>kind.value==='combobox'?MobileLinkField:kind.value==='select'?LotusMobileSelect:LotusMobileInput)
 const mobileType=computed(()=>kind.value==='money'?'money':numeric.value?'number':['date','month','textarea'].includes(kind.value)?kind.value:props.type==='combobox'?'text':props.type)
@@ -59,7 +60,7 @@ function set(value){emit('update:modelValue',value);if(kind.value!=='file')emit(
   <MonthPicker v-else-if="kind==='month'" v-bind="{...field,...$attrs}" :model-value="modelValue" :disabled="disabled||readonly" :label="label" @update:model-value="set"/>
   <Textarea v-else-if="kind==='textarea'" v-bind="{...field,...$attrs}" :model-value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
   <FileInput v-else-if="kind==='file'" v-bind="{...field,...$attrs}" :disabled="disabled||readonly" :required="required" @update:model-value="set" @change="emit('change',$event)"/>
-  <MoneyInput v-else-if="kind==='money'" v-bind="{...field,...$attrs}" :model-value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
+  <MoneyInput v-else-if="numeric" v-bind="{...field,...$attrs}" :model-value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
   <Input v-else v-bind="{...field,...$attrs}" :model-value="modelValue" :type="numeric?'number':type" :model-modifiers="numeric?{number:true}:{}" :step="numeric?($attrs.step??'any'):$attrs.step" :placeholder="placeholder" :disabled="disabled" :readonly="readonly" @update:model-value="set"/>
  </FormField>
 </template>
