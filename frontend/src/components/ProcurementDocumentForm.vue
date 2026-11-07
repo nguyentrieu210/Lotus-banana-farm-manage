@@ -34,8 +34,9 @@ const lineColumns=computed(()=>[
  {field:'stock',label:'Tồn tham khảo',readonly:true,visible:()=>props.type==='need',width:'minmax(110px,1fr)'},
  {field:'lotus_supplier_hint',label:'NCC đề xuất',visible:()=>props.type==='need',width:'minmax(140px,1fr)'},
  {field:'lotus_purpose',label:'Mục đích sử dụng',visible:()=>props.type==='need',width:'minmax(140px,1fr)'},
+ {field:'schedule_date',label:'Ngày cần riêng',type:'date',visible:()=>props.type==='need',width:'minmax(140px,1fr)'},
  {field:'vat_code',label:'VAT',options:vatOptions,searchable:false,props:{emptyOption:null},width:'minmax(120px,.9fr)'}
-].filter(c=>props.type==='need'?c.field!=='vat_code'&&c.field!=='kind':!['stock','lotus_supplier_hint','lotus_purpose'].includes(c.field)).map(c=>({...c,disabled:pricesOnly.value&&!['rate','lotus_supplier_hint','lotus_notes'].includes(c.field)})))
+].filter(c=>props.type==='need'?c.field!=='vat_code'&&c.field!=='kind':!['stock','lotus_supplier_hint','lotus_purpose','schedule_date'].includes(c.field)).map(c=>({...c,disabled:pricesOnly.value&&!['rate','lotus_supplier_hint','lotus_notes'].includes(c.field)})))
 // Vườn sử dụng and Vận chuyển belong to the whole order. Lines still carry lotus_farm / freight for the server:
 // the chosen farm is copied to every line, the order's freight is split by line value (by quantity while prices are empty).
 const farmOptions=computed(()=>(props.catalog.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
@@ -85,14 +86,14 @@ watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of pro
   <FormGrid :columns="3">
    <LotusField v-if="type==='need'" :mobile="mobile" v-model="modelValue.department" :disabled="pricesOnly" label="Bộ phận đề xuất"/>
    <DocumentReader v-if="!pricesOnly" :mobile="mobile" :disabled="saving" label="Đọc báo giá / hóa đơn bằng AI" @read="applyDocument"/>
-   <LotusField v-if="type!=='need'&&requestOptions.length" :mobile="mobile" :label="type==='quote'?'Lấy dòng từ đề xuất mua':'Lấy dòng từ đề nghị đã duyệt'" :options="requestOptions" @update:model-value="emit('request',$event)"/>
+   <LotusField v-if="type!=='need'&&requestOptions.length" :mobile="mobile" :label="type==='quote'?'Lấy dòng từ đề xuất mua':'Lấy dòng từ đề xuất đã duyệt'" :options="requestOptions" @update:model-value="emit('request',$event)"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
    <LotusField v-if="type!=='need'&&farmOptions.length" :mobile="mobile" :model-value="modelValue.order_farm" label="Vườn sử dụng" :options="farmOptions" empty-option="Không gắn vườn (chi phí chung)" :searchable="false" :hint="lineFarms.length>1&&!modelValue.order_farm?'Các dòng đang thuộc nhiều vườn khác nhau; chọn một vườn để áp cho cả đơn.':''" @update:model-value="chooseFarm"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.order_freight" label="Phí vận chuyển cả đơn" type="money" min="0" hint="Tự chia vào các dòng theo giá trị hàng."/>
    <LotusField :mobile="mobile" v-model="modelValue.warehouse" :disabled="pricesOnly" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
-   <LotusField :mobile="mobile" v-model="modelValue.expected_date" :disabled="pricesOnly" label="Ngày cần hàng / nghiệm thu" type="date" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.expected_date" :disabled="pricesOnly" :label="type==='need'?'Ngày cần mặc định':'Ngày cần hàng / nghiệm thu'" type="date" required/>
    <LotusField v-if="type==='quote'" :mobile="mobile" v-model="modelValue.valid_till" label="Hiệu lực báo giá đến" type="date" required/>
-   <LotusField :mobile="mobile" v-model="modelValue.notes" :disabled="pricesOnly" :label="type==='need'?'Lý do đề nghị':'Nội dung giao hàng / dịch vụ'" type="textarea" wide :required="type==='need'"/>
+   <LotusField :mobile="mobile" v-model="modelValue.notes" :disabled="pricesOnly" :label="type==='need'?'Lý do đề xuất':'Nội dung giao hàng / dịch vụ'" type="textarea" wide :required="type==='need'"/>
   </FormGrid>
  </FormSection>
  <FormSection>

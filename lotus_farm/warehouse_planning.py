@@ -281,7 +281,9 @@ def purchase_request(name):
     from lotus_farm.purchase_flow import enabled
     if enabled(doc.company):
         from lotus_farm.purchase_proposal import detail
-        return dict(detail(name), can_submit=False, can_delete=False, proposal_url='/buying?proposal='+doc.name)
+        from urllib.parse import urlencode
+        return dict(detail(name), can_submit=False, can_delete=False,
+                    proposal_url='/lotus/mua-hang?'+urlencode(dict(buying_view='needs', purchase_type='needs', purchase_doc=doc.name)))
     for row in doc.items:
         frappe.get_doc('Item',row.item_code).check_permission('read')
         if row.warehouse:frappe.get_doc('Warehouse',row.warehouse).check_permission('read')

@@ -44,7 +44,7 @@ test('purchase list is permission-scoped and server-side faceted filtered',()=>{
 
 test('approved material request can populate a purchase order without losing lineage',()=>{
  assert.match(workspace,/method\('warehouse_buying_lite','request_detail'/)
- assert.match(form,/Lấy dòng từ đề nghị đã duyệt/)
+ assert.match(form,/Lấy dòng từ đề xuất đã duyệt/)
  assert.match(backend,/material_request=doc.name/)
  assert.match(backend,/material_request_item=r.name/)
  assert.match(backend,/material_request_item=original.name/)

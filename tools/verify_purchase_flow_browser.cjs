@@ -39,7 +39,8 @@ async function main() {
      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({message:value})})
     })
     await page.goto(base+app+'.html')
-    await page.waitForLoadState('networkidle')
+    await page.locator('.lotus-pwa-header').waitFor()
+    await page.waitForTimeout(300)
     if(app==='buying') {
      await page.getByText('Đề xuất mua vật tư',{exact:true}).first().click()
      await page.getByRole('button',{name:/Lập đề xuất mua vật tư/}).click()
