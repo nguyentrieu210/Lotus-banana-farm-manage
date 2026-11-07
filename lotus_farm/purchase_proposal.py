@@ -75,6 +75,11 @@ def _version(doc, modified):
         frappe.throw('Phiếu đã thay đổi. Tải lại trước khi thao tác.')
 
 
+def _save_signing_state(doc):
+    """A named signer updates only workflow metadata, not ERP item/catalogue data."""
+    doc.db_set({field: doc.get(field) for field in ('lotus_proposal_state', 'lotus_return_reason', 'lotus_proposal_policy')})
+
+
 def _stock(item, warehouse, factor=1):
     if not (item and warehouse) or not frappe.has_permission('Bin', 'read'):
         return None
@@ -347,7 +352,7 @@ def sign(name, modified, signers=None):
             doc.lotus_proposal_state = rules.RETURNED
             doc.lotus_return_reason = 'Chính sách mới yêu cầu đủ 4 bước. Người đề xuất chọn người ký và gửi lại.'
             doc.flags.ignore_permissions = True
-            doc.save()
+            _save_signing_state(doc)
             return detail(doc.name)
         if not rows or any(r.state == signing_rules.RETURNED for r in rows):
             doc.lotus_proposal_policy = 2
@@ -372,7 +377,7 @@ def sign(name, modified, signers=None):
         chain = signing.sign(doc, require_image=True)
     doc.lotus_proposal_state = rules.APPROVED if chain['done'] else rules.state_after(chain['current'] - 1)
     doc.flags.ignore_permissions = True  # signing checked the named signer of this step
-    doc.save()
+    _save_signing_state(doc)
     if doc.lotus_proposal_state == rules.APPROVED:
         doc.submit()
     return detail(doc.name)
@@ -391,7 +396,7 @@ def return_proposal(name, modified, reason):
     doc.lotus_proposal_state = rules.RETURNED
     doc.lotus_return_reason = str(reason or '').strip()[:500]
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_signing_state(doc)
     return detail(doc.name)
 
 
