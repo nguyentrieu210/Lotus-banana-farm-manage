@@ -118,6 +118,8 @@ def _apply_lines(doc, rows, allowed):
         if len(rows) != len(doc.items):
             frappe.throw('Kế toán / mua hàng chỉ sửa đơn giá, nhà cung cấp và ghi chú.')
         for line, row in zip(doc.items, rows):
+            if row.get('item_code') != line.item_code or row.get('name') and row['name'] != line.name:
+                frappe.throw('Dòng cập nhật giá không khớp đề xuất gốc. Tải lại phiếu.')
             for field in EDIT_PRICES:
                 line.set(field, flt(row.get(field)) if field == 'rate' else str(row.get(field) or '')[:500])
             line.amount = flt(line.qty) * flt(line.rate)
@@ -186,15 +188,16 @@ def save_proposal(company, values, name=None, modified=None):
             frappe.get_doc('Warehouse', values['warehouse']).check_permission('read')
             doc.set_warehouse = values['warehouse']
     from lotus_farm.purchase_flow import enabled
-    if allowed == 'prices' and enabled(company):
-        signing.send_back(doc, 'Đã bổ sung giá / nhà cung cấp. Người đề xuất gửi lại đủ 4 bước trên nội dung mới.')
-        doc.lotus_proposal_state = rules.RETURNED
-        doc.lotus_return_reason = 'Đã cập nhật giá / nhà cung cấp. Cần người đề xuất gửi lại đủ 4 bước.'
+    before = signing.fingerprint(doc)
     sources = {r.item_code: r.get('lotus_purchase_sources') for r in doc.items}
     _apply_lines(doc, values.get('items'), allowed)
     for row in doc.items:
         if sources.get(row.item_code):
             row.lotus_purchase_sources = sources[row.item_code]
+    if allowed == 'prices' and enabled(company) and before != signing.fingerprint(doc):
+        signing.send_back(doc, 'Đã bổ sung giá / nhà cung cấp. Người đề xuất gửi lại đủ 4 bước trên nội dung mới.')
+        doc.lotus_proposal_state = rules.RETURNED
+        doc.lotus_return_reason = 'Đã cập nhật giá / nhà cung cấp. Cần người đề xuất gửi lại đủ 4 bước.'
     doc.save() if name else doc.insert()
     return detail(doc.name)
 

@@ -11,8 +11,9 @@ def install():
     if not frappe.conf.get('lotus_purchase_flow_company') and frappe.db.exists('Company', 'Lotus Agritech'):
         frappe.conf.lotus_purchase_flow_company = 'Lotus Agritech'
         frappe.conf.lotus_purchase_flow_since = str(now_datetime())
-        frappe.update_site_config('lotus_purchase_flow_company', 'Lotus Agritech')
-        frappe.update_site_config('lotus_purchase_flow_since', frappe.conf.lotus_purchase_flow_since)
+        from frappe.installer import update_site_config
+        update_site_config('lotus_purchase_flow_company', 'Lotus Agritech')
+        update_site_config('lotus_purchase_flow_since', frappe.conf.lotus_purchase_flow_since)
 
 
 def validate(doc, method=None):
