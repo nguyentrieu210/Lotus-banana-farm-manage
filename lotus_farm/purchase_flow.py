@@ -1,6 +1,6 @@
 """Lotus purchase policy and progress derived from native ERPNext documents."""
 import frappe
-from frappe.utils import flt, now_datetime
+from frappe.utils import flt, get_datetime, now_datetime
 
 
 def enabled(company):
@@ -62,9 +62,14 @@ def order_guard(doc, method=None):
         return
     from lotus_farm.controls import lock
     lock('Company', doc.company)
+    since = frappe.conf.get('lotus_purchase_flow_since')
+    created = frappe.db.get_value('Purchase Order', doc.name, 'creation')
+    legacy = bool(since and created and get_datetime(created) < get_datetime(since))
     amounts = {}
     for row in doc.items:
         if not row.material_request or not row.material_request_item:
+            if legacy and not row.material_request and not row.material_request_item:
+                continue
             frappe.throw('Đơn mua cần lấy từng dòng từ đề xuất mua đã duyệt. Hàng đã mua lẻ dùng Mua nhanh.')
         lock('Material Request', row.material_request)
         source = frappe.get_doc('Material Request', row.material_request)

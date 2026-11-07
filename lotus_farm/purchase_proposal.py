@@ -260,7 +260,7 @@ def proposals(company, view='mine'):
     mine, me = _waiting_for_me(), frappe.session.user
     result = []
     for row in rows:
-        state = rules.APPROVED if row.docstatus == 1 else row.lotus_proposal_state
+        state = rules.APPROVED if row.docstatus == 1 else row.lotus_proposal_state or rules.DRAFT
         step = rules.current_step(state)
         can_sign = row.docstatus == 0 and ((step == 0 and row.owner == me) or row.name in mine)
         if view == 'mine' and row.owner != me:
@@ -268,7 +268,12 @@ def proposals(company, view='mine'):
         if view == 'todo' and row.name not in mine:
             continue
         total = frappe.db.sql('select coalesce(sum(qty*rate),0), count(*) from `tabMaterial Request Item` where parent=%s', row.name)[0]
+        stage = 'Nháp' if state in (rules.DRAFT, rules.RETURNED) else 'Chờ ký'
+        if row.docstatus == 1:
+            from lotus_farm.purchase_flow import proposal_progress
+            stage = proposal_progress(_doc(row.name))['stage']
         result.append(dict(name=row.name, date=str(row.transaction_date), needed=str(row.schedule_date or ''), state=state,
+                           stage=stage,
                            proposer=frappe.db.get_value('User', row.owner, 'full_name') or row.owner, department=row.lotus_department or '',
                            reason=row.lotus_request_note or '', total=flt(total[0]), lines=int(total[1]), can_sign=can_sign))
     return result

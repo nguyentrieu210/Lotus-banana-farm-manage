@@ -6,6 +6,7 @@
 import {computed,onMounted,ref,watch} from 'vue'
 import LotusMobileButton from './LotusMobileButton.vue'
 import LotusMobileInput from './LotusMobileInput.vue'
+import LotusMobileSelect from './LotusMobileSelect.vue'
 import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import MobileLinkField from './MobileLinkField.vue'
 import SignerPicker from './SignerPicker.vue'
@@ -24,6 +25,9 @@ const signersMissing=computed(()=>(signerOptions.value?.steps||[]).slice(1).filt
 const waitingStep=computed(()=>detail.value&&detail.value.step>0?detail.value.signatures[detail.value.step]:null)
 const reassignOptions=computed(()=>(signerOptions.value?.candidates?.[waitingStep.value?.action]||[]).filter(c=>c.user!==waitingStep.value?.assignee).map(c=>({value:c.user,label:c.name,subtitle:c.designation||c.user})))
 const scopes=[['todo','Chờ tôi ký'],['mine','Của tôi'],['all','Tất cả']]
+const stage=ref('')
+const stageOptions=[{value:'',label:'Mọi tiến độ'},...['Nháp','Chờ ký','Đã duyệt chờ mua','Đang mua','Hoàn tất'].map(value=>({value,label:value}))]
+const visibleRows=computed(()=>rows.value.filter(row=>scope.value==='todo'||!stage.value||row.stage===stage.value))
 const money=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:0})+' đ'
 const number=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const vnDate=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):''
@@ -109,14 +113,15 @@ defineExpose({back,newProposal,open})
  <template v-if="mode==='list'">
   <div class="pp-scopes" role="tablist" aria-label="Lọc đề xuất mua"><button v-for="[id,label] in scopes" :key="id" type="button" role="tab" :aria-selected="scope===id?'true':'false'" :class="{active:scope===id}" @click="scope=id">{{label}}</button></div>
   <LotusMobileButton class="buy-primary" :disabled="busy||!online" @click="newProposal">+ Lập đề xuất mua vật tư</LotusMobileButton>
+  <LotusMobileSelect v-if="scope!=='todo'" v-model="stage" label="Tiến độ" :options="stageOptions"/>
   <LotusMobileFeedback v-if="busy" kind="loading">Đang tải đề xuất…</LotusMobileFeedback>
-  <LotusMobileButton v-for="r in rows" :key="r.name" class="buy-card pp-card" @click="open(r.name)">
+  <LotusMobileButton v-for="r in visibleRows" :key="r.name" class="buy-card pp-card" @click="open(r.name)">
    <div class="buy-line"><strong>{{r.name}}</strong><span class="pp-state" :class="'is-'+tone(r.state)">{{r.state}}</span></div>
-   <small>{{r.proposer}}{{r.department?' · '+r.department:''}} · {{vnDate(r.date)}}</small>
+   <small>{{r.proposer}}{{r.department?' · '+r.department:''}} · {{vnDate(r.date)}} · {{r.stage}}</small>
    <p class="pp-reason">{{r.reason||'Chưa ghi lý do'}}</p>
    <div class="buy-line"><span>{{r.lines}} vật tư · cần {{vnDate(r.needed)}}</span><b>{{r.total?money(r.total):'Chưa có giá'}}</b></div>
   </LotusMobileButton>
-  <p v-if="!rows.length&&!busy" class="mobile-empty">{{scope==='todo'?'Không có đề xuất nào chờ bạn ký.':'Chưa có đề xuất mua.'}}</p>
+  <p v-if="!visibleRows.length&&!busy" class="mobile-empty">{{scope==='todo'?'Không có đề xuất nào chờ bạn ký.':'Chưa có đề xuất mua phù hợp.'}}</p>
  </template>
 
  <template v-if="mode==='form'&&form">
