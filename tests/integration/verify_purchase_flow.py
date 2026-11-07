@@ -3,6 +3,8 @@ import json
 import unittest
 from io import BytesIO
 from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import frappe
 from PIL import Image, ImageDraw
@@ -156,6 +158,51 @@ class PurchaseFlow(unittest.TestCase):
         for user in (base.LEADER, base.ACC, base.DIR):
             d = base.as_user(user, pp.sign, d['name'], d['modified'])
         self.assertEqual(d['docstatus'], 1)
+
+    def test_09_quick_purchase_reaches_accounting_without_duplicate_stock(self):
+        from lotus_farm import warehouse
+        result = warehouse.create_draft(base.C, 'receipt', base.DAY, [dict(item='PCT-M', qty=2, rate=100000)],
+            target=base.WH, receipt_reason='Purchase', supplier=self.supplier, post=1, client_event_id=self.tag+'quick')
+        self.assertEqual(result['docstatus'], 1)
+        pending = base.as_user(base.ACC, base.payments.receipts_to_bill)
+        row = next(r for r in pending if r['name'] == result['name'])
+        self.assertEqual(row['unbilled_items'][0]['qty'], 2)
+        self.assertIn('Mua nhanh', row['source_type'])
+        invoice = base.as_user(base.ACC, base.payments.make_goods_invoice, [result['name']], 'QUICK-'+self.tag, base.DAY)
+        self.assertEqual(frappe.db.count('Stock Ledger Entry', {'voucher_no': invoice['invoice']}), 0)
+        self.assertEqual(frappe.db.get_value('Stock Entry', result['name'], 'lotus_purchase_invoice'), invoice['invoice'])
+
+    def test_10_duplicate_signature_requests_advance_only_once(self):
+        d = self.proposal(approve=False)
+        d = base.as_user(base.BUYER, pp.sign, d['name'], d['modified'], dict(DEPARTMENT=base.LEADER, PURCHASING=base.ACC, APPROVE=base.DIR))
+        frappe.db.commit()  # Separate connections need committed fixtures, only on this disposable site.
+        barrier = Barrier(2)
+
+        def worker():
+            frappe.init(site='procurement.test', sites_path='/home/frappe/frappe-bench/sites')
+            frappe.connect()
+            frappe.conf.lotus_purchase_flow_company = base.C
+            frappe.set_user(base.LEADER)
+            try:
+                barrier.wait(timeout=10)
+                pp.sign(d['name'], d['modified'])
+                frappe.db.commit()
+                return 'signed'
+            except frappe.ValidationError:
+                frappe.db.rollback()
+                return 'stale'
+            finally:
+                frappe.destroy()
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                outcomes = list(pool.map(lambda _: worker(), range(2)))
+            self.assertEqual(sorted(outcomes), ['signed', 'stale'])
+            rows, _ = signing._rows(frappe.get_doc('Material Request', d['name']))
+            self.assertEqual([r.state for r in rows], ['Đã ký', 'Đã ký', 'Chờ ký', 'Chưa đến lượt'])
+        finally:
+            frappe.db.rollback()
+            frappe.db.savepoint('purchase_case')
 
 
 if __name__ == '__main__':
