@@ -42,10 +42,8 @@ def install_fields():
 
 
 def _access():
-    from lotus_farm.purchasing import access
-    access()
-    if not frappe.has_permission('Material Request', 'read'):
-        frappe.throw('Không có quyền xem đề xuất mua.', frappe.PermissionError)
+    if frappe.session.user == 'Guest':
+        frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
 
 
 
@@ -55,7 +53,10 @@ def _admin():
 
 def _doc(name):
     doc = frappe.get_doc('Material Request', name)
-    doc.check_permission('read')
+    if not doc.has_permission('read'):
+        rows, _ = signing._rows(doc)
+        if not any(r.assignee == frappe.session.user for r in rows):
+            doc.check_permission('read')
     if doc.material_request_type != 'Purchase':
         frappe.throw('Chỉ xử lý đề xuất mua vật tư.')
     from lotus_farm.warehouse import _company
@@ -75,7 +76,7 @@ def _version(doc, modified):
 
 
 def _stock(item, warehouse, factor=1):
-    if not (item and warehouse):
+    if not (item and warehouse) or not frappe.has_permission('Bin', 'read'):
         return None
     value = frappe.db.get_value('Bin', {'item_code': item, 'warehouse': warehouse}, 'actual_qty')
     return None if value is None else flt(value) / (flt(factor) or 1)
@@ -240,8 +241,13 @@ def proposals(company, view='mine'):
     _access()
     from lotus_farm.warehouse import _company
     _company(company)
-    rows = frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase', 'docstatus': ['<', 2],
-                                                        },
+    _company(company)
+    filters = {'company': company, 'material_request_type': 'Purchase', 'docstatus': ['<', 2]}
+    listing = frappe.get_list
+    if not frappe.has_permission('Material Request', 'read'):
+        filters['name'] = ['in', list(_waiting_for_me()) or ['']]
+        listing = frappe.get_all
+    rows = listing('Material Request', filters=filters,
                            fields=['name', 'transaction_date', 'schedule_date', 'owner', 'docstatus', 'lotus_proposal_state', 'lotus_department', 'lotus_request_note', 'modified'],
                            order_by='modified desc', limit_page_length=300)
     mine, me = _waiting_for_me(), frappe.session.user

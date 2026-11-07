@@ -7,7 +7,7 @@ import {money} from '../procurement'
 import {unitLabel} from '../units'
 const props=defineProps({progress:Object,mobile:Boolean,navigate:Boolean})
 const emit=defineEmits(['open'])
-const button=computed(()=>props.mobile?LotusMobileButton:Button)
+const button=computed(()=>props.navigate?(props.mobile?LotusMobileButton:Button):'a')
 const columns=[{field:'item_name',headerName:'Vật tư',minWidth:180},{field:'uom',headerName:'ĐVT',valueFormatter:p=>unitLabel(p.value)},
  {field:'qty',headerName:'Đề xuất'},{field:'ordered_qty',headerName:'Đã đặt'},{field:'remaining_order_qty',headerName:'Còn đặt'},
  {field:'received_qty',headerName:'Đã nhận'},{field:'remaining_receive_qty',headerName:'Còn nhận'},{field:'billed_qty',headerName:'Đã lập hóa đơn'}]
