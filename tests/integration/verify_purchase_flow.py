@@ -18,6 +18,9 @@ class PurchaseFlow(unittest.TestCase):
         base.seed()
         frappe.conf.lotus_purchase_flow_company = base.C
         pp.install_fields()
+        for purpose in ('Material Receipt', 'Material Issue'):
+            if not frappe.db.exists('Stock Entry Type', purpose):
+                base.insert('Stock Entry Type', name=purpose, purpose=purpose)
         frappe.get_doc('User', base.BUYER).add_roles('Lotus Purchase Requester')
         frappe.db.commit()
         frappe.conf.lotus_purchase_flow_company = None
@@ -203,6 +206,48 @@ class PurchaseFlow(unittest.TestCase):
         finally:
             frappe.db.rollback()
             frappe.db.savepoint('purchase_case')
+
+    def test_11_work_demand_is_reference_until_actual_issue(self):
+        from lotus_farm import warehouse
+        from lotus_farm.warehouse_planning import source_allocations
+        farm = frappe.db.get_value('Farm', {'farm_code': 'PCT-FARM'}, 'name')
+        block = base.insert('Farm Block', farm=farm, block_name='Flow '+self.tag, block_code='F'+self.tag, area_ha=1, active=1)
+        category = base.insert('Work Category', category_code=self.tag, category_name='Flow '+self.tag, active=1)
+        work = base.insert('Work Type', work_code=self.tag, work_name='Flow '+self.tag, category=category.name,
+                           uom='Nos', allow_daywork=1, allow_piecework=0, productivity_per_workday=1, active=1)
+        basis = base.insert('Norm Basis', basis_code=self.tag, basis_name='Flow '+self.tag, uom='Nos', active=1)
+        item = frappe.copy_doc(frappe.get_doc('Item', 'PCT-M'))
+        item.item_code = 'FLOW-'+self.tag
+        item.item_name = item.item_code
+        item.insert()
+        norm = base.insert('Material Norm Profile', farm=farm, profile_name='Flow '+self.tag, version=1, work_type=work.name,
+            valid_from=base.DAY, valid_to=base.DAY, approval_state='Approved',
+            lines=[dict(item=item.name, uom='Nos', norm_basis=basis.name, norm_qty=2, basis_qty=1, frequency=1, conversion_factor=1)])
+        plan = base.insert('Daily Work Plan', company=base.C, farm=farm, posting_date=base.DAY,
+            lines=[dict(farm_block=block.name, work_type=work.name, planned_qty=1, uom='Nos', norm_profile=norm.name)])
+        plan.submit()
+        requirement = base.insert('Material Requirement', company=base.C, farm=farm, farm_block=block.name,
+            posting_date=base.DAY, work_plan=plan.name, work_plan_line=plan.lines[0].name, lotus_warehouse=base.WH)
+        requirement.submit()
+        d = base.receiving.create_purchase_request(base.C, base.WH, base.DAY, base.DAY, [item.name])
+        self.assertEqual(d['docstatus'], 0)
+        source = frappe.get_doc('Material Request', d['name'])
+        self.assertEqual(json.loads(source.items[0].lotus_purchase_sources)[0]['name'], requirement.name)
+        self.assertFalse(source.items[0].get('lotus_requirement'))
+        self.assertEqual(source_allocations('Material Requirement', requirement.name, requirement.lines[0].name)['posted'], 0)
+        d = pp.sign(d['name'], d['modified'], dict(DEPARTMENT=base.LEADER, PURCHASING=base.ACC, APPROVE=base.DIR))
+        for user in (base.LEADER, base.ACC, base.DIR):
+            d = base.as_user(user, pp.sign, d['name'], d['modified'])
+        receipt = warehouse.create_draft(base.C, 'receipt', base.DAY, [dict(item=item.name, qty=2, rate=100000)],
+            target=base.WH, receipt_reason='Purchase', supplier=self.supplier, post=1, client_event_id=self.tag+'work-stock')
+        self.assertEqual(receipt['docstatus'], 1)
+        issue = warehouse.create_draft(base.C, 'issue', base.DAY,
+            [dict(item=item.name, qty=2, uom='Nos', area=block.name, requirement=requirement.name, requirement_line=requirement.lines[0].name)],
+            source=base.WH, work_plan=plan.name, issue_mode='Plan',
+            receiver_employee=frappe.db.get_value('Employee', {'user_id': base.BUYER}, 'name'), notes='Cấp theo công việc', client_event_id=self.tag+'work-issue')
+        doc = frappe.get_doc('Stock Entry', issue['name'])
+        warehouse.submit_document('Stock Entry', doc.name, modified=str(doc.modified))
+        self.assertEqual(source_allocations('Material Requirement', requirement.name, requirement.lines[0].name)['posted'], 2)
 
 
 if __name__ == '__main__':
