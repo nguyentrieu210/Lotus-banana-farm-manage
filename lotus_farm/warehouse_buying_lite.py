@@ -201,7 +201,7 @@ def setup(company):
         conversions=frappe.get_all('UOM Conversion Detail',fields=['parent','uom','conversion_factor'], filters={'parenttype':'Item'},limit_page_length=0),
         currency=frappe.get_cached_value('Company',company,'default_currency'),
         can_create=frappe.has_permission('Purchase Order','create'),
-        can_request=frappe.has_permission('Material Request','create') and frappe.has_permission('Material Request','submit'),
+        can_request=frappe.has_permission('Material Request','create'),
         can_create_supplier=frappe.has_permission('Supplier','create'),
         can_create_item=frappe.has_permission('Item','create'),
         today=nowdate())

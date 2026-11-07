@@ -189,6 +189,7 @@ def quick_purchases(company):
     return [dict(name=r.name, date=str(r.posting_date), supplier=r.lotus_supplier, supplier_name=names.get(r.lotus_supplier, r.lotus_supplier),
                  warehouse=', '.join(sorted(w for w in stores.get(r.name, ()) if w)), amount=flt(r.total_incoming_value) + (corrections.get(r.name, 0) if r.docstatus == 1 else 0), docstatus=r.docstatus,
                  price_correction=corrections.get(r.name, 0) if r.docstatus == 1 else 0,
+                 source_type='Mua nhanh — không qua đề xuất/đơn',
                  invoice=r.get('lotus_purchase_invoice') or '', notes=r.remarks or '', owner=r.owner, created_by=people.get(r.owner, ''),
                  status='Nháp, chưa nhập kho' if r.docstatus == 0 else ('Đã có hóa đơn' if r.get('lotus_purchase_invoice') else 'Đã nhập kho, chờ hóa đơn'))
             for r in rows]
@@ -207,6 +208,9 @@ def needs(company):
             stage = 'Đã hủy'
         if d.docstatus == 1 and d.status == 'Received':
             stage = 'Hoàn tất'
+        if d.docstatus == 1 and ordered:
+            from lotus_farm.purchase_flow import proposal_progress
+            stage = proposal_progress(d)['stage']
         result.append(dict(name=d.name, date=str(d.transaction_date), needed=str(d.schedule_date or ''), status=stage, stage=stage,
                            signing_state=d.get('lotus_proposal_state') or '', department=d.get('lotus_department') or '',
                            docstatus=d.docstatus, amount=sum(flt(x.get('amount')) or flt(x.qty) * flt(x.rate) for x in d.items),
@@ -693,4 +697,9 @@ def voucher(doctype, name):
     if doctype not in ('Payment Entry','Journal Entry'):
         frappe.throw('Loại phiếu không hợp lệ.')
     d = document(doctype,name)
-    return payments._voucher_info(d)
+    result = payments._voucher_info(d)
+    if doctype == 'Payment Entry':
+        result['references'] = [dict(name=r.reference_name, type='orders' if r.reference_doctype == 'Purchase Order' else 'invoices')
+            for r in d.references if r.reference_doctype in ('Purchase Order', 'Purchase Invoice')
+            and frappe.has_permission(r.reference_doctype, 'read', r.reference_name)]
+    return result

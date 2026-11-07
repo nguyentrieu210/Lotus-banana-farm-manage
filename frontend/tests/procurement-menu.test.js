@@ -6,7 +6,7 @@ const full={capabilities:{purchasing_finance:true,purchasing_invoice_read:true}}
 
 test('the Mua hàng sidebar has one entry per job, Mua nhanh first',()=>{
  const main=visibleBuyingNavigation(full).filter(r=>!r.setup).map(r=>r.label)
- assert.deepEqual(main,['Mua nhanh','Đề nghị mua','Báo giá & so sánh','Đơn mua & nhận hàng','Hóa đơn & công nợ'])
+ assert.deepEqual(main,['Mua nhanh','Đề xuất mua','Báo giá & so sánh','Đơn mua & nhận hàng','Hóa đơn & công nợ'])
  assert.deepEqual(visibleBuyingNavigation(full).filter(r=>r.setup).map(r=>r.id),['suppliers','items'])
  assert.deepEqual(visibleBuyingNavigation({capabilities:{}}).map(r=>r.id),['quick','needs','compare','orders','suppliers','items'],'no finance right: no accounting entry')
 })

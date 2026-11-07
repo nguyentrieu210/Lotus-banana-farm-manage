@@ -7,7 +7,7 @@ step to someone else; they are notified when their turn comes.
 """
 PURCHASE_APPROVER = ('Lotus Purchase Approver',)
 HEADS = ('Lotus Farm Manager', 'Lotus Field Supervisor', 'Lotus Warehouse Manager', 'Lotus Team Leader')
-PURCHASING = ('Lotus Purchasing Buyer', 'Purchase Manager', 'Accounts User', 'Accounts Manager')
+PURCHASING = ('Lotus Purchasing Buyer', 'Lotus Accountant', 'Lotus Chief Accountant', 'Purchase Manager', 'Accounts User', 'Accounts Manager')
 STOREKEEPERS = ('Lotus Warehouse Manager', 'Lotus Stock Reviewer', 'Stock Manager', 'Lotus Warehouse Receiver')
 HR = ('HR Manager', 'HR User')
 DIRECTORS = ('Lotus Purchase Approver', 'Lotus Farm Manager')

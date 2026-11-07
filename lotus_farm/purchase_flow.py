@@ -79,7 +79,8 @@ def proposal_progress(doc):
     order_lines = {}
     can_orders = frappe.has_permission('Purchase Order', 'read')
     if can_orders:
-        names = frappe.get_list('Purchase Order', filters={'company': doc.company, 'docstatus': ['<', 2]},
+        linked_orders = frappe.get_all('Purchase Order Item', filters={'material_request': doc.name}, pluck='parent', distinct=True, limit_page_length=0)
+        names = frappe.get_list('Purchase Order', filters={'company': doc.company, 'name': ['in', linked_orders or ['']], 'docstatus': ['<', 2]},
                                pluck='name', limit_page_length=0)
         for name in names:
             order = document('Purchase Order', name, doc.company)
@@ -96,7 +97,10 @@ def proposal_progress(doc):
     for dt, target, date_field in [('Purchase Receipt', receipts, 'posting_date'), ('Purchase Invoice', invoices, 'posting_date')]:
         if not frappe.has_permission(dt, 'read'):
             continue
-        for name in frappe.get_list(dt, filters={'company': doc.company, 'docstatus': ['<', 2]}, pluck='name', limit_page_length=0):
+        link_field = 'purchase_order_item' if dt == 'Purchase Receipt' else 'po_detail'
+        linked_entries = frappe.get_all(dt + ' Item', filters={link_field: ['in', list(order_lines) or ['']]},
+                                       pluck='parent', distinct=True, limit_page_length=0)
+        for name in frappe.get_list(dt, filters={'company': doc.company, 'name': ['in', linked_entries or ['']], 'docstatus': ['<', 2]}, pluck='name', limit_page_length=0):
             entry = document(dt, name, doc.company)
             linked = [r for r in entry.items if r.get('purchase_order_item' if dt == 'Purchase Receipt' else 'po_detail') in order_lines]
             if not linked:
