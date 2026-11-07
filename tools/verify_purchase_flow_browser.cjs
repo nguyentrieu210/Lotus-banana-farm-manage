@@ -24,6 +24,7 @@ async function main() {
     const errors = []
     page.on('pageerror',error=>errors.push(error.message))
     await page.addInitScript(()=>{for(const app of ['warehouse','buying','work'])localStorage.setItem('lotus-pwa-setup-v1:'+app,'done')})
+    await page.route('**/assets/lotus_farm/images/*',route=>route.fulfill({path:path.join(__dirname,'../lotus_farm/public/images',path.basename(new URL(route.request().url()).pathname))}))
     await page.route('**/api/method/**',async route=>{
      const request=route.request(),method=new URL(request.url()).pathname.split('/').pop(),name=method.split('.').pop()
      assert.equal(request.method(),'GET','UI review must not submit business documents')

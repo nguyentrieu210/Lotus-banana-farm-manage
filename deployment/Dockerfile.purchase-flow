@@ -1,0 +1,15 @@
+# Build from a git archive of the tested commit. Preserve runtime integrations and cached PWA assets.
+ARG BASE_IMAGE=lotus-release:0ee18de
+FROM ${BASE_IMAGE}
+ARG REVISION
+ARG BASE_IMAGE_ID
+USER root
+COPY --chown=frappe:root app/lotus_farm/purchase_flow.py app/lotus_farm/purchase_proposal.py app/lotus_farm/purchasing.py app/lotus_farm/procurement.py app/lotus_farm/signing.py app/lotus_farm/signing_rules.py app/lotus_farm/warehouse_buying_lite.py app/lotus_farm/warehouse_planning.py app/lotus_farm/hooks.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/
+COPY --chown=frappe:root app/lotus_farm/finance/payments.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/finance/payments.py
+COPY --chown=frappe:root app/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/frontend/
+COPY --chown=frappe:root app/lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
+RUN find /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm -name '*.pyc' -delete
+LABEL org.opencontainers.image.revision=${REVISION} \
+      org.opencontainers.image.source=https://github.com/nguyentrieu210/Lotus-banana-farm-manage \
+      com.lotus.base.image.id=${BASE_IMAGE_ID}
+USER frappe

@@ -249,6 +249,18 @@ class PurchaseFlow(unittest.TestCase):
         warehouse.submit_document('Stock Entry', doc.name, modified=str(doc.modified))
         self.assertEqual(source_allocations('Material Requirement', requirement.name, requirement.lines[0].name)['posted'], 2)
 
+    def test_12_historical_orders_can_finish_but_new_orders_need_sources(self):
+        previous = frappe.conf.get('lotus_purchase_flow_since')
+        try:
+            frappe.conf.lotus_purchase_flow_since = frappe.utils.add_days(base.DAY, 1)
+            order = base.ProcurementIntegration.order(self, qty=1)
+            self.assertEqual(order.docstatus, 1)
+            frappe.conf.lotus_purchase_flow_since = frappe.utils.add_days(base.DAY, -1)
+            with self.assertRaises(frappe.ValidationError):
+                base.ProcurementIntegration.order(self, qty=1)
+        finally:
+            frappe.conf.lotus_purchase_flow_since = previous
+
 
 if __name__ == '__main__':
     try:
