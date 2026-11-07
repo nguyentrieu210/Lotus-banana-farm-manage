@@ -121,6 +121,12 @@ def create_request(company, warehouse, expected_date, items, notes=""):
     access()
     _company(company)
     _warehouse(warehouse, company)
+    from lotus_farm.purchase_flow import enabled
+    if enabled(company):
+        from lotus_farm.purchase_proposal import save_proposal
+        rows = frappe.parse_json(items) if isinstance(items, str) else items
+        return save_proposal(company, dict(reason=notes or 'Đề xuất mua bổ sung vật tư', warehouse=warehouse,
+            items=[dict(r, item_code=r.get('item') or r.get('item_code'), schedule_date=expected_date) for r in rows]))
     if not frappe.has_permission("Material Request", "create") or not frappe.has_permission("Material Request", "submit"):
         frappe.throw("Tài khoản chưa có quyền gửi đề nghị mua.", frappe.PermissionError)
     from lotus_farm.warehouse_buying_lite import _date

@@ -107,6 +107,7 @@ def receipts_to_bill(supplier=None):
         r['to_bill'] = round(flt(r.grand_total) * (100 - flt(r.per_billed)) / 100)
         r['posting_date'] = str(r.posting_date)
         r['doctype'] = 'Purchase Receipt'
+        r['source_type'] = 'Nhận theo đơn mua'
     if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
         se_filters = {'docstatus': 1, 'company': setup.company(), 'stock_entry_type': 'Material Receipt', 'lotus_receipt_reason': 'Purchase',
                       'lotus_purchase_invoice': ['in', ['', None]]}
@@ -121,7 +122,7 @@ def receipts_to_bill(supplier=None):
             amount = flt(e.total_incoming_value) + corrections.get(e.name, 0)
             rows.append(dict(name=e.name, doctype='Stock Entry', supplier=e.lotus_supplier, supplier_name=names.get(e.lotus_supplier, e.lotus_supplier),
                              posting_date=str(e.posting_date), grand_total=amount, per_billed=0, to_bill=round(amount),
-                             cost_correction=corrections.get(e.name, 0)))
+                             cost_correction=corrections.get(e.name, 0), source_type='Mua nhanh — không qua đề xuất/đơn'))
     return rows
 
 

@@ -252,6 +252,19 @@ def create_purchase_request(company,warehouse,from_date,to_date,items):
     if result['warnings'] or result['unmapped']:frappe.throw('Xác định kho và quyền đọc nguồn trước khi tạo đề nghị mua.')
     rows=[r for r in result['rows'] if r['item'] in selected and (r['to_request_qty'] or 0)>0]
     if not rows:return dict(name=None,note='Phần thiếu đã có đề nghị mua hoặc đã đủ hàng. Không tạo thêm phiếu.')
+    from lotus_farm.purchase_flow import enabled
+    if enabled(company):
+        from lotus_farm.purchase_proposal import save_proposal, detail
+        proposal = save_proposal(company, dict(reason='Bổ sung vật tư thiếu cho nhu cầu cấp từ '+str(from_date)+' đến '+str(to_date),
+            warehouse=warehouse, items=[dict(item_code=r['item'], qty=r['to_request_qty'], uom=r['uom'], warehouse=warehouse,
+                schedule_date=max(getdate(to_date), getdate(nowdate()))) for r in rows]))
+        doc = frappe.get_doc('Material Request', proposal['name'])
+        by_item = {r['item']: r for r in rows}
+        for line in doc.items:
+            line.lotus_purchase_sources = frappe.as_json([dict(doctype=s['doctype'], name=s['name'], line=s['line'])
+                for s in by_item[line.item_code]['sources']])
+        doc.save()
+        return detail(doc.name)
     doc=frappe.get_doc(dict(doctype='Material Request',company=company,material_request_type='Purchase',
         transaction_date=nowdate(),schedule_date=max(getdate(to_date),getdate(nowdate())),
         items=[dict(item_code=r['item'],qty=r['to_request_qty'],uom=r['uom'],stock_uom=r['uom'],conversion_factor=1,
@@ -265,6 +278,10 @@ def purchase_request(name):
     _access()
     doc=frappe.get_doc('Material Request',name);doc.check_permission('read');_company(doc.company)
     if doc.material_request_type!='Purchase':frappe.throw('Chọn đề nghị mua vật tư.')
+    from lotus_farm.purchase_flow import enabled
+    if enabled(doc.company):
+        from lotus_farm.purchase_proposal import detail
+        return dict(detail(name), can_submit=False, can_delete=False, proposal_url='/buying?proposal='+doc.name)
     for row in doc.items:
         frappe.get_doc('Item',row.item_code).check_permission('read')
         if row.warehouse:frappe.get_doc('Warehouse',row.warehouse).check_permission('read')
@@ -281,6 +298,9 @@ def purchase_action(name,modified,action):
     if info['modified']!=modified:frappe.throw('Đề nghị mua đã thay đổi. Mở lại để kiểm tra.')
     if info['docstatus']!=0:frappe.throw('Chỉ xử lý đề nghị mua nháp tại đây.')
     doc=frappe.get_doc('Material Request',name)
+    from lotus_farm.purchase_flow import enabled
+    if enabled(doc.company):
+        frappe.throw('Mở Đề xuất mua để ký đủ 4 bước hoặc xóa nháp theo quyền người lập.')
     if action=='submit':doc.check_permission('submit');doc.submit()
     elif action=='delete':doc.check_permission('delete');frappe.delete_doc(doc.doctype,doc.name)
     else:frappe.throw('Thao tác không hợp lệ.')

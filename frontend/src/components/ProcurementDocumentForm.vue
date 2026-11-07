@@ -1,6 +1,7 @@
 <script setup>
 import {workFarm} from '../work-farm'
 import {computed,watch} from 'vue'
+import {call} from '../api'
 import FormGrid from './form/FormGrid.vue'
 import FormSection from './form/FormSection.vue'
 import LotusField from './form/LotusField.vue'
@@ -11,7 +12,7 @@ import DocumentReader from './DocumentReader.vue'
 import {unitLabel} from '../units'
 import {newPurchaseLine,purchaseUnits,purchaseTotal} from '../mobile-purchase'
 import {allowedKinds,purchaseKind,money} from '../procurement'
-// Fields of Đề nghị mua / Báo giá / Đơn mua. The surrounding ResponsiveForm owns submit and close.
+// Fields of Đề xuất mua / Báo giá / Đơn mua. The surrounding ResponsiveForm owns submit and close.
 const props=defineProps({mobile:Boolean,modelValue:Object,catalog:Object,type:String,saving:Boolean})
 const emit=defineEmits(['update:modelValue','request','add-supplier','add-item'])
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
@@ -20,14 +21,21 @@ const itemOf=code=>props.catalog.items.find(r=>r.name===code)
 // Quotes may be asked while a request is still being signed; orders only take approved requests.
 const requestOptions=computed(()=>(props.catalog.requests||[]).filter(r=>props.type==='quote'||!r.pending).map(r=>({value:r.name,label:r.name+(r.pending?' (đang chờ ký)':'')})))
 const vatOptions=['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))
+const pricesOnly=computed(()=>props.type==='need'&&props.modelValue?.edit==='prices')
+const stockVersion=new WeakMap()
+async function refreshStock(row){const key=[row.item,row.uom,props.modelValue?.warehouse].join('|');stockVersion.set(row,key);if(!row.item||!props.modelValue?.warehouse){row.stock=null;return}try{const result=await call('lotus_farm.purchase_proposal.stock_on_hand',{item:row.item,warehouse:props.modelValue.warehouse,uom:row.uom});if(stockVersion.get(row)===key)row.stock=result.qty}catch{if(stockVersion.get(row)===key)row.stock=null}}
+watch(()=>[props.modelValue?.warehouse,...(props.modelValue?.items||[]).map(r=>r.item+'|'+r.uom)],()=>{if(props.type==='need')for(const row of props.modelValue?.items||[])refreshStock(row)},{immediate:true})
 const lineColumns=computed(()=>[
  {field:'item',label:'Mặt hàng',required:true,options:options(props.catalog.items,'item_name'),width:'minmax(200px,2.2fr)'},
  {field:'kind',label:'Loại mua',required:true,options:row=>allowedKinds(itemOf(row.item)),searchable:false,width:'minmax(130px,1fr)'},
  {field:'qty',label:'Số lượng',type:'number',required:true,props:{min:0.000001},width:'minmax(100px,.8fr)'},
  {field:'uom',label:'Đơn vị',required:true,options:row=>purchaseUnits(row.item,props.catalog.items,props.catalog.conversions).map(u=>({value:u,label:unitLabel(u)})),searchable:false,width:'minmax(100px,.8fr)'},
- {field:'rate',label:'Đơn giá chưa VAT',type:'money',props:{min:0},width:'minmax(130px,1fr)'},
+ {field:'rate',label:props.type==='need'?'Giá dự kiến':'Đơn giá chưa VAT',type:'money',props:{min:0},width:'minmax(130px,1fr)'},
+ {field:'stock',label:'Tồn tham khảo',readonly:true,visible:()=>props.type==='need',width:'minmax(110px,1fr)'},
+ {field:'lotus_supplier_hint',label:'NCC đề xuất',visible:()=>props.type==='need',width:'minmax(140px,1fr)'},
+ {field:'lotus_purpose',label:'Mục đích sử dụng',visible:()=>props.type==='need',width:'minmax(140px,1fr)'},
  {field:'vat_code',label:'VAT',options:vatOptions,searchable:false,props:{emptyOption:null},width:'minmax(120px,.9fr)'}
-])
+].filter(c=>props.type==='need'?c.field!=='vat_code'&&c.field!=='kind':!['stock','lotus_supplier_hint','lotus_purpose'].includes(c.field)).map(c=>({...c,disabled:pricesOnly.value&&!['rate','lotus_supplier_hint','lotus_notes'].includes(c.field)})))
 // Vườn sử dụng and Vận chuyển belong to the whole order. Lines still carry lotus_farm / freight for the server:
 // the chosen farm is copied to every line, the order's freight is split by line value (by quantity while prices are empty).
 const farmOptions=computed(()=>(props.catalog.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
@@ -75,19 +83,20 @@ watch(()=>(props.modelValue?.items||[]).map(r=>r.item),()=>{for(const row of pro
 <template>
  <FormSection title="Thông tin chung">
   <FormGrid :columns="3">
-   <DocumentReader :mobile="mobile" :disabled="saving" label="Đọc báo giá / hóa đơn bằng AI" @read="applyDocument"/>
-   <LotusField v-if="type!=='need'&&requestOptions.length" :mobile="mobile" :label="type==='quote'?'Lấy dòng từ đề nghị mua':'Lấy dòng từ đề nghị đã duyệt'" :options="requestOptions" @update:model-value="emit('request',$event)"/>
+   <LotusField v-if="type==='need'" :mobile="mobile" v-model="modelValue.department" :disabled="pricesOnly" label="Bộ phận đề xuất"/>
+   <DocumentReader v-if="!pricesOnly" :mobile="mobile" :disabled="saving" label="Đọc báo giá / hóa đơn bằng AI" @read="applyDocument"/>
+   <LotusField v-if="type!=='need'&&requestOptions.length" :mobile="mobile" :label="type==='quote'?'Lấy dòng từ đề xuất mua':'Lấy dòng từ đề nghị đã duyệt'" :options="requestOptions" @update:model-value="emit('request',$event)"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.supplier" label="Nhà cung cấp" :options="options(catalog.suppliers,'supplier_name')" required/>
    <LotusField v-if="type!=='need'&&farmOptions.length" :mobile="mobile" :model-value="modelValue.order_farm" label="Vườn sử dụng" :options="farmOptions" empty-option="Không gắn vườn (chi phí chung)" :searchable="false" :hint="lineFarms.length>1&&!modelValue.order_farm?'Các dòng đang thuộc nhiều vườn khác nhau; chọn một vườn để áp cho cả đơn.':''" @update:model-value="chooseFarm"/>
    <LotusField v-if="type!=='need'" :mobile="mobile" v-model="modelValue.order_freight" label="Phí vận chuyển cả đơn" type="money" min="0" hint="Tự chia vào các dòng theo giá trị hàng."/>
-   <LotusField :mobile="mobile" v-model="modelValue.warehouse" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
-   <LotusField :mobile="mobile" v-model="modelValue.expected_date" label="Ngày cần hàng / nghiệm thu" type="date" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.warehouse" :disabled="pricesOnly" label="Kho nhận / bộ phận" :options="options(catalog.warehouses,'warehouse_name')" required/>
+   <LotusField :mobile="mobile" v-model="modelValue.expected_date" :disabled="pricesOnly" label="Ngày cần hàng / nghiệm thu" type="date" required/>
    <LotusField v-if="type==='quote'" :mobile="mobile" v-model="modelValue.valid_till" label="Hiệu lực báo giá đến" type="date" required/>
-   <LotusField :mobile="mobile" v-model="modelValue.notes" :label="type==='need'?'Lý do đề nghị':'Nội dung giao hàng / dịch vụ'" type="textarea" wide :required="type==='need'"/>
+   <LotusField :mobile="mobile" v-model="modelValue.notes" :disabled="pricesOnly" :label="type==='need'?'Lý do đề nghị':'Nội dung giao hàng / dịch vụ'" type="textarea" wide :required="type==='need'"/>
   </FormGrid>
  </FormSection>
  <FormSection>
-  <LineItemsEditor v-model="modelValue.items" title="Mặt hàng" add-label="Thêm dòng" :columns="lineColumns" :new-row="newPurchaseLine" :mobile="mobile" :readonly="saving">
+  <LineItemsEditor v-model="modelValue.items" title="Mặt hàng" add-label="Thêm dòng" :columns="lineColumns" :new-row="newPurchaseLine" :mobile="mobile" :fixed="pricesOnly" :readonly="saving">
    <template #footer>
     <component :is="button" v-if="type!=='need'&&catalog.can_create_supplier" type="button" variant="outline" size="sm" @click="emit('add-supplier')">Thêm nhà cung cấp mới</component>
     <component :is="button" v-if="catalog.can_create_item" type="button" variant="outline" size="sm" @click="emit('add-item',modelValue.items.length-1)">Thêm mặt hàng mới</component>

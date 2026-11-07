@@ -10,6 +10,7 @@ import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import MobileLinkField from './MobileLinkField.vue'
 import SignerPicker from './SignerPicker.vue'
 import LotusSignatureTimeline from './LotusSignatureTimeline.vue'
+import PurchaseProgress from './PurchaseProgress.vue'
 import {call} from '../api'
 import {unitLabel} from '../units'
 import '../purchase-proposal-mobile.css'
@@ -160,6 +161,8 @@ defineExpose({back,newProposal,open})
    <small>Kho nhận: {{detail.warehouse||'—'}}</small>
   </div>
   <LotusMobileFeedback v-if="detail.state==='Trả lại'&&detail.return_reason" kind="warning">Bị trả lại: {{detail.return_reason}}</LotusMobileFeedback>
+  <LotusMobileFeedback v-if="detail.policy_notice" kind="warning">{{detail.policy_notice}}</LotusMobileFeedback>
+  <PurchaseProgress v-if="detail.progress" :progress="detail.progress" mobile/>
   <LotusSignatureTimeline :steps="detail.signatures" :current="detail.state==='Trả lại'?-1:detail.step" title="Các bước ký"/>
   <div v-for="(r,i) in detail.items" :key="r.name" class="buy-card pp-item">
    <div class="buy-line"><strong>{{i+1}}. {{r.item_name}}</strong><b>{{number(r.qty)}} {{unitLabel(r.uom)}}</b></div>

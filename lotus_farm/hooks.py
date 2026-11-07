@@ -170,7 +170,10 @@ for _event in ('on_submit', 'on_cancel'):
 doc_events['Daily Work Plan']['before_update_after_submit']='lotus_farm.console.work_state_guard'
 doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.validate_requirement_warehouse','before_update_after_submit':'lotus_farm.warehouse_planning.validate_requirement_warehouse'}
 doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
+for _proposal_event in ('validate', 'before_submit'):
+    doc_events['Material Request'][_proposal_event] = [doc_events['Material Request'][_proposal_event], 'lotus_farm.purchase_flow.validate']
 doc_events['Purchase Order']={'before_submit':'lotus_farm.purchasing.check_submission'}
+doc_events['Purchase Order']['before_submit'] = [doc_events['Purchase Order']['before_submit'], 'lotus_farm.purchase_flow.order_guard']
 
 # Shared mobile PWA notification hooks. Keep existing validation and stock posting hooks.
 for _dt in ('Purchase Order', 'Material Request', 'Purchase Receipt', 'Stock Entry',

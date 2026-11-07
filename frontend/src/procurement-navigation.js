@@ -3,7 +3,7 @@ import {erpSection,withErpNav} from './erp-sections.js'
 // views) share one entry and switch with the tabs at the top of the page; `group` names the entry a view lives under.
 export const procurementNavigation=[
  {id:'quick',label:'Mua nhanh',icon:'cart',quick:true},
- {id:'needs',label:'Đề nghị mua',icon:'list'},
+ {id:'needs',label:'Đề xuất mua',icon:'list'},
  {id:'compare',label:'Báo giá & so sánh',icon:'chart',tab:'So sánh giá'},
  {id:'quotes',label:'Danh sách báo giá',icon:'document',group:'compare'},
  {id:'orders',label:'Đơn mua & nhận hàng',icon:'cart',tab:'Đơn mua'},

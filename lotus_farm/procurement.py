@@ -201,7 +201,14 @@ def needs(company):
     for r in frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase'}, fields=['name'], limit_page_length=0, order_by='transaction_date desc, name desc'):
         d = document('Material Request', r.name, company)
         # Material Request has no document total; the estimate is the sum of its lines.
-        result.append(dict(name=d.name, date=str(d.transaction_date), needed=str(d.schedule_date or ''), status=d.status,
+        ordered = sum(flt(x.ordered_qty) for x in d.items)
+        stage = ('Nháp' if (d.get('lotus_proposal_state') or 'Nháp') in ('Nháp', 'Trả lại') else 'Chờ ký') if d.docstatus == 0 else ('Đang mua' if ordered else 'Đã duyệt chờ mua')
+        if d.docstatus == 2:
+            stage = 'Đã hủy'
+        if d.docstatus == 1 and d.status == 'Received':
+            stage = 'Hoàn tất'
+        result.append(dict(name=d.name, date=str(d.transaction_date), needed=str(d.schedule_date or ''), status=stage, stage=stage,
+                           signing_state=d.get('lotus_proposal_state') or '', department=d.get('lotus_department') or '',
                            docstatus=d.docstatus, amount=sum(flt(x.get('amount')) or flt(x.qty) * flt(x.rate) for x in d.items),
                            items=[dict(name=x.name, item=x.item_code, item_name=x.item_name, qty=flt(x.qty), uom=x.uom,
                                        factor=flt(x.conversion_factor), warehouse=x.warehouse, rate=flt(x.rate),
@@ -419,7 +426,13 @@ def _approve_by_policy(doc, requests):
 @frappe.whitelist()
 def chain(name):
     order = document('Purchase Order', name)
-    result = dict(order=name, receipts=[], invoices=[], payments=[], funding=[])
+    result = dict(order=name, proposals=[], receipts=[], invoices=[], payments=[], funding=[])
+    for proposal in sorted({r.material_request for r in order.items if r.material_request}):
+        if frappe.has_permission('Material Request', 'read', proposal):
+            source = document('Material Request', proposal, order.company)
+            result['proposals'].append(dict(name=source.name, docstatus=source.docstatus))
+    result['progress'] = [dict(item_name=r.item_name, uom=r.uom, qty=flt(r.qty), ordered_qty=flt(r.qty),
+        received_qty=flt(r.received_qty), remaining_receive_qty=max(0, flt(r.qty)-flt(r.received_qty))) for r in order.items]
     refs = [('Purchase Receipt', 'Purchase Receipt Item', 'purchase_order'), ('Purchase Invoice', 'Purchase Invoice Item', 'purchase_order')]
     for dt, child, link in refs:
         if not frappe.has_permission(dt, 'read'):
