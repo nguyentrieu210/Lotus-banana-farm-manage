@@ -77,7 +77,8 @@ def _version(doc, modified):
 
 def _save_signing_state(doc):
     """A named signer updates only workflow metadata, not ERP item/catalogue data."""
-    values = {field: doc.get(field) for field in ('lotus_proposal_state', 'lotus_return_reason', 'lotus_proposal_policy')}
+    values = {field: doc.get(field) for field in ('lotus_proposal_state', 'lotus_return_reason', 'lotus_proposal_policy')
+              if doc.meta.has_field(field)}
     values.update(modified=frappe.utils.now_datetime(), modified_by=frappe.session.user)
     doc.db_set(values, update_modified=False)
 

@@ -189,6 +189,7 @@ def _files(name):
 def setup(company):
     _access()
     _company(company)
+    from lotus_farm.purchase_flow import enabled
     return dict(
         requests=_requests(company),
         suppliers=frappe.get_list('Supplier', filters={'disabled':0},
@@ -201,7 +202,7 @@ def setup(company):
         conversions=frappe.get_all('UOM Conversion Detail',fields=['parent','uom','conversion_factor'], filters={'parenttype':'Item'},limit_page_length=0),
         currency=frappe.get_cached_value('Company',company,'default_currency'),
         can_create=frappe.has_permission('Purchase Order','create'),
-        can_request=frappe.has_permission('Material Request','create'),
+        can_request=frappe.has_permission('Material Request','create') and (enabled(company) or frappe.has_permission('Material Request','submit')),
         can_create_supplier=frappe.has_permission('Supplier','create'),
         can_create_item=frappe.has_permission('Item','create'),
         today=nowdate())
