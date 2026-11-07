@@ -135,12 +135,8 @@
       "_SigningPanel-DAndS2Af.js"
     ]
   },
-  "_ProcurementWorkspace-B5-tLolK.css": {
-    "file": "assets/ProcurementWorkspace-B5-tLolK.css",
-    "src": "_ProcurementWorkspace-B5-tLolK.css"
-  },
-  "_ProcurementWorkspace-DO1d5rYM.js": {
-    "file": "assets/ProcurementWorkspace-DO1d5rYM.js",
+  "_ProcurementWorkspace-7jO6Jhxu.js": {
+    "file": "assets/ProcurementWorkspace-7jO6Jhxu.js",
     "name": "ProcurementWorkspace",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
@@ -171,6 +167,10 @@
     "css": [
       "assets/ProcurementWorkspace-B5-tLolK.css"
     ]
+  },
+  "_ProcurementWorkspace-B5-tLolK.css": {
+    "file": "assets/ProcurementWorkspace-B5-tLolK.css",
+    "src": "_ProcurementWorkspace-B5-tLolK.css"
   },
   "_SearchSelect-DBGH9OTr.js": {
     "file": "assets/SearchSelect-DBGH9OTr.js",
@@ -451,7 +451,7 @@
     ]
   },
   "buying.html": {
-    "file": "assets/buying-C1SVmonR.js",
+    "file": "assets/buying-CGTJi8SI.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
@@ -467,7 +467,7 @@
       "_LotusMobileAction-BrlFwxK5.js",
       "_SignerPicker-B3ILxokO.js",
       "_LotusSignatureTimeline-C3cwEF9N.js",
-      "_ProcurementWorkspace-DO1d5rYM.js"
+      "_ProcurementWorkspace-7jO6Jhxu.js"
     ],
     "css": [
       "assets/buying-Df07eCaK.css"
@@ -494,7 +494,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-Bus-IVXP.js",
+    "file": "assets/index-gjQ8aFY8.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -516,7 +516,7 @@
       "src/components/OpsList.vue",
       "src/components/OneDriveProcessWorkspace.vue",
       "_DataTable-BxG3_0Zc.js",
-      "_ProcurementWorkspace-DO1d5rYM.js",
+      "_ProcurementWorkspace-7jO6Jhxu.js",
       "src/UserAdminApp.vue",
       "src/HrApp.vue",
       "src/TimekeepingApp.vue",
@@ -554,7 +554,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-Cg4H_2FJ.js",
+    "file": "assets/BlockForecastApp-aKYgVejY.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -592,7 +592,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-D7jlgsOR.js",
+    "file": "assets/FarmLandApp-DwTY3yy1.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -616,7 +616,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-GkmZBUGo.js",
+    "file": "assets/FieldReportApp-8xtvUibf.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -641,7 +641,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-B_x_l8uT.js",
+    "file": "assets/FinanceApp-B_nbq7zn.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -668,7 +668,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-sjv5zSK1.js",
+    "file": "assets/HrApp-DVWBIIkx.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -697,7 +697,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-Cp5VP8hn.js",
+    "file": "assets/StockApp-BcJwNWc_.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -723,7 +723,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-CVoDY6Nc.js",
+    "file": "assets/TimekeepingApp-CRpPEgaB.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -764,7 +764,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-Ddo0yzlI.js",
+    "file": "assets/OneDriveProcessWorkspace-DxgClADQ.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -785,7 +785,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CbE62DjP.js",
+    "file": "assets/OpsList-Dy2-aV6G.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,

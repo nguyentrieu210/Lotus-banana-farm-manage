@@ -115,7 +115,7 @@ const detailTitle=computed(()=>current.value?(detailLabels[detailType.value]||'C
 const detailUrl=computed(()=>current.value&&detailType.value!=='quotes'&&!current.value.audit_only?docUrl(detailType.value==='orders'?'Purchase Order':detailType.value==='needs'?'Material Request':detailType.value==='invoices'?'Purchase Invoice':current.value.doctype||'Purchase Receipt',current.value.name):'')
 const stageColumns=[{field:'item_name',label:'Mặt hàng',width:'minmax(220px,2fr)'},{field:'qty',label:'Số lượng',width:'minmax(140px,1fr)'}]
 const importUnits=code=>[catalog.value.items.find(i=>i.name===code)?.stock_uom,...catalog.value.conversions.filter(c=>c.parent===code).map(c=>c.uom)].filter(Boolean)
-const formSubmitLabel=computed(()=>({order:'Lưu nháp đơn mua',quote:'Lưu nháp báo giá',need:'Lưu nháp đề nghị',invoice:'Ghi nhận hóa đơn',credit:'Ghi nhận hóa đơn',return:'Tạo phiếu nháp',payment:'Lập phiếu và trình ký',funding:'Lập phiếu và trình ký',reimburse:'Lập phiếu và trình ký',refund:'Lập phiếu và trình ký',accounts:'Lưu tài khoản',import:'Xác nhận tạo nháp'}[form.value]||'Lưu'))
+const formSubmitLabel=computed(()=>({order:'Lưu nháp đơn mua',quote:'Lưu nháp báo giá',need:'Lưu nháp đề xuất',invoice:'Ghi nhận hóa đơn',credit:'Ghi nhận hóa đơn',return:'Tạo phiếu nháp',payment:'Lập phiếu và trình ký',funding:'Lập phiếu và trình ký',reimburse:'Lập phiếu và trình ký',refund:'Lập phiếu và trình ký',accounts:'Lưu tài khoản',import:'Xác nhận tạo nháp'}[form.value]||'Lưu'))
 const formDisabled=computed(()=>form.value==='import'?!preview.value?.valid:form.value==='funding'?!evidence.value||!allocations.value.length:false)
 function submitForm(){
  if(['order','quote','need'].includes(form.value))return saveDocument()
@@ -206,7 +206,7 @@ async function start(type){
 }
 async function saveDocument(){await run(async()=>{
  let answer
- if(form.value==='need')answer=await method('purchase_proposal','save_proposal',{company:company.value,name:draft.value.name||null,modified:draft.value.modified||null,values:{reason:draft.value.notes,department:draft.value.department,warehouse:draft.value.warehouse,items:draft.value.items.map(r=>({...r,item_code:r.item,warehouse:r.warehouse||draft.value.warehouse,schedule_date:draft.value.expected_date}))}},true)
+ if(form.value==='need')answer=await method('purchase_proposal','save_proposal',{company:company.value,name:draft.value.name||null,modified:draft.value.modified||null,values:{reason:draft.value.notes,department:draft.value.department,warehouse:draft.value.warehouse,items:draft.value.items.map(r=>({...r,item_code:r.item,warehouse:r.warehouse||draft.value.warehouse,schedule_date:r.schedule_date||draft.value.expected_date}))}},true)
  else if(form.value==='quote')answer=await api('save_quotation',{company:company.value,data:draft.value,client_key:key.value},true)
  else answer=await method('warehouse_buying_lite','save_order',{company:company.value,data:purchasePayload(draft.value,catalog.value),name:draft.value.name||null,modified:draft.value.modified||null},true)
  const doctype={need:'Material Request',quote:'Supplier Quotation'}[form.value]||'Purchase Order'
@@ -217,7 +217,7 @@ async function saveDocument(){await run(async()=>{
 })}
 async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value,allow_pending:form.value==='quote'?1:0});draft.value=purchaseFromRequest(draft.value,request)})}
 async function open(row,type=tab.value){error.value='';try{
- form.value='';detailType.value=type;signers.value={};chain.value=null
+ form.value='';detailType.value=type;signers.value={};chain.value=null;notes.value=''
  if(type==='payables'){if(row.doctype!=='Purchase Invoice')return;return await open(row,'invoices')}
  if(type==='quick'){await quickDetail.value?.open('Stock Entry',row.name);return}
  if(row.audit_only){current.value={...row};return}
@@ -347,7 +347,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <template v-if="tab==='reports'"><Button @click="load">Áp dụng</Button><Button variant="outline" :disabled="saving" @click="exportReport">Xuất toàn bộ Excel</Button></template>
   </template>
   <template #before>
-   <p v-if="tab==='quick'" class="lotus-form-note">Hàng mua lẻ đã về: bấm <b>Mua nhanh</b>, chụp hóa đơn, kiểm tra rồi lưu là hàng vào kho ngay, không cần đề nghị hay đơn mua. Đợt mua lớn theo kế hoạch tháng vẫn đi Đề xuất mua → So sánh giá → Đơn mua.</p>
+   <p v-if="tab==='quick'" class="lotus-form-note">Hàng mua lẻ đã về: bấm <b>Mua nhanh</b>, chụp hóa đơn, kiểm tra rồi lưu là hàng vào kho ngay, không cần đề xuất hay đơn mua. Đợt mua lớn theo kế hoạch tháng vẫn đi Đề xuất mua → So sánh giá → Đơn mua.</p>
    <p v-if="tab==='reports'&&report?.note" class="lotus-form-note">{{report.note}}</p>
    <FormSection v-if="tab==='payments'&&finance?.vouchers?.length" title="Phiếu chờ ký"><div class="procurement-actions"><Button v-for="v in finance.vouchers" :key="v.name" variant="outline" size="sm" @click="current=v;detailType='voucher'">{{v.name}} · {{money(v.amount)}} · {{v.signing?.waiting_for}}</Button></div></FormSection>
   </template>
@@ -361,7 +361,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <template v-if="tab==='reports'"><LotusField v-model="period" mobile label="Tháng" type="month"/><LotusField v-model="asof" mobile type="date" label="Chốt đến"/><LotusField v-model="supplier" mobile label="Nhà cung cấp" :options="[{value:'',label:'Tất cả'},...supplierOptions]"/><LotusField v-model="kind" mobile label="Loại mua" :options="[{value:'',label:'Tất cả'},...purchaseKinds]" :searchable="false"/></template>
    <LotusField v-else v-model="search" mobile label="Tìm kiếm" placeholder="Tìm trong danh sách…"/>
    <component :is="button" :disabled="busy||saving" @click="load">{{tab==='reports'?'Áp dụng':'Làm mới'}}</component>
-   <component :is="button" v-if="tab==='needs'&&catalog.can_need" @click="start('need')">Thêm đề nghị</component>
+   <component :is="button" v-if="tab==='needs'&&catalog.can_need" @click="start('need')">Thêm đề xuất</component>
    <component :is="button" v-if="tab==='quotes'&&catalog.can_quote" @click="start('quote')">Thêm báo giá</component>
    <component :is="button" v-if="tab==='quotes'&&catalog.can_create" :disabled="!Object.values(selections).some(r=>r.selected)||saving" @click="chooseQuotes">Tạo đơn từ dòng chọn</component>
    <component :is="button" v-if="tab==='orders'&&catalog.can_create" @click="start('order')">Thêm đơn mua</component>
@@ -382,6 +382,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
    <template v-if="detailType==='needs'">
     <p class="lotus-form-note">{{current.state||current.status}} · {{current.reason}}</p>
+    <LotusField v-if="current.can_return" v-model="notes" :mobile="mobile" label="Lý do trả lại đề xuất" type="textarea"/>
     <p v-if="current.policy_notice||current.return_reason" role="status">{{current.policy_notice||current.return_reason}}</p>
     <LotusSignatureTimeline :steps="current.signatures" :current="current.step" title="Các bước ký"/>
     <ProcurementSigners v-if="current.needs_signers&&current.can_sign" :mobile="mobile" v-model="signers" :options="signerOptions"/>
@@ -421,7 +422,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   </template>
   <template #actions><template v-if="current">
    <component :is="link" v-if="detailUrl&&!mobile" as="a" variant="outline" :href="detailUrl" target="_blank" rel="noopener">Chứng từ gốc</component>
-   <template v-if="detailType==='needs'"><component :is="button" v-if="current.edit" type="button" variant="outline" @click="editProposal">{{current.edit==='prices'?'Bổ sung giá / nhà cung cấp':'Sửa đề xuất'}}</component><component :is="button" v-if="current.can_send||current.can_sign||current.can_submit" type="button" :disabled="saving" @click="proposalSign">Ký / gửi duyệt đề nghị</component><component :is="link" as="a" variant="outline" :href="'/buying?proposal='+encodeURIComponent(current.name)">Mở quy trình đề xuất</component><component :is="button" v-if="current.docstatus===1&&catalog.can_create" type="button" @click="orderFromProposal">Lập đơn từ đề xuất</component></template>
+   <template v-if="detailType==='needs'"><component :is="button" v-if="current.can_return" type="button" variant="outline" :disabled="saving||notes.trim().length<3" @click="act('return_proposal','purchase_proposal',{reason:notes})">Trả lại đề xuất</component><component :is="button" v-if="current.edit" type="button" variant="outline" @click="editProposal">{{current.edit==='prices'?'Bổ sung giá / nhà cung cấp':'Sửa đề xuất'}}</component><component :is="button" v-if="current.can_send||current.can_sign||current.can_submit" type="button" :disabled="saving" @click="proposalSign">Ký / gửi duyệt đề xuất</component><component :is="link" as="a" variant="outline" :href="'/buying?proposal='+encodeURIComponent(current.name)">Mở quy trình đề xuất</component><component :is="button" v-if="current.docstatus===1&&catalog.can_create" type="button" @click="orderFromProposal">Lập đơn từ đề xuất</component></template>
    <template v-if="detailType==='quotes'"><component :is="button" v-if="mobile&&current.docstatus===1&&current.gross!=null" type="button" @click="selection(current).selected=true;current=null">Chọn báo giá này</component><component :is="button" v-if="current.docstatus===0&&catalog.can_quote" type="button" :disabled="saving" @click="act('confirm_quotation','procurement')">Xác nhận báo giá</component></template>
    <template v-if="detailType==='orders'">
     <component :is="link" as="a" variant="outline" :href="'/lotus/in-phieu?'+new URLSearchParams({doctype:'Purchase Order',name:current.name})" target="_blank" rel="noopener">In đơn mua</component>
@@ -484,7 +485,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
    <details v-for="r in preview?.rows||[]" :key="r.key" class="procurement-line"><summary>{{r.sheet}} · dòng {{r.row}} · {{r.item_label||r.source.slice(0,5).join(' · ')}} · {{r.errors.join('; ')||'Hợp lệ'}}</summary>
     <FormGrid v-if="mappings[r.key]" :columns="mobile?1:4">
      <LotusField :mobile="mobile" v-model="mappings[r.key].item" label="Mặt hàng" :options="options(catalog.items,'item_name')"/>
-     <LotusField :mobile="mobile" v-model="mappings[r.key].type" label="Nguồn" :options="[{value:'Need',label:'Đề nghị'},{value:'Quotation',label:'Báo giá'}]" :searchable="false"/>
+     <LotusField :mobile="mobile" v-model="mappings[r.key].type" label="Nguồn" :options="[{value:'Need',label:'Đề xuất mua'},{value:'Quotation',label:'Báo giá'}]" :searchable="false"/>
      <LotusField :mobile="mobile" v-model="mappings[r.key].qty" label="Số lượng" type="number"/>
      <LotusField :mobile="mobile" v-model="mappings[r.key].uom" label="ĐVT" :options="importUnits(mappings[r.key].item)" :searchable="false"/>
      <LotusField :mobile="mobile" v-model="mappings[r.key].rate" label="Đơn giá" type="money"/>

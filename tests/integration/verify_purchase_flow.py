@@ -77,6 +77,7 @@ class PurchaseFlow(unittest.TestCase):
         d = base.as_user(base.BUYER, purchasing.create_request, base.C, base.WH, base.DAY,
                          [dict(item='PCT-M', qty=2, uom='Nos')], 'Mua dự trữ')
         self.assertEqual(d['docstatus'], 0)
+        self.assertTrue(base.receiving.purchase_request(d['name'])['proposal_url'].startswith('/lotus/mua-hang?'))
         with self.assertRaises(frappe.ValidationError):
             frappe.get_doc('Material Request', d['name']).submit()
         with self.assertRaises(frappe.ValidationError):
