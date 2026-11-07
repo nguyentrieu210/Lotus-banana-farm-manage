@@ -14,7 +14,11 @@ class PurchaseFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         base.seed()
+        frappe.conf.lotus_purchase_flow_company = base.C
         pp.install_fields()
+        frappe.get_doc('User', base.BUYER).add_roles('Lotus Purchase Requester')
+        frappe.db.commit()
+        frappe.conf.lotus_purchase_flow_company = None
         cls.image = BytesIO()
         image = Image.new('RGB', (200, 70), 'white')
         ImageDraw.Draw(image).line([(10, 50), (70, 15), (100, 55), (190, 20)], fill='black', width=3)

@@ -257,7 +257,7 @@ async function chooseQuotes(){await run(async()=>{const result=await api('select
 function ordersCreated(result){const ok=result.approved||[],draft=result.orders.filter(n=>!ok.includes(n));success([ok.length?'Đơn đã duyệt, chờ nhận hàng: '+ok.join(', '):'',draft.length?'Đơn nháp chờ trình duyệt: '+draft.join(', '):''].filter(Boolean).join(' · '))}
 async function compareCreated(result){ordersCreated(result);await changeTab('orders')}
 function selection(row){return selections.value[row.line_id||row.name]||=( {selected:false,reason:'',qty:row.qty})}
-async function editProposal(){const d=current.value;await start('need');draft.value={...draft.value,name:d.name,modified:d.modified,edit:d.edit,department:d.department,notes:d.reason,warehouse:d.warehouse||d.items[0]?.warehouse||'',expected_date:d.items[0]?.schedule_date||asof.value,items:d.items.map(r=>({...r,item:r.item_code,kind:r.lotus_purchase_kind||'Material'}))}}
+async function editProposal(){const d=current.value;await start('need');draft.value={...draft.value,name:d.name,modified:d.modified,edit:d.edit,department:d.department,notes:d.reason,warehouse:d.warehouse||d.items[0]?.warehouse||'',expected_date:d.items[0]?.schedule_date||asof.value,items:d.items.map(r=>({...r,item:r.item_code,kind:r.kind||r.lotus_purchase_kind}))}}
 async function orderFromProposal(){const name=current.value.name;await start('order');await fromRequest(name)}
 async function proposalSign(){await act('sign','purchase_proposal',{signers:signers.value})}
 async function pay(){await run(async()=>{

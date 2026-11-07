@@ -14,6 +14,13 @@ def install():
         from frappe.installer import update_site_config
         update_site_config('lotus_purchase_flow_company', 'Lotus Agritech')
         update_site_config('lotus_purchase_flow_since', frappe.conf.lotus_purchase_flow_since)
+    if frappe.conf.get('lotus_purchase_flow_company'):
+        from frappe.permissions import add_permission, update_permission_property
+        role = 'Lotus Purchase Requester'
+        add_permission('Material Request', role)
+        for action in ('read', 'create', 'write'):
+            if not frappe.db.get_value('Custom DocPerm', {'parent': 'Material Request', 'role': role, 'permlevel': 0}, action):
+                update_permission_property('Material Request', role, 0, action, 1)
 
 
 def validate(doc, method=None):

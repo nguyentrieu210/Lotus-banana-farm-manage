@@ -165,12 +165,15 @@ def save_proposal(company, values, name=None, modified=None):
         lock('Material Request', name)
         doc = _doc(name)
         _version(doc, modified)
-        doc.check_permission('write')
         state = _state(doc)
         chain = _chain(doc)
         allowed = rules.editable(state, step_roles_match=chain['current'] == 2 and chain['can_sign'])
         if not allowed or doc.docstatus != 0:
             frappe.throw('Phiếu đang chờ ký, không sửa được ở bước này.')
+        if allowed == 'prices':
+            doc.flags.ignore_permissions = True  # Named purchasing signer may edit only EDIT_PRICES.
+        else:
+            doc.check_permission('write')
         if allowed == 'all' and doc.owner != frappe.session.user and not _admin():
             frappe.throw('Chỉ người đề xuất sửa nội dung phiếu.')
     else:
@@ -280,6 +283,7 @@ def detail(name):
     items = []
     for row in doc.items:
         items.append(dict(name=row.name, item_code=row.item_code, item_name=row.item_name, uom=row.uom, qty=flt(row.qty), rate=flt(row.rate),
+                          kind=row.get('lotus_purchase_kind'),
                           amount=flt(row.qty) * flt(row.rate), warehouse=row.warehouse, schedule_date=str(row.schedule_date or ''),
                           stock=_stock(row.item_code, row.warehouse, row.conversion_factor),
                           lotus_specification=row.get('lotus_specification') or '', lotus_supplier_hint=row.get('lotus_supplier_hint') or '',
