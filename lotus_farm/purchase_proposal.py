@@ -16,6 +16,7 @@ from lotus_farm import signing, signing_rules
 CHAIN = 'purchase_proposal'
 
 PARENT_FIELDS = [
+    dict(fieldname='lotus_proposal_policy', label='Lotus · Phiên bản duyệt mua', fieldtype='Int', read_only=1, hidden=1, no_copy=1),
     dict(fieldname='lotus_proposal_state', label='Lotus · Trạng thái đề xuất', fieldtype='Select',
          options='\n'.join(rules.STATES), default=rules.DRAFT, read_only=1, insert_after='material_request_type', in_list_view=1),
     dict(fieldname='lotus_department', label='Lotus · Bộ phận đề xuất', fieldtype='Data', insert_after='lotus_proposal_state'),
@@ -23,6 +24,7 @@ PARENT_FIELDS = [
     dict(fieldname='lotus_return_reason', label='Lotus · Lý do trả lại', fieldtype='Small Text', read_only=1, insert_after='lotus_request_note'),
 ]
 ITEM_FIELDS = [
+    dict(fieldname='lotus_purchase_sources', label='Lotus · Nguồn tham khảo mua', fieldtype='Long Text', read_only=1, hidden=1),
     dict(fieldname='lotus_specification', label='Lotus · Quy cách / thông số kỹ thuật', fieldtype='Data', insert_after='description'),
     dict(fieldname='lotus_supplier_hint', label='Lotus · Nhà cung cấp đề xuất', fieldtype='Data', insert_after='lotus_specification'),
     dict(fieldname='lotus_purpose', label='Lotus · Mục đích sử dụng', fieldtype='Data', insert_after='lotus_supplier_hint'),
@@ -35,13 +37,13 @@ EDIT_PRICES = ('rate', 'lotus_supplier_hint', 'lotus_notes')
 def install_fields():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
     create_custom_fields({'Material Request': PARENT_FIELDS, 'Material Request Item': ITEM_FIELDS}, update=True, ignore_validate=True)
+    from lotus_farm.purchase_flow import install
+    install()
 
 
 def _access():
-    from lotus_farm.purchasing import access
-    access()
-    if not frappe.has_permission('Material Request', 'read'):
-        frappe.throw('Không có quyền xem đề xuất mua.', frappe.PermissionError)
+    if frappe.session.user == 'Guest':
+        frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
 
 
 
@@ -51,7 +53,10 @@ def _admin():
 
 def _doc(name):
     doc = frappe.get_doc('Material Request', name)
-    doc.check_permission('read')
+    if not doc.has_permission('read'):
+        rows, _ = signing._rows(doc)
+        if not any(r.assignee == frappe.session.user for r in rows):
+            doc.check_permission('read')
     if doc.material_request_type != 'Purchase':
         frappe.throw('Chỉ xử lý đề xuất mua vật tư.')
     from lotus_farm.warehouse import _company
@@ -70,8 +75,16 @@ def _version(doc, modified):
         frappe.throw('Phiếu đã thay đổi. Tải lại trước khi thao tác.')
 
 
+def _save_signing_state(doc):
+    """A named signer updates only workflow metadata, not ERP item/catalogue data."""
+    values = {field: doc.get(field) for field in ('lotus_proposal_state', 'lotus_return_reason', 'lotus_proposal_policy')
+              if doc.meta.has_field(field)}
+    values.update(modified=frappe.utils.now_datetime(), modified_by=frappe.session.user)
+    doc.db_set(values, update_modified=False)
+
+
 def _stock(item, warehouse, factor=1):
-    if not (item and warehouse):
+    if not (item and warehouse) or not frappe.has_permission('Bin', 'read'):
         return None
     value = frappe.db.get_value('Bin', {'item_code': item, 'warehouse': warehouse}, 'actual_qty')
     return None if value is None else flt(value) / (flt(factor) or 1)
@@ -114,6 +127,8 @@ def _apply_lines(doc, rows, allowed):
         if len(rows) != len(doc.items):
             frappe.throw('Kế toán / mua hàng chỉ sửa đơn giá, nhà cung cấp và ghi chú.')
         for line, row in zip(doc.items, rows):
+            if row.get('item_code') != line.item_code or row.get('name') and row['name'] != line.name:
+                frappe.throw('Dòng cập nhật giá không khớp đề xuất gốc. Tải lại phiếu.')
             for field in EDIT_PRICES:
                 line.set(field, flt(row.get(field)) if field == 'rate' else str(row.get(field) or '')[:500])
             line.amount = flt(line.qty) * flt(line.rate)
@@ -159,12 +174,15 @@ def save_proposal(company, values, name=None, modified=None):
         lock('Material Request', name)
         doc = _doc(name)
         _version(doc, modified)
-        doc.check_permission('write')
         state = _state(doc)
         chain = _chain(doc)
         allowed = rules.editable(state, step_roles_match=chain['current'] == 2 and chain['can_sign'])
         if not allowed or doc.docstatus != 0:
             frappe.throw('Phiếu đang chờ ký, không sửa được ở bước này.')
+        if allowed == 'prices':
+            doc.flags.ignore_permissions = True  # Named purchasing signer may edit only EDIT_PRICES.
+        else:
+            doc.check_permission('write')
         if allowed == 'all' and doc.owner != frappe.session.user and not _admin():
             frappe.throw('Chỉ người đề xuất sửa nội dung phiếu.')
     else:
@@ -181,7 +199,17 @@ def save_proposal(company, values, name=None, modified=None):
         if values.get('warehouse'):
             frappe.get_doc('Warehouse', values['warehouse']).check_permission('read')
             doc.set_warehouse = values['warehouse']
+    from lotus_farm.purchase_flow import enabled
+    before = signing.fingerprint(doc)
+    sources = {r.item_code: r.get('lotus_purchase_sources') for r in doc.items}
     _apply_lines(doc, values.get('items'), allowed)
+    for row in doc.items:
+        if sources.get(row.item_code):
+            row.lotus_purchase_sources = sources[row.item_code]
+    if allowed == 'prices' and enabled(company) and before != signing.fingerprint(doc):
+        signing.send_back(doc, 'Đã bổ sung giá / nhà cung cấp. Người đề xuất gửi lại đủ 4 bước trên nội dung mới.')
+        doc.lotus_proposal_state = rules.RETURNED
+        doc.lotus_return_reason = 'Đã cập nhật giá / nhà cung cấp. Cần người đề xuất gửi lại đủ 4 bước.'
     doc.save() if name else doc.insert()
     return detail(doc.name)
 
@@ -201,6 +229,9 @@ def signer_options(company, name=None, amount=None, priced=1):
         key = rules.chain_for_lines([dict(qty=1, rate=flt(amount) if frappe.utils.cint(priced) else 0)])
     else:
         key = CHAIN
+    from lotus_farm.purchase_flow import enabled
+    if enabled(company) and (not name or doc.docstatus == 0):
+        key = CHAIN
     return signing.candidates(key, company)
 
 
@@ -218,14 +249,19 @@ def proposals(company, view='mine'):
     _access()
     from lotus_farm.warehouse import _company
     _company(company)
-    rows = frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase', 'docstatus': ['<', 2],
-                                                        'lotus_proposal_state': ['is', 'set']},
+    _company(company)
+    filters = {'company': company, 'material_request_type': 'Purchase', 'docstatus': ['<', 2]}
+    listing = frappe.get_list
+    if not frappe.has_permission('Material Request', 'read'):
+        filters['name'] = ['in', list(_waiting_for_me()) or ['']]
+        listing = frappe.get_all
+    rows = listing('Material Request', filters=filters,
                            fields=['name', 'transaction_date', 'schedule_date', 'owner', 'docstatus', 'lotus_proposal_state', 'lotus_department', 'lotus_request_note', 'modified'],
                            order_by='modified desc', limit_page_length=300)
     mine, me = _waiting_for_me(), frappe.session.user
     result = []
     for row in rows:
-        state = rules.APPROVED if row.docstatus == 1 else row.lotus_proposal_state
+        state = rules.APPROVED if row.docstatus == 1 else row.lotus_proposal_state or rules.DRAFT
         step = rules.current_step(state)
         can_sign = row.docstatus == 0 and ((step == 0 and row.owner == me) or row.name in mine)
         if view == 'mine' and row.owner != me:
@@ -233,7 +269,12 @@ def proposals(company, view='mine'):
         if view == 'todo' and row.name not in mine:
             continue
         total = frappe.db.sql('select coalesce(sum(qty*rate),0), count(*) from `tabMaterial Request Item` where parent=%s', row.name)[0]
+        stage = 'Nháp' if state in (rules.DRAFT, rules.RETURNED) else 'Chờ ký'
+        if row.docstatus == 1:
+            from lotus_farm.purchase_flow import proposal_progress
+            stage = proposal_progress(_doc(row.name))['stage']
         result.append(dict(name=row.name, date=str(row.transaction_date), needed=str(row.schedule_date or ''), state=state,
+                           stage=stage,
                            proposer=frappe.db.get_value('User', row.owner, 'full_name') or row.owner, department=row.lotus_department or '',
                            reason=row.lotus_request_note or '', total=flt(total[0]), lines=int(total[1]), can_sign=can_sign))
     return result
@@ -261,6 +302,7 @@ def detail(name):
     items = []
     for row in doc.items:
         items.append(dict(name=row.name, item_code=row.item_code, item_name=row.item_name, uom=row.uom, qty=flt(row.qty), rate=flt(row.rate),
+                          kind=row.get('lotus_purchase_kind'),
                           amount=flt(row.qty) * flt(row.rate), warehouse=row.warehouse, schedule_date=str(row.schedule_date or ''),
                           stock=_stock(row.item_code, row.warehouse, row.conversion_factor),
                           lotus_specification=row.get('lotus_specification') or '', lotus_supplier_hint=row.get('lotus_supplier_hint') or '',
@@ -274,7 +316,11 @@ def detail(name):
     # Signers of the latest round prefill the picker when the proposer sends again.
     chosen = {s['key']: s['assignee'] for s in chain['steps'][1:] if s['assignee']}
     from urllib.parse import urlencode
+    from lotus_farm.purchase_flow import proposal_progress, enabled
+    progress = proposal_progress(doc)
+    legacy_round = enabled(doc.company) and doc.docstatus == 0 and chain['chain'] == 'purchase_proposal_small'
     return dict(name=doc.name, company=doc.company, modified=str(doc.modified), docstatus=doc.docstatus, state=state, step=step,
+                progress=progress, policy_notice='Lượt ký cũ sẽ được trả lại để gửi đủ 4 bước.' if legacy_round else '',
                 step_title=rules.STEPS[step]['title'] if step is not None else '',
                 waiting_for=chain['steps'][chain['current']]['name'] if not drafting and chain['current'] not in (None, 0) else '',
                 proposer=frappe.db.get_value('User', doc.owner, 'full_name') or doc.owner, owner=doc.owner, date=str(doc.transaction_date),
@@ -300,6 +346,28 @@ def sign(name, modified, signers=None):
     _version(doc, modified)
     if doc.docstatus != 0:
         frappe.throw('Phiếu đã duyệt hoặc đã hủy.')
+    from lotus_farm.purchase_flow import enabled
+    strict = enabled(doc.company)
+    if strict:
+        rows, _ = signing._rows(doc)
+        if rows and signing.chain_for(doc) == 'purchase_proposal_small' and not any(r.state == signing_rules.RETURNED for r in rows):
+            # Preserve the old round; the next send creates a separate four-step round.
+            if frappe.session.user not in (doc.owner, rows[signing_rules.current(rows) or 0].assignee) and not _admin():
+                frappe.throw('Chưa đến lượt bạn xử lý đề xuất này.', frappe.PermissionError)
+            from lotus_farm.digital_signature import _event
+            _event(doc, 'RETURN', frappe.session.user, frappe.utils.now_datetime(), details='Chuyển chính sách duyệt mua đủ 4 bước')
+            frappe.db.set_value(signing.REQUEST, rows[-1].name, dict(state=signing_rules.RETURNED, note='Chuyển sang quy trình ký đủ 4 bước'), update_modified=False)
+            doc.lotus_proposal_state = rules.RETURNED
+            doc.lotus_return_reason = 'Chính sách mới yêu cầu đủ 4 bước. Người đề xuất chọn người ký và gửi lại.'
+            doc.flags.ignore_permissions = True
+            _save_signing_state(doc)
+            return detail(doc.name)
+        if not rows or any(r.state == signing_rules.RETURNED for r in rows):
+            doc.lotus_proposal_policy = 2
+        else:
+            current = signing_rules.current(rows)
+            if current is None or rows[current].assignee != frappe.session.user:
+                frappe.throw('Chỉ người được chọn ở bước hiện tại được ký.', frappe.PermissionError)
     step = rules.current_step(_state(doc))
     issues = rules.line_issues([dict(item_code=r.item_code, qty=r.qty, schedule_date=r.schedule_date, rate=r.rate) for r in doc.items])
     if not doc.items or issues:
@@ -309,13 +377,15 @@ def sign(name, modified, signers=None):
     if step == 0:
         if doc.owner != frappe.session.user and not _admin():
             frappe.throw('Chỉ người đề xuất gửi ký phiếu.', frappe.PermissionError)
+        if strict and doc.owner != frappe.session.user:
+            frappe.throw('Người lập phiếu phải tự ký gửi đề xuất.', frappe.PermissionError)
         chain = signing.start(doc, signers, require_image=True)
         doc.lotus_return_reason = ''
     else:
         chain = signing.sign(doc, require_image=True)
     doc.lotus_proposal_state = rules.APPROVED if chain['done'] else rules.state_after(chain['current'] - 1)
     doc.flags.ignore_permissions = True  # signing checked the named signer of this step
-    doc.save()
+    _save_signing_state(doc)
     if doc.lotus_proposal_state == rules.APPROVED:
         doc.submit()
     return detail(doc.name)
@@ -334,7 +404,7 @@ def return_proposal(name, modified, reason):
     doc.lotus_proposal_state = rules.RETURNED
     doc.lotus_return_reason = str(reason or '').strip()[:500]
     doc.flags.ignore_permissions = True
-    doc.save()
+    _save_signing_state(doc)
     return detail(doc.name)
 
 

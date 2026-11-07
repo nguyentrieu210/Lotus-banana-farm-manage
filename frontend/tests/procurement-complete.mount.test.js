@@ -22,7 +22,7 @@ test.beforeEach(()=>{calls=[];handler=async(m,a)=>{
 }})
 test.afterEach(()=>view?.unmount())
 test('purchase menu separates finance and masters and warehouse lists its operations before its catalogues',()=>{
- assert.deepEqual(stockNavigation.filter(x=>!x.setup).map(x=>x.label),['Tồn kho','Nhập kho','Xuất kho','Chuyển kho','Kiểm kê','Sổ kho','Nhu cầu vật tư','Báo cáo nhập – xuất – tồn'])
+ assert.deepEqual(stockNavigation.filter(x=>!x.setup).map(x=>x.label),['Tồn kho','Nhập kho','Xuất kho','Chuyển kho','Kiểm kê','Sổ kho','Nhu cầu cấp cho công việc','Báo cáo nhập – xuất – tồn'])
  assert.deepEqual(stockNavigation.filter(x=>x.setup).map(x=>x.label),['Kho','Vật tư','Nhóm vật tư','Đơn vị tính'])
  assert.equal(normalizeStockView('history'),'receipts','old links to Phiếu kho open Nhập kho')
  assert.equal(normalizeStockView('setup'),'warehouses')

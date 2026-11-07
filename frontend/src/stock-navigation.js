@@ -7,7 +7,7 @@ export const stockNavigation=[
  {id:'transfers',label:'Chuyển kho',icon:'transfer',doctypes:['Stock Entry']},
  {id:'counts',label:'Kiểm kê',icon:'check',doctypes:['Stock Reconciliation']},
  {id:'movements',label:'Sổ kho',icon:'document'},
- {id:'planning',label:'Nhu cầu vật tư',icon:'list'},
+ {id:'planning',label:'Nhu cầu cấp cho công việc',icon:'list'},
  {id:'report',label:'Báo cáo nhập – xuất – tồn',icon:'chart'},
  {id:'warehouses',label:'Kho',icon:'warehouse',setup:true},
  {id:'items',label:'Vật tư',icon:'package',setup:true},

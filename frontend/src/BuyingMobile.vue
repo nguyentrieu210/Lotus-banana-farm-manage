@@ -325,7 +325,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <div class="mobile-actions" aria-label="Thao tác Mua hàng">
     <LotusMobileAction v-if="canCreate" primary icon="cart-o" title="Tạo đơn mua" @select="newOrder()"/>
     <LotusMobileAction icon="description" title="Đề xuất mua vật tư" @select="openView('proposals')"/>
-    <LotusMobileAction icon="notes-o" title="Đề nghị mua chờ đặt hàng" @select="openView('requests')"/>
+    <LotusMobileAction icon="notes-o" title="Đề xuất mua chờ đặt hàng" @select="openView('requests')"/>
     <LotusMobileAction v-if="session?.can_approve" icon="passed" title="Duyệt đơn" @select="status='Chờ duyệt';changeTab('orders')"/>
     <LotusMobileAction icon="shop-o" title="Nhà cung cấp" @select="changeTab('suppliers')"/>
     <LotusMobileAction icon="balance-list-o" title="Báo giá, nghiệm thu & thanh toán" @select="openView('procurement')"/>
@@ -362,7 +362,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <a :href="'/lotus_material_proposal_print?name='+encodeURIComponent(r.name)" target="_blank" rel="noopener noreferrer" class="buy-request-print">Xem / in phiếu đề xuất mua vật tư (PDF) ↗</a>
     <LotusMobileButton class="buy-outline" :disabled="!canCreate" @click="newOrder(true);useRequest(r.name)">Lập đơn mua từ đề nghị này</LotusMobileButton>
    </div>
-   <p v-if="!requests.length&&!busy" class="mobile-empty">Chưa có đề nghị mua còn thiếu hàng.</p>
+   <p v-if="!requests.length&&!busy" class="mobile-empty">Chưa có đề xuất mua còn thiếu hàng.</p>
   </template>
 
   <template v-if="view==='form'&&draft">

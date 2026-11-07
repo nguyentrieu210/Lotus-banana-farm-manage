@@ -107,6 +107,18 @@ def receipts_to_bill(supplier=None):
         r['to_bill'] = round(flt(r.grand_total) * (100 - flt(r.per_billed)) / 100)
         r['posting_date'] = str(r.posting_date)
         r['doctype'] = 'Purchase Receipt'
+        r['source_type'] = 'Nhận theo đơn mua'
+        from erpnext.stock.doctype.purchase_receipt.purchase_receipt import get_invoiced_qty_map, get_returned_qty_map
+        invoiced, returned = get_invoiced_qty_map(r.name), get_returned_qty_map(r.name)
+        rejected_billable = frappe.db.get_single_value('Buying Settings', 'bill_for_rejected_quantity_in_purchase_invoice')
+        receipt = frappe.get_doc('Purchase Receipt', r.name)
+        r['unbilled_items'] = []
+        for line in receipt.items:
+            quantity = flt(line.received_qty if rejected_billable else line.qty) - flt(invoiced.get(line.name))
+            if not rejected_billable:
+                quantity -= max(0, flt(returned.get(line.name)) - flt(line.rejected_qty))
+            if quantity > .000001:
+                r['unbilled_items'].append(dict(item_name=line.item_name, qty=quantity, uom=line.uom))
     if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
         se_filters = {'docstatus': 1, 'company': setup.company(), 'stock_entry_type': 'Material Receipt', 'lotus_receipt_reason': 'Purchase',
                       'lotus_purchase_invoice': ['in', ['', None]]}
@@ -121,7 +133,9 @@ def receipts_to_bill(supplier=None):
             amount = flt(e.total_incoming_value) + corrections.get(e.name, 0)
             rows.append(dict(name=e.name, doctype='Stock Entry', supplier=e.lotus_supplier, supplier_name=names.get(e.lotus_supplier, e.lotus_supplier),
                              posting_date=str(e.posting_date), grand_total=amount, per_billed=0, to_bill=round(amount),
-                             cost_correction=corrections.get(e.name, 0)))
+                             cost_correction=corrections.get(e.name, 0), source_type='Mua nhanh — không qua đề xuất/đơn',
+                             unbilled_items=[dict(item_name=line.item_name, qty=flt(line.qty), uom=line.uom)
+                                 for line in frappe.get_doc('Stock Entry', e.name).items]))
     return rows
 
 

@@ -63,7 +63,7 @@ const mobileTabs=[
 ]
 const mobileTitle=computed(()=>({home:'Kho Lotus',history:'Lịch sử',inventory:'Xuất nhập tồn',profile:'Tôi',
  'stock-form':titles[kind.value], 'stock-review':'Kiểm tra phiếu',
- 'request-form':'Đề nghị mua','buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
+ 'request-form':'Đề xuất mua','buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
  'choose-order':'Chọn đơn chờ hàng','receive-form':'Nhận hàng',
  'receive-review':'Kiểm tra hàng nhận','history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
 
@@ -274,7 +274,7 @@ async function saveRequest(){
   const result=await call('lotus_farm.purchasing.create_request',{company:company.value,warehouse:f.warehouse,
    expected_date:f.expected_date,notes:f.notes,items:f.items.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom}))},true)
   lastPostedDocument.value={doctype:'Material Request',name:result.name}
-  requestForm.value=null;screen.value='done';message.value='Đã gửi đề xuất mua '+result.name+'. Có thể in phiếu theo mẫu mới ngay bên dưới.'
+  requestForm.value=null;if(result.docstatus===0){location.assign('/buying?proposal='+encodeURIComponent(result.name));return}screen.value='done';message.value='Đã gửi đề xuất mua '+result.name+'. Có thể in phiếu theo mẫu mới ngay bên dưới.'
  }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function startBuying(){
@@ -570,7 +570,7 @@ onUnmounted(()=>{
     <MobileLinkField label="Kho đang làm việc" :model-value="warehouse" :options="storeOptions" :searchable="false" :disabled="!setup" placeholder="Tìm kho…" @update:modelValue="v=>{if(v)changeWorkWarehouse(v)}"/>
     <div class="mobile-actions" aria-label="Thao tác Kho">
      <LotusMobileAction v-if="setup?.can_create" primary icon="cart-o" title="Tạo đơn mua" :disabled="!setup" @select="startBuying"/>
-     <LotusMobileAction v-if="setup?.can_request" icon="notes-o" title="Đề nghị mua" @select="startRequest"/>
+     <LotusMobileAction v-if="setup?.can_request" icon="notes-o" title="Đề xuất mua" @select="startRequest"/>
      <LotusMobileAction v-if="allowed('Purchase Receipt')" icon="logistics" title="Nhập theo đơn" :disabled="!setup" @select="startReceiving"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="upgrade" title="Xuất kho" :disabled="!setup" @select="start('issue')"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="exchange" title="Chuyển kho" :disabled="!setup" @select="start('transfer')"/>
@@ -646,7 +646,7 @@ onUnmounted(()=>{
      </div>
      <LotusMobileButton class="mobile-add" type="button" @click="requestForm.items.push(blank())">+ Thêm hàng</LotusMobileButton>
      <LotusMobileInput label="Ghi chú" type="textarea" v-model="requestForm.notes" rows="2" placeholder="Lý do cần mua, thời gian cần…"/>
-     <LotusMobileButton type="submit" class="mobile-submit" :disabled="saving||!online">Gửi đề nghị mua</LotusMobileButton>
+     <LotusMobileButton type="submit" class="mobile-submit" :disabled="saving||!online">Gửi đề xuất mua</LotusMobileButton>
     </fieldset></form>
    </template>
 

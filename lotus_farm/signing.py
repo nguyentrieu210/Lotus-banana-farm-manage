@@ -41,6 +41,9 @@ def chain_for(doc, fresh=False):
                                      pluck='chain', order_by='round desc', limit_page_length=1)
             if started and started[0] in proposal_rules.CHAINS:
                 return started[0]
+        from lotus_farm.purchase_flow import enabled
+        if enabled(doc.company):
+            return 'purchase_proposal'
         return proposal_rules.chain_for_lines(doc.items)
     if (doc.doctype == 'Payment Entry' and (doc.get('payment_type') != 'Receive' or doc.get('party_type')=='Supplier')) or (doc.doctype == 'Journal Entry' and doc.get('lotus_payment_kind') in ('Salary', 'Advance', 'Statutory', 'PurchaseFunding', 'PurchaseReimbursement')):
         return 'payment_voucher'
@@ -436,6 +439,10 @@ def fingerprint(doc):
                                       accounts=';'.join('%s:%s:%s' % (a.account, a.debit, a.credit) for a in doc.get('accounts') or [])), [])
     header = {field: doc.get(field) for field in ('company', 'supplier', 'set_warehouse', 'posting_date', 'transaction_date',
                                                    'stock_entry_type', 'grand_total', 'total_qty') if doc.meta.has_field(field)}
+    if doc.doctype == 'Material Request' and doc.get('lotus_proposal_policy') == 2:
+        header['proposal'] = _purchase_json(dict(department=doc.get('lotus_department'), reason=doc.get('lotus_request_note'),
+            owner=doc.owner, lines=[{k: r.get(k) for k in ('lotus_specification', 'lotus_supplier_hint', 'lotus_purpose',
+                'lotus_notes', 'lotus_purchase_sources')} for r in doc.items]))
     if any(r.get('lotus_purchase_kind') for r in doc.get('items') or []):
         header['procurement'] = _purchase_json(dict(lines=[{k: r.get(k) for k in ('lotus_purchase_kind', 'lotus_line_vat', 'lotus_line_freight',
             'lotus_quote_reason', 'supplier_quotation', 'supplier_quotation_item', 'material_request', 'material_request_item',

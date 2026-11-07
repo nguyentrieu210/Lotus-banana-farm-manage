@@ -63,6 +63,7 @@ def seed():
     frappe.defaults.set_global_default('company', C)
     cfg = setup.settings()
     cfg.company=C
+    cfg.vat_in_cost=0  # These cases explicitly test deductible input VAT, not household-business valuation.
     cfg.flags.ignore_permissions=True
     cfg.save()
     if not cfg.coa_version:

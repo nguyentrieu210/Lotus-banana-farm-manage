@@ -313,7 +313,7 @@ const money=p=>p.value?num(p.value):''
 const dateCol=(field,headerName)=>({field,headerName,minWidth:110,valueFormatter:p=>vnDate(p.value)})
 const moneyCol=(field,headerName,extra={})=>({field,headerName,minWidth:130,type:'numericColumn',valueFormatter:p=>p.node?.rowPinned?num(p.value):money(p),...extra})
 const receiptColumns=computed(()=>[...(overview.value?.can_post?[{field:'__pick',headerName:'Chọn',minWidth:70,maxWidth:80,sortable:false,hideOnMobile:true}]:[]),
- {field:'name',headerName:'Phiếu nhận',minWidth:170},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200,valueGetter:p=>p.data.supplier_name||p.data.supplier},dateCol('posting_date','Ngày'),moneyCol('to_bill','Chưa lập hóa đơn')])
+ {field:'name',headerName:'Phiếu nhận',minWidth:170},{field:'source_type',headerName:'Nguồn mua',minWidth:190},{field:'unbilled_items',headerName:'Lượng chưa lập hóa đơn',minWidth:220,valueFormatter:p=>(p.value||[]).map(r=>r.item_name+' · '+r.qty+' '+r.uom).join(', ')},{field:'__source',headerName:'',minWidth:120},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200,valueGetter:p=>p.data.supplier_name||p.data.supplier},dateCol('posting_date','Ngày'),moneyCol('to_bill','Chưa lập hóa đơn')])
 const receiptRows=computed(()=>(pendingData.value?.receipts||[]).map(r=>({...r,__pick:picked.value.has(r.name)})))
 const payrollPendingColumns=[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},{field:'name',headerName:'Kỳ công',minWidth:200},
  {field:'closed_at',headerName:'Đóng lúc',minWidth:120,valueFormatter:p=>vnDate(String(p.value||'').slice(0,10))},{field:'__view',headerName:'',minWidth:170,sortable:false}]
@@ -459,6 +459,7 @@ useNoticeToast(notice)
   <FormSection title="Phiếu nhận hàng chưa có hóa đơn">
    <template #actions><UiButton v-if="overview?.can_post" :disabled="!picked.size||pickedSupplier.length!==1" :title="pickedSupplier.length>1?'Chọn phiếu của cùng một nhà cung cấp':''" @click="invoice={bill_no:'',bill_date:today,due_date:'',vat_code:'KCT'};ensureVat();invoiceOpen=true">Lập hóa đơn ({{picked.size}})</UiButton></template>
    <DataTable :rows="receiptRows" :columns="receiptColumns" row-key="name" storage-key="fin-receipts" interactive empty="Mọi phiếu nhận hàng đã có hóa đơn." @open="r=>togglePick(r.name)">
+    <template #cell-__source="{row}"><UiButton as="a" size="sm" variant="outline" :href="row.doctype==='Stock Entry'?'/warehouse?doc='+encodeURIComponent(row.name)+'&doctype=Stock%20Entry':'/lotus/mua-hang?buying_view=receipts&purchase_type=receipts&purchase_doc='+encodeURIComponent(row.name)" @click.stop>Xem phiếu nhận</UiButton></template>
     <template #cell-__pick="{row}"><Checkbox :model-value="picked.has(row.name)" :aria-label="'Chọn '+row.name" @click.stop @update:model-value="togglePick(row.name)"/></template>
    </DataTable>
   </FormSection>

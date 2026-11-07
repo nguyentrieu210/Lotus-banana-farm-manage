@@ -1,5 +1,15 @@
 # Mua hàng nối kho và tài chính
 
+## Luồng đề xuất mua ngày 07/11/2026
+
+Lotus lập Đề xuất mua độc lập theo bộ phận, lý do, kho nhận, vật tư, số lượng và ngày cần. Giá dự kiến có thể để trống. Mọi đề xuất mới ký đủ Người đề xuất → Phụ trách bộ phận → Kế toán/mua hàng → Giám đốc. Bổ sung giá sau khi ký trả phiếu về người đề xuất để gửi vòng ký mới. Các cửa tạo từ Kho và API cũ cùng tạo nháp và mở quy trình ký này.
+
+Nhu cầu cấp cho công việc là nguồn tham khảo để lập đề xuất phần thiếu. Liên kết tham khảo theo dòng được giữ riêng với nguồn cấp vật tư. Phiếu xuất kho thực tế mới ghi nhận lượng đã cấp cho công việc.
+
+Đề xuất và đơn mua hiển thị tiến độ đặt, nhận, hóa đơn cùng các chứng từ liên quan. Nhận hàng, hóa đơn và thanh toán có trạng thái riêng. Mua nhanh được ghi rõ là không qua đề xuất/đơn, phiếu chưa có hóa đơn hiện ở Chờ hạch toán cùng lượng còn lập hóa đơn và đường mở phiếu nhận.
+
+Chính sách được giới hạn theo `lotus_purchase_flow_company` trong cấu hình site. Dấu mốc `lotus_purchase_flow_since` cho phép đơn mua cũ xử lý tiếp. Đề xuất đã duyệt giữ lịch sử, lượt ký 2 bước chưa hoàn tất được trả lại và gửi vòng 4 bước. Site khác tiếp tục dùng chính sách hiện có.
+
 Phạm vi được chốt: nguyên vật liệu, công cụ, tài sản và dịch vụ. Chứng từ ERPNext là nguồn gốc duy nhất; không tạo sổ kho hoặc sổ công nợ song song.
 
 ## Luồng
