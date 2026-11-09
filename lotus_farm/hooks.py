@@ -40,7 +40,8 @@ permission_query_conditions = {
 }
 # Công việc ngoài vườn: written only through lotus_farm.field_report, read by farm.
 for _name, _query in (("Lotus Work Assignment", "assignment_query"), ("Lotus Work Entry", "entry_query"),
-                      ("Lotus Work Session", "session_query"), ("Lotus Work Inspection", "inspection_query")):
+                      ("Lotus Work Session", "session_query"), ("Lotus Work Inspection", "inspection_query"),
+                      ("Lotus Bunch Event", "bunch_event_query"), ("Lotus Forecast Snapshot", "forecast_snapshot_query")):
     has_permission[_name] = "lotus_farm.field_report.permission"
     permission_query_conditions[_name] = "lotus_farm.field_report." + _query
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
@@ -229,6 +230,7 @@ for _event in ('validate', 'before_submit', 'before_cancel'):
 
 # Device punches reach HRMS every 10 minutes for today and yesterday (lotus_farm.attendance_day).
 scheduler_events.setdefault('cron', {}).setdefault('*/10 * * * *', []).append('lotus_farm.attendance_day.sync_recent')
+scheduler_events.setdefault('cron', {}).setdefault('0 6 * * 1', []).append('lotus_farm.forecast_snapshot.weekly')
 
 # ZKTeco / Ronald Jack / Wise Eye clocks push punches to /iclock/* (lotus_farm.adms).
 page_renderer = [*globals().get('page_renderer', []), 'lotus_farm.adms.ADMSRenderer']

@@ -11,6 +11,8 @@ import {unitLabel} from './units'
 import {formatDate} from './format'
 import WorkToday from './components/field/WorkToday.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
+import WorkBunch from './components/field/WorkBunch.vue'
+import ForecastCarePlan from './components/ForecastCarePlan.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
 import FieldBoard from './components/field/FieldBoard.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
@@ -160,18 +162,24 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="['today','assign','board'].includes(view)">
+    <template v-if="['today','bunch','assign','board'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
      <WorkToday v-if="view==='today'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
+     <WorkBunch v-else-if="view==='bunch'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
      <WorkAssign v-else-if="view==='assign'&&crew" :farm="farm" :crew="crew" :setup="setup"/>
      <FieldBoard v-else-if="view==='board'&&crew" v-model:month="month" :farm="farm" :crew="crew"/>
     </template>
 
     <WorkInspect v-else-if="view==='inspect'" :farm="farm" :setup="setup"/>
+
+    <template v-else-if="view==='care-plan'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <ForecastCarePlan v-if="farm" :farm="farm" :blocks="setup.blocks"/>
+    </template>
 
     <ListPage v-else-if="view==='payable'" v-model:search="search" title="Tiền khoán theo người" :rows="filtered" :columns="payableColumns" :loading="loading" row-key="key" storage-key="field-work-payable" @refresh="loadView">
      <template #filters><LotusField v-model="month" type="month" aria-label="Tháng" @update:model-value="loadView"/></template>

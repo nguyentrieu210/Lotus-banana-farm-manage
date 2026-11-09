@@ -60,3 +60,12 @@
 .lotus-work .work-status-count{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--lotus-primary-600);background:var(--lotus-primary-subtle);border-radius:9px;padding:5px 9px;font-weight:720;font-size:12px}
 .lotus-work .mobile-done{padding-top:20px}
 @media(max-width:360px){.lotus-work .mobile-actions{gap:8px}.lotus-work .mobile-action strong{font-size:15px}.lotus-work .work-date-row{grid-template-columns:minmax(0,1fr)}}
+
+/* Dialogs on /work: the desktop stylesheet that draws them is not loaded here. */
+.workspace-modal{max-height:calc(100dvh - 24px);margin:auto;padding:0;border:1px solid var(--lotus-border);border-radius:12px;background:var(--lotus-surface);color:var(--lotus-text);overflow:auto;overscroll-behavior:contain}
+.workspace-modal::backdrop{background:#151c2c66}
+.workspace-modal__header{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--lotus-border);background:var(--lotus-surface)}
+.workspace-modal__header h2{margin:0;font-size:16px;line-height:1.4;min-width:0;overflow-wrap:anywhere}
+.workspace-modal__header>button{flex-shrink:0}
+.workspace-modal__body{padding:14px}
+.workspace-modal__body>fieldset{border:0;padding:0;margin:0;min-width:0}

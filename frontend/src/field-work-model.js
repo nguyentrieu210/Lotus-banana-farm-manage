@@ -9,7 +9,8 @@ export const states={Open:'Đang làm',Assigned:'Đã giao',Working:'Đang làm'
  Passed:'Đạt',Failed:'Không đạt – làm lại',Locked:'Đã khoá, tính tiền',Cancelled:'Đã huỷ',Done:'Xong',Ended:'Hết giao'}
 export const stateTone={Assigned:'neutral',Working:'info',Open:'info',Late:'danger',Reported:'warning',Approved:'warning',
  Passed:'success',Failed:'danger',Locked:'success',Cancelled:'muted'}
-export const colourStages=['Bag','Care','Prop']
+// Only bao buồng comes after cắt bắp; chống đổ and tỉa are done before there is a ribbon.
+export const colourStages=['Bag']
 
 // Which inputs a report on a phiếu shows, by work group and bunch stage.
 export function groupSchema(ticket){

@@ -32,7 +32,7 @@ const farm=computed(()=>String(route.query.farm||''))
 const block=computed(()=>String(route.query.block||''))
 const num=(v,d=0)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d})
 const vnDate=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):''
-const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['plots','Thửa'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi vụ sau']]
+const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['plots','Thửa'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['lotus_current_cycle_no','Vụ'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi vụ sau']]
 const zones=computed(()=>[...new Set((data.value?.blocks||[]).map(b=>b.farm_zone).filter(Boolean))].sort())
 const rows=computed(()=>{
  const needle=search.value.trim().toLowerCase(),[key,dir]=sort.value

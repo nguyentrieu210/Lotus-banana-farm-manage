@@ -1,0 +1,110 @@
+{
+  "name": "Lotus Forecast Snapshot",
+  "doctype": "DocType",
+  "module": "Lotus Farm",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "week_label",
+  "sort_field": "snapshot_date",
+  "sort_order": "DESC",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "snapshot_date",
+      "fieldtype": "Date",
+      "label": "Ngày chốt",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "week_label",
+      "fieldtype": "Data",
+      "label": "Tuần",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "kind",
+      "fieldtype": "Select",
+      "label": "Loại",
+      "options": "Weekly\nManual",
+      "default": "Weekly",
+      "reqd": 1
+    },
+    {
+      "fieldname": "profile_refs",
+      "fieldtype": "Small Text",
+      "label": "Bộ tham số đã dùng"
+    },
+    {
+      "fieldname": "total_bunches",
+      "fieldtype": "Int",
+      "label": "Tổng buồng",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "total_kg",
+      "fieldtype": "Float",
+      "label": "Tổng kg",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "rows_json",
+      "fieldtype": "Long Text",
+      "label": "Chi tiết"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Inspector",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "field_order": [
+    "farm",
+    "snapshot_date",
+    "week_label",
+    "kind",
+    "profile_refs",
+    "total_bunches",
+    "total_kg",
+    "rows_json"
+  ]
+}

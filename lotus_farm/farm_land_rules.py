@@ -12,6 +12,7 @@ EDITABLE = (
     ('irrigation_zone', 'Khu tưới', 'text'), ('lotus_tree_count', 'Số cây gốc đã chốt', 'int'),
     ('lotus_tree_count_source', 'Nguồn số cây', 'text'), ('active', 'Đang dùng (1/0)', 'int'), ('notes', 'Ghi chú', 'text'),
     ('lotus_estimated_flowering_date', 'Trổ dự kiến / chọn chồi vụ sau', 'date'),
+    ('lotus_estimated_sucker_selection_date', 'Ngày chọn chồi', 'date'), ('lotus_current_cycle_no', 'Vụ hiện tại', 'int'),
 )
 FIELD_LABELS = {f: label for f, label, _ in EDITABLE}
 GAPS = {'trees': 'Chưa có số cây', 'variety': 'Chưa có giống', 'map': 'Chưa có ranh giới', 'planting': 'Chưa có ngày trồng'}

@@ -5,7 +5,6 @@ export function workspaceDirectory(session){
  if(session?.capabilities?.field_report)links.push({id:'global-field-report',label:'Công việc ngoài vườn',href:'/lotus/cong-viec'})
  if(session?.capabilities?.user_admin)links.push({id:'global-users',label:'Người dùng & phân quyền',href:'/lotus/nguoi-dung'})
  for(const item of visibleHrNavigation(session))links.push({id:item.id==='employees'?'global-hr':item.id==='attendance'?'global-attendance':'global-hr-'+item.id,label:item.label,href:hrHref(item)})
- if(session?.modules?.labor?.length)links.push({id:'global-labor',label:'Bố trí nhân công',href:'/lotus/labor'})
  if(session?.modules?.plans?.length)links.push({id:'global-plan-norm',label:'Cấu hình kế hoạch & định mức',href:'/lotus/plan-norm'})
  if(session?.capabilities?.stock)links.push({id:'global-stock',label:'Quản lý kho',href:'/lotus/kho'})
  return links.map(link=>({...link,navigation:true}))

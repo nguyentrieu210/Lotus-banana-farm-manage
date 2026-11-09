@@ -8,6 +8,8 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import WorkToday from './components/field/WorkToday.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
+import WorkBunch from './components/field/WorkBunch.vue'
+import ReleaseNotes from './components/ReleaseNotes.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import {useMobileViewport} from './use-mobile-viewport'
@@ -18,11 +20,11 @@ import {call,setCSRF} from './api'
 const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const api=(name,args={},write=false)=>call('lotus_farm.field_report.'+name,args,write)
-const allTabs=[{name:'home',label:'Hôm nay',icon:'notes-o'},{name:'assign',label:'Giao việc',icon:'todo-list-o'},{name:'inspect',label:'Nghiệm thu',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
+const allTabs=[{name:'home',label:'Hôm nay',icon:'notes-o'},{name:'bunch',label:'Buồng',icon:'flower-o'},{name:'assign',label:'Giao việc',icon:'todo-list-o'},{name:'inspect',label:'Nghiệm thu',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
 const screen=ref('home'),session=ref(null),setup=ref(null),farm=ref(''),crew=ref(''),date=ref('')
 const busy=ref(false),saving=ref(false),error=ref('')
 const {dialog:leaveDialog,message:leaveMessage,ask:askLeave,finish:finishLeave}=useMobileConfirm()
-const mobileTitle=computed(()=>({home:'Việc hôm nay',assign:'Giao việc theo lô',inspect:'Nghiệm thu',profile:'Tôi'})[screen.value])
+const mobileTitle=computed(()=>({home:'Việc hôm nay',bunch:'Chăm sóc buồng',assign:'Giao việc theo lô',inspect:'Nghiệm thu',profile:'Tôi'})[screen.value])
 const farms=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
 const crews=computed(()=>(setup.value?.crews||[]).filter(c=>(setup.value?.my_crews||[]).includes(c.name)))
 const crewOptions=computed(()=>crews.value.map(c=>({value:c.name,label:c.team_name})))
@@ -73,13 +75,14 @@ onBeforeUnmount(()=>finishLeave(false))
    <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
    <LotusMobileFeedback v-if="busy" kind="loading">Đang tải dữ liệu…</LotusMobileFeedback>
    <template v-if="session">
-    <div v-if="screen==='home'||screen==='assign'" class="work-scope">
+    <div v-if="screen==='home'||screen==='bunch'||screen==='assign'" class="work-scope">
      <LotusField v-if="farms.length>1" :model-value="farm" label="Vườn" type="select" :searchable="false" :options="farms" mobile @update:model-value="changeFarm"/>
      <LotusField v-if="crewOptions.length>1" v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" mobile/>
     </div>
     <LotusMobileFeedback v-if="setup&&!crewOptions.length&&screen!=='inspect'&&screen!=='profile'" kind="warning">Tài khoản chưa là tổ trưởng hoặc đội trưởng của đội nào. Nhờ quản lý vườn xếp ở Công việc ngoài vườn → Đội, tổ &amp; lô.</LotusMobileFeedback>
 
     <WorkToday v-if="screen==='home'&&setup&&crew&&date" :key="'today'+refreshKey" v-model:date="date" :farm="farm" :crew="crew" :setup="setup" mobile/>
+    <WorkBunch v-else-if="screen==='bunch'&&setup&&crew&&date" :key="'bunch'+refreshKey" v-model:date="date" :farm="farm" :crew="crew" :setup="setup" mobile/>
     <WorkAssign v-else-if="screen==='assign'&&setup&&crew" :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
     <WorkInspect v-else-if="screen==='inspect'&&setup" :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/>
 
@@ -95,6 +98,7 @@ onBeforeUnmount(()=>finishLeave(false))
     </template>
    </template>
   </main>
+  <ReleaseNotes :user="session?.user||''"/>
   <LotusMobileDialog ref="leaveDialog" class="mobile-leave-dialog" @cancel.prevent="finishLeave(false)">
    <div class="mobile-leave-content"><h2>Rời màn hình?</h2><p>{{leaveMessage}}</p><div><LotusMobileButton type="button" autofocus @click="finishLeave(false)">Ở lại</LotusMobileButton><LotusMobileButton type="button" class="danger" @click="finishLeave(true)">Rời đi</LotusMobileButton></div></div>
   </LotusMobileDialog>

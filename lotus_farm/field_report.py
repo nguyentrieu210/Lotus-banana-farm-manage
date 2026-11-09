@@ -50,7 +50,7 @@ def install_fields():
         "Work Type": [
             dict(fieldname="lotus_farm", label="Vườn dùng", fieldtype="Link", options="Farm", insert_after="work_name"),
             dict(fieldname="lotus_bunch_stage", label="Công đoạn buồng", fieldtype="Select",
-                 options="\nBud Injection\nCut Bud\nBag\nCare\nProp", insert_after="lotus_farm"),
+                 options="\nSucker Select\nBud Injection\nCut Bud\nBag\nCare\nProp", insert_after="lotus_farm"),
             dict(fieldname="lotus_work_group", label="Nhóm việc", fieldtype="Select", options="\nBunch\nField\nProtection",
                  insert_after="lotus_bunch_stage"),
             dict(fieldname="lotus_pay_mode", label="Cách trả", fieldtype="Select", options="\nCount\nLot\nDaywork",
@@ -65,6 +65,8 @@ def install_fields():
         ],
         "Farm Block": [
             dict(fieldname="lotus_quarantine_until", label="Đang cách ly thu hoạch đến", fieldtype="Date", read_only=1),
+            dict(fieldname="lotus_current_cycle_no", label="Vụ hiện tại", fieldtype="Int", insert_after="lotus_quarantine_until",
+                 description="Vụ 1 là vụ trồng mới. Quản lý vườn chốt khi lô chuyển vụ."),
         ],
     }, update=True, ignore_validate=True)
     if frappe.db.table_exists(SESSION):
@@ -137,6 +139,8 @@ def farm_query(doctype):
 assignment_query = farm_query(ASSIGNMENT)
 entry_query = farm_query(ENTRY)
 session_query = farm_query(SESSION)
+bunch_event_query = farm_query("Lotus Bunch Event")
+forecast_snapshot_query = farm_query("Lotus Forecast Snapshot")
 inspection_query = farm_query(INSPECTION)
 
 
@@ -393,6 +397,13 @@ def _bunch_counts(farm, tags, exclude_entry=None):
         elif stage in rules.COLOUR_STAGES:
             key = (r.farm_block, r.bunch_tag, stage)
             done[key] = done.get(key, 0) + flt(r.qty)
+    # The ledger holds cắt bắp from the quick sheet and the opening book; older phiếu count only where it has nothing.
+    ledger = {}
+    for r in frappe.get_all("Lotus Bunch Event", filters={"farm": farm, "bunch_tag": ["in", tags], "event_type": rules.CUT_BUD,
+                                                          "state": ["!=", "Voided"]},
+                            fields=["farm_block", "bunch_tag", "qty"], limit_page_length=0):
+        ledger[(r.farm_block, r.bunch_tag)] = ledger.get((r.farm_block, r.bunch_tag), 0) + flt(r.qty)
+    cut.update(ledger)
     return cut, done
 
 

@@ -133,7 +133,7 @@ const plantingCols=[ddate('posting_date','Ngày'),dcol('event_type','Loại',v=>
   <div class="land-card"><h3>Dự thu</h3>
    <DataTable v-if="section.yield.forecasts?.length" :rows="section.yield.forecasts" :columns="forecastCols" row-key="month" storage-key="lot-forecast-36"/>
    <p v-else class="land-empty">Chưa có dự thu cho lô.</p></div>
-  <div class="land-card"><header class="land-card__head"><h3>Hủy buồng theo nguyên nhân</h3><UiButton variant="link" size="sm" @click="go('losses')">Hủy & tổn thất ↗</UiButton></header>
+  <div class="land-card"><header class="land-card__head"><h3>Hủy buồng theo nguyên nhân</h3></header>
    <DataTable v-if="section.yield.cancellations?.length" :rows="section.yield.cancellations" :columns="cancelledCols" row-key="reason" storage-key="lot-cancellations"/>
    <p v-else class="land-empty">Không có buồng hủy trong khoảng ngày này.</p></div>
   <div class="land-card"><header class="land-card__head"><h3>Đo trái gần nhất</h3><UiButton variant="link" size="sm" @click="go('measurements')">Đo trái ↗</UiButton></header>

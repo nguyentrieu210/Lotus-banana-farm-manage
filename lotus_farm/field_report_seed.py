@@ -31,7 +31,7 @@ WORKS = [
     ("F222-14", "Bón phân hóa học (120–150 g/gốc)", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 120, 2500, 3000, "", ""),
     ("F222-15", "Rải tro 3 kg/gốc", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 400, 0, 0, "", ""),
     ("F222-16", "Rải tro 5 kg/gốc", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 600, 0, 0, "", ""),
-    ("F222-17", "Chọn F (chọn chồi)", "Chăm sóc vườn / Quản lý mật độ", "Ha", "Area", 290000, 0.8, 1, "", ""),
+    ("F222-17", "Chọn F (chọn chồi)", "Chăm sóc vườn / Quản lý mật độ", "Ha", "Area", 290000, 0.8, 1, "Sucker Select", ""),
     ("F222-18", "Hạ cây, dọn cây thu hoạch", "Thu hoạch / Thu hoạch phụ phẩm", "Cây", "Count", 700, 0, 0, "", "Hạ lá, hạ thân để gọn hàng 3 m"),
     ("F222-19", "Xịt cỏ, xịt bệnh gốc", "Chăm sóc vườn / Quản lý cỏ dại", "Ha", "Area", 300000, 1, 1.2, "", ""),
     ("F222-20", "Xắn chồi lần 1", "Chăm sóc vườn / Quản lý mật độ", "Cây", "Trees", 600, 600, 600, "", "4 người/ha"),
@@ -47,8 +47,8 @@ WORKS = [
 # count can check (Count), or a whole lô an inspector accepts (Lot); the rest is công nhật. Cắt bắp stays công nhật:
 # its count is the base every bunch cap is checked against.
 MODES = {
-    "F222-01": ("Bunch", "Count", "CutBud", 0), "F222-02": ("Bunch", "Count", "CutBud", 0),
-    "F222-03": ("Bunch", "Count", "CutBud", 0), "F222-04": ("Bunch", "Count", "CutBud", 0),
+    "F222-01": ("Bunch", "Count", "LotTrees", 0), "F222-02": ("Bunch", "Count", "CutBud", 0),
+    "F222-03": ("Bunch", "Count", "LotTrees", 0), "F222-04": ("Bunch", "Count", "LotTrees", 0),
     "F222-05": ("Bunch", "Daywork", "None", 0), "F222-06": ("Bunch", "Daywork", "None", 0),
     "F222-07": ("Field", "Lot", "LotArea", 0), "F222-08": ("Field", "Lot", "LotArea", 0),
     "F222-09": ("Field", "Lot", "LotArea", 0), "F222-10": ("Field", "Lot", "LotArea", 0),
@@ -67,6 +67,32 @@ MODES = {
 def _modes(code):
     group, pay, cap, material = MODES[code]
     return {"lotus_work_group": group, "lotus_pay_mode": pay, "lotus_cap_basis": cap, "lotus_requires_material": material}
+
+
+BEFORE_CUT_CODES = ("F222-01", "F222-03", "F222-04")  # tỉa, chống đổ 3 dây, chống đổ 2 dây
+
+
+def apply_bunch_stages(commit=0):
+    """Mark "Chọn F" as the sucker-selection stage, and cap tỉa and chống đổ by the trees of the lô, on the catalogue and on the phiếu already open.
+    Every other field of the work types stays as the farm has it."""
+    from lotus_farm.field_report_rules import APPROVED, CAP_CUT_BUD, CAP_TREES, FAILED, OPEN, REPORTED
+    frappe.only_for("System Manager")
+    name = frappe.db.get_value("Work Type", {"work_code": "F222-17"})
+    if not name:
+        frappe.throw("Không có việc F222-17.")
+    print("F222-17 stage:", frappe.db.get_value("Work Type", name, "lotus_bunch_stage"), "-> Sucker Select")
+    works = [w for w in (frappe.db.get_value("Work Type", {"work_code": code}) for code in BEFORE_CUT_CODES) if w]
+    tickets = frappe.get_all("Lotus Work Assignment", filters={"work_type": ["in", works or [""]], "cap_basis": CAP_CUT_BUD, "state": ["in", [OPEN, REPORTED, APPROVED, FAILED]]}, pluck="name")
+    print("Tỉa, chống đổ -> trần số cây:", len(works), "việc,", len(tickets), "phiếu đang mở")
+    if int(commit):
+        frappe.db.set_value("Work Type", name, "lotus_bunch_stage", "Sucker Select")
+        for work in works:
+            frappe.db.set_value("Work Type", work, "lotus_cap_basis", CAP_TREES)
+        for ticket in tickets:
+            frappe.db.set_value("Lotus Work Assignment", ticket, "cap_basis", CAP_TREES, update_modified=False)
+        frappe.db.commit()
+    else:
+        print("Dry run only. Run with commit=1 to write.")
 
 
 def apply_modes(commit=0):

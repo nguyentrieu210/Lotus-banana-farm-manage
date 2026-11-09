@@ -62,7 +62,7 @@ test('HR, attendance and labor remain separate destinations and honor permission
  const links=workspaceDirectory(user)
  assert.equal(links.find(a=>a.id==='global-hr').href,'/lotus/nhan-su')
  assert.equal(links.find(a=>a.id==='global-attendance').href,'/lotus/cham-cong')
- assert.equal(links.find(a=>a.id==='global-labor').href,'/lotus/labor')
+ assert.ok(!links.some(a=>a.id==='global-labor'),'Bố trí nhân công was removed')
  assert.ok(!workspaceDirectory({}).some(a=>a.id==='global-hr'))
  assert.ok(mobileActions(user).some(a=>a.id==='hr'))
  assert.ok(!mobileActions({modules:{labor:['Labor Allocation']}}).some(a=>a.id==='hr'))

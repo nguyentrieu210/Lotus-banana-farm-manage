@@ -75,6 +75,28 @@
       "in_list_view": 1
     },
     {
+      "fieldname": "confirmed_by",
+      "fieldtype": "Link",
+      "label": "Đội trưởng xác nhận",
+      "options": "User",
+      "read_only": 1,
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "confirmed_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc xác nhận",
+      "read_only": 1
+    },
+    {
+      "fieldname": "posted_event",
+      "fieldtype": "Link",
+      "label": "Dòng sổ buồng",
+      "options": "Lotus Bunch Event",
+      "read_only": 1,
+      "ignore_user_permissions": 1
+    },
+    {
       "fieldname": "bunch_tag",
       "fieldtype": "Link",
       "label": "Màu dây",
@@ -184,6 +206,9 @@
     "work_type",
     "posting_date",
     "qty",
+    "confirmed_by",
+    "confirmed_at",
+    "posted_event",
     "bunch_tag",
     "over_cut",
     "done",
