@@ -2,8 +2,10 @@
 // Old links (?field_view=day / reports / bunch) open Hôm nay.
 export const fieldNavigation=[
  {id:'today',label:'Hôm nay',icon:'clipboard'},
+ {id:'bunch',label:'Chăm sóc buồng',icon:'sprout'},
  {id:'assign',label:'Giao việc theo lô',icon:'users'},
  {id:'inspect',label:'Nghiệm thu',icon:'check'},
+ {id:'care-plan',label:'Lịch chăm sóc theo lô',icon:'calendar'},
  {id:'board',label:'Bảng lô × việc',icon:'map'},
  {id:'payable',label:'Tiền khoán theo người',icon:'wallet'},
  {id:'lots',label:'Đội, tổ & lô',icon:'people',setup:true},

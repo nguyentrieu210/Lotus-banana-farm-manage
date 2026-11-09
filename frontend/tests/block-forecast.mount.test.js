@@ -42,25 +42,23 @@ test('forecast page uses block/cohort API and never opens a cut journal',async()
  const ui=await open()
  try{
   assert.ok(calls.some(c=>c.method===M+'board'))
-  assert.match(ui.el.textContent,/Dự thu 36 tháng/)
+  ;[...ui.el.querySelectorAll('button')].find(x=>x.textContent.includes('Dự thu 36 tháng')).click();await tick()
   assert.match(ui.el.textContent,/01\/05\/2027/)
   assert.match(ui.el.textContent,/26\/07\/2027/)
   assert.doesNotMatch(ui.el.textContent,/Nhật ký chặt mẹ|Nhập nhật ký|NHẬT KÝ GỐC/)
  }finally{ui.close()}
 })
-test('care view uses block-only proposal without submitting any document',async()=>{
+test('care plan lives on its own and proposes without submitting any document',async()=>{
  calls.length=0
- replies={[M+'board']:board,[M+'preview_care_plan']:{
-   rows:[],materials:[],warnings:[],total_count:0,ready_count:0}}
- const ui=await open()
+ replies={[M+'preview_care_plan']:{rows:[],materials:[],warnings:[],total_count:0,ready_count:0,can_create:false}}
+ const Care=await load('components/ForecastCarePlan.vue')
+ const el=document.createElement('div');document.body.appendChild(el)
+ const app=createApp({render:()=>h(Care,{farm:'F',blocks:[]})});app.mount(el);await tick()
  try{
-  const tabs=[...ui.el.querySelectorAll('button')]
-  const care=tabs.find(x=>x.textContent.includes('Lịch chăm sóc theo lô'))
-  assert.ok(care);care.click();await tick()
-  const preview=[...ui.el.querySelectorAll('button')].find(x=>x.textContent.includes('Xem lịch'))
+  const preview=[...el.querySelectorAll('button')].find(x=>x.textContent.includes('Xem lịch'))
   assert.ok(preview);preview.click()
   for(let i=0;i<5;i++)await tick()
   assert.ok(calls.some(c=>c.method===M+'preview_care_plan'))
   assert.ok(!calls.some(c=>c.method===M+'create_care_plan_draft'))
- }finally{ui.close()}
+ }finally{app.unmount();el.remove()}
 })

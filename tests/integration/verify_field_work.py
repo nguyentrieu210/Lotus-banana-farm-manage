@@ -79,6 +79,17 @@ def run():
         assert (doc.pay_mode, doc.cap_basis, doc.work_group, doc.rate) == ("Count", "CutBud", "Bunch", 4000), doc.as_dict()
         expect(frappe.ValidationError, lambda: fr.assign(FARM, crew, works["F222-02"], other, [blocks["A1"].name]), "đang giao")
 
+        # Chống đổ and tỉa come before cắt bắp: no colour asked, capped by the trees of the lô, whatever has been cut there.
+        frappe.set_user(SUPERVISOR)
+        prop = fr.assign(FARM, crew, works["F222-03"], other, [blocks["A3"].name], assigned_on=d1)["created"][0]
+        trim = fr.assign(FARM, crew, works["F222-01"], other, [blocks["A3"].name], assigned_on=d1)["created"][0]
+        assert frappe.db.get_value(fr.ASSIGNMENT, prop, "cap_basis") == "LotTrees"
+        expect(frappe.ValidationError, lambda: fr.save_entry(prop, d2, json.dumps([{"employee": e3, "morning": 1}]), qty=blocks["A3"].lotus_tree_count + 1), "số cây")
+        r = fr.save_entry(prop, d2, json.dumps([{"employee": e3, "morning": 1}]), qty=20)
+        assert r["entries"][0]["bunch_tag"] is None and not r["entries"][0]["over_cut"], r["entries"][0]
+        r = fr.save_entry(trim, d2, json.dumps([{"employee": e3, "afternoon": 1}]), qty=15)
+        assert r["entries"][0]["bunch_tag"] is None, r["entries"][0]
+
         # Cắt bắp (công nhật) gives the colour count; the clock decides who can be put on a buổi.
         frappe.set_user(SUPERVISOR)
         r = fr.save_entry(cut, d1, json.dumps([{"employee": e3, "morning": 1}]), qty=40)

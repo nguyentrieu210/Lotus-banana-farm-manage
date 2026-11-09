@@ -5,14 +5,17 @@ NO use of cut-mother journals, uploads or synthetic mother-cut dates.
 """
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import json
 from collections import defaultdict
 import frappe
-from lotus_farm.block_forecast_engine import forecast, date, source_rows, projection_config
+from frappe.utils import nowdate
+from lotus_farm.block_forecast_engine import forecast, date, months_after, source_rows, projection_config
 from lotus_farm.block_care_engine import work_events as _work_events
-from lotus_farm.forecast_parameters import DEFAULTS, validate
+from lotus_farm.forecast_parameters import DEFAULTS, approved_version, validate
 from lotus_farm import plan_book2_reference as book2
+from lotus_farm import bunch_flow_rules, bunch_forecast_engine
 
 SPRAY_CODES={"CV024","CV026","CV028","CV031"}
 MATERIAL_CODES=SPRAY_CODES|{"CV030","CV032","CV033"}
@@ -101,6 +104,125 @@ def _projection(farm,zone=None,block=None,include_daily=False):
     result['zones']=sorted({b.farm_zone for b in all_blocks if b.farm_zone})
     return result,blocks,cohorts,profiles
 
+def _can_import_opening():
+    from lotus_farm.field_report import is_manager
+    return is_manager()
+
+BUNCH_EVENT="Lotus Bunch Event"
+
+def _bunch_lines(farm,blocks=None):
+    """Confirmed ledger lines. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021)."""
+    filters={"farm":farm,"state":"Confirmed"}
+    if blocks is not None:
+        filters["farm_block"]=["in",list(blocks) or [""]]
+    return frappe.get_all(BUNCH_EVENT,filters=filters,
+        fields=["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg","reason","source_type","source_name","confirmed_by"],
+        order_by="event_date asc",limit_page_length=0)
+
+def _bunch_params(profiles):
+    def params_for(block,cut_day):
+        # The approved set in force when the bunch comes in, not when it was cut.
+        when=cut_day+dt.timedelta(days=int(DEFAULTS["cut_to_harvest_days"]))
+        profile=approved_version(profiles,block,when)
+        return (profile.get("name") if profile else None),validate(profile or DEFAULTS)
+    return params_for
+
+def _bunch_scope(farm,zone=None,block=None):
+    filters={"farm":farm,"active":1}
+    if zone:filters["farm_zone"]=zone
+    if block:filters["name"]=block
+    return {b.name:{"code":b.block_code,"zone":b.farm_zone or "","cycle":int(b.lotus_current_cycle_no or 0)} for b in frappe.get_all("Farm Block",filters=filters,fields=["name","block_code","farm_zone","lotus_current_cycle_no"],limit_page_length=0)}
+
+def _tag_labels(farm):
+    return {t.name:t.color_label or t.name for t in frappe.get_all("Bunch Tag",filters={"farm":farm},fields=["name","color_label"],limit_page_length=0)}
+
+def _bunch_cohorts(farm,blocks,waves,lines=None):
+    """Every bunch of these lô, once, at the stage nearest to harvest."""
+    today=nowdate()
+    lines=_bunch_lines(farm,blocks) if lines is None else lines
+    params=_bunch_params(_profiles(farm))
+    cut=bunch_flow_rules.cut_cohorts(lines,params,today)
+    injected,observed=bunch_flow_rules.inject_cohorts(lines,params,today)
+    suckers,claimed=bunch_flow_rules.sucker_cohorts(lines,observed,params,today)
+    trees=bunch_flow_rules.tree_cohorts(waves,observed,claimed,{name:b["cycle"] for name,b in blocks.items()},today)
+    return cut+injected+suckers+trees
+
+def _unconfirmed(farm,blocks):
+    """Entered but not confirmed: shown apart, never in the forecast."""
+    rows=frappe.get_all(BUNCH_EVENT,filters={"farm":farm,"state":"Draft","farm_block":["in",list(blocks) or [""]]},fields=["event_type","qty"],limit_page_length=0)
+    totals={}
+    for r in rows:totals[r.event_type]=totals.get(r.event_type,0)+int(r.qty)
+    return totals
+
+def _bunch_weekly(farm,waves,zone=None,block=None):
+    blocks=_bunch_scope(farm,zone,block)
+    lines=_bunch_lines(farm,blocks)
+    cohorts=_bunch_cohorts(farm,blocks,waves,lines)
+    result=bunch_forecast_engine.summarize(cohorts,blocks,_tag_labels(farm),nowdate())
+    result["unconfirmed"]=_unconfirmed(farm,blocks)
+    result["pace"]=bunch_forecast_engine.cut_pace(cohorts,lines,nowdate())
+    result["coverage"]={"with_data":len({l.farm_block for l in lines if l.event_type in ("Cut Bud","Bud Injection")}),"total":len(blocks)}
+    # Crops years ahead are outside every approved set for now; only what is on the screen deserves a warning.
+    shown=months_after(date(nowdate()).replace(day=1),bunch_forecast_engine.MONTHS)
+    if any(not c["profile"] and c["days"] and c["days"][0][0]<shown for c in cohorts):
+        result["warnings"].append("Một số lô đang dùng thông số mặc định, chưa có bộ thông số được duyệt.")
+    return result,cohorts
+
+def bunch_summary(farm):
+    """The whole farm, for a frozen copy of the forecast."""
+    result,_,_,_=_projection(farm)
+    return _bunch_weekly(farm,result["rows"])
+
+LAYER_NOTES={"cut":"Mức tin cậy cao: buồng đã cắt bắp.","inject":"Mức tin cậy khá: đã chích bắp, chưa cắt.","sucker":"Mức tin cậy thấp: số chồi ước tính từ diện tích đã chọn, mốc thời gian theo ngày chọn thật.",
+    "tree":"Mức tin cậy thấp: tính từ số cây và ngày trổ ước tính theo khu."}
+
+def _trace_facts(layer,g,c):
+    dm=lambda d:str(d)[8:10]+"/"+str(d)[5:7] if d else ""
+    window=dm(c["window_start"])+" – "+dm(c["window_end"])
+    if layer=="cut":
+        return [["Đã cắt bắp",g["cut"]],["Hủy sau cắt",g["rejected"]],["Đã thu",g["harvested"]],["Dự kiến còn thu",g["left"]],["Thu từ – đến",window]]
+    if layer=="inject":
+        return [["Đã chích",g["injected"]],["Đã cắt từ số chích",g["cut"]],["Còn chờ cắt",g["uncut"]],["Hủy trước cắt",g["rejected"]],["Dự kiến thu",g["left"]]]
+    if layer=="sucker":
+        return [["Ngày chọn chồi",dm(g["selected"])],["Số chồi ước tính",g["suckers"]],["Dự kiến thu",g["left"]],["Thu từ – đến",window]]
+    return [["Số cây của đợt",g["trees"]],["Đợt trổ",g["wave"]],["Trổ ước tính từ",dm(g["flower"])],["Đã có số thực tế",g["seen"]],["Dự kiến thu",g["left"]],["Thu từ – đến",window]]
+
+@frappe.whitelist()
+def trace(farm,block,week,layer="cut",tag=None,cycle=None):
+    """Where a number on the weekly forecast comes from: the ledger lines behind it and the parameters used."""
+    _farm(farm)
+    blocks=_bunch_scope(farm,block=block)
+    if block not in blocks:
+        frappe.throw("Lô không thuộc vườn đã chọn.")
+    lines=_bunch_lines(farm,blocks)
+    result,_,_,_=_projection(farm,block=block)
+    labels=_tag_labels(farm)
+    empty=dict(week=week,block=block,block_code=blocks[block]["code"],layer=layer,note=LAYER_NOTES.get(layer,""),groups=[],lines=[],params=None)
+    picked=[]
+    for c in _bunch_cohorts(farm,blocks,result["rows"],lines):
+        if c["layer"]!=layer or (tag and c["tag"]!=tag) or (cycle and c["cycle"]!=int(cycle)):
+            continue
+        here=sum(n for day,n in c["days"] if bunch_forecast_engine.week_key(day)==week)
+        if here:
+            picked.append((c,here))
+    if not picked:
+        return empty
+    groups={}
+    for c,here in picked:
+        key=c["tag"] or (str(c["cycle"])+"|"+str(c["group"].get("wave") or c["event"] or ""))
+        slot=groups.setdefault(key,dict(key=key,ribbon=labels.get(c["tag"],""),in_week=0,facts=_trace_facts(layer,c["group"],c)))
+        slot["in_week"]+=here
+    types={"cut":("Cut Bud","Reject","Harvest"),"inject":("Bud Injection","Cut Bud","Reject"),"sucker":("Sucker Select",),"tree":()}[layer]
+    tags={c["tag"] for c,_ in picked if c["tag"]}
+    cycles={c["cycle"] for c,_ in picked}
+    rows=[dict(line,event_date=str(line.event_date),ribbon=labels.get(line.bunch_tag,"")) for line in lines
+          if line.event_type in types and ((line.bunch_tag in tags) if layer=="cut" else line.cycle_no in cycles)]
+    config,profile=picked[0][0]["config"],picked[0][0]["profile"]
+    version=frappe.db.get_value("Lotus Block Forecast Profile",profile,"version") if profile else None
+    return dict(week=week,block=block,block_code=blocks[block]["code"],layer=layer,note=LAYER_NOTES.get(layer,""),groups=list(groups.values()),lines=rows,
+        params=dict(profile=profile,version=version,min_days=config["cut_to_harvest_min_days"],max_days=config["cut_to_harvest_max_days"],
+                    harvest_rate=config["harvest_rate"],pack_rate=config["pack_rate"],kg_cycle_2=config["kg_cycle_2"],kg_per_carton=config["kg_per_carton"]))
+
 @frappe.whitelist()
 def board(farm=None,zone=None,block=None):
     farms=frappe.get_list("Farm",fields=["name","farm_name"],limit_page_length=0)
@@ -108,6 +230,7 @@ def board(farm=None,zone=None,block=None):
     if not chosen:
         return dict(farms=[],farm=None,rows=[],months=[],warnings=["Không có vườn được cấp quyền."])
     result,blocks,cohorts,profiles=_projection(chosen,zone,block)
+    bunch,_=_bunch_weekly(chosen,result["rows"],zone,block)
     actuals=_observations(chosen,block=block)
     block_labels={b.name:b.block_name or b.block_code or b.name for b in blocks}
     for item in actuals:item['farm_block_label']=block_labels.get(item.farm_block,item.farm_block)
@@ -127,6 +250,7 @@ def board(farm=None,zone=None,block=None):
                        approved_by=p.approved_by,approval_state=p.approval_state)
                   for p in profiles],
         can_create=frappe.has_permission("Daily Work Plan","create"),
+        bunch=bunch,can_import_opening=_can_import_opening(),
         params=dict(validate(DEFAULTS),work_reference=book2.SOURCE))
 
 
@@ -222,7 +346,7 @@ def _preview(farm,from_date,to_date,block=None):
 
 @frappe.whitelist()
 def preview_care_plan(farm,from_date,to_date,block=None):
-    return _preview(farm,from_date,to_date,block)
+    return dict(_preview(farm,from_date,to_date,block),can_create=frappe.has_permission("Daily Work Plan","create"))
 
 @frappe.whitelist(methods=["POST"])
 def create_care_plan_draft(farm,block,posting_date,fingerprint):

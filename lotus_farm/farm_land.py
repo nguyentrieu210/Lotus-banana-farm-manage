@@ -16,7 +16,7 @@ from lotus_farm import farm_land_rules as rules
 
 BLOCK_FIELDS = ['name', 'modified', 'farm', 'block_code', 'block_name', 'farm_zone', 'area_ha', 'variety', 'planting_date', 'planting_density',
                 'irrigation_zone', 'manager', 'active', 'notes', 'lotus_tree_count', 'lotus_tree_count_source', 'lotus_estimated_flowering_date',
-                'lotus_inferred_planting_date', 'lotus_estimation_basis', 'lotus_estimated_sucker_selection_date']
+                'lotus_inferred_planting_date', 'lotus_estimation_basis', 'lotus_estimated_sucker_selection_date', 'lotus_current_cycle_no']
 MANAGERS = ('System Manager', 'Lotus Farm Manager')
 
 

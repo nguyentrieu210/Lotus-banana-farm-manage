@@ -53,6 +53,17 @@ test('main pages use shadcn-vue Button and still keep Frappe API provider',()=>{
   assert.doesNotMatch(read('src/style.css'),/frappe-ui\/style\.css/)
   assert.match(read('src/main.js'),/import '\.\/shadcn\.css'/)
 })
+test('every app that renders the shared components loads the Tailwind utilities',()=>{
+  for(const entry of ['main','showcase-main','work-mobile-main','buying-mobile-main','hr-mobile-main','warehouse-mobile-main']){
+    assert.match(read('src/'+entry+'.js'),/import '\.\/shadcn\.css'/,entry)
+  }
+})
+test('icon buttons on the red top bar stay readable when hovered',()=>{
+  const bar=read('src/components/WorkspaceBar.vue')
+  for(const button of bar.match(/<UiButton\b[^>]*variant="ghost" size="icon"[^>]*>/g)){
+    assert.match(button,/hover:bg-white\/15 hover:text-white/,button)
+  }
+})
 test('shared form inputs preserve number and text model types',()=>{
   assert.equal(normalizeInputValue('125.5',true),125.5)
   assert.equal(normalizeInputValue('',true),'')

@@ -13,7 +13,7 @@ const state=ref(null),busy=ref(false),error=ref(''),open=ref(false),form=ref({})
 const confirm=useWorkspaceConfirm()
 const fields=[
  ['wave_1_share','Trổ đợt 1 (%)','%'],['wave_2_share','Trổ đợt 2 (%)','%'],['wave_3_share','Trổ đợt 3 (%)','%'],['wave_4_share','Trổ đợt 4 (%)','%'],
- ['wave_window_days','Số ngày mỗi đợt','ngày'],['wave_step_days','Khoảng cách hai đợt','ngày'],['sucker_to_flower_months','Chọn chồi → trổ','tháng'],['shoot_to_inject_days','Trổ → chích','ngày'],['inject_to_cut_days','Chích → cắt bắp','ngày'],['cut_to_harvest_days','Cắt bắp → thu','ngày'],
+ ['wave_window_days','Số ngày mỗi đợt','ngày'],['wave_step_days','Khoảng cách hai đợt','ngày'],['sucker_to_flower_months','Chọn chồi → trổ','tháng'],['shoot_to_inject_days','Trổ → chích','ngày'],['inject_to_cut_days','Chích → cắt bắp','ngày'],['cut_to_harvest_days','Cắt bắp → thu','ngày'],['cut_to_harvest_min_days','Cắt bắp → thu sớm nhất','ngày'],['cut_to_harvest_max_days','Cắt bắp → thu muộn nhất','ngày'],
  ['flowering_rate','Tỷ lệ trổ / cây (%)','%'],['cut_rate_per_tree','Cắt bắp / cây (%)','%'],['cut_rate_per_flowered_bunch','Cắt bắp / buồng trổ (%)','%'],['harvest_rate','Thu / cắt bắp (%)','%'],['pack_rate','Buồng đóng gói / buồng thu (%)','%'],
  ['kg_cycle_1','Kg/buồng vụ 1','kg'],['kg_cycle_2','Kg/buồng vụ 2','kg'],['kg_cycle_3','Kg/buồng vụ 3+','kg'],['kg_per_carton','Kg/thùng','kg'],['cartons_per_container','Thùng/container 40ft','thùng'],['census_sucker_yield','Chồi hữu hiệu tham khảo (%)','%']]
 const blockOptions=computed(()=>[{value:'',label:'Toàn vườn'},...props.blocks.map(b=>({value:b.name,label:b.block_name||b.block_code||b.name}))])

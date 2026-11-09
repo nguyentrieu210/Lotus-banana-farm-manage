@@ -10,7 +10,7 @@ import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
 import {call,consoleAPI} from '../api'
 import {loadWorkspaceDirectory,mergeWorkspaceActions} from '../workspace-directory'
-const emit=defineEmits(['update:farm'])
+const emit=defineEmits(['update:farm','whats-new'])
 const props=defineProps({farms:{type:Array,default:()=>[]},farm:{type:String,default:''},user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
 const {dark,sidebarCollapsed,toggleTheme,toggleSidebar}=useWorkspace()
 const palette=ref(null),input=ref(null),query=ref(''),selected=ref(0),loggingOut=ref(false),logoutError=ref('')
@@ -42,7 +42,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
 <template>
  <div class="workspace-bar" aria-label="Thanh điều hướng">
   <div class="workspace-left">
-   <Tooltip v-if="sidebar" :content="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'"><UiButton class="workspace-sidebar-toggle" variant="ghost" size="icon" :aria-label="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'" :aria-expanded="!sidebarCollapsed" @click="toggleSidebar"><LotusIcon name="menu"/></UiButton></Tooltip>
+   <Tooltip v-if="sidebar" :content="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'"><UiButton class="workspace-sidebar-toggle hover:bg-white/15 hover:text-white" variant="ghost" size="icon" :aria-label="sidebarCollapsed?'Mở thanh bên':'Thu gọn thanh bên'" :aria-expanded="!sidebarCollapsed" @click="toggleSidebar"><LotusIcon name="menu"/></UiButton></Tooltip>
    <a v-if="branded" class="workspace-brand" href="/lotus/mobile" aria-label="Trang chủ Lotus"><img :src="'/assets/lotus_farm/images/lotus-agritech.jpg'" alt="Lotus Agritech" width="112" height="44"><span>Kho Lotus</span></a>
    <Tooltip v-else content="Trang chủ"><a class="workspace-home" href="/lotus/mobile" aria-label="Trang chủ Lotus"><LotusIcon name="home"/></a></Tooltip>
    <DropdownMenu>
@@ -53,13 +53,14 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
   </div>
   <UiButton class="workspace-search" variant="outline" aria-label="Tìm nhanh (Ctrl K)" @click="open"><LotusIcon name="search" class="workspace-search-icon"/><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right">
-   <Tooltip :content="dark?'Giao diện sáng':'Giao diện tối'"><UiButton variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" @click="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/></UiButton></Tooltip>
+   <Tooltip :content="dark?'Giao diện sáng':'Giao diện tối'"><UiButton class="hover:bg-white/15 hover:text-white" variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" @click="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/></UiButton></Tooltip>
    <DropdownMenu>
     <DropdownMenuTrigger as-child><button type="button" class="workspace-user-trigger" :aria-label="'Tài khoản '+user"><span class="workspace-avatar">{{initials}}</span><span class="workspace-username">{{user||'Đang kết nối…'}}</span></button></DropdownMenuTrigger>
     <DropdownMenuContent align="end">
      <DropdownMenuLabel class="lotus-menu__label">Tài khoản đang đăng nhập</DropdownMenuLabel>
      <DropdownMenuLabel class="lotus-menu__label lotus-menu__user">{{user||'Đang kết nối…'}}</DropdownMenuLabel>
      <DropdownMenuSeparator/>
+     <DropdownMenuItem @select="emit('whats-new')"><LotusIcon name="check-circle"/>Có gì mới</DropdownMenuItem>
      <DropdownMenuItem @select="open"><LotusIcon name="search"/>Tìm nhanh<kbd class="lotus-menu__kbd">Ctrl K</kbd></DropdownMenuItem>
      <DropdownMenuItem @select="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/>{{dark?'Giao diện sáng':'Giao diện tối'}}</DropdownMenuItem>
      <DropdownMenuSeparator/>

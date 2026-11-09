@@ -6,6 +6,7 @@ test('each work group shows its own fields',()=>{
  assert.deepEqual([groupSchema({work_group:'Bunch',work_stage:'Bag'}).ribbonChoice,groupSchema({work_group:'Bunch',work_stage:'Bag'}).materials],[true,false])
  const cut=groupSchema({work_group:'Bunch',work_stage:'Cut Bud'})
  assert.equal(cut.ribbon,true);assert.equal(cut.ribbonChoice,false,'cắt bắp takes the week colour')
+ for(const stage of ['Care','Prop']){const s=groupSchema({work_group:'Bunch',work_stage:stage});assert.deepEqual([s.ribbon,s.ribbonChoice],[false,false],stage+' is done before there is a ribbon')}
  const spray=groupSchema({work_group:'Protection',requires_material:1})
  assert.equal(spray.materials,true);assert.equal(spray.materialsRequired,true)
  assert.equal(groupSchema({work_group:'Field'}).materials,false)

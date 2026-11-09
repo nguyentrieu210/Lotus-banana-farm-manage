@@ -11,6 +11,7 @@ DEFAULTS = {
     "wave_window_days": 30, "wave_step_days": 30,
     "sucker_to_flower_months": 6, "shoot_to_inject_days": 5,
     "inject_to_cut_days": 16, "cut_to_harvest_days": 65,
+    "cut_to_harvest_min_days": 60, "cut_to_harvest_max_days": 70,
     "flowering_rate": 1.0, "cut_rate_per_tree": .90,
     "cut_rate_per_flowered_bunch": 1.0,
     "harvest_rate": .97, "pack_rate": .98,
@@ -23,7 +24,7 @@ RATES=("wave_1_share","wave_2_share","wave_3_share","wave_4_share",
        "flowering_rate","cut_rate_per_tree","cut_rate_per_flowered_bunch",
        "harvest_rate","pack_rate","census_sucker_yield")
 POSITIVE_INTS=("wave_window_days","wave_step_days","sucker_to_flower_months",
-               "inject_to_cut_days","cut_to_harvest_days","cartons_per_container")
+               "inject_to_cut_days","cut_to_harvest_days","cut_to_harvest_min_days","cut_to_harvest_max_days","cartons_per_container")
 NONNEGATIVE_INTS=("shoot_to_inject_days",)
 POSITIVE_FLOATS=("kg_cycle_1","kg_cycle_2","kg_cycle_3","kg_per_carton")
 
@@ -56,9 +57,11 @@ def validate(values):
         raise ValueError("Không nhân 97% chồi vào số cây/chồi đã kiểm kê hoặc chọn thực tế.")
     if clean["wave_step_days"]<clean["wave_window_days"]:
         raise ValueError("Bốn cửa sổ trổ đang chồng lấn. Kiểm tra bước và độ dài cửa sổ.")
-    for name in ("wave_step_days", "wave_window_days", "shoot_to_inject_days", "inject_to_cut_days", "cut_to_harvest_days"):
+    for name in ("wave_step_days", "wave_window_days", "shoot_to_inject_days", "inject_to_cut_days", "cut_to_harvest_days", "cut_to_harvest_min_days", "cut_to_harvest_max_days"):
         if clean[name] > 366:
             raise ValueError(f"Thông số {name} không vượt quá 366 ngày.")
+    if not clean["cut_to_harvest_min_days"] <= clean["cut_to_harvest_days"] <= clean["cut_to_harvest_max_days"]:
+        raise ValueError("Số ngày cắt bắp → thu cơ sở phải nằm giữa sớm nhất và muộn nhất.")
     if clean["sucker_to_flower_months"] > 60:
         raise ValueError("Thời gian chọn chồi đến trổ không vượt quá 60 tháng.")
     return clean

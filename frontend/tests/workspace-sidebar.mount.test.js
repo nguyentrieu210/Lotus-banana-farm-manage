@@ -26,7 +26,7 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
  const nav=pages.filter(([path])=>['reports','kho','materials'].includes(path))
  const view=mount(WorkspaceSidebar,{nav,page:'kho'});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
- assert.deepEqual(parents,['Tổng quan','Điều hành công việc','Kho'])
+ assert.deepEqual(parents,['Tổng quan','Vườn & lô','Kho'])
  assert.equal(view.root.querySelectorAll('.nav-parent svg.lotus-icon').length,3,'each area has an icon')
  // Kho lists its own screens like Nhân sự and Mua hàng; single-screen groups still have no submenu.
  const groups=[...view.root.querySelectorAll('.nav-group')]
@@ -43,19 +43,19 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
 test('sidebar parent navigates to its first page; the submenu lists every page of the group, the first included',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{},commands:{},modules:{}})
  const visited=[]
- const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['map','Bản đồ'],['work','Công việc'],['labor','Bố trí nhân công']]
+ const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['map','Bản đồ'],['work','Công việc'],['materials','Vật tư']]
  const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'work',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
- assert.deepEqual(parents,['Tổng quan','Quản lý vườn','Điều hành công việc'])
- assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Sâu bệnh & ghi nhận khác','Bố trí nhân công'],'the page the group button opens is listed too')
- view.root.querySelectorAll('.nav-group-current .nav-submenu button')[1].click();await tick()
- assert.deepEqual(visited,['labor'])
+ assert.deepEqual(parents,['Tổng quan','Vườn & lô'])
+ assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Bản đồ lô','Sâu bệnh & ghi nhận khác','Vật tư theo việc'],'the page the group button opens is listed too')
+ view.root.querySelectorAll('.nav-group-current .nav-submenu button')[2].click();await tick()
+ assert.deepEqual(visited,['materials'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
  collapsed.click();await tick()
  assert.equal(collapsed.getAttribute('aria-expanded'),'false')
  assert.equal(view.root.querySelector('.nav-group-current .nav-submenu').style.display,'none')
  view.root.querySelector('.nav-group-current .nav-parent').click();await tick()
- assert.deepEqual(visited,['labor','work'])
+ assert.deepEqual(visited,['materials','map'])
  view.unmount()
 })
 
@@ -64,7 +64,7 @@ test('unknown permitted pages remain reachable and group changes do not create r
  const visited=[]
  const view=mount({render:()=>h(WorkspaceSidebar,{nav:[['work','Công việc'],['future-page','Màn mới']],page:'',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
- assert.deepEqual(parents,['Điều hành công việc','Khác'])
+ assert.deepEqual(parents,['Vườn & lô','Khác'])
  assert.equal([...view.root.querySelectorAll('.nav-sub-link')].length,0,'no purchasing shortcut without stock permission')
  view.root.querySelector('.nav-parent').click();await tick()
  assert.deepEqual(visited,['work'])

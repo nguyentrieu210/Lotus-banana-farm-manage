@@ -30,6 +30,8 @@
     "shoot_to_inject_days",
     "inject_to_cut_days",
     "cut_to_harvest_days",
+    "cut_to_harvest_min_days",
+    "cut_to_harvest_max_days",
     "flowering_rate",
     "cut_rate_per_tree",
     "cut_rate_per_flowered_bunch",
@@ -178,6 +180,18 @@
       "fieldtype": "Int",
       "reqd": 1,
       "default": "65"
+    },
+    {
+      "fieldname": "cut_to_harvest_min_days",
+      "label": "Cắt bắp → thu sớm nhất (ngày)",
+      "fieldtype": "Int",
+      "default": "60"
+    },
+    {
+      "fieldname": "cut_to_harvest_max_days",
+      "label": "Cắt bắp → thu muộn nhất (ngày)",
+      "fieldtype": "Int",
+      "default": "70"
     },
     {
       "fieldname": "flowering_rate",

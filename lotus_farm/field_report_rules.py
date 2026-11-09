@@ -22,7 +22,9 @@ CAP_CUT_BUD, CAP_TREES, CAP_AREA, CAP_NONE = "CutBud", "LotTrees", "LotArea", "N
 OPEN, REPORTED, APPROVED, PASSED, FAILED, LOCKED, CANCELLED = "Open", "Reported", "Approved", "Passed", "Failed", "Locked", "Cancelled"
 ROUND = "Round"
 # Bunch stages after cắt bắp that carry the ribbon colour and cannot exceed the cắt bắp count of that colour.
-COLOUR_STAGES = ("Bag", "Care", "Prop")
+# Only bao buồng comes after cắt bắp and carries its colour. Chống đổ and tỉa are done before the ribbon exists: no colour, capped by the trees of the lô.
+COLOUR_STAGES = ("Bag",)
+CARE_STAGES = ("Bag", "Care", "Prop")
 CUT_BUD = "Cut Bud"
 # Before this day an excess over cắt bắp only warns (bunches cut before the system were never counted).
 BUNCH_CAP_FROM = date(2026, 12, 1)
