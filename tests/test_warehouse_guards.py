@@ -22,6 +22,8 @@ class TestWarehouseGuards(unittest.TestCase):
         self.frappe.db = Mock()
         self.frappe.db.get_value.return_value = 0
         self.frappe.get_cached_value = Mock(return_value='VND')
+        # No finance custom fields in these tests: receipts take the path without per-line VAT.
+        self.frappe.get_meta = Mock(return_value=Mock(has_field=Mock(return_value=False)))
         utils = types.ModuleType('frappe.utils')
         utils.cint, utils.flt = int, float
         utils.getdate = lambda value: value
@@ -187,7 +189,8 @@ class TestWarehouseGuards(unittest.TestCase):
         self.module._access = Mock()
         self.module._company = Mock()
         rows = [Row(name=str(i),item_code='I',actual_qty=-2 if i==60 else 5,
-                    voucher_type='Test Voucher',voucher_no='V-'+str(i),warehouse='W',qty_after_transaction=100) for i in range(65)]
+                    voucher_type='Test Voucher',voucher_no='V-'+str(i),warehouse='W',qty_after_transaction=100,
+                    posting_datetime='2026-10-13 08:00:00',creation='2026-10-13 08:00:%02d'%(i%60)) for i in range(65)]
         self.frappe.get_list = Mock(side_effect=[[Row(name='W')],[Row(name='I',item_name='Fertilizer')],rows])
         with patch.dict(sys.modules, {'lotus_farm.table_filters':helper}):
             result=self.module.movements('Farm',from_date='2026-10-01',to_date='2026-10-13',column_filters={'out_qty':[2]})
@@ -212,7 +215,7 @@ class TestWarehouseGuards(unittest.TestCase):
             self.module._stock_doc('User', 'Administrator')
         self.frappe.get_doc.assert_not_called()
 
-    def test_simple_submit_does_not_accept_packout_or_serial_documents(self):
+    def test_simple_submit_does_not_accept_repack_or_serial_documents(self):
         doc = Mock()
         doc.doctype = 'Stock Entry'
         doc.stock_entry_type = 'Repack'
