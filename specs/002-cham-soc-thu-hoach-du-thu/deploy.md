@@ -5,7 +5,7 @@ Chỉ chạy khi chủ vườn ra lệnh. Test, build và diễn tập chạy tr
 Triển khai hai lần:
 
 1. **Lần 1 (đã lên 10/11, `lotus-release:40f8330`)**: sổ lô, báo cáo ngày theo lô, phiếu giấy và đọc ảnh, màu dây và thu hoạch, vòng chăm sóc, dự thu chốt tuần, xưởng theo nguồn buồng, báo cáo Sáng nay/Tuần/Tháng, menu 7 mục. Các bảng đời cũ vẫn còn trong cơ sở dữ liệu nhưng không còn màn hình ghi vào.
-2. **Lần 2 (US7)**: xóa hẳn 76 bảng cũ cùng mã, màn hình, menu, tool và test của chúng; tài chính, lương, kho, khung ứng dụng cũ, vườn & lô và dự thu không còn đọc chúng. Các bước ở mục 8.
+2. **Lần 2 (US7, đã lên 11/11, `lotus-release:b71a0b5`)**: xóa hẳn 79 bảng cũ (76 của mảng vườn cũ, 3 của khung ứng dụng cũ) cùng mã, màn hình, menu, tool và test của chúng; tài chính, lương, kho, khung ứng dụng cũ, vườn & lô và dự thu không còn đọc chúng. Các bước ở mục 8.
 
 ## 0. Trước khi build
 
