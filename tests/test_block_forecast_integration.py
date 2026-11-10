@@ -33,14 +33,15 @@ class BlockForecastIntegrationTests(unittest.TestCase):
         block=fields("farm_block")
         self.assertEqual(block["forecast_count_source"]["default"],"Planning Baseline")
         source=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
-        self.assertIn('"Planning Baseline"',source)
+        engine=(ROOT/"lotus_farm/block_forecast_engine.py").read_text(encoding="utf-8")
+        self.assertIn('"Planning Baseline"',engine)
         self.assertNotIn("Số cây chưa được xác nhận kiểm kê",source)
         cohort=fields("plan_cohort")
         self.assertIn("Single Wave",cohort["forecast_distribution_mode"]["options"])
 
     def test_parameters_are_versioned_approved_and_immutable(self):
         from lotus_farm.forecast_parameters import DEFAULTS,validate
-        self.assertEqual(len(DEFAULTS),22)
+        self.assertEqual(len(DEFAULTS),24)
         self.assertEqual(validate(DEFAULTS)["inject_to_cut_days"],16)
         self.assertEqual(validate(DEFAULTS)["apply_sucker_yield_to_counted_trees"],0)
         doc=json.loads((ROOT/"lotus_farm/lotus_farm/doctype/lotus_block_forecast_profile/lotus_block_forecast_profile.json").read_text(encoding="utf-8"))
@@ -51,16 +52,11 @@ class BlockForecastIntegrationTests(unittest.TestCase):
         self.assertIn('old.approval_state == "Approved"',source)
         self.assertIn("không được chồng ngày hiệu lực",source)
 
-    def test_new_document_pipeline_is_draft_only_with_approved_norms(self):
+    def test_forecast_no_longer_writes_care_plans(self):
         code=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
-        section=code.split("def create_care_plan_draft(",1)[1]
-        self.assertIn('doc.insert()',section)
-        self.assertNotIn('.submit(',section)
-        self.assertIn('fingerprint!=plan["fingerprint"]',section)
+        self.assertNotIn("def create_care_plan_draft(",code)
+        self.assertNotIn("def care_plan_preview(",code)
         self.assertIn('"approval_state":"Approved"',code)
-        self.assertIn('REQUIRES_FIELD_SURVEY',code)
-        self.assertIn('MATERIAL_CODES',code)
-        self.assertIn('lotus_forecast_sources',section)
 
 if __name__=="__main__":
     unittest.main()

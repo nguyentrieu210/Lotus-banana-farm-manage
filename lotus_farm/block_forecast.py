@@ -13,7 +13,6 @@ from lotus_farm.forecast_parameters import DEFAULTS, approved_version, validate
 from lotus_farm import bunch_flow_rules, bunch_forecast_engine
 from lotus_farm import forecast_snapshot_rules as snapshot_rules
 
-REQUIRES_FIELD_SURVEY={"CV021"}
 
 def _farm(farm, permission="read"):
     if not farm:
