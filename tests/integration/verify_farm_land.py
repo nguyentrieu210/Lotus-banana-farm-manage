@@ -64,8 +64,9 @@ try:
                     {'lotus_tree_count': lot['lotus_tree_count'] + 10, 'lotus_tree_count_source': 'Kiểm tra QA ' + tag, 'irrigation_zone': 'T-' + tag})
     assert saved['block']['lotus_tree_count'] == lot['lotus_tree_count'] + 10, saved['block']
     assert saved['history'] and any(c['field'] == 'Số cây kiểm kê' for c in saved['history'][0]['changes']), (frappe.db.count('Version', {'ref_doctype': 'Farm Block', 'docname': lot['name']}), [h['at'] for h in saved['history']], lot['name'], saved['block']['name'])
-    plot = as_user(manager, fl.save_plot, lot['name'], {'plot_code': 'QA-' + tag, 'plot_name': 'Thửa QA', 'area_ha': 0.5, 'active': 0})
-    assert any(p['plot_code'] == 'QA-' + tag for p in plot['plots'])
+    for section, keys in (('work', ('work', 'teams', 'materials')), ('yield', ('forecasts', 'harvest', 'cancellations')), ('care', ('diseases', 'operations'))):
+        seen = as_user(manager, fl.block_detail, lot['name'], section, '2026-01-01', '2026-12-31')
+        assert all(seen[key] is not None for key in keys), (section, 'a farm manager reads the sổ lô of the lot')
 
     farm = lot['farm']
     fl.export_blocks(farm)

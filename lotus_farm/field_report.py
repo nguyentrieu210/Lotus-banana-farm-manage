@@ -146,7 +146,6 @@ def farm_query(doctype):
 assignment_query = farm_query(ASSIGNMENT)
 entry_query = farm_query(ENTRY)
 session_query = farm_query(SESSION)
-bunch_event_query = farm_query("Lotus Bunch Event")
 daily_report_query = farm_query("Lotus Daily Report")
 forecast_snapshot_query = farm_query("Lotus Forecast Snapshot")
 inspection_query = farm_query(INSPECTION)
@@ -650,7 +649,7 @@ def work_rows(company, begin, end):
             s.work_type as lotus_work_type from `tab{SESSION}` s join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
         where s.company = %s and s.posting_date between %s and %s group by s.employee, s.farm, s.farm_block, s.work_type""",
                          (company, begin, end), as_dict=True)
-    return [dict(r, lotus_crop_cycle=None, workdays=flt(r.workdays)) for r in rows]
+    return [dict(r, workdays=flt(r.workdays)) for r in rows]
 
 
 def pay_scope(farm):

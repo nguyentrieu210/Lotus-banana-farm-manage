@@ -193,13 +193,11 @@ def tree_cohorts(waves, observed, claimed, current_cycle, today):
     """What the tree-count forecast still promises. Bunches already seen come off the earliest waves of their vụ, counted at cắt bắp: a wave
     of 1.000 trees expects 900 cut, so 900 seen means that wave is finished and the farm total stays what the trees allow.
 
-    The old engine numbers crops from 1. Here generation 0 is the lô's current vụ, unless the wave comes from an approved cohort with its own vụ.
+    The tree-count engine numbers crops from 1. Here generation 0 is the lô's current vụ.
     A wave whose time has passed with nothing recorded moves into the coming weeks (FR-028).
     """
     today = to_date(today)
     def wave_cycle(wave):
-        if wave.get("source_cohort"):
-            return int(wave["cycle_no"])
         return int(current_cycle.get(wave["farm_block"]) or wave["cycle_no"]) + int(wave.get("generation") or 0) if current_cycle.get(wave["farm_block"]) else int(wave["cycle_no"])
 
     seen = {}

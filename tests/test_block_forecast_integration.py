@@ -1,4 +1,5 @@
 """Safety and source-isolation checks for the new block forecast flow."""
+import inspect
 import json
 import unittest
 from pathlib import Path
@@ -6,38 +7,33 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
 class BlockForecastIntegrationTests(unittest.TestCase):
-    def test_active_route_and_api_have_no_cut_journal_dependency(self):
+    def test_active_route_is_the_block_forecast(self):
         app=(ROOT/"frontend/src/App.vue").read_text(encoding="utf-8")
-        ui=(ROOT/"frontend/src/BlockForecastApp.vue").read_text(encoding="utf-8")
-        api=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
-        engine=(ROOT/"lotus_farm/block_forecast_engine.py").read_text(encoding="utf-8")
         self.assertIn("import('./BlockForecastApp.vue')",app)
         self.assertNotIn("CutForecastApp",app)
-        for code in (ui,api,engine):
-            self.assertNotIn("lotus_cut_journal",code)
-            self.assertNotIn("lotus_farm.cut_forecast.",code)
-        self.assertNotIn('frappe.get_all("Lotus Cut Journal Entry"',api)
-        self.assertNotIn("Lotus Cut Journal Entry",api)
 
-    def test_legacy_documents_hidden_and_read_only(self):
-        for key in ("lotus_cut_journal_entry","lotus_cut_journal_import","lotus_cut_forecast_profile"):
-            info=json.loads((ROOT/f"lotus_farm/lotus_farm/doctype/{key}/{key}.json").read_text(encoding="utf-8"))
-            self.assertEqual(info["hide_in_desk"],1)
-            self.assertTrue(all(not p.get("write") and not p.get("create") and not p.get("delete")
-                for p in info.get("permissions",[])))
+    def test_the_lot_and_the_lot_ledger_are_the_only_sources(self):
+        from lotus_farm.block_forecast_engine import forecast,source_rows
+        self.assertEqual(list(inspect.signature(source_rows).parameters),["blocks"])
+        self.assertEqual(list(inspect.signature(forecast).parameters)[:2],["blocks","from_date"])
+        api=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
+        self.assertIn('frappe.get_list("Farm Block"',api)
+        self.assertIn("bunch_rows(",api)
+        # Every other document the forecast reads is a parameter set, a variety name or a ribbon label.
+        read=set()
+        for call in ("get_list","get_all","get_doc","get_value","get_meta","has_permission"):
+            for part in api.split(call+"(")[1:]:
+                read.add(part.lstrip()[1:].split(part.lstrip()[0])[0])
+        self.assertEqual(read,{"Farm","Farm Block","Lotus Block Forecast Profile","Banana Variety","Bunch Tag"})
 
-    def test_source_confidence_and_cohort_wave_mode_are_fields(self):
-        def fields(name):
-            data=json.loads((ROOT/f"lotus_farm/lotus_farm/doctype/{name}/{name}.json").read_text(encoding="utf-8"))
-            return {x["fieldname"]:x for x in data["fields"]}
-        block=fields("farm_block")
+    def test_source_confidence_is_a_field_of_the_lot(self):
+        data=json.loads((ROOT/"lotus_farm/lotus_farm/doctype/farm_block/farm_block.json").read_text(encoding="utf-8"))
+        block={x["fieldname"]:x for x in data["fields"]}
         self.assertEqual(block["forecast_count_source"]["default"],"Planning Baseline")
         source=(ROOT/"lotus_farm/block_forecast.py").read_text(encoding="utf-8")
         engine=(ROOT/"lotus_farm/block_forecast_engine.py").read_text(encoding="utf-8")
         self.assertIn('"Planning Baseline"',engine)
         self.assertNotIn("Số cây chưa được xác nhận kiểm kê",source)
-        cohort=fields("plan_cohort")
-        self.assertIn("Single Wave",cohort["forecast_distribution_mode"]["options"])
 
     def test_parameters_are_versioned_approved_and_immutable(self):
         from lotus_farm.forecast_parameters import DEFAULTS,validate

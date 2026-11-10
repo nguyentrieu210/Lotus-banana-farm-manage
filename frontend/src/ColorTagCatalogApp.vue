@@ -11,17 +11,16 @@ const session=useSession()
 const scope=useScope()
 const farms=computed(()=>session.farms||[])
 const farm=ref(scope.farm||farms.value[0]?.name||'')
-const state=ref({rows:[],colors:[],programs:[],can_create:false,notice:''})
+const state=ref({rows:[],colors:[],can_create:false,notice:''})
 const loading=ref(false),saving=ref(false),error=ref(''),notice=ref('')
 const search=ref(''),period=ref('all'),showArchive=ref(false)
 const color=ref(''),start=ref(''),end=ref('')
-const program=ref(''),generatedFrom=ref(''),generatedTo=ref('')
 const today=computed(()=>session.today||new Date().toISOString().slice(0,10))
 const palette=computed(()=>Object.fromEntries(state.value.colors.map(x=>[x.code,x.label])))
 const rows=computed(()=>state.value.rows.map(r=>{
  const status=!r.enabled?'Ngừng dùng':!r.valid_from||!r.valid_to?'Chưa có kỳ':r.valid_from>today.value?'Sắp áp dụng':r.valid_to<today.value?'Đã qua':'Đang áp dụng'
  return {...r,color_name:r.color_label||palette.value[r.color_code]||r.display_name, week_label:r.week_number?("Tuần "+r.week_number+"/"+r.week_year):"—",
-  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':r.process_adoption?'Lịch tham chiếu':'Lịch thủ công',status_label:status}
+  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':['Source History','Extended Plan'].includes(r.source_kind)?'Lịch tham chiếu':'Lịch thủ công',status_label:status}
 }).filter(r=>{
  const q=search.value.trim().toLocaleLowerCase('vi')
  const matches=!q||[r.tag_code,r.display_name,r.color_name,r.valid_from,r.valid_to].some(v=>String(v||'').toLocaleLowerCase('vi').includes(q))
@@ -43,13 +42,12 @@ const columns=[
 let request=0
 async function load(){
  const key=++request
- if(!farm.value){state.value={rows:[],colors:[],programs:[],can_create:false,notice:''};return}
+ if(!farm.value){state.value={rows:[],colors:[],can_create:false,notice:''};return}
  loading.value=true;error.value=''
  try{
   const result=await call('lotus_farm.bunch_tag_catalog.catalog',{farm:farm.value,include_disabled:showArchive.value?1:0})
   if(key!==request)return
   state.value=result
-  if(!result.programs.some(x=>x.name===program.value))program.value=result.programs[0]?.name||''
  }catch(e){if(key===request)error.value=e.message||'Không đọc được lịch màu dây.'}
  finally{if(key===request)loading.value=false}
 }
@@ -68,18 +66,6 @@ async function addPeriod(){
   color.value='';start.value='';end.value=''
   await load()
  }catch(e){error.value=e.message||'Chưa lưu được kỳ màu dây.'}
- finally{saving.value=false}
-}
-async function generate(){
- if(!program.value||!validDates(generatedFrom.value,generatedTo.value)){error.value='Chọn chương trình và khoảng ngày cần tạo.';return}
- saving.value=true;error.value='';notice.value=''
- try{
-  const r=await call('lotus_farm.onedrive_workspace.generate_tags',{
-   process_adoption:program.value,from_date:generatedFrom.value,to_date:generatedTo.value
-  },true)
-  notice.value='Đã tạo '+(r.created||0)+' kỳ; '+(r.existing||0)+' kỳ đã tồn tại.'
-  await load()
- }catch(e){error.value=e.message||'Không tạo được kỳ theo lịch đã duyệt.'}
  finally{saving.value=false}
 }
 </script>
@@ -112,7 +98,7 @@ async function generate(){
   <div v-if="state.can_create" class="color-actions">
    <section class="color-panel">
     <h3>Thêm kỳ màu thủ công</h3>
-    <p>Dùng khi vườn chưa có chương trình màu được duyệt cho những ngày này. Các kỳ trong cùng vườn không được trùng nhau.</p>
+    <p>Các kỳ trong cùng vườn không được trùng nhau.</p>
     <form @submit.prevent="addPeriod">
      <label>Màu dây <UiSelect v-model="color" required aria-label="Chọn màu dây">
       <option value="">Chọn màu</option><option v-for="c in state.colors" :key="c.code" :value="c.code">{{c.code}} · {{c.label}}</option>
@@ -120,18 +106,6 @@ async function generate(){
      <label>Ngày bắt đầu <UiInput v-model="start" type="date" required /></label>
      <label>Ngày kết thúc <UiInput v-model="end" type="date" required /></label>
      <UiButton type="submit" :disabled="saving||!farm||!color||!validDates(start,end)">{{saving?'Đang lưu…':'Lưu kỳ màu mới'}}</UiButton>
-    </form>
-   </section>
-   <section v-if="state.programs.length" class="color-panel">
-    <h3>Tạo kỳ từ lịch đã duyệt</h3>
-    <p>Giữ nguyên lịch màu và ngày áp dụng của phiên bản nguồn; không được tự thay kỳ đã phát hành.</p>
-    <form @submit.prevent="generate">
-     <label>Chương trình <UiSelect v-model="program" required aria-label="Chương trình màu dây">
-      <option v-for="p in state.programs" :key="p.name" :value="p.name">Phiên bản {{p.version}} · {{p.valid_from}} → {{p.valid_to||'Chưa kết thúc'}}</option>
-     </UiSelect></label>
-     <label>Từ ngày <UiInput v-model="generatedFrom" type="date" required /></label>
-     <label>Đến ngày <UiInput v-model="generatedTo" type="date" required /></label>
-     <UiButton type="submit" variant="outline" :disabled="saving||!program||!validDates(generatedFrom,generatedTo)">Tạo kỳ từ lịch đã duyệt</UiButton>
     </form>
    </section>
   </div>

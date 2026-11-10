@@ -1,7 +1,7 @@
 """Public read-only forecast (dự thu) by lô and khu.
 
-Only Farm Block census, approved Plan Cohort, observed/estimated plant stages.
-NO use of cut-mother journals, uploads or synthetic mother-cut dates.
+Two sources only: the tree count and estimated flowering date of each lô (Farm Block), and the confirmed lines of
+the sổ lô. NO use of cut-mother journals, uploads or synthetic mother-cut dates.
 """
 from __future__ import annotations
 
@@ -21,37 +21,15 @@ def _farm(farm, permission="read"):
     doc.check_permission(permission)
     return doc
 
-def _sources(farm,zone=None,block=None):
-    """All records are filtered through Frappe read permissions and farm scope."""
+def _blocks(farm):
+    """The active lô of the farm, filtered through Frappe read permissions and farm scope."""
     _farm(farm)
     meta=frappe.get_meta("Farm Block")
     fields=["name","farm","block_code","block_name","farm_zone","area_ha","active","variety","modified","forecast_count_source"]
     for optional in ("lotus_tree_count","lotus_estimated_flowering_date","lotus_estimation_basis"):
         if meta.has_field(optional):
             fields.append(optional)
-    filters={"farm":farm,"active":1}
-    if block:
-        filters["name"]=block
-    if zone:
-        filters["farm_zone"]=zone
-    blocks=frappe.get_list("Farm Block",filters=filters,fields=fields,limit_page_length=1000)
-    names={b.name for b in blocks}
-    co=[]
-    if names and frappe.has_permission("Plan Cohort","read"):
-        co=frappe.get_list("Plan Cohort",
-            filters={"farm":farm,"approval_state":"Approved","farm_block":["in",list(names)]},
-            fields=["name","farm_block","crop_cycle","cohort_code","cohort_name",
-                    "anchor","anchor_date","quantity_basis","planned_qty",
-                    "version","approval_state","modified","forecast_distribution_mode"],limit_page_length=2000)
-    cycle_names={c.crop_cycle for c in co if c.crop_cycle}
-    cycles={}
-    if cycle_names and frappe.has_permission("Crop Cycle","read"):
-        cycles={c.name:c for c in frappe.get_list("Crop Cycle",
-            filters={"name":["in",list(cycle_names)],"farm":farm},
-            fields=["name","farm_block","cycle_no"],limit_page_length=2000)}
-    for c in co:
-        c["cycle_no"]=cycles[c.crop_cycle].cycle_no if c.crop_cycle in cycles else None
-    return blocks,co
+    return frappe.get_list("Farm Block",filters={"farm":farm,"active":1},fields=fields,limit_page_length=1000)
 
 def _profiles(farm,as_of=None):
     """Approved parameter sets; as_of: only those already approved at that moment (a weekly copy rebuilt later)."""
@@ -62,32 +40,16 @@ def _profiles(farm,as_of=None):
         fields=["*"],limit_page_length=1000)
     return snapshot_rules.profiles_as_of(rows,as_of) if as_of else rows
 
-def _observations(farm,block=None):
-    """Actual field observations are reported separately; not counted twice."""
-    if not frappe.has_permission("Bunch Operation","read"):
-        return []
-    filters={"farm":farm,"docstatus":1,
-             "operation_type":["in",["Shooting","Bud Injection","Cut Bud"]]}
-    if block:filters["farm_block"]=block
-    records=frappe.get_list("Bunch Operation",filters=filters,
-        fields=["name","farm_block","crop_cycle","operation_date","operation_type",
-                "bunch_qty","net_bunch_qty","modified"],
-        order_by="operation_date desc",limit_page_length=1000)
-    return records
-
-
 def _projection(farm,zone=None,block=None,include_daily=False,as_of=None):
     """All readers use the same farm-wide 36-month window and lot source. Tree counts and flowering dates are always
     today's values, also for a copy rebuilt as of an earlier Monday (written in its limits)."""
-    all_blocks,all_cohorts=_sources(farm)
+    all_blocks=_blocks(farm)
     profiles=_profiles(farm,as_of)
-    all_sources,_=source_rows(all_blocks,all_cohorts)
+    all_sources,_=source_rows(all_blocks)
     anchors=[projection_config(s,profiles)[2] for s in all_sources]
     start=min(anchors).replace(day=1) if anchors else None
     blocks=[b for b in all_blocks if (not zone or b.farm_zone==zone) and (not block or b.name==block)]
-    names={b.name for b in blocks}
-    cohorts=[c for c in all_cohorts if c.farm_block in names]
-    result=forecast(blocks,cohorts,profiles=profiles,from_date=start,horizon_months=36,include_daily=include_daily)
+    result=forecast(blocks,profiles=profiles,from_date=start,horizon_months=36,include_daily=include_daily)
     labels={b.name:(b.block_name or b.block_code or b.name) for b in blocks}
     varieties={v.name:v.variety_name or v.name for v in frappe.get_all('Banana Variety',fields=['name','variety_name'])}
     by_name={b.name:b for b in blocks}
@@ -98,7 +60,7 @@ def _projection(farm,zone=None,block=None,include_daily=False,as_of=None):
     result['input_tree_count']=sum(int(b.get('lotus_tree_count') or 0) for b in blocks)
     result['input_block_count']=len(blocks)
     result['zones']=sorted({b.farm_zone for b in all_blocks if b.farm_zone})
-    return result,blocks,cohorts,profiles
+    return result,blocks,profiles
 
 def _can_import_opening():
     from lotus_farm.field_report import is_manager
@@ -175,7 +137,7 @@ def _bunch_weekly(farm,waves,zone=None,block=None,as_of=None):
 
 def bunch_summary(farm,as_of=None):
     """The whole farm, for a frozen copy of the forecast: now, or as the sổ lô stood at a moment."""
-    result,_,_,_=_projection(farm,as_of=as_of)
+    result,_,_=_projection(farm,as_of=as_of)
     return _bunch_weekly(farm,result["rows"],as_of=as_of)
 
 LAYER_NOTES={"cut":"Mức tin cậy cao: buồng đã cắt bắp.","inject":"Mức tin cậy khá: đã chích bắp, chưa cắt.","sucker":"Mức tin cậy thấp: số chồi ước tính từ diện tích đã chọn, mốc thời gian theo ngày chọn thật.",
@@ -200,7 +162,7 @@ def trace(farm,block,week,layer="cut",tag=None,cycle=None):
     if block not in blocks:
         frappe.throw("Lô không thuộc vườn đã chọn.")
     lines=_bunch_lines(farm,blocks)
-    result,_,_,_=_projection(farm,block=block)
+    result,_,_=_projection(farm,block=block)
     labels=_tag_labels(farm)
     empty=dict(week=week,block=block,block_code=blocks[block]["code"],layer=layer,note=LAYER_NOTES.get(layer,""),groups=[],lines=[],params=None)
     picked=[]
@@ -234,27 +196,18 @@ def board(farm=None,zone=None,block=None):
     chosen=farm or (farms[0].name if farms else None)
     if not chosen:
         return dict(farms=[],farm=None,rows=[],months=[],warnings=["Không có vườn được cấp quyền."])
-    result,blocks,cohorts,profiles=_projection(chosen,zone,block)
+    result,blocks,profiles=_projection(chosen,zone,block)
     bunch,_=_bunch_weekly(chosen,result["rows"],zone,block)
-    actuals=_observations(chosen,block=block)
-    block_labels={b.name:b.block_name or b.block_code or b.name for b in blocks}
-    for item in actuals:item['farm_block_label']=block_labels.get(item.farm_block,item.farm_block)
-    if zone:
-        selected_blocks={b.name for b in blocks}
-        actuals=[a for a in actuals if a.farm_block in selected_blocks]
-    zones=result['zones']
     return dict(farms=farms,farm=chosen,zone=zone or "",block=block or "",
-        zone_list=zones,blocks=blocks,cohorts=cohorts,rows=result["rows"],
+        zone_list=result['zones'],blocks=blocks,rows=result["rows"],
         months=result["monthly"],warnings=result["warnings"],
         source_count=result["source_count"], rule=result["rule"],
         input_tree_count=result['input_tree_count'],input_block_count=result['input_block_count'],
         horizon_months=36,window_start=result['window_start'],window_end=result['window_end'],
-        actuals=actuals,
         profiles=[dict(name=p.name,version=p.version,farm_block=p.farm_block,
                        valid_from=p.valid_from,valid_to=p.valid_to,
                        approved_by=p.approved_by,approval_state=p.approval_state)
                   for p in profiles],
-        can_create=frappe.has_permission("Daily Work Plan","create"),
         bunch=bunch,can_import_opening=_can_import_opening(),
         params=validate(DEFAULTS))
 
