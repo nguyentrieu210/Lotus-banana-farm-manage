@@ -84,7 +84,7 @@ def setup():
     for doctype, fields in (
         ("Farm Block", ["farm", "block_code"]),
         ("Work Team", ["farm", "team_code"]),
-        ("Work Schedule Rule", ["rule_name", "version"]),
+        ("Work Schedule Rule", ["farm", "rule_name", "version"]),
         ("Warehouse Mapping", ["farm", "warehouse", "warehouse_role"]),
     ):
         frappe.db.add_unique(doctype, fields)

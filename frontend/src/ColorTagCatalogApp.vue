@@ -20,7 +20,7 @@ const palette=computed(()=>Object.fromEntries(state.value.colors.map(x=>[x.code,
 const rows=computed(()=>state.value.rows.map(r=>{
  const status=!r.enabled?'Ngừng dùng':!r.valid_from||!r.valid_to?'Chưa có kỳ':r.valid_from>today.value?'Sắp áp dụng':r.valid_to<today.value?'Đã qua':'Đang áp dụng'
  return {...r,color_name:r.color_label||palette.value[r.color_code]||r.display_name, week_label:r.week_number?("Tuần "+r.week_number+"/"+r.week_year):"—",
-  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':['Source History','Extended Plan'].includes(r.source_kind)?'Lịch tham chiếu':'Lịch thủ công',status_label:status}
+  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':'Lịch thủ công',status_label:status}
 }).filter(r=>{
  const q=search.value.trim().toLocaleLowerCase('vi')
  const matches=!q||[r.tag_code,r.display_name,r.color_name,r.valid_from,r.valid_to].some(v=>String(v||'').toLocaleLowerCase('vi').includes(q))
@@ -90,7 +90,7 @@ async function addPeriod(){
   <p v-if="error" role="alert" class="color-error">{{error}}</p>
   <p v-if="notice" role="status" class="color-success">{{notice}}</p>
   <p class="color-notice">{{state.notice}}</p>
-  <label v-if="state.weekly_mode" class="color-archive"><input type="checkbox" v-model="showArchive" /> Xem lịch tham chiếu 5 ngày cũ (chỉ để tra cứu lịch sử)</label>
+  <label v-if="state.weekly_mode" class="color-archive"><input type="checkbox" v-model="showArchive" /> Xem cả đợt ngừng dùng và kỳ màu thủ công</label>
   <p v-if="loading">Đang đọc danh mục…</p>
   <DataTable v-else :rows="rows" :columns="columns" row-key="name" storage-key="bunch-color-periods" empty="Chưa có kỳ màu dây trong vườn này."/>
   <p class="color-footnote">{{rows.length}} đợt màu đang hiển thị. <strong>Tuần từ – Tuần đến</strong> luôn đủ 7 ngày, còn <strong>Đợt từ – Đợt đến</strong> phân đầu tuần (1) và cuối tuần (2) để ghi nhận cắt bắp. Không phải ngày dự thu hoạch.</p>

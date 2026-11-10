@@ -1,8 +1,7 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
-from zoneinfo import ZoneInfo
 import frappe
-from frappe.utils import getdate, get_datetime, get_system_timezone
+from frappe.utils import getdate
 
 from lotus_farm.rules import RuleError, quantity, integer_quantity
 
@@ -46,21 +45,12 @@ def validate_version(doc, key, roles):
         require_role(*roles)
     if doc.get("valid_to") and getdate(doc.valid_to) < getdate(doc.valid_from):
         frappe.throw("Hiệu lực đến không được trước hiệu lực từ.")
+    # Versions are numbered within one farm: two farms may each have version 1 of a cycle with the same name.
     duplicate = frappe.db.exists(
-        doc.doctype, {key: doc.get(key), "version": doc.version, "name": ["!=", doc.name]}
+        doc.doctype, {"farm": doc.farm, key: doc.get(key), "version": doc.version, "name": ["!=", doc.name]}
     )
     if duplicate:
         frappe.throw("Mã/phiên bản này đã tồn tại.")
-
-
-def validate_item(item, *, batched=False):
-    record = frappe.get_doc("Item", item)
-    record.check_permission("read")
-    if record.disabled or not record.is_stock_item or record.stock_uom != "Kg":
-        frappe.throw("Vật tư tồn kho của Lotus phải là vật tư kho đang dùng, đơn vị tồn kho là Kg.")
-    if batched and (not record.has_batch_no or record.has_serial_no):
-        frappe.throw("Cầu nối kho Lotus chỉ dùng vật tư quản lý theo lô, không theo số sê-ri.")
-    return record
 
 
 def validate_warehouse(name, company):
@@ -120,7 +110,7 @@ def query_condition(doctype, user=None):
 
 
 def keep_codes(doc):
-    """Reference masters (màu dây, bệnh, thị trường): a code that was saved is not changed afterwards."""
+    """Reference masters (màu dây, bệnh): a code that was saved is not changed afterwards."""
     before = doc.get_doc_before_save()
     if before:
         for field in doc.meta.fields:
@@ -151,13 +141,6 @@ def command(doc, action):
         yield
     finally:
         _authorized_commands.reset(token)
-
-
-def local_timestamp(value):
-    timestamp = get_datetime(value)
-    if timestamp.tzinfo:
-        timestamp = timestamp.astimezone(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
-    return timestamp
 
 
 def whole_count(value, label):

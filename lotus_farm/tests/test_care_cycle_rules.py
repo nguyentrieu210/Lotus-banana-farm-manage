@@ -84,6 +84,22 @@ class CareCycle(unittest.TestCase):
         self.assertIn("Ngày hết áp dụng không được trước ngày bắt đầu.",
                       rules.check_rule({"work_type": "CL", "repeat_days": 7, "valid_from": "2026-11-10", "valid_to": "2026-11-01"}))
 
+    def test_a_cycle_keeps_its_việc_one_draft_and_the_draft_on_top_however_it_is_saved(self):
+        v1, v3 = dict(FARM_RULE, name="r1"), dict(FARM_RULE, name="r3", version=3)
+        draft = dict(FARM_RULE, name="r4", version=4, approval_state="Draft")
+        self.assertIsNone(rules.version_error(dict(draft, version=1), [], new=True), "the first version of a cycle")
+        self.assertIsNone(rules.version_error(draft, [v1, v3], new=True), "a gap in the numbers is allowed")
+        self.assertIn("phải chờ duyệt", rules.version_error(dict(draft, approval_state="Approved"), [v1, v3], new=True))
+        self.assertIn("việc khác", rules.version_error(dict(draft, work_type="PC"), [v1, v3], new=True))
+        self.assertIn("phải lớn hơn 3", rules.version_error(dict(draft, version=2), [v1, v3], new=True))
+        self.assertIn("đang có phiên bản chờ duyệt", rules.version_error(dict(draft, name="r5", version=5), [v1, v3, draft], new=True))
+        # Danh mục and Desk save the draft itself afterwards: it may change and be approved, never drop below v3.
+        self.assertIsNone(rules.version_error(dict(draft, repeat_days=10, version="6"), [v1, v3], new=False))
+        self.assertIsNone(rules.version_error(dict(draft, approval_state="Approved"), [v1, v3], new=False), "approving it")
+        self.assertIn("phải lớn hơn 3", rules.version_error(dict(draft, version=2), [v1, v3], new=False))
+        self.assertIn("phải lớn hơn 3", rules.version_error(dict(draft, version=2, approval_state="Approved"), [v1, v3], new=False))
+        self.assertIn("phải lớn hơn 3", rules.version_error(dict(draft, version=3), [v1, v3], new=False), "a number already used")
+
 
 if __name__ == "__main__":
     unittest.main()
