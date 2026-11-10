@@ -3,6 +3,7 @@
 export const fieldNavigation=[
  {id:'today',label:'Hôm nay',icon:'clipboard'},
  {id:'ribbon',label:'Màu dây & thu hoạch',icon:'flag'},
+ {id:'packhouse',label:'Xưởng',icon:'package'},
  {id:'assign',label:'Giao việc theo vòng',icon:'users'},
  {id:'inspect',label:'Nghiệm thu',icon:'check'},
  {id:'payable',label:'Tiền khoán theo người',icon:'wallet'},

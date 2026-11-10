@@ -262,26 +262,28 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 6
 
-- [ ] T057 [P] [US6] Unit test trong lotus_farm/tests/test_packout_rules.py:
+- [x] T057 [P] [US6] Unit test trong lotus_farm/tests/test_packout_rules.py:
   - chia thùng và thành phẩm theo kg;
   - kg/buồng, thùng/buồng, tỷ lệ đóng gói;
   - "tổng kg các nguồn bằng `input_kg` của ca";
   - "số buồng nhận của một đợt không vượt số đã thu mà chưa vào xưởng".
-- [ ] T058 [P] [US6] Integration test trong tests/integration/verify_packout_sources.py:
+- [x] T058 [P] [US6] Integration test trong tests/integration/verify_packout_sources.py:
   - ca nhận buồng từ hai lô, thùng chia đúng, truy vết ra lô;
   - phiếu nhập kho thành phẩm nháp có giá trị chia theo kg từ chi phí dở dang của từng lô.
 
 ### Implementation for User Story 6
 
-- [ ] T059 [US6] Tạo bảng con Packhouse Shift Source (`farm_block`, `bunch_tag`, `bunches`, `kg`, `harvest_entry`) và gắn vào Packhouse Shift. Bỏ trường trỏ Harvest Lot ở Packhouse Preprocessing. Sửa trong lotus_farm/lotus_farm/doctype/packhouse_shift_source/, packhouse_shift/packhouse_shift.json và packhouse_preprocessing/packhouse_preprocessing.json
-- [ ] T060 [US6] Viết module thuần cho quy tắc ở T057 trong lotus_farm/packout_rules.py
-- [ ] T061 [US6] Sửa lotus_farm/shift.py: lưu ca với `sources[]` và kiểm tổng kg; thêm `trace(shift)` (nguồn → dòng thu hoạch → các dòng phun ở lô đó trước ngày thu)
-- [ ] T062 [US6] Viết `receive_shift(shift)` trong lotus_farm/finance/costing.py và lotus_farm/finance/rules.py:
+- [x] T059 [US6] Tạo bảng con Packhouse Shift Source (`farm_block`, `bunch_tag`, `bunches`, `kg`, `harvest_entry`) và gắn vào Packhouse Shift. Bỏ trường trỏ Harvest Lot ở Packhouse Preprocessing. Sửa trong lotus_farm/lotus_farm/doctype/packhouse_shift_source/, packhouse_shift/packhouse_shift.json và packhouse_preprocessing/packhouse_preprocessing.json
+- [x] T060 [US6] Viết module thuần cho quy tắc ở T057 trong lotus_farm/packout_rules.py
+- [x] T061 [US6] Sửa lotus_farm/shift.py: lưu ca với `sources[]` và kiểm tổng kg; thêm `trace(shift)` (nguồn → dòng thu hoạch → các dòng phun ở lô đó trước ngày thu)
+- [x] T062 [US6] Viết `receive_shift(shift)` trong lotus_farm/finance/costing.py và lotus_farm/finance/rules.py:
   - tạo phiếu nhập kho thành phẩm nháp, là phiếu kho chuẩn, gồm thành phẩm và phụ phẩm theo kg;
   - giá trị lấy từ chi phí dở dang tập theo lô, chia theo kg nguồn;
   - chỉ kế toán dùng được.
-- [ ] T063 [US6] Viết màn Xưởng trong frontend/src/components/field/PackhouseShifts.vue: danh sách ca; hộp nhập ca có nguồn buồng chọn từ thu hoạch trong ngày; kết quả chia; truy vết. Thêm mục "Xưởng" vào frontend/src/FieldReportApp.vue
-- [ ] T064 [US6] Thêm thùng/buồng từ xưởng vào phần so dự thu với thực tế trong lotus_farm/forecast_snapshot.py
+- [x] T063 [US6] Viết màn Xưởng trong frontend/src/components/field/PackhouseShifts.vue: danh sách ca; hộp nhập ca có nguồn buồng chọn từ thu hoạch trong ngày; kết quả chia; truy vết. Thêm mục "Xưởng" vào frontend/src/FieldReportApp.vue
+- [x] T064 [US6] Thêm thùng/buồng từ xưởng vào phần so dự thu với thực tế trong lotus_farm/forecast_snapshot.py
+
+**Ghi chú khi làm (10/11)**: Ca nhập trực tiếp (không qua Packout Run/Harvest Lot); kg vào = tổng kg nguồn; hao và tỷ lệ đóng gói tự tính. Kiểm công một người trong ngày dùng buổi của sổ lô thay Labor Allocation. Mặt hàng thành phẩm, phụ phẩm và kho thành phẩm đặt ở Tài chính – Kế toán › Thiết lập; phiếu nhập kho gắn ca qua trường `lotus_packhouse_shift`. Màn Xưởng nằm trong Công việc ngoài vườn; quyền xưởng theo quyền Packhouse Shift (Lotus Packing Supervisor, Lotus Farm Manager).
 
 **Checkpoint**: Ca đóng gói chia đúng theo lô, có phiếu nhập kho thành phẩm nháp
 

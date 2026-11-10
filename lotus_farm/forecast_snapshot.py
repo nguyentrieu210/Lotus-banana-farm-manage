@@ -155,7 +155,31 @@ def variance(farm, from_week, to_week, group_by="week"):
         cursor = frappe.utils.add_days(cursor, 7)
         cursor = getdate(cursor)
     actual = [r for r in _actual_rows(farm, first, frappe.utils.add_days(last, 6)) if r["week"] in used]
-    return {"rows": rules.compare(forecast, actual, group_by), "weeks": weeks, "snapshots": used, "group_by": group_by, "has_snapshot": bool(snapshots)}
+    return {"rows": rules.compare(forecast, actual, group_by), "weeks": weeks, "snapshots": used, "group_by": group_by, "has_snapshot": bool(snapshots),
+            "packout": _packout(farm, first, frappe.utils.add_days(last, 6))}
+
+
+def _packout(farm, first, last):
+    """What the xưởng made of the bunches, week by week, from closed shifts: kg and cartons per bunch, pack-out rate."""
+    rows = frappe.db.sql("""select p.posting_date, sum(s.bunches) as bunches, sum(s.kg) as kg from `tabPackhouse Shift Source` s
+                            join `tabPackhouse Shift` p on p.name = s.parent where p.farm = %s and p.docstatus = 1
+                            and p.posting_date between %s and %s group by p.name, p.posting_date""", (farm, first, last), as_dict=True)
+    shifts = {r.name: r for r in frappe.get_all("Packhouse Shift", filters={"farm": farm, "docstatus": 1, "posting_date": ["between", [first, last]]},
+                                                 fields=["name", "posting_date", "finished_kg", "cartons"], limit_page_length=0)}
+    weeks = {}
+    for r in rows:
+        w = weeks.setdefault(rules.week_key(r.posting_date), {"bunches": 0, "kg": 0.0, "finished_kg": 0.0, "cartons": 0})
+        w["bunches"] += int(r.bunches or 0)
+        w["kg"] += float(r.kg or 0)
+    for s in shifts.values():
+        w = weeks.setdefault(rules.week_key(s.posting_date), {"bunches": 0, "kg": 0.0, "finished_kg": 0.0, "cartons": 0})
+        w["finished_kg"] += float(s.finished_kg or 0)
+        w["cartons"] += int(s.cartons or 0)
+    for w in weeks.values():
+        w["kg_per_bunch"] = round(w["kg"] / w["bunches"], 2) if w["bunches"] else None
+        w["cartons_per_bunch"] = round(w["cartons"] / w["bunches"], 2) if w["bunches"] else None
+        w["packout_percent"] = round(w["finished_kg"] / w["kg"] * 100, 1) if w["kg"] else None
+    return weeks
 
 
 @frappe.whitelist()

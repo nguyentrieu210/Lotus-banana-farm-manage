@@ -46,3 +46,9 @@
 - `lotus_farm/tests/test_forecast_snapshot.py`: 15/15 qua (thêm: chỉ dòng xác nhận trước mốc và chưa hủy trước mốc; tham số duyệt sau mốc không tính; tuần lỡ được bù, tối đa 8 tuần).
 - `verify_bunch_forecast.py`: tất cả qua, thêm 7 kiểm tra bản chốt tuần (mở app sau nhiều tuần thì có đủ bản các thứ Hai; bản chốt đúng 0 giờ thứ Hai; không tính dòng xác nhận sau mốc; tổng bằng dự thu tính theo mốc; mở lại không tạo thêm; hai phiên cùng lúc vẫn một bản).
 - Chạy thật trên máy test: bootstrap xếp `ensure_all` vào hàng short, worker chạy xong trong khoảng 1 giây, cache đánh dấu tuần 2026-11-09.
+
+## Phase 7 (US6, xưởng theo nguồn buồng)
+
+- `lotus_farm/tests/test_packout_rules.py`: 8/8 qua (tổng kg nguồn bằng kg vào; số buồng không vượt số đã thu chưa vào xưởng; thùng chia nguyên theo kg; kg/buồng, thùng/buồng, tỷ lệ; giá trị nhập kho theo kg × giá lô).
+- `tests/integration/verify_packout_sources.py`: 16 kiểm tra qua (ca nhận từ hai lô, chặn nhận quá, chặn đóng quá kg vào, chia thùng 121/60, truy vết ra dòng thu và dòng phun, phiếu nhập kho nháp đúng giá trị từng lô, một phiếu một ca, chỉ kế toán lập).
+- Các test tích hợp khác vẫn qua. Frontend 634/635 lần đầu (thiếu nhãn "Packhouse Shift Source"), đã sửa. Trình duyệt: màn Xưởng và hộp thêm ca không lỗi, không tràn ngang.

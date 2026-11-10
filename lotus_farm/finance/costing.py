@@ -1,5 +1,8 @@
 """Tài chính – Kế toán: giá thành chuối (Thông tư 99, 621/622/627 → 154 → 155).
 
+0. Spec 002: a closed packhouse shift enters stock through receive_shift, as a draft Material Receipt the accountant
+   reviews and submits: finished and secondary kg per source lô, valued at kg brought in × the lô's provisional cost per kg
+   (Nợ 155 / Có 154 of that lô). This replaces the Harvest Lot chain below, which never ran on the live site.
 1. A submitted Harvest Lot enters stock through receive_harvest: one Material Receipt row per harvest source (lot), at a
    provisional cost per kg (the lot's last actual cost, else the planned cost in the settings): Nợ 155 / Có 154 on that
    lot. This replaces the hand-made receipt in Desk.
@@ -40,7 +43,7 @@ def _last_cost(block):
 
 def _receipts(company):
     return frappe.get_all('Stock Entry', filters={'company': company, 'docstatus': 1, 'lotus_receipt_reason': 'Harvest'}, pluck='name') \
-        if frappe.get_meta('Stock Entry').has_field('lotus_harvest_lot') else []
+        if frappe.get_meta('Stock Entry').has_field('lotus_receipt_reason') else []
 
 
 @frappe.whitelist()
@@ -106,6 +109,59 @@ def receive_harvest(harvest_lot, posting_date=None):
     se.submit()
     posting.record('Harvest Lot', lot.name, 'Harvest Receipt', se, amount=se.total_incoming_value, source_hash=lot.name)
     return dict(stock_entry=se.name, kg=sum(r['qty'] for r in rows), amount=se.total_incoming_value)
+
+
+@frappe.whitelist(methods=['POST'])
+def receive_shift(shift, posting_date=None):
+    """Draft finished-goods receipt of a closed packhouse shift, for the accountant to review and submit. Each source lô
+    hands over kg brought in × its provisional cost per kg, shared between its finished and secondary kg."""
+    setup._login()
+    if not setup.can_post():
+        frappe.throw('Chỉ kế toán lập phiếu nhập kho thành phẩm.', frappe.PermissionError)
+    cfg = setup.require_enabled()
+    if not (cfg.get('packed_item') and cfg.get('packed_warehouse')):
+        frappe.throw('Chọn "Chuối thành phẩm" và "Kho thành phẩm" ở Tài chính – Kế toán › Thiết lập trước khi nhập kho theo ca.')
+    from lotus_farm import packout_rules
+    from lotus_farm.controls import lock
+    doc = frappe.get_doc('Packhouse Shift', shift)
+    if doc.docstatus != 1:
+        frappe.throw('Ca %s chưa đóng.' % doc.name)
+    lock('Packhouse Shift', doc.name)
+    if doc.stock_entry and frappe.db.get_value('Stock Entry', doc.stock_entry, 'docstatus') in (0, 1):
+        frappe.throw('Ca %s đã có phiếu nhập kho %s.' % (doc.name, doc.stock_entry))
+    if flt(doc.secondary_kg) > 0 and not cfg.get('secondary_item'):
+        frappe.throw('Ca có phụ phẩm: chọn "Chuối phụ phẩm" ở Tài chính – Kế toán › Thiết lập.')
+    posting_date = posting_date or str(doc.posting_date)
+    setup.check_cutover(posting_date)
+    posting.check_open(doc.company, posting_date, 'Stock Entry')
+    m = setup.mapping(cfg)
+    _finished_account(cfg.packed_warehouse, m)
+    sources = [dict(farm_block=s.farm_block, bunch_tag=s.bunch_tag, bunches=s.bunches, kg=s.kg) for s in doc.sources]
+    split = packout_rules.split(sources, doc.finished_kg, doc.secondary_kg, doc.cartons)
+    rates = {b: rules.provisional_rate(_last_cost(b), cfg.get('harvest_standard_cost')) for b in {s['farm_block'] for s in sources}}
+    lines, missing = packout_rules.receipt_rows(split, rates)
+    if missing:
+        codes = [frappe.db.get_value('Farm Block', b, 'block_code') or b for b in missing]
+        frappe.throw('Chưa có giá tạm tính cho lô %s: nhập "Giá thành kế hoạch chuối thu hoạch" ở Tài chính – Kế toán › Thiết lập.' % ', '.join(codes))
+    if not lines:
+        frappe.throw('Ca không có kg thành phẩm hay phụ phẩm để nhập kho.')
+    cost_center = frappe.get_cached_value('Company', doc.company, 'cost_center')
+    items = {'finished': cfg.packed_item, 'secondary': cfg.get('secondary_item')}
+    rows = []
+    for line in lines:
+        item = items[line['kind']]
+        uom = frappe.db.get_value('Item', item, 'stock_uom')
+        rows.append(dict(item_code=item, qty=line['qty'], uom=uom, stock_uom=uom, conversion_factor=1, t_warehouse=cfg.packed_warehouse,
+                         basic_rate=line['rate'], set_basic_rate_manually=1, expense_account=m['production_cost'], cost_center=cost_center,
+                         lotus_farm=doc.farm, lotus_farm_block=line['farm_block']))
+    se = frappe.get_doc(dict(doctype='Stock Entry', company=doc.company, stock_entry_type='Material Receipt', purpose='Material Receipt',
+                             posting_date=posting_date, set_posting_time=1, lotus_receipt_reason='Harvest', lotus_packhouse_shift=doc.name,
+                             remarks='Nhập kho thành phẩm ca đóng gói %s ngày %s' % (doc.shift_code, getdate(doc.posting_date).strftime('%d/%m/%Y')),
+                             items=rows))
+    se.flags.ignore_permissions = True
+    se.insert()
+    doc.db_set('stock_entry', se.name)
+    return dict(stock_entry=se.name, kg=round(sum(r['qty'] for r in rows), 3), amount=round(sum(l['value'] for l in lines), 2), docstatus=se.docstatus)
 
 
 def _finished_account(warehouse, m):

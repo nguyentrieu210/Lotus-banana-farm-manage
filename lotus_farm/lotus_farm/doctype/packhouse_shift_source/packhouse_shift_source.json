@@ -1,0 +1,58 @@
+{
+  "doctype": "DocType",
+  "name": "Packhouse Shift Source",
+  "module": "Lotus Farm",
+  "istable": 1,
+  "editable_grid": 1,
+  "description": "Buồng ca đóng gói nhận từ một lô và một đợt màu dây (spec 002). Thùng và thành phẩm được chia theo kg nhận.",
+  "fields": [
+    {
+      "fieldname": "farm_block",
+      "fieldtype": "Link",
+      "label": "Lô",
+      "options": "Farm Block",
+      "reqd": 1,
+      "in_list_view": 1,
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "bunch_tag",
+      "fieldtype": "Link",
+      "label": "Đợt màu dây",
+      "options": "Bunch Tag",
+      "reqd": 1,
+      "in_list_view": 1,
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "bunches",
+      "fieldtype": "Int",
+      "label": "Số buồng",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "kg",
+      "fieldtype": "Float",
+      "label": "Kg nhận",
+      "reqd": 1,
+      "in_list_view": 1,
+      "precision": "3"
+    },
+    {
+      "fieldname": "harvest_entry",
+      "fieldtype": "Link",
+      "label": "Dòng thu hoạch",
+      "options": "Lotus Work Entry",
+      "ignore_user_permissions": 1
+    }
+  ],
+  "field_order": [
+    "farm_block",
+    "bunch_tag",
+    "bunches",
+    "kg",
+    "harvest_entry"
+  ],
+  "permissions": []
+}

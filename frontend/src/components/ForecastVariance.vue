@@ -64,6 +64,7 @@ const adviceValue=v=>v==null?'—':v<=1&&v>0?fmt(v*100,1)+'%':fmt(v,2)
     <strong :class="tone(c.row.diff_pct)">{{pct(c.row.diff_pct)}}</strong>
     <span class="bunch-week__kg">Dự thu {{fmt(c.row.forecast_bunches)}} · thực tế {{fmt(c.row.actual_bunches)}} buồng</span>
     <span class="bunch-week__kg">{{fmt(c.row.forecast_kg)}} · {{fmt(c.row.actual_kg)}} kg</span>
+    <span v-if="data.packout?.[c.week]?.bunches" class="bunch-week__kg">Xưởng: {{fmt(data.packout[c.week].kg_per_bunch,1)}} kg/buồng · {{fmt(data.packout[c.week].cartons_per_bunch,2)}} thùng/buồng</span>
    </button>
   </div>
 

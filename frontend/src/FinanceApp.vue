@@ -257,7 +257,7 @@ async function reverse(postingName,label){if(!overview.value?.is_chief)return
 
 // Settings (chief accountant)
 const form=ref({enabled:false,cutover_date:'',mapping:{}}),coa=ref(null),openingPreview=ref(null)
-watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',minimum_wage_region:s.minimum_wage_region||'',vat_in_cost:!!s.vat_in_cost,mapping:{...s.mapping}}})
+watch(settings,s=>{if(s)form.value={enabled:s.enabled,cutover_date:s.cutover_date,harvest_standard_cost:s.harvest_standard_cost||'',packed_item:s.packed_item||'',secondary_item:s.secondary_item||'',packed_warehouse:s.packed_warehouse||'',minimum_wage_region:s.minimum_wage_region||'',vat_in_cost:!!s.vat_in_cost,mapping:{...s.mapping}}})
 const paramGroups={pit_progressive:'Thuế TNCN lũy tiến (giảm trừ gia cảnh)',pit_flat:'Thuế TNCN khấu trừ 10%',insurance:'Bảo hiểm, KPCĐ'}
 const pct=v=>num(Math.round(Number(v)*1000)/10,1)+'%',sumOf=o=>Object.values(o||{}).reduce((a,b)=>a+b,0)
 function paramSummary(r){if(r.group==='pit_progressive')return 'Bản thân '+num(r.self)+' · người phụ thuộc '+num(r.dependent)+' · '+r.brackets.map(b=>(b[0]?'đến '+num(b[0]/1e6)+' tr':'phần còn lại')+' '+pct(b[1])).join(', ')
@@ -648,6 +648,9 @@ useNoticeToast(notice)
    <FormGrid :columns="3">
     <LotusField v-for="k in settings.keys" :key="k.key" v-model="form.mapping[k.key]" :label="k.label" :options="accountsFor(k.key).map(a=>({value:a.name,label:accountLabel(a)}))" empty-option="Chưa chọn" :disabled="!settings.is_chief"/>
     <LotusField v-model="form.cutover_date" label="Ngày bắt đầu ghi sổ (cutover)" type="date" :disabled="!settings.is_chief"/>
+    <LotusField v-model="form.packed_item" label="Chuối thành phẩm (nhập kho theo ca đóng gói)" :options="(settings.items||[]).map(i=>({value:i.name,label:i.item_name+' ('+i.stock_uom+')'}))" empty-option="Chưa chọn" :disabled="!settings.is_chief"/>
+    <LotusField v-model="form.secondary_item" label="Chuối phụ phẩm" :options="(settings.items||[]).map(i=>({value:i.name,label:i.item_name+' ('+i.stock_uom+')'}))" empty-option="Chưa chọn" :disabled="!settings.is_chief"/>
+    <LotusField v-model="form.packed_warehouse" label="Kho thành phẩm" :options="(settings.warehouses||[]).map(w=>({value:w,label:w}))" empty-option="Chưa chọn" :disabled="!settings.is_chief"/>
     <LotusField v-model="form.harvest_standard_cost" label="Giá thành kế hoạch chuối thu hoạch (đ / kg)" type="money" min="0" :disabled="!settings.is_chief" placeholder="Dùng khi lô chưa có giá thành thực tế"/>
     <LotusField v-model="form.minimum_wage_region" label="Vùng lương tối thiểu (trần BHTN)" :options="['I','II','III','IV'].map(v=>({value:v,label:'Vùng '+v}))" :searchable="false" empty-option="Chưa chọn (không áp trần BHTN)" :disabled="!settings.is_chief"/>
     <LotusField v-model="form.enabled" label="Bật ghi sổ kế toán từ Lotus" type="checkbox" :disabled="!settings.is_chief"/>

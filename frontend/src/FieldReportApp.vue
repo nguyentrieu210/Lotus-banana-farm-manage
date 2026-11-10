@@ -14,6 +14,7 @@ import RibbonBoard from './components/field/RibbonBoard.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
 import CareDueList from './components/field/CareDueList.vue'
+import PackhouseShifts from './components/field/PackhouseShifts.vue'
 import CareCycleSettings from './components/field/CareCycleSettings.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
@@ -181,6 +182,11 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
     <template v-else-if="view==='ribbon'">
      <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
      <RibbonBoard v-if="farm" :key="farm" :farm="farm"/>
+    </template>
+
+    <template v-else-if="view==='packhouse'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <PackhouseShifts v-if="farm" :key="farm" :farm="farm"/>
     </template>
 
     <template v-else-if="view==='cycles'">
