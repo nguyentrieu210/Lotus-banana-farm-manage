@@ -157,6 +157,29 @@ class FinanceRules(unittest.TestCase):
         self.assertEqual([(ln['account'], ln['debit']) for ln in below if ln['debit']], [(ACCOUNTS['production_cost'], 200)],
                          'a provisional rate above the actual cost comes back to 154')
 
+    def test_cost_difference_of_fruit_still_in_stock_stays_in_wip(self):
+        pools = [dict(lotus_farm='F', lotus_farm_block='A1', wip_open=6_000_000, cost_month=4_000_000, provisional=1_500_000, kg_harvested=1000, kg_remaining=4000),
+                 dict(lotus_farm='F', lotus_farm_block='B', wip_open=0, cost_month=100_000, provisional=300_000, kg_harvested=10, kg_remaining=0)]
+        sold = rules.costing_rows(pools)
+        self.assertEqual([(r['adjustment'], r['unsold_adjustment'], r['wip_close']) for r in sold], [(500_000, 0, 8_000_000), (-200_000, 0, 0)],
+                         'everything sold: the whole difference is cost of goods sold')
+        a1, b = rules.costing_rows(pools, unsold_share=0.4)
+        self.assertEqual((a1['absorbed'], a1['adjustment'], a1['unsold_adjustment'], a1['wip_close']), (2_000_000, 300_000, 200_000, 8_200_000),
+                         '40% of the fruit still in stock: 40% of the difference stays in 154')
+        self.assertEqual((b['adjustment'], b['unsold_adjustment'], b['wip_close']), (-120_000, -80_000, -80_000))
+        for p, r in zip(pools, (a1, b)):
+            self.assertEqual(r['wip_close'], p['wip_open'] + p['cost_month'] - p['provisional'] - r['adjustment'],
+                             'the sheet closes on what 154 holds after the receipts and the adjustment')
+        cogs = [ln for ln in rules.costing_entry([a1, b], ACCOUNTS) if ln['account'] == ACCOUNTS['cost_of_goods_sold']]
+        self.assertEqual([(ln['debit'], ln['credit'], ln['lotus_farm_block']) for ln in cogs], [(300_000, 0, 'A1'), (0, 120_000, 'B')])
+        self.assertEqual(rules.costing_entry(rules.costing_rows(pools, unsold_share=1), ACCOUNTS), [], 'nothing sold: nothing reaches 632')
+        self.assertEqual(rules.costing_rows(pools, unsold_share=7)[0]['unsold_adjustment'], 500_000, 'a share is never above the whole')
+
+    def test_ledger_lines_carry_farm_lot_and_work_type(self):
+        self.assertEqual(rules.DIM_FIELDS, ('lotus_farm', 'lotus_farm_block', 'lotus_work_type'))
+        self.assertEqual(sorted(rules.line('A', debit=1, dims=dict(lotus_farm='F', lotus_farm_block='A1'))),
+                         ['account', 'credit', 'debit', 'lotus_farm', 'lotus_farm_block', 'lotus_work_type', 'note'])
+
     def test_provisional_rate(self):
         self.assertEqual(rules.provisional_rate(2100, 1800), 2100)
         self.assertEqual(rules.provisional_rate(None, 1800), 1800)

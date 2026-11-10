@@ -69,7 +69,7 @@ def overview(on_date=None):
 @frappe.whitelist()
 def pending():
     """Documents that still need an accountant: receipts without invoice, approved payroll not posted, issues without lot,
-    payment vouchers waiting for signatures."""
+    payment vouchers waiting for signatures, closed packhouse shifts without a stock receipt."""
     setup.require_view()
     company = setup.company()
     cfg = setup.settings()
@@ -90,8 +90,14 @@ def pending():
     for p in frappe.get_all(posting.POSTING, filters={'state': 'Draft'}, fields=['name', 'voucher_type', 'voucher_name', 'purpose', 'amount', 'source_name', 'posted_by'],
                             order_by='creation desc'):
         vouchers.append(dict(p, kind='voucher', reason='Phiếu chi chờ ký'))
-    from lotus_farm.finance.costing import lots_to_receive
-    return dict(receipts=receipts, payroll=payroll, issues=issues, vouchers=vouchers, harvests=lots_to_receive())
+    # A closed shift's fruit enters stock through costing.receive_shift; a cancelled receipt frees the shift again.
+    shifts = []
+    for s in frappe.db.sql("""select p.name, p.shift_code, p.farm, p.posting_date, p.finished_kg, p.secondary_kg, p.cartons
+            from `tabPackhouse Shift` p left join `tabStock Entry` e on e.name=p.stock_entry and e.docstatus < 2
+            where p.docstatus=1 and p.company=%s and p.posting_date>=%s and e.name is null
+            order by p.posting_date desc, p.shift_code limit 300""", (company, cfg.cutover_date or '1900-01-01'), as_dict=True):
+        shifts.append(dict(_str(s, 'posting_date'), kind='shift', reason='Ca đã đóng, chưa lập phiếu nhập kho thành phẩm'))
+    return dict(receipts=receipts, payroll=payroll, issues=issues, vouchers=vouchers, shifts=shifts)
 
 
 @frappe.whitelist()
@@ -218,16 +224,16 @@ def ledger(account, from_date=None, to_date=None):
                 from_date=str(start), to_date=str(end))
 
 
-COST_GROUPS = (('lotus_farm', 'Vườn'), ('lotus_farm_block', 'Lô'), ('lotus_crop_cycle', 'Vụ'), ('lotus_work_type', 'Công việc'))
+COST_GROUPS = (('lotus_farm', 'Vườn'), ('lotus_farm_block', 'Lô'), ('lotus_work_type', 'Công việc'))
 
 
 @frappe.whitelist()
 def costs(from_date=None, to_date=None, group_by='lotus_farm_block', farm=None):
-    """Chi phí theo vườn / lô / vụ / công việc (Thông tư 99): materials 621, labour 622 (crews = lines noted Khoán),
+    """Chi phí theo vườn / lô / công việc (Thông tư 99): materials 621, labour 622 (crews = lines noted Khoán),
     machines and overheads 623 / 627. The month-end transfer to 154 is left out, so costs stay visible after closing."""
     setup.require_view()
     if group_by not in dict(COST_GROUPS):
-        frappe.throw('Chọn nhóm theo vườn, lô, vụ hoặc công việc.')
+        frappe.throw('Chọn nhóm theo vườn, lô hoặc công việc.')
     if not frappe.get_meta('GL Entry').has_field(group_by):
         return dict(rows=[], totals={}, group_by=group_by)
     company = setup.company()

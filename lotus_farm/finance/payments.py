@@ -260,7 +260,7 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
 
 @frappe.whitelist(methods=['POST'])
 def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, posting_date=None, vat_code='KCT'):
-    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type}]"""
+    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_work_type}]"""
     setup.require_post()
     setup.require_enabled()
     lines = _json(lines)

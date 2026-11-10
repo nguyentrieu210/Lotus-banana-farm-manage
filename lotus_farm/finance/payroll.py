@@ -1,6 +1,6 @@
 """Tài chính – Kế toán: an approved month of pay (Lotus Timekeeping Period, Closed, with its frozen snapshot)
 posted as one Journal Entry. Each person's cost (gross + employer insurance + union fee) is split over the lots they
-worked that month by actual workdays (Daily Work Result labour, else Labor Allocation); people without lot
+worked that month by the buổi công confirmed in the sổ lô; people without lot
 work go to the administrative expense account. Paying the month is a signed cash/bank voucher for the net pay less
 the advances of the month; advances and the payment of insurance / union fee / income tax are signed vouchers too.
 """
@@ -21,28 +21,6 @@ def _month_end(month):
     return '%04d-%02d-%02d' % (year, mon, calendar.monthrange(year, mon)[1])
 
 
-def _work_rows(company, month):
-    """Actual workdays per employee and lot in the month; Labor Allocation for people with no actual rows."""
-    start, end = month + '-01', _month_end(month)
-    actual = frappe.db.sql("""select l.employee, sum(l.actual_workdays) workdays, r.farm lotus_farm, r.farm_block lotus_farm_block,
-            r.crop_cycle lotus_crop_cycle, pl.work_type lotus_work_type
-        from `tabWork Actual Labor` l join `tabDaily Work Result` r on r.name=l.parent and l.parenttype='Daily Work Result'
-        left join `tabDaily Work Plan Line` pl on pl.name=r.work_plan_line
-        where r.docstatus=1 and r.company=%s and r.posting_date between %s and %s and ifnull(l.employee,'')!=''
-        group by l.employee, r.farm, r.farm_block, r.crop_cycle, pl.work_type""", (company, start, end), as_dict=True)
-    # Buổi on phiếu giao việc (công việc ngoài vườn) place a person's day on a lô and việc directly.
-    from lotus_farm.field_report import work_rows
-    if frappe.db.table_exists('Lotus Work Session'):
-        actual = list(actual) + [frappe._dict(r) for r in work_rows(company, start, end)]
-    seen = {r.employee for r in actual}
-    planned = frappe.db.sql("""select a.employee, sum(a.allocated_workdays) workdays, a.farm lotus_farm, a.farm_block lotus_farm_block,
-            a.crop_cycle lotus_crop_cycle, pl.work_type lotus_work_type
-        from `tabLabor Allocation` a left join `tabDaily Work Plan Line` pl on pl.name=a.work_plan_line
-        where a.docstatus=1 and a.company=%s and a.posting_date between %s and %s and ifnull(a.employee,'')!=''
-        group by a.employee, a.farm, a.farm_block, a.crop_cycle, pl.work_type""", (company, start, end), as_dict=True)
-    return [dict(r) for r in actual] + [dict(r) for r in planned if r.employee not in seen]
-
-
 def _period(name):
     doc = frappe.get_doc(PERIOD, name)
     if doc.status != 'Closed' or not doc.snapshot:
@@ -54,7 +32,9 @@ def build(name):
     doc = _period(name)
     snapshot = json.loads(doc.snapshot)
     m = setup.mapping()
-    work = _work_rows(doc.company, doc.month)
+    # Buổi công on confirmed sổ lô lines place a person's days on a lô and việc.
+    from lotus_farm.field_report import work_rows
+    work = work_rows(doc.company, doc.month + '-01', _month_end(doc.month))
     employees = [r.get('employee') for r in rules.snapshot_people(snapshot)]
     farms = {e.name: e.lotus_farm for e in frappe.get_all('Employee', filters={'name': ['in', employees or ['']]}, fields=['name', 'lotus_farm'])} \
         if frappe.get_meta('Employee').has_field('lotus_farm') else {}

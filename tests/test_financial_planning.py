@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 
 from lotus_farm.finance import planning_rules as model
 
@@ -7,9 +8,10 @@ def plan(**extra):
     return dict(title='Kế hoạch 2027', start_month='2027-01', month_count=12, **extra)
 
 
-def source(name='HF1', **extra):
-    return dict(name=name, period_start_date='2027-01-15', period_end_date='2027-01-21',
-                gross_forecast_kg=1000, packed_forecast_kg=800, supply_state='Released', **extra)
+def cohort(layer='cut', farm='F1', cycle=2, profile='P1', days=(('2027-01-15', 100),), **config):
+    """A group of bunches of the shared forecast: when they are due, and the parameters that turn them into kg."""
+    return dict(layer=layer, farm=farm, cycle=cycle, profile=profile, days=[(date.fromisoformat(day), bunches) for day, bunches in days],
+                config=dict(dict(kg_cycle_1=19, kg_cycle_2=20, kg_cycle_3=19, pack_rate=.98), **config))
 
 
 class FinancialPlanning(unittest.TestCase):
@@ -91,20 +93,27 @@ class FinancialPlanning(unittest.TestCase):
         with self.assertRaises(ValueError):
             model.calculate(plan(rows=[dict(month='2027-01', gross_kg=10**15, sales_kg=10**15, price_per_kg=10**15)]))
 
-    def test_forecast_import_counts_released_sources_once_and_warns_cross_month(self):
-        docs = [source(), dict(source('draft'), supply_state='Draft'),
-                dict(source('replaced'), supply_state='Superseded'),
-                dict(source('cross'), period_start_date='2027-01-30', period_end_date='2027-02-05'),
-                dict(source('partial'), period_start_date='2026-12-30', period_end_date='2027-01-05')]
-        result = model.forecast_quantities('2027-01', 12, docs)
-        self.assertEqual(len(result['sources']), 2)
-        self.assertEqual(result['rows'][0]['gross_kg'], 2000)
-        self.assertEqual(result['rows'][0]['sales_kg'], 1600)
-        self.assertEqual(result['rows'][1]['gross_kg'], 0)
-        self.assertEqual(len(result['warnings']), 2)
-        self.assertEqual(result, model.forecast_quantities('2027-01', 12, docs))
-        with self.assertRaises(ValueError):
-            model.forecast_quantities('2027-01', 12, [source(), source()])
+    def test_forecast_import_puts_each_bunch_in_its_month_and_keeps_only_the_plan_months(self):
+        cohorts = [cohort(days=(('2026-12-30', 10), ('2027-01-15', 100), ('2027-02-01', 50))),
+                   cohort(layer='tree', cycle=1, profile=None, days=(('2027-01-20', 10), ('2028-01-05', 7))),
+                   cohort(farm='F2', days=(('2027-01-31', 1),))]
+        result = model.forecast_quantities('2027-01', 12, cohorts)
+        self.assertEqual(len(result['rows']), 12)
+        january, february, march = result['rows'][:3]
+        self.assertEqual((january['gross_kg'], january['sales_kg']), (2210, 2165.8), '100 × 20 kg + 10 × 19 kg + 1 × 20 kg, 98% packed')
+        self.assertEqual((february['gross_kg'], february['sales_kg']), (1000, 980))
+        self.assertEqual((march['gross_kg'], march['sales_kg']), (0, 0), 'a month without bunches goes to 0')
+        self.assertEqual([(s['month'], s['farm'], s['layer'], s['bunches'], s['sales_kg']) for s in result['sources']],
+                         [('2027-01', 'F1', 'cut', 100, 1960), ('2027-01', 'F1', 'tree', 10, 186.2), ('2027-01', 'F2', 'cut', 1, 19.6),
+                          ('2027-02', 'F1', 'cut', 50, 980)], 'bunches due before or after the plan are left out')
+        self.assertEqual(len({s['name'] for s in result['sources']}), 4)
+        self.assertEqual(len(result['warnings']), 1, 'kg worked out with default parameters are pointed out')
+        self.assertEqual(result, model.forecast_quantities('2027-01', 12, cohorts))
+        self.assertEqual(model.forecast_quantities('2027-01', 12, [cohort()])['warnings'], [])
+        self.assertEqual(model.forecast_quantities('2030-01', 12, cohorts)['sources'], [])
+        for wrong in (cohort(pack_rate=1.2), cohort(layer='guess')):
+            with self.assertRaises(ValueError):
+                model.forecast_quantities('2027-01', 12, [wrong])
 
 
 if __name__ == '__main__':

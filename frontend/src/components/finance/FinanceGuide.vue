@@ -8,7 +8,7 @@ const open=ref('roles')
 const SECTIONS=[['roles','Ai làm gì'],['start','Bắt đầu (một lần)'],['daily','Việc hằng ngày'],['month','Cuối tháng'],['tax','Lương và thuế'],
  ['entries','Định khoản từng nghiệp vụ'],['reports','Báo cáo và sổ sách'],['fix','Sửa sai'],['faq','Câu hỏi thường gặp']]
 const ROLES=[
- ['Thủ kho / nhân viên kho','Lập phiếu nhập (chọn đúng lý do nhập), phiếu xuất (ghi mã lô ở ô "Khu vực / lô sử dụng"), kiểm kê, nhập kho lô chuối thu hoạch. Không cần vào màn kế toán.'],
+ ['Thủ kho / nhân viên kho','Lập phiếu nhập (chọn đúng lý do nhập), phiếu xuất (ghi mã lô ở ô "Khu vực / lô sử dụng"), kiểm kê. Không cần vào màn kế toán.'],
  ['Mua hàng','Đề xuất mua → đơn mua → nhận hàng. Hàng mua không qua đơn mua thì kho nhập với lý do "Mua ngoài" và chọn nhà cung cấp.'],
  ['Nhân sự','Chấm công, khai số người phụ thuộc và cam kết 08 trong hồ sơ nhân viên, chốt và gửi ký bảng công & bảng lương. Khi bảng lương ký đủ, kế toán ghi sổ ở Chờ hạch toán (không dùng phiếu lương HRMS).'],
  ['Kế toán (Lotus Accountant)','Hóa đơn mua (có thuế GTGT), hóa đơn dịch vụ, hóa đơn bán, phiếu thu, phiếu chi / ủy nhiệm chi, tạm ứng lương, nộp bảo hiểm và thuế, ghi sổ lương; xem mọi báo cáo.'],
@@ -28,7 +28,7 @@ const START=[
 ]
 const DAILY=[
  ['Kho','Phiếu nhập: chọn lý do — Mua ngoài (chọn nhà cung cấp), Thu hồi vật tư (ghi mã lô thu về), Thừa kiểm kê. Phiếu xuất: gõ mã lô đầu ô lô (VD "A-1 / thửa 2"), danh sách gợi ý có sẵn. Kiểm kê thừa và thiếu lập hai phiếu riêng.'],
- ['Kho / xưởng — chuối thu hoạch','Lô thu hoạch đã xác nhận hiện ở Chờ hạch toán › Lô thu hoạch chưa nhập kho → Nhập kho. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
+ ['Xưởng / kế toán — chuối thành phẩm','Ca đóng gói đã đóng hiện ở Chờ hạch toán › Ca đóng gói đã đóng, chưa nhập kho → Lập phiếu nhập kho (cũng lập được ở màn Xưởng). Phiếu là bản nháp theo giá thành tạm tính, kế toán kiểm rồi duyệt ở Kho. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
  ['Kế toán — mua hàng','Chờ hạch toán: chọn các phiếu nhận hàng cùng nhà cung cấp → Lập hóa đơn (số, ngày hóa đơn, thuế suất GTGT). Xem "Xuất kho chưa gắn lô" và nhắc kho sửa.'],
  ['Kế toán — bán hàng','Bán hàng – Phải thu › Lập hóa đơn bán: chọn khách hàng, hàng trong kho thành phẩm, số lượng, đơn giá, thuế suất (chuối của vườn: Không chịu thuế), ký hiệu và số hóa đơn điện tử. Hóa đơn xuất kho luôn.'],
  ['Kế toán — thu tiền','Bán hàng – Phải thu › Thu tiền ở dòng khách hàng: nhập số tiền thu từng hóa đơn, tiền mặt hay chuyển khoản (số báo có). Phiếu thu ghi sổ ngay, không cần ký.'],
@@ -38,12 +38,12 @@ const DAILY=[
 ]
 const MONTH=[
  'Mở Thiết lập › Đóng tháng — danh sách kiểm tra, chọn tháng. Lotus tự đánh dấu bước nào đã xong; làm lần lượt từ trên xuống.',
- 'Chờ hạch toán trống: mọi phiếu nhận hàng đã có hóa đơn, không còn dòng xuất kho thiếu lô, lô thu hoạch đã nhập kho.',
+ 'Chờ hạch toán trống: mọi phiếu nhận hàng đã có hóa đơn, không còn dòng xuất kho thiếu lô, ca đóng gói đã đóng đều có phiếu nhập kho.',
  'Bảng lương tháng đã ký đủ → Chờ hạch toán › Xem trước bút toán → Ghi sổ. Sau đó lập phiếu chi lương ở Thu / Chi (Lotus trừ phần đã tạm ứng) và tải danh sách chuyển khoản.',
  'Nộp bảo hiểm, kinh phí công đoàn, thuế TNCN của tháng trước: Thu / Chi › Nộp BH, KPCĐ, thuế TNCN.',
  'Phiếu chi trong tháng đã ký xong hoặc đã hủy.',
  'Thiết lập › Kết chuyển CP của tháng: chuyển 621 / 622 / 627 sang 154 theo từng lô.',
- 'Thiết lập › Giá thành của tháng: xem bảng giá thành từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính vào 632.',
+ 'Thiết lập › Giá thành của tháng: xem bảng giá thành từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính của phần đã bán vào 632; phần của hàng còn tồn cuối tháng ở lại 154.',
  'Thiết lập › KQKD 911: kết chuyển doanh thu, chi phí của tháng sang 911 và lãi / lỗ sang 4212.',
  'Báo cáo › Đối chiếu: mọi dòng "Khớp". Báo cáo › Bảng cân đối phát sinh: Nợ = Có. Báo cáo › B01: tài sản = nguồn vốn. Báo cáo › Thuế GTGT: bảng kê khớp sổ.',
  'Thiết lập › Khóa tháng. Muốn sửa sau khi khóa: Kế toán trưởng mở lại kỳ kèm lý do.',
@@ -68,7 +68,7 @@ const ENTRIES=[
  ['Thu hồi vật tư thừa về kho','Kho','Nợ 152 / Có 621 (lô thu hồi)'],
  ['Kiểm kê thừa / thiếu','Kho','Nợ 152 / Có 3381 — Nợ 1381 / Có 152'],
  ['Xuất bao bì đóng gói','Kho','Nợ 6272 (vườn) / Có 152'],
- ['Nhập kho chuối thu hoạch','Kho / kế toán','Nợ 155 / Có 154 (lô trồng) theo giá tạm tính / kg'],
+ ['Nhập kho thành phẩm theo ca đóng gói','Kế toán','Nợ 155 / Có 154 (lô trồng) theo giá tạm tính / kg'],
  ['Hóa đơn bán hàng (xuất kho luôn)','Kế toán','Nợ 632 / Có 155 — Nợ 131 / Có 511, 33311'],
  ['Thu tiền khách hàng','Kế toán','Nợ 111 hoặc 112 / Có 131'],
  ['Lương công nhân có công ở lô','Kế toán','Nợ 622 (theo số công từng lô) / Có 334'],
@@ -80,7 +80,7 @@ const ENTRIES=[
  ['Chi lương','Kế toán → KTT → GĐ','Nợ 334 / Có 112 hoặc 111 (thực lĩnh trừ tạm ứng)'],
  ['Nộp bảo hiểm, KPCĐ, thuế TNCN','Kế toán → KTT → GĐ','Nợ 3383, 3384, 3386, 3382, 3335 / Có 112'],
  ['Kết chuyển chi phí cuối tháng','Kế toán trưởng','Nợ 154 / Có 621, 622, 627 (giữ vườn / lô)'],
- ['Giá thành cuối tháng','Kế toán trưởng','Thực tế cao hơn tạm tính: Nợ 632 / Có 154; thấp hơn: Nợ 154 / Có 632 (theo lô)'],
+ ['Giá thành cuối tháng','Kế toán trưởng','Phần đã bán, thực tế cao hơn tạm tính: Nợ 632 / Có 154; thấp hơn: Nợ 154 / Có 632 (theo lô). Phần còn tồn kho: không ghi, ở lại 154'],
  ['Kết chuyển kết quả kinh doanh','Kế toán trưởng','Nợ 511, 515, 711 / Có 911 — Nợ 911 / Có 632, 635, 641, 642, 811, 821 — lãi Nợ 911 / Có 4212'],
 ]
 const REPORTS=[
@@ -108,7 +108,7 @@ const FAQ=[
  ['Vì sao Giám đốc không thấy sổ sách?','Người duyệt chi chỉ thấy phiếu chờ mình ký. Muốn xem sổ cần vai trò Kế toán / Kế toán trưởng / Kiểm soát.'],
  ['Ngày nhập ở đâu cũng là dd/mm/yyyy?','Đúng, các ô ngày trong màn kế toán nhập theo ngày/tháng/năm.'],
  ['Chuối bán ra có thuế GTGT không?','Chuối do vườn tự trồng, chưa chế biến hoặc chỉ sơ chế thông thường (rửa, đóng thùng) bán ra không chịu thuế GTGT (Luật 48/2024/QH15 Điều 5): chọn "Không chịu thuế". Hàng khác chọn đúng thuế suất trên hóa đơn.'],
- ['Giá thành chuối tính thế nào?','Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại của lô). Vụ đã đóng thì dồn hết. Chi phí chung của vườn chia theo kg của cả vườn. Phần chưa thu nằm lại 154.'],
+ ['Giá thành chuối tính thế nào?','Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại của lô, lấy ở màn Dự thu). Lô không còn kg dự thu thì dồn hết. Chi phí chung của vườn chia theo kg của cả vườn. Phần chưa thu nằm lại 154.'],
  ['Đã tính giá thành nhưng cần tính lại?','Kế toán trưởng đảo bút toán giá thành của tháng (Nhật ký → Đảo), rồi tính lại. Nếu đã kết chuyển 911 thì đảo bút toán đó trước.'],
  ['Lotus có nộp tờ khai thuế, hóa đơn điện tử không?','Chưa: Lotus lập số liệu và bảng kê; kế toán khai trên HTKK / eTax và lập hóa đơn trên phần mềm hóa đơn điện tử, rồi nhập số hóa đơn vào Lotus.'],
 ]

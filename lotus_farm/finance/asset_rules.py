@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_HALF_UP
 import hashlib
 import json
 
-DIMENSIONS = ('lotus_farm', 'lotus_farm_block', 'lotus_crop_cycle', 'lotus_work_type')
+DIMENSIONS = ('lotus_farm', 'lotus_farm_block', 'lotus_work_type')
 METHODS = ('Straight Line', 'Written Down Value', 'Double Declining Balance')
 KINDS = ('Create', 'Profile', 'Move', 'Repair', 'Upgrade', 'Suspend', 'Resume', 'Sell', 'Scrap', 'Restore')
 

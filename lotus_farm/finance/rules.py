@@ -13,8 +13,7 @@ VAT_FILE = Path(__file__).resolve().parents[1] / 'data' / 'vat_vn.json'
 STATEMENTS_FILE = Path(__file__).resolve().parents[1] / 'data' / 'bctc_tt99.json'
 ROOT_TYPES = ('Asset', 'Liability', 'Equity', 'Income', 'Expense')
 # Accounting dimensions on every ledger line: (Lotus field / dimension fieldname, DocType, label).
-DIMENSIONS = (('lotus_farm', 'Farm', 'Vườn'), ('lotus_farm_block', 'Farm Block', 'Lô'),
-              ('lotus_crop_cycle', 'Crop Cycle', 'Vụ'), ('lotus_work_type', 'Work Type', 'Công việc'))
+DIMENSIONS = (('lotus_farm', 'Farm', 'Vườn'), ('lotus_farm_block', 'Farm Block', 'Lô'), ('lotus_work_type', 'Work Type', 'Công việc'))
 DIM_FIELDS = tuple(d[0] for d in DIMENSIONS)
 
 # Mapping key -> (label, allowed root types, required account_type or None). The account each key points
@@ -421,7 +420,7 @@ def _parts(total, base, rates):
 
 
 def shares_from_work(rows):
-    """rows: dict(employee, workdays, lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type)
+    """rows: dict(employee, workdays, lotus_farm, lotus_farm_block, lotus_work_type)
     -> employee -> [(dims, workdays)] summed by dimension set."""
     out = {}
     for r in rows:
@@ -436,7 +435,7 @@ def shares_from_work(rows):
 
 def closing_entry(rows, wip_account):
     """Month-end transfer of production costs to work in progress, lot by lot.
-    rows: dict(account, net, lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type) = the month's balance of
+    rows: dict(account, net, lotus_farm, lotus_farm_block, lotus_work_type) = the month's balance of
     621 / 622 / 627x per dimension set -> Nợ 154 (same dimensions) / Có each cost account. Zero balances are skipped."""
     lines = []
     for r in rows:
@@ -467,15 +466,20 @@ def aging(due_date, today):
 
 # Product costing (giá thành chuối) ------------------------------------------------------------------------
 
-def costing_rows(pools):
+def costing_rows(pools, unsold_share=0):
     """Month-end cost of each lot's harvest.
 
-    pools: dict(lotus_farm, lotus_farm_block (None = the farm's costs without a lot), lotus_crop_cycle,
+    pools: dict(lotus_farm, lotus_farm_block (None = the farm's costs without a lot),
       wip_open, cost_month, provisional, kg_harvested, kg_remaining).
     The harvest of the month carries (work in progress at the start + costs transferred this month) in the proportion
     kg harvested / (kg harvested + kg still expected from the lot's forecast); the rest stays in 154 for later bunches.
-    adjustment = actual - provisional (what the harvest receipts already moved from 154 to 155 at the provisional rate).
+    The difference actual - provisional (what the harvest receipts already moved from 154 to 155 at the provisional rate)
+    is cost of goods sold only for the fruit that left stock. unsold_share is the part (0 to 1) of the month's received kg
+    still in stock at month end: that part of the difference (unsold_adjustment) stays in 154 on the lot, to be costed
+    with the lot's next harvest; adjustment is the rest, posted to 632. A journal to 155 would not change the value
+    ERPNext keeps for the stock, so it is never made.
     """
+    share = min(1.0, max(0.0, float(unsold_share or 0)))
     out = []
     for p in pools:
         wip_open, cost = round(float(p.get('wip_open') or 0), 2), round(float(p.get('cost_month') or 0), 2)
@@ -484,8 +488,11 @@ def costing_rows(pools):
         pool = round(wip_open + cost, 2)
         precision = 2 if any(v != int(v) for v in (wip_open, cost, provisional)) else 0
         absorbed = round(pool * kg / (kg + remaining), precision) if kg > 0 else 0
+        difference = round(absorbed - provisional, 2)
+        unsold = round(difference * share, precision) if share else 0
         out.append(dict(p, wip_open=wip_open, cost_month=cost, provisional=provisional, kg_harvested=kg, kg_remaining=remaining,
-                        absorbed=absorbed, adjustment=round(absorbed - provisional, 2), wip_close=round(pool - absorbed, 2),
+                        absorbed=absorbed, adjustment=round(difference - unsold, 2), unsold_adjustment=unsold,
+                        wip_close=round(pool - absorbed + unsold, 2),
                         cost_per_kg=round(absorbed / kg, 2) if kg > 0 else None,
                         basis='Toàn bộ chi phí còn lại (không có dự thu)' if kg > 0 and not remaining else
                         ('Theo kg thu / (kg thu + kg dự thu còn lại)' if kg > 0 else 'Chưa thu hoạch: giữ dở dang')))

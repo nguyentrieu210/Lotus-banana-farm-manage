@@ -1,15 +1,13 @@
 """Versioned financial plans. These endpoints never post to accounting books."""
 import hashlib
 import json
-from calendar import monthrange
-from datetime import date
 
 import frappe
 from frappe.utils import now_datetime
 
 from lotus_farm.finance import planning_rules as model, setup
 from lotus_farm.reporting import records
-from lotus_farm.scoping import land_filters, land_scope
+from lotus_farm.scoping import land_scope
 
 DOCTYPE = 'Lotus Financial Plan'
 FORMULA_VERSION = 'financial-plan-v1'
@@ -144,7 +142,7 @@ def overview():
     return dict(
         company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'),
         plans=readable, farms=farms, can_write=setup.can_post(), can_approve=setup.is_chief(),
-        can_forecast=frappe.has_permission('Harvest Forecast', 'read'),
+        can_forecast=frappe.has_permission('Farm', 'read'),
     )
 
 
@@ -234,20 +232,17 @@ def duplicate(name, request_key):
 
 
 def _forecast(doc):
+    """The shared forecast (Dự thu) of the plan's farm, or of every farm of the company this user may see, as it stands
+    now. The forecast checks the user's right to each farm itself."""
+    from lotus_farm import block_forecast
     values = _normalize(doc.plan_data)
-    first = model.month_date(values['start_month'])
-    last = model.month_date(model.months(values['start_month'], values['month_count'])[-1])
-    end = date(last.year, last.month, monthrange(last.year, last.month)[1])
     scope = _scope(doc.farm)
-    filters = {'supply_state': 'Released', 'period_start_date': ['<=', end], 'period_end_date': ['>=', first]}
-    filters.update(land_filters(frappe.get_meta('Harvest Forecast'), scope))
-    forecasts = records('Harvest Forecast', filters, [
-        'name', 'farm', 'farm_block', 'period_start_date', 'period_end_date',
-        'gross_forecast_kg', 'packed_forecast_kg', 'supply_state', 'modified',
-    ])
-    forecasts.sort(key=lambda r: r.name)
+    farms = [doc.farm] if doc.farm else sorted(f.name for f in records('Farm', {'company': scope['company']}, ['name']))
+    cohorts = []
+    for farm in farms:
+        cohorts += [dict(c, farm=farm) for c in block_forecast.bunch_summary(farm)[1]]
     try:
-        proposal = model.forecast_quantities(values['start_month'], values['month_count'], forecasts)
+        proposal = model.forecast_quantities(values['start_month'], values['month_count'], cohorts)
     except ValueError as exc:
         frappe.throw(str(exc))
     payload = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
@@ -269,7 +264,7 @@ def apply_forecast(name, modified, fingerprint):
     if proposal['fingerprint'] != fingerprint:
         frappe.throw('Dự thu đã thay đổi. Xem lại nguồn trước khi lấy sản lượng.')
     if not proposal['sources']:
-        frappe.throw('Không có dự thu đã phát hành trong phạm vi kế hoạch.')
+        frappe.throw('Dự thu không có sản lượng trong các tháng của kế hoạch.')
     values = _normalize(doc.plan_data)
     indexed = {r['month']: r for r in proposal['rows']}
     for row in values['rows']:
