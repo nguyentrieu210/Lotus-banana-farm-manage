@@ -20,7 +20,7 @@ const palette=computed(()=>Object.fromEntries(state.value.colors.map(x=>[x.code,
 const rows=computed(()=>state.value.rows.map(r=>{
  const status=!r.enabled?'Ngừng dùng':!r.valid_from||!r.valid_to?'Chưa có kỳ':r.valid_from>today.value?'Sắp áp dụng':r.valid_to<today.value?'Đã qua':'Đang áp dụng'
  return {...r,color_name:r.color_label||palette.value[r.color_code]||r.display_name, week_label:r.week_number?("Tuần "+r.week_number+"/"+r.week_year):"—",
-  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':['Source History','Extended Plan'].includes(r.source_kind)?'Lịch tham chiếu':'Lịch thủ công',status_label:status}
+  source_label:r.source_kind==='Lotus Weekly'?'Lịch Lotus theo tuần':'Lịch thủ công',status_label:status}
 }).filter(r=>{
  const q=search.value.trim().toLocaleLowerCase('vi')
  const matches=!q||[r.tag_code,r.display_name,r.color_name,r.valid_from,r.valid_to].some(v=>String(v||'').toLocaleLowerCase('vi').includes(q))

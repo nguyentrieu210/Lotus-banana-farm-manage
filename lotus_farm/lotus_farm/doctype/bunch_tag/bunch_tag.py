@@ -1,7 +1,7 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate
-from lotus_farm.bunch_tag_rules import overlaps
+from frappe.utils import cint, getdate
+from lotus_farm.bunch_tag_rules import locked_changes, overlaps
 from lotus_farm.controls import keep_codes, lock
 
 
@@ -15,16 +15,15 @@ class BunchTag(Document):
         if self.valid_from and self.valid_to and getdate(self.valid_to) < getdate(self.valid_from):
             frappe.throw("Ngày kết thúc kỳ màu dây không được trước ngày bắt đầu.")
         before = self.get_doc_before_save()
-        protected = ("farm", "tag_code", "color_code", "color_label", "period_basis", "valid_from", "valid_to", "week_year", "week_number", "week_half", "source_kind")
-        if before and any(self.get(key) != before.get(key) for key in protected):
-            if frappe.db.exists("Lotus Work Entry", {"bunch_tag": self.name}):
-                frappe.throw("Màu dây đã có dòng sổ lô; không được sửa mã, màu hoặc ngày áp dụng. Tạo kỳ mới.")
+        # Compared as stored: a save that only renames or disables a used colour must go through.
+        if before and locked_changes(before, self) and frappe.db.exists("Lotus Work Entry", {"bunch_tag": self.name}):
+            frappe.throw("Màu dây đã có dòng sổ lô; không được sửa mã, màu hoặc ngày áp dụng. Tạo kỳ mới.")
 
         if self.source_kind == "Lotus Weekly":
             if not (self.farm and self.color_label and self.color_code and self.valid_from and self.valid_to and self.week_year and self.week_number and self.week_half):
                 frappe.throw("Lịch màu Lotus phải có tên màu, tuần, đợt và hai ngày áp dụng.")
             start, end = getdate(self.valid_from), getdate(self.valid_to)
-            if (start.isocalendar().year, start.isocalendar().week) != (int(self.week_year), int(self.week_number)):
+            if (start.isocalendar().year, start.isocalendar().week) != (cint(self.week_year), cint(self.week_number)):
                 frappe.throw("Ngày bắt đầu không thuộc tuần màu đã chọn.")
             if self.week_half == "1":
                 if start.weekday() != 0 or (end-start).days != 3:

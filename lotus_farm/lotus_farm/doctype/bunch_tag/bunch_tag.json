@@ -54,12 +54,7 @@
       "fieldname": "source_kind",
       "label": "Loại lịch",
       "fieldtype": "Select",
-      "options": "\nSource History\nExtended Plan\nLotus Weekly"
-    },
-    {
-      "fieldname": "source_version",
-      "label": "Phiên bản nguồn",
-      "fieldtype": "Data"
+      "options": "\nLotus Weekly"
     },
     {
       "fieldname": "color_label",
@@ -93,7 +88,6 @@
     "color_code",
     "period_basis",
     "source_kind",
-    "source_version",
     "color_label",
     "week_year",
     "week_number",

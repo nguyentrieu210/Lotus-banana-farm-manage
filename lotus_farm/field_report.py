@@ -839,15 +839,6 @@ def cancel_assignment(name, reason, expected_modified=None):
     return ticket(name)
 
 
-def harvest_guard(doc, method=None):
-    """Harvest Actual validate: a lô sprayed with a product that has a pre-harvest interval cannot be harvested before it ends."""
-    if not doc.get("farm_block") or not doc.get("harvest_date"):
-        return
-    until = frappe.db.get_value("Farm Block", doc.farm_block, "lotus_quarantine_until")
-    if until and getdate(doc.harvest_date) <= getdate(until):
-        frappe.throw(f"Lô đang trong thời gian cách ly thuốc BVTV đến {getdate(until).strftime('%d/%m/%Y')}; chưa được thu hoạch.")
-
-
 # ---------------------------------------------------------------- giao lô: đội, tổ, bảng giá
 
 @frappe.whitelist(methods=["POST"])

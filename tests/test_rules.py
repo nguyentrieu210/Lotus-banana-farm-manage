@@ -1,7 +1,6 @@
 import unittest
 from lotus_farm.rules import (
     quantity,
-    forecast_accuracy,
     canonical_hash,
     integer_quantity,
     RuleError,
@@ -21,11 +20,6 @@ class TestBRDRules(unittest.TestCase):
         self.assertEqual(integer_quantity("12"), 12)
         with self.assertRaises(RuleError):
             integer_quantity(1.5)
-
-    def test_forecast_accuracy_is_weighted_by_actual(self):
-        self.assertIsNone(forecast_accuracy([(0, 0)])["wape"])
-        self.assertEqual(forecast_accuracy([(110, 100), (80, 100)])["wape"], 0.15)
-        self.assertEqual(forecast_accuracy([(110, 100), (80, 100)])["bias"], -0.05)
 
     def test_payload_hash_detects_conflicts(self):
         self.assertEqual(canonical_hash({"b": 1, "a": 2}), canonical_hash({"a": 2, "b": 1}))

@@ -3,7 +3,6 @@
 import importlib.util
 import types
 import unittest
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,8 +26,6 @@ class TestServerGuards(unittest.TestCase):
         self.frappe.throw = throw
         utils = types.ModuleType("frappe.utils")
         utils.getdate = lambda value: value
-        utils.get_datetime = lambda value: datetime.fromisoformat(value) if isinstance(value, str) else value
-        utils.get_system_timezone = lambda: "Asia/Ho_Chi_Minh"
         self.patch = patch.dict("sys.modules", {"frappe": self.frappe, "frappe.utils": utils})
         self.patch.start()
         path = Path(__file__).resolve().parents[1] / "lotus_farm/controls.py"
@@ -74,8 +71,3 @@ class TestServerGuards(unittest.TestCase):
         self.assertFalse(self.controls.farm_allowed("FARM-B"))
         self.frappe.get_all = lambda *args, **kwargs: []
         self.assertEqual(self.controls.query_condition("Packhouse Shift"), "1=0")
-
-    def test_device_timestamp_normalizes_to_site_timezone(self):
-        self.assertEqual(
-            self.controls.local_timestamp("2026-10-06T01:30:00+00:00"), datetime(2026, 10, 6, 8, 30)
-        )

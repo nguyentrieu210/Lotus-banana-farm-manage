@@ -1,4 +1,4 @@
-"""BRD metric contracts, independent of Frappe and database state."""
+"""Number and payload checks shared by the controllers, independent of Frappe and database state."""
 
 import hashlib
 import json
@@ -22,18 +22,6 @@ def quantity(value, label="Số lượng", *, positive=False):
 def canonical_hash(value):
     raw = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode()).hexdigest()
-
-
-def forecast_accuracy(pairs):
-    pairs = [(quantity(f), quantity(a)) for f, a in pairs]
-    total = sum((a for _, a in pairs), Decimal(0))
-    if not total:
-        return {"bias": None, "wape": None, "sample_count": len(pairs)}
-    return {
-        "bias": float(sum((f - a for f, a in pairs), Decimal(0)) / total),
-        "wape": float(sum((abs(f - a) for f, a in pairs), Decimal(0)) / total),
-        "sample_count": len(pairs),
-    }
 
 
 def integer_quantity(value, label="Số đếm"):

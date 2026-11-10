@@ -54,8 +54,7 @@ def catalog(farm, include_disabled=0):
         "can_create": bool(frappe.has_permission("Bunch Tag", "create")) and not weekly_mode,
         "weekly_mode": weekly_mode,
         "notice": ("Lịch Lotus áp dụng theo tuần 7 ngày (thứ Hai đến Chủ nhật); "
-                   "đợt 1 và 2 để ghi nhận đầu và cuối tuần. "
-                   "Lịch tham chiếu 5 ngày đã ngừng áp dụng tại vườn này."
+                   "đợt 1 và 2 để ghi nhận đầu và cuối tuần."
                    if weekly_mode else
                    "Vườn chưa có lịch màu Lotus theo tuần; đang hiển thị các kỳ màu lập thủ công."),
     }

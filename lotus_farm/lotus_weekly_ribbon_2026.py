@@ -8,7 +8,7 @@ Run once as administrator from bench execute; repeat runs create nothing new.
 """
 import frappe
 from lotus_farm.controls import lock
-from lotus_farm.ribbon_cycle import FARM, periods  # FARM is re-exported for lotus_weekly_calendar_guard
+from lotus_farm.ribbon_cycle import FARM, periods
 
 
 def _referenced(tag_name):
