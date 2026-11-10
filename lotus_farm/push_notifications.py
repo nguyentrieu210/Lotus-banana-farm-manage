@@ -186,6 +186,8 @@ def _add_alert(user, app, title, body, url, doctype="", docname="", key=""):
 
 
 def _send_alert(alert_name):
+    if not frappe.db.exists(ALERT, alert_name):
+        return  # the action that raised it was rolled back after the job had been queued
     alert = frappe.get_doc(ALERT, alert_name)
     path = _vapid_path()
     if not path.exists():

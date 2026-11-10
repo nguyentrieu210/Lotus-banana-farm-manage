@@ -173,7 +173,10 @@ def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date
     m = setup.mapping()
     pi.update(dict(bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date), posting_date=posting_date, set_posting_time=1,
                    credit_to=m['payable_supplier'], taxes_and_charges=None))
-    apply_vat(pi, vat_code, bill_date, m['input_vat'])
+    if setup.vat_in_cost():
+        _receipt_vat_in_cost(pi, vat_code)
+    else:
+        apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.set('payment_schedule', [])
     pi.flags.ignore_permissions = True
     pi.insert()
@@ -289,12 +292,50 @@ def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, pos
     pi = frappe.get_doc(dict(doctype=PI, company=company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
                              currency=frappe.get_cached_value('Company',company,'default_currency'),conversion_rate=1,
                              posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
-    apply_vat(pi, vat_code, bill_date, m['input_vat'])
+    if setup.vat_in_cost():
+        _service_vat_in_cost(pi, vat_code, bill_date)
+    else:
+        apply_vat(pi, vat_code, bill_date, m['input_vat'])
     pi.flags.ignore_permissions = True
     pi.insert()
     pi.submit()
     posting.record(PI, pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=bill_no)
     return dict(invoice=pi.name, amount=pi.grand_total)
+
+
+def _receipt_vat_in_cost(pi, vat_code):
+    """Hộ kinh doanh: thuế GTGT của hàng đã vào giá vốn ở phiếu nhận (TK 33881). Hóa đơn lấy đúng thuế của từng dòng
+    phiếu nhận, như khi lập ở Mua hàng, để xóa khoản tạm 33881; không bao giờ ghi 1331."""
+    codes = {str(r.get('lotus_line_vat') or 'KCT') for r in pi.items}
+    code = str(vat_code or 'KCT')
+    if code != 'KCT' and codes != {code}:
+        frappe.throw('Hộ kinh doanh: thuế GTGT lấy theo từng dòng phiếu nhận (đã tính vào giá vốn). Phiếu nhận đang ghi thuế '
+                     + ', '.join(sorted(codes)) + '. Nếu hóa đơn khác, sửa thuế trên phiếu nhận trước.')
+    from lotus_farm.procurement import apply_line_taxes
+    apply_line_taxes(pi)
+
+
+def _service_vat_in_cost(pi, code, on_date):
+    """Hộ kinh doanh: thuế GTGT của dịch vụ cộng vào chính khoản chi phí của từng dòng (sản xuất / quản lý),
+    vẫn hiện riêng thành dòng thuế trên hóa đơn; không bao giờ ghi 1331."""
+    try:
+        rate = rules.vat_rate(code, on_date)
+    except ValueError as exc:
+        frappe.throw(str(exc))
+    if pi.meta.has_field('lotus_vat_code'):
+        pi.lotus_vat_code = str(code or 'KCT')
+    pi.set('taxes', [])
+    pi.taxes_and_charges = None
+    if not rate:
+        return
+    net = {}
+    for row in pi.items:
+        net[row.expense_account] = net.get(row.expense_account, 0) + flt(row.qty) * flt(row.rate)
+    cost_center = frappe.get_cached_value('Company', pi.company, 'cost_center')
+    for account, amount in net.items():
+        pi.append('taxes', dict(charge_type='Actual', account_head=account, tax_amount=flt(amount * rate, 0), category='Total',
+                                add_deduct_tax='Add', cost_center=cost_center,
+                                description='Thuế GTGT %s%% (tính vào chi phí)' % code))
 
 
 def _dims(row):

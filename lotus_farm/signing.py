@@ -214,23 +214,34 @@ def _record(doc, row, details=None, require_image=False):
 
 
 def _notify(doc, key, row, title, body=None):
+    """Tell one signer. A failure to notify must never undo the signing action itself: alert, push and e-mail
+    run inside a savepoint and errors only reach the Error Log."""
     if not row or not row.get('assignee'):
         return
+    frappe.db.savepoint('lotus_sign_notify')
+    try:
+        _deliver(doc, key, row, title, body)
+    except Exception:
+        frappe.db.rollback(save_point='lotus_sign_notify')
+        frappe.log_error(frappe.get_traceback(), 'Lotus: thông báo ký')
+
+
+def _deliver(doc, key, row, title, body):
     from lotus_farm.push_notifications import DEVICE, _add_alert
-    app, url = rules.chain(key)['app'], URLS[key](doc)
-    if url.startswith('/lotus/'):
-        # Print-page links reach the signer in whichever Lotus app their phone is subscribed to.
-        apps = frappe.get_all(DEVICE, filters={'user': row['assignee'], 'enabled': 1}, pluck='app', limit_page_length=20)
-        app = app if app in apps or not apps else apps[0]
-    alert = _add_alert(row['assignee'], app, title, body or (rules.chain(key)['label'] + ' ' + doc.name), url, doc.doctype, doc.name,
-                       key='sign:' + doc.doctype + ':' + doc.name + ':' + str(row.get('name') or '') + ':' + title)
-    if alert:
-        frappe.enqueue('lotus_farm.push_notifications._send_alert', queue='short', enqueue_after_commit=True, alert_name=alert)
-    email = frappe.db.get_value('User', row['assignee'], 'email')
+    user, text, link = row['assignee'], body or (rules.chain(key)['label'] + ' ' + doc.name), URLS[key](doc)
+    devices = frappe.get_all(DEVICE, filters={'user': user, 'enabled': 1}, pluck='app', order_by='last_seen desc',
+                             limit_page_length=20)
+    app = rules.notify_app(rules.chain(key)['app'], devices)
+    if app:
+        alert = _add_alert(user, app, title, text, rules.push_link(app, link, doc.doctype, doc.name), doc.doctype, doc.name,
+                           key='sign:' + doc.doctype + ':' + doc.name + ':' + str(row.get('name') or '') + ':' + title)
+        if alert:
+            frappe.enqueue('lotus_farm.push_notifications._send_alert', queue='short', enqueue_after_commit=True, alert_name=alert)
+    email = frappe.db.get_value('User', user, 'email')
     if email and '@' in email:
         frappe.sendmail(recipients=[email], subject=title + ' · ' + doc.name, now=False,
-                        message='<p>' + frappe.utils.escape_html(body or (rules.chain(key)['label'] + ' ' + doc.name)) + '</p>'
-                                '<p><a href="' + get_url(url) + '">Mở chứng từ trên Lotus</a></p>')
+                        message='<p>' + frappe.utils.escape_html(text) + '</p>'
+                                '<p><a href="' + get_url(link) + '">Mở chứng từ trên Lotus</a></p>')
     if row.get('name'):
         frappe.db.set_value(REQUEST, row['name'], 'notified_at', now_datetime(), update_modified=False)
 

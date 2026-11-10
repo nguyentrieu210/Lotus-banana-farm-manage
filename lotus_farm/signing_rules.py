@@ -42,6 +42,36 @@ CHAINS = {
 }
 
 WAITING, SIGNED, RETURNED, PENDING = 'Chờ ký', 'Đã ký', 'Trả lại', 'Chưa đến lượt'
+
+# Phone apps (PWA) that can show a signing alert, with their root path. A chain whose own app is not a
+# phone app (payment vouchers live in the desktop Finance app) is announced in the fallback app.
+PHONE_APPS = {'buying': '/buying', 'warehouse': '/warehouse', 'work': '/work', 'hr': '/hr-mobile'}
+FALLBACK_APP = {'finance': 'buying'}
+
+
+def notify_app(chain_app, device_apps):
+    """The phone app that carries a signing alert for one signer: the chain's own app (or its fallback) when the
+    signer has a phone there or no phone at all; otherwise the app they last used with a phone."""
+    devices = [app for app in device_apps if app in PHONE_APPS]
+    home = chain_app if chain_app in PHONE_APPS else FALLBACK_APP.get(chain_app)
+    if home and (home in devices or not devices):
+        return home
+    return devices[0] if devices else home
+
+
+def sign_link(app, doctype, name):
+    """Link inside a phone app that opens the signing sheet of one document."""
+    from urllib.parse import urlencode
+    return PHONE_APPS[app] + '?' + urlencode({'sign_dt': doctype, 'sign_dn': name})
+
+
+def push_link(app, link, doctype, name):
+    """Keep a chain's own link when it already points inside the chosen phone app or to a Lotus print page;
+    otherwise open the document in that app. Push targets must stay inside the app that shows them."""
+    from urllib.parse import urlsplit
+    if urlsplit(link).path == PHONE_APPS[app] or link.startswith('/lotus/in-'):
+        return link
+    return sign_link(app, doctype, name)
 # Fields of a line that define what was signed (quantities, prices, places); labels and notes may change.
 LINE_FIELDS = ('item_code', 'qty', 'uom', 'rate', 'amount', 'warehouse', 's_warehouse', 't_warehouse', 'schedule_date')
 
