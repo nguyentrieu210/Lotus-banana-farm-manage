@@ -215,7 +215,27 @@ def _archive(folder, scan):
     if frappe.db.table_exists("File"):
         manifest["files"] = frappe.get_all("File", filters={"attached_to_doctype": ["in", ALL]},
                                            fields=["name", "file_name", "file_url", "attached_to_doctype", "attached_to_name"], limit_page_length=0)
+    # The rows elsewhere that only describe the legacy documents (history, comments, the recycle bin, permissions) are
+    # removed too: they are archived with the tables.
+    mentions = {}
+    for table, column in HISTORY:
+        if frappe.db.table_exists(table) and frappe.db.has_column(table, column):
+            rows = frappe.db.sql(f"select * from `tab{table}` where `{column}` in %s order by name", (tuple(ALL),), as_dict=True)
+            if rows:
+                mentions[f"{table}.{column}"] = rows
+    if frappe.db.table_exists("Deleted Document"):
+        rows = frappe.db.sql("select * from `tabDeleted Document` where deleted_doctype = 'DocType' and deleted_name in %s order by name", (tuple(ALL),),
+                             as_dict=True)
+        if rows:
+            mentions["Deleted Document.deleted_name"] = rows
+    body = _dump(mentions)
+    manifest["mentions"] = {"file": "_mentions.json", "rows": {k: len(v) for k, v in mentions.items()},
+                            "sha256": hashlib.sha256(body.encode("utf-8")).hexdigest()}
+    _write(folder, "_mentions.json", body)
     _write(folder, "manifest.json", json.dumps(manifest, ensure_ascii=False, indent=1, default=str))
+    with open(os.path.join(folder, "_mentions.json"), encoding="utf-8") as handle:
+        if hashlib.sha256(_dump(json.load(handle)).encode("utf-8")).hexdigest() != manifest["mentions"]["sha256"]:
+            frappe.throw("Tệp lưu trữ _mentions.json không khớp: dừng, chưa xóa gì.")
     for entry in manifest["tables"]:
         with open(os.path.join(folder, entry["file"]), encoding="utf-8") as handle:
             saved = json.load(handle)

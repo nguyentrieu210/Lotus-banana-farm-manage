@@ -4,8 +4,8 @@ Chỉ chạy khi chủ vườn ra lệnh. Test, build và diễn tập chạy tr
 
 Triển khai hai lần:
 
-1. **Lần 1 (bản này)**: sổ lô, báo cáo ngày theo lô, phiếu giấy và đọc ảnh, màu dây và thu hoạch, vòng chăm sóc, dự thu chốt tuần, xưởng theo nguồn buồng, báo cáo Sáng nay/Tuần/Tháng, menu 7 mục. Các bảng đời cũ vẫn còn trong cơ sở dữ liệu nhưng không còn màn hình ghi vào.
-2. **Lần 2 (US7)**: dọn 76 bảng cũ (`legacy_purge.preview`, chủ vườn xem, rồi `commit`). Làm sau khi lần 1 chạy ổn.
+1. **Lần 1 (đã lên 10/11, `lotus-release:40f8330`)**: sổ lô, báo cáo ngày theo lô, phiếu giấy và đọc ảnh, màu dây và thu hoạch, vòng chăm sóc, dự thu chốt tuần, xưởng theo nguồn buồng, báo cáo Sáng nay/Tuần/Tháng, menu 7 mục. Các bảng đời cũ vẫn còn trong cơ sở dữ liệu nhưng không còn màn hình ghi vào.
+2. **Lần 2 (US7)**: xóa hẳn 76 bảng cũ cùng mã, màn hình, menu, tool và test của chúng; tài chính, lương, kho, khung ứng dụng cũ, vườn & lô và dự thu không còn đọc chúng. Các bước ở mục 8.
 
 ## 0. Trước khi build
 
@@ -59,3 +59,17 @@ Chạy bằng `rollout.sh <sha mới> <sha đang chạy>` (lưu ở `/srv/lotus-
 ## 7. Quay lại bản cũ
 
 `rollback.sh <sha mới> --restore-db`. Sau khi đã migrate thì **luôn khôi phục bản sao lưu ở bước 2**: cơ sở dữ liệu đã mang cấu trúc bảng mới (Lotus Work Entry bắt buộc `source_key`, chỉ mục buổi công đã đổi), mã cũ chạy trên đó sẽ lỗi khi ghi báo cáo. Chỉ đổi image mà không khôi phục khi chưa chạy migrate.
+
+## 8. Lần 2: xóa hẳn 76 bảng cũ (US7)
+
+Chạy bằng `rollout2.sh <sha mới> <sha đang chạy>` (lưu ở `/srv/lotus-build/<sha mới>/`), sau khi đã diễn tập đủ trên bản sao dữ liệu thật (`/srv/lotus-test/002/rehearsal2.sh`).
+
+1. Với mã đang chạy: `legacy_purge.preview`. Danh sách chặn phải trống (không giá trị cũ nào nằm trên chứng từ đã ghi sổ, không kỳ lương đã khóa dùng Labor Allocation, sổ cắt bắp cũ đã chuyển hết sang sổ lô). Nếu không trống thì dừng, chưa đổi gì.
+2. Bật bảo trì, dừng hai hàng đợi, sao lưu cơ sở dữ liệu và tệp, chép bản sao lưu ra `/srv/lotus-build/<sha mới>/`; chụp sổ sách và dự thu (trước).
+3. Đổi `LOTUS_IMAGE` sang image mới; `compose up -d --no-deps backend frontend websocket`.
+4. `legacy_purge.commit`: xuất từng bảng cũ ra JSON (số dòng, mã kiểm) vào `sites/frontend/private/files/legacy_purge_<giờ>/` và đọc lại để so trước khi xóa; rồi gỡ chiều kế toán và trường trỏ bảng cũ (kể cả cột), xóa DocType, xóa bảng, xóa các dòng lịch sử và quyền còn nhắc tên bảng cũ. Chép thư mục lưu trữ ra `/srv/lotus-build/<sha mới>/`.
+5. `bench migrate` (patch `purge_legacy_doctypes` chạy lại `commit`, không còn gì để làm, và dừng migrate nếu còn sót tên bảng cũ).
+6. `legacy_purge.verify` phải trống; sổ sách (26 bảng) không đổi; dự thu (tổng buồng, kg, thùng) không đổi.
+7. Bật hàng đợi, tắt bảo trì, khởi động lại backend, `nginx -s reload`.
+
+Quay lại bản cũ: `rollback.sh <sha mới> --restore-db` (luôn khôi phục: bảng và cột đã bị xóa). Dữ liệu của 76 bảng còn trong thư mục lưu trữ JSON và trong bản sao lưu ở bước 2.
