@@ -12,12 +12,8 @@ from lotus_farm.ribbon_cycle import FARM, periods  # FARM is re-exported for lot
 
 
 def _referenced(tag_name):
-    for dt, field in (("Bunch Operation", "bunch_tag"),
-                      ("Fruit Measurement", "ribbon_color"),
-                      ("Harvest Actual", "ribbon_color")):
-        if frappe.db.exists(dt, {field: tag_name}):
-            return True
-    return False
+    """A colour already on a line of the sổ lô or on a packhouse shift is in use."""
+    return any(frappe.db.exists(doctype, {"bunch_tag": tag_name}) for doctype in ("Lotus Work Entry", "Packhouse Shift Source"))
 
 
 def preview():

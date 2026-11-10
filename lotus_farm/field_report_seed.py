@@ -13,34 +13,34 @@ FARM = "LOTUS-222"
 VALID_FROM = "2026-10-21"
 CREW_NAME, CREW_ZONES = "Đội khu A + B", "A, B"
 CREW_LEADER = "haitrongvan1987@gmail.com"
-# code, name, category, uom, basis, rate, norm_min, norm_max, bunch stage, note
+# code, name, uom, basis, rate, norm_min, norm_max, bunch stage, note
 WORKS = [
-    ("F222-01", "Vặt râu, vén lá cọ buồng, vắt lá đài, tặt trái nách, vệ sinh buồng", "Chăm sóc buồng / Vén lá, tỉa trái, lặt hoa", "Buồng", "Count", 3500, 85, 120, "Care", "Vặt toàn bộ buồng"),
-    ("F222-02", "Bao buồng, chèn nải 2 lớp, bìa lô thêm bao cám", "Chăm sóc buồng / Bao Buồng", "Buồng", "Count", 4000, 120, 200, "Bag", ""),
-    ("F222-03", "Chống đổ 3 dây", "Chăm sóc buồng / Chống đổ ngã", "Cây", "Count", 3000, 150, 200, "Prop", "1.000 đ/dây"),
-    ("F222-04", "Chống đổ 2 dây", "Chăm sóc buồng / Chống đổ ngã", "Cây", "Count", 2000, 150, 200, "Prop", "1.000 đ/dây"),
-    ("F222-05", "Chích bắp", "Chăm sóc buồng / Chích búp", "Buồng", None, 0, 0, 0, "Bud Injection", "Công nhật, phụ cấp chăm buồng 20.000 đ/người/ngày"),
-    ("F222-06", "Cắt bắp, buộc dây màu", "Chăm sóc buồng / Cắt bắp, buộc dây màu", "Buồng", None, 0, 0, 0, "Cut Bud", "Công nhật; màu dây theo lịch tuần"),
-    ("F222-07", "Cắt lá", "Chăm sóc vườn / Vệ sinh vườn", "Ha", "Area", 300000, 1, 1.5, "", "115 đ/cây; 1 tháng 3 lần"),
-    ("F222-08", "Dọn cỏ gốc, bẹ lá khô", "Chăm sóc vườn / Quản lý cỏ dại", "Ha", "Area", 300000, 1, 1.5, "", "115 đ/cây"),
-    ("F222-09", "Dọn lá cọ buồng", "Chăm sóc vườn / Vệ sinh vườn", "Ha", "Area", 400000, 0, 0, "", "400.000 đ/ha/tháng, 10 ha/người, làm xuyên suốt"),
-    ("F222-10", "Cào lá gốc", "Chăm sóc vườn / Vệ sinh vườn", "Ha", "Area", 750000, 0.4, 0.4, "", "2,5 người/ha; 1 vụ làm 1 lần"),
-    ("F222-11", "Bốc vận chuyển ra lô", "Chăm sóc vườn / Bón phân", "Bao", "Count", 1000, 0, 0, "", "1.000 đ/bao"),
-    ("F222-12", "Bón phân hữu cơ (5 kg/gốc)", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 600, 450, 600, "", "Định lượng 1 người"),
-    ("F222-13", "Bón lân (200–300 g/gốc)", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 150, 2000, 2500, "", ""),
-    ("F222-14", "Bón phân hóa học (120–150 g/gốc)", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 120, 2500, 3000, "", ""),
-    ("F222-15", "Rải tro 3 kg/gốc", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 400, 0, 0, "", ""),
-    ("F222-16", "Rải tro 5 kg/gốc", "Chăm sóc vườn / Bón phân", "Cây", "Trees", 600, 0, 0, "", ""),
-    ("F222-17", "Chọn F (chọn chồi)", "Chăm sóc vườn / Quản lý mật độ", "Ha", "Area", 290000, 0.8, 1, "Sucker Select", ""),
-    ("F222-18", "Hạ cây, dọn cây thu hoạch", "Thu hoạch / Thu hoạch phụ phẩm", "Cây", "Count", 700, 0, 0, "", "Hạ lá, hạ thân để gọn hàng 3 m"),
-    ("F222-19", "Xịt cỏ, xịt bệnh gốc", "Chăm sóc vườn / Quản lý cỏ dại", "Ha", "Area", 300000, 1, 1.2, "", ""),
-    ("F222-20", "Xắn chồi lần 1", "Chăm sóc vườn / Quản lý mật độ", "Cây", "Trees", 600, 600, 600, "", "4 người/ha"),
-    ("F222-21", "Xắn chồi đã chọn chồi (khu D, E)", "Chăm sóc vườn / Quản lý mật độ", "Cây", "Trees", 700, 600, 600, "", "4 người/ha"),
-    ("F222-22", "Xắn chồi lần 2", "Chăm sóc vườn / Quản lý mật độ", "Cây", "Trees", 450, 800, 800, "", "3 người/ha"),
-    ("F222-23", "Cắt F hủy lấy đỉnh", "Chăm sóc vườn / Quản lý mật độ", "Cây", "Count", 400, 0, 0, "", "3,5 người/ha"),
-    ("F222-24", "Cắt chồi", "Chăm sóc vườn / Quản lý mật độ", "Ha", "Area", 400000, 1, 1.4, "", ""),
-    ("F222-25", "Kiểm tra, sửa béc tưới", "Chăm sóc vườn / Tưới nước", "Ha", "Area", 75000, 0, 0, "", "3 lần/tháng, trước kế hoạch tưới phân 2 ngày"),
-    ("F222-26", "Sửa ống nước", "Chăm sóc vườn / Tưới nước", "Ha", None, 0, 0, 0, "", "Công nhật"),
+    ("F222-01", "Vặt râu, vén lá cọ buồng, vắt lá đài, tặt trái nách, vệ sinh buồng", "Buồng", "Count", 3500, 85, 120, "Care", "Vặt toàn bộ buồng"),
+    ("F222-02", "Bao buồng, chèn nải 2 lớp, bìa lô thêm bao cám", "Buồng", "Count", 4000, 120, 200, "Bag", ""),
+    ("F222-03", "Chống đổ 3 dây", "Cây", "Count", 3000, 150, 200, "Prop", "1.000 đ/dây"),
+    ("F222-04", "Chống đổ 2 dây", "Cây", "Count", 2000, 150, 200, "Prop", "1.000 đ/dây"),
+    ("F222-05", "Chích bắp", "Buồng", None, 0, 0, 0, "Bud Injection", "Công nhật, phụ cấp chăm buồng 20.000 đ/người/ngày"),
+    ("F222-06", "Cắt bắp, buộc dây màu", "Buồng", None, 0, 0, 0, "Cut Bud", "Công nhật; màu dây theo lịch tuần"),
+    ("F222-07", "Cắt lá", "Ha", "Area", 300000, 1, 1.5, "", "115 đ/cây; 1 tháng 3 lần"),
+    ("F222-08", "Dọn cỏ gốc, bẹ lá khô", "Ha", "Area", 300000, 1, 1.5, "", "115 đ/cây"),
+    ("F222-09", "Dọn lá cọ buồng", "Ha", "Area", 400000, 0, 0, "", "400.000 đ/ha/tháng, 10 ha/người, làm xuyên suốt"),
+    ("F222-10", "Cào lá gốc", "Ha", "Area", 750000, 0.4, 0.4, "", "2,5 người/ha; 1 vụ làm 1 lần"),
+    ("F222-11", "Bốc vận chuyển ra lô", "Bao", "Count", 1000, 0, 0, "", "1.000 đ/bao"),
+    ("F222-12", "Bón phân hữu cơ (5 kg/gốc)", "Cây", "Trees", 600, 450, 600, "", "Định lượng 1 người"),
+    ("F222-13", "Bón lân (200–300 g/gốc)", "Cây", "Trees", 150, 2000, 2500, "", ""),
+    ("F222-14", "Bón phân hóa học (120–150 g/gốc)", "Cây", "Trees", 120, 2500, 3000, "", ""),
+    ("F222-15", "Rải tro 3 kg/gốc", "Cây", "Trees", 400, 0, 0, "", ""),
+    ("F222-16", "Rải tro 5 kg/gốc", "Cây", "Trees", 600, 0, 0, "", ""),
+    ("F222-17", "Chọn F (chọn chồi)", "Ha", "Area", 290000, 0.8, 1, "Sucker Select", ""),
+    ("F222-18", "Hạ cây, dọn cây thu hoạch", "Cây", "Count", 700, 0, 0, "", "Hạ lá, hạ thân để gọn hàng 3 m"),
+    ("F222-19", "Xịt cỏ, xịt bệnh gốc", "Ha", "Area", 300000, 1, 1.2, "", ""),
+    ("F222-20", "Xắn chồi lần 1", "Cây", "Trees", 600, 600, 600, "", "4 người/ha"),
+    ("F222-21", "Xắn chồi đã chọn chồi (khu D, E)", "Cây", "Trees", 700, 600, 600, "", "4 người/ha"),
+    ("F222-22", "Xắn chồi lần 2", "Cây", "Trees", 450, 800, 800, "", "3 người/ha"),
+    ("F222-23", "Cắt F hủy lấy đỉnh", "Cây", "Count", 400, 0, 0, "", "3,5 người/ha"),
+    ("F222-24", "Cắt chồi", "Ha", "Area", 400000, 1, 1.4, "", ""),
+    ("F222-25", "Kiểm tra, sửa béc tưới", "Ha", "Area", 75000, 0, 0, "", "3 lần/tháng, trước kế hoạch tưới phân 2 ngày"),
+    ("F222-26", "Sửa ống nước", "Ha", None, 0, 0, 0, "", "Công nhật"),
 ]
 
 # How each việc is paid, agreed 31/10/2026: (nhóm, cách trả, trần, bắt buộc vật tư). Khoán only what an independent
@@ -156,18 +156,11 @@ def apply_ledger_works(commit=0):
     return created
 
 
-def _category(name):
-    found = frappe.db.get_value("Work Category", {"category_name": name})
-    if not found:
-        frappe.throw(f"Không có nhóm công đoạn {name}.")
-    return found
-
-
 def plan():
     rows = []
-    for code, name, category, uom, basis, rate, low, high, stage, note in WORKS:
+    for code, name, uom, basis, rate, low, high, stage, note in WORKS:
         existing = frappe.db.get_value("Work Type", {"work_code": code})
-        rows.append(dict(code=code, name=name, category=_category(category), uom=uom, basis=basis, rate=rate, low=low,
+        rows.append(dict(code=code, name=name, uom=uom, basis=basis, rate=rate, low=low,
                          high=high, stage=stage, note=note, existing=existing,
                          priced=bool(existing and frappe.db.exists("Lotus Piece Rate", {"farm": FARM, "work_type": existing}))))
     crew = frappe.db.get_value("Work Team", {"farm": FARM, "lotus_team_level": "Crew", "team_name": CREW_NAME})
@@ -189,7 +182,7 @@ def apply(commit=0):
         return state
     for w in state["works"]:
         doc = frappe.get_doc("Work Type", w["existing"]) if w["existing"] else frappe.new_doc("Work Type")
-        doc.update({"work_code": w["code"], "work_name": w["name"], "category": w["category"], "uom": w["uom"], "active": 1,
+        doc.update({"work_code": w["code"], "work_name": w["name"], "uom": w["uom"], "active": 1,
                     "allow_daywork": 1, "allow_piecework": 1 if w["rate"] else 0, "piecework_rate": w["rate"] or 0,
                     "productivity_per_workday": w["low"] or w["high"] or 1, "lotus_farm": FARM, "lotus_bunch_stage": w["stage"] or None,
                     **_modes(w["code"])})

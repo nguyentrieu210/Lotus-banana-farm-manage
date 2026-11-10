@@ -1,19 +1,22 @@
-"""Vườn & lô: the lot list of a farm with area, trees, density and data gaps; one lot's page (plots, map,
-work and materials, yield and losses, disease and bunch care, change history); editing lots and plots;
-and the Excel round-trip (export, preview every change, apply the valid rows).
+"""Vườn & lô: the lot list of a farm with area, trees, density and data gaps; one lot's page (map, work and
+materials, yield and losses, disease and bunch care, change history); editing lots; and the Excel
+round-trip (export, preview every change, apply the valid rows). The lô is the smallest unit of land.
 
 Everyone with read on Farm Block sees the lots of the farms they are permitted; Administrator, System
-Manager and Lotus Farm Manager edit. Rules and the Excel comparison live in lotus_farm.farm_land_rules.
+Manager and Lotus Farm Manager edit. What was done and harvested on a lot is read from the confirmed lines
+of the sổ lô (Lotus Work Entry). Rules and the Excel comparison live in lotus_farm.farm_land_rules.
 """
 import json
 from collections import defaultdict
 from io import BytesIO
 
 import frappe
-from frappe.utils import add_days, flt, getdate, nowdate
+from frappe.utils import add_days, cint, flt, getdate, nowdate
 
 from lotus_farm import farm_land_rules as rules
 
+ENTRY = 'Lotus Work Entry'
+CARE_STAGES = ('Bud Injection', 'Cut Bud', 'Bag', 'Care', 'Prop')
 BLOCK_FIELDS = ['name', 'modified', 'farm', 'block_code', 'block_name', 'farm_zone', 'area_ha', 'variety', 'planting_date', 'planting_density',
                 'irrigation_zone', 'manager', 'active', 'notes', 'lotus_tree_count', 'lotus_tree_count_source', 'lotus_estimated_flowering_date',
                 'lotus_inferred_planting_date', 'lotus_estimation_basis', 'lotus_estimated_sucker_selection_date', 'lotus_current_cycle_no']
@@ -28,7 +31,7 @@ def _editor():
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
     if not can_edit():
-        frappe.throw('Chỉ Quản lý vườn, Quản trị hệ thống hoặc Administrator được sửa vườn, lô, thửa.', frappe.PermissionError)
+        frappe.throw('Chỉ Quản lý vườn, Quản trị hệ thống hoặc Administrator được sửa vườn, lô.', frappe.PermissionError)
 
 
 def _fields(doctype, wanted):
@@ -49,7 +52,7 @@ def _blocks(farm=None):
 
 @frappe.whitelist()
 def overview(farm=None):
-    """Farms the user may see, and the lots of one farm (or all) with plots, map and data gaps."""
+    """Farms the user may see, and the lots of one farm (or all) with map and data gaps."""
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
     farms = frappe.get_list('Farm', fields=['name', 'farm_name', 'area_ha', 'location', 'company'], order_by='name', limit_page_length=0)
@@ -57,19 +60,14 @@ def overview(farm=None):
         _farm(farm)
     blocks = _blocks(farm)
     names = [b.name for b in blocks] or ['']
-    plots = defaultdict(lambda: [0, 0.0])
-    # Plots of lots the user may see (the lot list is permission-filtered; plot read may not be granted).
-    for p in frappe.get_all('Farm Plot', filters={'farm_block': ['in', names]}, fields=['farm_block', 'area_ha'], limit_page_length=0):
-        plots[p.farm_block][0] += 1
-        plots[p.farm_block][1] += flt(p.area_ha)
     # Whether a lot has a boundary is shown to everyone who sees the lot (the geometry itself stays restricted).
     mapped = set(frappe.get_all('Farm Block Geometry', filters={'farm_block': ['in', names]}, pluck='farm_block', distinct=True))
     names_of = {v.name: v.variety_name or v.name for v in frappe.get_all('Banana Variety', fields=['name', 'variety_name'], limit_page_length=0)}
     rows = []
     for b in blocks:
         row = dict(b)
-        row.update(plots=plots[b.name][0], plots_area_ha=round(plots[b.name][1], 2), has_map=b.name in mapped,
-                   density=rules.density(b.get('lotus_tree_count'), b.area_ha), variety_label=names_of.get(b.variety, b.variety or ''))
+        row.update(has_map=b.name in mapped, density=rules.density(b.get('lotus_tree_count'), b.area_ha),
+                   variety_label=names_of.get(b.variety, b.variety or ''))
         row['gaps'] = rules.gaps(b, row['has_map'])
         row['modified'] = str(b.modified)
         for key in ('planting_date', 'lotus_estimated_flowering_date', 'lotus_inferred_planting_date', 'lotus_estimated_sucker_selection_date'):
@@ -98,15 +96,16 @@ def _range(from_date, to_date):
     return begin, end
 
 
-def _list(doctype, filters, fields, order_by=None):
-    if not frappe.db.exists('DocType', doctype) or not frappe.has_permission(doctype, 'read'):
-        return None  # the section says "no permission" instead of an empty table
-    return frappe.get_list(doctype, filters=filters, fields=_fields(doctype, fields), order_by=order_by, limit_page_length=5000)
+def _lines(doc, begin, end, fields, **filters):
+    """Confirmed lines of the sổ lô on this lot in the range. None when the user may not read the sổ lô: the
+    section then says "no permission" instead of showing an empty table."""
+    if not frappe.has_permission(ENTRY, 'read'):
+        return None
+    filters.update(farm_block=doc.name, state='Confirmed', posting_date=['between', [begin, end]])
+    return frappe.get_all(ENTRY, filters=filters, fields=fields, limit_page_length=0)
 
 
 def _overview(doc):
-    plots = frappe.get_all('Farm Plot', filters={'farm_block': doc.name}, fields=['name', 'modified', 'plot_code', 'plot_name', 'area_ha', 'active'],
-                            order_by='plot_code', limit_page_length=0)
     geometry = frappe.get_all('Farm Block Geometry', filters={'farm_block': doc.name}, fields=['geojson', 'version', 'approval_state'],
                               order_by='version desc', limit_page_length=1)
     history = []
@@ -124,92 +123,83 @@ def _overview(doc):
             values[key] = str(value)
     return dict(block=dict(values, name=doc.name, modified=str(doc.modified), farm_name=frappe.db.get_value('Farm', doc.farm, 'farm_name'),
                            density=rules.density(doc.get('lotus_tree_count'), doc.area_ha)),
-                plots=plots, geometry=dict(geojson=json.loads(geometry[0].geojson), version=geometry[0].version,
-                                           approval_state=geometry[0].approval_state) if geometry else None,
+                geometry=dict(geojson=json.loads(geometry[0].geojson), version=geometry[0].version,
+                              approval_state=geometry[0].approval_state) if geometry else None,
                 history=history, can_edit=can_edit())
 
 
 def _work(doc, begin, end):
-    window = {'farm_block': doc.name, 'posting_date': ['between', [begin, end]], 'docstatus': 1}
-    results = _list('Daily Work Result', window, ['posting_date', 'work_plan_line', 'completed_qty', 'actual_workdays'])
-    by_work = {}
-    if results:
-        lines = {l.name: l for l in frappe.get_all('Daily Work Plan Line', filters={'name': ['in', [r.work_plan_line for r in results if r.work_plan_line] or ['']]},
-                                                   fields=['name', 'work_type', 'uom'], limit_page_length=0)}
-        works = {w.name: w.work_name for w in frappe.get_all('Work Type', fields=['name', 'work_name'], limit_page_length=0)}
-        for r in results:
-            line = lines.get(r.work_plan_line) or frappe._dict()
-            key = line.work_type or 'Khác'
-            row = by_work.setdefault(key, dict(work=works.get(key, key), uom=line.uom or '', qty=0.0, workdays=0.0, days=set(), last=''))
-            row['qty'] += flt(r.completed_qty)
-            row['workdays'] += flt(r.actual_workdays)
-            row['days'].add(str(r.posting_date))
-            row['last'] = max(row['last'], str(r.posting_date))
+    """What was done on the lot: every việc with its quantity and công, công by tổ, and the materials reported used."""
+    lines = _lines(doc, begin, end, ['name', 'work_type', 'work_team', 'qty', 'uom', 'posting_date'])
+    if lines is None:
+        return dict(work=None, teams=None, materials=None)
+    from lotus_farm.field_reports import _works
+    entries = [l.name for l in lines] or ['']
+    # A buổi is half a công; a buổi shared between lines carries its share (weight) on each of them.
+    workdays = defaultdict(float)
+    for s in frappe.get_all('Lotus Work Session', filters={'entry': ['in', entries]}, fields=['entry', 'weight'], limit_page_length=0):
+        workdays[s.entry] += flt(s.weight) / 2
+    works = _works({l.work_type for l in lines})
+    by_work, by_team = {}, defaultdict(float)
+    for l in lines:
+        row = by_work.setdefault(l.work_type, dict(work=works.get(l.work_type, l.work_type), uom=l.uom or '', qty=0.0, workdays=0.0, days=set(), last=''))
+        row['qty'] += flt(l.qty)
+        row['workdays'] += workdays[l.name]
+        row['days'].add(str(l.posting_date))
+        row['last'] = max(row['last'], str(l.posting_date))
+        by_team[l.work_team] += workdays[l.name]
     work = sorted(({**v, 'days': len(v['days'])} for v in by_work.values()), key=lambda v: -v['workdays'])
-    labor = _list('Labor Allocation', window, ['work_team', 'allocated_workdays'])
-    teams = defaultdict(float)
-    for r in labor or []:
-        teams[r.work_team or 'Chưa ghi đội'] += flt(r.allocated_workdays)
-    used = _list('Material Consumption', window, ['item', 'uom', 'consumed_qty', 'issued_qty'])
-    needed = _list('Material Requirement', window, ['name'])
+    teams = {t.name: t.team_name for t in frappe.get_all('Work Team', filters={'name': ['in', [t for t in by_team if t] or ['']]}, fields=['name', 'team_name'])}
     items = {}
-    for r in used or []:
-        row = items.setdefault(r.item, dict(item=r.item, uom=r.uom, consumed=0.0, issued=0.0, required=0.0))
-        row['consumed'] += flt(r.consumed_qty)
-        row['issued'] += flt(r.issued_qty)
-    if needed:
-        for line in frappe.get_all('Material Requirement Line', filters={'parent': ['in', [n.name for n in needed]], 'parenttype': 'Material Requirement'},
-                                   fields=['item', 'uom', 'required_qty'], limit_page_length=0):
-            row = items.setdefault(line.item, dict(item=line.item, uom=line.uom, consumed=0.0, issued=0.0, required=0.0))
-            row['required'] += flt(line.required_qty)
+    for m in frappe.get_all('Lotus Work Entry Material', filters={'parenttype': ENTRY, 'parent': ['in', entries]}, fields=['item_code', 'uom', 'qty'],
+                            limit_page_length=0):
+        row = items.setdefault(m.item_code, dict(item=m.item_code, uom=m.uom, used=0.0))
+        row['used'] += flt(m.qty)
     names = {i.name: i.item_name for i in frappe.get_all('Item', filters={'name': ['in', list(items) or ['']]}, fields=['name', 'item_name'])}
-    materials = sorted(({**v, 'item_name': names.get(v['item'], v['item'])} for v in items.values()), key=lambda v: v['item_name'])
-    return dict(work=work if results is not None else None, teams=[dict(team=k, workdays=round(v, 2)) for k, v in sorted(teams.items(), key=lambda kv: -kv[1])] if labor is not None else None,
-                materials=materials if used is not None else None)
+    return dict(work=work,
+                teams=[dict(team=teams.get(k, k) or 'Chưa ghi tổ', workdays=round(v, 2)) for k, v in sorted(by_team.items(), key=lambda kv: -kv[1]) if v],
+                materials=sorted(({**v, 'item_name': names.get(v['item'], v['item'])} for v in items.values()), key=lambda v: v['item_name']))
 
 
 def _yield(doc, begin, end):
+    """The forecast of the lot by month, and what the sổ lô holds for the range: bunches harvested with their weight,
+    and bunches rejected by reason."""
     from lotus_farm.block_forecast import board
     forecasts = board(farm=doc.farm, block=doc.name)['months']
-    harvests = _list('Harvest Actual', {'farm_block': doc.name, 'harvest_date': ['between', [begin, end]], 'docstatus': 1},
-                     ['harvest_date', 'harvested_bunch_qty', 'gross_weight_kg', 'saleable_weight_kg', 'rejected_weight_kg'], order_by='harvest_date desc')
-    cancels = _list('Bunch Cancellation', {'farm_block': doc.name, 'posting_date': ['between', [begin, end]], 'docstatus': 1}, ['reason', 'bunch_qty'])
+    lines = _lines(doc, begin, end, ['stage', 'qty', 'weight_kg', 'reason'], stage=['in', ['Harvest', 'Reject']])
+    if lines is None:
+        return dict(forecasts=forecasts, harvest=None, cancellations=None)
+    harvested = [l for l in lines if l.stage == 'Harvest']
     reasons = defaultdict(int)
-    for c in cancels or []:
-        reasons[c.reason or 'Chưa ghi nguyên nhân'] += int(c.bunch_qty or 0)
+    for l in lines:
+        if l.stage == 'Reject':
+            reasons[l.reason or 'Chưa ghi nguyên nhân'] += cint(l.qty)
     labels = {r.name: r.reason_name for r in frappe.get_all('Cancellation Reason', fields=['name', 'reason_name'], limit_page_length=0)} if reasons else {}
-    measures = _list('Fruit Measurement', {'farm_block': doc.name, 'docstatus': 1}, ['posting_date', 'sample_count', 'average_length', 'average_diameter', 'uom'],
-                     order_by='posting_date desc')
-    total = lambda rows, f: round(sum(flt(r.get(f)) for r in rows or []), 2)
     return dict(forecasts=forecasts,
-                harvest=dict(rows=(harvests or [])[:30], bunches=int(total(harvests, 'harvested_bunch_qty')), gross_kg=total(harvests, 'gross_weight_kg'),
-                             saleable_kg=total(harvests, 'saleable_weight_kg')) if harvests is not None else None,
-                cancellations=[dict(reason=labels.get(k, k), bunches=v) for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])] if cancels is not None else None,
-                measurements=(measures or [])[:6] if measures is not None else None)
+                harvest=dict(lines=len(harvested), bunches=sum(cint(l.qty) for l in harvested), kg=round(sum(flt(l.weight_kg) for l in harvested), 2)),
+                cancellations=[dict(reason=labels.get(k, k), bunches=v) for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])])
 
 
 def _care(doc, begin, end):
-    window = {'farm_block': doc.name, 'posting_date': ['between', [begin, end]], 'docstatus': 1}
-    diseases = _list('Disease Observation', window, ['disease', 'affected_plants', 'severity', 'posting_date'])
-    by_disease = {}
-    for d in diseases or []:
-        row = by_disease.setdefault(d.disease, dict(disease=d.disease, observations=0, plants=0, severity='', last=''))
-        row['observations'] += 1
-        row['plants'] += int(d.affected_plants or 0)
-        row['last'] = max(row['last'], str(d.posting_date))
-        row['severity'] = d.severity if str(d.posting_date) >= row['last'] else row['severity']
-    ops = _list('Bunch Operation', {'farm_block': doc.name, 'operation_date': ['between', [begin, end]], 'docstatus': 1},
-                ['operation_date', 'operation_type', 'net_bunch_qty', 'bunch_qty'])
-    weeks = {}
-    for o in ops or []:
-        day = getdate(o.operation_date)
-        week = str(add_days(day, -day.weekday()))
-        row = weeks.setdefault((week, o.operation_type), dict(week=week, operation=o.operation_type, bunches=0))
-        row['bunches'] += int(o.net_bunch_qty or o.bunch_qty or 0)
-    planting = _list('Planting Event', window, ['posting_date', 'event_type', 'plant_qty', 'area_ha', 'notes'], order_by='posting_date desc')
-    return dict(diseases=sorted(by_disease.values(), key=lambda r: r['last'], reverse=True) if diseases is not None else None,
-                operations=sorted(weeks.values(), key=lambda r: (r['week'], r['operation']), reverse=True) if ops is not None else None,
-                planting=planting)
+    """Diseases noted on the lot (the latest severity kept) and bunch care by week and stage, from the sổ lô."""
+    lines = _lines(doc, begin, end, ['posting_date', 'stage', 'qty', 'disease', 'severity'])
+    if lines is None:
+        return dict(diseases=None, operations=None)
+    names = {d.name: d.disease_name for d in frappe.get_all('Disease', fields=['name', 'disease_name'], limit_page_length=0)}
+    by_disease, weeks = {}, {}
+    for l in sorted(lines, key=lambda l: str(l.posting_date)):
+        if l.disease:
+            row = by_disease.setdefault(l.disease, dict(disease=names.get(l.disease) or l.disease, observations=0, plants=0, severity='', last=''))
+            row['observations'] += 1
+            row['plants'] += cint(l.qty)
+            row['last'], row['severity'] = str(l.posting_date), l.severity or ''
+        if l.stage in CARE_STAGES:
+            day = getdate(l.posting_date)
+            week = str(add_days(day, -day.weekday()))
+            row = weeks.setdefault((week, l.stage), dict(week=week, stage=l.stage, qty=0))
+            row['qty'] += cint(l.qty)
+    return dict(diseases=sorted(by_disease.values(), key=lambda r: r['last'], reverse=True),
+                operations=sorted(weeks.values(), key=lambda r: (r['week'], r['stage']), reverse=True))
 
 
 @frappe.whitelist()
@@ -260,32 +250,6 @@ def save_block(name, modified, values):
     return _overview(doc)
 
 
-@frappe.whitelist(methods=['POST'])
-def save_plot(block, values, name=None, modified=None):
-    """Add or edit a plot of a lot (code, name, area, active)."""
-    _editor()
-    parent = _block(block)
-    values = frappe.parse_json(values) if isinstance(values, str) else values
-    if name:
-        doc = frappe.get_doc('Farm Plot', name)
-        if doc.farm_block != parent.name or str(doc.modified) != str(modified):
-            frappe.throw('Thửa vừa thay đổi hoặc không thuộc lô này. Tải lại.')
-    else:
-        doc = frappe.new_doc('Farm Plot')
-        doc.update(dict(company=frappe.db.get_value('Farm', parent.farm, 'company'), farm=parent.farm, farm_block=parent.name, active=1))
-    code = str(values.get('plot_code') or doc.get('plot_code') or '').strip()
-    if not code:
-        frappe.throw('Nhập mã thửa.')
-    doc.plot_code = code[:140]
-    doc.plot_name = str(values.get('plot_name') or doc.get('plot_name') or code).strip()[:140]
-    doc.area_ha = rules.parse_cell('float', values.get('area_ha', doc.get('area_ha'))) or 0
-    active = values.get('active', doc.get('active') if name else 1)
-    doc.active = 1 if active in (1, True, '1', 'true', 'True') else 0
-    doc.flags.ignore_permissions = True
-    doc.save() if name else doc.insert()
-    return _overview(parent)
-
-
 # Excel round-trip --------------------------------------------------------------------------------------
 
 @frappe.whitelist()
@@ -297,7 +261,7 @@ def export_blocks(farm):
     book = Workbook()
     sheet = book.active
     sheet.title = 'Lô'
-    header = ['Mã lô (không sửa)', *[label for _, label, _ in rules.EDITABLE], 'Số thửa', 'Tổng diện tích thửa (ha)']
+    header = ['Mã lô (không sửa)', *[label for _, label, _ in rules.EDITABLE]]
     sheet.append(header)
     for cell in sheet[1]:
         cell.font = Font(bold=True)
@@ -310,7 +274,7 @@ def export_blocks(farm):
             if kind == 'date' and value:
                 value = value[8:10] + '/' + value[5:7] + '/' + value[0:4]
             values.append(value if value not in (None, '') else '')
-        sheet.append([b['block_code'], *values, b['plots'], b['plots_area_ha']])
+        sheet.append([b['block_code'], *values])
     sheet.freeze_panes = 'B2'
     for column, width in zip('ABCDEFGHIJKLMN', (16, 22, 8, 12, 14, 13, 18, 12, 14, 26, 14, 30, 9, 16)):
         sheet.column_dimensions[column].width = width
@@ -360,7 +324,7 @@ def preview_blocks(farm, content):
         if not current:
             preview.append(dict(line=row['line'], code=row['code'], block=None, changes=[], errors=['Mã lô không có trong vườn'], warnings=[]))
             continue
-        result = rules.diff_row(current, row['values'], plots_area=current['plots_area_ha'], known_zones=zones)
+        result = rules.diff_row(current, row['values'], known_zones=zones)
         if result['changes'].get('variety') and not frappe.db.exists('Banana Variety', result['changes']['variety'][1]):
             result['errors'].append('Giống "%s" chưa có trong danh mục giống' % result['changes']['variety'][1])
         preview.append(dict(line=row['line'], code=row['code'], block=current['name'], modified=current['modified'],
@@ -405,6 +369,5 @@ def commit_blocks(farm, token):
 def install():
     """Keep a change history of lots (who changed area, tree count, variety, when)."""
     from frappe.custom.doctype.property_setter.property_setter import make_property_setter
-    for doctype in ('Farm Block', 'Farm Plot'):
-        if frappe.db.exists('DocType', doctype) and not frappe.get_meta(doctype).track_changes:
-            make_property_setter(doctype, None, 'track_changes', 1, 'Check', for_doctype=True, validate_fields_for_doctype=False)
+    if frappe.db.exists('DocType', 'Farm Block') and not frappe.get_meta('Farm Block').track_changes:
+        make_property_setter('Farm Block', None, 'track_changes', 1, 'Check', for_doctype=True, validate_fields_for_doctype=False)

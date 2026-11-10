@@ -27,9 +27,8 @@ const columns=[
  {field:'cycle_no',headerName:'Vụ dự kiến',minWidth:110},
  {field:'variety_label',headerName:'Giống',minWidth:130},
  {field:'wave',headerName:'Đợt trổ',minWidth:105,sum:false},
- {field:'qty_basis',headerName:'Nguồn số lượng',minWidth:120,valueFormatter:p=>({'Trees':'Số cây','Selected Suckers':'Chồi đã chọn','Bunches':'Buồng trổ'})[p.value]||p.value},
  {field:'tree_qty',headerName:'Số cây đợt',minWidth:135,sum:false,valueFormatter:p=>fmt(p.value)},
- {field:'count_status',headerName:'Cơ sở số cây',minWidth:175,valueFormatter:p=>p.value==='Planning Baseline'?'Số cây gốc đã chốt':p.value==='Census Confirmed'?'Số cây thực địa':p.value==='Cohort Approved'?'Đợt cây đã duyệt':p.value},
+ {field:'count_status',headerName:'Cơ sở số cây',minWidth:175,valueFormatter:p=>p.value==='Planning Baseline'?'Số cây gốc đã chốt':p.value==='Census Confirmed'?'Số cây thực địa':p.value},
  {field:'parameter_status',headerName:'Thông số',minWidth:185,valueFormatter:p=>p.value==='Approved'?'Đã duyệt':'Kịch bản chưa duyệt'},
  {field:'profile',headerName:'Phiên bản thông số',minWidth:150},
  {field:'flower_window_start',headerName:'Bắt đầu trổ',minWidth:135,valueFormatter:p=>dateFmt(p.value)},
@@ -50,13 +49,6 @@ const monthColumns=[
  {field:'month',headerName:'Tháng thu'},
  {field:'bunches',headerName:'Buồng dự kiến',valueFormatter:p=>fmt(p.value)},
  {field:'packed_kg',headerName:'Thành phẩm (kg)',valueFormatter:p=>fmt(p.value)},
-]
-const actualColumns=[
- {field:'farm_block_label',headerName:'Lô'},
- {field:'crop_cycle',headerName:'Vụ'},
- {field:'operation_date',headerName:'Ngày thực tế',valueFormatter:p=>dateFmt(p.value)},
- {field:'operation_type',headerName:'Công đoạn'},
- {field:'net_bunch_qty',headerName:'Số buồng thực tế',valueFormatter:p=>fmt(p.value)}
 ]
 function changeScope(changes){router.push({path:'/forecast',query:{...route.query,...changes}})}
 async function load(){
@@ -109,13 +101,8 @@ onMounted(load)
    </section>
    <section class="land-card">
     <h3>Dự thu theo từng lô, vụ và đợt trổ</h3>
-    <div class="land-table"><DataTable :rows="data?.rows||[]" :columns="columns" row-key="key" storage-key="block-forecast-rows" empty="Chưa có số cây, ngày trổ hoặc đợt cây được duyệt."/></div>
+    <div class="land-table"><DataTable :rows="data?.rows||[]" :columns="columns" row-key="key" storage-key="block-forecast-rows" empty="Chưa có số cây hoặc ngày trổ ước tính của lô."/></div>
     <p v-for="(w,i) in data?.warnings||[]" :key="i" class="land-note">{{w}}</p>
-   </section>
-   <section class="land-card">
-    <h3>Số trổ, chích và cắt bắp đã ghi nhận thực tế</h3>
-    <p class="land-note">Chỉ lấy chứng từ Bunch Operation đã nộp (docstatus=1); trình bày riêng để kiểm tra sai lệch, không cộng lần hai với dự thu. Chưa tự phân bổ thao tác thực tế vào một đợt trổ nếu chưa có mã đợt liên kết chắc chắn.</p>
-    <div class="land-table"><DataTable :rows="data?.actuals||[]" :columns="actualColumns" row-key="name" storage-key="forecast-observed-milestones" empty="Chưa có bản ghi trổ/chích/cắt bắp đã duyệt."/></div>
    </section>
   </template>
   <ForecastProfiles v-else :farm="farm" :blocks="data?.blocks||[]" :valid-from="data?.window_start" :valid-to="data?.window_end" @changed="load"/>
