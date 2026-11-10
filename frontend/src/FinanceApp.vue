@@ -290,6 +290,7 @@ async function postResult(){saving.value=true
  try{const r=await call(F+'closing.result_post',{month:resultView.value.month},true);notice.value='Đã kết chuyển kết quả kinh doanh tháng '+resultView.value.month+': '+(r.profit>=0?'lãi ':'lỗ ')+vnd(Math.abs(r.profit))+' ('+r.voucher+').';resultView.value=null}
  catch(e){error.value=e.message}finally{saving.value=false}}
 const costingView=ref(null)
+const costingWaiting=computed(()=>costingView.value?.waiting?.text||'')
 async function previewCosting(m){await ensureLookups();await run(async()=>{costingView.value=await call(F+'costing.preview',{month:m})})}
 async function postCosting(){saving.value=true
  try{const r=await call(F+'costing.run',{month:costingView.value.month},true)
@@ -320,6 +321,7 @@ const payrollPendingColumns=[{field:'month',headerName:'Tháng',minWidth:100,val
 const kgCol=(field,headerName)=>({field,headerName,minWidth:120,type:'numericColumn',valueFormatter:p=>p.value?num(p.value,1):''})
 const shiftColumns=computed(()=>[{field:'shift_code',headerName:'Ca',minWidth:120},{field:'farm',headerName:'Vườn',minWidth:120},dateCol('posting_date','Ngày'),
  kgCol('finished_kg','Kg thành phẩm'),kgCol('secondary_kg','Kg phụ phẩm'),{field:'cartons',headerName:'Thùng',minWidth:90,type:'numericColumn',valueFormatter:p=>p.value?num(p.value):''},
+ {field:'stock_entry',headerName:'Phiếu nhập kho',minWidth:190,valueFormatter:p=>p.value?p.value+' (nháp, chờ Kho duyệt)':'Chưa lập'},
  ...(overview.value?.can_post?[{field:'__receive',headerName:'',minWidth:170,sortable:false}]:[])])
 const costingColumns=[{field:'label',headerName:'Lô',minWidth:170,flex:2,valueGetter:p=>p.node?.rowPinned?p.data.label:p.data.label+(p.data.lotus_farm_block&&p.data.lotus_farm?' · '+p.data.lotus_farm:'')},
  {field:'cycle_no',headerName:'Vụ số',minWidth:80,type:'numericColumn',valueFormatter:p=>p.value||''},moneyCol('wip_open','Dở dang đầu kỳ'),moneyCol('cost_month','Chi phí tháng'),{field:'kg_harvested',headerName:'Kg thu',minWidth:100,type:'numericColumn',valueFormatter:p=>p.value?num(p.value,1):''},
@@ -472,9 +474,9 @@ useNoticeToast(notice)
   <FormSection title="Xuất kho chưa gắn lô" description="Chi phí của các dòng này chưa vào lô nào. Sửa ô &quot;Khu vực / lô sử dụng&quot; thành mã lô trong danh sách khi lập phiếu.">
    <DataTable :rows="keyed(pendingData.issues)" :columns="issueColumns" row-key="__key" storage-key="fin-issues" interactive empty="Mọi dòng xuất kho đã gắn lô." @open="r=>openWarehouse(r.name)"/>
   </FormSection>
-  <FormSection title="Ca đóng gói đã đóng, chưa nhập kho" description="Phiếu nhập kho thành phẩm lập ở dạng nháp theo giá thành tạm tính / kg (giá thành thực tế gần nhất của lô, chưa có thì giá kế hoạch ở Thiết lập): Nợ 155 / Có 154 theo lô. Kiểm rồi duyệt ở Kho; cuối tháng tính lại giá thành thực tế.">
-   <DataTable :rows="pendingData.shifts||[]" :columns="shiftColumns" row-key="name" storage-key="fin-shifts" empty="Mọi ca đã đóng đều có phiếu nhập kho.">
-    <template #cell-__receive="{row}"><UiButton size="sm" variant="outline" @click.stop="receiveShift(row)">Lập phiếu nhập kho</UiButton></template>
+  <FormSection title="Ca đóng gói đã đóng, chưa nhập kho" description="Phiếu nhập kho thành phẩm lập ở dạng nháp theo giá thành tạm tính / kg (giá thành thực tế gần nhất của lô, chưa có thì giá kế hoạch ở Thiết lập): Nợ 155 / Có 154 theo lô. Kiểm rồi để Kho duyệt; ca còn ở đây cho đến khi phiếu được duyệt, và tháng của ca chưa tính giá thành, chưa khóa sổ được. Cuối tháng tính lại giá thành thực tế.">
+   <DataTable :rows="pendingData.shifts||[]" :columns="shiftColumns" row-key="name" storage-key="fin-shifts" empty="Mọi ca đã đóng đều đã nhập kho (phiếu nhập đã duyệt).">
+    <template #cell-__receive="{row}"><UiButton v-if="row.stock_entry" size="sm" variant="outline" @click.stop="openWarehouse(row.stock_entry)">Mở phiếu nháp</UiButton><UiButton v-else size="sm" variant="outline" @click.stop="receiveShift(row)">Lập phiếu nhập kho</UiButton></template>
    </DataTable>
   </FormSection>
  </template>
@@ -731,10 +733,12 @@ useNoticeToast(notice)
   </template>
  </ModalForm>
 
- <ModalForm :model-value="!!costingView" title="Tính giá thành chuối" :busy="saving" width="1180px" :readonly="!(settings?.is_chief&&!costingView?.posted?.voucher)" submit-label="Ghi sổ giá thành" :submit-disabled="!costingView?.closed||!costingView?.rows.length||!settings?.enabled" @update:model-value="v=>{if(!v)costingView=null}" @submit="postCosting">
+ <ModalForm :model-value="!!costingView" title="Tính giá thành chuối" :busy="saving" width="1180px" :readonly="!(settings?.is_chief&&!costingView?.posted?.voucher)" submit-label="Ghi sổ giá thành" :submit-disabled="!costingView?.closed||!costingView?.rows.length||!settings?.enabled||!!costingWaiting" @update:model-value="v=>{if(!v)costingView=null}" @submit="postCosting">
   <template v-if="costingView">
    <p>Tháng {{costingView.month}} · ngày hạch toán {{vnDate(costingView.posting_date)}} · {{num(costingView.totals.kg_harvested,1)}} kg thu · giá thành sản lượng <b>{{vnd(costingView.totals.absorbed)}}</b> · chênh lệch so với tạm tính <b>{{vnd(costingView.totals.adjustment)}}</b></p>
-   <p class="lotus-form-note">Mỗi lô: (dở dang đầu kỳ + chi phí tháng) × kg thu ÷ (kg thu + kg dự thu còn lại). Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Chênh lệch của phần đã bán: dương ghi Nợ 632 / Có 154, âm ghi ngược lại.</p>
+   <p class="lotus-form-note">Mỗi lô: (dở dang đầu kỳ + chi phí tháng) × kg thu ÷ (kg thu + kg dự thu còn lại). Kg thu là kg nhập kho trong tháng (thành phẩm + phụ phẩm). Kg dự thu còn lại là kg thành phẩm màn Dự thu còn chờ ở lô sau ngày cuối tháng, tính đến hết một vòng cây (chồi chọn ngày cuối tháng tới khi thu xong), quy về kg nhập kho theo tỷ lệ kg nhập / kg thành phẩm của tháng. Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Chênh lệch của phần đã bán: dương ghi Nợ 632 / Có 154, âm ghi ngược lại.</p>
+   <p v-if="costingWaiting" class="land-bad">Tháng còn {{costingWaiting}}. Lập phiếu nhập kho ở Chờ hạch toán và để Kho duyệt (hoặc xóa phiếu nháp sai) trước khi ghi sổ giá thành.</p>
+   <p v-if="costingView.out_of_date" class="land-warn">Phiếu nhập kho chuối của tháng đã đổi sau khi tính giá thành: bảng đã lưu không còn khớp. Đảo bút toán giá thành (nếu có) rồi tính lại.</p>
    <p v-if="costingView.unsold?.kg_unsold" class="land-warn">Cuối tháng còn {{num(costingView.unsold.kg_unsold,1)}} kg trong {{num(costingView.unsold.kg_received,1)}} kg nhập kho của tháng chưa bán. Chênh lệch của phần còn tồn ({{vnd(costingView.totals.unsold_adjustment)}}) không vào 632: ở lại 154 theo từng lô và tính tiếp vào giá thành lần thu sau.</p>
    <p v-if="!costingView.closed" class="land-warn">Chưa kết chuyển chi phí 621 / 622 / 627 sang 154 của tháng này. Bấm "Kết chuyển CP" trước.</p>
    <p v-if="costingView.posted?.voucher" class="land-warn">Tháng này đã tính giá thành ({{costingView.posted.voucher}}). Đảo bút toán đó nếu cần tính lại.</p>

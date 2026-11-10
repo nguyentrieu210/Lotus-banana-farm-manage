@@ -35,8 +35,7 @@ def month_checklist(month):
     setup.require_view()
     company = setup.company()
     m = setup.mapping()
-    from lotus_farm.finance import closing, payments, reports
-    from lotus_farm.finance.costing import _receipts
+    from lotus_farm.finance import closing, costing, payments, reports
     start, end = closing._bounds(month)
     steps = []
 
@@ -46,6 +45,8 @@ def month_checklist(month):
     step('invoices', 'Phiếu nhận hàng trong tháng đã có hóa đơn', not receipts, '%d phiếu chưa có hóa đơn' % len(receipts) if receipts else '', go='pending')
     issues = [i for i in reports.pending()['issues'] if start <= i['posting_date'] <= end]
     step('lots', 'Phiếu xuất kho đã gắn lô', not issues, '%d dòng xuất chưa gắn lô' % len(issues) if issues else '', go='pending')
+    left = costing.waiting_text(costing.waiting(company, month))
+    step('shifts', 'Ca đóng gói trong tháng đã nhập kho thành phẩm (phiếu nhập Kho đã duyệt)', not left, left, go='pending')
     period = frappe.db.get_value('Lotus Timekeeping Period', {'company': company, 'month': month}, ['name', 'status'], as_dict=True)
     payroll_done = bool(period and posting.active('Lotus Timekeeping Period', period.name, 'Payroll'))
     step('payroll', 'Bảng lương đã ký đủ và ghi sổ', payroll_done, '' if payroll_done else ('Kỳ công chưa khóa' if not period or period.status != 'Closed' else 'Chưa ghi sổ lương'),
@@ -69,9 +70,12 @@ def month_checklist(month):
     cost_done = bool(posting.active(setup.SETTINGS, setup.SETTINGS, 'Cost Closing', month))
     step('cost_closing', 'Kết chuyển chi phí 621 / 622 / 627 sang 154', cost_done or not leftover, '' if cost_done or not leftover else 'Còn chi phí chưa kết chuyển',
          go='settings')
-    harvested = frappe.db.count('Stock Entry', {'name': ['in', _receipts(company) or ['']], 'posting_date': ['between', [start, end]]})
+    harvested = frappe.db.count('Stock Entry', {'name': ['in', costing._receipts(company) or ['']], 'posting_date': ['between', [start, end]]})
     costed = frappe.db.exists('Lotus Costing Run', {'company': company, 'month': month, 'state': 'Posted'})
-    step('costing', 'Tính giá thành chuối', bool(costed), '' if costed else 'Có nhập kho thu hoạch, chưa tính giá thành', applies=bool(harvested or costed), go='settings')
+    stale = bool(costed) and costing.out_of_date(company, month)
+    step('costing', 'Tính giá thành chuối', bool(costed) and not stale,
+         'Phiếu nhập kho chuối của tháng đã đổi sau khi tính giá thành: tính lại' if stale else 'Có nhập kho thu hoạch, chưa tính giá thành',
+         applies=bool(harvested or costed), go='settings')
     result = closing.result_preview(month)
     step('result', 'Kết chuyển kết quả kinh doanh 911 → 4212', bool(result['posted']) or not result['lines'],
          '' if result['posted'] or not result['lines'] else ('%s %s đ chưa kết chuyển' % ('Lãi' if result['profit'] >= 0 else 'Lỗ', format(abs(result['profit']), ',').replace(',', '.'))),

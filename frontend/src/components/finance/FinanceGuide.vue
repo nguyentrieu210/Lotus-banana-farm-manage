@@ -28,7 +28,7 @@ const START=[
 ]
 const DAILY=[
  ['Kho','Phiếu nhập: chọn lý do — Mua ngoài (chọn nhà cung cấp), Thu hồi vật tư (ghi mã lô thu về), Thừa kiểm kê. Phiếu xuất: gõ mã lô đầu ô lô (VD "A-1 / thửa 2"), danh sách gợi ý có sẵn. Kiểm kê thừa và thiếu lập hai phiếu riêng.'],
- ['Xưởng / kế toán — chuối thành phẩm','Ca đóng gói đã đóng hiện ở Chờ hạch toán › Ca đóng gói đã đóng, chưa nhập kho → Lập phiếu nhập kho (cũng lập được ở màn Xưởng). Phiếu là bản nháp theo giá thành tạm tính, kế toán kiểm rồi duyệt ở Kho. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
+ ['Xưởng / kế toán — chuối thành phẩm','Ca đóng gói đã đóng hiện ở Chờ hạch toán › Ca đóng gói đã đóng, chưa nhập kho → Lập phiếu nhập kho (cũng lập được ở màn Xưởng). Phiếu là bản nháp theo giá thành tạm tính: kế toán kiểm, Kho duyệt. Ca vẫn nằm trong danh sách (cột Phiếu nhập kho ghi phiếu nháp, nút Mở phiếu nháp) cho đến khi phiếu được duyệt. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
  ['Kế toán — mua hàng','Chờ hạch toán: chọn các phiếu nhận hàng cùng nhà cung cấp → Lập hóa đơn (số, ngày hóa đơn, thuế suất GTGT). Xem "Xuất kho chưa gắn lô" và nhắc kho sửa.'],
  ['Kế toán — bán hàng','Bán hàng – Phải thu › Lập hóa đơn bán: chọn khách hàng, hàng trong kho thành phẩm, số lượng, đơn giá, thuế suất (chuối của vườn: Không chịu thuế), ký hiệu và số hóa đơn điện tử. Hóa đơn xuất kho luôn.'],
  ['Kế toán — thu tiền','Bán hàng – Phải thu › Thu tiền ở dòng khách hàng: nhập số tiền thu từng hóa đơn, tiền mặt hay chuyển khoản (số báo có). Phiếu thu ghi sổ ngay, không cần ký.'],
@@ -38,12 +38,12 @@ const DAILY=[
 ]
 const MONTH=[
  'Mở Thiết lập › Đóng tháng — danh sách kiểm tra, chọn tháng. Lotus tự đánh dấu bước nào đã xong; làm lần lượt từ trên xuống.',
- 'Chờ hạch toán trống: mọi phiếu nhận hàng đã có hóa đơn, không còn dòng xuất kho thiếu lô, ca đóng gói đã đóng đều có phiếu nhập kho.',
+ 'Chờ hạch toán trống: mọi phiếu nhận hàng đã có hóa đơn, không còn dòng xuất kho thiếu lô, ca đóng gói đã đóng của tháng đều đã nhập kho bằng phiếu Kho đã duyệt. Còn ca chưa lập phiếu hay phiếu nhập kho nháp trong tháng thì chưa tính giá thành, chưa kết chuyển 911 và chưa khóa tháng được.',
  'Bảng lương tháng đã ký đủ → Chờ hạch toán › Xem trước bút toán → Ghi sổ. Sau đó lập phiếu chi lương ở Thu / Chi (Lotus trừ phần đã tạm ứng) và tải danh sách chuyển khoản.',
  'Nộp bảo hiểm, kinh phí công đoàn, thuế TNCN của tháng trước: Thu / Chi › Nộp BH, KPCĐ, thuế TNCN.',
  'Phiếu chi trong tháng đã ký xong hoặc đã hủy.',
  'Thiết lập › Kết chuyển CP của tháng: chuyển 621 / 622 / 627 sang 154 theo từng lô.',
- 'Thiết lập › Giá thành của tháng: xem bảng giá thành từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính của phần đã bán vào 632; phần của hàng còn tồn cuối tháng ở lại 154.',
+ 'Thiết lập › Giá thành của tháng: xem bảng giá thành từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính của phần đã bán vào 632; phần của hàng còn tồn cuối tháng ở lại 154. Phiếu nhập kho của tháng thêm hay hủy sau khi tính thì danh sách kiểm tra báo: đảo bút toán giá thành (nếu có) rồi tính lại.',
  'Thiết lập › KQKD 911: kết chuyển doanh thu, chi phí của tháng sang 911 và lãi / lỗ sang 4212.',
  'Báo cáo › Đối chiếu: mọi dòng "Khớp". Báo cáo › Bảng cân đối phát sinh: Nợ = Có. Báo cáo › B01: tài sản = nguồn vốn. Báo cáo › Thuế GTGT: bảng kê khớp sổ.',
  'Thiết lập › Khóa tháng. Muốn sửa sau khi khóa: Kế toán trưởng mở lại kỳ kèm lý do.',
@@ -108,7 +108,8 @@ const FAQ=[
  ['Vì sao Giám đốc không thấy sổ sách?','Người duyệt chi chỉ thấy phiếu chờ mình ký. Muốn xem sổ cần vai trò Kế toán / Kế toán trưởng / Kiểm soát.'],
  ['Ngày nhập ở đâu cũng là dd/mm/yyyy?','Đúng, các ô ngày trong màn kế toán nhập theo ngày/tháng/năm.'],
  ['Chuối bán ra có thuế GTGT không?','Chuối do vườn tự trồng, chưa chế biến hoặc chỉ sơ chế thông thường (rửa, đóng thùng) bán ra không chịu thuế GTGT (Luật 48/2024/QH15 Điều 5): chọn "Không chịu thuế". Hàng khác chọn đúng thuế suất trên hóa đơn.'],
- ['Giá thành chuối tính thế nào?','Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại của lô, lấy ở màn Dự thu). Lô không còn kg dự thu thì dồn hết. Chi phí chung của vườn chia theo kg của cả vườn. Phần chưa thu nằm lại 154.'],
+ ['Giá thành chuối tính thế nào?','Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại). Kg thu là kg nhập kho trong tháng (thành phẩm + phụ phẩm). Kg dự thu còn lại là kg thành phẩm dự thu chung (màn Dự thu) còn chờ ở lô sau ngày cuối tháng, đếm theo ngày đến hết một vòng cây: chồi chọn ngày cuối tháng tới khi thu xong, theo bộ thông số dự thu (mặc định 6 tháng tới trổ, 86 ngày tới thu, thu trong 30 ngày). Quả xa hơn mọc trên cây chưa có, chưa nhận chi phí nào. Phần dự thu theo số cây chỉ tính trong 36 tháng kể từ tháng có Trổ dự kiến sớm nhất của các lô: khi khung đó dừng trước ngày cần (lô có Trổ dự kiến cũ, chưa cập nhật theo vụ đang trồng), Lotus không tính giá thành mà chỉ ra các lô cần cập nhật Trổ dự kiến ở Vườn & lô. Kg đó quy về kg nhập kho theo tỷ lệ kg nhập / kg thành phẩm của lô trong tháng (lô chỉ có phụ phẩm thì theo cả vườn); cột Cách tính ghi hệ số. Sổ lô tính theo ngày làm việc của dòng: buồng thu ngày cuối tháng, sáng hôm sau mới xác nhận, vẫn là của tháng. Lô không còn kg dự thu thì dồn hết. Chi phí chung của vườn chia theo kg của cả vườn. Phần chưa thu nằm lại 154.'],
+ ['Cột "Vụ số" trên bảng giá thành lấy ở đâu?','Vụ có nhiều buồng nhất trong các dòng thu hoạch đã xác nhận của lô, ngày làm việc trong tháng. Lô không có dòng thu hoạch trong tháng và dòng chi phí chung của vườn để trống.'],
  ['Đã tính giá thành nhưng cần tính lại?','Kế toán trưởng đảo bút toán giá thành của tháng (Nhật ký → Đảo), rồi tính lại. Nếu đã kết chuyển 911 thì đảo bút toán đó trước.'],
  ['Lotus có nộp tờ khai thuế, hóa đơn điện tử không?','Chưa: Lotus lập số liệu và bảng kê; kế toán khai trên HTKK / eTax và lập hóa đơn trên phần mềm hóa đơn điện tử, rồi nhập số hóa đơn vào Lotus.'],
 ]

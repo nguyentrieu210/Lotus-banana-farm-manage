@@ -1,22 +1,23 @@
 """Tài chính – Kế toán: giá thành chuối (Thông tư 99, 621/622/627 → 154 → 155).
 
 1. A closed packhouse shift enters stock through receive_shift, as a draft Material Receipt the accountant reviews and
-   submits: finished and secondary kg per source lô, valued at kg brought in × the lô's provisional cost per kg (its
-   last actual cost, else the planned cost in the settings): Nợ 155 / Có 154 of that lô.
+   the warehouse submits: finished and secondary kg per source lô, valued at kg brought in × the lô's provisional cost
+   per kg (its last actual cost, else the planned cost in the settings): Nợ 155 / Có 154 of that lô. Until the receipt
+   is submitted the shift still waits in Chờ hạch toán, and its month can be neither costed nor closed (waiting).
 2. At month end, after the 621/622/627 → 154 transfer, run() costs each lot's harvest: (work in progress at the start +
-   costs of the month) × kg received / (kg received + kg the shared forecast still expects from the lot). A lot the
-   forecast expects nothing more from gives all its cost to the month's harvest. Farm costs without a lot (crews,
-   packing, overheads) form a farm pool costed the same way on the farm's kg. The difference with the provisional rate
-   goes to cost of goods sold (632) for the fruit that left stock; the part of the fruit still in stock when the month
-   ends stays in 154 on the lot (rules.costing_rows).
+   costs of the month) × kg received / (kg received + kg the shared forecast still expects from the lot over one crop
+   pipeline, put on the basis of the kg received). A lot the forecast expects nothing more from gives all its cost to
+   the month's harvest. Farm costs without a lot (crews, packing, overheads) form a farm pool costed the same way on the
+   farm's kg. The difference with the provisional rate goes to cost of goods sold (632) for the fruit that left stock;
+   the part of the fruit still in stock when the month ends stays in 154 on the lot (rules.costing_rows).
 """
 import calendar
-import datetime
 from contextlib import contextmanager
 
 import frappe
-from frappe.utils import cint, flt, get_datetime, getdate, now_datetime
+from frappe.utils import flt, getdate
 
+from lotus_farm import lot_ledger_rules as ledger
 from lotus_farm.finance import posting, rules, setup
 
 RUN, ROW = 'Lotus Costing Run', 'Lotus Costing Row'
@@ -36,6 +37,46 @@ def _last_cost(block):
 def _receipts(company):
     return frappe.get_all('Stock Entry', filters={'company': company, 'docstatus': 1, 'lotus_receipt_reason': 'Harvest'}, pluck='name') \
         if frappe.get_meta('Stock Entry').has_field('lotus_receipt_reason') else []
+
+
+def waiting(company, month):
+    """The month's packhouse output not in stock yet: closed shifts dated in the month (from the cutover) without a
+    receipt, and harvest receipts dated in the month still in draft. Costing and closing the month wait for both."""
+    start, end = _bounds(month)
+    cutover = setup.settings().cutover_date
+    since = max(start, str(cutover)) if cutover else start
+    shifts = frappe.db.sql("""select p.name from `tabPackhouse Shift` p left join `tabStock Entry` e on e.name=p.stock_entry and e.docstatus < 2
+        where p.docstatus=1 and p.company=%s and p.posting_date between %s and %s and e.name is null order by p.posting_date, p.name""",
+                           (company, since, end), pluck=True)
+    drafts = frappe.get_all('Stock Entry', filters={'company': company, 'docstatus': 0, 'lotus_receipt_reason': 'Harvest',
+                                                    'posting_date': ['between', [start, end]]}, pluck='name', order_by='posting_date asc, name asc') \
+        if frappe.get_meta('Stock Entry').has_field('lotus_receipt_reason') else []
+    return dict(shifts=list(shifts), drafts=list(drafts))
+
+
+def waiting_text(left):
+    """What waiting() found, for a message: '' when nothing waits."""
+    parts = []
+    if left['shifts']:
+        parts.append('%d ca đóng gói đã đóng chưa lập phiếu nhập kho' % len(left['shifts']))
+    if left['drafts']:
+        parts.append('%d phiếu nhập kho thành phẩm còn nháp (%s)' % (len(left['drafts']), ', '.join(left['drafts'][:5]) + (', …' if len(left['drafts']) > 5 else '')))
+    return ', '.join(parts)
+
+
+def out_of_date(company, month):
+    """A posted costing sheet of the month that no longer matches its harvest receipts: the kg of some lô differ because
+    a receipt dated in the month was submitted or cancelled after the run."""
+    run = frappe.db.get_value(RUN, {'company': company, 'month': month, 'state': 'Posted'})
+    if not run:
+        return False
+    start, end = _bounds(month)
+    costed = dict(frappe.db.sql("""select lotus_farm_block, sum(kg_harvested) from `tabLotus Costing Row` where parenttype=%s and parent=%s
+        and ifnull(lotus_farm_block, '')!='' group by lotus_farm_block""", (RUN, run)))
+    received = dict(frappe.db.sql("""select d.lotus_farm_block, sum(d.transfer_qty) from `tabStock Entry Detail` d join `tabStock Entry` e on e.name=d.parent
+        where e.name in %s and e.posting_date between %s and %s and ifnull(d.lotus_farm_block, '')!='' group by d.lotus_farm_block""",
+                                  (tuple(_receipts(company)) or ('',), start, end)))
+    return any(round(flt(costed.get(b)) - flt(received.get(b)), 3) for b in set(costed) | set(received))
 
 
 @frappe.whitelist(methods=['POST'])
@@ -132,20 +173,25 @@ def _whole_farm():
 
 
 def _forecast_kg(farm, end):
-    """kg the shared forecast (Dự thu) still expects from each lô of a farm after the month, over the weeks that screen
-    shows. A month already over is read as the sổ lô stood when it ended, so the figure does not move with the day the
-    costing runs; a month still running is read now, counting the weeks that start after it."""
+    """kg of finished fruit the shared forecast (Dự thu) still expects from each lô of a farm after the month: every
+    bunch due after its last day, day by day, up to one crop pipeline later (rules.remaining_kg). The sổ lô counts by the
+    work day of its lines, as it stands when the costing runs: what was harvested up to the last day is no longer
+    expected, whenever it was confirmed, and what is still due comes in from the next day, or from today while the month
+    is still running (block_forecast.bunches_after). A preview or run after a correction of the sổ lô, of the parameter
+    sets or of the tree counts uses the corrected figures. The tree-count forecast covers a window that starts in the
+    month of the farm's earliest estimated flowering date: when it ends before the last day read, the costing is refused
+    (rules.forecast_gap) and names the lô whose date holds the window back, rather than run on a forecast cut short."""
     from lotus_farm import block_forecast
-    moment = get_datetime(end) + datetime.timedelta(days=1)
-    over = moment <= now_datetime()
     with _whole_farm():
-        summary, _ = block_forecast.bunch_summary(farm, as_of=moment if over else None)
-    starts = {w['week']: w['start'] for w in summary['weeks']}
-    kg = {}
-    for r in summary['rows']:
-        if over or starts[r['week']] > end:
-            kg[r['block']] = kg.get(r['block'], 0) + flt(r['kg'])
-    return kg
+        cohorts, reach = block_forecast.bunches_after(farm, end)
+    gap = rules.forecast_gap(end, reach)
+    if gap:
+        until, need, last, start = (getdate(d).strftime('%d/%m/%Y') for d in (gap['until'], gap['need'], end, gap['start']))
+        lots = ', '.join(gap['blocks'][:10]) + (', …' if len(gap['blocks']) > 10 else '')
+        frappe.throw('Chưa tính được giá thành: dự thu theo số cây của vườn %s chỉ tính tới %s, vì khung dự thu bắt đầu từ tháng trổ dự kiến sớm nhất '
+                     'của các lô; giá thành cần dự thu tới %s (hết một vòng cây sau ngày %s). Ở Vườn & lô, cập nhật Trổ dự kiến theo vụ đang trồng '
+                     '(cùng Vụ hiện tại) cho các lô có Trổ dự kiến trước %s (%s), rồi tính lại.' % (farm, until, need, last, start, lots))
+    return rules.remaining_kg(cohorts, end)
 
 
 def _pools(company, month):
@@ -158,7 +204,7 @@ def _pools(company, month):
 
     def pool(farm, block):
         return pools.setdefault(_key(farm, block), dict(lotus_farm=farm, lotus_farm_block=block or None, wip_open=0, cost_month=0,
-                                                         provisional=0, kg_harvested=0, kg_remaining=0))
+                                                         provisional=0, kg_harvested=0, kg_finished=0, kg_remaining=0, kg_mix=1.0))
     for r in frappe.db.sql("""select lotus_farm, lotus_farm_block, sum(debit-credit) v from `tabGL Entry` where company=%s and is_cancelled=0
             and account=%s and posting_date < %s group by lotus_farm, lotus_farm_block""", (company, wip, start), as_dict=True):
         pool(r.lotus_farm, r.lotus_farm_block)['wip_open'] += flt(r.v)
@@ -170,12 +216,17 @@ def _pools(company, month):
             p['provisional'] += -flt(r.v)
         else:
             p['cost_month'] += flt(r.v)
-    kg_by_farm = {}
-    for r in frappe.db.sql("""select d.lotus_farm, d.lotus_farm_block, sum(d.transfer_qty) kg from `tabStock Entry Detail` d
+    # kg received: finished + secondary; the finished part is what the forecast counts.
+    kg_by_farm, finished_by_farm = {}, {}
+    for r in frappe.db.sql("""select d.lotus_farm, d.lotus_farm_block, sum(d.transfer_qty) kg,
+            sum(case when d.item_code=%s then d.transfer_qty else 0 end) finished from `tabStock Entry Detail` d
             join `tabStock Entry` e on e.name=d.parent where e.name in %s and e.posting_date between %s and %s
-            group by d.lotus_farm, d.lotus_farm_block""", (receipts, start, end), as_dict=True):
-        pool(r.lotus_farm, r.lotus_farm_block)['kg_harvested'] += flt(r.kg)
+            group by d.lotus_farm, d.lotus_farm_block""", (setup.settings().get('packed_item') or '', receipts, start, end), as_dict=True):
+        p = pool(r.lotus_farm, r.lotus_farm_block)
+        p['kg_harvested'] += flt(r.kg)
+        p['kg_finished'] += flt(r.finished)
         kg_by_farm[r.lotus_farm] = kg_by_farm.get(r.lotus_farm, 0) + flt(r.kg)
+        finished_by_farm[r.lotus_farm] = finished_by_farm.get(r.lotus_farm, 0) + flt(r.finished)
     # The forecast only matters where fruit came in: without kg received a pool keeps all its cost in progress.
     remaining = {}
     for farm in sorted(f for f in kg_by_farm if f):
@@ -183,9 +234,12 @@ def _pools(company, month):
         remaining.update({_key(farm, block): kg for block, kg in by_block.items()})
         remaining[_key(farm, None)] = sum(by_block.values())
     for k, p in pools.items():
+        farm = p['lotus_farm']
         if not p['lotus_farm_block']:
-            p['kg_harvested'] = kg_by_farm.get(p['lotus_farm'], 0)
-        p['kg_remaining'] = remaining.get(k, 0)
+            p['kg_harvested'], p['kg_finished'] = kg_by_farm.get(farm, 0), finished_by_farm.get(farm, 0)
+        # The forecast's finished kg on the basis of the kg received: the pool's own mix of the month, else its farm's.
+        p['kg_mix'] = rules.kg_mix((p['kg_harvested'], p['kg_finished']), (kg_by_farm.get(farm, 0), finished_by_farm.get(farm, 0)))
+        p['kg_remaining'] = round(remaining.get(k, 0) * p['kg_mix'], 3)
     return [p for p in pools.values() if any(abs(p[f]) > .005 for f in ('wip_open', 'cost_month', 'provisional')) or p['kg_harvested']]
 
 
@@ -208,25 +262,37 @@ def _unsold(company, month):
                 share=round(kg_unsold / kg_received, 6) if kg_received > 0 else 0)
 
 
+def _cycles(month, blocks):
+    """{lô: the vụ of the fruit it harvested in the month}, from its confirmed harvest lines dated in the month."""
+    if not blocks:
+        return {}
+    from lotus_farm.lot_ledger import bunch_rows
+    start, end = _bounds(month)
+    return rules.harvest_cycles(bunch_rows({'event_type': ledger.HARVEST, 'state': ledger.CONFIRMED, 'farm_block': ['in', sorted(blocks)],
+                                            'event_date': ['between', [start, end]]}, ['farm_block', 'cycle_no', 'qty']))
+
+
 @frappe.whitelist()
 def preview(month):
     setup.require_view()
     company = setup.company()
     unsold = _unsold(company, month)
     rows = rules.costing_rows(_pools(company, month), unsold['share'])
-    blocks = {b.name: b for b in frappe.get_all('Farm Block', filters={'name': ['in', [r['lotus_farm_block'] for r in rows if r['lotus_farm_block']] or ['']]},
-                                                 fields=['name', 'block_code', 'lotus_current_cycle_no'])}
+    names = {r['lotus_farm_block'] for r in rows if r['lotus_farm_block']}
+    codes = {b.name: b.block_code for b in frappe.get_all('Farm Block', filters={'name': ['in', sorted(names) or ['']]}, fields=['name', 'block_code'])}
+    cycles = _cycles(month, names)
     for r in rows:
-        block = blocks.get(r['lotus_farm_block']) or frappe._dict()
-        r['label'] = block.block_code or ('Chi phí chung vườn ' + str(r['lotus_farm'] or ''))
-        r['cycle_no'] = cint(block.lotus_current_cycle_no) or None
+        r['label'] = codes.get(r['lotus_farm_block']) or ('Chi phí chung vườn ' + str(r['lotus_farm'] or ''))
+        r['cycle_no'] = cycles.get(r['lotus_farm_block'])
     rows.sort(key=lambda r: (r['lotus_farm'] or '', r['lotus_farm_block'] is None, r['label']))
     lines = rules.costing_entry(rows, setup.mapping())
     done = posting.active('Lotus Finance Settings', setup.SETTINGS, 'Costing', month)
     sheet = frappe.db.get_value(RUN, {'company': company, 'month': month, 'state': 'Posted'})
     totals = {k: sum(flt(r[k]) for r in rows) for k in ('wip_open', 'cost_month', 'provisional', 'kg_harvested', 'absorbed', 'adjustment',
                                                          'unsold_adjustment', 'wip_close')}
+    left = waiting(company, month)
     return dict(month=month, posting_date=_bounds(month)[1], rows=rows, lines=lines, unsold=unsold, totals=totals,
+                waiting=dict(left, text=waiting_text(left)), out_of_date=out_of_date(company, month),
                 closed=bool(posting.active('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', month)),
                 posted=dict(voucher=done.voucher_name if done else None, posting=done.name if done else None, run=sheet) if (done or sheet) else None,
                 runs=frappe.get_all(RUN, filters={'company': company}, fields=['name', 'month', 'state', 'voucher', 'kg_harvested', 'absorbed', 'adjustment'],
@@ -250,6 +316,9 @@ def run(month):
         frappe.db.set_value(RUN, name, 'state', 'Reversed')
     if not posting.active('Lotus Finance Settings', setup.SETTINGS, 'Cost Closing', month):
         frappe.throw('Kết chuyển chi phí 621 / 622 / 627 sang 154 của tháng %s trước khi tính giá thành.' % month)
+    left = waiting_text(waiting(company, month))
+    if left:
+        frappe.throw('Tháng %s còn %s. Lập phiếu nhập kho ở Chờ hạch toán và để Kho duyệt (hoặc xóa phiếu nháp sai) trước khi tính giá thành.' % (month, left))
     result = preview(month)
     if not result['rows']:
         frappe.throw('Tháng %s không có chi phí dở dang hay sản lượng thu hoạch.' % month)

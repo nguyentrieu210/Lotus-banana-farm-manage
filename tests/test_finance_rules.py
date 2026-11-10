@@ -1,8 +1,9 @@
 import datetime as dt
 import unittest
 
-from lotus_farm import payroll_rules
+from lotus_farm import bunch_flow_rules, payroll_rules
 from lotus_farm.finance import rules
+from lotus_farm.forecast_parameters import DEFAULTS, validate
 
 ACCOUNTS = {k: 'ACC-' + k for k in rules.KEYS}
 
@@ -174,6 +175,70 @@ class FinanceRules(unittest.TestCase):
         self.assertEqual([(ln['debit'], ln['credit'], ln['lotus_farm_block']) for ln in cogs], [(300_000, 0, 'A1'), (0, 120_000, 'B')])
         self.assertEqual(rules.costing_entry(rules.costing_rows(pools, unsold_share=1), ACCOUNTS), [], 'nothing sold: nothing reaches 632')
         self.assertEqual(rules.costing_rows(pools, unsold_share=7)[0]['unsold_adjustment'], 500_000, 'a share is never above the whole')
+
+    def test_remaining_kg_count_each_day_after_the_month_up_to_one_crop_pipeline(self):
+        config = validate(DEFAULTS)
+        self.assertEqual(rules.pipeline_end(dt.date(2026, 11, 30), config), dt.date(2027, 9, 22),
+                         'a sucker selected on 30/11 flowers 6 months later, comes in 86 days after that, over 30 days')
+        later = dict(config, sucker_to_flower_months=7)
+        cohorts = [dict(block='A1', cycle=2, config=config, days=[(dt.date(2026, 11, 30), 10), (dt.date(2026, 12, 1), 100), (dt.date(2026, 12, 6), 3),
+                                                                (dt.date(2027, 9, 22), 5), (dt.date(2027, 9, 23), 7)]),
+                   dict(block='A2', cycle=1, config=dict(config, pack_rate=.5), days=[(dt.date(2026, 12, 10), 20)]),
+                   dict(block='A3', cycle=3, config=later, days=[(dt.date(2027, 10, 23), 4), (dt.date(2027, 10, 24), 9)])]
+        self.assertEqual(rules.remaining_kg(cohorts, '2026-11-30'), {'A1': round(108 * 20 * .98, 3), 'A2': 190.0, 'A3': round(4 * 19 * .98, 3)},
+                         'the month end itself is out; 1–6/12 count although their week starts on 30/11; beyond one pipeline is out, '
+                         'by the parameters of each group')
+        self.assertEqual(rules.remaining_kg([], '2026-11-30'), {})
+
+    def test_a_closed_month_counts_the_harvest_of_its_last_day_and_brings_the_rest_in_from_the_next_day(self):
+        """As block_forecast.bunches_after reads it: the sổ lô lines dated up to the month end, whenever confirmed, and the
+        bunches still due coming in from the next day."""
+        config = validate(DEFAULTS)
+        lines = [dict(name='C1', farm_block='A1', bunch_tag='RED', event_type=bunch_flow_rules.CUT, event_date='2026-09-25', qty=100, cycle_no=2),
+                 dict(name='H1', farm_block='A1', bunch_tag='RED', event_type=bunch_flow_rules.HARVEST, event_date='2026-11-30', qty=40, cycle_no=2)]
+        cohorts = bunch_flow_rules.cut_cohorts(lines, lambda block, day: (None, config), dt.date(2026, 12, 1))
+        self.assertEqual(sum(c['bunches'] for c in cohorts), 57, '100 cut, 3 expected lost, 40 harvested on the last day')
+        self.assertTrue(all(day > dt.date(2026, 11, 30) for c in cohorts for day, _ in c['days']))
+        self.assertEqual(rules.remaining_kg(cohorts, '2026-11-30'), {'A1': round(57 * 20 * .98, 3)})
+
+    def test_costing_is_refused_while_the_tree_count_forecast_stops_before_one_crop_pipeline(self):
+        config = validate(DEFAULTS)
+        # The farm's earliest estimated flowering date is in November 2026: the tree-count waves run to 31/10/2029.
+        reach = dict(until=dt.date(2029, 10, 31), since=dt.date(2026, 11, 1), waves=[(dt.date(2027, 3, 30), config), (dt.date(2029, 10, 31), config)],
+                     flowering={'B-1': dt.date(2026, 12, 1), 'A-2': dt.date(2026, 11, 20), 'A-1': dt.date(2026, 11, 1)})
+        self.assertIsNone(rules.forecast_gap('2028-12-31', reach), 'December 2028 reads up to 23/10/2029, inside the window')
+        self.assertEqual(rules.forecast_gap(dt.date(2029, 1, 31), reach),
+                         dict(need=dt.date(2029, 11, 23), until=dt.date(2029, 10, 31), start=dt.date(2026, 12, 1), blocks=['A-1', 'A-2']),
+                         'January 2029 reads up to 23/11/2029: the window must start in December 2026, the lô flowering in November hold it back')
+        longer = dict(config, sucker_to_flower_months=8)
+        self.assertIsNone(rules.forecast_gap('2028-12-31', dict(reach, waves=[(dt.date(2027, 3, 30), longer), (dt.date(2029, 10, 31), config)])),
+                          'a parameter set only crops already in followed says nothing of the crops beyond the window')
+        self.assertEqual(rules.forecast_gap('2029-01-31', dict(reach, waves=[(dt.date(2029, 6, 30), config), (dt.date(2029, 10, 31), longer)])),
+                         dict(need=dt.date(2030, 1, 23), until=dt.date(2029, 10, 31), start=dt.date(2027, 2, 1), blocks=['A-1', 'A-2', 'B-1']),
+                         'the longest pipeline of the crops still to come in')
+        self.assertEqual(rules.forecast_gap('2029-12-31', dict(reach, waves=[(dt.date(2029, 10, 31), config)]))['need'], dt.date(2030, 10, 23),
+                         'a window over before the month: by every wave')
+        self.assertIsNone(rules.forecast_gap('2031-06-30', dict(reach, waves=[])), 'no tree-count forecast: nothing to stop short')
+
+    def test_forecast_kg_go_on_the_basis_of_the_kg_received(self):
+        self.assertEqual(rules.kg_mix((2000, 1600), (5000, 4500)), 1.25, 'the pool\'s own month: finished + secondary per finished kg')
+        self.assertEqual(rules.kg_mix((300, 0), (5000, 4000)), 1.25, 'secondary fruit only: the farm\'s month')
+        self.assertEqual(rules.kg_mix((300, 0), (300, 0)), 1.0, 'no finished fruit anywhere: the forecast as it is')
+        self.assertEqual(rules.kg_mix((0, 0), (0, 0)), 1.0)
+        # 1 600 kg finished + 400 kg secondary received; the forecast still expects 8 000 kg finished, about 10 000 kg received.
+        pool = dict(lotus_farm='F', lotus_farm_block='A', wip_open=80_000_000, cost_month=40_000_000, provisional=0, kg_harvested=2000,
+                    kg_remaining=8000 * 1.25, kg_mix=1.25)
+        row = rules.costing_rows([pool])[0]
+        self.assertEqual((row['absorbed'], row['cost_per_kg'], row['wip_close']), (20_000_000, 10_000, 100_000_000),
+                         '2 000 of 12 000 kg on one basis, not 2 000 of 10 000')
+        self.assertIn('× 1,25', row['basis'])
+        self.assertNotIn('×', rules.costing_rows([dict(pool, kg_mix=1.0)])[0]['basis'], 'no secondary fruit: nothing to say')
+
+    def test_vu_of_the_fruit_is_the_one_with_most_bunches_harvested(self):
+        lines = [dict(farm_block='A', cycle_no=2, qty=30), dict(farm_block='A', cycle_no=3, qty=20), dict(farm_block='A', cycle_no=3, qty=15),
+                 dict(farm_block='B', cycle_no=1, qty=10), dict(farm_block='B', cycle_no=2, qty=10), dict(farm_block='C', cycle_no=None, qty=50)]
+        self.assertEqual(rules.harvest_cycles(lines), {'A': 3, 'B': 2}, 'most bunches, the later vụ on a tie; a line without vụ says nothing')
+        self.assertEqual(rules.harvest_cycles([]), {})
 
     def test_ledger_lines_carry_farm_lot_and_work_type(self):
         self.assertEqual(rules.DIM_FIELDS, ('lotus_farm', 'lotus_farm_block', 'lotus_work_type'))

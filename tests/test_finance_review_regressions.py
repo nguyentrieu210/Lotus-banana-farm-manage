@@ -171,21 +171,80 @@ class FinanceSecurityTests(unittest.TestCase):
         from contextlib import contextmanager
         from unittest.mock import patch
         import lotus_farm
-        asked = []
-        summary = dict(weeks=[dict(week='2026-W44', start='2026-10-26'), dict(week='2026-W45', start='2026-11-02')],
-                       rows=[dict(week='2026-W44', block='A1', kg=100.0), dict(week='2026-W45', block='A1', kg=250.5),
-                             dict(week='2026-W45', block='A2', kg=40)])
-        forecast = NS(bunch_summary=lambda farm, as_of=None: (asked.append((farm, as_of)), (summary, []))[1])
-        clock = [datetime.datetime(2026, 10, 20, 9)]
-        env = dict(frappe=NS(), datetime=datetime, get_datetime=lambda day: datetime.datetime.fromisoformat(str(day)),
-                   now_datetime=lambda: clock[0], _whole_farm=contextmanager(lambda: (yield)), flt=lambda x: float(x or 0))
-        forecast_kg = extract('lotus_farm/finance/costing.py', '_forecast_kg', env)
+        from lotus_farm.block_forecast_engine import date
+        from lotus_farm.finance import rules
+        from lotus_farm.forecast_parameters import DEFAULTS, validate
+        session, asked = NS(user='accountant'), []
+
+        @contextmanager
+        def whole_farm():
+            session.user = 'Administrator'
+            try:
+                yield
+            finally:
+                session.user = 'accountant'
+        config = validate(DEFAULTS)
+        cohorts = [dict(block='A1', cycle=2, config=config, days=[(datetime.date(2026, 11, 30), 7), (datetime.date(2026, 12, 1), 10)])]
+        # The tree-count waves run 36 months from November 2026, the month of the farm's earliest estimated flowering date.
+        reach = dict(until=datetime.date(2029, 10, 31), since=datetime.date(2026, 11, 1), waves=[(datetime.date(2029, 10, 31), config)],
+                     flowering={'A-1': datetime.date(2026, 11, 1), 'B-1': datetime.date(2026, 12, 1)})
+        forecast = NS(bunches_after=lambda farm, day: (asked.append((farm, day, session.user)), (cohorts, reach))[1])
+        frappe = NS(session=session, throw=lambda message, *a: (_ for _ in ()).throw(ValueError(message)))
+        forecast_kg = extract('lotus_farm/finance/costing.py', '_forecast_kg', dict(frappe=frappe, _whole_farm=whole_farm, rules=rules, getdate=date))
         with patch.object(lotus_farm, 'block_forecast', forecast, create=True):
-            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 250.5, 'A2': 40.0}, 'a running month: the weeks that start after it')
-            self.assertEqual(asked[-1], ('F', None), 'read as the forecast stands now')
-            clock[0] = datetime.datetime(2026, 11, 5, 9)
-            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 350.5, 'A2': 40.0}, 'a month already over: all that was then still expected')
-            self.assertEqual(asked[-1], ('F', datetime.datetime(2026, 11, 1)), 'read as the sổ lô stood when the month ended')
+            self.assertEqual(forecast_kg('F', '2026-11-30'), {'A1': round(10 * 20 * .98, 3)}, 'only the bunches due after the last day of the month')
+            with self.assertRaises(ValueError) as short:
+                forecast_kg('F', '2029-01-31')
+            self.assertEqual(str(short.exception),
+                             'Chưa tính được giá thành: dự thu theo số cây của vườn F chỉ tính tới 31/10/2029, vì khung dự thu bắt đầu từ tháng trổ dự kiến '
+                             'sớm nhất của các lô; giá thành cần dự thu tới 23/11/2029 (hết một vòng cây sau ngày 31/01/2029). Ở Vườn & lô, cập nhật Trổ dự '
+                             'kiến theo vụ đang trồng (cùng Vụ hiện tại) cho các lô có Trổ dự kiến trước 01/12/2026 (A-1), rồi tính lại.',
+                             'January 2029 needs the forecast up to 23/11/2029: refused, not costed on a forecast cut short')
+            reach['flowering'] = {'A-%02d' % i: datetime.date(2026, 11, i) for i in range(1, 13)}
+            with self.assertRaises(ValueError) as short:
+                forecast_kg('F', '2029-01-31')
+            self.assertIn('(A-01, A-02, A-03, A-04, A-05, A-06, A-07, A-08, A-09, A-10, …), rồi tính lại.', str(short.exception))
+        self.assertEqual(asked, [('F', '2026-11-30', 'Administrator')] + [('F', '2029-01-31', 'Administrator')] * 2, 'the whole farm, up to the month end')
+        self.assertEqual(session.user, 'accountant')
+
+    def test_costing_reads_the_lot_ledger_by_work_day_and_brings_the_rest_in_from_the_next_day(self):
+        import datetime as dt
+        from lotus_farm.block_forecast_engine import date, projection_config, source_rows
+        calls, today = {}, ['2026-12-03']
+
+        def lines(farm, blocks, until=None):
+            calls['lines'] = (farm, blocks, until)
+            return ['LINE']
+
+        def cohorts(farm, blocks, waves, lines, start=None):
+            calls['cohorts'] = (waves, lines, start)
+            return ['COHORT']
+        wave = dict(farm_block='FB-1', timing='PARAMETERS', harvest_window_end='2027-03-30')
+        projected = [dict(name='FB-1', block_code='A-1', active=1, lotus_tree_count=1000, lotus_estimated_flowering_date='2026-11-15'),
+                     dict(name='FB-2', block_code='', active=1, lotus_tree_count=500, lotus_estimated_flowering_date='2027-01-01'),
+                     dict(name='FB-3', block_code='C-1', active=1, lotus_tree_count=0, lotus_estimated_flowering_date='2025-01-01')]
+        env = dict(dt=dt, date=date, nowdate=lambda: today[0], source_rows=source_rows, projection_config=projection_config,
+                   _projection=lambda farm: (dict(rows=[wave], window_start='2026-11-01', window_end='2029-10-31'), projected, []),
+                   _bunch_scope=lambda farm: {'A1': {}}, _bunch_lines=lines, _bunch_cohorts=cohorts)
+        after = extract('lotus_farm/block_forecast.py', 'bunches_after', env)
+        found, reach = after('F', '2026-11-30')
+        self.assertEqual(found, ['COHORT'])
+        self.assertEqual(calls['lines'], ('F', {'A1': {}}, dt.date(2026, 11, 30)), 'the lines of work days up to the month end, whenever confirmed')
+        self.assertEqual(calls['cohorts'], ([wave], ['LINE'], dt.date(2026, 12, 1)), 'a month already over: what is left comes in from the next day')
+        self.assertEqual(reach, dict(until=dt.date(2029, 10, 31), since=dt.date(2026, 11, 1), waves=[(dt.date(2027, 3, 30), 'PARAMETERS')],
+                                     flowering={'A-1': dt.date(2026, 11, 15), 'FB-2': dt.date(2027, 1, 1)}),
+                         'how far the tree-count waves go, when each wave ends and by which parameters, and the flowering dates of the lô '
+                         'the window starts from (a lô without a tree count has no waves)')
+        today[0] = '2026-11-20'
+        after('F', '2026-11-30')
+        self.assertEqual(calls['cohorts'][2], dt.date(2026, 11, 20), 'a month still running: from today')
+
+    def test_a_month_waits_for_its_shifts_and_draft_receipts(self):
+        text = extract('lotus_farm/finance/costing.py', 'waiting_text', {})
+        self.assertEqual(text(dict(shifts=[], drafts=[])), '')
+        self.assertEqual(text(dict(shifts=['PS-1', 'PS-2'], drafts=['MAT-STE-9'])),
+                         '2 ca đóng gói đã đóng chưa lập phiếu nhập kho, 1 phiếu nhập kho thành phẩm còn nháp (MAT-STE-9)')
+        self.assertIn(', …', text(dict(shifts=[], drafts=['D%d' % i for i in range(7)])))
 
     def test_forecast_is_read_for_the_whole_farm_and_the_session_comes_back(self):
         from contextlib import contextmanager

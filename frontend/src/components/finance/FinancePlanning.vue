@@ -126,7 +126,7 @@ onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length
    </template>
    <template v-else>
     <p v-if="!snapshot.sources?.length" class="land-empty">Chưa lấy sản lượng từ dự thu. Sản lượng đang nhập thủ công.</p>
-    <template v-else><p class="fp-provenance">Lấy nguồn lúc {{snapshot.imported_at}} · {{snapshot.imported_by}}. Sản lượng hiện tại có thể đã được điều chỉnh trong ngân sách.</p><p v-for="warning in snapshot.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="snapshot.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-sources"/></template>
+    <template v-else><p class="fp-provenance">Lấy nguồn lúc {{snapshot.imported_at}} · {{snapshot.imported_by}}: thay sản lượng từ tháng {{formatMonth(snapshot.from_month)}}, các tháng trước giữ nguyên. Sản lượng hiện tại có thể đã được điều chỉnh trong ngân sách.</p><p v-for="warning in snapshot.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="snapshot.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-sources"/></template>
    </template>
   </template>
 
@@ -148,7 +148,7 @@ onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length
    </form>
   </WorkspaceModal>
   <WorkspaceModal :model-value="editor==='import'" title="Lấy sản lượng dự thu" :busy="saving" width="1000px" @update:model-value="v=>!v&&!saving&&(editor='')">
-   <template v-if="proposal"><p>Thay sản lượng tất cả tháng trong kế hoạch bằng dự thu hiện tại. Tháng không có nguồn về 0; giá bán và ngân sách giữ nguyên.</p><p v-for="warning in proposal.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="proposal.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-import" empty="Dự thu không có sản lượng trong các tháng của kế hoạch."/><div class="fp-toolbar"><Button variant="outline" :disabled="saving" @click="editor=''">Hủy</Button><Button :disabled="saving||!proposal.sources.length" @click="applyForecast">Thay sản lượng các tháng</Button></div></template>
+   <template v-if="proposal"><p v-if="proposal.from_month">Thay sản lượng các tháng từ {{formatMonth(proposal.from_month)}} đến hết kế hoạch bằng dự thu hiện tại.<template v-if="proposal.from_month===proposal.current"> Tháng {{formatMonth(proposal.current)}} lấy kg các ca đóng gói đã đóng từ đầu tháng (thu hoạch là kg đưa vào ca, thành phẩm là kg thành phẩm) cộng dự thu những ngày còn lại.</template><template v-if="proposal.kept.length"> Các tháng đã qua ({{proposal.kept.map(formatMonth).join(', ')}}) giữ nguyên sản lượng đang có.</template> Tháng không có nguồn về 0; giá bán và ngân sách giữ nguyên.</p><p v-else class="land-warn">Các tháng của kế hoạch đã qua: dự thu chỉ thay tháng này và các tháng sau, nên không có tháng nào để thay.</p><p v-for="warning in proposal.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="proposal.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-import" empty="Dự thu không có sản lượng trong các tháng của kế hoạch."/><div class="fp-toolbar"><Button variant="outline" :disabled="saving" @click="editor=''">Hủy</Button><Button :disabled="saving||!proposal.sources.length" @click="applyForecast">Thay sản lượng các tháng</Button></div></template>
   </WorkspaceModal>
   <WorkspaceConfirm :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" @answer="finish"/>
  </section>
