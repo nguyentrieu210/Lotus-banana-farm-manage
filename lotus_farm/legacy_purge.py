@@ -252,16 +252,12 @@ def _remove_fields(scan):
 
 
 def _remove_tables(scan):
-    in_migrate, frappe.flags.in_migrate = frappe.flags.in_migrate, True  # as in a migration: the controller files are not ours to delete here
-    try:
-        for t in scan["tables"]:
-            doctype = t["doctype"]
-            if t["exists"] and t["rows"]:
-                frappe.db.delete(doctype)
-            if frappe.db.exists("DocType", doctype):
-                frappe.delete_doc("DocType", doctype, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
-    finally:
-        frappe.flags.in_migrate = in_migrate
+    for t in scan["tables"]:
+        doctype = t["doctype"]
+        if t["exists"] and t["rows"]:
+            frappe.db.delete(doctype)
+        if frappe.db.exists("DocType", doctype):
+            frappe.delete_doc("DocType", doctype, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
     frappe.db.commit()
     for t in scan["tables"]:
         frappe.db.sql_ddl(f"drop table if exists `tab{t['doctype']}`")
@@ -284,6 +280,16 @@ def _remove_mentions():
     frappe.clear_cache()
 
 
+def _as_migration(fn):
+    """Standard DocTypes and reports are only removable the way a migration removes them (and their controller files,
+    which belong to the code, are then left alone)."""
+    before, frappe.flags.in_migrate = frappe.flags.in_migrate, True
+    try:
+        return fn()
+    finally:
+        frappe.flags.in_migrate = before
+
+
 @frappe.whitelist()
 def commit(archive_dir=None):
     """Archive, check the archive, then remove. Stops with nothing removed when preview has a block list."""
@@ -293,15 +299,13 @@ def commit(archive_dir=None):
         frappe.throw("Chưa dọn được bảng cũ:<br>" + "<br>".join(scan["block"]))
     remaining = [t for t in scan["tables"] if t["exists"]]
     if not remaining and not scan["fields"]:
-        _remove_mentions()
+        _as_migration(_remove_mentions)
         result = {"archive": None, "tables": 0, "rows": 0, "fields": 0, "left": verify()}
         print(frappe.as_json(result, indent=1))
         return result
     folder = archive_dir or frappe.get_site_path("private", "files", "legacy_purge_" + now_datetime().strftime("%Y%m%d_%H%M%S"))
     manifest = _archive(folder, scan)
-    _remove_fields(scan)
-    _remove_tables(scan)
-    _remove_mentions()
+    _as_migration(lambda: (_remove_fields(scan), _remove_tables(scan), _remove_mentions()))
     result = {"archive": os.path.abspath(folder), "tables": len(manifest["tables"]), "rows": sum(t["rows"] for t in manifest["tables"]),
               "fields": len(scan["fields"]), "left": verify()}
     print(frappe.as_json(result, indent=1))

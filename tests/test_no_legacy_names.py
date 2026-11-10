@@ -44,12 +44,14 @@ class NoLegacyNames(unittest.TestCase):
         self.assertEqual(left, [])
 
     def test_no_file_names_a_legacy_doctype(self):
-        names = legacy_names()
-        words = {name: re.compile(r"(^|[^a-z0-9_])(lotus_)?" + re.escape(name.lower().replace(" ", "_")) + r"($|[^a-z0-9_])", re.M) for name in names}
+        names = sorted(legacy_names(), key=len, reverse=True)  # longest first: "Daily Work Plan Line" before "Daily Work Plan"
+        snake = {name.lower().replace(" ", "_"): name for name in names}
+        word = re.compile(r"(?:^|[^a-z0-9_])(?:lotus_)?(" + "|".join(map(re.escape, snake)) + r")(?![a-z0-9_])", re.M)
+        quoted = re.compile(r"(?:'|\"|`tab)(" + "|".join(map(re.escape, names)) + r")(?:'|\"|`)")
         found = {}
         for relative, path in files():
             text = path.read_text(encoding="utf-8", errors="replace")
-            hits = [name for name in names if f"'{name}'" in text or f'"{name}"' in text or f"`tab{name}`" in text or words[name].search(text)]
+            hits = sorted({snake[m.group(1)] for m in word.finditer(text)} | {m.group(1) for m in quoted.finditer(text)})
             if hits:
                 found[relative] = hits
         self.assertEqual(found, {}, "\n" + "\n".join(f"{f}: {', '.join(n)}" for f, n in sorted(found.items())))
