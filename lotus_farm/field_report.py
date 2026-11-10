@@ -355,11 +355,11 @@ def presence(company, day):
 # ---------------------------------------------------------------- phiếu: progress, caps, views
 
 def _entries(names, day=None):
-    filters = {"assignment": ["in", list(names) or [""]]}
+    filters = {"assignment": ["in", list(names) or [""]], "state": ["!=", "Voided"]}
     if day:
         filters["posting_date"] = day
     return frappe.get_all(ENTRY, filters=filters, fields=["name", "assignment", "posting_date", "qty", "bunch_tag", "done",
-                                                          "morning_people", "afternoon_people", "over_cut", "under_norm", "modified"],
+                                                          "morning_people", "afternoon_people", "under_norm", "state", "modified"],
                           order_by="posting_date asc", limit_page_length=0)
 
 
@@ -409,18 +409,6 @@ def _bunch_counts(farm, tags, exclude_entry=None):
     return cut, done
 
 
-def _cap_left(task, exclude_entry=None, tag=None):
-    """How much more may be reported on a phiếu (None: no cap). Bunch work after cắt bắp is capped per colour."""
-    if task.cap_basis == rules.CAP_CUT_BUD:
-        if not tag:
-            return None
-        stage = _stages(task.farm).get(task.work_type)
-        cut, done = _bunch_counts(task.farm, [tag], exclude_entry)
-        return rules.cap_left(rules.CAP_CUT_BUD, done.get((task.farm_block, tag, stage), 0), cut=cut.get((task.farm_block, tag), 0))
-    used = sum(flt(e.qty) for e in _entries([task.name]) if e.name != exclude_entry)
-    return rules.cap_left(task.cap_basis, used, lot_area=task.lot_area_ha, lot_trees=task.lot_trees)
-
-
 def _decorate(farm, rows):
     blocks, works = _block_map(farm), {w.name: w for w in _works(farm)}
     teams = {t.name: t.team_name for t in _teams(farm)}
@@ -440,209 +428,12 @@ def _entry_view(name):
     tag = doc.bunch_tag and frappe.db.get_value("Bunch Tag", doc.bunch_tag, ["color_label", "display_name"], as_dict=True)
     return {"name": doc.name, "posting_date": str(doc.posting_date), "qty": doc.qty, "bunch_tag": doc.bunch_tag,
             "ribbon": tag and (tag.color_label or tag.display_name), "done": doc.done, "notes": doc.notes or "",
-            "over_cut": doc.over_cut, "under_norm": doc.under_norm, "modified": str(doc.modified),
+            "state": doc.state, "stage": doc.stage, "farm_block": doc.farm_block, "work_type": doc.work_type,
+            "under_norm": doc.under_norm, "modified": str(doc.modified),
             "people": [{"employee": p.employee, "employee_name": p.employee_name, "morning": p.morning, "afternoon": p.afternoon}
                        for p in doc.get("people")],
             "materials": [{"item_code": m.item_code, "qty": m.qty, "uom": m.uom, "dose": m.dose or "", "stock_entry": m.stock_entry,
                            "phi_days": m.phi_days} for m in doc.get("materials")]}
-
-
-@frappe.whitelist()
-def today(farm, crew, date=None):
-    """The tổ trưởng's day: every phiếu of their tổ that can be reported, today's report on each, what is left under
-    the cap, and who the clock shows present (with any buổi already put on another phiếu)."""
-    farm_doc = require_farm(farm)
-    day = str(getdate(date or nowdate()))
-    rights = access(farm, crew)
-    if not rights.read:
-        frappe.throw("Bạn không thuộc đội này.", frappe.PermissionError)
-    filters = {"farm": farm, "crew": crew, "kind": rules.ROUND, "state": ["in", list(OPEN_STATES)], "assigned_on": ["<=", day]}
-    if not rights.supervisor:
-        filters["work_team"] = ["in", list(rights.teams) or [""]]
-    rows = _decorate(farm, _ticket_rows(frappe.get_all(ASSIGNMENT, filters=filters, fields=ASSIGN_FIELDS,
-                                                       order_by="due_date asc, assigned_on asc", limit_page_length=0), day))
-    todays = {e.assignment: e.name for e in _entries([r.name for r in rows], day)}
-    for r in rows:
-        r["entry"] = _entry_view(todays[r.name]) if r.name in todays else None
-        r["cap_left"] = None if r.cap_basis == rules.CAP_CUT_BUD else _cap_left(frappe._dict(r), todays.get(r.name))
-        r["can_report"] = rules.can_report(r.state) and (rights.supervisor or r.work_team in rights.teams)
-    taken = {}
-    for s in frappe.get_all(SESSION, filters={"company": farm_doc.company, "posting_date": day},
-                            fields=["employee", "session", "assignment", "entry"], limit_page_length=0):
-        taken.setdefault(s.employee, {})[s.session] = {"assignment": s.assignment, "entry": s.entry}
-    present = sorted(presence(farm_doc.company, day).values(), key=lambda p: (str(p.get("team") or "~"), p["employee_name"] or ""))
-    for p in present:
-        p["taken"] = taken.get(p["employee"], {})
-    tags = _ribbon_tags(farm, day)
-    cut, done = _bunch_counts(farm, [t.name for t in tags])
-    today_tag = ribbon(farm, day)
-    return {"date": day, "farm": farm, "crew": crew, "tickets": rows, "present": present,
-            "ribbon": today_tag and {"name": today_tag.name, "label": today_tag.color_label or today_tag.display_name,
-                                     "code": today_tag.color_code, "week": today_tag.week_number},
-            "ribbon_options": [{"name": t.name, "label": t.color_label or t.display_name, "code": t.color_code, "week": t.week_number}
-                               for t in tags],
-            "bunch_cut": {f"{b}|{t}": n for (b, t), n in cut.items()},
-            "bunch_done": {f"{b}|{t}|{s}": n for (b, t, s), n in done.items()},
-            "cap_blocks": rules.cap_blocks(day),
-            "rights": {"supervisor": rights.supervisor, "teams": sorted(rights.teams), "inspector": rights.inspector}}
-
-
-def _clean_people(raw, prefix=""):
-    people = frappe.parse_json(raw) if isinstance(raw, str) else (raw or [])
-    if not isinstance(people, list) or len(people) > MAX_PEOPLE:
-        frappe.throw(f"Danh sách người làm tối đa {MAX_PEOPLE} người.")
-    result = {}
-    for p in people:
-        if not isinstance(p, dict) or not p.get("employee"):
-            continue
-        morning, afternoon = cint(p.get("morning")), cint(p.get("afternoon"))
-        if morning or afternoon:
-            row = result.setdefault(str(p["employee"]), {"morning": 0, "afternoon": 0})
-            row["morning"] |= morning
-            row["afternoon"] |= afternoon
-    return result
-
-
-def _clean_materials(raw):
-    items = frappe.parse_json(raw) if isinstance(raw, str) else (raw or [])
-    if not isinstance(items, list) or len(items) > MAX_MATERIALS:
-        frappe.throw(f"Tối đa {MAX_MATERIALS} vật tư mỗi báo cáo.")
-    result = []
-    for m in items:
-        if not isinstance(m, dict) or not m.get("item_code"):
-            continue
-        item = frappe.db.get_value("Item", m["item_code"], ["name", "stock_uom", "disabled", "lotus_phi_days"], as_dict=True)
-        if not item or item.disabled:
-            frappe.throw("Vật tư không có trong danh mục kho.")
-        try:
-            qty = rules.number(m.get("qty"), "Số lượng vật tư")
-        except ValueError as e:
-            frappe.throw(str(e))
-        if qty <= 0:
-            frappe.throw("Nhập số lượng vật tư lớn hơn 0.")
-        stock_entry = m.get("stock_entry") or None
-        if stock_entry and not frappe.db.exists("Stock Entry", {"name": stock_entry, "docstatus": 1}):
-            frappe.throw("Phiếu xuất kho không tồn tại hoặc chưa ghi sổ.")
-        result.append({"item_code": item.name, "qty": qty, "uom": item.stock_uom, "dose": str(m.get("dose") or "")[:140],
-                       "stock_entry": stock_entry, "phi_days": cint(item.lotus_phi_days)})
-    return result
-
-
-@frappe.whitelist(methods=["POST"])
-def save_entry(assignment, date, people, qty=None, bunch_tag=None, done=0, materials=None, notes=None, expected_modified=None):
-    """The day's report on one phiếu (one per phiếu and day; saving again replaces it)."""
-    task = frappe.get_doc(ASSIGNMENT, assignment, for_update=True)
-    farm_doc = require_farm(task.farm)
-    day = getdate(date)
-    if day > getdate(nowdate()):
-        frappe.throw("Không báo cáo cho ngày tương lai.")
-    if getdate(task.assigned_on) > day:
-        frappe.throw(f"Phiếu giao từ ngày {task.assigned_on}, không báo cho ngày trước đó.")
-    _closed(farm_doc.company, day)
-    rights = access(task.farm, task.crew)
-    if not (rights.supervisor or task.work_team in rights.teams):
-        frappe.throw("Tổ trưởng chỉ báo phiếu của tổ mình.", frappe.PermissionError)
-    if not rules.can_report(task.state):
-        frappe.throw("Phiếu đã báo xong hoặc đã khoá; đội trưởng trả lại thì mới sửa được.")
-    lock("Farm", task.farm)
-    name = frappe.db.get_value(ENTRY, {"assignment": task.name, "posting_date": day})
-    doc = frappe.get_doc(ENTRY, name, for_update=True) if name else frappe.new_doc(ENTRY)
-    if name and str(doc.modified) != str(expected_modified or ""):
-        frappe.throw("Báo cáo vừa được người khác sửa. Tải lại rồi nhập tiếp.", frappe.TimestampMismatchError)
-    chosen = _clean_people(people)
-    if not chosen:
-        frappe.throw("Chọn ít nhất một người làm, sáng hoặc chiều.")
-    here = presence(farm_doc.company, day)
-    names = {e.name: e.employee_name for e in frappe.get_all("Employee", filters={"name": ["in", list(chosen)]},
-                                                             fields=["name", "employee_name"])}
-    for employee, flags in chosen.items():
-        if employee not in names:
-            frappe.throw("Có người không có trong danh sách nhân sự.")
-        seen = here.get(employee) or {}
-        for session, label in (("morning", "sáng"), ("afternoon", "chiều")):
-            if flags[session] and not seen.get(session):
-                frappe.throw(f"{names[employee]}: máy chấm công không có lượt buổi {label} ngày {day.strftime('%d/%m')}.")
-    clash = frappe.get_all(SESSION, filters={"employee": ["in", list(chosen)], "posting_date": day, "entry": ["!=", doc.name or ""]},
-                           fields=["employee", "session", "assignment"], limit_page_length=0)
-    for c in clash:
-        if chosen[c.employee]["morning" if c.session == "Morning" else "afternoon"]:
-            other = frappe.db.get_value(ASSIGNMENT, c.assignment, ["farm_block", "work_type"], as_dict=True) or {}
-            block = frappe.db.get_value("Farm Block", other.get("farm_block"), "block_code") or other.get("farm_block")
-            work = frappe.db.get_value("Work Type", other.get("work_type"), "work_name") or other.get("work_type")
-            frappe.throw(f"{names[c.employee]} buổi {'sáng' if c.session == 'Morning' else 'chiều'} đã ghi ở phiếu {block} · {work}. "
-                         "Mỗi buổi chỉ thuộc một phiếu.")
-    try:
-        qty = rules.number(qty, "Khối lượng")
-    except ValueError as e:
-        frappe.throw(str(e))
-    work = frappe.db.get_value("Work Type", task.work_type, ["work_name", "lotus_bunch_stage", "lotus_requires_material"], as_dict=True)
-    stage = work.lotus_bunch_stage or ""
-    tag = None
-    if stage == rules.CUT_BUD:
-        current = ribbon(task.farm, day)
-        if not current:
-            frappe.throw("Chưa có lịch màu dây cho tuần này.")
-        tag = current.name
-    elif stage in rules.COLOUR_STAGES:
-        if not bunch_tag:
-            frappe.throw("Chọn màu dây của lứa buồng đang làm.")
-        if bunch_tag not in {t.name for t in _ribbon_tags(task.farm, day)} and bunch_tag != doc.get("bunch_tag"):
-            frappe.throw("Màu dây không có trong lịch cắt bắp các tuần gần đây.")
-        tag = bunch_tag
-    over_cut = 0
-    left = _cap_left(task, doc.name, tag)
-    if left is not None and qty > left + 1e-6:
-        if task.cap_basis == rules.CAP_CUT_BUD and not rules.cap_blocks(day):
-            over_cut = 1
-        else:
-            what = {rules.CAP_CUT_BUD: "số buồng đã cắt bắp cùng màu ở lô", rules.CAP_TREES: "số cây của lô",
-                    rules.CAP_AREA: "diện tích lô"}.get(task.cap_basis, "trần của lô")
-            frappe.throw(f"Khối lượng {qty:g} vượt {what}: chỉ còn {left:g}.")
-    clean_materials = _clean_materials(materials)
-    if cint(work.lotus_requires_material) and not clean_materials:
-        frappe.throw(f"\"{work.work_name}\" phải ghi vật tư đã dùng (thuốc / phân, số lượng, liều).")
-    sessions = sum(f["morning"] + f["afternoon"] for f in chosen.values())
-    low = rules.under_norm(qty, sessions / 2, task.norm_min)
-    doc.update({"assignment": task.name, "farm": task.farm, "company": farm_doc.company, "crew": task.crew,
-                "work_team": task.work_team, "farm_block": task.farm_block, "work_type": task.work_type, "posting_date": day,
-                "qty": qty, "bunch_tag": tag, "over_cut": over_cut, "done": 1 if cint(done) else 0,
-                "morning_people": sum(f["morning"] for f in chosen.values()),
-                "afternoon_people": sum(f["afternoon"] for f in chosen.values()),
-                "under_norm": 1 if low else 0, "notes": str(notes or "")[:1000],
-                "entered_by": doc.get("entered_by") or frappe.session.user})
-    doc.set("people", [{"employee": e, "employee_name": names[e], **f} for e, f in chosen.items()])
-    doc.set("materials", clean_materials)
-    _store(doc)
-    _write_sessions(doc, task, farm_doc.company)
-    until = max(filter(None, [rules.quarantine_until(day, m["phi_days"]) for m in clean_materials]), default=None)
-    if until:
-        held = frappe.db.get_value("Farm Block", task.farm_block, "lotus_quarantine_until")
-        if not held or getdate(held) < until:
-            frappe.db.set_value("Farm Block", task.farm_block, "lotus_quarantine_until", until, update_modified=False)
-    task.qty_total = sum(flt(e.qty) for e in _entries([task.name]))
-    if cint(done):
-        task.state, task.reported_by, task.reported_at = rules.next_state(task.state, "report"), frappe.session.user, now_datetime()
-    _store(task)
-    return ticket(task.name)
-
-
-def _write_sessions(entry, task, company):
-    frappe.db.delete(SESSION, {"entry": entry.name})
-    token = _writing.set(True)
-    try:
-        for p in entry.get("people"):
-            for flag, session in (("morning", "Morning"), ("afternoon", "Afternoon")):
-                if not p.get(flag):
-                    continue
-                try:
-                    frappe.get_doc({"doctype": SESSION, "employee": p.employee, "posting_date": entry.posting_date, "session": session,
-                                    "entry": entry.name, "assignment": task.name, "pay_mode": task.pay_mode, "farm": task.farm,
-                                    "company": company, "farm_block": task.farm_block, "work_type": task.work_type}
-                                   ).insert(ignore_permissions=True)
-                except frappe.UniqueValidationError:
-                    frappe.throw(f"{p.employee_name} buổi {'sáng' if session == 'Morning' else 'chiều'} đã thuộc phiếu khác.")
-    finally:
-        _writing.reset(token)
 
 
 @frappe.whitelist()
@@ -664,7 +455,6 @@ def ticket(name):
     row["shares"] = [{"employee": e, "employee_name": names.get(e, e), "amount": a} for e, a in shares.items()]
     leader_of_crew = rights.own_crew and not rights.manager
     row["actions"] = {
-        "report": rules.can_report(task.state) and (rights.supervisor or task.work_team in rights.teams),
         "approve": task.state == rules.REPORTED and rights.supervisor,
         "return": task.state in (rules.REPORTED, rules.APPROVED) and rights.supervisor,
         "inspect": task.state == rules.APPROVED and task.pay_mode == rules.PAY_LOT and rights.inspector and not leader_of_crew,
@@ -686,19 +476,6 @@ def _move(task, action):
         task.state = rules.next_state(task.state, action, task.pay_mode)
     except ValueError as e:
         frappe.throw(str(e))
-
-
-@frappe.whitelist(methods=["POST"])
-def report_done(name, expected_modified=None):
-    task, rights = _load_task(name, expected_modified)
-    if not (rights.supervisor or task.work_team in rights.teams):
-        frappe.throw("Tổ trưởng chỉ báo phiếu của tổ mình.", frappe.PermissionError)
-    if not _entries([task.name]):
-        frappe.throw("Phiếu chưa có báo cáo ngày nào.")
-    _move(task, "report")
-    task.reported_by, task.reported_at = frappe.session.user, now_datetime()
-    _store(task)
-    return ticket(task.name)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -785,13 +562,20 @@ def _lock(task):
     task.locked_at = now_datetime()
 
 
-def _sessions_by_employee(names):
+def _weights(filters):
+    """{key: {employee: weight}} over the buổi of confirmed sổ lô lines (a voided or unsent line pays nothing)."""
+    key = filters.pop("_by")
+    rows = frappe.db.sql(f"""select s.{key} as k, s.employee, sum(s.weight) as weight from `tab{SESSION}` s
+        join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
+        where s.{key} in %(names)s group by s.{key}, s.employee""", {"names": tuple(filters["names"]) or ("",)}, as_dict=True)
     result = {}
-    for s in frappe.get_all(SESSION, filters={"assignment": ["in", list(names) or [""]]}, fields=["assignment", "employee"],
-                            limit_page_length=0):
-        bucket = result.setdefault(s.assignment, {})
-        bucket[s.employee] = bucket.get(s.employee, 0) + 1
+    for r in rows:
+        result.setdefault(r.k, {})[r.employee] = flt(r.weight)
     return result
+
+
+def _sessions_by_employee(names):
+    return _weights({"_by": "assignment", "names": list(names)})
 
 
 def _shares(task):
@@ -810,66 +594,88 @@ def inspections_due(farm):
     return _decorate(farm, _ticket_rows(rows))
 
 
-def month_piece(company, begin, end):
-    """Khoán money per employee for the payroll month: shares of the phiếu locked in [begin, end] (split by buổi), the
-    buổi of those phiếu (for the minimum-wage check), and every buổi worked on a khoán phiếu in the month, which is
-    not paid as công nhật."""
+def month_piece(company, begin, end, teams=None):
+    """Khoán money per employee for a month, from the sổ lô: every confirmed khoán-số-lượng line worked in [begin, end]
+    (its amount split by the buổi weights on that line), and every khoán lô finished (locked) in the month (split by the
+    buổi on the lines of that lô). Also the buổi worked on khoán lines in the month, which are not paid as công nhật.
+    teams: only lines and lô of these tổ (for a tổ's own view); per person, `teams` holds the money by tổ."""
     result = {}
-    locked = frappe.get_all(ASSIGNMENT, filters={"company": company, "state": rules.LOCKED, "pay_mode": ["in", list(rules.KHOAN)],
-                                                 "locked_at": ["between", [str(begin) + " 00:00:00", str(end) + " 23:59:59"]]},
-                            fields=["name", "amount"], limit_page_length=0)
-    sessions = _sessions_by_employee([t.name for t in locked])
-    for t in locked:
-        counts = sessions.get(t.name, {})
-        for employee, share in rules.split_by_sessions(flt(t.amount), counts).items():
-            item = result.setdefault(employee, dict(piece=0.0, piece_sessions=0, khoan_sessions=0))
+
+    def slot(employee):
+        return result.setdefault(employee, dict(piece=0.0, piece_sessions=0.0, khoan_sessions=0.0, teams={}))
+
+    filters = {"company": company, "state": "Confirmed", "pay_mode": rules.PAY_COUNT, "posting_date": ["between", [begin, end]], "amount": [">", 0]}
+    if teams is not None:
+        filters["work_team"] = ["in", list(teams) or [""]]
+    lines = frappe.get_all(ENTRY, filters=filters, fields=["name", "amount", "work_team"], limit_page_length=0)
+    weights = _weights({"_by": "entry", "names": [l.name for l in lines]})
+    for line in lines:
+        counts = weights.get(line.name, {})
+        for employee, share in rules.split_by_sessions(flt(line.amount), counts).items():
+            item = slot(employee)
             item["piece"] += share
             item["piece_sessions"] += counts.get(employee, 0)
-    cancelled = set(frappe.get_all(ASSIGNMENT, filters={"company": company, "state": rules.CANCELLED}, pluck="name"))
-    for s in frappe.get_all(SESSION, filters={"company": company, "posting_date": ["between", [begin, end]],
-                                              "pay_mode": ["in", list(rules.KHOAN)]}, fields=["employee", "assignment"],
-                            limit_page_length=0):
-        if s.assignment in cancelled:
-            continue
-        item = result.setdefault(s.employee, dict(piece=0.0, piece_sessions=0, khoan_sessions=0))
-        item["khoan_sessions"] += 1
+            item["teams"][line.work_team] = item["teams"].get(line.work_team, 0) + share
+    task_filters = {"company": company, "state": rules.LOCKED, "pay_mode": rules.PAY_LOT,
+                    "locked_at": ["between", [str(begin) + " 00:00:00", str(end) + " 23:59:59"]]}
+    if teams is not None:
+        task_filters["work_team"] = ["in", list(teams) or [""]]
+    locked = frappe.get_all(ASSIGNMENT, filters=task_filters, fields=["name", "amount", "work_team"], limit_page_length=0)
+    by_task = _sessions_by_employee([t.name for t in locked])
+    for task in locked:
+        counts = by_task.get(task.name, {})
+        for employee, share in rules.split_by_sessions(flt(task.amount), counts).items():
+            item = slot(employee)
+            item["piece"] += share
+            item["piece_sessions"] += counts.get(employee, 0)
+            item["teams"][task.work_team] = item["teams"].get(task.work_team, 0) + share
+    for s in frappe.db.sql(f"""select s.employee, sum(s.weight) as weight from `tab{SESSION}` s
+            join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
+            where s.company = %s and s.posting_date between %s and %s and s.pay_mode in %s group by s.employee""",
+                           (company, begin, end, tuple(rules.KHOAN)), as_dict=True):
+        slot(s.employee)["khoan_sessions"] += flt(s.weight)
     return result
 
 
 def work_rows(company, begin, end):
-    """Workdays per employee, farm, lô and việc from the buổi on phiếu (0,5 công each), for labour cost by lô."""
-    rows = frappe.db.sql("""select employee, count(*) / 2 as workdays, farm as lotus_farm, farm_block as lotus_farm_block,
-            work_type as lotus_work_type from `tabLotus Work Session`
-        where company = %s and posting_date between %s and %s group by employee, farm, farm_block, work_type""",
+    """Workdays per employee, farm, lô and việc from the buổi on confirmed sổ lô lines (a whole buổi is 0,5 công), for
+    labour cost by lô."""
+    rows = frappe.db.sql(f"""select s.employee, sum(s.weight) / 2 as workdays, s.farm as lotus_farm, s.farm_block as lotus_farm_block,
+            s.work_type as lotus_work_type from `tab{SESSION}` s join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
+        where s.company = %s and s.posting_date between %s and %s group by s.employee, s.farm, s.farm_block, s.work_type""",
                          (company, begin, end), as_dict=True)
     return [dict(r, lotus_crop_cycle=None, workdays=flt(r.workdays)) for r in rows]
 
 
 @frappe.whitelist()
 def payable(farm, month):
-    """Tiền khoán của tháng theo người, từ các phiếu đã khoá."""
-    farm_doc = require_farm(farm)
+    """Tiền khoán của tháng theo người: dòng khoán số lượng đã xác nhận và lô khoán đã nghiệm thu, chia theo buổi."""
+    require_farm(farm)
     if not (is_manager() or _visible_crews(farm)):
         frappe.throw("Không có quyền xem tiền khoán.", frappe.PermissionError)
     begin = getdate(str(month)[:7] + "-01")
     end = get_last_day(begin)
-    crews = _visible_crews(farm)
-    tickets = frappe.get_all(ASSIGNMENT, filters={"farm": farm, "crew": ["in", list(crews) or [""]], "state": rules.LOCKED,
-                                                  "pay_mode": ["in", list(rules.KHOAN)],
+    crews = list(_visible_crews(farm)) or [""]
+    lines = frappe.get_all(ENTRY, filters={"farm": farm, "crew": ["in", crews], "state": "Confirmed", "pay_mode": rules.PAY_COUNT,
+                                           "posting_date": ["between", [begin, end]], "amount": [">", 0]},
+                           fields=["name", "farm_block", "work_type", "work_team", "amount", "posting_date", "pay_mode"], limit_page_length=0)
+    tickets = frappe.get_all(ASSIGNMENT, filters={"farm": farm, "crew": ["in", crews], "state": rules.LOCKED, "pay_mode": rules.PAY_LOT,
                                                   "locked_at": ["between", [str(begin) + " 00:00:00", str(end) + " 23:59:59"]]},
                              fields=ASSIGN_FIELDS, limit_page_length=0)
+    _decorate(farm, lines)
     _decorate(farm, tickets)
-    sessions = _sessions_by_employee([t.name for t in tickets])
-    names = {e.name: e.employee_name for e in frappe.get_all("Employee", filters={"name": ["in", list({e for s in sessions.values() for e in s}) or [""]]},
-                                                             fields=["name", "employee_name"])}
+    by_line = _weights({"_by": "entry", "names": [l.name for l in lines]})
+    by_task = _sessions_by_employee([t.name for t in tickets])
+    people = {e for group in (by_line, by_task) for counts in group.values() for e in counts}
+    names = {e.name: e.employee_name for e in frappe.get_all("Employee", filters={"name": ["in", list(people) or [""]]}, fields=["name", "employee_name"])}
     rows = []
-    for t in tickets:
-        counts = sessions.get(t.name, {})
-        for employee, share in rules.split_by_sessions(flt(t.amount), counts).items():
-            rows.append({"key": t.name + "|" + employee, "employee": employee, "employee_name": names.get(employee, employee),
-                         "assignment": t.name, "block_code": t.block_code, "work_name": t.work_name, "team_name": t.team_name,
-                         "pay_mode": t.pay_mode, "sessions": counts.get(employee, 0), "amount": share,
-                         "ticket_amount": flt(t.amount), "locked_at": str(t.locked_at)[:10]})
+    for source, amount, counts, day in ([(l, l.amount, by_line.get(l.name, {}), str(l.posting_date)) for l in lines] +
+                                        [(t, t.amount, by_task.get(t.name, {}), str(t.locked_at)[:10]) for t in tickets]):
+        for employee, share in rules.split_by_sessions(flt(amount), counts).items():
+            rows.append({"key": source.name + "|" + employee, "employee": employee, "employee_name": names.get(employee, employee),
+                         "assignment": source.name, "block_code": source.block_code, "work_name": source.work_name, "team_name": source.team_name,
+                         "pay_mode": source.pay_mode, "sessions": round(counts.get(employee, 0), 2), "amount": share,
+                         "ticket_amount": flt(amount), "locked_at": day})
     rows.sort(key=lambda r: (r["employee_name"] or "", r["locked_at"]))
     return rows
 

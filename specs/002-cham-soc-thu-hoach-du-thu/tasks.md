@@ -76,7 +76,7 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
   - chạy lại không ghi trùng.
 - [x] T012 Viết integration test chuyển dữ liệu trong tests/integration/verify_lot_ledger.py: 593 dòng cắt bắp đầu kỳ (Đỏ 113, Trắng 182, Tím 298); chạy lại không tăng; không còn Work Entry cũ nào được tính tiền
 - [x] T013 Đổi chỗ nạp dữ liệu của dự thu và tồn màu dây sang sổ lô trong lotus_farm/block_forecast.py, lotus_farm/forecast_snapshot.py và lotus_farm/bunch_report.py (file này giữ tạm, xóa ở US5). Các engine thuần `bunch_flow_rules`, `bunch_forecast_engine`, `block_forecast_engine` giữ nguyên
-- [ ] T014 Sửa tests/integration/verify_bunch_forecast.py đọc sổ lô; dự thu trước và sau khi chuyển dữ liệu phải bằng nhau
+- [x] T014 Sửa tests/integration/verify_bunch_forecast.py đọc sổ lô; dự thu trước và sau khi chuyển dữ liệu phải bằng nhau
 
 **Checkpoint**: Migrate qua trên bản local, số dự thu không đổi sau khi chuyển
 
@@ -90,48 +90,48 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Unit test chia buổi theo trọng số (cùng việc chia theo khối lượng, khác việc chia đều, tổng của mỗi người mỗi buổi bằng 1) và tiền tạm tính khoán số lượng trong lotus_farm/tests/test_field_report_rules.py
-- [ ] T016 [P] [US1] Integration test luồng tổ-ngày trong tests/integration/verify_lot_ledger.py:
+- [x] T015 [P] [US1] Unit test chia buổi theo trọng số (cùng việc chia theo khối lượng, khác việc chia đều, tổng của mỗi người mỗi buổi bằng 1) và tiền tạm tính khoán số lượng trong lotus_farm/tests/test_field_report_rules.py
+- [x] T016 [P] [US1] Integration test luồng tổ-ngày trong tests/integration/verify_lot_ledger.py:
   - lưu nháp, gửi, xác nhận;
   - chặn tự xác nhận; đội trưởng nhập hộ thì quản lý vườn xác nhận;
   - sửa có lý do (Voided kèm `replaces`); mở lại có lý do;
   - chặn ngày tương lai và tháng đã khóa sổ;
   - kiểm tra sâu bệnh bắt buộc đủ trường;
   - bảng lương cộng đúng trọng số.
-- [ ] T017 [P] [US1] Unit test gom dòng theo lô, giữ nháp trên máy và khôi phục sau khi mất sóng trong frontend/tests/lot-entry-model.test.js
-- [ ] T018 [P] [US1] Mount test LotCards, LotEntryModal, DayConfirm trong frontend/tests/lot-entry.mount.test.js
+- [x] T017 [P] [US1] Unit test gom dòng theo lô, giữ nháp trên máy và khôi phục sau khi mất sóng trong frontend/tests/lot-entry-model.test.js
+- [x] T018 [P] [US1] Mount test LotCards, LotEntryModal, DayConfirm trong frontend/tests/lot-entry.mount.test.js
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Viết `today(farm, team, date)` trong lotus_farm/lot_report.py:
+- [x] T019 [US1] Viết `today(farm, team, date)` trong lotus_farm/lot_report.py:
   - tạo báo cáo nháp nếu chưa có;
   - thẻ lô gồm lô giao cố định và Round đang mở của tổ;
   - kèm đợt màu còn buồng, cách ly, các dòng đã nhập, người có lượt máy theo buổi.
-- [ ] T020 [US1] Viết `save_lot(report, block, lines[], expected_modified)` trong lotus_farm/lot_report.py:
+- [x] T020 [US1] Viết `save_lot(report, block, lines[], expected_modified)` trong lotus_farm/lot_report.py:
   - có lỗi thì không lưu dòng nào;
   - `source_key` = `day:<báo cáo>:<lô>:<việc>:<màu>:<lý do>`;
   - ghi buổi công có trọng số.
-- [ ] T021 [US1] Viết các hàm còn lại trong lotus_farm/lot_report.py:
+- [x] T021 [US1] Viết các hàm còn lại trong lotus_farm/lot_report.py:
   - `send`; `confirm`: chụp `rate`, `amount` với khoán số lượng, chặn người xác nhận là người nhập, cập nhật cách ly;
   - `amend(entry, values, reason)`, `reopen(report, reason)`, `status(farm, crew, date)`.
-- [ ] T022 [US1] Sửa tiền khoán theo trọng số buổi trong lotus_farm/field_report_rules.py và lotus_farm/field_report.py:
+- [x] T022 [US1] Sửa tiền khoán theo trọng số buổi trong lotus_farm/field_report_rules.py và lotus_farm/field_report.py:
   - `split_by_sessions` nhận trọng số;
   - `month_piece` và `work_rows` cộng `weight` thay vì đếm dòng;
   - xóa `save_entry` và `_write_sessions` cũ.
-- [ ] T023 [US1] Bảng lương và chi phí công theo lô đọc trọng số trong lotus_farm/hr_period.py và lotus_farm/finance/payroll.py (`_work_rows`)
-- [ ] T024 [US1] Viết `my_pay(farm, month)` trong lotus_farm/lot_report.py: tiền khoán tạm tính của tổ và của từng người, theo quyền xem
-- [ ] T025 [P] [US1] Viết model thuần trong frontend/src/lot-entry-model.js: gom dòng theo lô; giữ nháp trên máy (bọc try/catch); so `expected_modified`
-- [ ] T026 [US1] Viết component thẻ lô của tổ trong ngày, có dấu cách ly và đã nhập, trong frontend/src/components/field/LotCards.vue
-- [ ] T027 [US1] Viết hộp nhập mọi việc của một lô trong frontend/src/components/field/LotEntryModal.vue:
+- [x] T023 [US1] Bảng lương và chi phí công theo lô đọc trọng số trong lotus_farm/hr_period.py và lotus_farm/finance/payroll.py (`_work_rows`)
+- [x] T024 [US1] Viết `my_pay(farm, month)` trong lotus_farm/lot_report.py: tiền khoán tạm tính của tổ và của từng người, theo quyền xem
+- [x] T025 [P] [US1] Viết model thuần trong frontend/src/lot-entry-model.js: gom dòng theo lô; giữ nháp trên máy (bọc try/catch); so `expected_modified`
+- [x] T026 [US1] Viết component thẻ lô của tổ trong ngày, có dấu cách ly và đã nhập, trong frontend/src/components/field/LotCards.vue
+- [x] T027 [US1] Viết hộp nhập mọi việc của một lô trong frontend/src/components/field/LotEntryModal.vue:
   - đủ các nhóm: việc vườn, phun bón kèm vật tư và liều, việc buồng, thu hoạch, kiểm tra sâu bệnh;
   - cắt bắp tự gán màu dây;
   - người làm mặc định theo chấm công, người nhập chỉ bỏ ra người không làm;
   - máy tính dùng ModalForm/WorkspaceModal, điện thoại dùng Vant.
-- [ ] T028 [US1] Viết màn xác nhận tổ-ngày trong frontend/src/components/field/DayConfirm.vue: xem lại, xác nhận một lần, sửa có lý do, mở lại có lý do
-- [ ] T029 [US1] Nối các màn vào frontend/src/FieldReportApp.vue và frontend/src/WorkMobile.vue:
+- [x] T028 [US1] Viết màn xác nhận tổ-ngày trong frontend/src/components/field/DayConfirm.vue: xem lại, xác nhận một lần, sửa có lý do, mở lại có lý do
+- [x] T029 [US1] Nối các màn vào frontend/src/FieldReportApp.vue và frontend/src/WorkMobile.vue:
   - máy tính: mục Hôm nay trong frontend/src/FieldReportApp.vue;
   - điện thoại: tab Hôm nay, Xác nhận, Tôi (tiền tạm tính) trong frontend/src/WorkMobile.vue.
-- [ ] T030 [US1] Xóa phần bị thay trong lotus_farm/ và frontend/src/components/field/:
+- [x] T030 [US1] Xóa phần bị thay trong lotus_farm/ và frontend/src/components/field/:
   - backend: lotus_farm/bunch_posting.py;
   - frontend: frontend/src/components/field/WorkBunch.vue, WorkBunchSheet.vue, WorkTicket.vue, WorkEntryForm.vue, WorkToday.vue;
   - các test cũ tương ứng trong frontend/tests.

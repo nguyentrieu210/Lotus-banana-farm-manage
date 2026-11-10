@@ -37,7 +37,6 @@ async function act(method,args={},message){
  catch(e){error.value=e.message}
  finally{busy.value=false}
 }
-const reportDone=()=>act('report_done',{},'Đã báo xong. Chờ đội trưởng duyệt.')
 const approve=()=>act('approve',{},t.value.pay_mode==='Lot'?'Đã duyệt. Chờ kỹ thuật vườn nghiệm thu.':'Đã duyệt và khoá phiếu.')
 async function giveBack(){const text=await reason.ask('Trả lại phiếu cho tổ làm tiếp','Cần làm / sửa gì');if(text)await act('return_ticket',{reason:text},'Đã trả lại phiếu.')}
 async function cancel(){const text=await reason.ask('Huỷ phiếu '+t.value.block_code+' · '+t.value.work_name,'Lý do huỷ');if(text)await act('cancel_assignment',{reason:text},'Đã huỷ phiếu.')}
@@ -78,8 +77,6 @@ defineExpose({reload:load})
    <WorkspaceSummaryStrip :items="summary"/>
 
    <div class="work-ticket__actions">
-    <UiButton v-if="t.actions.report" type="button" @click="emit('report',t)">Báo cáo hôm nay</UiButton>
-    <UiButton v-if="t.actions.report&&t.entries.length" type="button" variant="outline" :disabled="busy" @click="reportDone">Báo xong lô</UiButton>
     <UiButton v-if="t.actions.approve" type="button" :disabled="busy" @click="approve">Duyệt</UiButton>
     <UiButton v-if="t.actions.return" type="button" variant="outline" :disabled="busy" @click="giveBack">Trả lại</UiButton>
     <UiButton v-if="t.actions.inspect&&!inspecting" type="button" :disabled="busy" @click="openInspection">Nghiệm thu</UiButton>

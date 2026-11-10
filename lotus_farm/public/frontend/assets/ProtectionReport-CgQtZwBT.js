@@ -1,0 +1,1 @@
+import{W as e,y as t}from"./vue.runtime.esm-bundler-Dx9eLHme.js";import{t as n}from"./WorkGroupReport-D8qwB5S_.js";var r={__name:`ProtectionReport`,props:{embedded:Boolean,navigationKey:String},setup(r){return(r,i)=>(e(),t(n,{method:`protection`,filename:`Bao-cao-BVTV`,empty:`Chưa có báo cáo phun thuốc, bón phân trong phần đang lọc.`,protection:``}))}};export{r as default};

@@ -9,9 +9,8 @@ import {normalizeFieldView} from './field-report-navigation.js'
 import {groups,payModes,payShort,capBases,money,amountText} from './field-work-model.js'
 import {unitLabel} from './units'
 import {formatDate} from './format'
-import WorkToday from './components/field/WorkToday.vue'
+import LotToday from './components/field/LotToday.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
-import WorkBunch from './components/field/WorkBunch.vue'
 import ForecastCarePlan from './components/ForecastCarePlan.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
 import FieldBoard from './components/field/FieldBoard.vue'
@@ -22,7 +21,7 @@ import FormGrid from './components/form/FormGrid.vue'
 import ModalForm from './components/form/ModalForm.vue'
 import FormSection from './components/form/FormSection.vue'
 import {Button as UiButton} from './components/ui/button'
-// Công việc ngoài vườn (/lotus/cong-viec): Hôm nay (báo cáo trên phiếu), giao việc theo lô, nghiệm thu, bảng lô × việc,
+// Công việc ngoài vườn (/lotus/cong-viec): Hôm nay (báo cáo ngày của tổ theo lô), giao việc theo lô, nghiệm thu, bảng lô × việc,
 // tiền khoán theo người, and the setup (đội, tổ & lô, bảng giá, việc & cách trả). Same components as the /work phone app.
 const {desktop,density,gridDensity}=useDesktopWorkspace({embedded:props.embedded})
 provide('lotusDesktopDensity',gridDensity)
@@ -162,14 +161,13 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="['today','bunch','assign','board'].includes(view)">
+    <template v-if="['today','assign','board'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
-     <WorkToday v-if="view==='today'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
-     <WorkBunch v-else-if="view==='bunch'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
+     <LotToday v-if="view==='today'&&crew" :key="crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
      <WorkAssign v-else-if="view==='assign'&&crew" :farm="farm" :crew="crew" :setup="setup"/>
      <FieldBoard v-else-if="view==='board'&&crew" v-model:month="month" :farm="farm" :crew="crew"/>
     </template>
@@ -183,7 +181,7 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
 
     <ListPage v-else-if="view==='payable'" v-model:search="search" title="Tiền khoán theo người" :rows="filtered" :columns="payableColumns" :loading="loading" row-key="key" storage-key="field-work-payable" @refresh="loadView">
      <template #filters><LotusField v-model="month" type="month" aria-label="Tháng" @update:model-value="loadView"/></template>
-     <template #before><p class="lotus-form-note">Phiếu khoán đã khoá trong tháng, chia theo buổi cho người làm. Số này vào bảng lương; buổi làm khoán không tính công nhật.</p></template>
+     <template #before><p class="lotus-form-note">Dòng khoán số lượng đã xác nhận và lô khoán đã nghiệm thu trong tháng, chia theo buổi cho người làm. Số này vào bảng lương; buổi làm khoán không tính công nhật.</p></template>
     </ListPage>
 
     <template v-else-if="view==='lots'">
