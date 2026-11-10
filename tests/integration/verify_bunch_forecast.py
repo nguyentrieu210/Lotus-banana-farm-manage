@@ -140,7 +140,7 @@ try:
     check("nothing changed after the refused save", sum(r.qty for r in rows_of(A1)) == 15)
     out = lr.save_lot(report, A5, [as_line(second[1]), as_line(dict(block=A5, event_type="Harvest", qty=121, bunch_tag=tag, weight_kg=2000))])
     check("harvest above the cut of the colour is refused", out["saved"] == 0 and "vượt" in out["errors"][0]["message"], out)
-    check("another tổ's report is not created for the foreman", lr.today(FARM, other_team, day)["report"] is None)
+    refused("the foreman cannot read another tổ's day", lambda: lr.today(FARM, other_team, day), frappe.PermissionError)
     refused("the foreman cannot open another tổ's report", lambda: lr.open_report(FARM, other_team, day), frappe.PermissionError)
     check("reading a day writes nothing", frappe.db.count(lr.REPORT, {"farm": FARM, "work_team": other_team, "report_date": day}) == 0)
     refused("foreman cannot confirm", lambda: lr.confirm(report), frappe.PermissionError)
