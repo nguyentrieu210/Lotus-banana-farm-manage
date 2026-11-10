@@ -63,8 +63,11 @@ def bunch_rows(filters=None, fields=None, order_by="posting_date asc, creation a
 
 # ---------------------------------------------------------------- quarantine
 
-def _spray_lines(block, first, last):
-    names = frappe.get_all(ENTRY, filters={"farm_block": block, "state": rules.CONFIRMED, "posting_date": ["between", [first, last]]},
+def _spray_lines(block, first, last, live=False):
+    """Lines of the lô carrying a product with a pre-harvest interval. live: every line not voided (a spray reported but
+    not yet confirmed still holds the harvest); otherwise confirmed lines only."""
+    state = ["!=", rules.VOIDED] if live else rules.CONFIRMED
+    names = frappe.get_all(ENTRY, filters={"farm_block": block, "state": state, "posting_date": ["between", [first, last]]},
                            fields=["name", "posting_date"], limit_page_length=0)
     if not names:
         return []
@@ -80,7 +83,7 @@ def _spray_lines(block, first, last):
 def harvest_hold(block, day):
     """(spray day, last day) of the pre-harvest interval that forbids harvesting this lô on `day`, or None."""
     day = getdate(day)
-    lines = _spray_lines(block, add_days(day, -QUARANTINE_LOOKBACK_DAYS), day)
+    lines = _spray_lines(block, add_days(day, -QUARANTINE_LOOKBACK_DAYS), day, live=True)
     return rules.harvest_blocked(day, rules.quarantine_intervals(lines))
 
 

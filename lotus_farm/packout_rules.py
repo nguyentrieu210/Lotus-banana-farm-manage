@@ -88,18 +88,19 @@ def split(sources, finished_kg, secondary_kg, cartons):
     return rows
 
 
-def receipt_rows(split_rows, rates):
+def receipt_rows(split_rows, rates, per_packed=()):
     """Stock receipt lines of a shift: per source, its finished and secondary kg, carrying the value taken off the lô's
-    work in progress (kg brought in × the lô's cost per kg), shared between the two by kg. rates: {lô: đ per kg}.
-    Returns (rows, lô without a rate)."""
+    work in progress, shared between the two by kg. rates: {lô: đ per kg}. The planned cost is per kg brought in; a lô
+    in per_packed carries its last actual cost, which month-end costing counts per kg received in stock (finished +
+    secondary), so its value is the kg packed × that rate. Returns (rows, lô without a rate)."""
     rows, missing = [], []
     for s in split_rows:
         rate = rates.get(s["farm_block"])
         if not rate:
             missing.append(s["farm_block"])
             continue
-        value = _f(s["kg"]) * _f(rate)
         packed = s["finished_kg"] + s["secondary_kg"]
+        value = (packed if s["farm_block"] in per_packed else _f(s["kg"])) * _f(rate)
         for kind, qty in (("finished", s["finished_kg"]), ("secondary", s["secondary_kg"])):
             if qty > 0:
                 part = value * qty / packed

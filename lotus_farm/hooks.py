@@ -115,7 +115,9 @@ doc_events["Packout Run"]["before_validate"].append("lotus_farm.daily_operations
 doc_events["Stock Entry"]["before_cancel"] = [
     "lotus_farm.daily_operations.stock_context_cancel",
     "lotus_farm.stock_bridge.before_stock_cancel",
+    "lotus_farm.shift.release_receipt",
 ]
+doc_events["Stock Entry"]["on_trash"] = "lotus_farm.shift.release_receipt"
 
 for _name in ("Secondary Product Movement", "Cycle Closing Report"):
     has_permission[_name] = "lotus_farm.controls.farm_permission"

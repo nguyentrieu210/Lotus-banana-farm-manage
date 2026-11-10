@@ -207,6 +207,21 @@ def cap_message(block_code, colour, balance):
     return f"{block_code} màu {colour}: thu hoạch và hủy sau cắt là {balance['used']}, vượt số đã cắt bắp {balance['cut']}."
 
 
+def overage(balance):
+    """How far a colour is beyond its cắt bắp (0 when within)."""
+    return max(balance["bag"] - balance["cut"], 0) + max(balance["used"] - balance["cut"], 0)
+
+
+def line_cap(pay_mode, cap_basis, stage, qty, trees):
+    """A khoán-số-lượng line counted per tree (bón phân, phun, hạ cây…) cannot exceed the trees of the lô. Bunch stages
+    have their own cumulative caps. Returns the message, or None."""
+    if pay_mode != PAY_COUNT or stage or cap_basis != "LotTrees" or not int(trees or 0):
+        return None
+    if float(qty or 0) > int(trees):
+        return f"Số lượng {qty:g} vượt số cây {int(trees)} của lô."
+    return None
+
+
 def over_trees(rows, trees, cycles):
     """{(lô, công đoạn): (total, trees)} where chích bắp, tỉa or chống đổ of the lô's current vụ exceed its trees."""
     totals = {}
@@ -267,7 +282,8 @@ def _split(total, parts):
 
 def session_weights(lines):
     """{(line key, employee, buổi): weight}. One buổi of one person counts once: shared evenly between the việc they
-    had that buổi, and within one việc by the quantity of each lô (evenly when no quantity)."""
+    had that buổi, and within one việc by the quantity of each lô (evenly when any of them has no quantity: a lô ticked
+    "xong" without a number still took part of the buổi)."""
     slots = {}
     for line in lines:
         for employee, flags in (line.get("people") or {}).items():
@@ -281,7 +297,10 @@ def session_weights(lines):
             works.setdefault(line.get("work_type"), []).append(line)
         per_work = _split(1, {w: 0 for w in works})
         for work, group in works.items():
-            for key, value in _split(per_work[work], {line["key"]: float(line.get("qty") or 0) for line in group}).items():
+            shares = {line["key"]: float(line.get("qty") or 0) for line in group}
+            if any(v <= 0 for v in shares.values()):
+                shares = {key: 0 for key in shares}
+            for key, value in _split(per_work[work], shares).items():
                 weights[(key, employee, session)] = value
     return weights
 

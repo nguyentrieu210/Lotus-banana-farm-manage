@@ -156,7 +156,7 @@ def _write(doc, rights, data, lots, lines, columns, notes):
         if lr._lines(doc.name, block):
             notes.append(f"Lô {code} đã có số nhập tay trong báo cáo: giữ số đã nhập, không ghi số máy đọc.")
             continue
-        rounds = {a.work_type: a.name for a in given if a.farm_block == block and a.kind == field.rules.ROUND}
+        rounds = {a.work_type: a for a in given if a.farm_block == block and a.kind == field.rules.ROUND}
         standing = next((a.name for a in given if a.farm_block == block and a.kind != field.rules.ROUND), None)
         written[code] = []
         for line in (l for l in lines if l["code"] == code):
@@ -169,6 +169,8 @@ def _write(doc, rights, data, lots, lines, columns, notes):
             flags = list(line["flags"])
             if work.requires_material:
                 flags.append("Ghi vật tư và liều")
+            if lr.pay_mode(work, rounds.get(work.name)) == rules.PAY_LOT and work.name not in rounds:
+                flags.append("Khoán lô nhưng lô chưa giao cho tổ")
             if line["stage"] == paper.REJECT:
                 clean["reject_stage"] = "After Cut" if line["bunch_tag"] else "Before Cut"
             entry = lr._write_line(doc, doc.name, block, clean, None, cint(cycles.get(block)), rounds, standing, names, "; ".join(flags))

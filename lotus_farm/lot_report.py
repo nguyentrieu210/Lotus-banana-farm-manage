@@ -282,8 +282,15 @@ def _free_key(key):
     return candidate
 
 
+def pay_mode(work, given):
+    """A line on a phiếu giao is paid the way the phiếu was given (it keeps the mode of the day it was given);
+    otherwise the way the catalogue says today."""
+    return (given.pay_mode if given and given.pay_mode else work.pay_mode)
+
+
 def _write_line(doc, report, block, clean, existing, cycle, rounds, standing, names, review_flags=None):
-    """Write one Draft line of a lô in the tổ's report (new, or replacing the unsent line with the same key)."""
+    """Write one Draft line of a lô in the tổ's report (new, or replacing the unsent line with the same key).
+    rounds: {việc: the open Round of this tổ on this lô}."""
     line = frappe.get_doc(ENTRY, existing.name, for_update=True) if existing else frappe.new_doc(ENTRY)
     work = clean["work"]
     stage = clean["stage"] or None
@@ -291,15 +298,16 @@ def _write_line(doc, report, block, clean, existing, cycle, rounds, standing, na
     if stage == rules.SUCKER:
         bud = frappe.db.exists(ENTRY, {"farm_block": block, "cycle_no": cycle, "state": ["!=", rules.VOIDED], "stage": ["in", [rules.INJECT, rules.CUT]]})
         line_cycle = rules.sucker_cycle(cycle, bool(bud))
+    given = rounds.get(work.name)
     line.update({"daily_report": report, "farm": doc.farm, "company": doc.company, "crew": doc.crew, "work_team": doc.work_team,
-                 "farm_block": block, "work_type": work.name, "stage": stage, "pay_mode": work.pay_mode, "cycle_no": line_cycle,
+                 "farm_block": block, "work_type": work.name, "stage": stage, "pay_mode": pay_mode(work, given), "cycle_no": line_cycle,
                  "posting_date": getdate(doc.report_date), "qty": clean["qty"], "uom": work.uom, "area_ha": clean["area_ha"], "bunch_tag": clean["bunch_tag"],
                  "reject_stage": clean["reject_stage"], "reason": clean["reason"], "weight_kg": clean["weight_kg"],
                  "disease": clean["disease"], "severity": clean["severity"], "done": clean["done"], "notes": clean["notes"],
                  "state": rules.DRAFT, "source_type": rules.PHOTO if clean["machine_read"] else rules.DAILY,
                  "source_key": existing.source_key if existing else _free_key(clean["key"]), "machine_read": clean["machine_read"],
                  "review_flags": review_flags or None, "entered_by": frappe.session.user,
-                 "assignment": rounds.get(work.name) or (standing if work.group == rules.BUNCH_GROUP else None),
+                 "assignment": given.name if given else (standing if work.group == rules.BUNCH_GROUP else None),
                  "morning_people": sum(f["morning"] for f in clean["people"].values()),
                  "afternoon_people": sum(f["afternoon"] for f in clean["people"].values())})
     line.set("people", [{"employee": e, "employee_name": names.get(e, e), **f} for e, f in clean["people"].items()])
@@ -339,7 +347,7 @@ def save_lot(report, block, lines=None, expected_modified=None):
     crew_teams = _crew_teams(doc.farm, doc.crew, doc.work_team)
     cycle = cint(_cycles([block]).get(block))
     given = [a for a in _assignments(doc.farm, doc.work_team, str(day)) if a.farm_block == block]
-    rounds = {a.work_type: a.name for a in given if a.kind == field.rules.ROUND}
+    rounds = {a.work_type: a for a in given if a.kind == field.rules.ROUND}
     standing = next((a.name for a in given if a.kind != field.rules.ROUND), None)
     live = {l.source_key: l for l in _lines(report, block)}
     all_people = {}
@@ -370,6 +378,12 @@ def save_lot(report, block, lines=None, expected_modified=None):
             clean["materials"] = _clean_items(clean["materials"])
             clean["people"] = rules.clean_people(raw.get("people"))
             _check_people(clean["people"], here, names, crew_teams)
+            mode = pay_mode(work, rounds.get(work.name))
+            if mode == rules.PAY_LOT and work.name not in rounds:
+                raise rules.LineError(f'"{work.label}" trả khoán lô nhưng lô này chưa giao cho tổ. Nhờ đội trưởng giao ở Giao việc rồi nhập.')
+            over = rules.line_cap(mode, work.cap_basis, clean["stage"], clean["qty"], lot["trees"])
+            if over:
+                raise rules.LineError(over)
             if clean["stage"] == rules.SUCKER:
                 clean["qty"] = rules.sucker_estimate(lot["trees"], clean["area_ha"], lot.get("area_ha"))
                 if not clean["qty"]:
@@ -458,6 +472,12 @@ def write_sessions(company, day):
 
 # ---------------------------------------------------------------- send, confirm, amend, reopen
 
+def _nobody(lines, block_map):
+    """Codes of the lô with a khoán line that names nobody: its money would reach no one."""
+    return sorted({block_map.get(l.farm_block, {}).get("block_code", l.farm_block) for l in lines
+                   if l.pay_mode in (rules.PAY_COUNT, rules.PAY_LOT) and not l.people}, key=lambda c: (len(c), c))
+
+
 @frappe.whitelist(methods=["POST"])
 def send(report, expected_modified=None):
     doc, rights = _load(report, for_update=True)
@@ -474,6 +494,9 @@ def send(report, expected_modified=None):
     if unchecked:
         codes = sorted({frappe.db.get_value("Farm Block", b, "block_code") or b for b in unchecked})
         frappe.throw("Còn dòng máy đọc chưa kiểm ở lô " + ", ".join(codes) + ". Mở từng lô, kiểm lại rồi lưu.")
+    nobody = _nobody(_lines(report, state=rules.DRAFT), field._block_map(doc.farm))
+    if nobody:
+        frappe.throw("Việc khoán phải ghi người làm theo buổi để chia tiền. Còn thiếu ở lô " + ", ".join(nobody) + ".")
     for name in frappe.get_all(ENTRY, filters={"daily_report": report, "state": rules.DRAFT}, pluck="name"):
         line = frappe.get_doc(ENTRY, name, for_update=True)
         line.state = rules.SENT
@@ -506,6 +529,9 @@ def confirm(report, expected_modified=None):
         errors.append("Bạn đã tự nhập " + str(len(own)) + " dòng của báo cáo này; cần người khác (quản lý vườn) xác nhận.")
     blocks = {l.farm_block for l in lines}
     block_map = field._block_map(doc.farm)
+    nobody = _nobody(lines, block_map)
+    if nobody:
+        errors.append("Dòng khoán chưa ghi người làm ở lô " + ", ".join(nobody) + ". Mở lại báo cáo để tổ ghi người làm rồi gửi lại.")
     tags = {t.name: t.color_label or t.name for t in frappe.get_all("Bunch Tag", filters={"farm": doc.farm}, fields=["name", "color_label"], limit_page_length=0)}
     confirmed_rows = [r for r in _ledger_rows(blocks) if r.state == rules.CONFIRMED] + [dict(l, cycle_no=l.cycle_no) for l in lines if l.stage]
     for key, balance in rules.over_cut(confirmed_rows).items():
@@ -582,6 +608,12 @@ def amend(entry, values=None, reason=None):
     remove = str(values.get("qty")) == "0" and old.stage != rules.SUCKER
     work = lot_ledger.works(old.farm).get(old.work_type)
     clean = None
+    lot = field._block_map(old.farm).get(old.farm_block, {})
+    code = lot.get("block_code") or old.farm_block
+    others = [r for r in _ledger_rows([old.farm_block]) if r.name != old.name and r.state == rules.CONFIRMED]
+    before = rules.over_cut(others + [dict(farm_block=old.farm_block, bunch_tag=old.bunch_tag, stage=old.stage, reject_stage=old.reject_stage,
+                                           qty=old.qty, cycle_no=old.cycle_no)])
+    rows = list(others)
     if not remove:
         merged = {"qty": old.qty, "area_ha": old.area_ha, "bunch_tag": old.bunch_tag, "reason": old.reason, "reject_stage": old.reject_stage,
                   "weight_kg": old.weight_kg, "disease": old.disease, "severity": old.severity, "done": old.done, "notes": old.notes,
@@ -593,18 +625,35 @@ def amend(entry, values=None, reason=None):
         except rules.LineError as e:
             frappe.throw(str(e))
         if old.stage == rules.SUCKER:
-            lot = field._block_map(old.farm).get(old.farm_block, {})
             clean["qty"] = rules.sucker_estimate(lot.get("trees"), clean["area_ha"], lot.get("area_ha"))
-        rows = [r for r in _ledger_rows([old.farm_block]) if r.name != old.name and r.state == rules.CONFIRMED]
         rows.append(dict(farm_block=old.farm_block, bunch_tag=clean["bunch_tag"], stage=old.stage, reject_stage=clean["reject_stage"],
                          qty=clean["qty"], cycle_no=old.cycle_no))
-        beyond = {k: b for k, b in rules.over_cut(rows).items() if k[0] == old.farm_block}
-        if beyond:
-            key, balance = next(iter(beyond.items()))
-            code = frappe.db.get_value("Farm Block", old.farm_block, "block_code")
-            frappe.throw(rules.cap_message(code, frappe.db.get_value("Bunch Tag", key[1], "color_label") or key[1], balance))
         if old.stage == rules.HARVEST and lot_ledger.harvest_hold(old.farm_block, getdate(old.posting_date)):
             frappe.throw("Lô đang cách ly thuốc ở ngày thu này, không sửa thành thu hoạch được.")
+        if flt(clean["qty"]) > flt(old.qty):
+            cycle = cint(_cycles([old.farm_block]).get(old.farm_block))
+            for (_, stage), (total, trees) in rules.over_trees(rows, {old.farm_block: lot.get("trees")}, {old.farm_block: cycle}).items():
+                if stage == old.stage:
+                    frappe.throw(f"{code}: {rules.LABELS[stage].lower()} lũy kế {total} vượt số cây {trees} của lô.")
+            over = rules.line_cap(old.pay_mode, work.cap_basis if work else "None", old.stage, clean["qty"], lot.get("trees"))
+            if over:
+                frappe.throw(f"{code}: {over}")
+    if old.stage == rules.HARVEST and old.bunch_tag:
+        # Buồng already taken into a packhouse shift stay harvested: the shift (and its stock receipt) counts them.
+        from lotus_farm import shift as packhouse
+        key = (old.farm_block, old.bunch_tag)
+        kept = cint(clean["qty"]) if clean and clean["bunch_tag"] == old.bunch_tag else 0
+        taken = packhouse._received_elsewhere({key}).get(key, 0)
+        left = packhouse._harvested({key}).get(key, 0) - cint(old.qty) + kept
+        if taken > left:
+            frappe.throw(f"{code}: xưởng đã nhận {taken} buồng của màu này vào ca đóng gói, sau khi sửa chỉ còn {left} buồng đã thu. "
+                         "Sửa hoặc hủy ca đóng gói trước.")
+    # The colour may not end further beyond its cắt bắp than it was: lowering or removing a cắt bắp line with buồng
+    # already bagged or harvested against it is refused the same way as raising a bao or thu line.
+    touched = {old.bunch_tag, clean["bunch_tag"] if clean else None} - {None}
+    for key, balance in rules.over_cut(rows).items():
+        if key[1] in touched and (key not in before or rules.overage(balance) > rules.overage(before[key])):
+            frappe.throw(rules.cap_message(code, frappe.db.get_value("Bunch Tag", key[1], "color_label") or key[1], balance))
     now = now_datetime()
     old.update({"state": rules.VOIDED, "void_reason": reason[:140], "voided_at": now})
     _store(old)

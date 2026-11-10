@@ -87,6 +87,8 @@ class FieldWorkRulesTest(unittest.TestCase):
         self.assertEqual(r.minimum_topup(800000, 10, 22700), 108000)
         self.assertEqual(r.minimum_topup(1000000, 10, 22700), 0)
         self.assertEqual(r.minimum_topup(0, 0, 22700), 0)
+        self.assertEqual(r.minimum_topup(0, 0.5, 22700), 45400)       # half a buổi shared with công nhật still has a floor
+        self.assertEqual(r.minimum_topup(0, 19.9999999, 22700), 1816000)
 
     def test_quarantine_and_state_display(self):
         self.assertEqual(r.quarantine_until("2026-11-02", 7), date(2026, 11, 9))

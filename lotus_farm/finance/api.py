@@ -112,6 +112,12 @@ def save_settings(values):
             value = values.get(key) or None
             if value and not frappe.db.exists(doctype, value):
                 frappe.throw('Không tìm thấy %s.' % value)
+            if value and doctype == 'Item':
+                setup.check_fruit_item(value, 'Chuối thành phẩm' if key == 'packed_item' else 'Chuối phụ phẩm')
+            if value and doctype == 'Warehouse':
+                warehouse = frappe.db.get_value('Warehouse', value, ['company', 'is_group', 'disabled'], as_dict=True)
+                if warehouse.company != doc.company or warehouse.is_group or warehouse.disabled:
+                    frappe.throw('Kho thành phẩm phải là kho đang dùng (không phải kho nhóm) của công ty.')
             doc.set(key, value)
     if 'minimum_wage_region' in values:
         if values.get('minimum_wage_region') not in ('', None, 'I', 'II', 'III', 'IV'):

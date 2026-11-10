@@ -238,12 +238,13 @@ def month(farm, month=None):
     total_kg = sum(r["kg"] for r in rate_rows)
     pay_blocks = _pay_blocks(farm)
     # Công (buổi of the sổ lô, weighted) and money per lô: khoán số lượng lines confirmed in the month, khoán lô locked in it.
-    labour = {r.farm_block: flt(r.sessions) for r in frappe.db.sql("""select farm_block, sum(weight) as sessions from `tabLotus Work Session`
-        where farm = %s and posting_date between %s and %s group by farm_block""", (farm, begin, end), as_dict=True)}
+    labour = {r.farm_block: flt(r.sessions) for r in frappe.db.sql(f"""select s.farm_block, sum(s.weight) as sessions from `tabLotus Work Session` s
+        join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
+        where s.farm = %s and s.posting_date between %s and %s group by s.farm_block""", (farm, begin, end), as_dict=True)}
     count_pay = {r.farm_block: flt(r.amount) for r in frappe.db.sql(f"""select farm_block, sum(amount) as amount from `tab{ENTRY}` where farm = %s
         and state = 'Confirmed' and pay_mode = 'Count' and posting_date between %s and %s group by farm_block""", (farm, begin, end), as_dict=True)}
     lot_pay = {r.farm_block: flt(r.amount) for r in frappe.db.sql(f"""select farm_block, sum(amount) as amount from `tab{field.ASSIGNMENT}` where farm = %s
-        and state = 'Locked' and locked_at between %s and %s group by farm_block""", (farm, begin, f"{end} 23:59:59"), as_dict=True)}
+        and state = 'Locked' and pay_mode = 'Lot' and locked_at between %s and %s group by farm_block""", (farm, begin, f"{end} 23:59:59"), as_dict=True)}
     pay_rows = [{"code": codes.get(b, ""), "workdays": round(labour.get(b, 0) / 2, 2), "count_pay": round(count_pay.get(b, 0)), "lot_pay": round(lot_pay.get(b, 0)),
                  "total": round(count_pay.get(b, 0) + lot_pay.get(b, 0))}
                 for b in sorted(set(labour) | set(count_pay) | set(lot_pay), key=lambda b: (len(codes.get(b, "")), codes.get(b, "")))

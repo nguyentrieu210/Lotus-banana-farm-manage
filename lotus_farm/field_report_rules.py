@@ -184,7 +184,7 @@ def under_norm(qty, workdays, norm_min):
 def minimum_topup(piece_amount, piece_sessions, hourly_minimum):
     """Khoán pay converted to an hourly figure for normal hours may not fall below the regional minimum
     (Nghị định 293/2025 Điều 4): the shortfall over the buổi worked on khoán tickets."""
-    floor = int(piece_sessions or 0) * SESSION_HOURS * float(hourly_minimum or 0)
+    floor = round(float(piece_sessions or 0), 4) * SESSION_HOURS * float(hourly_minimum or 0)  # buổi may be shared: fractions count
     return round(max(floor - float(piece_amount or 0), 0))
 
 

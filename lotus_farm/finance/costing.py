@@ -127,8 +127,12 @@ def receive_shift(shift, posting_date=None):
     doc = frappe.get_doc('Packhouse Shift', shift, for_update=True)  # read after the lock: a second caller sees the first receipt
     if doc.docstatus != 1:
         frappe.throw('Ca %s chưa đóng.' % doc.name)
-    if doc.stock_entry and frappe.db.get_value('Stock Entry', doc.stock_entry, 'docstatus') in (0, 1):
-        frappe.throw('Ca %s đã có phiếu nhập kho %s.' % (doc.name, doc.stock_entry))
+    existing = frappe.db.get_value('Stock Entry', {'lotus_packhouse_shift': doc.name, 'docstatus': ['<', 2]}, 'name')
+    if existing:
+        frappe.throw('Ca %s đã có phiếu nhập kho %s.' % (doc.name, existing))
+    setup.check_fruit_item(cfg.packed_item, 'Chuối thành phẩm')
+    if flt(doc.secondary_kg) > 0 and cfg.get('secondary_item'):
+        setup.check_fruit_item(cfg.secondary_item, 'Chuối phụ phẩm')
     if flt(doc.secondary_kg) > 0 and not cfg.get('secondary_item'):
         frappe.throw('Ca có phụ phẩm: chọn "Chuối phụ phẩm" ở Tài chính – Kế toán › Thiết lập.')
     posting_date = posting_date or str(doc.posting_date)
@@ -138,8 +142,9 @@ def receive_shift(shift, posting_date=None):
     _finished_account(cfg.packed_warehouse, m)
     sources = [dict(farm_block=s.farm_block, bunch_tag=s.bunch_tag, bunches=s.bunches, kg=s.kg) for s in doc.sources]
     split = packout_rules.split(sources, doc.finished_kg, doc.secondary_kg, doc.cartons)
-    rates = {b: rules.provisional_rate(_last_cost(b), cfg.get('harvest_standard_cost')) for b in {s['farm_block'] for s in sources}}
-    lines, missing = packout_rules.receipt_rows(split, rates)
+    last = {b: _last_cost(b) for b in {s['farm_block'] for s in sources}}
+    rates = {b: rules.provisional_rate(cost, cfg.get('harvest_standard_cost')) for b, cost in last.items()}
+    lines, missing = packout_rules.receipt_rows(split, rates, per_packed={b for b, cost in last.items() if cost})
     if missing:
         codes = [frappe.db.get_value('Farm Block', b, 'block_code') or b for b in missing]
         frappe.throw('Chưa có giá tạm tính cho lô %s: nhập "Giá thành kế hoạch chuối thu hoạch" ở Tài chính – Kế toán › Thiết lập.' % ', '.join(codes))

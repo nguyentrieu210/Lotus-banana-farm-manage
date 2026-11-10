@@ -632,10 +632,13 @@ def month_piece(company, begin, end, teams=None):
             item["piece"] += share
             item["piece_sessions"] += counts.get(employee, 0)
             item["teams"][task.work_team] = item["teams"].get(task.work_team, 0) + share
+    # A khoán-lô buổi is paid by its Round: without one, or once it is cancelled, the buổi stays công nhật.
     for s in frappe.db.sql(f"""select s.employee, sum(s.weight) as weight from `tab{SESSION}` s
             join `tab{ENTRY}` e on e.name = s.entry and e.state = 'Confirmed'
-            where s.company = %s and s.posting_date between %s and %s and s.pay_mode in %s group by s.employee""",
-                           (company, begin, end, tuple(rules.KHOAN)), as_dict=True):
+            left join `tab{ASSIGNMENT}` a on a.name = s.assignment
+            where s.company = %s and s.posting_date between %s and %s
+              and (s.pay_mode = %s or (s.pay_mode = %s and a.kind = %s and a.state != %s)) group by s.employee""",
+                           (company, begin, end, rules.PAY_COUNT, rules.PAY_LOT, rules.ROUND, rules.CANCELLED), as_dict=True):
         slot(s.employee)["khoan_sessions"] += flt(s.weight)
     return result
 

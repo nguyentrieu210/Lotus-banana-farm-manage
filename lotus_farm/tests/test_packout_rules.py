@@ -61,6 +61,12 @@ class Receipt(unittest.TestCase):
         self.assertAlmostEqual(sum(l["value"] for l in a5), 2000 * 5000, places=2)
         self.assertAlmostEqual(sum(l["value"] for l in lines), 2000 * 5000 + 1000 * 6000, places=2)
 
+    def test_last_actual_cost_is_per_kg_packed_not_per_kg_brought_in(self):
+        rows = rules.split([source(bunches=100, kg=2000)], 1600, 100, 120)
+        lines, _ = rules.receipt_rows(rows, {"A5": 6000}, per_packed={"A5"})
+        self.assertAlmostEqual(sum(l["value"] for l in lines), 1700 * 6000, places=2)
+        self.assertTrue(all(abs(l["rate"] - 6000) < 0.01 for l in lines))
+
     def test_a_lot_without_a_cost_is_named(self):
         rows = rules.split([source(), source("A6", kg=1000)], 2400, 0, 0)
         lines, missing = rules.receipt_rows(rows, {"A5": 5000})

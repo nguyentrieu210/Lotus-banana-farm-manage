@@ -210,6 +210,17 @@ try:
     trees, area = frappe.db.get_value("Farm Block", A6, ["lotus_tree_count", "area_ha"])
     frappe.set_user(foreman)
     out = lr.save_lot(report, A6, [{"work_type": works["Sucker Select"].name, "area_ha": 1}])
+    check("chọn chồi (khoán lô) waits for the lô to be given to the tổ", out["saved"] == 0 and "chưa giao cho tổ" in out["errors"][0]["message"], out)
+    frappe.set_user("Administrator")
+    frappe.db.set_value(field.ASSIGNMENT, {"farm": FARM, "kind": "Round", "work_type": works["Sucker Select"].name, "farm_block": A6,
+                                           "state": ["in", list(field.OPEN_STATES)]}, "state", "Cancelled")
+    field.assign(FARM, crew, works["Sucker Select"].name, team, [A6])
+    worker = frappe.get_all("Employee", filters={"company": frappe.db.get_value("Farm", FARM, "company"), "status": "Active"}, pluck="name", limit=1)[0]
+    frappe.db.set_value("Employee", worker, "lotus_work_team", team)
+    for hour in ("06:30:00", "17:30:00"):
+        frappe.get_doc({"doctype": "Employee Checkin", "employee": worker, "time": f"{day} {hour}", "log_type": "IN"}).insert(ignore_permissions=True)
+    frappe.set_user(foreman)
+    out = lr.save_lot(report, A6, [{"work_type": works["Sucker Select"].name, "area_ha": 1, "people": [{"employee": worker, "morning": 1}]}])
     check("chọn chồi is saved from hectares", out["saved"] == 1 and not out["errors"], out)
     sucker = frappe.get_all(ENTRY, filters={"daily_report": report, "stage": "Sucker Select"}, fields=["qty", "cycle_no", "area_ha"])[0]
     check("estimate = trees x ha / area", sucker.qty == min(trees, round(trees / area)), sucker.qty)

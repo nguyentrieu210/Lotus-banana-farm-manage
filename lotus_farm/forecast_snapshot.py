@@ -59,8 +59,9 @@ def _first_confirmed(farm):
                              and ifnull(stage, '') != '' and confirmed_at is not null""", farm)[0][0]
 
 
-def ensure_weeks(farm):
-    """Build every weekly copy of this farm still missing, oldest first. Another session building the same week wins."""
+def ensure_weeks(farm, failed=None):
+    """Build every weekly copy of this farm still missing, oldest first. Another session building the same week wins.
+    A week that cannot be built is logged and named in `failed`; the weeks before and after it are still built."""
     have = frappe.get_all(SNAPSHOT, filters={"farm": farm, "kind": "Weekly", "week_start": ["is", "set"]}, pluck="week_start")
     built = []
     for monday in rules.weeks_to_build(_first_confirmed(farm), have, nowdate()):
@@ -73,6 +74,13 @@ def ensure_weeks(farm):
             frappe.db.rollback(save_point="weekly_copy")
             frappe.clear_messages()
             continue
+        except Exception:
+            frappe.db.rollback(save_point="weekly_copy")
+            frappe.clear_messages()
+            frappe.log_error(title=f"Bản chốt dự thu tuần {monday}: {farm}")
+            if failed is not None:
+                failed.append(f"{farm}:{monday}")
+            continue
         built.append(str(monday))
     return built
 
@@ -84,15 +92,18 @@ def ensure_all():
     monday = str(rules.monday_of(nowdate()))
     farms = sorted({r.farm for r in frappe.get_all(ENTRY, filters={"stage": ["is", "set"], "state": "Confirmed"}, fields=["farm"], distinct=True,
                                                     limit_page_length=0)})
-    built = {}
+    built, failed = {}, []
     for farm in farms:
         try:
-            built[farm] = ensure_weeks(farm)
+            built[farm] = ensure_weeks(farm, failed)
             frappe.db.commit()
         except Exception:
             frappe.db.rollback()
+            failed.append(farm)
             frappe.log_error(title=f"Bản chốt dự thu tuần {monday}: {farm}")
-    if all(farm in built for farm in farms):
+    # Remembered for the week only when there was something to build and all of it was built: with no sổ lô yet (just
+    # after a deploy, before the opening book is moved) the next login must look again.
+    if farms and not failed:
         frappe.cache.set_value(WEEKS_CACHE, monday, expires_in_sec=8 * 24 * 3600)
     return built
 

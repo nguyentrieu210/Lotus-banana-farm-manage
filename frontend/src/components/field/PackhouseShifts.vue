@@ -58,10 +58,21 @@ const choices=computed(()=>{
 })
 function toggle(o,on){
  if(!on){delete form.value.sources[o.key];return}
- const share=o.bunches?Math.min(o.left,o.bunches)/o.bunches:1
- form.value.sources[o.key]={on:true,bunches:o.left,kg:Math.round(o.kg*share*1000)/1000,farm_block:o.farm_block,bunch_tag:o.bunch_tag,harvest_entry:o.harvest_entry}
+ const take=Math.min(o.left,o.bunches||o.left),share=o.bunches?take/o.bunches:1
+ form.value.sources[o.key]={on:true,bunches:take,kg:Math.round(o.kg*share*1000)/1000,farm_block:o.farm_block,bunch_tag:o.bunch_tag,harvest_entry:o.harvest_entry}
 }
 const picked=computed(()=>Object.values(form.value?.sources||{}))
+// A shift holds one row per lô and colour: harvest lines of the same lô and colour picked together are added up
+// (the row then traces to every harvest of that colour, not to one line).
+function mergedSources(list){
+ const rows=new Map()
+ for(const s of list){
+  const key=s.farm_block+'|'+s.bunch_tag,row=rows.get(key)
+  if(row){row.bunches+=Number(s.bunches||0);row.kg=Math.round((row.kg+Number(s.kg||0))*1000)/1000;row.harvest_entry=null}
+  else rows.set(key,{farm_block:s.farm_block,bunch_tag:s.bunch_tag,bunches:Number(s.bunches||0),kg:Number(s.kg||0),harvest_entry:s.harvest_entry||null})
+ }
+ return [...rows.values()]
+}
 const totalKg=computed(()=>picked.value.reduce((n,s)=>n+Number(s.kg||0),0))
 const totalBunches=computed(()=>picked.value.reduce((n,s)=>n+Number(s.bunches||0),0))
 async function save(close=false){
@@ -72,7 +83,7 @@ async function save(close=false){
  try{
   const values={shift_code:f.shift_code,posting_date:f.posting_date,started_at:f.posting_date+' '+f.start+':00',ended_at:f.posting_date+' '+f.end+':00',
    finished_kg:Number(f.finished_kg||0),secondary_kg:Number(f.secondary_kg||0),cartons:Number(f.cartons||0),notes:f.notes,
-   sources:picked.value.map(s=>({farm_block:s.farm_block,bunch_tag:s.bunch_tag,bunches:Number(s.bunches||0),kg:Number(s.kg||0),harvest_entry:s.harvest_entry||null}))}
+   sources:mergedSources(picked.value)}
   let data=await api('save_shift',{farm:props.farm,values:JSON.stringify(values),name:f.name||undefined,expected_modified:f.modified||undefined},true)
   if(close)data=await api('close_shift',{name:data.doc.name,expected_modified:data.doc.modified},true)
   notice.value=close?'Đã đóng ca '+data.doc.shift_code+'.':'Đã lưu ca '+data.doc.shift_code+'.'
@@ -160,7 +171,7 @@ const splitColumns=[
      <UiButton type="button" variant="outline" @click="showTrace">Truy vết về lô</UiButton>
      <UiButton v-if="opened.doc.docstatus===0&&opened.can_write" type="button" variant="outline" @click="edit(opened)">Sửa ca</UiButton>
      <UiButton v-if="opened.doc.docstatus===1&&opened.can_receive&&opened.receipt_state==null" type="button" :disabled="saving" @click="receive">Lập phiếu nhập kho thành phẩm</UiButton>
-     <span v-if="opened.receipt_state!=null" class="lotus-form-note">Phiếu nhập kho {{opened.doc.stock_entry}}: {{opened.receipt_state===1?'đã duyệt':'nháp, chờ kế toán duyệt'}}</span>
+     <span v-if="opened.receipt_state!=null" class="lotus-form-note">Phiếu nhập kho {{opened.doc.stock_entry}}: {{opened.receipt_state===1?'đã duyệt':'nháp, chờ duyệt ở Kho'}}</span>
     </div>
     <div v-if="traced" class="packhouse__trace">
      <article v-for="t in traced.sources" :key="t.farm_block+t.bunch_tag">

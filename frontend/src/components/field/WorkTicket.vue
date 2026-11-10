@@ -104,7 +104,6 @@ defineExpose({reload:load})
       <strong>{{formatDate(e.posting_date)}}</strong>
       <span>{{amountText(e.qty)}} {{unit}}<template v-if="e.ribbon"> · màu {{e.ribbon}}</template> · {{e.people.length}} người, {{e.people.reduce((n,p)=>n+(p.morning?1:0)+(p.afternoon?1:0),0)}} buổi{{e.done?' · báo xong':''}}</span>
       <small v-if="e.materials.length">Vật tư: {{e.materials.map(m=>m.item_code+' '+amountText(m.qty)+(m.dose?' ('+m.dose+')':'')).join(', ')}}</small>
-      <small v-if="e.over_cut" class="work-ticket__warn">Vượt số đã cắt bắp cùng màu</small>
       <small v-if="e.under_norm" class="work-ticket__warn">Chưa đạt năng suất tối thiểu</small>
       <small v-if="e.notes">{{e.notes}}</small>
      </li>

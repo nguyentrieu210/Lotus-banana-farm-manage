@@ -131,8 +131,19 @@ class ShiftDocument(DailyDocument):
         state = frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") if self.stock_entry else None
         if state == 1:
             frappe.throw("Ca đã nhập kho thành phẩm. Hủy phiếu nhập kho trước khi hủy ca.")
+        receipt, self.stock_entry = self.stock_entry, None
         if state == 0:
-            frappe.throw(f"Ca đang có phiếu nhập kho nháp {self.stock_entry}. Xóa phiếu nháp trước khi hủy ca.")
+            # A draft receipt goes with its shift: left behind it could be neither submitted nor deleted.
+            frappe.db.set_value(SHIFT, self.name, "stock_entry", None, update_modified=False)
+            frappe.delete_doc("Stock Entry", receipt, ignore_permissions=True)
+
+
+def release_receipt(doc, method=None):
+    """Stock Entry before_cancel and on_trash: the shift lets go of its receipt, so a posted receipt can be cancelled and
+    a wrong draft deleted (the shift can then be received again). Without this the two documents hold each other."""
+    name = doc.get("lotus_packhouse_shift")
+    if name and frappe.db.get_value(SHIFT, name, "stock_entry") == doc.name:
+        frappe.db.set_value(SHIFT, name, "stock_entry", None, update_modified=False)
 
 
 def shift_summary(shift):
@@ -224,12 +235,23 @@ def harvest_sources(farm, date=None, name=None):
                            fields=["name", "farm_block", "bunch_tag", "posting_date", "qty", "weight_kg", "work_team"],
                            order_by="posting_date desc, creation desc", limit_page_length=0)
     keys = {(l.farm_block, l.bunch_tag) for l in lines}
-    harvested, taken = _harvested(keys), _received_elsewhere(keys, name)
+    # Bunches other shifts already took are counted against the oldest harvest lines of the lô and colour first, so each
+    # line shows what is still left of that line and a line fully packed is no longer offered.
+    taken = _received_elsewhere(keys, name)
+    remaining = {}
+    for h in frappe.get_all(ENTRY, filters={"farm": farm, "stage": "Harvest", "state": "Confirmed", "posting_date": ["<=", day],
+                                            "farm_block": ["in", sorted({b for b, _ in keys}) or [""]]},
+                            fields=["name", "farm_block", "bunch_tag", "qty"], order_by="posting_date asc, creation asc", limit_page_length=0):
+        key = (h.farm_block, h.bunch_tag)
+        if key not in keys:
+            continue
+        used = min(cint(h.qty), taken.get(key, 0))
+        taken[key] = taken.get(key, 0) - used
+        remaining[h.name] = cint(h.qty) - used
     blocks, tags = _labels(farm)
     out = []
     for l in lines:
-        key = (l.farm_block, l.bunch_tag)
-        left = harvested.get(key, 0) - taken.get(key, 0)
+        left = remaining.get(l.name, 0)
         if left <= 0:
             continue
         out.append({"harvest_entry": l.name, "farm_block": l.farm_block, "block_code": blocks.get(l.farm_block, ""), "bunch_tag": l.bunch_tag,
@@ -257,7 +279,12 @@ def shifts(farm, from_date=None, to_date=None):
     receipts = {r.name: r.docstatus for r in frappe.get_all("Stock Entry", filters={"name": ["in", [r.stock_entry for r in rows if r.stock_entry] or [""]]},
                                                            fields=["name", "docstatus"])}
     return [dict(r, posting_date=str(r.posting_date), bunches=counts.get(r.name, (0, 0))[0], lots=counts.get(r.name, (0, 0))[1],
-                 receipt_state=receipts.get(r.stock_entry)) for r in rows]
+                 receipt_state=_live(receipts.get(r.stock_entry))) for r in rows]
+
+
+def _live(docstatus):
+    """A cancelled receipt counts as no receipt: the shift can be received again."""
+    return docstatus if docstatus in (0, 1) else None
 
 
 @frappe.whitelist()
@@ -269,7 +296,8 @@ def shift(name):
     split = rules.split([{k: s[k] for k in ("farm_block", "bunch_tag", "bunches", "kg", "harvest_entry", "block_code", "colour")} for s in sources],
                         doc.finished_kg, doc.secondary_kg, doc.cartons)
     return {"doc": doc.as_dict(), "split": split, "can_write": frappe.has_permission(SHIFT, "write", doc),
-            "can_receive": _can_receive(), "receipt_state": frappe.db.get_value("Stock Entry", doc.stock_entry, "docstatus") if doc.stock_entry else None}
+            "can_receive": _can_receive(),
+            "receipt_state": _live(frappe.db.get_value("Stock Entry", doc.stock_entry, "docstatus")) if doc.stock_entry else None}
 
 
 def _can_receive():

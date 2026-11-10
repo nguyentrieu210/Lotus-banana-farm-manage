@@ -162,6 +162,24 @@ class SessionWeights(unittest.TestCase):
         w = r.session_weights(lines)
         self.assertAlmostEqual(sum(w.values()), 1.0, places=9)
 
+    def test_a_lot_ticked_done_without_a_number_keeps_its_share(self):
+        lines = [{"key": "a5", "work_type": "CL", "qty": 0, "people": {"E1": {"morning": 1}}},
+                 {"key": "a6", "work_type": "CL", "qty": 1.2, "people": {"E1": {"morning": 1}}}]
+        w = r.session_weights(lines)
+        self.assertAlmostEqual(w[("a5", "E1", r.MORNING)], 0.5)
+        self.assertAlmostEqual(w[("a6", "E1", r.MORNING)], 0.5)
+
+    def test_count_line_per_tree_is_capped_by_the_trees_of_the_lot(self):
+        self.assertIsNone(r.line_cap("Count", "LotTrees", "", 1800, 1800))
+        self.assertIn("vượt số cây 1800", r.line_cap("Count", "LotTrees", "", 4000, 1800))
+        self.assertIsNone(r.line_cap("Count", "LotTrees", "Bag", 4000, 1800))   # bunch stages: cumulative caps
+        self.assertIsNone(r.line_cap("Lot", "LotTrees", "", 4000, 1800))
+        self.assertIsNone(r.line_cap("Count", "LotTrees", "", 4000, 0))        # lô without a tree count: not judged
+
+    def test_overage_of_a_colour(self):
+        self.assertEqual(r.overage({"cut": 100, "bag": 90, "used": 80}), 0)
+        self.assertEqual(r.overage({"cut": 0, "bag": 120, "used": 80}), 200)
+
 
 class ReportFlow(unittest.TestCase):
     def test_states(self):

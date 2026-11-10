@@ -117,16 +117,28 @@ try:
 
     # ------------------------------------------------------------ the finished-goods receipt
     from lotus_farm.finance import costing, setup
+    from lotus_farm import lot_report
+
+    def lr_amend(entry):
+        if not frappe.db.get_value("Lotus Work Entry", entry, "daily_report"):
+            raise frappe.ValidationError("line outside a daily report: amend does not apply")
+        return lot_report.amend(entry, {"qty": 1}, "kiểm lại")
     cfg = setup.settings()
     can_receive = cfg.finance_enabled and not setup.mapping_errors(cfg)
     if not can_receive:
         print("skip receipt checks: finance posting is off on this site")
     else:
         old = {k: cfg.get(k) for k in ("packed_item", "secondary_item", "packed_warehouse", "harvest_standard_cost")}
-        stock_items = frappe.get_all("Item", filters={"is_stock_item": 1, "disabled": 0, "has_batch_no": 0, "has_serial_no": 0}, pluck="name", limit=2)
+        stock_items = frappe.get_all("Item", filters={"is_stock_item": 1, "disabled": 0, "has_batch_no": 0, "has_serial_no": 0, "stock_uom": ["in", ["Kg", "kg"]]},
+                                     pluck="name", limit=2)
+        other_unit = frappe.get_all("Item", filters={"is_stock_item": 1, "disabled": 0, "stock_uom": ["not in", ["Kg", "kg"]]}, pluck="name", limit=1)
         warehouse = frappe.get_doc({"doctype": "Warehouse", "warehouse_name": "Thành phẩm thử " + frappe.generate_hash(length=5), "company": doc["company"]}).insert(ignore_permissions=True).name
         frappe.db.set_single_value("Lotus Finance Settings", {"packed_item": stock_items[0], "secondary_item": stock_items[-1], "packed_warehouse": warehouse,
                                                                "harvest_standard_cost": 5000})
+        if other_unit:
+            frappe.db.set_single_value("Lotus Finance Settings", "packed_item", other_unit[0])
+            refused("a finished item not stocked in kg is refused", lambda: costing.receive_shift(doc["name"]))
+            frappe.db.set_single_value("Lotus Finance Settings", "packed_item", stock_items[0])
         receipt = costing.receive_shift(doc["name"])
         se = frappe.get_doc("Stock Entry", receipt["stock_entry"])
         check("a draft Material Receipt for the accountant", se.docstatus == 0 and se.purpose == "Material Receipt" and se.lotus_packhouse_shift == doc["name"],
@@ -137,6 +149,13 @@ try:
         check("each lô hands over kg brought in × its cost per kg", abs(by_lot.get(A5, 0) - 2000 * 5000) < 1 and abs(by_lot.get(A6, 0) - 1000 * 5000) < 1, by_lot)
         check("finished and secondary kg go in", abs(sum(flt(r.qty) for r in se.items) - 2700) < 0.01)
         refused("one receipt per shift", lambda: costing.receive_shift(doc["name"]))
+        frappe.delete_doc("Stock Entry", receipt["stock_entry"], ignore_permissions=True)
+        check("deleting a wrong draft receipt frees the shift", not frappe.db.get_value("Packhouse Shift", doc["name"], "stock_entry"))
+        again = costing.receive_shift(doc["name"])
+        check("…and the shift can be received again", frappe.db.get_value("Stock Entry", again["stock_entry"], "docstatus") == 0 and
+              frappe.db.get_value("Packhouse Shift", doc["name"], "stock_entry") == again["stock_entry"], again)
+        refused("a harvest line cannot drop below the buồng its shift took",
+                lambda: lr_amend(h5.name))
         frappe.set_user(frappe.get_all("Has Role", filters={"role": "Lotus Packing Supervisor", "parenttype": "User"}, pluck="parent", limit=1)[0]
                         if frappe.get_all("Has Role", filters={"role": "Lotus Packing Supervisor", "parenttype": "User"}, limit=1) else "Guest")
         refused("only the accountant makes the receipt", lambda: costing.receive_shift(doc["name"]), (frappe.PermissionError, frappe.ValidationError))

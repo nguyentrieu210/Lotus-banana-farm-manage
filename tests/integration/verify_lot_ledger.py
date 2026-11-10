@@ -92,7 +92,9 @@ try:
     sprayed.append("materials", {"item_code": item, "qty": 2, "dose": "50 ml/bình", "phi_days": 14})
     store(sprayed)
     harvest = by_stage[rules.HARVEST]
-    check("a draft spray holds nothing", lot_ledger.harvest_hold(block, add_days(today, -35)) is None)
+    check("a spray reported but not yet confirmed already holds the harvest", lot_ledger.harvest_hold(block, add_days(today, -35)) is not None)
+    lot_ledger.refresh_quarantine(block)
+    check("…but the lô's cách ly date waits for the confirmation", not frappe.db.get_value("Farm Block", block, "lotus_quarantine_until"))
     sprayed.state, sprayed.confirmed_by = rules.CONFIRMED, "Administrator"
     store(sprayed)
     check("a confirmed spray holds the lô from the spray day", lot_ledger.harvest_hold(block, add_days(today, -40)) is not None)
@@ -168,7 +170,18 @@ try:
     check("bao buồng with its people", out["saved"] == 2 and not out["errors"], out)
     other_block = frappe.get_all("Farm Block", filters={"farm": FARM, "farm_zone": "A", "active": 1, "name": ["!=", block]}, pluck="name", limit=1)[0]
     out = lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1.5, "people": [{"employee": e1, "morning": 1}]}])
+    check("khoán lô on a lô not given to the tổ is refused", out["saved"] == 0 and "chưa giao cho tổ" in out["errors"][0]["message"], out)
+    frappe.db.set_value(field.ASSIGNMENT, {"farm": FARM, "kind": "Round", "work_type": field_work.name, "farm_block": other_block,
+                                           "state": ["in", list(field.OPEN_STATES)]}, "state", "Cancelled")
+    field.assign(FARM, crew, field_work.name, team, [other_block])
+    out = lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1.5, "people": [{"employee": e1, "morning": 1}]}])
     check("cắt lá on another lô, same morning", not out["errors"], out)
+    nobody = lr.save_lot(report, block, [{"work_type": cut.name, "qty": 60}, {"work_type": bag.name, "qty": 50, "bunch_tag": ribbon}])
+    check("a khoán line may be saved before its people are known", not nobody["errors"], nobody)
+    refused("…but the report is not sent while a khoán line names nobody", lambda: lr.send(report))
+    lr.save_lot(report, block, [{"work_type": cut.name, "qty": 60, "people": [{"employee": e1, "afternoon": 1}]},
+                                {"work_type": bag.name, "qty": 50, "bunch_tag": ribbon,
+                                 "people": [{"employee": e1, "morning": 1}, {"employee": e2, "morning": 1, "afternoon": 1}]}])
     check("unsent lines hold nobody's buổi", not frappe.db.count(field.SESSION, {"posting_date": today, "employee": ["in", workers]}))
     outsider = frappe.get_all("Employee", filters={"company": company, "status": "Active", "name": ["not in", workers]}, pluck="name", limit=1)
     if outsider:
@@ -202,11 +215,14 @@ try:
     check("the khoán price is taken at confirmation", rate and line.rate == rate.rate and line.amount == round(50 * rate.rate), (line, rate))
     piece = field.month_piece(company, frappe.utils.get_first_day(today), frappe.utils.get_last_day(today))
     share1, share2 = piece.get(e1, {}).get("piece", 0), piece.get(e2, {}).get("piece", 0)
-    check("khoán money split by buổi weight (0,5 against 2)", round(share1) == round(line.amount * 0.5 / 2.5) and round(share1 + share2) == round(line.amount),
-          (share1, share2, line.amount))
-    check("khoán buổi counted once per buổi", abs(piece[e1]["khoan_sessions"] - 1.0) < 1e-6 and abs(piece[e2]["khoan_sessions"] - 2.0) < 1e-6, piece)
+    cut_amount = frappe.get_all(lot_ledger.ENTRY, filters={"daily_report": report, "stage": rules.CUT}, pluck="amount")[0]
+    # bao buồng: e1 half a morning (shared with cắt lá) against e2's two buổi; cắt bắp: e1 alone in the afternoon.
+    check("khoán money split by buổi weight (0,5 against 2)", abs(share1 - (line.amount * 0.5 / 2.5 + cut_amount)) <= 1
+          and abs(share1 + share2 - (line.amount + cut_amount)) <= 1, (share1, share2, line.amount, cut_amount))
+    e1_khoan = 1.0 + (1.0 if cut.pay_mode in field.rules.KHOAN else 0.0)  # the afternoon on cắt bắp is khoán only where the farm pays it so
+    check("khoán buổi counted once per buổi", abs(piece[e1]["khoan_sessions"] - e1_khoan) < 1e-6 and abs(piece[e2]["khoan_sessions"] - 2.0) < 1e-6, piece)
     rows = field.work_rows(company, today, today)
-    check("workdays by lô from weights", abs(sum(r["workdays"] for r in rows if r["employee"] == e1) - 0.5) < 1e-6, rows)
+    check("workdays by lô from weights", abs(sum(r["workdays"] for r in rows if r["employee"] == e1) - 1.0) < 1e-6, rows)
     frappe.set_user(leader)
     mine = lr.my_pay(FARM, str(today)[:7])
     team_row = next(t for t in mine["teams"] if t["team"] == team)

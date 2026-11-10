@@ -21,7 +21,7 @@ Tất cả là whitelisted method của Frappe. Quyền theo các vai trò hiệ
 
 | Method | Tham số | Kết quả |
 |---|---|---|
-| `form_url` | `report` | Đường dẫn trang in phiếu của tổ trong ngày |
+| `form_url` | `farm`, `team`, `date` | Đường dẫn trang in phiếu của tổ trong ngày (tạo báo cáo nháp nếu chưa có và chốt bố cục phiếu) |
 | `read_photo` | `report`, `file_url` | Các dòng nháp do máy đọc, kèm `review_flags`; bản máy đọc được lưu vào báo cáo |
 
 Giới hạn số lượt dùng chung với `document_ai.read`.
@@ -30,11 +30,11 @@ Giới hạn số lượt dùng chung với `document_ai.read`.
 
 | Method | Tham số | Kết quả |
 |---|---|---|
-| `due` | `farm`, `crew`, `from`, `to` | Mỗi lô × việc: lần xong gần nhất, ngày đến hạn, số ngày quá hạn, đã giao cho tổ nào |
+| `due` | `farm`, `crew`, `to_date` | Mỗi lô × việc: lần xong gần nhất, ngày đến hạn, số ngày quá hạn, đã giao cho tổ nào |
 | `assign` | `farm`, `work_type`, `blocks[]`, `team`, `due_date` | Các Round đã tạo. Lô đã có Round đang mở cho việc đó thì được báo ra |
 | `reassign` | `assignment`, `team`, `reason` | Round đã đổi tổ |
 | `cancel` | `assignment`, `reason` | Round đã hủy |
-| `rules` | `farm` | Các luật vòng và phiên bản |
+| `rule_list` | `farm` | Các luật vòng và phiên bản |
 | `save_rule` | luật vòng | Phiên bản mới, chờ duyệt |
 
 `assign` dành cho đội trưởng và quản lý vườn. `save_rule` chỉ dành cho quản lý vườn.
@@ -68,8 +68,8 @@ Giới hạn số lượt dùng chung với `document_ai.read`.
 | Method | Tham số | Kết quả |
 |---|---|---|
 | `morning` | `farm`, `crew`, `date` | Thẻ và chi tiết: tổ chưa gửi, chưa xác nhận, số bất thường, việc quá hạn, lô cách ly, đợt đến tuổi thu |
-| `week` | `farm`, `week`, `zone`, `block`, `team` | Thẻ và chi tiết: việc theo lô, bảng màu dây, thu hoạch và đóng gói, dự thu so với thực tế; tình trạng từng lô để tô bản đồ |
-| `month` | `farm`, `month`, `zone`, `block`, `team` | Sản lượng và các tỷ lệ; công và tiền khoán theo lô; vật tư xuất kho so với vật tư báo dùng |
+| `week` | `farm`, `week` | Thẻ và chi tiết: việc theo lô, bảng màu dây, thu hoạch và đóng gói, dự thu so với thực tế; tình trạng từng lô để tô bản đồ |
+| `month` | `farm`, `month` | Sản lượng và các tỷ lệ; công và tiền khoán theo lô; vật tư xuất kho so với vật tư báo dùng |
 
 Xuất Excel làm trên trình duyệt từ các dòng chi tiết.
 

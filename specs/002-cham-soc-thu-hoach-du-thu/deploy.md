@@ -1,6 +1,6 @@
 # Triển khai spec 002 lên VPS
 
-Chỉ chạy khi chủ vườn ra lệnh và đưa mật khẩu SSH tại lúc triển khai. Mật khẩu không được lưu.
+Chỉ chạy khi chủ vườn ra lệnh. Test, build và diễn tập chạy trên VPS (khu thử riêng `/srv/lotus-test/002`, stack `lotus-002-test`, bản sao cơ sở dữ liệu thật) hoặc GitHub Actions, không chạy trên máy làm việc.
 
 Triển khai hai lần:
 
@@ -11,7 +11,9 @@ Triển khai hai lần:
 
 - Đọc image đang chạy: `docker inspect lotus-vps-backend-1 --format '{{.Config.Image}}'`. Ngày 10/11 là `lotus-release:df7bd70`. Codex cũng triển khai: nếu image đã khác, gộp commit đó vào bản phát hành trước.
 - Gộp bản sửa lỗi của phiên khác: `git merge --no-ff hotfix/b1-b4-phieu-chi-vat` (20b006c hoặc đầu nhánh mới hơn: B1 ký phiếu chi lỗi khi người ký có thiết bị nhận thông báo, B4 VAT hộ kinh doanh vào 1331). Ngày 10/11 gộp được sạch vào nhánh 002.
-- Chạy lại: `npm run build` (tài sản đã build nằm trong git), `node --test`, unit Python và các `tests/integration/verify_*.py` của spec 002 trên bản local.
+- Trên khu thử của VPS: `npm test` và `npm run build` (tài sản đã build nằm trong git: lấy thư mục `lotus_farm/public/frontend` vừa build về rồi commit), unit Python, các `tests/integration/verify_*.py` của spec 002 trên bản sao dữ liệu thật.
+- Diễn tập trên bản sao dữ liệu thật: migrate, chuyển dữ liệu, so sổ sách trước và sau (số dòng và mã kiểm của sổ cái, kho, chấm công, lương), so số liệu các báo cáo tài chính, kho, nhân sự giữa mã cũ và mã mới.
+- Kiểm không có kỳ lương nào đang gửi ký dở (`Lotus Timekeeping Period` trạng thái Open có `snapshot_hash`): nếu có thì ký xong hoặc trả lại trước.
 - Gộp vào main rồi triển khai từ đúng SHA đó. Không có ai đang triển khai cùng lúc.
 
 ## 1. Build trên VPS
@@ -24,22 +26,22 @@ Triển khai hai lần:
 - `bench --site frontend backup --with-files` trong backend; ghi lại tên tệp.
 - Sao chép `/opt/lotus/.env` thành `.env.bak-<image cũ>-<ngày>`.
 
-## 3. Rollout
+## 3. Rollout và chuyển dữ liệu (một lượt, trong lúc bảo trì)
 
-1. Bật bảo trì: `bench --site frontend set-maintenance-mode on`.
-2. Đổi `LOTUS_IMAGE` trong `/opt/lotus/.env` sang `lotus-release:<sha7>`.
-3. `docker compose -p lotus-vps --env-file /opt/lotus/.env -f /opt/lotus/compose.yaml up -d --no-deps backend frontend websocket queue-short queue-long` (không có scheduler, giữ nguyên).
-4. `bench --site frontend migrate` (khoảng 3 đến 7 phút). Patch `care_cycle_rules` lưu các luật lịch cũ có mốc trồng/chọn chồi ra `sites/frontend/private/files/work_schedule_rule_legacy_*.json` rồi xóa.
-5. Tắt bảo trì; `nginx -s reload` trong `lotus-domain-router` và `daiminhloc-frontend-1`. Nếu còn 503 thì `docker restart lotus-vps-backend-1`.
+Chạy bằng `rollout.sh <sha mới> <sha đang chạy>` (lưu ở `/srv/lotus-build/<sha mới>/`). Dữ liệu được chuyển **trước khi tắt bảo trì**, để không ai mở ứng dụng lúc sổ lô còn trống.
 
-## 4. Chuyển dữ liệu (bench execute trong backend, người chạy: Administrator)
-
-1. `lotus_farm.lot_ledger_migrate.preview`: xem số dòng sẽ chuyển từ Lotus Bunch Event sang sổ lô (sổ cắt bắp đầu kỳ 593 buồng), số dòng thử bị hủy, số phiếu Round thử bị hủy. Không có lỗi mới chạy tiếp.
-2. `lotus_farm.lot_ledger_migrate.commit`. Chạy lại lần hai phải ra 0 dòng chuyển thêm.
-3. `lotus_farm.field_report_seed.apply_ledger_works` với `commit=1`: thêm việc Hủy buồng, Thu hoạch, Kiểm tra sâu bệnh nếu chưa có.
-4. Kiểm dự thu trước và sau bằng `lotus_farm.block_forecast.bunch_summary('LOTUS-222')`: tổng buồng phải bằng nhau (local: 7.347 buồng).
-5. `lotus_farm.forecast_snapshot.ensure_all`: dựng bản chốt tuần (cũng tự chạy khi có người mở ứng dụng).
-6. `lotus_farm.legacy_purge.preview` (chỉ đọc): số dòng từng bảng cũ, các trường còn trỏ bảng cũ, danh sách chặn. Gửi kết quả cho chủ vườn để chuẩn bị lần 2. Trên bản local 10/11: 76 bảng, 960 dòng, 3,5 MB, không có dòng chặn.
+1. Bật bảo trì, dừng hai hàng đợi.
+2. Sao lưu cơ sở dữ liệu, chép tệp sao lưu ra `/srv/lotus-build/<sha mới>/`; chụp số dòng và mã kiểm sổ sách (trước).
+3. Đổi `LOTUS_IMAGE` trong `/opt/lotus/.env`; `compose up -d --no-deps backend frontend websocket` (không có scheduler).
+4. `bench --site frontend migrate` (diễn tập: 168 giây). Patch `care_cycle_rules` lưu các luật lịch cũ ra `sites/frontend/private/files/work_schedule_rule_legacy_*.json` rồi xóa. So sổ sách: phải không đổi, nếu đổi thì dừng và quay lại.
+5. Chuyển dữ liệu (người chạy: Administrator):
+   - `lot_ledger_migrate.preview` rồi `commit`: sổ cắt bắp đầu kỳ từ Lotus Bunch Event sang sổ lô (bản thật 10/11: 38 dòng, 593 buồng). Chạy lần hai phải ra 0 dòng.
+   - `field_report_seed.apply_ledger_works(commit=1)`: thêm việc Hủy buồng, Thu hoạch, Kiểm tra sâu bệnh nếu chưa có.
+   - Dự thu `block_forecast.bunch_summary` trước (mã cũ, bước 2) và sau phải bằng nhau (bản thật 10/11: 7.347 buồng, 144.001,2 kg).
+   - `forecast_snapshot.ensure_all`: dựng bản chốt tuần còn thiếu.
+   - `legacy_purge.preview` (chỉ đọc): số dòng từng bảng cũ, trường còn trỏ bảng cũ, danh sách chặn; lưu kết quả để chuẩn bị lần 2.
+   - So sổ sách lần nữa: phải không đổi.
+6. Bật lại hai hàng đợi, tắt bảo trì, khởi động lại backend, `nginx -s reload` trong `lotus-domain-router` và `daiminhloc-frontend-1`.
 
 ## 5. Việc của chủ vườn sau khi lên
 
@@ -56,5 +58,4 @@ Triển khai hai lần:
 
 ## 7. Quay lại bản cũ
 
-- Đổi `LOTUS_IMAGE` về image cũ theo `.env.bak-*`, compose up như bước 3.
-- Nếu bước 4 đã chạy và cần bỏ: khôi phục bản sao lưu cơ sở dữ liệu ở bước 2 (`bench --site frontend restore`).
+`rollback.sh <sha mới> --restore-db`. Sau khi đã migrate thì **luôn khôi phục bản sao lưu ở bước 2**: cơ sở dữ liệu đã mang cấu trúc bảng mới (Lotus Work Entry bắt buộc `source_key`, chỉ mục buổi công đã đổi), mã cũ chạy trên đó sẽ lỗi khi ghi báo cáo. Chỉ đổi image mà không khôi phục khi chưa chạy migrate.
