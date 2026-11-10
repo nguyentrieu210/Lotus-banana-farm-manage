@@ -59,3 +59,8 @@
 - `tests/integration/verify_paper_form.py`: 14 kiểm tra qua, với kết quả AI giả lập (in phiếu, trang in có mã và cột, đọc ảnh ra dòng nháp có cờ, lô đã nhập tay giữ nguyên, chặn gửi khi còn dòng chưa kiểm, lưu lô thì hết cờ và gửi được).
 - Frontend 640/640 qua. Trình duyệt: in phiếu từ màn Hôm nay mở trang A4 ngang đúng tổ, ngày, màu dây Cam tuần 46.
 - Chưa đo tỷ lệ đọc đúng trên phiếu thật (T083): cần 10 ảnh phiếu thật của vườn.
+
+## Phase 10 (US5, báo cáo theo người xem và menu 7 mục)
+
+- `tests/integration/verify_field_reports.py`: 12 kiểm tra qua (Sáng nay đủ 6 câu hỏi; Tuần có thu hoạch, xưởng, việc theo lô, tình trạng lô cho bản đồ, thẻ dự thu nói rõ có bản chốt hay không; Tháng có kg/buồng, thùng/buồng theo lô, vật tư báo dùng so với xuất kho, công và tiền theo lô). `verify_bunch_forecast.py` vẫn qua với sổ cắt bắp chuyển sang ribbon_board.
+- Frontend 611/611 qua (đã xóa các test của báo cáo pivot). Trình duyệt: menu Việc hằng ngày còn Hôm nay, Giao việc, Màu dây & thu hoạch, Xưởng, Dự thu, Báo cáo, Thiết lập; ba tab báo cáo và bản đồ tình trạng lô hiện đúng, không lỗi, không tràn ngang.

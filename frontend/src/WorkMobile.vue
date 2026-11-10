@@ -23,7 +23,7 @@ import {call,setCSRF} from './api'
 const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const api=(name,args={},write=false)=>call('lotus_farm.field_report.'+name,args,write)
-const allTabs=[{name:'home',label:'Hôm nay',icon:'notes-o'},{name:'confirm',label:'Xác nhận',icon:'certificate'},{name:'assign',label:'Giao việc',icon:'todo-list-o'},{name:'inspect',label:'Nghiệm thu',icon:'passed'},{name:'profile',label:'Tôi',icon:'user-o'}]
+const allTabs=[{name:'home',label:'Hôm nay',icon:'notes-o'},{name:'confirm',label:'Xác nhận',icon:'certificate'},{name:'assign',label:'Giao việc',icon:'todo-list-o'},{name:'profile',label:'Tôi',icon:'user-o'}]
 const screen=ref('home'),session=ref(null),setup=ref(null),farm=ref(''),crew=ref(''),date=ref('')
 const busy=ref(false),saving=ref(false),error=ref('')
 const {dialog:leaveDialog,message:leaveMessage,ask:askLeave,finish:finishLeave}=useMobileConfirm()
@@ -33,7 +33,8 @@ const crews=computed(()=>(setup.value?.crews||[]).filter(c=>(setup.value?.my_cre
 const crewOptions=computed(()=>crews.value.map(c=>({value:c.name,label:c.team_name})))
 // Giao việc shows only for a đội trưởng (or quản lý vườn); Nghiệm thu only for a kỹ thuật vườn (or quản lý vườn).
 const supervises=computed(()=>(setup.value?.supervised_crews||[]).length>0)
-const mobileTabs=computed(()=>allTabs.filter(t=>(!['assign','confirm'].includes(t.name)||supervises.value)&&(t.name!=='inspect'||!!setup.value?.inspector)))
+// Four tabs (spec 002): Hôm nay, Giao việc (with nghiệm thu for kỹ thuật vườn), Xác nhận, Tôi.
+const mobileTabs=computed(()=>allTabs.filter(t=>t.name==='assign'?supervises.value||!!setup.value?.inspector:t.name!=='confirm'||supervises.value))
 const tabs=computed(()=>mobileTabs.value.map(t=>t.name))
 const farmName=computed(()=>(session.value?.farms||[]).find(f=>f.name===farm.value)?.farm_name||farm.value||'Chọn vườn')
 const refreshKey=ref(0),pickedTeam=ref('')
@@ -91,12 +92,14 @@ onBeforeUnmount(()=>finishLeave(false))
      <h2 class="work-section-title">Màu dây &amp; cần thu</h2>
      <RibbonBoard :key="'ribbon'+refreshKey+farm" :farm="farm" mobile compact/>
     </template>
-    <template v-else-if="screen==='assign'&&setup&&crew">
-     <CareDueList :key="'due'+refreshKey+crew" :farm="farm" :crew="crew" mobile @assigned="refreshKey++"/>
-     <h2 class="work-section-title">Phiếu đã giao</h2>
-     <WorkAssign :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
+    <template v-else-if="screen==='assign'&&setup">
+     <template v-if="crew&&supervises">
+      <CareDueList :key="'due'+refreshKey+crew" :farm="farm" :crew="crew" mobile @assigned="refreshKey++"/>
+      <h2 class="work-section-title">Phiếu đã giao</h2>
+      <WorkAssign :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
+     </template>
+     <template v-if="setup.inspector"><h2 class="work-section-title">Chờ nghiệm thu khoán lô</h2><WorkInspect :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/></template>
     </template>
-    <WorkInspect v-else-if="screen==='inspect'&&setup" :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/>
 
     <template v-else-if="screen==='profile'">
      <h1>Tôi</h1>

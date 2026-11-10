@@ -15,6 +15,7 @@ import WorkAssign from './components/field/WorkAssign.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
 import CareDueList from './components/field/CareDueList.vue'
 import PackhouseShifts from './components/field/PackhouseShifts.vue'
+import FieldReports from './components/report/FieldReports.vue'
 import CareCycleSettings from './components/field/CareCycleSettings.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
@@ -174,6 +175,7 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
       <CareDueList :key="'due'+crew+assignedKey" :farm="farm" :crew="crew" @assigned="assignedKey++"/>
       <h2 class="field-report-section">Phiếu đã giao</h2>
       <WorkAssign :key="'tickets'+crew+assignedKey" :farm="farm" :crew="crew" :setup="setup"/>
+      <template v-if="setup.inspector"><h2 class="field-report-section">Chờ nghiệm thu khoán lô</h2><WorkInspect :farm="farm" :setup="setup"/></template>
      </template>
     </template>
 
@@ -182,6 +184,11 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
     <template v-else-if="view==='ribbon'">
      <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
      <RibbonBoard v-if="farm" :key="farm" :farm="farm"/>
+    </template>
+
+    <template v-else-if="view==='reports'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <FieldReports v-if="farm" :key="farm" :farm="farm" :user="session?.user" @payable="m=>{month=m;go('payable')}"/>
     </template>
 
     <template v-else-if="view==='packhouse'">

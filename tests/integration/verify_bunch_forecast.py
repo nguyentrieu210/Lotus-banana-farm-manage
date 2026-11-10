@@ -327,7 +327,6 @@ try:
     check("chích bắp above the trees of the lô is refused with lot and number", out["saved"] == 0 and str(trees_a7) in out["errors"][0]["message"], out)
 
     # ------------------------------------------------------------ the daily reports
-    from lotus_farm import bunch_report as report_view
     frappe.set_user("Administrator")
     from lotus_farm import ribbon_board
     board = ribbon_board.board(FARM)
@@ -344,19 +343,11 @@ try:
           all(r["status"] in ("due", "overdue") and r["left"] > 0 for r in due), due[:2])
     later = ribbon_board.harvest_due(FARM, str(frappe.utils.add_days(nowdate(), 70)))
     check("a later week has at least what is due now", len(later) >= len(due), (len(later), len(due)))
-    stock = report_view.sections(FARM, {"week": ["2026-W43"]})["stock"]
-    check("a week keeps the colours cut in it", {c["week"] for c in stock["cards"]} == {43}, [c["week"] for c in stock["cards"]])
-    parts = report_view.sections(FARM)
-    check("the opening book has its own tick in Tổ", "Sổ đầu kỳ" in {o["value"] for o in parts["options"]["team"]})
-    check("sections answer", {"progress", "injection", "rejects", "harvest", "dashboard", "stock", "cut_weeks", "options"} <= set(parts), list(parts))
-    check("the dashboard adds up to the book", parts["dashboard"]["totals"]["cut"] == sum(w["cut"] for w in parts["dashboard"]["weeks"]) >= 593, parts["dashboard"]["totals"])
-    check("injection counts what was recorded", parts["injection"]["injected"] >= 200, parts["injection"]["injected"])
-    check("rejects carry a rate", parts["rejects"]["total"] >= 5 and parts["rejects"]["rate"] is not None, parts["rejects"])
-    weeks = report_view.cut_weeks(FARM)["weeks"]
+    from lotus_farm import bunch_report_rules as report_rules
+    weeks = report_rules.cut_weeks(lot_ledger.bunch_rows({"farm": FARM, "state": "Confirmed", "event_type": "Cut Bud"}, ribbon_board.FIELDS),
+                                   ribbon_board._tags(FARM), ribbon_board._context(FARM).blocks)
     check("lần 1 and lần 2 are split", weeks[2]["lan1"] == 236 and weeks[2]["lan2"] == 62, weeks[2])
-    daily = report_view.day_report(FARM, None, day, day)
-    check("day report groups by tổ", daily["teams"] and all(r["date"] == day for r in daily["rows"]), daily["totals"])
-    report_view.export_cut_book(FARM)
+    ribbon_board.export_cut_book(FARM)
     exported = openpyxl.load_workbook(io.BytesIO(frappe.local.response.filecontent), data_only=True).worksheets[0]
     back = bunch_opening_rules.parse(list(exported.iter_rows(values_only=True)))
     check("the exported book reads back", not back["errors"] and back["year"] == 2026, back["errors"][:3])

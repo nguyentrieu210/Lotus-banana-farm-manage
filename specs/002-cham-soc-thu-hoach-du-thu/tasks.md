@@ -378,25 +378,27 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 5
 
-- [ ] T084 [P] [US5] Integration test `morning`, `week`, `month` trên dữ liệu mẫu một tuần trong tests/integration/verify_field_reports.py
-- [ ] T085 [P] [US5] Mount test MorningReport, WeekReport, MonthReport (thẻ, hộp chi tiết, xuất Excel) trong frontend/tests/field-reports.mount.test.js
-- [ ] T086 [P] [US5] Test menu của cả mảng có tối đa 7 mục trong frontend/tests/field-navigation.test.js
+- [x] T084 [P] [US5] Integration test `morning`, `week`, `month` trên dữ liệu mẫu một tuần trong tests/integration/verify_field_reports.py
+- [x] T085 [P] [US5] Mount test MorningReport, WeekReport, MonthReport (thẻ, hộp chi tiết, xuất Excel) trong frontend/tests/field-reports.mount.test.js
+- [x] T086 [P] [US5] Test menu của cả mảng có tối đa 7 mục trong frontend/tests/field-navigation.test.js
 
 ### Implementation for User Story 5
 
-- [ ] T087 [US5] Viết lotus_farm/field_reports.py:
+- [x] T087 [US5] Viết lotus_farm/field_reports.py:
   - `morning`: tổ chưa gửi, chưa xác nhận, số bất thường, việc quá hạn, lô cách ly, đợt đến tuổi thu;
   - `week`: việc theo lô, bảng màu dây, thu hoạch và đóng gói, dự thu so với thực tế, tình trạng lô để tô bản đồ;
   - `month`: sản lượng và các tỷ lệ cắt bắp/cây, thu/cắt bắp, kg/buồng, thùng/buồng; công và tiền khoán theo lô; vật tư xuất kho so với vật tư báo dùng theo lô.
-- [ ] T088 [US5] Viết frontend/src/components/report/MorningReport.vue, WeekReport.vue (bản đồ lô qua CareMap thêm lớp tình trạng) và MonthReport.vue; xuất Excel bằng frontend/src/excel-export.js
-- [ ] T089 [US5] Gom menu trong frontend/src/field-report-navigation.js và các file sau:
+- [x] T088 [US5] Viết frontend/src/components/report/MorningReport.vue, WeekReport.vue (bản đồ lô qua CareMap thêm lớp tình trạng) và MonthReport.vue; xuất Excel bằng frontend/src/excel-export.js
+- [x] T089 [US5] Gom menu trong frontend/src/field-report-navigation.js và các file sau:
   - máy tính 7 mục trong frontend/src/field-report-navigation.js, frontend/src/workspace-routes.js, frontend/src/workspace-directory.js: Hôm nay, Giao việc, Màu dây & thu hoạch, Xưởng, Dự thu, Báo cáo, Thiết lập;
   - Thiết lập gồm đội tổ lô, việc và cách trả, bảng giá, vòng chăm sóc, màu dây (chuyển frontend/src/ColorTagCatalogApp.vue vào đây), tham số dự thu;
   - điện thoại 4 tab trong frontend/src/WorkMobile.vue: Hôm nay, Giao việc, Xác nhận, Tôi.
-- [ ] T090 [US5] Xóa các báo cáo kiểu Pivot và phần backend cũ trong frontend/src/components/report/ và lotus_farm/:
+- [x] T090 [US5] Xóa các báo cáo kiểu Pivot và phần backend cũ trong frontend/src/components/report/ và lotus_farm/:
   - frontend: frontend/src/components/report/GardenCareReport.vue, BunchCareReport.vue, PackhouseReport.vue, ProtectionReport.vue, PivotChart.vue, PivotFilter.vue, frontend/src/bunch-pivot.js, frontend/src/pivot-filter.js;
   - backend: lotus_farm/work_report.py, lotus_farm/work_report_rules.py, lotus_farm/bunch_report.py;
   - các route `bao-cao-*` cũ.
+
+**Ghi chú khi làm (10/11)**: Ba màn nằm trong một component FieldReports.vue (ba tab) dùng chung ReportCards.vue; bảng chi tiết là DataTable nên lọc và xuất Excel sẵn. Bản đồ Tuần dùng CareMap với chế độ màu mới `status` (map-land.js). Sổ cắt bắp (xuất Excel theo mẫu sổ của vườn) được giữ, chuyển sang `ribbon_board.export_cut_book` (nút trên màn Màu dây & thu hoạch) trước khi xóa bunch_report.py; bunch_report_rules chỉ còn stock, ribbon, due_rows, cut_weeks. Nghiệm thu nằm trong Giao việc (máy tính và điện thoại); Tiền khoán theo người mở từ Báo cáo › Tháng. Dự thu và Màu dây cắt bắp vẫn hiện cho người không có quyền Công việc ngoài vườn.
 
 **Checkpoint**: Ba câu hỏi chính trả lời được bằng một thẻ, menu còn 7 mục
 

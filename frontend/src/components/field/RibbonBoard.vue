@@ -28,6 +28,8 @@ const statusLabels={waiting:'Đang nuôi',due:'Đến tuổi thu',overdue:'Quá 
 const zoneOptions=computed(()=>[{value:'',label:'Tất cả khu'},...(data.value?.zones||[]).filter(z=>!props.zones.length||props.zones.includes(z)).map(z=>({value:z,label:'Khu '+z}))])
 const cards=computed(()=>(data.value?.cards||[]).filter(c=>showDone.value||c.status!=='done').slice().reverse())
 const due=computed(()=>data.value?.due_rows||[])
+// Sổ cắt bắp in the layout of the farm's Excel book, ten weeks to a sheet.
+const bookUrl=computed(()=>'/api/method/lotus_farm.ribbon_board.export_cut_book?'+new URLSearchParams({farm:props.farm,...(zone.value?{zone:zone.value}:{})}))
 const lotColumns=[
  {field:'code',headerName:'Lô',minWidth:70},
  {field:'cut',headerName:'Cắt bắp',minWidth:90,sum:true},
@@ -47,6 +49,7 @@ const lotColumns=[
    <LotusField v-if="zoneOptions.length>2" v-model="zone" label="Khu" type="select" :searchable="false" :options="zoneOptions" :empty-option="null" :mobile="mobile"/>
    <LotusField v-model="week" label="Cần thu trong" type="select" :searchable="false" :options="weekOptions" :empty-option="null" :mobile="mobile"/>
    <LotusField v-if="expanded" v-model="showDone" type="checkbox" label="Hiện cả màu đã thu hết" :mobile="mobile"/>
+   <a v-if="!mobile" class="ribbon-board__book" :href="bookUrl">Xuất sổ cắt bắp (Excel)</a>
   </div>
   <p v-if="error" class="lotus-list-page__error" role="alert">{{error}}</p>
   <template v-if="data">
@@ -92,6 +95,7 @@ const lotColumns=[
 .ribbon-board{display:grid;gap:12px;min-width:0}
 .ribbon-board__tools{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
 .ribbon-board__tools>*{min-width:180px}
+.ribbon-board__tools .ribbon-board__book{min-width:0;align-self:center;font-size:var(--lotus-text-sm)}
 .ribbon-board__totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .ribbon-board__totals>div{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
 .ribbon-board__totals span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
