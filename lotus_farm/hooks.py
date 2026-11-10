@@ -43,16 +43,10 @@ doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _
 doc_events['Farm Block']['before_validate']='lotus_farm.block_forecast.sync_block_dates'
 doc_events["Farm"]["before_save"] = ["lotus_farm.controls.preserve_lineage", "lotus_farm.install.validate_reference_company"]
 doc_events["Stock Entry"] = {
-    "validate": ["lotus_farm.stock_bridge.validate_entry", "lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.stock_entry_accounts"],
+    "validate": ["lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.stock_entry_accounts"],
     "before_submit": ["lotus_farm.warehouse_issue.validate_issue", "lotus_farm.finance.stock.stock_entry_accounts"],
-    "on_submit": "lotus_farm.stock_bridge.stock_posted",
-    "before_cancel": ["lotus_farm.stock_bridge.before_stock_cancel", "lotus_farm.shift.release_receipt"],
-    "on_cancel": "lotus_farm.stock_bridge.stock_reversed",
+    "before_cancel": ["lotus_farm.shift.release_receipt"],
     "on_trash": "lotus_farm.shift.release_receipt",
-}
-doc_events["Stock Reservation Entry"] = {
-    "before_cancel": "lotus_farm.stock_bridge.reservation_cancel",
-    "on_cancel": "lotus_farm.stock_bridge.reservation_cancelled",
 }
 
 before_install = "lotus_farm.install.create_roles"
@@ -67,9 +61,7 @@ has_permission['Packhouse Shift'] = 'lotus_farm.controls.farm_permission'
 permission_query_conditions['Packhouse Shift'] = 'lotus_farm.permissions.packhouse_shift'
 website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/lotus/in-phieu-ngay','to_route':'lotus_daily_form'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 
-doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
-for _proposal_event in ('validate', 'before_submit'):
-    doc_events['Material Request'][_proposal_event] = [doc_events['Material Request'][_proposal_event], 'lotus_farm.purchase_flow.validate']
+doc_events['Material Request']={'validate':['lotus_farm.purchase_flow.validate'],'before_submit':['lotus_farm.purchase_flow.validate']}
 doc_events['Purchase Order']={'before_submit':'lotus_farm.purchasing.check_submission'}
 doc_events['Purchase Order']['before_submit'] = [doc_events['Purchase Order']['before_submit'], 'lotus_farm.purchase_flow.order_guard']
 
