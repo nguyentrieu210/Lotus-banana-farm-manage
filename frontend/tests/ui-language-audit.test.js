@@ -31,7 +31,6 @@ test('schedule fields and choices are Vietnamese while enum keys stay intact',()
  assert.equal(stateLabel('Planting'),'Trồng mới')
  assert.equal(stateLabel('Selected Suckers'),'Số chồi đã chọn')
  assert.equal(stateLabel('Area'),'Diện tích')
- assert.equal(docLabel('Plan Cohort'),'Đợt cây dự kiến')
  assert.equal(stateLabel('LOTUS-BAG'),'LOTUS-BAG')
 })
 
@@ -56,23 +55,22 @@ test('every visible field and enum in custom schemas has a display translation',
  assert.deepEqual(missing,[])
 })
 
-test('HR, attendance and labor remain separate destinations and honor permissions',()=>{
- const user={modules:{labor:['Labor Allocation']},capabilities:{hr:true,attendance:true}}
+test('HR and attendance remain separate destinations and honor permissions',()=>{
+ const user={modules:{},capabilities:{hr:true,attendance:true}}
  const links=workspaceDirectory(user)
  assert.equal(links.find(a=>a.id==='global-hr').href,'/lotus/nhan-su')
  assert.equal(links.find(a=>a.id==='global-attendance').href,'/lotus/cham-cong')
- assert.ok(!links.some(a=>a.id==='global-labor'),'Bố trí nhân công was removed')
  assert.ok(!workspaceDirectory({}).some(a=>a.id==='global-hr'))
  assert.ok(mobileActions(user).some(a=>a.id==='hr'))
- assert.ok(!mobileActions({modules:{labor:['Labor Allocation']}}).some(a=>a.id==='hr'))
+ assert.ok(!mobileActions({modules:{farms:['Farm']}}).some(a=>a.id==='hr'))
  assert.equal(hasMobileAccess({capabilities:{hr:true}}),true)
 })
 
 test('shared directory preserves local actions and avoids duplicate destinations',()=>{
- const local=[{id:'home',label:'Trang chủ Lotus',href:'/lotus/mobile?farm=F1'},{id:'labor',label:'Bố trí nhân công',run:()=>{}}]
- const merged=mergeWorkspaceActions(local,workspaceDirectory({modules:{labor:['Labor Allocation']},capabilities:{hr:true}}))
+ const local=[{id:'home',label:'Trang chủ Lotus',href:'/lotus/mobile?farm=F1'},{id:'refresh',label:'Tải lại số liệu',run:()=>{}}]
+ const merged=mergeWorkspaceActions(local,workspaceDirectory({modules:{},capabilities:{hr:true}}))
  assert.equal(merged.filter(a=>a.href?.startsWith('/lotus/mobile')).length,1)
- assert.equal(merged.filter(a=>a.label==='Bố trí nhân công').length,1)
+ assert.equal(merged.filter(a=>a.label==='Tải lại số liệu').length,1)
  assert.ok(merged.includes(local[1]))
  assert.ok(merged.some(a=>a.href==='/lotus/nhan-su'))
 })

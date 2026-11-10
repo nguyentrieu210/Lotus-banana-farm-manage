@@ -39,17 +39,17 @@
     box-shadow:0 1px 3px #29252106;color:var(--lotus-text);
   }
   .lotus-ui :is(.kpi,.stock-metrics>*,.calendar-kpis>*) :is(small,span) {color:var(--lotus-muted)}
-  .lotus-ui :is(.calendar-board,.forecast-workspace,.assignment-workspace,.farm-work-shell,.hr-shell,.attendance-shell){min-width:0}
+  .lotus-ui :is(.calendar-board,.forecast-workspace,.assignment-workspace,.hr-shell,.attendance-shell){min-width:0}
   .lotus-ui :is(.calendar-board,.forecast-workspace,.warehouse-planning) :is(input,select){font-size:13px}
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog){
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog){
     background:var(--lotus-surface);border:1px solid var(--lotus-border);color:var(--lotus-text);
     border-radius:14px;box-shadow:0 24px 80px #11182733;
   }
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(header,footer) {
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) :is(header,footer) {
     background:var(--lotus-surface);border-color:var(--lotus-border);
   }
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
   .lotus-ui :is(.lotus-ag-grid,.ag-root-wrapper,.lotus-data-table) {border-color:var(--lotus-border);border-radius:9px}
   .lotus-ui :is(.lotus-ag-grid,.calendar-table,.stock-table,.attendance-roster,.hr-table) :is(th,.ag-header-cell) {
     color:var(--lotus-table-heading);background:var(--lotus-table-header);

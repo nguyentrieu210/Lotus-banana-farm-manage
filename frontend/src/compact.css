@@ -108,7 +108,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .planning-unmapped{border:1px solid var(--lotus-accent);background:var(--lotus-accent-soft);padding:10px;border-radius:6px;margin-bottom:8px;font-size:12px}
 .planning-unmapped>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
 .planning-unmapped>div>span{flex:1 1 240px}
-.planning-unmapped select{min-width:140px;max-width:220px;padding:6px}
 .planning-quantity-summary{margin-top:12px!important;gap:14px}
 .lotus-shortage-row{background:var(--lotus-accent-soft)!important;color:var(--lotus-accent)!important}
 .lotus-item-cell .name{font-weight:600}

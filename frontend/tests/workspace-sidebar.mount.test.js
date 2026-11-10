@@ -23,7 +23,7 @@ test('every page sits in exactly one sidebar group with a real icon',()=>{
 
 test('sidebar orders the actual business areas and respects permitted pages',async()=>{
  const session=useSession();Object.assign(session,{user:'lead@lotus',capabilities:{stock:true},commands:{},modules:{}})
- const nav=pages.filter(([path])=>['reports','kho','materials'].includes(path))
+ const nav=pages.filter(([path])=>['reports','kho','map'].includes(path))
  const view=mount(WorkspaceSidebar,{nav,page:'kho'});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Tổng quan','Vườn & lô','Kho'])
@@ -43,31 +43,31 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
 test('sidebar parent navigates to its first page; the submenu lists every page of the group, the first included',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{},commands:{},modules:{}})
  const visited=[]
- const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['map','Bản đồ'],['work','Công việc'],['materials','Vật tư']]
- const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'work',onGo:path=>visited.push(path)})});await tick()
+ const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['admin/masters','Danh mục'],['admin/settings','Cấu hình'],['nguoi-dung','Người dùng']]
+ const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'admin/settings',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
- assert.deepEqual(parents,['Tổng quan','Vườn & lô'])
- assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Bản đồ lô','Sâu bệnh & ghi nhận khác','Vật tư theo việc'],'the page the group button opens is listed too')
+ assert.deepEqual(parents,['Tổng quan','Thiết lập'])
+ assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Danh mục','Cấu hình','Người dùng & phân quyền'],'the page the group button opens is listed too')
  view.root.querySelectorAll('.nav-group-current .nav-submenu button')[2].click();await tick()
- assert.deepEqual(visited,['materials'])
+ assert.deepEqual(visited,['nguoi-dung'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
  collapsed.click();await tick()
  assert.equal(collapsed.getAttribute('aria-expanded'),'false')
  assert.equal(view.root.querySelector('.nav-group-current .nav-submenu').style.display,'none')
  view.root.querySelector('.nav-group-current .nav-parent').click();await tick()
- assert.deepEqual(visited,['materials','map'])
+ assert.deepEqual(visited,['nguoi-dung','admin/masters'])
  view.unmount()
 })
 
 test('unknown permitted pages remain reachable and group changes do not create routes',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{stock:false},commands:{},modules:{}})
  const visited=[]
- const view=mount({render:()=>h(WorkspaceSidebar,{nav:[['work','Công việc'],['future-page','Màn mới']],page:'',onGo:path=>visited.push(path)})});await tick()
+ const view=mount({render:()=>h(WorkspaceSidebar,{nav:[['map','Bản đồ'],['future-page','Màn mới']],page:'',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Vườn & lô','Khác'])
  assert.equal([...view.root.querySelectorAll('.nav-sub-link')].length,0,'no purchasing shortcut without stock permission')
  view.root.querySelector('.nav-parent').click();await tick()
- assert.deepEqual(visited,['work'])
+ assert.deepEqual(visited,['map'])
  view.unmount()
 })
 
