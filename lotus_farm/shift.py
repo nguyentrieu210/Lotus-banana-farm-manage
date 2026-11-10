@@ -1,13 +1,13 @@
 """Ca đóng gói (Packhouse Shift): the bunches it took in, by lô and ribbon colour from confirmed harvest lines of the sổ lô,
-and what it packed. Spec 002 (US6): the shift is entered on its own (no Packout Run, no Harvest Lot); cartons and
-finished goods are split over its sources by kg (packout_rules). The stock receipt of finished goods is a separate,
-draft document made by the accountant (finance.costing.receive_shift). ERP remains the stock authority."""
+and what it packed. Spec 002 (US6): the shift is entered on its own; cartons and finished goods are split over its
+sources by kg (packout_rules). The stock receipt of finished goods is a separate, draft document made by the
+accountant (finance.costing.receive_shift). ERP remains the stock authority."""
 import frappe
+from frappe.model.document import Document
 from frappe.utils import add_days, cint, flt, get_datetime, getdate, nowdate
 
 from lotus_farm import packout_rules as rules
-from lotus_farm.controls import lock, whole_count
-from lotus_farm.daily_operations import DailyDocument, day_guard, number
+from lotus_farm.controls import check_farm, lock, positive, whole_count
 
 SHIFT, SOURCE, ENTRY = "Packhouse Shift", "Packhouse Shift Source", "Lotus Work Entry"
 TRACE_DAYS = 90
@@ -39,7 +39,27 @@ def _received_elsewhere(blocks_tags, shift_name=None):
     return {(r.farm_block, r.bunch_tag): cint(r.bunches) for r in rows if (r.farm_block, r.bunch_tag) in blocks_tags}
 
 
-class ShiftDocument(DailyDocument):
+class ShiftDocument(Document):
+    def validate(self):
+        self._farm_scope()
+        company = frappe.db.get_value("Farm", self.farm, "company")
+        if not company or (self.get("company") and self.company != company):
+            frappe.throw("Công ty phải khớp với vườn.")
+        self.company = company
+        if self.get("amended_from") and not (self.get("amendment_reason") or "").strip():
+            frappe.throw("Phải nhập lý do sửa đổi.")
+        self.validate_daily()
+
+    def _farm_scope(self):
+        """Only users of the farm write its shifts, one at a time per farm."""
+        if not self.get("farm"):
+            return
+        check_farm(self)
+        lock("Farm", self.farm)
+
+    def on_trash(self):
+        self._farm_scope()
+
     def validate_daily(self):
         if get_datetime(self.ended_at) <= get_datetime(self.started_at):
             frappe.throw("Giờ kết thúc ca phải sau giờ bắt đầu.")
@@ -52,7 +72,7 @@ class ShiftDocument(DailyDocument):
         for row in self.preprocessing:
             if whole_count(row.processed_bunches, "Processed bunches") < 1:
                 frappe.throw("Sơ chế cần số buồng là số nguyên dương.")
-            number(row.processed_kg, "Processed kg", positive=True)
+            positive(row.processed_kg, "Processed kg")
             if row.started_at and row.ended_at and get_datetime(row.ended_at) <= get_datetime(row.started_at):
                 frappe.throw("Giờ kết thúc sơ chế phải sau giờ bắt đầu.")
         self._check_sources()
@@ -75,7 +95,7 @@ class ShiftDocument(DailyDocument):
             lock("Employee", row.employee)
             if employee.company != self.company or employee.status != "Active":
                 frappe.throw("Nhân viên của ca phải đang làm việc trong công ty này.")
-            days = number(row.workdays, "Shift workdays", positive=True)
+            days = positive(row.workdays, "Shift workdays")
             other = frappe.db.sql(f"""select l.workdays from `tabPackhouse Shift Labor` l join `tab{SHIFT}` s on s.name = l.parent
                                       where s.posting_date = %s and s.docstatus = 1 and l.employee = %s and s.name != %s FOR UPDATE""",
                                   (self.posting_date, row.employee, self.name))
@@ -127,7 +147,7 @@ class ShiftDocument(DailyDocument):
             frappe.throw("Ca cần số kg thành phẩm.")
 
     def before_cancel(self):
-        day_guard(self)
+        self._farm_scope()
         state = frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") if self.stock_entry else None
         if state == 1:
             frappe.throw("Ca đã nhập kho thành phẩm. Hủy phiếu nhập kho trước khi hủy ca.")
@@ -144,55 +164,6 @@ def release_receipt(doc, method=None):
     name = doc.get("lotus_packhouse_shift")
     if name and frappe.db.get_value(SHIFT, name, "stock_entry") == doc.name:
         frappe.db.set_value(SHIFT, name, "stock_entry", None, update_modified=False)
-
-
-def shift_summary(shift):
-    """Legacy: the Packout Runs of a shift (old chain, removed with the legacy tables)."""
-    result = dict(input_kg=0, finished_kg=0, secondary_kg=0, loss_kg=0, cartons=0, packout_percent=None, runs=[])
-    if not frappe.db.exists("DocType", "Packout Run"):
-        return result
-    for name in frappe.get_list("Packout Run", filters={"packhouse_shift": shift.name, "docstatus": ["<", 2]}, pluck="name", limit_page_length=10000):
-        run = frappe.get_doc("Packout Run", name)
-        run.check_permission("read")
-        result["runs"].append(dict(name=name, docstatus=run.docstatus,
-                                   stock_status=frappe.db.get_value("Stock Entry", run.stock_entry, "docstatus") if run.stock_entry else None))
-        if run.docstatus != 1:
-            continue
-        result["input_kg"] += flt(run.input_kg)
-        result["loss_kg"] += flt(run.reject_kg) + flt(run.other_loss_kg)
-        for row in run.outputs:
-            result["finished_kg" if row.output_type == "Finished" else "secondary_kg"] += flt(row.net_kg)
-            if row.output_type == "Finished":
-                result["cartons"] += int(row.cartons or 0)
-    if result["input_kg"]:
-        result["packout_percent"] = result["finished_kg"] / result["input_kg"] * 100
-    return result
-
-
-def shift_link_guard(doc, method=None):
-    if not doc.get("packhouse_shift"):
-        return
-    shift = frappe.get_doc(SHIFT, doc.packhouse_shift)
-    shift.check_permission("read")
-    lock(SHIFT, shift.name)
-    date = doc.get("packing_date") or doc.get("posting_date")
-    if shift.farm != doc.farm or getdate(date) != getdate(shift.posting_date):
-        frappe.throw("Ca phải khớp vườn và ngày làm việc.")
-    if shift.docstatus != 0:
-        frappe.throw("Ca đã đóng/hủy không nhận thay đổi; mở lại bằng cách hủy rồi lập bản sửa.")
-
-
-def scale_link_guard(doc, method=None):
-    references = [(doc.get("scale_reading"), doc.get("gross_weight_kg") or doc.get("released_raw_kg"))]
-    if doc.doctype == "Packout Run":
-        references = [(r.get("scale_reading"), r.net_kg) for r in doc.outputs]
-    for name, weight in references:
-        if not name:
-            continue
-        reading = frappe.get_doc("Scale Reading", name)
-        reading.check_permission("read")
-        if reading.farm != doc.farm or abs(flt(reading.net_kg) - flt(weight)) > 0.0005:
-            frappe.throw("Vườn/số kg tịnh của lần cân phải khớp giao dịch.")
 
 
 # ---------------------------------------------------------------- Xưởng screen (lotus_farm.shift.*)

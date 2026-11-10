@@ -1,5 +1,5 @@
 import unittest
-from lotus_farm.promax_rules import geometry, point_in_geometry, coordinates, work_completion, vintage_choice, split_amount, weighted_packout
+from lotus_farm.promax_rules import geometry, point_in_geometry, coordinates, work_completion, vintage_choice, split_amount
 from lotus_farm.rules import RuleError
 
 
@@ -22,12 +22,9 @@ class ProMaxRules(unittest.TestCase):
         self.assertEqual(vintage_choice(samples,'2026-10-01',1)['name'],'late')
         self.assertIsNone(vintage_choice(samples,'2026-10-01',12))
 
-    def test_partial_conversion_and_weighted_yield(self):
+    def test_partial_conversion(self):
         self.assertEqual(split_amount(100,40,30),(30,70))
         with self.assertRaises(RuleError):split_amount(100,40,50)
-        result=weighted_packout([dict(input_kg=100,finished_kg=50),dict(input_kg=900,finished_kg=810)],2)
-        self.assertEqual(result['packout_rate_percent'],86)
-        with self.assertRaises(RuleError):weighted_packout([],1)
 
     def test_kml_keeps_names_without_guessing_farm(self):
         from lotus_farm.promax_rules import kml_geometries

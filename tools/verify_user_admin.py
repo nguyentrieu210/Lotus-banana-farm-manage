@@ -39,7 +39,7 @@ def run():
         rejected('stale_profile', lambda: api.save(stale, email), frappe.TimestampMismatchError)
         if farms:
             # Preserve advanced, document-specific grants while managing ordinary scope.
-            advanced = frappe.get_doc(dict(doctype='User Permission', user=email, allow='Farm', for_value=farms[0], apply_to_all_doctypes=0, applicable_for='Daily Work Plan')).insert()
+            advanced = frappe.get_doc(dict(doctype='User Permission', user=email, allow='Farm', for_value=farms[0], apply_to_all_doctypes=0, applicable_for='Farm Block')).insert()
             rejected('stale_scope', lambda: api.save(updated, email), frappe.TimestampMismatchError)
             updated = api.detail(email)
             updated.update(farms=[], teams=[])
