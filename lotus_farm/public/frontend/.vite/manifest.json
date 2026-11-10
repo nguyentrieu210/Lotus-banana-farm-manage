@@ -209,8 +209,8 @@
       "assets/ProcurementWorkspace-B5-tLolK.css"
     ]
   },
-  "_ReleaseNotes-DBbUDTwA.js": {
-    "file": "assets/ReleaseNotes-DBbUDTwA.js",
+  "_ReleaseNotes-AbKU184B.js": {
+    "file": "assets/ReleaseNotes-AbKU184B.js",
     "name": "ReleaseNotes",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -530,7 +530,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-TbcNf1Vw.js",
+    "file": "assets/index-DHNIebdY.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -545,7 +545,7 @@
       "_combobox-BAxRneQI.js",
       "_DataTable-D-W3NB8N.js",
       "_hr-catalog-labels-Lk52-KcD.js",
-      "_ReleaseNotes-DBbUDTwA.js",
+      "_ReleaseNotes-AbKU184B.js",
       "__plugin-vue_export-helper-BDNMzG2s.js",
       "_preload-helper-BB2FBftw.js"
     ],
@@ -589,7 +589,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-CWDSYSvM.js",
+    "file": "assets/BlockForecastApp-BC2clfQu.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -628,7 +628,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-GN1xhpZr.js",
+    "file": "assets/FarmLandApp-CK60vdbu.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -654,7 +654,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-CQQV8drN.js",
+    "file": "assets/FieldReportApp-DS0yrBwk.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -679,7 +679,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-t4KYJZwq.js",
+    "file": "assets/FinanceApp-Bgd5W0Q1.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -707,7 +707,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-Cpg6Wo3n.js",
+    "file": "assets/HrApp-BUdaZJpV.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -737,7 +737,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-vNdmTH5s.js",
+    "file": "assets/StockApp-BocbXT0h.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -764,7 +764,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-BqqLmx97.js",
+    "file": "assets/TimekeepingApp-DuZ_Y83s.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -806,7 +806,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-D9J9B9AJ.js",
+    "file": "assets/OpsList-DnSgHy-E.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -840,7 +840,7 @@
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-CUrCYUsc.js",
+    "file": "assets/work-mobile-4NPfvfPo.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
@@ -852,7 +852,7 @@
       "_LotusField-DMC1N8PN.js",
       "_mobile-ui-DgNZvhI_.js",
       "_use-mobile-confirm-DSlt4FqZ.js",
-      "_ReleaseNotes-DBbUDTwA.js",
+      "_ReleaseNotes-AbKU184B.js",
       "_lot-entry-model-C9Nah1JT.js",
       "_WorkInspect-CgxR7gTT.js"
     ],
