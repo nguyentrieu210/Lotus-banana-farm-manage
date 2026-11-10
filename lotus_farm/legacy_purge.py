@@ -194,6 +194,10 @@ def _scan():
     unmoved = _unmoved_bunch_events()
     if unmoved:
         block.append(unmoved)
+    if frappe.db.table_exists("Stock Entry") and frappe.db.has_column("Stock Entry", "lotus_issue_mode"):
+        planned = frappe.db.count("Stock Entry", {"docstatus": 0, "lotus_issue_mode": "Plan"})
+        if planned:  # the plan issue mode is gone: such a draft could no longer be saved or posted
+            block.append(f"Còn {planned} phiếu xuất kho nháp theo kế hoạch ngày (cách xuất đã bỏ): ghi sổ, đổi sang Thủ công hoặc xóa trước khi dọn.")
     return {"tables": tables, "table_count": len(tables), "rows": sum(t["rows"] for t in tables), "bytes": sum(t["bytes"] for t in tables),
             "with_data": [t["doctype"] for t in tables if t["rows"]], "fields": fields, "payroll_periods": payroll, "block": block}
 
@@ -292,6 +296,7 @@ def _archive(folder, scan):
 def _drop_column(dt, fieldname):
     if frappe.db.table_exists(dt) and frappe.db.has_column(dt, fieldname):
         frappe.db.sql_ddl(f"alter table `tab{dt}` drop column `{fieldname}`")
+        frappe.client_cache.delete_value(f"table_columns::tab{dt}")  # as schema sync does: a rerun must see the column gone
 
 
 def _remove_fields(scan):

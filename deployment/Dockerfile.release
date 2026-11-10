@@ -21,6 +21,8 @@ RUN cd /home/frappe/frappe-bench/apps/lotus_farm \
  && cd frontend && find . -mindepth 1 -maxdepth 1 ! -name assets -exec rm -rf {} +
 COPY --chown=frappe:root app/ /home/frappe/frappe-bench/apps/lotus_farm/
 COPY --chown=frappe:root downloads/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/
+# The scanner APK is not in git and nothing else brings it back after the cleanup: refuse to build without it.
+RUN test -s /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/Lotus-HR-Scanner.apk
 RUN /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/lotus_farm/deployment/fix-websocket-origin.py
 RUN find /home/frappe/frappe-bench/apps/lotus_farm -name '*.pyc' -delete
 LABEL org.opencontainers.image.revision=${REVISION} \

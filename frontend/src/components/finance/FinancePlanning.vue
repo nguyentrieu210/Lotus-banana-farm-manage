@@ -126,7 +126,7 @@ onMounted(()=>task(async()=>{await loadOverview();if(overview.value.plans.length
    </template>
    <template v-else>
     <p v-if="!snapshot.sources?.length" class="land-empty">Chưa lấy sản lượng từ dự thu. Sản lượng đang nhập thủ công.</p>
-    <template v-else><p class="fp-provenance">Lấy nguồn lúc {{snapshot.imported_at}} · {{snapshot.imported_by}}: thay sản lượng từ tháng {{formatMonth(snapshot.from_month)}}, các tháng trước giữ nguyên. Sản lượng hiện tại có thể đã được điều chỉnh trong ngân sách.</p><p v-for="warning in snapshot.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="snapshot.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-sources"/></template>
+    <template v-else><p class="fp-provenance">Lấy nguồn lúc {{snapshot.imported_at}} · {{snapshot.imported_by}}: <template v-if="snapshot.from_month">thay sản lượng từ tháng {{formatMonth(snapshot.from_month)}}, các tháng trước giữ nguyên.</template><template v-else>thay sản lượng mọi tháng của kế hoạch.</template> Sản lượng hiện tại có thể đã được điều chỉnh trong ngân sách.</p><p v-for="warning in snapshot.warnings" :key="warning" class="land-warn">{{warning}}</p><DataTable :rows="snapshot.sources" :columns="sourceColumns" row-key="name" storage-key="financial-plan-sources"/></template>
    </template>
   </template>
 
