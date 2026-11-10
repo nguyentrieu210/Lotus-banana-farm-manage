@@ -127,9 +127,20 @@ try:
     # The copied order has no approved proposal behind its lines: treat it as an order from before the purchase
     # flow (order_guard lets those finish) while the approval itself still needs the named signature.
     frappe.conf.lotus_purchase_flow_since = '2099-01-01 00:00:00'
-    # Any order of the company is a template (a copy of a local test site may hold only cancelled ones).
-    source = frappe.get_doc('Purchase Order', frappe.get_all('Purchase Order', filters={'company': company}, pluck='name',
-                                                             order_by='docstatus asc, modified desc', limit=1)[0])
+    # Any order of the company is a template (a copy of a local test site may hold only cancelled ones); a site with
+    # no order at all gets a one-line order built from an enabled supplier, a stock item and a warehouse of the company.
+    found = frappe.get_all('Purchase Order', filters={'company': company}, pluck='name', order_by='docstatus asc, modified desc', limit=1)
+    if found:
+        source = frappe.get_doc('Purchase Order', found[0])
+    else:
+        store = frappe.db.get_value('Warehouse', {'company': company, 'is_group': 0, 'disabled': 0}, 'name')
+        goods = frappe.db.get_value('Item', {'is_stock_item': 1, 'is_purchase_item': 1, 'disabled': 0, 'has_batch_no': 0, 'has_serial_no': 0},
+                                    ['name', 'stock_uom'], as_dict=True)
+        source = frappe.get_doc(dict(doctype='Purchase Order', company=company, supplier=frappe.db.get_value('Supplier', {'disabled': 0}, 'name'),
+                                     transaction_date=frappe.utils.nowdate(), schedule_date=frappe.utils.add_days(frappe.utils.nowdate(), 5),
+                                     currency=frappe.get_cached_value('Company', company, 'default_currency'),
+                                     items=[dict(item_code=goods.name, qty=2, rate=100000, uom=goods.stock_uom, conversion_factor=1,
+                                                 warehouse=store, schedule_date=frappe.utils.add_days(frappe.utils.nowdate(), 5))]))
     po = frappe.copy_doc(source)
     po.update(dict(docstatus=0, lotus_approval_status='Nháp', lotus_approved_by=None, lotus_approved_at=None, schedule_date=frappe.utils.add_days(frappe.utils.nowdate(), 5)))
     for row in po.items:

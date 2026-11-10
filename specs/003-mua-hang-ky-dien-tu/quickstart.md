@@ -147,3 +147,54 @@ Dùng 6 tài khoản thử, có ảnh chữ ký và ký nháy:
   Ghi lại số đơn bị trả về.
 - Thêm mục mới ở đầu `frontend/src/release-notes.js`.
 - Chỉ commit, đẩy và triển khai khi chủ vườn yêu cầu, theo quy trình phát hành trong bộ nhớ dự án (sao lưu, build từ ảnh đang chạy, migrate, smoke test).
+
+## 5. Kết quả chạy (T106, 10/11/2026)
+
+Nơi chạy: VPS, bộ thử riêng `lotus-003-proc` (CSDL riêng), image `lotus-release:40f8330` đang chạy thật, code nhánh 003 đã gộp `main`. Bản sao site thật `mua.test` dựng từ bản sao lưu `20261110_203110` của site `frontend`, đã bỏ khóa gửi thông báo đẩy, tắt email và lịch chạy. Không đụng site thật.
+
+### Tự động (mục 2)
+
+| Bộ | Site | Kết quả |
+|---|---|---|
+| Test giao diện | — | 643/643 trên bản gộp |
+| `verify_signing.py` | bản sao site thật | qua |
+| `verify_purchase_proposal.py` | bản sao site thật | qua |
+| `verify_vat_in_cost.py` | bản sao site thật | 24/24 |
+| `verify_sign_notify.py` (lỗi B1) | bản sao site thật | qua |
+| `verify_procurement.py` | procurement.test | 23/23 |
+| `verify_procurement_complete.py` | procurement.test | 34/34 |
+| `verify_purchase_flow.py` | procurement.test | 22/22 |
+| `verify_procurement_concurrency.py` | procurement.test | 4/4 |
+| Test đơn vị Python | — | 339, lỗi 3 ca cũ ở `test_warehouse_guards` (có từ trước spec 003) |
+| Trình duyệt thật (Chromium) 1440, 844, 390, 320 px | bản sao site thật | 32 lượt mở, không tràn ngang, không lỗi trang (xem `checklists/ui-audit.md`) |
+
+### Kịch bản mục 3 và ca kiểm tương ứng
+
+| Kịch bản | Kiểm bằng | Kết quả |
+|---|---|---|
+| US1.1–2 phiếu chi ký đủ, thông báo không làm hỏng việc ký, có bản PDF lưu | `verify_signing`, `verify_sign_notify` | qua |
+| US1.3 Chờ tôi ký, ký nhiều, một dòng bị sửa thì báo riêng | `verify_signing` (bulk) | qua |
+| US1.5 chuyển người ký có lý do, có sự kiện REASSIGN | `verify_signing` | qua |
+| US2 đóng phần chưa mua, hủy có lý do, nhập Excel hỏi lý do, số đếm giai đoạn | `verify_purchase_proposal` (us2) | qua |
+| US3.1–6 giữ NCC và giá báo giá, cảnh báo khi lưu, trả lại có lý do, không tự duyệt, chặn submit qua REST, trạng thái đơn | `verify_purchase_flow` 13–19 | qua |
+| US4.1–2 nhận một bước có ảnh và chữ ký người giao, thiếu thì bị chặn, PDF lưu | `verify_purchase_flow` 20–21 | qua |
+| US4.3 hai người nhận cùng lúc | `verify_procurement_concurrency` | qua |
+| US4.4 trả hàng ghi sổ ngay, nhắc hóa đơn điều chỉnh | `verify_procurement` 18 | qua |
+| US4.5 gửi lại cùng yêu cầu chỉ có một phiếu | `verify_purchase_flow` 20, `verify_procurement` 17 | qua |
+| US5.1–5 hóa đơn chờ nhập, thuế 5% và 8%, lệch giá có lý do, chặn trùng giữa các đường, chặn hủy khi đã chi | `verify_procurement` 20–23, `verify_vat_in_cost` | qua |
+| US6.1–3 tuổi nợ, hàng chưa có hóa đơn, phiếu chi nhiều hóa đơn và tạm ứng, sổ chi tiết, biên bản đối chiếu, đảo phiếu | `verify_procurement_complete` 30 | qua |
+
+### Mục 4 trên bản sao dữ liệu thật
+
+- Patch `return_unsigned_pending_orders`: đã chạy; site thật hiện không có đơn mua nào, nên không đơn nào bị trả về Nháp.
+- Patch `drop_signing_challenge`: đã chạy; DocType và bảng `Lotus Signing Challenge` không còn.
+- Thiết lập ERPNext sau migrate: `over_billing_allowance` = 100, `maintain_same_rate` = 0, giá vốn theo giá hóa đơn = 1.
+- Đối chiếu công nợ trên dữ liệu thật: sổ cái 331 khớp. "Hàng đã nhận chưa có hóa đơn" là 2.094.234.400 đ, sổ cái 3388 là 2.107.054.400 đ. Mọi phiếu nhập còn chờ hóa đơn khớp sổ cái từng đồng; phần lệch 12.820.000 đ gồm:
+  - 4 bút toán ghi tay vào 3388 (ACC-JV-2026-00007, -00018, -00020, -00022; ghi chú SQ222-0xx), cộng 4.660.000 đ;
+  - hóa đơn Mua nhanh ACC-PINV-2026-00018 (lập trước spec 003) xóa 3388 ít hơn phiếu nhập MAT-STE-2026-00029 là 8.160.000 đ.
+
+  Kế toán cần xem lại hai khoản này; màn Công nợ báo lệch đúng như thiết kế.
+
+### Còn lại cho người dùng thật
+
+Những bước sau cần người cầm máy, máy không làm thay được: nhận thông báo đẩy trên điện thoại thật và bấm mở; quét QR trên bản in; mở email "Đến lượt bạn ký"; ngắt mạng giữa chừng trên điện thoại; và vòng nghiệm thu của 6 vai trò (SC-011).

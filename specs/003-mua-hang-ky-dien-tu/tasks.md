@@ -474,7 +474,7 @@ description: "Task list: hoàn thiện mua hàng và ký điện tử (spec 003)
 - [x] T103 Rà ma trận thao tác ở 320, 390, 844 và 1440 px bằng `tools/verify_mobile_purchase_dom.mjs` và `tools/verify_desktop_workspace_dom.mjs`. Ghi kết quả vào `specs/003-mua-hang-ky-dien-tu/checklists/ui-audit.md`.
 - [x] T104 [P] Cập nhật `docs/MUA_HANG_WORKSPACE.md`, `docs/LOTUS_SIGNATURE_V2.md` và bản dịch mới trong `lotus_farm/translations/vi.csv`
 - [x] T105 [P] Thêm mục mới ở đầu `frontend/src/release-notes.js`
-- [ ] T106 Chạy toàn bộ quickstart.md trên `mua.test` và ghi kết quả
+- [x] T106 Chạy toàn bộ quickstart.md trên `mua.test` và ghi kết quả
 
 ---
 
