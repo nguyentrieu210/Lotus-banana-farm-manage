@@ -171,21 +171,53 @@ class FinanceSecurityTests(unittest.TestCase):
         from contextlib import contextmanager
         from unittest.mock import patch
         import lotus_farm
-        asked = []
-        summary = dict(weeks=[dict(week='2026-W44', start='2026-10-26'), dict(week='2026-W45', start='2026-11-02')],
-                       rows=[dict(week='2026-W44', block='A1', kg=100.0), dict(week='2026-W45', block='A1', kg=250.5),
-                             dict(week='2026-W45', block='A2', kg=40)])
-        forecast = NS(bunch_summary=lambda farm, as_of=None: (asked.append((farm, as_of)), (summary, []))[1])
-        clock = [datetime.datetime(2026, 10, 20, 9)]
-        env = dict(frappe=NS(), datetime=datetime, get_datetime=lambda day: datetime.datetime.fromisoformat(str(day)),
-                   now_datetime=lambda: clock[0], _whole_farm=contextmanager(lambda: (yield)), flt=lambda x: float(x or 0))
-        forecast_kg = extract('lotus_farm/finance/costing.py', '_forecast_kg', env)
+        from lotus_farm.finance import rules
+        from lotus_farm.forecast_parameters import DEFAULTS, validate
+        session, asked = NS(user='accountant'), []
+
+        @contextmanager
+        def whole_farm():
+            session.user = 'Administrator'
+            try:
+                yield
+            finally:
+                session.user = 'accountant'
+        cohorts = [dict(block='A1', cycle=2, config=validate(DEFAULTS), days=[(datetime.date(2026, 11, 30), 7), (datetime.date(2026, 12, 1), 10)])]
+        forecast = NS(bunches_after=lambda farm, day: (asked.append((farm, day, session.user)), cohorts)[1])
+        forecast_kg = extract('lotus_farm/finance/costing.py', '_forecast_kg', dict(frappe=NS(session=session), _whole_farm=whole_farm, rules=rules))
         with patch.object(lotus_farm, 'block_forecast', forecast, create=True):
-            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 250.5, 'A2': 40.0}, 'a running month: the weeks that start after it')
-            self.assertEqual(asked[-1], ('F', None), 'read as the forecast stands now')
-            clock[0] = datetime.datetime(2026, 11, 5, 9)
-            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 350.5, 'A2': 40.0}, 'a month already over: all that was then still expected')
-            self.assertEqual(asked[-1], ('F', datetime.datetime(2026, 11, 1)), 'read as the sổ lô stood when the month ended')
+            self.assertEqual(forecast_kg('F', '2026-11-30'), {'A1': round(10 * 20 * .98, 3)}, 'only the bunches due after the last day of the month')
+        self.assertEqual(asked, [('F', '2026-11-30', 'Administrator')], 'the whole farm, up to the month end')
+        self.assertEqual(session.user, 'accountant')
+
+    def test_costing_reads_the_lot_ledger_by_work_day_and_brings_the_rest_in_from_the_next_day(self):
+        import datetime as dt
+        from lotus_farm.block_forecast_engine import date
+        calls, today = {}, ['2026-12-03']
+
+        def lines(farm, blocks, until=None):
+            calls['lines'] = (farm, blocks, until)
+            return ['LINE']
+
+        def cohorts(farm, blocks, waves, lines, start=None):
+            calls['cohorts'] = (waves, lines, start)
+            return ['COHORT']
+        env = dict(dt=dt, date=date, nowdate=lambda: today[0], _projection=lambda farm: (dict(rows=['WAVE']), None, None),
+                   _bunch_scope=lambda farm: {'A1': {}}, _bunch_lines=lines, _bunch_cohorts=cohorts)
+        after = extract('lotus_farm/block_forecast.py', 'bunches_after', env)
+        self.assertEqual(after('F', '2026-11-30'), ['COHORT'])
+        self.assertEqual(calls['lines'], ('F', {'A1': {}}, dt.date(2026, 11, 30)), 'the lines of work days up to the month end, whenever confirmed')
+        self.assertEqual(calls['cohorts'], (['WAVE'], ['LINE'], dt.date(2026, 12, 1)), 'a month already over: what is left comes in from the next day')
+        today[0] = '2026-11-20'
+        after('F', '2026-11-30')
+        self.assertEqual(calls['cohorts'][2], dt.date(2026, 11, 20), 'a month still running: from today')
+
+    def test_a_month_waits_for_its_shifts_and_draft_receipts(self):
+        text = extract('lotus_farm/finance/costing.py', 'waiting_text', {})
+        self.assertEqual(text(dict(shifts=[], drafts=[])), '')
+        self.assertEqual(text(dict(shifts=['PS-1', 'PS-2'], drafts=['MAT-STE-9'])),
+                         '2 ca đóng gói đã đóng chưa lập phiếu nhập kho, 1 phiếu nhập kho thành phẩm còn nháp (MAT-STE-9)')
+        self.assertIn(', …', text(dict(shifts=[], drafts=['D%d' % i for i in range(7)])))
 
     def test_forecast_is_read_for_the_whole_farm_and_the_session_comes_back(self):
         from contextlib import contextmanager

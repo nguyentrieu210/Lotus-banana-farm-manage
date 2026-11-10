@@ -97,8 +97,10 @@ class FinancialPlanning(unittest.TestCase):
         cohorts = [cohort(days=(('2026-12-30', 10), ('2027-01-15', 100), ('2027-02-01', 50))),
                    cohort(layer='tree', cycle=1, profile=None, days=(('2027-01-20', 10), ('2028-01-05', 7))),
                    cohort(farm='F2', days=(('2027-01-31', 1),))]
-        result = model.forecast_quantities('2027-01', 12, cohorts)
+        today = date(2026, 12, 20)
+        result = model.forecast_quantities('2027-01', 12, cohorts, today)
         self.assertEqual(len(result['rows']), 12)
+        self.assertEqual((result['from_month'], result['kept']), ('2027-01', []), 'a plan ahead of today: every month is replaced')
         january, february, march = result['rows'][:3]
         self.assertEqual((january['gross_kg'], january['sales_kg']), (2210, 2165.8), '100 × 20 kg + 10 × 19 kg + 1 × 20 kg, 98% packed')
         self.assertEqual((february['gross_kg'], february['sales_kg']), (1000, 980))
@@ -108,12 +110,32 @@ class FinancialPlanning(unittest.TestCase):
                           ('2027-02', 'F1', 'cut', 50, 980)], 'bunches due before or after the plan are left out')
         self.assertEqual(len({s['name'] for s in result['sources']}), 4)
         self.assertEqual(len(result['warnings']), 1, 'kg worked out with default parameters are pointed out')
-        self.assertEqual(result, model.forecast_quantities('2027-01', 12, cohorts))
-        self.assertEqual(model.forecast_quantities('2027-01', 12, [cohort()])['warnings'], [])
-        self.assertEqual(model.forecast_quantities('2030-01', 12, cohorts)['sources'], [])
-        for wrong in (cohort(pack_rate=1.2), cohort(layer='guess')):
+        self.assertEqual(result, model.forecast_quantities('2027-01', 12, cohorts, today))
+        self.assertEqual(model.forecast_quantities('2027-01', 12, [cohort()], today)['warnings'], [])
+        self.assertEqual(model.forecast_quantities('2030-01', 12, cohorts, today)['sources'], [])
+        for wrong in (cohort(pack_rate=1.2), cohort(layer='guess'), cohort(layer='packed')):
             with self.assertRaises(ValueError):
-                model.forecast_quantities('2027-01', 12, [wrong])
+                model.forecast_quantities('2027-01', 12, [wrong], today)
+
+    def test_forecast_import_keeps_the_months_past_and_completes_this_one_with_its_closed_shifts(self):
+        cohorts = [cohort(days=(('2027-03-20', 10), ('2027-04-02', 50)))]
+        packed = [dict(farm='F1', bunches=40, gross_kg=900, sales_kg=760.5)]
+        result = model.forecast_quantities('2027-01', 6, cohorts, date(2027, 3, 20), packed)
+        self.assertEqual([r['month'] for r in result['rows']], ['2027-03', '2027-04', '2027-05', '2027-06'], 'January and February are not replaced')
+        self.assertEqual((result['current'], result['from_month'], result['kept']), ('2027-03', '2027-03', ['2027-01', '2027-02']))
+        march, april = result['rows'][:2]
+        self.assertEqual((march['gross_kg'], march['sales_kg']), (1100, 956.5), '900 kg into the shifts + 10 bunches × 20 kg still due')
+        self.assertEqual((april['gross_kg'], april['sales_kg']), (1000, 980))
+        self.assertEqual([(s['month'], s['layer'], s['bunches'], s['gross_kg'], s['sales_kg']) for s in result['sources']],
+                         [('2027-03', 'packed', 40, 900, 760.5), ('2027-03', 'cut', 10, 200, 196), ('2027-04', 'cut', 50, 1000, 980)])
+        ahead = model.forecast_quantities('2027-01', 6, cohorts, date(2026, 12, 1), packed)
+        self.assertEqual((len(ahead['rows']), ahead['kept']), (6, []))
+        self.assertNotIn('packed', [s['layer'] for s in ahead['sources']], 'the shifts of a month outside the plan add nothing')
+        over = model.forecast_quantities('2027-01', 2, cohorts, date(2027, 3, 20), packed)
+        self.assertEqual((over['rows'], over['sources'], over['from_month'], over['kept']), ([], [], None, ['2027-01', '2027-02']),
+                         'a plan already over has nothing to replace')
+        with self.assertRaises(ValueError):
+            model.forecast_quantities('2027-01', 6, cohorts, date(2027, 3, 20), [dict(farm='F1', bunches=1, gross_kg=10, sales_kg=11)])
 
 
 if __name__ == '__main__':

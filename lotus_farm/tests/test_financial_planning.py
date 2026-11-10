@@ -122,13 +122,20 @@ class TestFinancialPlanningOnSite(unittest.TestCase):
         with self.assertRaises(frappe.PermissionError):
             planning.detail(doc['name'])
 
-    def forecast(self, bunches=50):
+    def forecast(self, bunches=50, day=date(2027, 1, 12)):
         """What the shared forecast hands over for a farm: (summary, bunch cohorts). The forecast itself is built from
         the sổ lô and has its own suites; here 50 bunches of 20 kg, 80% packed, are due in January 2027."""
-        return {}, [dict(layer='cut', block='LO', tag=None, cycle=2, profile='BO-THONG-SO', days=[(date(2027, 1, 12), bunches)],
+        return {}, [dict(layer='cut', block='LO', tag=None, cycle=2, profile='BO-THONG-SO', days=[(day, bunches)],
                          config=dict(kg_cycle_1=19, kg_cycle_2=20, kg_cycle_3=19, pack_rate=.8))]
 
+    def pin_today(self, day='2026-12-15'):
+        """The import replaces the months from today's on: the plan's months (from 2027-01) are all ahead of this day."""
+        today = patch.object(planning, 'nowdate', return_value=day)
+        today.start()
+        self.addCleanup(today.stop)
+
     def test_import_replaces_quantities_retains_budgets_and_checks_source_changes(self):
+        self.pin_today()
         doc = self.save()
         with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()) as read:
             preview = planning.forecast_preview(doc['name'])
@@ -146,6 +153,25 @@ class TestFinancialPlanningOnSite(unittest.TestCase):
             imported = planning.apply_forecast(doc['name'], imported['modified'], again['fingerprint'])
             self.assertEqual(imported['values']['rows'][0]['sales_kg'], 640)
 
+    def test_import_keeps_the_months_already_past(self):
+        self.pin_today('2027-02-10')
+        self.values['rows'].append(dict(month='2027-02', gross_kg=500, sales_kg=400, price_per_kg=10000))
+        doc = self.save()
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast(bunches=10, day=date(2027, 3, 3))):
+            preview = planning.forecast_preview(doc['name'])
+            self.assertEqual((preview['from_month'], preview['kept']), ('2027-02', ['2027-01']))
+            imported = planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
+        rows = {r['month']: r for r in imported['values']['rows']}
+        self.assertEqual((rows['2027-01']['gross_kg'], rows['2027-01']['sales_kg']), (1000, 800), 'a month already past keeps its quantities')
+        self.assertEqual((rows['2027-02']['gross_kg'], rows['2027-02']['sales_kg']), (0, 0), 'this month: no closed shift, no bunch still due')
+        self.assertEqual((rows['2027-03']['gross_kg'], rows['2027-03']['sales_kg']), (200, 160))
+        self.pin_today('2028-01-05')
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()):
+            over = planning.forecast_preview(doc['name'])
+            self.assertEqual((over['rows'], over['from_month']), ([], None))
+            with self.assertRaises(frappe.ValidationError):
+                planning.apply_forecast(doc['name'], imported['modified'], over['fingerprint'])
+
     def test_forecast_import_needs_the_right_to_see_the_farm(self):
         doc = self.save()
         with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()) as read:
@@ -156,6 +182,7 @@ class TestFinancialPlanningOnSite(unittest.TestCase):
         self.assertTrue(planning.overview()['can_forecast'])
 
     def test_manual_updates_keep_source_audit_and_scope_change_clears_it(self):
+        self.pin_today()
         doc = self.save()
         with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()):
             preview = planning.forecast_preview(doc['name'])

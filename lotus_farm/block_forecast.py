@@ -69,13 +69,16 @@ def _can_import_opening():
 LINE_FIELDS=["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg","reason","source_type",
              "source_name","confirmed_by"]
 
-def _bunch_lines(farm,blocks=None,as_of=None):
+def _bunch_lines(farm,blocks=None,as_of=None,until=None):
     """Confirmed lines of the sổ lô. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021).
-    as_of: the sổ lô as it stood then (confirmed before, not voided before)."""
+    as_of: the sổ lô as it stood then (confirmed before, not voided before). until: only the lines of work days up to
+    that day, whenever they were confirmed."""
     from lotus_farm.lot_ledger import bunch_rows
     filters={"farm":farm,"state":"Confirmed"}
     if blocks is not None:
         filters["farm_block"]=["in",list(blocks) or [""]]
+    if until:
+        filters["event_date"]=["<=",str(date(until))]
     if not as_of:
         return bunch_rows(filters,LINE_FIELDS)
     filters.update(state=["in",["Confirmed","Voided"]],confirmed_at=["<",as_of])
@@ -101,9 +104,10 @@ def _bunch_scope(farm,zone=None,block=None):
 def _tag_labels(farm):
     return {t.name:t.color_label or t.name for t in frappe.get_all("Bunch Tag",filters={"farm":farm},fields=["name","color_label"],limit_page_length=0)}
 
-def _bunch_cohorts(farm,blocks,waves,lines=None,as_of=None):
-    """Every bunch of these lô, once, at the stage nearest to harvest."""
-    today=_today(as_of)
+def _bunch_cohorts(farm,blocks,waves,lines=None,as_of=None,start=None):
+    """Every bunch of these lô, once, at the stage nearest to harvest. start: the first day a bunch may come in (bunches
+    overdue then come in that day); by default today, or the day of as_of."""
+    today=start or _today(as_of)
     lines=_bunch_lines(farm,blocks,as_of) if lines is None else lines
     params=_bunch_params(_profiles(farm,as_of))
     cut=bunch_flow_rules.cut_cohorts(lines,params,today)
@@ -139,6 +143,17 @@ def bunch_summary(farm,as_of=None):
     """The whole farm, for a frozen copy of the forecast: now, or as the sổ lô stood at a moment."""
     result,_,_=_projection(farm,as_of=as_of)
     return _bunch_weekly(farm,result["rows"],as_of=as_of)
+
+def bunches_after(farm,day):
+    """Month-end costing: the bunches of the farm's active lô (cohorts, as bunch_summary hands them over) still to come
+    after a day. The sổ lô counts as it stands now, but only its lines of work days up to that day, whenever they were
+    confirmed: a harvest of the last day confirmed the next morning was harvested that day. Bunches come in from the next
+    day, or from today while that day is still ahead. Parameter sets, tree counts and flowering dates are today's."""
+    day=date(day)
+    start=min(day+dt.timedelta(days=1),date(nowdate()))
+    result,_,_=_projection(farm)
+    blocks=_bunch_scope(farm)
+    return _bunch_cohorts(farm,blocks,result["rows"],_bunch_lines(farm,blocks,until=day),start=start)
 
 LAYER_NOTES={"cut":"Mức tin cậy cao: buồng đã cắt bắp.","inject":"Mức tin cậy khá: đã chích bắp, chưa cắt.","sucker":"Mức tin cậy thấp: số chồi ước tính từ diện tích đã chọn, mốc thời gian theo ngày chọn thật.",
     "tree":"Mức tin cậy thấp: tính từ số cây và ngày trổ ước tính theo khu."}

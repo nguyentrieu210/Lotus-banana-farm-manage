@@ -162,25 +162,46 @@ def calculate(values, *, base=False):
 
 
 FORECAST_LAYERS = (('cut', 'Buồng đã cắt bắp'), ('inject', 'Buồng đã chích bắp'), ('sucker', 'Theo chồi đã chọn'), ('tree', 'Theo số cây'))
+PACKED = ('packed', 'Ca đóng gói đã đóng từ đầu tháng')
 
 
-def forecast_quantities(start, count, cohorts):
-    """Monthly kg of the shared forecast (Dự thu) inside the plan's months, each bunch in the month it is due.
+def forecast_quantities(start, count, cohorts, today, packed=()):
+    """Monthly kg of the plan from the shared forecast (Dự thu), from today's month to the end of the plan.
 
+    The forecast starts today, so it says nothing of the days already past: months before today's keep what the plan
+    holds (they are not in rows and the caller leaves them alone). Today's month is what its closed packhouse shifts
+    brought in so far plus the forecast for its remaining days; later months are the forecast alone.
     cohorts: the forecast's groups of bunches, each with farm, layer, cycle, profile, config (kg of finished fruit per
     bunch by cycle, pack_rate = bunches packed / bunches harvested) and days [(day, bunches harvested)].
     Thành phẩm = bunches × pack_rate × kg per bunch, the kg the Dự thu screen shows. The forecast has no gross weight:
     thu hoạch is every harvested bunch at the same kg per bunch, so it differs from thành phẩm by the bunches not packed.
-    Days outside the plan are left out. One source row per month, farm and layer says where a month's kg come from and
-    how firm they are.
+    packed: by farm, the closed shifts of today's month (bunches, gross_kg = kg taken into the shifts, sales_kg = their
+    finished kg). Days outside the plan are left out. One source row per month, farm and layer says where a month's kg
+    come from and how firm they are.
     """
     window = months(start, count)
-    rows = {m: dict(month=m, gross_kg=0.0, sales_kg=0.0) for m in window}
-    labels, order = dict(FORECAST_LAYERS), [layer for layer, _ in FORECAST_LAYERS]
+    current = str(today)[:7]
+    rows = {m: dict(month=m, gross_kg=0.0, sales_kg=0.0) for m in window if m >= current}
+    labels, order = dict((PACKED, *FORECAST_LAYERS)), [layer for layer, _ in (PACKED, *FORECAST_LAYERS)]
     sources, defaults = {}, False
+    for shift in packed:
+        farm = shift.get('farm') or ''
+        gross = float(number(shift.get('gross_kg'), 'Kg đưa vào ca ' + farm))
+        sales = float(number(shift.get('sales_kg'), 'Kg thành phẩm ca ' + farm))
+        if sales > gross:
+            raise ValueError('Ca đóng gói của vườn ' + farm + ': kg thành phẩm vượt kg đưa vào ca.')
+        if current not in rows or not gross:
+            continue
+        rows[current]['gross_kg'] += gross
+        rows[current]['sales_kg'] += sales
+        source = sources.setdefault((current, farm, PACKED[0]), dict(name='|'.join((current, farm, PACKED[0])), month=current, farm=farm, layer=PACKED[0],
+                                                                    layer_label=PACKED[1], bunches=0, gross_kg=0.0, sales_kg=0.0))
+        source['bunches'] += int(shift.get('bunches') or 0)
+        source['gross_kg'] += gross
+        source['sales_kg'] += sales
     for cohort in cohorts:
         layer, config, farm = cohort['layer'], cohort['config'], cohort.get('farm') or ''
-        if layer not in labels:
+        if layer not in dict(FORECAST_LAYERS):
             raise ValueError('Lớp dự thu không hợp lệ: ' + str(layer) + '.')
         weight, rate = float(weight_kg(cohort.get('cycle'), config)), float(config['pack_rate'])
         if weight < 0 or not 0 <= rate <= 1:
@@ -203,4 +224,5 @@ def forecast_quantities(start, count, cohorts):
         row['sales_kg'] = quantity(Decimal(str(row['sales_kg'])))
     listed = sorted(sources.values(), key=lambda s: (s['month'], s['farm'], order.index(s['layer'])))
     warnings = ['Một số lô đang dùng thông số dự thu mặc định, chưa có bộ thông số được duyệt.'] if defaults else []
-    return dict(rows=list(rows.values()), sources=listed, warnings=warnings)
+    return dict(rows=list(rows.values()), sources=listed, warnings=warnings, current=current, from_month=min(rows, default=None),
+                kept=[m for m in window if m < current])

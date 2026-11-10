@@ -69,7 +69,8 @@ def overview(on_date=None):
 @frappe.whitelist()
 def pending():
     """Documents that still need an accountant: receipts without invoice, approved payroll not posted, issues without lot,
-    payment vouchers waiting for signatures, closed packhouse shifts without a stock receipt."""
+    payment vouchers waiting for signatures, closed packhouse shifts whose fruit is not in stock yet (no receipt, or a
+    draft receipt the warehouse has not submitted)."""
     setup.require_view()
     company = setup.company()
     cfg = setup.settings()
@@ -90,13 +91,15 @@ def pending():
     for p in frappe.get_all(posting.POSTING, filters={'state': 'Draft'}, fields=['name', 'voucher_type', 'voucher_name', 'purpose', 'amount', 'source_name', 'posted_by'],
                             order_by='creation desc'):
         vouchers.append(dict(p, kind='voucher', reason='Phiếu chi chờ ký'))
-    # A closed shift's fruit enters stock through costing.receive_shift; a cancelled receipt frees the shift again.
+    # A closed shift's fruit enters stock through costing.receive_shift; a cancelled receipt frees the shift again, and
+    # one still in draft keeps it here until the warehouse submits it.
     shifts = []
-    for s in frappe.db.sql("""select p.name, p.shift_code, p.farm, p.posting_date, p.finished_kg, p.secondary_kg, p.cartons
+    for s in frappe.db.sql("""select p.name, p.shift_code, p.farm, p.posting_date, p.finished_kg, p.secondary_kg, p.cartons, e.name stock_entry
             from `tabPackhouse Shift` p left join `tabStock Entry` e on e.name=p.stock_entry and e.docstatus < 2
-            where p.docstatus=1 and p.company=%s and p.posting_date>=%s and e.name is null
+            where p.docstatus=1 and p.company=%s and p.posting_date>=%s and (e.name is null or e.docstatus=0)
             order by p.posting_date desc, p.shift_code limit 300""", (company, cfg.cutover_date or '1900-01-01'), as_dict=True):
-        shifts.append(dict(_str(s, 'posting_date'), kind='shift', reason='Ca đã đóng, chưa lập phiếu nhập kho thành phẩm'))
+        shifts.append(dict(_str(s, 'posting_date'), kind='shift',
+                           reason='Phiếu nhập kho %s còn nháp: Kho chưa duyệt' % s.stock_entry if s.stock_entry else 'Ca đã đóng, chưa lập phiếu nhập kho thành phẩm'))
     return dict(receipts=receipts, payroll=payroll, issues=issues, vouchers=vouchers, shifts=shifts)
 
 

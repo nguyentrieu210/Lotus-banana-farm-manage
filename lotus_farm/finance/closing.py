@@ -118,10 +118,15 @@ def result_preview(month):
     if leftover:
         issues.append('Còn chi phí %s chưa kết chuyển sang 154: bấm "Kết chuyển CP" trước.' % ', '.join(sorted({b.account_number for b in leftover})))
     start, end = _bounds(month)
-    from lotus_farm.finance.costing import _receipts
-    harvested = frappe.db.count('Stock Entry', {'name': ['in', _receipts(company) or ['']], 'posting_date': ['between', [start, end]]})
+    from lotus_farm.finance import costing
+    left = costing.waiting_text(costing.waiting(company, month))
+    if left:
+        issues.append('Tháng còn %s: lập phiếu nhập kho ở Chờ hạch toán và để Kho duyệt (hoặc xóa phiếu nháp sai), rồi tính giá thành.' % left)
+    harvested = frappe.db.count('Stock Entry', {'name': ['in', costing._receipts(company) or ['']], 'posting_date': ['between', [start, end]]})
     if harvested and not frappe.db.exists('Lotus Costing Run', {'company': company, 'month': month, 'state': 'Posted'}):
         issues.append('Tháng có nhập kho chuối thu hoạch nhưng chưa tính giá thành: bấm "Giá thành" trước.')
+    elif costing.out_of_date(company, month):
+        issues.append('Phiếu nhập kho chuối của tháng đã đổi sau khi tính giá thành: đảo bút toán giá thành (nếu có) rồi tính lại.')
     lines, profit = rules.result_entry([dict(account=b.account, net=b.net) for b in balances], m.get('income_summary'), m.get('retained_earnings'))
     if not m.get('income_summary') or not m.get('retained_earnings'):
         issues.append('Chưa chọn tài khoản 911 và 4212 ở Thiết lập.')

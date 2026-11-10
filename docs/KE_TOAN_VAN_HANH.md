@@ -6,7 +6,7 @@ Cùng nội dung với tab **Hướng dẫn** trên màn Tài chính – Kế to
 
 | Người | Việc |
 |---|---|
-| Thủ kho / nhân viên kho | Phiếu nhập (chọn đúng lý do nhập), phiếu xuất (mã lô ở ô "Khu vực / lô sử dụng"), kiểm kê, nhập kho lô chuối thu hoạch. |
+| Thủ kho / nhân viên kho | Phiếu nhập (chọn đúng lý do nhập), phiếu xuất (mã lô ở ô "Khu vực / lô sử dụng"), kiểm kê; duyệt phiếu nhập kho thành phẩm nháp mà kế toán lập theo ca đóng gói. |
 | Mua hàng | Đề xuất mua → đơn mua → nhận hàng. Mua không qua đơn: kho nhập lý do "Mua ngoài" và chọn nhà cung cấp. |
 | Nhân sự | Chấm công; khai số người phụ thuộc và cam kết 08/CK-TNCN trong hồ sơ nhân viên; chốt và gửi ký bảng công, bảng lương. |
 | Kế toán | Hóa đơn mua (có thuế GTGT), hóa đơn dịch vụ, hóa đơn bán, phiếu thu, phiếu chi / ủy nhiệm chi, tạm ứng lương, nộp bảo hiểm và thuế, ghi sổ lương. |
@@ -27,7 +27,7 @@ Cùng nội dung với tab **Hướng dẫn** trên màn Tài chính – Kế to
 ## 3. Việc hằng ngày
 
 - **Kho**: phiếu nhập chọn lý do (Mua ngoài / Thu hồi vật tư / Thừa kiểm kê); phiếu xuất gõ mã lô; kiểm kê thừa và thiếu lập hai phiếu.
-- **Kho / xưởng – chuối thu hoạch**: Chờ hạch toán › Lô thu hoạch chưa nhập kho → Nhập kho (Nợ 155 / Có 154 theo giá tạm tính). Bao bì xuất với mục đích "Xuất bao bì đóng gói".
+- **Xưởng / kế toán – chuối thành phẩm**: ca đóng gói đã đóng hiện ở Chờ hạch toán › Ca đóng gói đã đóng, chưa nhập kho → Lập phiếu nhập kho (cũng lập được ở màn Xưởng). Phiếu là bản nháp theo giá thành tạm tính (Nợ 155 / Có 154 theo lô): kế toán kiểm, Kho duyệt. Ca vẫn nằm trong danh sách (cột Phiếu nhập kho ghi phiếu nháp, nút Mở phiếu nháp) cho đến khi phiếu được duyệt. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì xuất với mục đích "Xuất bao bì đóng gói".
 - **Kế toán – mua hàng**: Chờ hạch toán › chọn phiếu nhận cùng nhà cung cấp → Lập hóa đơn (số, ngày, thuế suất GTGT).
 - **Kế toán – bán hàng**: Bán hàng – Phải thu › Lập hóa đơn bán (khách hàng, hàng trong kho thành phẩm, số lượng, đơn giá, thuế suất, ký hiệu và số hóa đơn điện tử). Hóa đơn xuất kho luôn.
 - **Kế toán – thu tiền**: Thu tiền ở dòng khách hàng; ghi sổ ngay.
@@ -40,14 +40,24 @@ Thiết lập › **Đóng tháng — danh sách kiểm tra** tự đánh dấu 
 
 1. Phiếu nhận hàng trong tháng đã có hóa đơn.
 2. Phiếu xuất kho đã gắn lô.
-3. Bảng lương ký đủ và ghi sổ; lập phiếu chi lương (Lotus trừ tạm ứng), tải danh sách chuyển khoản.
-4. Phiếu chi trong tháng ký xong hoặc hủy.
-5. Nộp BHXH, BHYT, BHTN, KPCĐ, thuế TNCN của tháng trước.
-6. Kết chuyển chi phí 621 / 622 / 627 → 154 theo lô.
-7. Tính giá thành chuối (khi có thu hoạch); chênh lệch so với giá tạm tính vào 632.
-8. Kết chuyển kết quả kinh doanh: doanh thu, chi phí → 911 → 4212.
-9. Đối chiếu: mọi dòng "Khớp"; B01 tài sản = nguồn vốn; bảng kê thuế GTGT khớp sổ.
-10. Khóa sổ tháng.
+3. Ca đóng gói trong tháng đã nhập kho thành phẩm: mọi ca đã đóng có phiếu nhập kho và Kho đã duyệt. Còn ca chưa lập phiếu hay phiếu nhập kho nháp trong tháng thì chưa tính giá thành, chưa kết chuyển 911 và chưa khóa tháng được.
+4. Bảng lương ký đủ và ghi sổ; lập phiếu chi lương (Lotus trừ tạm ứng), tải danh sách chuyển khoản.
+5. Phiếu chi trong tháng ký xong hoặc hủy.
+6. Nộp BHXH, BHYT, BHTN, KPCĐ, thuế TNCN của tháng trước.
+7. Kết chuyển chi phí 621 / 622 / 627 → 154 theo lô.
+8. Tính giá thành chuối (khi có thu hoạch): Thiết lập › Giá thành, xem bảng từng lô (dở dang, chi phí, kg thu, kg dự thu còn lại, giá / kg) rồi Ghi sổ giá thành. Chênh lệch với giá tạm tính của phần đã bán vào 632; phần của hàng còn tồn cuối tháng ở lại 154. Phiếu nhập kho của tháng thêm hay hủy sau khi tính thì danh sách kiểm tra báo: đảo bút toán giá thành (nếu có) rồi tính lại.
+9. Kết chuyển kết quả kinh doanh: doanh thu, chi phí → 911 → 4212.
+10. Đối chiếu: mọi dòng "Khớp"; B01 tài sản = nguồn vốn; bảng kê thuế GTGT khớp sổ.
+11. Khóa sổ tháng.
+
+**Giá thành chuối tính thế nào.** Mỗi lô: (dở dang 154 đầu tháng + chi phí kết chuyển trong tháng) × kg thu ÷ (kg thu + kg dự thu còn lại).
+
+- Kg thu là kg nhập kho trong tháng (thành phẩm + phụ phẩm).
+- Kg dự thu còn lại là kg thành phẩm dự thu chung (màn Dự thu) còn chờ ở lô sau ngày cuối tháng, đếm theo ngày đến hết một vòng cây: chồi chọn ngày cuối tháng tới khi thu xong, theo bộ thông số dự thu (mặc định 6 tháng tới trổ, 86 ngày tới thu, thu trong 30 ngày). Quả xa hơn mọc trên cây chưa có, chưa nhận chi phí nào.
+- Kg đó quy về kg nhập kho theo tỷ lệ kg nhập / kg thành phẩm của lô trong tháng (lô chỉ có phụ phẩm thì theo cả vườn); cột "Cách tính" ghi hệ số.
+- Sổ lô tính theo ngày làm việc của dòng: buồng thu ngày cuối tháng, sáng hôm sau mới xác nhận, vẫn là của tháng.
+- Lô không còn kg dự thu thì dồn hết. Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Phần chưa thu nằm lại 154.
+- Cột "Vụ số": vụ có nhiều buồng nhất trong các dòng thu hoạch đã xác nhận của lô trong tháng; để trống khi lô không có dòng thu hoạch trong tháng và ở dòng chi phí chung của vườn.
 
 ## 5. Lương, bảo hiểm, thuế TNCN
 
@@ -69,14 +79,14 @@ Thiết lập › **Đóng tháng — danh sách kiểm tra** tự đánh dấu 
 | Xuất vật tư cho lô / thu hồi | Nợ 621 / Có 152 — Nợ 152 / Có 621 |
 | Kiểm kê thừa / thiếu | Nợ 152 / Có 3381 — Nợ 1381 / Có 152 |
 | Xuất bao bì | Nợ 6272 / Có 152 |
-| Nhập kho chuối thu hoạch | Nợ 155 / Có 154 (giá tạm tính) |
+| Nhập kho thành phẩm theo ca đóng gói | Nợ 155 / Có 154 (lô trồng) theo giá tạm tính / kg |
 | Hóa đơn bán | Nợ 632 / Có 155 — Nợ 131 / Có 511, 33311 |
 | Thu tiền khách hàng | Nợ 111, 112 / Có 131 |
 | Lương có công ở lô / gián tiếp | Nợ 622 hoặc 6421 / Có 334, 3383, 3384, 3386, 3382, 3335 |
 | Tạm ứng / chi lương | Nợ 334 / Có 111, 112 |
 | Nộp BH, KPCĐ, TNCN | Nợ 3383, 3384, 3386, 3382, 3335 / Có 112 |
 | Kết chuyển chi phí | Nợ 154 / Có 621, 622, 627 |
-| Giá thành | Nợ 632 / Có 154 (hoặc ngược lại) |
+| Giá thành | Phần đã bán, thực tế cao hơn tạm tính: Nợ 632 / Có 154; thấp hơn: Nợ 154 / Có 632 (theo lô). Phần còn tồn kho: không ghi, ở lại 154 |
 | Kết chuyển kết quả | 5xx, 711 → 911; 911 → 632, 635, 641, 642, 811, 821; 911 → 4212 |
 
 ## 7. Báo cáo và sổ sách

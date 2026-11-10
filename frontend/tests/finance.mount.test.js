@@ -112,6 +112,38 @@ test('a closed packhouse shift without a stock receipt gets its draft receipt fr
  view.unmount()
 })
 
+test('a shift whose receipt is still a draft stays in the pending list with its draft, and no second receipt is offered',async()=>{
+ calls.length=0
+ routes={[F+'reports.overview']:overview(),
+  [F+'reports.pending']:{receipts:[],payroll:[],issues:[],vouchers:[],shifts:[{name:'PS-2',shift_code:'CA-2',farm:'LOTUS-222',posting_date:'2026-10-28',finished_kg:800,secondary_kg:200,cartons:60,stock_entry:'MAT-STE-7'}]}}
+ const view=await open('/tai-chinh?tab=pending')
+ assert.match(text(view.root),/CA-2\s*LOTUS-222\s*28\/10\/2026\s*800\s*200\s*60\s*MAT-STE-7 \(nháp, chờ Kho duyệt\)/)
+ assert.equal(button(view.root,'Lập phiếu nhập kho'),undefined,'the shift already has its receipt')
+ assert.ok(button(view.root,'Mở phiếu nháp'),'the draft opens in the warehouse')
+ view.unmount()
+})
+
+test('the costing of a month whose packhouse output is not in stock cannot be posted',async()=>{
+ const settings={is_chief:true,enabled:true,coa_version:'tt99',mapping:{},keys:[],accounts:[],errors:[],periods:[]}
+ const sheet=waiting=>({month:'2026-10',posting_date:'2026-10-31',lines:[],unsold:{kg_unsold:0,kg_received:100},closed:true,posted:null,runs:[],out_of_date:false,waiting,
+  totals:{wip_open:0,cost_month:1000000,provisional:0,kg_harvested:100,absorbed:200000,adjustment:200000,unsold_adjustment:0,wip_close:800000},
+  rows:[{lotus_farm:'LOTUS-222',lotus_farm_block:'B1',label:'A-1',cycle_no:2,wip_open:0,cost_month:1000000,provisional:0,kg_harvested:100,kg_remaining:400,absorbed:200000,
+   adjustment:200000,unsold_adjustment:0,wip_close:800000,cost_per_kg:2000,basis:'Theo kg thu / (kg thu + kg dự thu còn lại)'}]})
+ const post=()=>[...document.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Ghi sổ giá thành')
+ routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'api.settings']:settings,[F+'api.people']:{people:[]},[F+'api.month_checklist']:{done:0,total:0,steps:[]},
+  [F+'costing.preview']:sheet({shifts:['PS-1'],drafts:['MAT-STE-7'],text:'1 ca đóng gói đã đóng chưa lập phiếu nhập kho, 1 phiếu nhập kho thành phẩm còn nháp (MAT-STE-7)'})}
+ let view=await open('/tai-chinh?tab=settings')
+ button(view.root,'Giá thành').click();for(let i=0;i<4;i++)await tick()
+ assert.match(text(document.querySelector('dialog[open]')),/1 ca đóng gói đã đóng chưa lập phiếu nhập kho, 1 phiếu nhập kho thành phẩm còn nháp \(MAT-STE-7\)/)
+ assert.ok(post()?.disabled,'the month waits for its receipts')
+ view.unmount()
+ routes[F+'costing.preview']=sheet({shifts:[],drafts:[],text:''})
+ view=await open('/tai-chinh?tab=settings')
+ button(view.root,'Giá thành').click();for(let i=0;i<4;i++)await tick()
+ assert.ok(post()&&!post().disabled,'everything in stock: the chief accountant posts')
+ view.unmount()
+})
+
 test('B01 shows the TT99 lines with negative (*) figures in brackets and the balance check',async()=>{
  routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'reports.trial_balance']:{rows:[],totals:{},balanced:true},
   [F+'statements.b01']:{form:'B01-DN',title:'BÁO CÁO TÌNH HÌNH TÀI CHÍNH',on_date:'2026-10-22',compare_date:'2025-12-31',source:'Thông tư 99/2025/TT-BTC',notes:[],uncovered:[],double:[],

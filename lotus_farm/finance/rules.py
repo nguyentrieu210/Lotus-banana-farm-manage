@@ -4,9 +4,13 @@ The ledger is ERPNext's GL Entry; these rules only decide which accounts and dim
 posts to, preserve native ledger fractions in transfers, and check that every entry balances. Account numbers come from the
 company's configuration (Lotus Finance Settings), never from code.
 """
+import datetime as dt
 import json
 from collections import OrderedDict
 from pathlib import Path
+
+from lotus_farm.block_forecast_engine import date as to_date
+from lotus_farm.block_forecast_engine import months_after, weight_kg
 
 COA_FILE = Path(__file__).resolve().parents[1] / 'data' / 'coa_tt99.json'
 VAT_FILE = Path(__file__).resolve().parents[1] / 'data' / 'vat_vn.json'
@@ -466,11 +470,68 @@ def aging(due_date, today):
 
 # Product costing (giá thành chuối) ------------------------------------------------------------------------
 
+def pipeline_end(day, config):
+    """The last day of one crop pipeline after `day`, by a set of forecast parameters: a sucker selected that day
+    flowers sucker_to_flower_months later and comes in shoot_to_inject + inject_to_cut + cut_to_harvest days after
+    flowering, over one harvest window. Fruit due later grows on plants not standing in the lô yet, which no cost has
+    gone into."""
+    return months_after(day, config['sucker_to_flower_months']) + dt.timedelta(
+        days=config['shoot_to_inject_days'] + config['inject_to_cut_days'] + config['cut_to_harvest_days'] + config['wave_window_days'] - 1)
+
+
+def remaining_kg(cohorts, end):
+    """kg of finished fruit the shared forecast (Dự thu) still expects from each lô after the day `end`, day by day, up
+    to one crop pipeline after it (pipeline_end, by the parameters of each group of bunches).
+    cohorts: the forecast's groups of bunches (block, cycle, config, days [(day, bunches)]); kg = bunches × kg per bunch
+    of the vụ × pack_rate, as on the Dự thu screen."""
+    end = to_date(end)
+    kg = {}
+    for c in cohorts:
+        config = c['config']
+        last = pipeline_end(end, config)
+        for day, bunches in c['days']:
+            if end < to_date(day) <= last:
+                kg[c['block']] = kg.get(c['block'], 0) + bunches * weight_kg(c['cycle'], config) * config['pack_rate']
+    return {block: round(value, 3) for block, value in kg.items()}
+
+
+def kg_mix(*pairs):
+    """kg received in stock per kg of finished fruit, from the first (kg received, kg finished) pair that has finished
+    fruit, else 1. Receipts count finished + secondary kg and the forecast finished kg only: this puts the forecast on
+    the basis of the receipts."""
+    for received, finished in pairs:
+        if float(finished or 0) > 0:
+            return float(received or 0) / float(finished)
+    return 1.0
+
+
+def harvest_cycles(lines):
+    """The vụ of the fruit each lô harvested: confirmed harvest lines (farm_block, cycle_no, qty) -> {lô: the vụ with the
+    most bunches}, the later vụ when two tie. Lines without a vụ say nothing."""
+    bunches = {}
+    for ln in lines:
+        cycle = int(ln.get('cycle_no') or 0)
+        if cycle:
+            key = (ln['farm_block'], cycle)
+            bunches[key] = bunches.get(key, 0) + int(ln.get('qty') or 0)
+    best = {}
+    for (block, cycle), count in bunches.items():
+        if count > 0 and (count, cycle) > best.get(block, (0, 0)):
+            best[block] = (count, cycle)
+    return {block: cycle for block, (_, cycle) in best.items()}
+
+
+def _factor(value):
+    return ('%.4f' % value).rstrip('0').rstrip('.').replace('.', ',')
+
+
 def costing_rows(pools, unsold_share=0):
     """Month-end cost of each lot's harvest.
 
     pools: dict(lotus_farm, lotus_farm_block (None = the farm's costs without a lot),
-      wip_open, cost_month, provisional, kg_harvested, kg_remaining).
+      wip_open, cost_month, provisional, kg_harvested, kg_remaining, kg_mix).
+    kg_harvested is what the month's receipts brought into stock (finished + secondary); kg_remaining is the forecast
+    still expected from the lot, already put on that basis by kg_mix (kg received per kg finished, said in the basis).
     The harvest of the month carries (work in progress at the start + costs transferred this month) in the proportion
     kg harvested / (kg harvested + kg still expected from the lot's forecast); the rest stays in 154 for later bunches.
     The difference actual - provisional (what the harvest receipts already moved from 154 to 155 at the provisional rate)
@@ -490,12 +551,15 @@ def costing_rows(pools, unsold_share=0):
         absorbed = round(pool * kg / (kg + remaining), precision) if kg > 0 else 0
         difference = round(absorbed - provisional, 2)
         unsold = round(difference * share, precision) if share else 0
+        mix = float(p.get('kg_mix') or 1)
+        basis = 'Toàn bộ chi phí còn lại (không có dự thu)' if kg > 0 and not remaining else \
+            ('Theo kg thu / (kg thu + kg dự thu còn lại)' if kg > 0 else 'Chưa thu hoạch: giữ dở dang')
+        if kg > 0 and remaining and round(mix, 4) != 1:
+            basis += '; dự thu thành phẩm × %s quy về kg nhập kho' % _factor(mix)
         out.append(dict(p, wip_open=wip_open, cost_month=cost, provisional=provisional, kg_harvested=kg, kg_remaining=remaining,
                         absorbed=absorbed, adjustment=round(difference - unsold, 2), unsold_adjustment=unsold,
                         wip_close=round(pool - absorbed + unsold, 2),
-                        cost_per_kg=round(absorbed / kg, 2) if kg > 0 else None,
-                        basis='Toàn bộ chi phí còn lại (không có dự thu)' if kg > 0 and not remaining else
-                        ('Theo kg thu / (kg thu + kg dự thu còn lại)' if kg > 0 else 'Chưa thu hoạch: giữ dở dang')))
+                        cost_per_kg=round(absorbed / kg, 2) if kg > 0 else None, basis=basis))
     return out
 
 
