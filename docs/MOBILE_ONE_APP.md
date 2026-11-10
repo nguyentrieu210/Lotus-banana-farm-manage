@@ -28,7 +28,7 @@ Thanh điều hướng dưới màn hình có **Trang chủ** và tối đa ba m
 3. Trang chủ tự tạo các nút theo **quyền thực tế**, không có lựa chọn vai trò giả trên điện thoại.
 4. Máy chủ **kiểm tra lại** quyền của chứng từ, vườn, lô và lệnh ghi. Không tin vào chuyện nút đã được ẩn ở giao diện.
 
-Mọi thao tác ghi cần mạng. Mất mạng khi gửi thì ứng dụng báo chưa gửi được và dữ liệu chưa được lưu; kiểm tra kết nối rồi gửi lại. Khi mất mạng, các màn chỉ đọc có thể hiện dữ liệu đã đọc trước đó của chính tài khoản (thông báo "Đang dùng dữ liệu đã lưu").
+Mọi thao tác ghi cần mạng. Mất mạng khi gửi thì ứng dụng báo chưa gửi được và chưa rõ máy chủ đã lưu hay chưa (yêu cầu có thể đã tới máy chủ, chỉ mất phần trả lời); kiểm tra kết nối và xem dữ liệu đã lưu chưa trước khi gửi lại, để không tạo bản trùng. Khi mất mạng, các màn chỉ đọc có thể hiện dữ liệu đã đọc trước đó của chính tài khoản (thông báo "Đang dùng dữ liệu đã lưu").
 
 ## Cách thử
 

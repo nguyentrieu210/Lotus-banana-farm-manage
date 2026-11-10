@@ -2,7 +2,7 @@ app_name = "lotus_farm"
 app_title = "Lotus Agritech"
 app_logo_url = "/assets/lotus_farm/images/lotus-agritech.jpg"
 app_publisher = "Nguyen Trieu"
-app_description = "Banana farm operations, harvest forecast and availability-to-promise for Lotus"
+app_description = "Banana farm operations for Lotus: lots and lot ledger, field work, packhouse shifts, lot harvest forecast, stock, purchasing, HR and finance"
 app_license = "MIT"
 
 # Chat documents and their attached private files follow conversation membership.

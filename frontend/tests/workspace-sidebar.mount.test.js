@@ -48,14 +48,17 @@ test('sidebar parent navigates to its first page; the submenu lists every page o
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Tổng quan','Thiết lập'])
  assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Danh mục','Người dùng & phân quyền'],'the page the group button opens is listed too')
- view.root.querySelectorAll('.nav-group-current .nav-submenu button')[1].click();await tick()
- assert.deepEqual(visited,['nguoi-dung'])
+ assert.equal(view.root.querySelector('.nav-group-current .nav-submenu [aria-current=page] .nav-label').textContent,'Người dùng & phân quyền')
+ // A submenu entry opens another page of the group.
+ view.root.querySelectorAll('.nav-group-current .nav-submenu button')[0].click();await tick()
+ assert.deepEqual(visited,['admin/masters'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
  collapsed.click();await tick()
  assert.equal(collapsed.getAttribute('aria-expanded'),'false')
  assert.equal(view.root.querySelector('.nav-group-current .nav-submenu').style.display,'none')
+ // The group button, pressed from its second page, opens the group's first page.
  view.root.querySelector('.nav-group-current .nav-parent').click();await tick()
- assert.deepEqual(visited,['nguoi-dung','admin/masters'])
+ assert.deepEqual(visited,['admin/masters','admin/masters'])
  view.unmount()
 })
 
