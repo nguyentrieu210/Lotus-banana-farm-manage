@@ -60,7 +60,7 @@ HISTORY = (("Version", "ref_doctype"), ("Comment", "reference_doctype"), ("Activ
            ("ToDo", "reference_type"), ("View Log", "reference_doctype"), ("Communication", "reference_doctype"),
            ("Deleted Document", "deleted_doctype"), ("Notification Log", "document_type"), ("Document Follow", "ref_doctype"),
            ("Energy Point Log", "reference_doctype"), ("Tag Link", "document_type"), ("Custom DocPerm", "parent"),
-           ("Property Setter", "doc_type"), ("Client Script", "dt"), ("Print Format", "doc_type"), ("Notification", "document_type"),
+           ("Property Setter", "doc_type"), ("Custom Field", "dt"), ("Client Script", "dt"), ("Print Format", "doc_type"), ("Notification", "document_type"),
            ("Workflow", "document_type"), ("Web Form", "doc_type"), ("Report", "ref_doctype"), ("Dashboard Chart", "document_type"),
            ("Number Card", "document_type"), ("Kanban Board", "reference_doctype"), ("List View Settings", "name"),
            ("Workspace Link", "link_to"), ("Workspace Shortcut", "link_to"), ("Workspace Quick List", "document_type"),
