@@ -1,7 +1,6 @@
 import unittest
 from lotus_farm.rules import (
     quantity,
-    canonical_hash,
     integer_quantity,
     RuleError,
 )
@@ -21,6 +20,3 @@ class TestBRDRules(unittest.TestCase):
         with self.assertRaises(RuleError):
             integer_quantity(1.5)
 
-    def test_payload_hash_detects_conflicts(self):
-        self.assertEqual(canonical_hash({"b": 1, "a": 2}), canonical_hash({"a": 2, "b": 1}))
-        self.assertNotEqual(canonical_hash({"kg": 1}), canonical_hash({"kg": 2}))

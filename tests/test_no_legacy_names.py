@@ -14,7 +14,7 @@ ALLOWED = {"lotus_farm/legacy_purge.py", "lotus_farm/patches/purge_legacy_doctyp
            "tests/integration/verify_legacy_purge.py"}
 SKIP_DIRS = {"node_modules", "__pycache__"}
 # ERPNext phrases that start with a legacy name but mean something else (a Stock Entry purpose).
-ERP_PHRASES = ("Material Consumption for Manufacture",)
+ERP_PHRASES = ("Material Consumption for Manufacture", "Allow Continuous Material Consumption")
 
 
 def legacy():

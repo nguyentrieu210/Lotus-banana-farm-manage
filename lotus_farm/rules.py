@@ -1,7 +1,5 @@
 """Number and payload checks shared by the controllers, independent of Frappe and database state."""
 
-import hashlib
-import json
 from decimal import Decimal, InvalidOperation
 
 
@@ -17,11 +15,6 @@ def quantity(value, label="Số lượng", *, positive=False):
     if not result.is_finite() or result < 0 or (positive and result == 0):
         raise RuleError(f"{label} phải là số hữu hạn và {'lớn hơn 0' if positive else 'không âm'}.")
     return result
-
-
-def canonical_hash(value):
-    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def integer_quantity(value, label="Số đếm"):

@@ -290,6 +290,10 @@ def preview(month):
     sheet = frappe.db.get_value(RUN, {'company': company, 'month': month, 'state': 'Posted'})
     totals = {k: sum(flt(r[k]) for r in rows) for k in ('wip_open', 'cost_month', 'provisional', 'kg_harvested', 'absorbed', 'adjustment',
                                                          'unsold_adjustment', 'wip_close')}
+    # The farm pool row carries its farm's whole kg (it shares the farm's costs over them), the lô rows carry the same kg
+    # again: count a farm's kg once.
+    pooled = {r['lotus_farm'] for r in rows if not r['lotus_farm_block']}
+    totals['kg_harvested'] = sum(flt(r['kg_harvested']) for r in rows if not r['lotus_farm_block'] or r['lotus_farm'] not in pooled)
     left = waiting(company, month)
     return dict(month=month, posting_date=_bounds(month)[1], rows=rows, lines=lines, unsold=unsold, totals=totals,
                 waiting=dict(left, text=waiting_text(left)), out_of_date=out_of_date(company, month),

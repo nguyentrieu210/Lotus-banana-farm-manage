@@ -7,3 +7,4 @@ lotus_farm.patches.remove_work_journal #2 after the release image stopped keepin
 lotus_farm.patches.household_vat_in_cost
 lotus_farm.patches.care_cycle_rules
 lotus_farm.patches.purge_legacy_doctypes
+lotus_farm.patches.work_schedule_rule_unique_per_farm
