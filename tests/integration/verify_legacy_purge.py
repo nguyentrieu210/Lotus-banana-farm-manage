@@ -76,7 +76,7 @@ try:
             except frappe.ValidationError:
                 frappe.clear_messages()
                 check("a legacy value on a posted entry stops commit", True)
-            check("…with nothing archived or removed", not os.listdir(folder) and all(frappe.db.table_exists(t["doctype"]) for t in existing))
+            check("…with nothing archived or removed", not os.listdir(folder) and all(legacy_purge._rows(t["doctype"]) is not None for t in existing))  # a Single has no table
             frappe.db.sql(f"update `tabGL Entry` set `{target['fieldname']}` = null where name = %s", entry)
             frappe.db.commit()
         else:
