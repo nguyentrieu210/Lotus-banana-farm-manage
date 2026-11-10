@@ -9,6 +9,8 @@ const placeholder={template:'<span />'}
 export function permittedRoute(path,session,query={}){
  const page=path.replace(/^\//,'')
  if(page==='denied')return true
+ // Chờ tôi ký: anyone logged in; the server only lists the documents waiting for that person.
+ if(page==='cho-ky')return true
  if(page==='mobile')return hasMobileAccess(session)
  if(page==='nhan-su')return hrViewAllowed(query.hr_view,session)
  if(page==='mua-hang'){

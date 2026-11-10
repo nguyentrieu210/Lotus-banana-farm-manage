@@ -11,3 +11,4 @@ frontend/.vite/
 
 # Local build/test output
 /*.log
+/.local/

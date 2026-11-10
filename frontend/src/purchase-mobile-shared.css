@@ -1,0 +1,34 @@
+/* Purchase components shared by the Mua hàng and Kho phone apps (cards, fields, buttons, status chips).
+   App-level rules stay in buying-mobile.css; every component that uses these classes imports this file. */
+.buy-card{display:block;width:100%;border-radius:15px;background:var(--lotus-surface);border:1px solid var(--lotus-border);margin:10px 0;padding:15px 14px;text-align:left;color:var(--lotus-text);box-shadow:0 2px 7px #321b1010;overflow-wrap:anywhere}
+.buy-card strong{font-size:16px;line-height:1.4}
+.buy-card small{display:block;font-size:13px;color:var(--lotus-subtle);margin-top:7px;line-height:1.5}
+.buy-card p{margin:11px 0 6px;line-height:1.45;font-size:14px}
+.buy-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:13px;color:var(--lotus-muted)}
+.buy-line:first-child{margin-top:0}
+.buy-line strong{flex:1}
+.buy-line b{font-size:14px;color:var(--lotus-text-strong)}
+.buy-pill{flex-shrink:0;background:var(--lotus-primary-subtle);border-radius:12px;padding:5px 9px;color:var(--lotus-primary-600);font-weight:700;font-size:12px;max-width:50%;text-align:center}
+.buy-empty{background:var(--lotus-surface);border-radius:14px;padding:24px 16px;color:var(--lotus-subtle);font-size:14px}
+.buy-alert{border:1px solid var(--lotus-success-200);background:var(--lotus-page);color:var(--lotus-success-700);padding:12px;border-radius:11px;font-size:14px;line-height:1.4;margin:8px 0}
+.buy-alert.warn{border-color:var(--lotus-primary-200);background:var(--lotus-primary-subtle);color:var(--lotus-primary-600)}
+.buy-search,.buy-toolbar input,.buy-toolbar select,.buy-field input,.buy-field select,.buy-field textarea{border:1.5px solid var(--lotus-border-strong);background:var(--lotus-surface);border-radius:12px;min-height:49px;padding:10px 12px;width:100%;color:var(--lotus-text);font-size:16px;outline:0}
+.buy-field textarea{resize:vertical;min-height:85px}
+.buy-field input:focus,.buy-field select:focus,.buy-field textarea:focus,.buy-search:focus,.buy-toolbar input:focus{border-color:var(--lotus-primary-600);box-shadow:0 0 0 3px color-mix(in srgb,var(--lotus-primary-400) 12%,transparent)}
+.buy-field{margin:12px 0 14px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.buy-field label{font-size:14px;font-weight:680}
+.buy-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.buy-primary,.buy-outline,.buy-danger{display:block;width:100%;min-height:50px;border-radius:12px;font-weight:740;font-size:16px;text-align:center;padding:12px 14px;margin:12px 0}
+.buy-primary{background:var(--lotus-primary-600);color:#fff;border:1px solid var(--lotus-primary-600)}
+.buy-outline{border:1px solid var(--lotus-primary-300);color:var(--lotus-primary-600);background:var(--lotus-surface)}
+.buy-danger{border:1px solid var(--lotus-primary-300);background:var(--lotus-primary-subtle);color:var(--lotus-primary-700)}
+.buy-total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--lotus-border);border-bottom:1px solid var(--lotus-border);font-size:14px;color:var(--lotus-subtle);margin:16px 0}
+.buy-total strong,.buy-total b{font-size:18px;color:var(--lotus-text-strong)}
+.buy-muted{font-size:13px;color:var(--lotus-subtle);line-height:1.55}
+.buy-order-status{display:inline-flex;align-items:center;flex:none;max-width:48%;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.25;white-space:nowrap;}
+.buy-order-status--draft{background:var(--lotus-hover);color:var(--lotus-muted);}
+.buy-order-status--pending{background:var(--lotus-primary-subtle);color:var(--lotus-primary-600);}
+.buy-order-status--rejected,.buy-order-status--late,.buy-order-status--cancelled{background:var(--lotus-primary-subtle);color:var(--lotus-primary-700);}
+.buy-order-status--approved,.buy-order-status--done{background:var(--lotus-hover);color:var(--lotus-success-700);}
+.buy-order-status--partial{background:var(--lotus-hover);color:var(--lotus-info-600);}
+.buy-order-status--closed{background:var(--lotus-hover);color:var(--lotus-info-500);}

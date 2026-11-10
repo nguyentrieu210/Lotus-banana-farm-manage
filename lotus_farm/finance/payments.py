@@ -141,45 +141,12 @@ def receipts_to_bill(supplier=None):
 
 @frappe.whitelist(methods=['POST'])
 def make_goods_invoice(receipts, bill_no, bill_date, due_date=None, posting_date=None, vat_code='KCT'):
-    """One supplier invoice for one or more receipts of the same supplier (the unbilled quantities); input VAT to 1331."""
-    setup.require_post()
-    setup.require_enabled()
-    from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
-    receipts = [str(r) for r in _json(receipts)]
-    bill_no = str(bill_no or '').strip()
-    if not receipts:
-        frappe.throw('Chọn ít nhất một phiếu nhận hàng.')
-    if not bill_no:
-        frappe.throw('Nhập số hóa đơn của nhà cung cấp.')
-    if all(frappe.db.exists('Stock Entry', r) for r in receipts):
-        return _invoice_stock_entries(receipts, bill_no, bill_date, due_date, posting_date, vat_code)
-    docs = [frappe.get_doc('Purchase Receipt', r) for r in receipts]
-    suppliers = {d.supplier for d in docs}
-    if len(suppliers) != 1:
-        frappe.throw('Các phiếu nhận hàng phải cùng một nhà cung cấp.')
-    for d in docs:
-        if d.docstatus != 1:
-            frappe.throw('Phiếu nhận hàng %s chưa hoàn tất.' % d.name)
-        if flt(d.per_billed) >= 99.99:
-            frappe.throw('Phiếu nhận hàng %s đã có hóa đơn đủ.' % d.name)
-    supplier = docs[0].supplier
-    _duplicate(supplier, bill_no)
-    posting_date = posting_date or bill_date
-    setup.check_cutover(posting_date)
-    posting.check_open(docs[0].company, posting_date, PI)
-    pi = None
-    for d in docs:
-        pi = make_purchase_invoice(d.name, target_doc=pi)
-    m = setup.mapping()
-    pi.update(dict(bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date), posting_date=posting_date, set_posting_time=1,
-                   credit_to=m['payable_supplier'], taxes_and_charges=None))
-    apply_vat(pi, vat_code, bill_date, m['input_vat'])
-    pi.set('payment_schedule', [])
-    pi.flags.ignore_permissions = True
-    pi.insert()
-    pi.submit()
-    posting.record(PI, pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=','.join(receipts))
-    return dict(invoice=pi.name, amount=pi.grand_total)
+    """One supplier invoice for one or more receipts of the same supplier (the unbilled quantities). Lớp bọc của
+    finance.supplier_invoice.create: thuế theo từng dòng phiếu nhận; hộ kinh doanh không bao giờ ghi 1331 (sửa B4)."""
+    from lotus_farm.finance import supplier_invoice
+    result = supplier_invoice.create(receipts=_json(receipts), bill_no=bill_no, bill_date=bill_date, due_date=due_date,
+                                     posting_date=posting_date, vat_code=vat_code)
+    return dict(invoice=result['invoice'], amount=result['amount'])
 
 
 def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_date=None, vat_code='KCT'):
@@ -213,7 +180,7 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
         if extra and len(d.items) != 1:
             frappe.throw('Phiếu nhập %s được bổ sung giá cho nhiều mặt hàng; cần đối chiếu riêng từng dòng.' % d.name)
         for r in d.items:
-            amount = flt(r.amount) + extra
+            amount = (flt(r.get('basic_amount')) or flt(r.amount)) + extra
             if flt(r.transfer_qty) <= 0:
                 frappe.throw('Phiếu nhập %s có số lượng quy đổi không hợp lệ.' % d.name)
             items.append(dict(item_code=r.item_code, item_name=r.item_name, qty=r.transfer_qty,
@@ -257,44 +224,12 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
 
 @frappe.whitelist(methods=['POST'])
 def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, posting_date=None, vat_code='KCT'):
-    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type}]"""
-    setup.require_post()
-    setup.require_enabled()
-    lines = _json(lines)
-    bill_no = str(bill_no or '').strip()
-    if not bill_no:
-        frappe.throw('Nhập số hóa đơn của nhà cung cấp.')
-    if not lines:
-        frappe.throw('Nhập ít nhất một dòng chi phí.')
-    _duplicate(supplier, bill_no)
-    m = setup.mapping()
-    company = setup.company()
-    cost_center = frappe.get_cached_value('Company', company, 'cost_center')
-    uom = frappe.db.get_value('UOM', 'Nos') and 'Nos' or frappe.get_all('UOM', pluck='name', limit_page_length=1)[0]
-    items = []
-    for i, ln in enumerate(lines, start=1):
-        amount = flt(ln.get('amount'))
-        if amount <= 0:
-            frappe.throw('Dòng %d: số tiền phải lớn hơn 0.' % i)
-        production = ln.get('cost') != 'admin'
-        dims = _dims(ln)
-        if production and not dims.get('lotus_farm'):
-            frappe.throw('Dòng %d: chi phí sản xuất phải chọn vườn (và lô nếu có).' % i)
-        items.append(dict(item_name=str(ln.get('description') or 'Chi phí dịch vụ')[:140], description=ln.get('description') or 'Chi phí dịch vụ',
-                          qty=1, rate=amount, uom=uom, conversion_factor=1, expense_account=m['overhead_service'] if production else m['admin_expense'],
-                          cost_center=cost_center, **dims))
-    posting_date = posting_date or bill_date
-    setup.check_cutover(posting_date)
-    posting.check_open(company, posting_date, PI)
-    pi = frappe.get_doc(dict(doctype=PI, company=company, supplier=supplier, bill_no=bill_no, bill_date=bill_date, due_date=_due(bill_date, due_date),
-                             currency=frappe.get_cached_value('Company',company,'default_currency'),conversion_rate=1,
-                             posting_date=posting_date, set_posting_time=1, credit_to=m['payable_supplier'], update_stock=0, items=items))
-    apply_vat(pi, vat_code, bill_date, m['input_vat'])
-    pi.flags.ignore_permissions = True
-    pi.insert()
-    pi.submit()
-    posting.record(PI, pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=bill_no)
-    return dict(invoice=pi.name, amount=pi.grand_total)
+    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type}].
+    Lớp bọc của finance.supplier_invoice.create: hộ kinh doanh cộng thuế vào chính khoản chi phí, không ghi 1331."""
+    from lotus_farm.finance import supplier_invoice
+    result = supplier_invoice.create(supplier=supplier, service_lines=_json(lines), bill_no=bill_no, bill_date=bill_date, due_date=due_date,
+                                     posting_date=posting_date, vat_code=vat_code)
+    return dict(invoice=result['invoice'], amount=result['amount'])
 
 
 def _dims(row):
@@ -326,52 +261,11 @@ def open_invoices(supplier=None):
 
 @frappe.whitelist(methods=['POST'])
 def prepare_supplier_payment(supplier, allocations, mode, posting_date, signers, reference_no=None, reference_date=None, remark=None):
-    """allocations: [{invoice, amount}] -> draft Payment Entry sent for signatures (submitted by the last signer)."""
-    setup.require_post()
-    setup.require_enabled()
-    allocations = [a for a in _json(allocations) if flt(a.get('amount')) > 0]
-    if not allocations:
-        frappe.throw('Chọn hóa đơn và số tiền trả.')
-    company = setup.company()
-    m = setup.mapping()
-    from lotus_farm.controls import lock
-    lock('Company', company)
-    if mode not in ('cash', 'bank') or len({a['invoice'] for a in allocations}) != len(allocations):
-        frappe.throw('Phương thức chi hoặc phân bổ hóa đơn không hợp lệ.')
-    if mode == 'bank' and not reference_no:
-        frappe.throw('Chuyển khoản cần số ủy nhiệm chi / số giao dịch ngân hàng.')
-    setup.check_cutover(posting_date)
-    posting.check_open(company, posting_date, PE)
-    refs, total = [], 0
-    for a in allocations:
-        from lotus_farm.procurement import document
-        source = document(PI, a['invoice'], company)
-        lock(PI, source.name)
-        inv = frappe.db.get_value(PI, a['invoice'], ['supplier', 'docstatus', 'outstanding_amount', 'grand_total', 'due_date', 'bill_no'], as_dict=True)
-        if not inv or inv.docstatus != 1 or inv.supplier != supplier:
-            frappe.throw('Hóa đơn %s không thuộc nhà cung cấp này hoặc chưa ghi sổ.' % a['invoice'])
-        pending = flt(frappe.db.sql("""select sum(r.allocated_amount) from `tabPayment Entry Reference` r join `tabPayment Entry` p on p.name=r.parent
-            where p.docstatus=0 and r.reference_doctype='Purchase Invoice' and r.reference_name=%s""", a['invoice'])[0][0])
-        amount = flt(a['amount'])
-        from lotus_farm.purchase_funding import _remaining_source
-        if amount > _remaining_source(PI, a['invoice']) + .5:
-            frappe.throw('Hóa đơn đã có phiếu thanh toán hoặc chi hộ đang chờ ký; tải lại số còn trả.')
-        if amount > flt(inv.outstanding_amount) - pending + 0.5:
-            frappe.throw('Hóa đơn %s chỉ còn nợ %s (đã có phiếu chi chờ ký %s).' % (inv.bill_no or a['invoice'], _vnd(flt(inv.outstanding_amount)), _vnd(pending)))
-        refs.append(dict(reference_doctype=PI, reference_name=a['invoice'], total_amount=inv.grand_total, outstanding_amount=inv.outstanding_amount,
-                         allocated_amount=amount, due_date=inv.due_date))
-        total += amount
-    money = m['bank'] if mode == 'bank' else m['cash']
-    currency = frappe.get_cached_value('Company', company, 'default_currency')
-    pe = frappe.get_doc(dict(doctype=PE, payment_type='Pay', company=company, posting_date=posting_date, party_type='Supplier', party=supplier,
-                             paid_from=money, paid_to=m['payable_supplier'], paid_from_account_currency=currency, paid_to_account_currency=currency,
-                             paid_amount=total, received_amount=total, source_exchange_rate=1, target_exchange_rate=1,
-                             reference_no=reference_no or None, reference_date=reference_date or (posting_date if reference_no else None),
-                             mode_of_payment=None, remarks=remark or 'Trả tiền nhà cung cấp', references=refs))
-    pe.flags.ignore_permissions = True
-    pe.insert()
-    posting.record(PE, pe.name, 'Supplier Payment', pe, amount=total, source_hash=','.join(a['invoice'] for a in allocations))
-    return start_signing(pe, signers)
+    """allocations: [{invoice, amount}] -> draft Payment Entry sent for signatures (submitted by the last signer).
+    Lớp bọc của finance.supplier_payment.prepare."""
+    from lotus_farm.finance import supplier_payment as core
+    return core.prepare(supplier=supplier, allocations=allocations, mode=mode, posting_date=posting_date, signers=signers,
+                        reference_no=reference_no, reference_date=reference_date, remark=remark)
 
 
 def _vnd(value):
@@ -402,12 +296,13 @@ def sign_payment(doctype, name):
     doc = _voucher(doctype, name)
     if doc.docstatus != 0:
         frappe.throw('Phiếu chi đã ghi sổ hoặc đã hủy.')
-    status = signing.sign(doc)
-    if status.get('done'):
+    def post():
         posting.check_open(doc.company, doc.posting_date, doc.doctype)
         doc.flags.ignore_permissions = True
         doc.submit()
         posting.mark_posted(doc)
+
+    status = signing.sign(doc, effect=post)
     return dict(signing=status, docstatus=doc.docstatus)
 
 
@@ -476,8 +371,16 @@ def _voucher_info(doc, signing=None):
         info = dict(party=party or '', party_name=party_name, amount=flt(doc.total_debit), money=next((a.account for a in doc.accounts if a.credit), ''),
                     reference=doc.cheque_no or '', kind={'Advance': 'Tạm ứng lương', 'Statutory': 'Nộp BH, KPCĐ, thuế',
                         'PurchaseFunding':'Cá nhân chi hộ NCC','PurchaseReimbursement':'Hoàn tiền người chi hộ'}.get(kind, 'Chi lương'))
+    from urllib.parse import urlencode
+    m = setup.mapping()
     return dict(info, doctype=doc.doctype, name=doc.name, posting_date=str(doc.posting_date), remark=doc.get('remarks') or doc.get('user_remark') or '',
-                docstatus=doc.docstatus, lines=lines, signing=signing.status(doc))
+                docstatus=doc.docstatus, lines=lines, signing=signing.status(doc), modified=str(doc.modified),
+                # Spec 003, US6: how it was paid, the print page, the stored signed copy.
+                mode='cash' if info.get('money') == m.get('cash') else 'bank',
+                unallocated=flt(doc.get('unallocated_amount')) if doc.doctype == PE else 0,
+                print_url='/lotus/in-phieu-chi?' + urlencode(dict(doctype=doc.doctype, name=doc.name)),
+                signed_copy=sign_module.copy_info(doc) if doc.docstatus == 1 else None,
+                can_reverse=doc.docstatus == 1 and setup.is_chief(), can_cancel_draft=doc.docstatus == 0 and setup.can_post())
 
 
 @frappe.whitelist()

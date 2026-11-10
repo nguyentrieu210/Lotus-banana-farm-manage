@@ -19,10 +19,12 @@
     {"fieldname": "signed_at", "label": "Ký lúc", "fieldtype": "Datetime"},
     {"fieldname": "signature_file", "label": "Ảnh chữ ký lưu kèm", "fieldtype": "Data", "read_only": 1},
     {"fieldname": "content_hash", "label": "Dấu nội dung khi ký (SHA-256)", "fieldtype": "Data", "read_only": 1},
+    {"fieldname": "signer_designation", "label": "Chức danh khi ký", "fieldtype": "Data", "read_only": 1},
+    {"fieldname": "initials_file", "label": "Ảnh ký nháy lưu kèm", "fieldtype": "Data", "read_only": 1},
     {"fieldname": "notified_at", "label": "Đã báo lúc", "fieldtype": "Datetime"},
     {"fieldname": "note", "label": "Ghi chú / lý do", "fieldtype": "Small Text"}
   ],
-  "field_order": ["document_type", "document_name", "chain", "company", "round", "step_index", "step_key", "title", "assignee", "employee", "state", "signed_at", "signature_file", "content_hash", "notified_at", "note"],
+  "field_order": ["document_type", "document_name", "chain", "company", "round", "step_index", "step_key", "title", "assignee", "employee", "state", "signed_at", "signature_file", "content_hash", "signer_designation", "initials_file", "notified_at", "note"],
   "permissions": [
     {"role": "System Manager", "read": 1, "report": 1},
     {"role": "Lotus Auditor", "read": 1, "report": 1}

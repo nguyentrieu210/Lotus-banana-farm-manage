@@ -327,7 +327,7 @@ def documents(company,warehouse=None,from_date=None,to_date=None,search=None,sta
     elif to_date:filters['posting_date']=['<=',getdate(to_date)]
     kinds={'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói'}
     count_kinds={'Stock Reconciliation':'Kiểm kê','Opening Stock':'Tồn đầu kỳ'}
-    reasons={'Purchase':'Mua ngoài','Recovery':'Thu hồi từ lô','Surplus':'Thừa kiểm kê','Harvest':'Thu hoạch'}
+    reasons={'Purchase':'Mua nhanh','Recovery':'Thu hồi từ lô','Surplus':'Thừa kiểm kê','Harvest':'Thu hoạch'}
     # Kho menu: one list per kind of document (Nhập kho · Xuất kho · Chuyển kho · Kiểm kê); no kind = every stock document.
     scopes={'receipts':{'Purchase Receipt':None,'Stock Entry':['Material Receipt']},'issues':{'Stock Entry':['Material Issue']},
             'transfers':{'Stock Entry':['Material Transfer']},'counts':{'Stock Reconciliation':None}}

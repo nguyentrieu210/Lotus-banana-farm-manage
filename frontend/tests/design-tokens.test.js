@@ -5,7 +5,8 @@ const src=new URL('../src/',import.meta.url)
 const read=path=>readFileSync(new URL(path,src),'utf8')
 const tokens=read('lotus-tokens.css')
 const cssFiles=readdirSync(src).filter(f=>f.endsWith('.css')&&f!=='lotus-tokens.css')
-const vueFiles=[...readdirSync(src).filter(f=>f.endsWith('.vue')),...readdirSync(new URL('components/',src)).filter(f=>f.endsWith('.vue')).map(f=>'components/'+f)]
+const vueFiles=[...readdirSync(src).filter(f=>f.endsWith('.vue')),...readdirSync(new URL('components/',src)).filter(f=>f.endsWith('.vue')).map(f=>'components/'+f),
+ ...['procurement','signing'].flatMap(d=>readdirSync(new URL('components/'+d+'/',src)).filter(f=>f.endsWith('.vue')).map(f=>'components/'+d+'/'+f))]
 const styleOf=file=>file.endsWith('.vue')?(read(file).match(/<style\b[\s\S]*?<\/style>/g)||[]).join('\n'):read(file)
 
 test('one brand colour shared by desktop and PWA',()=>{

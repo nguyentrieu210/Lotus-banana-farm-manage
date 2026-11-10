@@ -24,7 +24,8 @@ test('supplier receiving quick action defaults to purchase order instead of dupl
  assert.doesNotMatch(app,/<WarehouseBuyingLite/)
  assert.match(receiving,/async function openPicker\(\)/)
  assert.match(receiving,/api\('receive_order'/)
- assert.match(receiving,/api\('receipt_action'/)
+ assert.match(receiving,/<ReceiptDetail /)
+ assert.match(receiving,/deliverer_signature/)
 })
 test('PO unit inputs convert to Stock UOM exactly once before server submission',()=>{
  // Received quantities are entered in the order's stock unit, capped at what is still to receive.

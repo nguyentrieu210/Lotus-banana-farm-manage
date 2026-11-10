@@ -55,8 +55,8 @@ test('old material request print route and mobile apps open the new print layout
  assert.match(stock,/signing\.print_verification\(doc\)/,'QR to compare the paper copy')
  assert.match(buy,/lotus_material_proposal_print\?name=/)
  assert.match(proposal,/print_url/)
- assert.match(warehouse,/lastPostedDocument\.value=\{doctype:'Material Request'/)
- assert.match(warehouse,/screen\.value='done'/)
+ // Kho opens the shared proposal screen, which carries the print link of each proposal.
+ assert.match(warehouse,/<MobilePurchaseProposal /)
 })
 test('actual Lotus plan-based material requirements print the issue request, not a stock entry',()=>{
  const schema=JSON.parse(read('lotus_farm/lotus_farm/doctype/material_requirement/material_requirement.json'))

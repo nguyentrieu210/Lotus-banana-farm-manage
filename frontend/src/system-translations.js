@@ -3692,7 +3692,6 @@ const messages={
   "Lotus Requirement Line": "Dòng nhu cầu vật tư Lotus",
   "Lotus Sign Request": "Lượt ký duyệt",
   "Lotus Signature Event": "Nhật ký chữ ký",
-  "Lotus Signing Challenge": "Phiên QR ký chứng từ",
   "Lotus Staff Assignment": "Phân công nhân sự",
   "Lotus Timekeeping Period": "Kỳ công tháng",
   "Lotus Weekly": "Lịch Lotus 7 ngày",

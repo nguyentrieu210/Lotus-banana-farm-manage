@@ -6,7 +6,7 @@ from lotus_farm.procurement import access, document
 from lotus_farm.procurement_rules import KIND_LABELS, kind_for
 from lotus_farm.finance import setup
 
-STAGES = dict(planned='Đề nghị', ordered='Đặt mua', received='Đã nhận/nghiệm thu', billed='Hóa đơn',
+STAGES = dict(planned='Đề xuất', ordered='Đặt mua', received='Đã nhận/nghiệm thu', billed='Hóa đơn',
               supplier_paid='Trả NCC', company_cash='Tiền công ty chi', personal_funding='Cá nhân chi hộ',
               reimbursement='Hoàn người chi hộ', outstanding='Công nợ NCC', funding_outstanding='Còn phải hoàn')
 

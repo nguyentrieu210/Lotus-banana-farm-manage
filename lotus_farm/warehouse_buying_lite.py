@@ -113,19 +113,19 @@ def _lines(company, warehouse, raw, expected_date, allow_pending=False):
         source={}
         if row.get('material_request') or row.get('material_request_item'):
             if not row.get('material_request') or not row.get('material_request_item'):
-                frappe.throw('Dòng đề nghị mua phải có đủ phiếu và dòng nguồn.')
+                frappe.throw('Dòng đề xuất mua phải có đủ phiếu và dòng nguồn.')
             doc=frappe.get_doc('Material Request',row['material_request'])
             doc.check_permission('read')
             if doc.company!=company or doc.docstatus==2 or doc.docstatus==0 and not allow_pending or doc.material_request_type!='Purchase':
-                frappe.throw('Chỉ liên kết đề nghị mua được duyệt cùng công ty.')
+                frappe.throw('Chỉ liên kết đề xuất mua được duyệt cùng công ty.')
             original=next((r for r in doc.items if r.name==row['material_request_item']),None)
             if not original or original.item_code!=item.name or original.warehouse!=store.name:
-                frappe.throw('Đề nghị mua và vật tư/kho nhận không khớp.')
+                frappe.throw('Đề xuất mua và vật tư/kho nhận không khớp.')
             remaining=max(0,flt(original.stock_qty)-flt(original.ordered_qty))
             source_key=(doc.name,original.name)
             requested[source_key]=requested.get(source_key,0)+qty*factor
             if requested[source_key]>remaining+0.000001:
-                frappe.throw('Số lượng vượt phần đề nghị mua còn lại.')
+                frappe.throw('Số lượng vượt phần đề xuất mua còn lại.')
             source=dict(material_request=doc.name,material_request_item=original.name)
         if row.get('supplier_quotation'):
             from lotus_farm.procurement import document
@@ -149,7 +149,7 @@ def request_detail(name, company, allow_pending=0):
     doc.check_permission('read')
     usable=doc.docstatus==1 or doc.docstatus==0 and cint(allow_pending)
     if doc.company!=company or doc.material_request_type!='Purchase' or not usable:
-        frappe.throw('Chỉ được lấy đề nghị mua đã duyệt trong công ty.')
+        frappe.throw('Chỉ được lấy đề xuất mua đã duyệt trong công ty.')
     rows=[]
     for r in doc.items:
         if not r.warehouse:
@@ -161,10 +161,37 @@ def request_detail(name, company, allow_pending=0):
         remaining=max(0,flt(r.stock_qty)-flt(r.ordered_qty))
         if remaining<=0:
             continue
-        rows.append(dict(item=item.name,qty=remaining/factor,uom=r.uom,
-                         warehouse=store.name,rate=0,material_request=doc.name,
-                         material_request_item=r.name))
-    return dict(name=doc.name,items=rows)
+        row=dict(item=item.name,qty=remaining/factor,uom=r.uom,
+                 warehouse=store.name,rate=flt(r.get('rate')),material_request=doc.name,
+                 material_request_item=r.name,kind=r.get('lotus_purchase_kind') or '')
+        row.update(_chosen_quote(r,company,remaining))
+        rows.append(row)
+    # Spec 003, FR-032: the chosen quote's supplier and price come along; a line without a choice keeps the
+    # proposal's estimated price instead of 0. Lines of several suppliers are returned with their supplier.
+    suppliers=sorted({r['supplier'] for r in rows if r.get('supplier')})
+    return dict(name=doc.name,items=rows,supplier=suppliers[0] if len(suppliers)==1 else '',suppliers=suppliers)
+
+
+def _chosen_quote(line,company,remaining):
+    """Supplier, price, VAT, freight and quote link of the quote line chosen for this proposal line, when it is still valid."""
+    quotation,quote_item=line.get('lotus_selected_quote'),line.get('lotus_selected_quote_item')
+    if not quotation or not quote_item or not frappe.db.exists('Supplier Quotation',quotation):
+        return {}
+    quote=frappe.get_doc('Supplier Quotation',quotation)
+    chosen=next((q for q in quote.items if q.name==quote_item),None)
+    if quote.company!=company or quote.docstatus==2 or not chosen or chosen.item_code!=line.item_code or flt(chosen.rate)<=0:
+        return {}
+    if quote.valid_till and getdate(quote.valid_till)<getdate(nowdate()):
+        return {}
+    # Quantity in the quote's unit, never more than the proposal still needs or the quote offers.
+    factor=flt(chosen.conversion_factor) or 1
+    qty=min(remaining/factor,flt(chosen.qty))
+    freight=flt(chosen.get('lotus_line_freight'))*qty/flt(chosen.qty) if flt(chosen.qty) else 0
+    return dict(supplier=quote.supplier,supplier_name=frappe.get_cached_value('Supplier',quote.supplier,'supplier_name') or quote.supplier,
+                rate=flt(chosen.rate),uom=chosen.uom,qty=qty,vat_code=chosen.get('lotus_line_vat') or 'KCT',freight=freight,
+                reason=line.get('lotus_selection_reason') or '',expected_date=str(quote.get('lotus_delivery_date') or ''),
+                # A draft quote is confirmed when the order is created from the comparison; an order line may only cite a confirmed one.
+                **(dict(supplier_quotation=quote.name,supplier_quotation_item=chosen.name) if quote.docstatus==1 else {}))
 
 
 def _requests(company):
@@ -282,27 +309,35 @@ def save_order(company, data, name=None, modified=None):
         doc.save()
     else:
         doc.insert()
-    return dict(name=doc.name,modified=str(doc.modified),docstatus=doc.docstatus)
+    from lotus_farm.purchase_flow import order_issues
+    # Spec 003, FR-036: say now which lines approval would refuse, not when the director opens the order.
+    return dict(name=doc.name,modified=str(doc.modified),docstatus=doc.docstatus,warnings=order_issues(doc))
+
+
+def _progress(doc):
+    """(ordered, received) with each line capped at its own quantity, so equal totals mean every line arrived."""
+    relevant=[r for r in doc.items if flt(r.qty)>0]
+    return sum(flt(r.qty) for r in relevant), sum(min(flt(r.received_qty),flt(r.qty)) for r in relevant)
 
 
 def _state(doc):
-    if doc.docstatus==2:
-        return 'Đã hủy'
-    if doc.docstatus==0:
-        return doc.get('lotus_approval_status') or 'Nháp' 
-    if doc.status in DONE:
-        return 'Đã đóng'
-    relevant=[r for r in doc.items if flt(r.qty)>0]
-    pending=[r for r in relevant if flt(r.qty) - flt(r.received_qty)>0.000001]
+    """One vocabulary on every screen (spec 003, FR-003): Nháp · Chờ duyệt · Bị trả lại · Đã duyệt · Đã gửi NCC ·
+    NCC đã xác nhận · Đang nhận · Đã nhận đủ · Đã đóng · Đã hủy. Late delivery is the separate flag _overdue."""
+    from lotus_farm import purchase_status
+    ordered,received=_progress(doc)
+    return purchase_status.order_state(doc.docstatus,doc.get('lotus_approval_status') or '','Closed' if doc.status in DONE else doc.status,
+        sent=bool(doc.get('lotus_sent_at')),confirmed=bool(doc.get('lotus_supplier_confirmed_at')),ordered=ordered,received=received)
+
+
+def _overdue(doc):
+    """Still waiting for goods after the promised date (the revised date when one was agreed)."""
+    if doc.docstatus!=1 or doc.status in DONE:
+        return False
+    pending=[r for r in doc.items if flt(r.qty)-flt(r.received_qty)>0.000001]
     if not pending:
-        return 'Đã nhận đủ'
+        return False
     eta=doc.get('lotus_revised_delivery_date')
-    if (getdate(eta) < getdate(nowdate()) if eta else
-            any(getdate(r.schedule_date)<getdate(nowdate()) for r in pending)):
-        return 'Quá hẹn'
-    if any(flt(r.received_qty)>0 for r in relevant):
-        return 'Về một phần'
-    return 'Chờ hàng'
+    return getdate(eta)<getdate(nowdate()) if eta else any(getdate(r.schedule_date)<getdate(nowdate()) for r in pending)
 
 
 def _summary(doc):
@@ -312,7 +347,7 @@ def _summary(doc):
     names={r.warehouse for r in doc.items if r.warehouse}
     return dict(name=doc.name,supplier=doc.supplier,supplier_name=doc.supplier_name or doc.supplier,
                 warehouse=', '.join(sorted(names)),expected_date=str(day),
-                mode=doc.get('lotus_purchase_mode') or MODES[0],status=status,
+                mode=doc.get('lotus_purchase_mode') or MODES[0],status=status,overdue=_overdue(doc),
                 docstatus=doc.docstatus,lines=len(doc.items),
                 remaining_lines=len(pending),modified=str(doc.modified))
 
@@ -337,7 +372,7 @@ def orders(company, warehouse=None, search=None, status=None, start=0, column_fi
         rows=[r for r in rows if query in ' '.join(str(r[k]) for k in
             ('name','supplier','supplier_name','warehouse','mode','status')).casefold()]
     if status=='pending':
-        rows=[r for r in rows if r['status'] in ('Chờ hàng','Về một phần','Quá hẹn')]
+        rows=[r for r in rows if r['docstatus']==1 and r['remaining_lines']>0 and r['status'] not in ('Đã đóng','Đã hủy')]
     elif status:
         rows=[r for r in rows if r['status']==status]
     fields=['name','supplier_name','mode','warehouse','expected_date','status']
@@ -350,6 +385,11 @@ def orders(company, warehouse=None, search=None, status=None, start=0, column_fi
                 has_more=len(filtered)>start+50,filter_values=choices)
 
 
+def _flow(company):
+    from lotus_farm.purchase_flow import enabled
+    return enabled(company)
+
+
 @frappe.whitelist()
 def order_detail(name):
     doc=_po(name)
@@ -358,7 +398,11 @@ def order_detail(name):
     return dict(**_summary(doc),company=doc.company,notes=doc.get('lotus_delivery_note') or '',
                 can_submit=can_approve(doc),
                 can_write=doc.docstatus==0 and doc.has_permission('write'),
+                can_delete=doc.docstatus==0 and doc.get('lotus_approval_status') in ('',None,'Nháp','Từ chối')
+                    and (doc.owner==frappe.session.user or doc.has_permission('delete')),
                 can_receive=doc.docstatus==1 and frappe.has_permission('Purchase Receipt','create'),
+                # Receiving (spec 003, US4): posting is the storekeeper's signature and needs the deliverer's confirmation.
+                can_post=frappe.has_permission('Purchase Receipt','submit'),needs_evidence=_flow(doc.company),
                 currency=currency,quote_files=_files(doc.name),
                 items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,
                             warehouse=r.warehouse,qty=flt(r.qty),received_qty=flt(r.received_qty),
@@ -390,36 +434,17 @@ def order_receipts(name):
 
 
 @frappe.whitelist(methods=['POST'])
-def submit_order(name,modified):
-    from lotus_farm.controls import lock
-    doc=_po(name)
-    doc.check_permission('submit')
-    from lotus_farm.purchasing import can_approve
-    if not can_approve(doc):
-        frappe.throw('Chỉ người duyệt khác người lập mới được xác nhận đơn đã trình duyệt.',frappe.PermissionError)
-    lock('Company',doc.company)
-    lock('Purchase Order',name)
-    doc.reload()
-    if doc.docstatus!=0 or str(doc.modified)!=str(modified):
-        frappe.throw('Đơn mua đã thay đổi. Tải lại để kiểm tra.')
-    if not can_approve(doc):
-        frappe.throw('Đơn không còn đủ điều kiện duyệt.',frappe.PermissionError)
-    if any(flt(r.rate)<=0 for r in doc.items):
-        frappe.throw('Cần xác nhận đơn giá theo báo giá trước khi xác nhận đặt hàng.')
-    doc.lotus_approved_by=frappe.session.user
-    doc.lotus_approved_at=__import__('frappe.utils',fromlist=['now_datetime']).now_datetime()
-    doc.submit()
-    return dict(name=doc.name,status=_state(doc))
-
-
-@frappe.whitelist(methods=['POST'])
 def delete_draft(name,modified):
+    """Xóa đơn nháp hoặc đơn bị trả lại (spec 003, FR-035): the preparer, or someone with the ERPNext delete right."""
     from lotus_farm.controls import lock
     doc=_po(name)
-    doc.check_permission('delete')
     lock('Purchase Order',name)
     doc.reload()
     if doc.docstatus!=0 or str(doc.modified)!=str(modified):
         frappe.throw('Chỉ có thể xóa đơn mua nháp chưa bị sửa.')
-    frappe.delete_doc(doc.doctype,doc.name)
+    if doc.get('lotus_approval_status') not in ('',None,'Nháp','Từ chối'):
+        frappe.throw('Đơn đang chờ duyệt. Người duyệt trả lại trước khi xóa.')
+    if doc.owner!=frappe.session.user and frappe.session.user!='Administrator':
+        doc.check_permission('delete')
+    frappe.delete_doc(doc.doctype,doc.name,ignore_permissions=True)
     return dict(name=name,deleted=True)

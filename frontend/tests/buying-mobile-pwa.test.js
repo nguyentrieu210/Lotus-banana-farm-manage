@@ -31,10 +31,12 @@ test('Warehouse creates a Material Request, not a Purchase Order',()=>{
   const vue=read('frontend/src/WarehouseMobile.vue')
   const py=read('lotus_farm/purchasing.py')
   assert.match(vue,/@select="startRequest"/)
-  assert.match(vue,/call\('lotus_farm.purchasing.create_request'/)
+  // Spec 003, FR-025: Kho uses the same proposal screen as Mua hàng (full form, signing, progress), no short form of its own.
+  assert.match(vue,/<MobilePurchaseProposal v-if="screen==='request-form'&&requestForm"/)
+  assert.doesNotMatch(vue,/purchasing\.create_request/)
+  assert.match(read('frontend/src/components/MobilePurchaseProposal.vue'),/api\('save_proposal'/)
   assert.match(py,/doctype="Material Request"/)
   assert.match(py,/material_request_type="Purchase"/)
-  assert.match(vue,/Gửi đề xuất mua/)
 })
 test('Buyer supports supplier history, requests, pricing, approval and partial receiving',()=>{
   const vue=read('frontend/src/BuyingMobile.vue')

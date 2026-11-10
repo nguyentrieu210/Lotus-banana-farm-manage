@@ -38,7 +38,7 @@ def approved(doctype, name, company):
     if doc.docstatus != 1 or doc.company != company:
         frappe.throw('Nguồn phải đã duyệt và thuộc công ty đang chọn.')
     if doctype == 'Material Request' and doc.material_request_type != 'Material Issue':
-        frappe.throw('Chỉ dùng yêu cầu cấp vật tư, không dùng đề nghị mua hoặc chuyển kho.')
+        frappe.throw('Chỉ dùng yêu cầu cấp vật tư, không dùng đề xuất mua hoặc chuyển kho.')
     if doctype == 'Material Request' and doc.get('status') in ('Stopped', 'Closed', 'Cancelled'):
         frappe.throw('Yêu cầu đã đóng hoặc dừng, không thể cấp thêm.')
     return doc

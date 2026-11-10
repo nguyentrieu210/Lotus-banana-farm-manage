@@ -14,20 +14,30 @@
     "document_version",
     "pdf_sha256",
     "signature_revision",
-    "details"
+    "details",
+    "round",
+    "step_key",
+    "content_hash",
+    "image_sha256",
+    "roles",
+    "designation",
+    "ip",
+    "user_agent"
   ],
   "fields": [
     {
       "fieldname": "document_type",
       "fieldtype": "Data",
       "label": "Loại chứng từ",
-      "reqd": 1
+      "reqd": 1,
+      "search_index": 1
     },
     {
       "fieldname": "document_name",
       "fieldtype": "Data",
       "label": "Mã chứng từ",
-      "reqd": 1
+      "reqd": 1,
+      "search_index": 1
     },
     {
       "fieldname": "action",
@@ -72,6 +82,54 @@
       "fieldname": "details",
       "fieldtype": "Small Text",
       "label": "Thông tin"
+    },
+    {
+      "fieldname": "round",
+      "fieldtype": "Int",
+      "label": "Lượt ký",
+      "read_only": 1
+    },
+    {
+      "fieldname": "step_key",
+      "fieldtype": "Data",
+      "label": "Mã bước",
+      "read_only": 1
+    },
+    {
+      "fieldname": "content_hash",
+      "fieldtype": "Data",
+      "label": "Dấu nội dung khi ký (SHA-256)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "image_sha256",
+      "fieldtype": "Data",
+      "label": "Mã băm ảnh chữ ký",
+      "read_only": 1
+    },
+    {
+      "fieldname": "roles",
+      "fieldtype": "Small Text",
+      "label": "Vai trò khi ký",
+      "read_only": 1
+    },
+    {
+      "fieldname": "designation",
+      "fieldtype": "Data",
+      "label": "Chức danh khi ký",
+      "read_only": 1
+    },
+    {
+      "fieldname": "ip",
+      "fieldtype": "Data",
+      "label": "Địa chỉ mạng",
+      "read_only": 1
+    },
+    {
+      "fieldname": "user_agent",
+      "fieldtype": "Small Text",
+      "label": "Thiết bị / trình duyệt",
+      "read_only": 1
     }
   ],
   "permissions": [

@@ -186,6 +186,8 @@ def _add_alert(user, app, title, body, url, doctype="", docname="", key=""):
 
 
 def _send_alert(alert_name):
+    if not frappe.db.exists(ALERT, alert_name):
+        return  # the action that raised it was rolled back after the job had been queued
     alert = frappe.get_doc(ALERT, alert_name)
     path = _vapid_path()
     if not path.exists():
@@ -292,7 +294,7 @@ def _event_content(doc, event):
         ("Purchase Order", "pending"): ("buying", "Có đơn mua cần duyệt", "Đơn " + doc.name, "/buying?doc=" + doc.name),
         ("Purchase Order", "approved"): ("buying", "Đơn mua đã được duyệt", "Đơn " + doc.name, "/buying?doc=" + doc.name),
         ("Purchase Order", "rejected"): ("buying", "Đơn mua bị từ chối", "Đơn " + doc.name, "/buying?doc=" + doc.name),
-        ("Material Request", "submitted"): ("buying", "Có đề nghị mua mới", "Đề nghị " + doc.name, "/buying?tab=home"),
+        ("Material Request", "submitted"): ("buying", "Có đề xuất mua mới", "Đề xuất " + doc.name, "/buying?tab=home"),
         ("Purchase Receipt", "submitted"): ("warehouse", "Đã nhận hàng theo đơn", "Phiếu " + doc.name, "/warehouse?doc=" + doc.name + "&doctype=Purchase%20Receipt"),
         ("Stock Entry", "submitted"): ("warehouse", "Có phiếu kho mới", "Phiếu " + doc.name, "/warehouse?doc=" + doc.name + "&doctype=Stock%20Entry"),
         ("Daily Work Plan", "submitted"): ("work", "Có công việc được giao", "Kế hoạch " + doc.name, "/work?tab=tasks"),

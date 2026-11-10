@@ -48,10 +48,12 @@ test('supplier listing pages and filters on server rather than truncating the lo
  const last=calls.filter(c=>c.method.endsWith('.listing')).at(-1);assert.equal(last.args.start,'0');assert.equal(last.args.search,'0123456789')
 })
 test('invoice inquiry is visible to reader, pages on server and opens original invoice inside workspace',async()=>{
+ // The invoice opens in the shared InvoiceDetail (spec 003, US5), which reads finance.supplier_invoice.detail.
+ const before=handler;handler=async(m,a)=>m.endsWith('supplier_invoice.detail')?{name:'PI',supplier:'N',supplier_name:'N',bill_no:'HD-1',series:'1C26T',status:'Trả một phần',docstatus:1,currency:'VND',net:100,amount:100,outstanding_amount:80,taxes:[],settlements:[],receipts:[],quick_receipts:[],files:[],items:[],print_url:'/lotus/in-hoa-don?name=PI'}:m.endsWith('stock_attachments.files')?[]:before(m,a)
  view=mount(Workspace,{company:'C',buyingView:'invoices',mobile:true,today:'2026-10-24'});await tick();await tick()
  assert.ok(calls.some(c=>c.method.endsWith('.invoices')));assert.ok(![...view.root.querySelectorAll('button')].some(x=>x.textContent==='Chi / tạm ứng NCC'))
  await click('Sau');assert.equal(calls.filter(c=>c.method.endsWith('.invoices')).at(-1).args.start,'50')
- const row=[...view.root.querySelectorAll('.van-cell')].find(x=>x.textContent.includes('PI'));assert.ok(row);row.click();await tick();assert.match(view.root.textContent,/Hóa đơn\s*HD-1/);assert.match(view.root.textContent,/Còn nợs*80/)
+ const row=[...view.root.querySelectorAll('.van-cell')].find(x=>x.textContent.includes('PI'));assert.ok(row);row.click();for(let i=0;i<4;i++)await tick();assert.match(view.root.textContent,/1C26T · HD-1/);assert.match(view.root.textContent,/Còn phải trả\s*80/);handler=before
 })
 test('warehouse receipts list opens supplier receiving through the shared picker',async()=>{
  const usual=handler;handler=async(m,a)=>{
@@ -68,12 +70,13 @@ test('warehouse receipts list opens supplier receiving through the shared picker
  await click('Nhập theo đơn mua');assert.ok(calls.some(c=>c.method==='lotus_farm.warehouse_planning.overview'))
  assert.ok(!calls.some(c=>c.method==='lotus_farm.procurement.bootstrap'))
 })
-test('shared receiving includes actual receipt costs in the native draft request',async()=>{
+test('shared receiving posts in one step with the actual receipt costs and shows the receipt',async()=>{
  const usual=handler;handler=async(m,a)=>{
-  if(m.endsWith('.purchase_order'))return {name:'PO',supplier:'N',currency:'VND',can_receive:true,items:[{line:'L',item_name:'Phân',remaining_qty:2,uom:'Nos',rate:100000,warehouse:'K'}]}
+  if(m.endsWith('.purchase_order'))return {name:'PO',supplier:'N',currency:'VND',can_receive:true,can_post:true,needs_evidence:false,items:[{line:'L',item_name:'Phân',remaining_qty:2,uom:'Nos',rate:100000,warehouse:'K'}]}
   if(m.endsWith('.receipt_accounts'))return {accounts:[{name:'E',account_name:'Chi phí'}],default_account:'E'}
-  if(m.endsWith('.receive_order'))return {name:'PR'}
-  if(m.endsWith('.purchase_receipt'))return {name:'PR',supplier:'N',docstatus:0,items:[],goods_total:100000,valuation_charges:3000,incoming_total:103000,currency:'VND'}
+  if(m.endsWith('.receive_order'))return {name:'PR',docstatus:1,remaining:[]}
+  if(m.endsWith('procurement.receipt'))return {name:'PR',supplier:'N',docstatus:1,state:'Đã nhập kho',items:[],goods_total:100000,valuation_charges:3000,incoming_total:103000,currency:'VND',print_url:'/lotus/in-phieu?doctype=Purchase+Receipt&name=PR'}
+  if(m.endsWith('stock_attachments.files'))return []
   return usual(m,a)
  }
  const handle=ref(null);view=mount({render:()=>h(Receiving,{ref:handle,company:'C',today:'2026-10-24'})});await tick()
@@ -81,7 +84,7 @@ test('shared receiving includes actual receipt costs in the native draft request
  // Line grids label each cell by its column header and row number.
  function fill(label,value){const input=[...document.querySelectorAll('input')].find(x=>(x.getAttribute('aria-label')||'').startsWith(label));assert.ok(input,label);input.value=value;input.dispatchEvent(new window.Event('input',{bubbles:true}))}
  fill('Thực nhận dòng 1','1');await click('Thêm chi phí');fill('Khoản chi phí dòng 1','Bốc xếp thử');fill('Số tiền (VND) dòng 1','3000');await tick()
- await click('Ghi nhận hàng')
+ await click('Xác nhận nhập kho');await tick()
  const request=calls.find(c=>c.method.endsWith('.receive_order'));assert.ok(request);assert.equal(request.args.post,1);assert.equal(Number(request.args.quantities.L),1);assert.equal(request.args.additional_costs[0].amount,3000);assert.equal(request.args.additional_costs[0].expense_account,'E')
- assert.match(document.body.textContent,/Giá trị nhập\s*103\.000 VND/)
+ assert.match(document.body.textContent,/Giá trị nhập\s*103\.000 đ/)
 })

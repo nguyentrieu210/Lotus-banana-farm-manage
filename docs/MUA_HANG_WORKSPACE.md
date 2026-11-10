@@ -1,5 +1,31 @@
 # Mua hàng nối kho và tài chính
 
+## Hoàn thiện mua hàng và ký điện tử (spec 003, 10/11/2026)
+
+Tài liệu đầy đủ: `specs/003-mua-hang-ky-dien-tu/` (spec, plan, research, data-model, contracts, quickstart, tasks).
+
+Một khoản mua đi một đường: **đề xuất → đơn mua → nhập kho → hóa đơn NCC → công nợ → trả tiền**, làm được trên điện thoại và máy tính, không mở ERPNext Desk.
+
+| Bước | Quy tắc | Mã chính |
+|---|---|---|
+| Đề xuất mua | Một tên giai đoạn cho mọi người xem; đóng phần chưa mua và hủy có lý do | `proposal_rules.stage`, `purchase_proposal.py` |
+| Báo giá | Lựa chọn báo giá lưu trên dòng đề xuất; chọn giá không thấp nhất phải có lý do | `procurement.choose_quote` |
+| Đơn mua | Giám đốc được chỉ định ký mọi đơn; lưu đơn trả ngay các dòng sẽ bị chặn | `purchasing.check_submission`, `purchase_flow.order_issues` |
+| Nhập kho theo đơn | Một bước; cần người giao ký kèm họ tên hoặc ảnh phiếu giao; xác nhận là thủ kho ký; lưu PDF | `warehouse_planning.receive_order`, `purchase_flow.receipt_evidence`, `receipt_signed` |
+| Hóa đơn NCC | Một lõi cho mọi đường nhập; gõ tay, file chỉ là bằng chứng; hộ kinh doanh không ghi 1331; tổng in lệch tối đa 1 đ mỗi dòng | `finance/supplier_invoice.py` |
+| Công nợ | Theo ngày chốt: tuổi nợ, đến hạn 7 ngày, hàng chưa có hóa đơn, sổ chi tiết, biên bản đối chiếu | `procurement_queries.payables`, `supplier_statement`, `unbilled` |
+| Phiếu chi | Một phiếu trả nhiều hóa đơn, phần vượt ghi tạm ứng; ký đủ mới ghi sổ; lưu PDF | `finance/supplier_payment.py` |
+
+Tên trạng thái dùng chung nằm ở `lotus_farm/purchase_status.py` và `frontend/src/purchase-status.js`. Hàng mua lẻ không qua đơn gọi là **Mua nhanh** ở mọi màn.
+
+Trang in mới: `/lotus/in-don-mua`, `/lotus/in-hoa-don`, `/lotus/in-phieu-chi`, `/lotus/in-doi-chieu`; phiếu nhập in tại `/lotus/in-phieu` có chữ ký người giao.
+
+Thiết lập ERPNext do `procurement_setup.install` đặt: cho phép hóa đơn khác giá đơn mua (Lotus bắt buộc ghi lý do), giá vốn theo giá hóa đơn.
+
+Giới hạn hiện tại: một hóa đơn chưa gồm được cả phiếu nhận theo đơn và phiếu Mua nhanh; nhập thành hai lần với hai phiếu khác loại sẽ bị chặn trùng số hóa đơn.
+
+Kiểm thử: `tools/test_site_procurement.sh` dựng bộ thử dùng-rồi-bỏ `procurement.test`; các script `tests/integration/verify_procurement*.py` và `verify_purchase_flow.py` chạy trên đó.
+
 ## Luồng đề xuất mua ngày 07/11/2026
 
 Lotus lập Đề xuất mua độc lập theo bộ phận, lý do, kho nhận, vật tư, số lượng và ngày cần. Giá dự kiến có thể để trống. Mọi đề xuất mới ký đủ Người đề xuất → Phụ trách bộ phận → Kế toán/mua hàng → Giám đốc. Bổ sung giá sau khi ký trả phiếu về người đề xuất để gửi vòng ký mới. Các cửa tạo từ Kho và API cũ cùng tạo nháp và mở quy trình ký này.

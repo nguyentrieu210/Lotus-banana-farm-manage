@@ -14,12 +14,12 @@
 {% macro signatures(items, place_date='', verify=None) -%}
 {% if items %}{% if place_date %}<p class="lp-place">{{ place_date }}</p>{% endif %}
 <div class="lp-sign">{% for s in items %}<div><b>{{ s.title }}</b><small>{{ s.hint }}</small>
- <div class="lp-sign__space">{% if s.image %}<img src="{{ s.image }}" alt="Chữ ký {{ s.name }}">{% else %}&nbsp;{% endif %}</div>
- {% if s.name %}<div class="lp-sign__name">{{ s.name }}</div>{% endif %}{% if s.signed_at %}<small>Ký lúc {{ s.signed_at }}</small>{% endif %}
+ <div class="lp-sign__space">{% if s.image %}<img src="{{ s.image }}" alt="Chữ ký {{ s.name }}">{% elif s.electronic %}<small class="lp-sign__electronic">Đã ký điện tử trên Lotus</small>{% else %}&nbsp;{% endif %}</div>
+ {% if s.name %}<div class="lp-sign__name">{{ s.name }}</div>{% endif %}{% if s.designation %}<small>{{ s.designation }}</small>{% endif %}{% if s.signed_at %}<small>Ký lúc {{ s.signed_at }}</small>{% endif %}
 </div>{% endfor %}{% if verify %}<div class="lp-sign__qr"><b>Đối chiếu</b><small>Quét QR</small><img src="{{ verify.qr }}" alt="QR đối chiếu chứng từ trên Lotus"><small>Kiểm tra chữ ký và nội dung trên Lotus</small></div>{% endif %}</div>{% endif %}
 {%- endmacro %}
 
 {% macro footer(p) -%}
 {#- Inline styles: wkhtmltopdf renders this footer as its own page under Frappe print CSS. -#}
-<div id="footer-html" class="lp-footer"><table style="width:100%;border-collapse:collapse;border-top:1px solid #d6dae0;font-family:DejaVu Sans,Arial,sans-serif;font-size:7.5pt;color:#6a7280"><tr><td style="padding:3px 0 0;text-align:left;width:34%">Lotus Agritech · {{ p.number }}</td><td style="padding:3px 0 0;text-align:center">In lúc {{ p.printed_at }} · {{ p.printed_by }}</td><td style="padding:3px 0 0;text-align:right;width:20%">Trang <span class="page"></span>/<span class="topage"></span></td></tr></table></div>
+<div id="footer-html" class="lp-footer"><table style="width:100%;border-collapse:collapse;border-top:1px solid #d6dae0;font-family:DejaVu Sans,Arial,sans-serif;font-size:7.5pt;color:#6a7280"><tr><td style="padding:3px 0 0;text-align:left;width:34%">Lotus Agritech · {{ p.number }}</td><td style="padding:3px 0 0;text-align:center">In lúc {{ p.printed_at }} · {{ p.printed_by }}</td>{% if p.initials %}<td id="lp-initials" style="padding:2px 0 0;text-align:right;width:16%">Ký nháy <img src="{{ p.initials }}" alt="Ký nháy" style="height:20px;vertical-align:middle"></td>{% endif %}<td style="padding:3px 0 0;text-align:right;width:20%">Trang <span class="page"></span>/<span class="topage"></span></td></tr></table>{% if p.initials %}<script>(function(){var m=/[?&]topage=(\d+)/.exec(location.search);if(m&&m[1]==='1'){var e=document.getElementById('lp-initials');if(e)e.style.display='none'}})();</script>{% endif %}</div>
 {%- endmacro %}

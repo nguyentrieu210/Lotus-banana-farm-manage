@@ -159,7 +159,7 @@ for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
     _old = doc_events[_name].get('validate',[])
     if isinstance(_old,str):_old=[_old]
     doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
-website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/in-don-mua','to_route':'lotus_purchase_order_print'},{'from_route':'/lotus/in-hoa-don','to_route':'lotus_invoice_print'},{'from_route':'/lotus/in-phieu-chi','to_route':'lotus_payment_print'},{'from_route':'/lotus/in-doi-chieu','to_route':'lotus_statement_print'},{'from_route':'/lotus/mo','to_route':'lotus_open'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'
@@ -323,3 +323,18 @@ for _chat_file_event in ('before_validate', 'on_trash'):
     if isinstance(_chat_file_handlers, str):
         _chat_file_handlers = [_chat_file_handlers]
     doc_events['File'][_chat_file_event] = [*_chat_file_handlers, 'lotus_farm.chat.file_guard']
+
+# Spec 003 (FR-042, FR-043): a receipt against an order carries the deliverer's signature or the signed delivery
+# note, and confirming it is the storekeeper's signature — on every path that posts it (Lotus, Desk, REST).
+for _event, _handler in (('before_submit', 'lotus_farm.purchase_flow.receipt_evidence'),
+                         ('on_submit', 'lotus_farm.purchase_flow.receipt_signed')):
+    _old = doc_events.setdefault('Purchase Receipt', {}).get(_event, [])
+    if isinstance(_old, str):
+        _old = [_old]
+    doc_events['Purchase Receipt'][_event] = [*_old, _handler]
+
+# Spec 003 (FR-055, R17): an invoice with payments, vouchers being signed or an adjustment invoice is not cancelled.
+_old = doc_events.setdefault('Purchase Invoice', {}).get('before_cancel', [])
+if isinstance(_old, str):
+    _old = [_old]
+doc_events['Purchase Invoice']['before_cancel'] = [*_old, 'lotus_farm.finance.supplier_invoice.guard_cancel']

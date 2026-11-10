@@ -10,7 +10,8 @@ m=runpy.run_path('/home/frappe/frappe-bench/apps/lotus_farm/tests/integration/ve
 m['seed']()
 g=m['seed'].__globals__
 import frappe
-from lotus_farm import procurement as p, signing, purchase_funding as funding
+import json
+from lotus_farm import procurement as p, signing, purchase_funding as funding, warehouse_planning as receiving
 
 
 def connection(fn):
@@ -46,6 +47,30 @@ def refund(name,amount,key):
     return funding.reimburse(name,amount,g['DAY'],'cash',{'CHIEF':g['CHIEF'],'APPROVE':g['DIR']},key)
 
 
+def receiver(order,line,qty,key):
+    """One person receiving in their own connection; receive_order itself answers a lost race."""
+    frappe.init(site='procurement.test',force=True)
+    frappe.connect()
+    frappe.set_user('Administrator')
+    try:
+        result=receiving.receive_order(order,g['DAY'],json.dumps({line:qty}),key,None,1)
+        frappe.db.commit()
+        return ('ok',result['name'])
+    except frappe.ValidationError as exc:
+        frappe.db.rollback()
+        return ('refused',str(exc))
+    finally:
+        frappe.destroy()
+
+
+def approved_order(qty=10):
+    case=m['ProcurementIntegration']()
+    case.tag=uuid.uuid4().hex[:10]
+    doc=case.order(qty=qty)
+    frappe.db.commit()
+    return doc
+
+
 def invoice():
     case=m['ProcurementIntegration']()
     case.tag=uuid.uuid4().hex[:10]
@@ -74,7 +99,16 @@ try:
             results=list(pool.map(lambda args:refund(*args),[(result['name'],300000,uuid.uuid4().hex) for _ in range(2)]))
             assert sorted(r[0] for r in results)==['ok','refused'],results
             print('PASS: concurrent reimbursement reservations cannot exceed funding')
-    print('3 concurrency scenarios passed on procurement.test')
+            order=approved_order(10)
+            line=order.items[0].name
+            results=list(pool.map(lambda key:receiver(order.name,line,6,key),[uuid.uuid4().hex for _ in range(2)]))
+            assert sorted(r[0] for r in results)==['ok','refused'],results
+            refused=next(r[1] for r in results if r[0]=='refused')
+            assert 'còn nhận được 4' in refused,refused
+            frappe.db.rollback()  # read what the two connections committed
+            assert float(frappe.db.get_value('Purchase Order Item',line,'received_qty'))==6
+            print('PASS: two people receiving at once never exceed the order; the second is told what is left')
+    print('4 concurrency scenarios passed on procurement.test')
 finally:
     frappe.db.rollback()
     frappe.destroy()

@@ -274,14 +274,19 @@ class ProcurementIntegration(unittest.TestCase):
         order=self.order()
         receipt=self.receive(order,10)
         result=p.return_receipt(receipt.name,DAY,{receipt.items[0].name:3},self.tag+'return')
+        self.assertEqual((result['docstatus'],result['needs_credit_note'],result['return_against']),(0,False,receipt.name))
         ret=frappe.get_doc('Purchase Receipt',result['name'])
         receiving.receipt_action(ret.name,str(ret.modified),'submit')
         self.assertEqual(flt(frappe.db.get_value('Purchase Order Item',order.items[0].name,'received_qty')),7)
         ret.reload()
-        receiving.receipt_action(ret.name,str(ret.modified),'cancel')
+        with self.assertRaises(frappe.ValidationError):  # spec 003, FR-045: a cancelled receipt says why
+            receiving.receipt_action(ret.name,str(ret.modified),'cancel')
+        receiving.receipt_action(ret.name,str(ret.modified),'cancel','Trả nhầm số lượng')
+        self.assertEqual(frappe.db.get_value('Purchase Receipt',ret.name,'lotus_cancel_reason'),'Trả nhầm số lượng')
         self.assertEqual(flt(frappe.db.get_value('Purchase Order Item',order.items[0].name,'received_qty')),10)
         receipt.reload()
-        receiving.receipt_action(receipt.name,str(receipt.modified),'cancel')
+        receiving.receipt_action(receipt.name,str(receipt.modified),'cancel','Nhập nhầm đơn')
+        self.assertEqual(receiving.purchase_receipt(receipt.name)['state'],'Đã hủy')
         self.assertEqual(flt(frappe.db.get_value('Purchase Order Item',order.items[0].name,'received_qty')),0)
 
     def test_09_asof_debt_does_not_use_current_invoice_balance(self):
@@ -399,6 +404,172 @@ class ProcurementIntegration(unittest.TestCase):
         receipt.reload()
         self.assertEqual(frappe.db.count('Stock Ledger Entry',{'voucher_no':receipt.name,'is_cancelled':0}),1)
         self.assertAlmostEqual(flt(receipt.items[0].valuation_rate),110000,delta=1)
+
+    def test_18_return_posts_at_once_and_asks_for_a_credit_note_when_billed(self):
+        order=self.order()
+        receipt=self.receive(order,10)
+        line=receipt.items[0].name
+        first=p.return_receipt(receipt.name,DAY,{line:2},self.tag+'r1',1,'Hàng móp')
+        self.assertEqual((first['docstatus'],first['needs_credit_note'],first['return_against']),(1,False,receipt.name))
+        self.assertEqual(flt(frappe.db.get_value('Purchase Order Item',order.items[0].name,'received_qty')),8)
+        again=p.return_receipt(receipt.name,DAY,{line:2},self.tag+'r1',1,'Hàng móp')
+        self.assertEqual(again['name'],first['name'],'the same request never returns goods twice')
+        detail=p.receipt(first['name'])
+        self.assertEqual((detail['state'],detail['is_return'],detail['return_against'],detail['notes']),('Đã nhập kho',1,receipt.name,'Lý do trả hàng: Hàng móp'))
+        self.invoice(receipt)
+        second=p.return_receipt(receipt.name,DAY,{line:1},self.tag+'r2',1,'Sai quy cách')
+        self.assertEqual((second['docstatus'],second['needs_credit_note']),(1,True),'goods already invoiced: an adjustment invoice must follow')
+        listed={r['name']:r for r in p.receipts(C)}
+        self.assertEqual((listed[receipt.name]['status'],listed[receipt.name]['kind'],listed[second['name']]['kind']),('Đã nhập kho','Nhập theo đơn','Trả hàng'))
+        self.assertIn(listed[receipt.name]['billing'],('Đã có hóa đơn','Có hóa đơn một phần'))
+
+    def test_19_draft_receipt_is_removed_by_its_preparer_or_a_receiver(self):
+        order=self.order()
+        result=receiving.receive_order(order.name,DAY,json.dumps({order.items[0].name:2}),self.tag+'draft')
+        self.assertEqual((result['docstatus'],result['state'],result['signed_copy']),(0,'Nháp',None))
+        self.assertEqual(result['remaining'][0]['remaining_qty'],8,'a draft holds its quantity')
+        with self.assertRaises(frappe.PermissionError):  # the buyer reads receipts but does not remove them
+            as_user(BUYER,receiving.receipt_action,result['name'],result['modified'],'delete')
+        receiving.receipt_action(result['name'],result['modified'],'delete')
+        self.assertFalse(frappe.db.exists('Purchase Receipt',result['name']))
+        self.assertEqual(receiving.purchase_order(order.name)['items'][0]['remaining_qty'],10)
+        over=None
+        try:
+            receiving.receive_order(order.name,DAY,json.dumps({order.items[0].name:11}),self.tag+'over')
+        except frappe.ValidationError as exc:
+            over=str(exc)
+        self.assertIn('còn nhận được 10',over or '')
+
+    # ---- Spec 003 · US5: one core for supplier invoices (finance.supplier_invoice) ----
+    def household(self):
+        """Hộ kinh doanh for this case only: VAT goes into cost, never to 1331."""
+        def switch(value):
+            frappe.db.set_single_value(setup.SETTINGS, 'vat_in_cost', value)
+            frappe.clear_document_cache(setup.SETTINGS, setup.SETTINGS)
+        switch(1)
+        self.addCleanup(switch, 0)
+
+    def ledger(self, account, vouchers):
+        return flt(frappe.db.sql('select sum(debit-credit) from `tabGL Entry` where account=%s and voucher_no in %s and is_cancelled=0',
+                                 (account, tuple(vouchers)))[0][0])
+
+    def refused(self, fn, *args, **kwargs):
+        frappe.db.savepoint('refused_call')
+        with self.assertRaises(frappe.ValidationError) as caught:
+            fn(*args, **kwargs)
+        frappe.db.rollback(save_point='refused_call')
+        return str(caught.exception)
+
+    def test_20_one_invoice_for_two_receipts_household_vat_into_cost(self):
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        a = self.receive(self.order(qty=10, rate=100000, vat='5', freight=50000), 10)
+        first = self.tag
+        self.tag = uuid.uuid4().hex[:8]
+        b = self.receive(self.order(qty=4, rate=25000, vat='8'), 4)
+        src = as_user(ACC, si.source, [a.name, b.name])
+        self.assertEqual([(l['qty'], l['vat_code'], l['fixed']) for l in src['lines']], [(10, '5', False), (4, '8', False)])
+        self.assertTrue(src['vat_in_cost'])
+        waiting = {r['name']: r for r in as_user(ACC, si.queue, self.supplier)['rows']}
+        self.assertEqual((waiting[a.name]['mua_nhanh'], waiting[a.name]['source_type']), (False, 'Nhận theo đơn'))
+        args = dict(receipts=[a.name, b.name], bill_no='HD-' + first, series='1C26TAA', tax_code='CQT-1', bill_date=DAY, printed_total=1208000)
+        result = as_user(ACC, si.create, client_key=first + 'inv', **args)
+        self.assertEqual((result['amount'], result['rounding_adjustment']), (1208000, 0))
+        self.assertEqual(as_user(ACC, si.create, client_key=first + 'inv', **args)['invoice'], result['invoice'], 'the same request is not posted twice')
+        vouchers = [a.name, b.name, result['invoice']]
+        self.assertEqual(frappe.db.count('GL Entry', {'voucher_no': result['invoice'], 'account': MAP['input_vat'], 'is_cancelled': 0}), 0, 'never 1331')
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), vouchers), 0, delta=1, msg='33881 returns to zero once billed')
+        # The same supplier invoice cannot come in again through any path.
+        self.assertIn('đã được nhập', self.refused(as_user, ACC, si.create, client_key=first + 'again', **args))
+        self.assertIn('đã được nhập', self.refused(as_user, ACC, payments.make_service_invoice, self.supplier, 'HD-' + first, DAY,
+                                                    [dict(description='Thuê xe', amount=100000, cost='admin')]))
+        info = as_user(ACC, si.detail, result['invoice'])
+        self.assertEqual((info['series'], info['tax_code'], info['printed_total'], info['status'], sorted(info['receipts'])),
+                         ('1C26TAA', 'CQT-1', 1208000, 'Chưa trả', sorted([a.name, b.name])))
+        self.assertEqual(info['vat'], 58000)
+        from lotus_farm import print_kit
+        from lotus_farm.www import lotus_invoice_print
+        page = as_user(ACC, lambda: str(print_kit.render('invoice.html', lotus_invoice_print.build(result['invoice']))))
+        for text in ('BẢNG KÊ HÓA ĐƠN MUA HÀNG', '1C26TAA', 'Tổng thanh toán', 'Chưa có file gốc'):
+            self.assertIn(text, page)
+        listed = {r['name']: r for r in as_user(ACC, si.invoices, self.supplier)['rows']}
+        self.assertEqual((listed[result['invoice']]['status'], listed[result['invoice']]['outstanding_amount']), ('Chưa trả', 1208000))
+
+    def test_21_price_variance_needs_a_reason_and_printed_total_names_the_suspect_line(self):
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=5, rate=100000, vat='10'), 5)
+        line = receipt.items[0].name
+        base = dict(receipts=[receipt.name], bill_no='HD-' + self.tag, bill_date=DAY)
+        self.assertIn('Ghi lý do chênh lệch', self.refused(as_user, ACC, si.create, client_key=self.tag + 'v1',
+                                                          lines=[dict(source_item=line, qty=5, rate=110000)], **base))
+        message = self.refused(as_user, ACC, si.create, client_key=self.tag + 'v2', printed_total=540000, **base)
+        self.assertIn('Dòng nghi sai', message)
+        self.assertIn('thuế suất có thể là 8%', message)
+        result = as_user(ACC, si.create, client_key=self.tag + 'v3', printed_total=605001, printed_vat=55000,
+                         lines=[dict(source_item=line, qty=5, rate=110000, variance_reason='NCC tăng giá theo thông báo ngày giao')], **base)
+        self.assertEqual((result['amount'], result['rounding_adjustment']), (605001, 1))
+        self.assertTrue(result['warnings'])
+        invoice = frappe.get_doc('Purchase Invoice', result['invoice'])
+        self.assertEqual((flt(invoice.items[0].rate), invoice.items[0].get('lotus_variance_reason')), (110000, 'NCC tăng giá theo thông báo ngày giao'))
+        self.assertEqual(as_user(ACC, si.detail, invoice.name)['rounding_adjustment'], 1)
+        # FR-051: cost follows the invoice. ERPNext revalues the receipt at the invoice price in its repost job (run by the
+        # scheduler on a live site, by hand here); after it nothing is left on the goods-received-not-invoiced account.
+        from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import repost_entries
+        previous = (frappe.flags.in_test, getattr(frappe, 'in_test', False))
+        frappe.flags.in_test = frappe.in_test = True  # the repost must not commit inside this rolled-back case
+        try:
+            repost_entries()
+        finally:
+            frappe.flags.in_test, frappe.in_test = previous
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [receipt.name, invoice.name]), 0, delta=1)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate')), 110000, delta=1, msg='stock is valued at the invoice price')
+        # One receipt, several invoices: the second invoice takes what is left.
+        partial = self.receive(self.order(qty=6, rate=100000), 6)
+        first = as_user(ACC, si.create, receipts=[partial.name], bill_no='P1-' + self.tag, bill_date=DAY, client_key=self.tag + 'p1',
+                        lines=[dict(source_item=partial.items[0].name, qty=2)])
+        self.assertEqual(first['amount'], 200000)
+        self.assertEqual(as_user(ACC, si.source, [partial.name])['lines'][0]['qty'], 4)
+        self.assertIn('vượt phần chưa lập hóa đơn', self.refused(as_user, ACC, si.create, receipts=[partial.name], bill_no='P2-' + self.tag, bill_date=DAY,
+                                                              client_key=self.tag + 'p2', lines=[dict(source_item=partial.items[0].name, qty=5)]))
+
+    def test_22_cancel_needs_a_reason_and_is_refused_once_paid(self):
+        from lotus_farm import warehouse
+        from lotus_farm.finance import supplier_invoice as si
+        quick = warehouse.create_draft(C, 'receipt', DAY, [dict(item='PCT-M', qty=2, rate=100000)], target=WH, receipt_reason='Purchase',
+                                       supplier=self.supplier, post=1, client_event_id=self.tag + 'quick')
+        waiting = {r['name']: r for r in as_user(ACC, si.queue, self.supplier)['rows']}
+        self.assertEqual((waiting[quick['name']]['mua_nhanh'], waiting[quick['name']]['source_type'], waiting[quick['name']]['amount']), (True, 'Mua nhanh', 200000))
+        self.assertTrue(as_user(ACC, si.source, [quick['name']])['lines'][0]['fixed'])
+        made = as_user(ACC, si.create, receipts=[quick['name']], bill_no='MN-' + self.tag, bill_date=DAY, client_key=self.tag + 'mn')
+        self.assertEqual(frappe.db.get_value('Stock Entry', quick['name'], 'lotus_purchase_invoice'), made['invoice'])
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [quick['name'], made['invoice']]), 0, delta=1, msg='3388 is cleared by the invoice')
+        self.assertIn('lý do', self.refused(as_user, ACC, si.cancel, made['invoice'], ' '))
+        gone = as_user(ACC, si.cancel, made['invoice'], 'Nhập nhầm nhà cung cấp')
+        self.assertEqual((gone['state'], gone['released']), ('Đã hủy', [quick['name']]))
+        self.assertFalse(frappe.db.get_value('Stock Entry', quick['name'], 'lotus_purchase_invoice'))
+        self.assertEqual(as_user(ACC, si.detail, made['invoice'])['cancel_reason'], 'Nhập nhầm nhà cung cấp')
+        self.assertIn(quick['name'], [r['name'] for r in as_user(ACC, si.queue, self.supplier)['rows']], 'the receipt waits for an invoice again')
+        # An invoice with a payment is not cancelled, from Lotus or from Desk.
+        paid = self.invoice(self.receive(self.order(qty=3), 3))
+        voucher = as_user(ACC, p.supplier_payment, C, 'Purchase Invoice', paid.name, 100000, 'cash', DAY, {'CHIEF': CHIEF, 'APPROVE': DIR}, self.tag + 'pay')
+        self.assertIn('Phiếu chi đang ký', self.refused(as_user, ACC, si.cancel, paid.name, 'Thử hủy khi đang chi'))
+        signed(voucher)
+        self.assertIn('Đảo phiếu chi trước', self.refused(as_user, ACC, si.cancel, paid.name, 'Thử hủy khi đã chi'))
+        self.refused(lambda: frappe.get_doc('Purchase Invoice', paid.name).cancel())
+        info = as_user(ACC, si.detail, paid.name)
+        self.assertEqual((info['can_cancel'], info['status'], info['settlements'][0]['name']), (False, 'Trả một phần', voucher['voucher']))
+
+    def test_23_finance_screens_use_the_same_core_and_never_post_household_vat_to_1331(self):
+        self.household()
+        receipt = self.receive(self.order(qty=2, rate=100000, vat='8'), 2)
+        goods = as_user(ACC, payments.make_goods_invoice, [receipt.name], 'TC-' + self.tag, DAY)
+        service = as_user(ACC, payments.make_service_invoice, self.supplier, 'DV-' + self.tag, DAY,
+                          [dict(description='Thuê xe chở phân', amount=500000, cost='admin')], None, None, '10')
+        self.assertEqual((goods['amount'], service['amount']), (216000, 550000))
+        for invoice in (goods['invoice'], service['invoice']):
+            self.assertEqual(frappe.db.count('GL Entry', {'voucher_no': invoice, 'account': MAP['input_vat'], 'is_cancelled': 0}), 0, invoice)
+        self.assertAlmostEqual(self.ledger(MAP['admin_expense'], [service['invoice']]), 550000, delta=1, msg='service VAT joins its own expense')
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), [receipt.name, goods['invoice']]), 0, delta=1)
 
     def test_16_cancel_unposted_funding_keeps_evidence_and_releases_reservation(self):
         inv=self.invoice(self.receive(self.order(),10))

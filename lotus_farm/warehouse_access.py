@@ -34,8 +34,9 @@ ROLE_OPERATIONS={
   'Purchase Receipt':('read','cancel'),
   'UOM':('read','create'),
  },
+ # The approver may also cancel an approved order that has received nothing (spec 003, FR-038; purchasing.cancel_order).
  'Lotus Purchase Approver': {
-  'Purchase Order':('read','write','submit','print'),
+  'Purchase Order':('read','write','submit','cancel','print'),
  }
 }
 
@@ -46,7 +47,7 @@ REFERENCE_DOCTYPES=(
 )
 
 def install_roles():
-    """Idempotent role and document-permission installation; no cancellation or delete privilege."""
+    """Idempotent role and document-permission installation. No delete privilege; cancellation only where a role names it."""
     from frappe.permissions import add_permission, update_permission_property
     def ensure(doctype, role, actions, operations):
         # Re-applying every unchanged flag clears Frappe metadata on each call.

@@ -1,9 +1,9 @@
 export const pages=[['nguoi-dung','Người dùng & phân quyền'],['tai-chinh','Tài chính – Kế toán'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc ngoài vườn'],['alerts','Cảnh báo'],['farms','Vườn & lô'],['plan-norm','Cấu hình kế hoạch & định mức'],['forecast','Dự thu'],['mau-day','Danh mục màu dây'],['work','Công việc'],['materials','Vật tư'],['measurements','Đo trái'],['harvest','Thu hoạch'],['incoming-qc','QC đầu vào'],['packhouse','Xưởng đóng gói'],['cycle-close','Kết vụ'],['trace','Truy xuất'],['map','Bản đồ chăm sóc'],['reports','Tổng quan'],['admin/masters','Danh mục'],['admin/imports','Nhập dữ liệu'],['admin/settings','Cấu hình']]
-pages.push(['mua-hang','Mua hàng'],['bao-cao-cham-soc-vuon','Báo cáo chăm sóc vườn'],['bao-cao-cham-soc-buong','Báo cáo chăm sóc buồng'],['bao-cao-xuong','Báo cáo xưởng đóng gói'],['bao-cao-bvtv','Báo cáo BVTV'])
+pages.push(['cho-ky','Chờ tôi ký'],['mua-hang','Mua hàng'],['bao-cao-cham-soc-vuon','Báo cáo chăm sóc vườn'],['bao-cao-cham-soc-buong','Báo cáo chăm sóc buồng'],['bao-cao-xuong','Báo cáo xưởng đóng gói'],['bao-cao-bvtv','Báo cáo BVTV'])
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
- {label:'Tổng quan',icon:'chart',items:[['reports','chart','Tổng quan'],['alerts','alert','Cảnh báo']]},
+ {label:'Tổng quan',icon:'chart',items:[['reports','chart','Tổng quan'],['cho-ky','edit','Chờ tôi ký'],['alerts','alert','Cảnh báo']]},
  {label:'Việc hằng ngày',icon:'clipboard',kind:'field',items:[['cong-viec','clipboard','Việc hằng ngày']]},
  {label:'Báo cáo công việc',icon:'document',items:[['bao-cao-cham-soc-vuon','sprout','Báo cáo chăm sóc vườn'],['bao-cao-cham-soc-buong','document','Báo cáo chăm sóc buồng'],['bao-cao-xuong','package','Xưởng đóng gói'],['bao-cao-bvtv','shield','BVTV']]},
  {label:'Dự thu',icon:'trending',items:[['forecast','trending','Dự thu'],['mau-day','calendar','Màu dây cắt bắp']]},

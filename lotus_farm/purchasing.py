@@ -2,6 +2,8 @@
 
 All approved orders use ERPNext Purchase Order, not a second stock ledger.
 """
+from urllib.parse import urlencode
+
 import frappe
 from frappe.utils import flt, nowdate, now_datetime, getdate
 from lotus_farm.warehouse import _company, _warehouse, _number
@@ -56,10 +58,33 @@ def _ensure_version(doc, modified):
 
 
 def check_submission(doc, method=None):
-    """Protect Lotus purchase orders even if users call Frappe's generic submit endpoint."""
-    if doc.name and getattr(frappe.local, "lotus_policy_approved", None) == doc.name:
-        return  # set only by procurement._approve_by_policy; request data cannot reach frappe.local
-    saved_state =frappe.db.get_value("Purchase Order", doc.name, "lotus_approval_status") if doc.name else None
+    """Purchase orders of the purchase-flow company are approved only by the signature of the approver named
+    when the order was sent (spec 003, FR-019/FR-020), however the submit arrives (Lotus, Desk, REST).
+    There is no approval by policy: every order waits for that signature."""
+    from lotus_farm.purchase_flow import enabled
+    if not enabled(doc.company):
+        _earlier_submission_rule(doc)
+        return
+    saved = frappe.db.get_value("Purchase Order", doc.name, "lotus_approval_status") if doc.name else None
+    if saved != PENDING or doc.get("lotus_approval_status") != PENDING:
+        frappe.throw("Đơn mua phải được gửi duyệt trước khi xác nhận.")
+    from lotus_farm import signing, signing_rules as sr
+    rows, _ = signing._rows(doc)
+    steps = sr.chain("purchase_order")["steps"]
+    content = signing.fingerprint(doc)
+    complete = (len(rows) == len(steps) and all(r.step_key == s["key"] for r, s in zip(rows, steps))
+                and all(r.state == sr.SIGNED and r.signed_at and r.content_hash == content for r in rows))
+    if not complete:
+        frappe.throw("Đơn mua chưa có đủ chữ ký của người duyệt được chỉ định.", frappe.PermissionError)
+    approver = rows[-1].assignee
+    if frappe.session.user not in (approver, "Administrator"):
+        frappe.throw("Chỉ người duyệt được chỉ định mới xác nhận được đơn này.", frappe.PermissionError)
+    signing._validate_person(approver, steps[-1], doc.company)
+
+
+def _earlier_submission_rule(doc):
+    """Companies outside the purchase flow keep the earlier rule: sent for approval, approved by an approver."""
+    saved_state = frappe.db.get_value("Purchase Order", doc.name, "lotus_approval_status") if doc.name else None
     if saved_state or doc.get("lotus_approval_status") or doc.get("lotus_purchase_mode"):
         if saved_state != PENDING or doc.get("lotus_approval_status") != PENDING:
             frappe.throw("Đơn mua phải được gửi duyệt trước khi xác nhận.")
@@ -125,10 +150,11 @@ def create_request(company, warehouse, expected_date, items, notes=""):
     if enabled(company):
         from lotus_farm.purchase_proposal import save_proposal
         rows = frappe.parse_json(items) if isinstance(items, str) else items
-        return save_proposal(company, dict(reason=notes or 'Đề xuất mua bổ sung vật tư', warehouse=warehouse,
+        # Kept for older callers; the reason is required like everywhere else (spec 003, FR-025): no default text.
+        return save_proposal(company, dict(reason=notes, warehouse=warehouse,
             items=[dict(r, item_code=r.get('item') or r.get('item_code'), schedule_date=expected_date) for r in rows]))
     if not frappe.has_permission("Material Request", "create") or not frappe.has_permission("Material Request", "submit"):
-        frappe.throw("Tài khoản chưa có quyền gửi đề nghị mua.", frappe.PermissionError)
+        frappe.throw("Tài khoản chưa có quyền gửi đề xuất mua.", frappe.PermissionError)
     from lotus_farm.warehouse_buying_lite import _date
     expected = _date(expected_date, "ngày giao dự kiến")
     if isinstance(items, str):
@@ -173,6 +199,10 @@ def request_approval(name, modified, approver=None):
         frappe.throw("Đơn đã được gửi duyệt.")
     if not doc.items or any(flt(r.qty) <= 0 or flt(r.rate) <= 0 for r in doc.items):
         frappe.throw("Cần có số lượng và đơn giá hợp lệ trước khi gửi duyệt.")
+    from lotus_farm.purchase_flow import BLOCKING, order_issues
+    blocking = [i["message"] for i in order_issues(doc) if i["code"] in BLOCKING]
+    if blocking:
+        frappe.throw("Đơn chưa gửi duyệt được: " + "; ".join(blocking[:5]))
     from lotus_farm import signing
     signing.start(doc, {"APPROVE": approver} if approver else {})
     doc.lotus_approval_status = PENDING
@@ -184,7 +214,8 @@ def request_approval(name, modified, approver=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def approve_order(name, modified, sign_token=None):
+def approve_order(name, modified):
+    """The named approver signs; the signature submits the order and stores its signed PDF (spec 003)."""
     access()
     from lotus_farm.controls import lock
     doc = _po(name)
@@ -193,18 +224,16 @@ def approve_order(name, modified, sign_token=None):
     _ensure_version(doc, modified)
     if not can_approve(doc):
         frappe.throw("Không được duyệt đơn này. Kiểm tra quyền và trạng thái phiếu.", frappe.PermissionError)
-    from lotus_farm.digital_signature import _assert_signer_qr
-    challenge = _assert_signer_qr(sign_token, name, modified)
-    if challenge:
-        challenge.db_set("used_at", now_datetime(), update_modified=False)
-    if _named(doc):
-        from lotus_farm import signing
-        signing.sign(doc, record=False)  # the approval event and signed PDF come from archive_approved_purchase_pdf
-    doc.lotus_approved_by = frappe.session.user
-    doc.lotus_approved_at = now_datetime()
-    doc.submit()
-    from lotus_farm.digital_signature import archive_approved_purchase_pdf
-    archive_approved_purchase_pdf(doc)
+    if not _named(doc):
+        frappe.throw("Đơn chưa có người duyệt được chỉ định. Trả về nháp rồi gửi duyệt lại cho người duyệt.")
+
+    def approve():
+        doc.lotus_approved_by = frappe.session.user
+        doc.lotus_approved_at = now_datetime()
+        doc.submit()
+
+    from lotus_farm import signing
+    signing.sign(doc, effect=approve)
     return dict(name=doc.name, status=_state(doc), docstatus=doc.docstatus)
 
 
@@ -245,12 +274,21 @@ def orders(company, status=None, search=None):
         out = _summary(doc)
         out.update(approval_status="Đã hủy" if doc.docstatus == 2 else
                    ((doc.get("lotus_approval_status") or DRAFT) if doc.docstatus == 0 else "Đã duyệt"),
-                   owner=doc.owner, amount=flt(doc.grand_total), can_approve=can_approve(doc))
-        if status and status != "Tất cả" and out["approval_status"] != status:
+                   owner=doc.owner, amount=flt(doc.grand_total), can_approve=can_approve(doc),
+                   billed_percent=flt(doc.per_billed), reject_reason=doc.get("lotus_reject_reason") or "")
+        # The filter uses the one status vocabulary (out["status"]); older callers may still pass an approval status.
+        if status and status != "Tất cả" and status not in (out["status"], out["approval_status"]):
             continue
         if search and str(search).casefold() not in (out["name"] + " " + out["supplier_name"]).casefold():
             continue
         result.append(out)
+    # Invoice progress comes from the order itself; money paid needs the payment ledgers (FR-039).
+    from lotus_farm.purchase_flow import order_paid
+    paid = order_paid([r["name"] for r in result if r["docstatus"] == 1])
+    for r in result:
+        amount = None if paid is None or r["docstatus"] != 1 else flt(paid.get(r["name"]))
+        r.update(paid_amount=amount, paid_percent=None if amount is None else
+                 (min(100.0, max(0.0, amount / r["amount"] * 100)) if r["amount"] else 0.0))
     return result
 
 
@@ -282,11 +320,26 @@ def detail(name):
                can_cancel=doc.docstatus == 1 and doc.status not in ("Closed", "Stopped", "Cancelled", "Completed")
                    and _approver() and doc.has_permission("cancel"),
                amount=flt(doc.grand_total), can_approve=can_approve(doc),
+               state=out["status"], billed_percent=flt(doc.per_billed),
+               warnings=_order_warnings(doc), print_url="/lotus/in-don-mua?" + urlencode({"name": doc.name}),
+               signed_copy=signing_copy(doc),
                signing=_signing_summary(doc),
                can_request_approval=doc.docstatus == 0
                 and (doc.get("lotus_approval_status") or DRAFT) in (DRAFT, REJECTED)
                 and doc.has_permission("write"))
     return out
+
+
+def _order_warnings(doc):
+    if doc.docstatus != 0:
+        return []
+    from lotus_farm.purchase_flow import order_issues
+    return order_issues(doc)
+
+
+def signing_copy(doc):
+    from lotus_farm import signing
+    return signing.copy_info(doc)
 
 
 def _signing_summary(doc):

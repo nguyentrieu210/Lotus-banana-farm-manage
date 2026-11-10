@@ -35,7 +35,7 @@ test('price comparison and the quote list share one purchase menu entry',()=>{
 
 test('comparison table preselects the cheapest supplier, asks a reason for another and creates orders',async()=>{
  const calls=[]
- const api=async(name,args)=>{calls.push({name,args});if(name==='compare')return {rows:[urea],suppliers:[{name:'KN',label:'Kết Nông'},{name:'NN',label:'Nguyễn Ngọc'}],requests:[{name:'MR-1',approved:true,state:'Đã duyệt'}]};if(name==='select_quotes')return {orders:['PO-1'],approved:['PO-1']}}
+ const api=async(name,args)=>{calls.push({name,args});if(name==='compare')return {rows:[urea],suppliers:[{name:'KN',label:'Kết Nông'},{name:'NN',label:'Nguyễn Ngọc'}],requests:[{name:'MR-1',approved:true,state:'Đã duyệt'}]};if(name==='select_quotes')return {orders:['PO-1'],sent:[]}}
  let created=null
  const view=mount({render:()=>h(Compare,{company:'C',canCreate:true,api,onCreated:r=>{created=r}})})
  await tick();await tick();await tick()
@@ -53,6 +53,6 @@ test('comparison table preselects the cheapest supplier, asks a reason for anoth
  createButton().click();await tick();await tick();await tick()
  const request=calls.find(c=>c.name==='select_quotes')
  assert.ok(request);assert.equal(request.args.selections[0].line,'Q2-1');assert.equal(request.args.selections[0].reason,'')
- assert.deepEqual(created,{orders:['PO-1'],approved:['PO-1']})
+ assert.deepEqual(created,{orders:['PO-1'],sent:[]},'orders wait for the director: no approval by policy')
  view.unmount()
 })

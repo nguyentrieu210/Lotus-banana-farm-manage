@@ -199,19 +199,19 @@ def quick_purchases(company):
 def needs(company):
     access(company)
     result = []
-    for r in frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase'}, fields=['name'], limit_page_length=0, order_by='transaction_date desc, name desc'):
-        d = document('Material Request', r.name, company)
-        # Material Request has no document total; the estimate is the sum of its lines.
-        ordered = sum(flt(x.ordered_qty) for x in d.items)
-        stage = ('Nháp' if (d.get('lotus_proposal_state') or 'Nháp') in ('Nháp', 'Trả lại') else 'Chờ ký') if d.docstatus == 0 else ('Đang mua' if ordered else 'Đã duyệt chờ mua')
-        if d.docstatus == 2:
-            stage = 'Đã hủy'
-        if d.docstatus == 1 and d.status == 'Received':
-            stage = 'Hoàn tất'
-        if d.docstatus == 1 and ordered:
-            from lotus_farm.purchase_flow import proposal_progress
-            stage = proposal_progress(d)['stage']
+    from lotus_farm import proposal_rules
+    from lotus_farm.purchase_flow import proposal_totals
+    names = frappe.get_list('Material Request', filters={'company': company, 'material_request_type': 'Purchase'}, pluck='name',
+                            limit_page_length=0, order_by='transaction_date desc, name desc')
+    totals = proposal_totals(names)
+    from lotus_farm.purchase_proposal import _waiting_for_me
+    mine = _waiting_for_me()
+    for name in names:
+        d = document('Material Request', name, company)
+        # One board stage for every screen (spec 003, FR-026). Material Request has no document total; the estimate is the sum of its lines.
+        stage = proposal_rules.stage(d.docstatus, d.get('lotus_proposal_state'), totals.get(name, {}).get('lines', []))
         result.append(dict(name=d.name, date=str(d.transaction_date), needed=str(d.schedule_date or ''), status=stage, stage=stage,
+                           waiting_me=d.docstatus == 0 and d.name in mine,
                            signing_state=d.get('lotus_proposal_state') or '', department=d.get('lotus_department') or '',
                            docstatus=d.docstatus, amount=sum(flt(x.get('amount')) or flt(x.qty) * flt(x.rate) for x in d.items),
                            items=[dict(name=x.name, item=x.item_code, item_name=x.item_name, qty=flt(x.qty), uom=x.uom,
@@ -277,7 +277,8 @@ def compare(company, request=None):
     for name in sorted({g['request'] for g in groups.values() if g['request']}):
         d = document('Material Request', name, company)
         requests[name] = dict(name=name, approved=d.docstatus == 1, state='Đã duyệt' if d.docstatus == 1 else (d.get('lotus_proposal_state') or 'Nháp'),
-                              lines={x.name: max(0, flt(x.stock_qty) - flt(x.ordered_qty)) for x in d.items})
+                              lines={x.name: max(0, flt(x.stock_qty) - flt(x.ordered_qty)) for x in d.items},
+                              selected={x.name: (x.get('lotus_selected_quote_item') or '', x.get('lotus_selection_reason') or '') for x in d.items})
     rows = []
     for group in groups.values():
         priced = [o for o in group['offers'] if o['unit_cost'] is not None]
@@ -285,6 +286,10 @@ def compare(company, request=None):
         info = requests.get(group['request'])
         group['need_qty'] = info['lines'].get(group['request_line']) if info else None
         group['approved'] = bool(info and info['approved'])
+        # The quote line chosen earlier for this proposal line (choose_quote / select_quotes), when it is still on offer.
+        chosen, why = (info['selected'].get(group['request_line']) if info else None) or ('', '')
+        group['selected_line'] = chosen if any(o['line'] == chosen for o in group['offers']) else ''
+        group['selected_reason'] = why if group['selected_line'] else ''
         rows.append(group)
     rows.sort(key=lambda g: (g['request'], g['item_name'] or ''))
     return dict(rows=rows, suppliers=[dict(name=k, label=v) for k, v in sorted(suppliers.items(), key=lambda s: s[1])],
@@ -317,6 +322,101 @@ def save_quotation(company, data, client_key, name=None, modified=None):
     return dict(name=d.name, modified=str(d.modified))
 
 
+def _remember_choice(request_item, quotation, quotation_item, reason):
+    """The chosen quote line stays on the proposal line (outside the signed content), so an order made from the
+    proposal later carries the supplier and the price (spec 003, FR-032)."""
+    if not frappe.get_meta('Material Request Item').has_field('lotus_selected_quote'):
+        return
+    frappe.db.set_value('Material Request Item', request_item, dict(
+        lotus_selected_quote=quotation or None, lotus_selected_quote_item=quotation_item or None,
+        lotus_selection_reason=(str(reason or '').strip() or 'Giá thấp nhất trong các báo giá')[:500] if quotation else None), update_modified=False)
+
+
+@frappe.whitelist(methods=['POST'])
+def choose_quote(company, request, request_item, quotation=None, quotation_item=None, reason=None):
+    """Chọn báo giá cho một dòng đề xuất (spec 003, FR-033): a reason is required unless it is the cheapest offer.
+    Without a quotation the choice is cleared."""
+    access(company)
+    if not frappe.has_permission('Purchase Order', 'create'):
+        frappe.throw('Chỉ người mua hàng được chọn báo giá.', frappe.PermissionError)
+    lock('Material Request', request)
+    source = document('Material Request', request, company)
+    line = next((r for r in source.items if r.name == request_item), None)
+    if source.docstatus == 2 or source.material_request_type != 'Purchase' or not line:
+        frappe.throw('Dòng đề xuất mua không hợp lệ.')
+    if not quotation:
+        _remember_choice(line.name, None, None, None)
+        return dict(request=request, request_item=line.name, quotation='', quotation_item='')
+    quote = document('Supplier Quotation', quotation, company)
+    row = next((r for r in quote.items if r.name == quotation_item), None)
+    if quote.docstatus == 2 or quote.valid_till and getdate(quote.valid_till) < getdate(nowdate()):
+        frappe.throw('Báo giá đã hủy hoặc hết hiệu lực. So sánh lại.')
+    if not row or row.item_code != line.item_code or (row.material_request_item and row.material_request_item != line.name) or flt(row.rate) <= 0:
+        frappe.throw('Dòng báo giá không khớp dòng đề xuất hoặc chưa có đơn giá.')
+    cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, row.get('lotus_line_vat') or 'KCT', row.get('lotus_line_freight') or 0)['unit_cost']
+    offers = _live_offers(company).get(_offer_key(dict(request_line=line.name, item=line.item_code)), [])
+    reason = str(reason or '').strip()
+    if rules.needs_reason(cost, offers + [cost]) and len(reason) < 3:
+        frappe.throw('Ghi lý do chọn ' + (row.item_name or row.item_code) + ' vì không phải giá thấp nhất.')
+    _remember_choice(line.name, quote.name, row.name, reason)
+    return dict(request=request, request_item=line.name, quotation=quote.name, quotation_item=row.name)
+
+
+def _orders_using(quotation):
+    return frappe.db.sql('''select distinct po.name from `tabPurchase Order Item` poi join `tabPurchase Order` po on po.name = poi.parent
+        where poi.supplier_quotation = %s and po.docstatus < 2''', quotation, pluck=True)
+
+
+@frappe.whitelist()
+def quotation(name):
+    """One quotation as the form edits it (spec 003, FR-034)."""
+    d = document('Supplier Quotation', name)
+    used = _orders_using(d.name)
+    return dict(name=d.name, modified=str(d.modified), docstatus=d.docstatus, company=d.company, supplier=d.supplier,
+                date=str(d.transaction_date), valid_till=str(d.valid_till or ''), expected_date=str(d.get('lotus_delivery_date') or ''),
+                warehouse=next((r.warehouse for r in d.items if r.warehouse), ''), orders=used,
+                can_edit=d.docstatus == 0 and d.has_permission('write'), can_cancel=d.docstatus < 2 and not used and d.has_permission('write'),
+                items=[dict(name=r.name, item=r.item_code, item_name=r.item_name, qty=flt(r.qty), uom=r.uom, rate=flt(r.rate), warehouse=r.warehouse,
+                            kind=r.get('lotus_purchase_kind'), vat_code=r.get('lotus_line_vat') or 'KCT', freight=flt(r.get('lotus_line_freight')),
+                            material_request=r.material_request or '', material_request_item=r.material_request_item or '') for r in d.items])
+
+
+@frappe.whitelist(methods=['POST'])
+def cancel_quotation(name, modified, reason=None, amend=0):
+    """Hủy báo giá chưa dùng (spec 003, FR-034). A draft is removed; a confirmed quote is cancelled with a reason.
+    amend=1 returns a new draft copy to correct (a confirmed quote is never edited in place)."""
+    d = document('Supplier Quotation', name)
+    lock('Supplier Quotation', name)
+    d.reload()
+    if d.docstatus == 2 or str(d.modified) != str(modified):
+        frappe.throw('Báo giá đã thay đổi. Tải lại.')
+    d.check_permission('write')
+    used = _orders_using(d.name)
+    if used:
+        frappe.throw('Báo giá đang dùng ở đơn mua ' + ', '.join(used) + '. Hủy hoặc xóa đơn đó trước.')
+    copy = None
+    if frappe.utils.cint(amend) and d.docstatus == 1:
+        copy = frappe.copy_doc(d)
+        copy.update(dict(amended_from=d.name, docstatus=0, lotus_procurement_key=None, lotus_procurement_hash=None))
+    if frappe.get_meta('Material Request Item').has_field('lotus_selected_quote'):
+        for line in frappe.get_all('Material Request Item', filters={'lotus_selected_quote': d.name}, pluck='name'):
+            _remember_choice(line, None, None, None)
+    if d.docstatus == 0:
+        frappe.delete_doc('Supplier Quotation', d.name, ignore_permissions=True)
+        return dict(name=name, deleted=True)
+    reason = str(reason or '').strip()
+    if not copy and len(reason) < 3:
+        frappe.throw('Ghi lý do hủy báo giá.')
+    d.flags.ignore_permissions = True
+    d.cancel()
+    d.add_comment('Comment', 'Hủy báo giá: ' + (reason or 'sửa lại báo giá'))
+    if copy:
+        copy.flags.ignore_permissions = True
+        copy.insert()
+        return dict(name=copy.name, modified=str(copy.modified), amended_from=name)
+    return dict(name=name, cancelled=True)
+
+
 @frappe.whitelist(methods=['POST'])
 def confirm_quotation(name, modified):
     d = document('Supplier Quotation', name)
@@ -330,7 +430,9 @@ def confirm_quotation(name, modified):
 
 
 @frappe.whitelist(methods=['POST'])
-def select_quotes(company, selections, client_key):
+def select_quotes(company, selections, client_key, approver=None):
+    """Draft orders from the chosen quote lines, one per supplier. Every order waits for the named approver's
+    signature (spec 003, FR-020); with `approver` the orders are sent to them at once."""
     access(company)
     selections = parse(selections)
     if not isinstance(selections, list) or not 1 <= len(selections) <= 100:
@@ -345,7 +447,7 @@ def select_quotes(company, selections, client_key):
         if any(r.lotus_procurement_hash != fingerprint for r in existing):
             frappe.throw('Lần chọn báo giá này đã dùng với nội dung khác.')
         return dict(orders=[r.name for r in existing])
-    groups, seen, drafts, cheapest = {}, set(), {}, {}
+    groups, seen, drafts = {}, set(), {}
     offers = _live_offers(company)
     for chosen in selections:
         if chosen['line'] in seen:
@@ -358,7 +460,7 @@ def select_quotes(company, selections, client_key):
         if not row or flt(row.rate) <= 0:
             frappe.throw('Dòng báo giá được chọn phải có đơn giá.')
         if row.material_request and frappe.db.get_value('Material Request', row.material_request, 'docstatus') != 1:
-            frappe.throw('Đề nghị ' + row.material_request + ' chưa duyệt xong, chưa tạo đơn được.')
+            frappe.throw('Đề xuất ' + row.material_request + ' chưa duyệt xong, chưa tạo đơn được.')
         cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, row.get('lotus_line_vat') or 'KCT', row.get('lotus_line_freight') or 0)['unit_cost']
         key = _offer_key(dict(request_line=row.material_request_item, item=row.item_code))
         best = not rules.needs_reason(cost, offers.get(key, []) + [cost])
@@ -367,10 +469,11 @@ def select_quotes(company, selections, client_key):
             frappe.throw('Ghi lý do chọn ' + (row.item_name or row.item_code) + ' vì không phải giá thấp nhất.')
         if quote.docstatus == 0:
             drafts[quote.name] = quote  # confirmed together with the order
-        cheapest[chosen['line']] = best and bool(row.material_request)
         qty = flt(chosen.get('qty') or row.qty)
         if qty <= 0 or qty > flt(row.qty):
             frappe.throw('Số lượng chọn vượt báo giá.')
+        if row.material_request_item:
+            _remember_choice(row.material_request_item, quote.name, row.name, reason)
         groups.setdefault(quote.supplier, []).append(dict(item=row.item_code, qty=qty, rate=row.rate, uom=row.uom,
             warehouse=row.warehouse, expected_date=str(quote.get('lotus_delivery_date') or nowdate()),
             material_request=row.material_request, material_request_item=row.material_request_item,
@@ -394,37 +497,20 @@ def select_quotes(company, selections, client_key):
                 pair=(source.name,original.name)
                 requested[pair]=requested.get(pair,0)+flt(row['qty'])*factor
                 if requested[pair]>flt(original.stock_qty)-flt(original.ordered_qty)+.000001:
-                    frappe.throw('Tổng các nhà cung cấp được chọn vượt lượng còn mua của đề nghị '+source.name)
-    approved = []
+                    frappe.throw('Tổng các nhà cung cấp được chọn vượt lượng còn mua của đề xuất '+source.name)
+    sent = []
     for supplier, rows in groups.items():
         answer = save_order(company, dict(supplier=supplier, warehouse=rows[0]['warehouse'], expected_date=rows[0]['expected_date'], items=rows))
         d = frappe.get_doc('Purchase Order', answer['name'])
         d.lotus_procurement_key = rules.digest([frappe.session.user, 'quote-selection', client_key])+rules.digest(supplier)[:12]
         d.lotus_procurement_hash = fingerprint
         d.save()
-        if all(cheapest.get(r['supplier_quotation_item']) for r in rows):
-            _approve_by_policy(d, sorted({r['material_request'] for r in rows}))
-            approved.append(d.name)
+        if approver:
+            from lotus_farm.purchasing import request_approval
+            request_approval(d.name, str(d.modified), approver)
+            sent.append(d.name)
         orders.append(d.name)
-    return dict(orders=orders, approved=approved)
-
-
-def _approve_by_policy(doc, requests):
-    """Every line comes from an approved request and is the cheapest offer: the order needs no second approval."""
-    from frappe.utils import now_datetime
-    from lotus_farm.purchasing import PENDING
-    doc.check_permission('submit')
-    now = now_datetime()
-    doc.update(dict(lotus_approval_status=PENDING, lotus_requested_by=frappe.session.user, lotus_requested_at=now,
-                    lotus_approved_by=frappe.session.user, lotus_approved_at=now))
-    doc.save()
-    frappe.local.lotus_policy_approved = doc.name  # read by purchasing.check_submission
-    try:
-        doc.submit()
-    finally:
-        frappe.local.lotus_policy_approved = None
-    doc.add_comment('Comment', 'Tự duyệt theo quy định: theo đề nghị ' + ', '.join(requests)
-                    + ' đã duyệt và chọn giá thấp nhất trong các báo giá.')
+    return dict(orders=orders, sent=sent)
 
 
 @frappe.whitelist()
@@ -434,7 +520,7 @@ def chain(name):
     for proposal in sorted({r.material_request for r in order.items if r.material_request}):
         if frappe.has_permission('Material Request', 'read', proposal):
             source = document('Material Request', proposal, order.company)
-            result['proposals'].append(dict(name=source.name, docstatus=source.docstatus))
+            result['proposals'].append(dict(doctype='Material Request', name=source.name, docstatus=source.docstatus))
     result['progress'] = [dict(item_name=r.item_name, uom=r.uom, qty=flt(r.qty), ordered_qty=flt(r.qty),
         received_qty=flt(r.received_qty), remaining_receive_qty=max(0, flt(r.qty)-flt(r.received_qty))) for r in order.items]
     refs = [('Purchase Receipt', 'Purchase Receipt Item', 'purchase_order'), ('Purchase Invoice', 'Purchase Invoice Item', 'purchase_order')]
@@ -444,7 +530,7 @@ def chain(name):
         names = frappe.get_all(child, filters={link: name}, pluck='parent', distinct=True, limit_page_length=0)
         for n in names:
             d = document(dt, n, order.company)
-            result['receipts' if dt == 'Purchase Receipt' else 'invoices'].append(dict(name=d.name, date=str(d.posting_date), docstatus=d.docstatus,
+            result['receipts' if dt == 'Purchase Receipt' else 'invoices'].append(dict(doctype=dt, name=d.name, date=str(d.posting_date), docstatus=d.docstatus,
                 amount=flt(d.base_grand_total), is_return=d.is_return, modified=str(d.modified),
                 can_submit=d.docstatus == 0 and d.has_permission('submit')))
     from lotus_farm.finance import setup
@@ -453,7 +539,9 @@ def chain(name):
         names = frappe.get_all('Payment Entry Reference', filters={'reference_name': ['in', [name, *invoices]], 'reference_doctype': ['in', ['Purchase Order', 'Purchase Invoice']]}, pluck='parent', distinct=True, limit_page_length=0)
         for n in names:
             d = document('Payment Entry', n, order.company)
-            result['payments'].append(dict(name=n, date=str(d.posting_date), docstatus=d.docstatus, amount=flt(d.paid_amount)))
+            if d.docstatus == 2:
+                continue  # a cancelled payment is not progress
+            result['payments'].append(dict(doctype='Payment Entry', name=n, date=str(d.posting_date), docstatus=d.docstatus, amount=flt(d.paid_amount)))
         from lotus_farm.purchase_funding import list_funding
         result['funding'] = [f for f in list_funding(order.company) if any(a['reference_name'] in [name, *invoices] for a in f['allocations'])]
     return result
@@ -483,93 +571,32 @@ def billing_source(company, name, kind='invoice'):
 
 @frappe.whitelist(methods=['POST'])
 def invoice_receipt(name, bill_no, bill_date, posting_date, client_key, quantities=None, due_date=None, invoice_series=None, cqt_code=None, invoice_total=None, invoice_vat=None):
-    """Partial invoices stay linked to the actual PR lines. Old header-VAT API is unchanged."""
-    from lotus_farm.finance import setup, posting, payments
-    from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
-    setup.require_post()
-    setup.require_enabled()
-    source = document('Purchase Receipt', name, setup.company())
-    lock('Company', source.company)
-    lock('Purchase Receipt', name)
+    """Hóa đơn cho một phiếu nhận (lớp bọc của finance.supplier_invoice.create, spec 003 R16). quantities: {dòng phiếu nhận: số lượng}."""
+    from lotus_farm.finance import supplier_invoice
     selected = parse(quantities) if quantities else None
-    payload = [name, bill_no, bill_date, posting_date, selected, due_date, invoice_series, cqt_code, invoice_total, invoice_vat]
-    key, fingerprint, old = idempotent('Purchase Invoice', client_key, payload, source.company)
-    if old:
-        return dict(invoice=old)
-    if source.docstatus != 1 or source.is_return or not str(bill_no or '').strip():
-        frappe.throw('Chọn phiếu nhận đã xác nhận và nhập số hóa đơn.')
-    payments._duplicate(source.supplier, bill_no, series=invoice_series)
-    setup.check_cutover(posting_date)
-    posting.check_open(source.company, posting_date, 'Purchase Invoice')
-    pi = make_purchase_invoice(name)
-    original = {r.name: r for r in source.items}
-    kept = []
-    for row in pi.items:
-        if selected is not None and row.pr_detail not in selected:
-            continue
-        qty = flt(selected[row.pr_detail]) if selected is not None else flt(row.qty)
-        if qty <= 0 or qty > flt(row.qty)+.000001:
-            frappe.throw('Số lượng hóa đơn vượt phần chưa lập hóa đơn.')
-        row.qty = qty
-        row.stock_qty = qty*flt(row.conversion_factor)
-        src = original[row.pr_detail]
-        row.lotus_line_freight = flt(src.get('lotus_line_freight'))*qty/flt(src.qty)
-        if item_kind(frappe.get_cached_doc('Item', row.item_code), src.get('lotus_purchase_kind')) == 'Service':
-            row.expense_account = setup.mapping()['overhead_service'] if row.get('lotus_farm') else setup.mapping()['admin_expense']
-        kept.append(row)
-    if not kept or selected is not None and {r.pr_detail for r in kept} != set(selected):
-        frappe.throw('Dòng nghiệm thu đã thay đổi. Tải lại.')
-    pi.set('items', kept)
-    pi.update(dict(bill_no=str(bill_no).strip(), bill_date=bill_date, posting_date=posting_date, set_posting_time=1,
-        due_date=payments._due(bill_date, due_date), credit_to=setup.mapping()['payable_supplier'], update_stock=0,
-        lotus_procurement_key=key, lotus_procurement_hash=fingerprint, allocate_advances_automatically=1))
-    apply_line_taxes(pi)
-    pi.set_missing_values()
-    pi.calculate_taxes_and_totals()
-    _match_invoice_total(pi, invoice_total)
-    if pi.meta.has_field('lotus_einvoice_series'):
-        pi.update(dict(lotus_einvoice_series=str(invoice_series or '').strip() or None, lotus_cqt_code=str(cqt_code or '').strip() or None,
-                       lotus_invoice_total=flt(invoice_total) or None, lotus_invoice_vat=flt(invoice_vat) or None))
-    pi.set_advances()
-    pi.set('payment_schedule', [])
-    pi.insert()
-    pi.submit()
-    posting.record('Purchase Invoice', pi.name, 'Purchase Invoice', pi, amount=pi.grand_total, source_hash=name)
-    return dict(invoice=pi.name, amount=pi.grand_total)
+    lines = [dict(source_item=line, qty=qty) for line, qty in selected.items()] if selected is not None else None
+    result = supplier_invoice.create(receipts=[name], lines=lines, bill_no=bill_no, series=invoice_series, tax_code=cqt_code, bill_date=bill_date,
+                                     due_date=due_date, posting_date=posting_date, printed_total=invoice_total, printed_vat=invoice_vat, client_key=client_key)
+    return dict(invoice=result['invoice'], amount=result['amount'])
 
 
 @frappe.whitelist(methods=['POST'])
 def supplier_payment(company, reference_type, reference_name, amount, mode, posting_date, signers, client_key, reference_no=None):
-    """Native PE supports both PO advances and invoice settlement, with one reservation lock."""
-    from lotus_farm.finance import setup, posting, payments
-    from lotus_farm.purchase_funding import _remaining_source
-    from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
-    setup.require_post()
-    setup.require_enabled()
+    """Chi cho một hóa đơn hoặc tạm ứng theo một đơn mua (lớp bọc của finance.supplier_payment.prepare, spec 003 R19)."""
+    from lotus_farm.finance import setup, supplier_payment as core
     if company != setup.company() or reference_type not in ('Purchase Order', 'Purchase Invoice'):
         frappe.throw('Nguồn thanh toán không hợp lệ.')
-    d = document(reference_type, reference_name, company)
-    key, fingerprint, old = idempotent('Payment Entry', client_key, [reference_type, reference_name, amount, mode, posting_date, reference_no], company)
-    if old:
-        return dict(voucher=old, doctype='Payment Entry')
-    lock(reference_type, reference_name)
-    if d.docstatus != 1 or d.get('is_return') or mode not in ('cash', 'bank') or mode == 'bank' and not reference_no:
-        frappe.throw('Chứng từ hoặc phương thức thanh toán không hợp lệ. Chuyển khoản cần số giao dịch.')
-    if flt(amount) <= 0 or flt(amount) > _remaining_source(reference_type, reference_name)+.5:
-        frappe.throw('Số chi vượt phần còn trả sau các phiếu chờ ký.')
-    setup.check_cutover(posting_date)
-    posting.check_open(company, posting_date, 'Payment Entry')
-    pe = get_payment_entry(reference_type, reference_name, party_amount=flt(amount), bank_account=setup.mapping()[mode], bank_amount=flt(amount))
-    pe.posting_date = posting_date
-    pe.reference_no, pe.reference_date = reference_no or None, posting_date if reference_no else None
-    pe.lotus_procurement_key, pe.lotus_procurement_hash = key, fingerprint
-    pe.insert()
-    posting.record('Payment Entry', pe.name, 'Supplier Payment', pe, amount=pe.paid_amount, source_hash=reference_name)
-    return payments.start_signing(pe, signers)
+    if flt(amount) <= 0:
+        frappe.throw('Số chi phải lớn hơn 0.')
+    result = core.prepare(allocations=[dict(doctype=reference_type, name=reference_name, amount=amount)], mode=mode, posting_date=posting_date,
+                          signers=signers, client_key=client_key, reference_no=reference_no)
+    return result if result.get('signing') else dict(voucher=result['voucher'], doctype=result['doctype'])
 
 
 @frappe.whitelist(methods=['POST'])
-def return_receipt(name, posting_date, quantities, client_key):
+def return_receipt(name, posting_date, quantities, client_key, post=0, reason=None):
+    """Trả hàng cho NCC (spec 003, FR-044). post=1 posts the return at once when the user may post receipts.
+    needs_credit_note: the received goods already have a supplier invoice, so an adjustment invoice must follow."""
     from erpnext.controllers.sales_and_purchase_return import make_return_doc
     source = document('Purchase Receipt', name)
     quantities = parse(quantities)
@@ -582,7 +609,7 @@ def return_receipt(name, posting_date, quantities, client_key):
         document('Purchase Receipt', old.name, source.company)
         if old.lotus_payload_hash != fingerprint:
             frappe.throw('Yêu cầu trả hàng đã dùng với nội dung khác.')
-        return dict(name=old.name)
+        return _returned(frappe.get_doc('Purchase Receipt', old.name), source)
     if not client_key or source.docstatus != 1 or source.is_return or not isinstance(quantities, dict) or not quantities:
         frappe.throw('Chọn phiếu nhận và số lượng trả hợp lệ.')
     d = make_return_doc('Purchase Receipt', name)
@@ -602,9 +629,18 @@ def return_receipt(name, posting_date, quantities, client_key):
     d.set('items', kept)
     apply_line_taxes(d)
     d.posting_date = posting_date
+    if str(reason or '').strip():
+        d.remarks = 'Lý do trả hàng: ' + str(reason).strip()[:400]
     d.lotus_client_key, d.lotus_payload_hash = key, fingerprint
     d.insert()
-    return dict(name=d.name)
+    if frappe.utils.cint(post) and d.has_permission('submit'):
+        d.submit()  # ERPNext checks what is left to return and reverses the stock ledger
+    return _returned(d, source)
+
+
+def _returned(d, source):
+    billed = d.docstatus == 1 and bool(frappe.db.exists('Purchase Invoice Item', {'purchase_receipt': source.name, 'docstatus': 1}))
+    return dict(name=d.name, docstatus=d.docstatus, modified=str(d.modified), return_against=source.name, needs_credit_note=billed)
 
 
 def native_guard(doc, method=None):
@@ -654,23 +690,29 @@ def receipts(company):
     access(company)
     if not frappe.has_permission('Purchase Receipt', 'read'):
         return []
-    return [dict(name=d.name, supplier=d.supplier, date=str(d.posting_date), amount=flt(d.base_grand_total),
-        docstatus=d.docstatus, status={0:'Nháp',1:'Đã xác nhận',2:'Đã hủy'}[d.docstatus], modified=str(d.modified))
-        for d in frappe.get_list('Purchase Receipt', filters={'company':company},
-            fields=['name','supplier','posting_date','base_grand_total','docstatus','modified'], limit_page_length=0, order_by='posting_date desc, name desc')]
+    from lotus_farm import purchase_status
+    rows = frappe.get_list('Purchase Receipt', filters={'company':company},
+        fields=['name','supplier','supplier_name','posting_date','base_grand_total','docstatus','modified','is_return','per_billed','return_against'],
+        limit_page_length=0, order_by='posting_date desc, name desc')
+    return [dict(name=d.name, supplier=d.supplier, supplier_name=d.supplier_name or d.supplier, date=str(d.posting_date), amount=flt(d.base_grand_total),
+        docstatus=d.docstatus, status=purchase_status.receipt_state(d.docstatus), modified=str(d.modified), is_return=d.is_return,
+        kind='Trả hàng' if d.is_return else 'Nhập theo đơn', return_against=d.return_against or '',
+        billing=purchase_status.billing_state(d.per_billed) if d.docstatus == 1 and not d.is_return else '') for d in rows]
 
 
 @frappe.whitelist()
 def receipt(name):
     d = document('Purchase Receipt', name)
-    from lotus_farm.warehouse_planning import receipt_totals
-    return dict(name=d.name, company=d.company, supplier=d.supplier, date=str(d.posting_date), docstatus=d.docstatus,
-        **receipt_totals(d),
-        is_return=d.is_return, modified=str(d.modified), can_submit=d.docstatus==0 and d.has_permission('submit'),
-        can_cancel=d.docstatus==1 and d.has_permission('cancel'),
+    from lotus_farm.warehouse_planning import receipt_totals, receipt_extras
+    return dict(name=d.name, doctype=d.doctype, company=d.company, supplier=d.supplier,
+        supplier_name=d.supplier_name or d.supplier, date=str(d.posting_date), docstatus=d.docstatus,
+        currency=frappe.get_cached_value('Company', d.company, 'default_currency'),
+        **receipt_totals(d), **receipt_extras(d), modified=str(d.modified),
         items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,qty=flt(r.qty),uom=r.uom,
             rate=flt(r.rate),amount=flt(r.amount),kind=r.get('lotus_purchase_kind'),warehouse=r.warehouse,
             vat_code=r.get('lotus_line_vat'),freight=flt(r.get('lotus_line_freight')),valuation_rate=flt(r.valuation_rate),
+            # Already sent back to the supplier, in the line's own unit: what a new return may still take.
+            returned_qty=flt(r.get('returned_qty'))/(flt(r.conversion_factor) or 1),
             order=r.purchase_order) for r in d.items])
 
 
@@ -702,4 +744,6 @@ def voucher(doctype, name):
         result['references'] = [dict(name=r.reference_name, type='orders' if r.reference_doctype == 'Purchase Order' else 'invoices')
             for r in d.references if r.reference_doctype in ('Purchase Order', 'Purchase Invoice')
             and frappe.has_permission(r.reference_doctype, 'read', r.reference_name)]
+    from lotus_farm.finance import posting
+    result['posting'] = frappe.db.get_value(posting.POSTING, {'voucher_type': doctype, 'voucher_name': name, 'state': ['!=', 'Reversed']}) or ''
     return result

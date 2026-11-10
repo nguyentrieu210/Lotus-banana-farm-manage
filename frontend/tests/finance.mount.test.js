@@ -83,18 +83,25 @@ test('asset workspace remembers its section in the URL and follows back navigati
 
 test('receipts of one supplier become one invoice; mixing suppliers is not allowed',async()=>{
  calls.length=0
- routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'payments.make_goods_invoice']:{invoice:'PINV-1',amount:1500000},[F+'sales.vat_options']:vat}
+ routes={[F+'reports.overview']:overview(),[F+'reports.pending']:pending,[F+'sales.vat_options']:vat,
+  // Tài chính enters the invoice in the shared form and posts through the one core (spec 003, US5).
+  [F+'supplier_invoice.source']:{supplier:'S1',supplier_name:'NCC 1',vat_in_cost:true,mua_nhanh:false,files:[],lines:[{source_doctype:'Purchase Receipt',source_name:'PR-1',source_item:'L1',item:'PHAN',item_name:'Phân',qty:10,uom:'Kg',rate:150000,order_rate:150000,vat_code:'KCT',freight:0,order:'',fixed:false}]},
+  [F+'supplier_invoice.create']:{invoice:'PINV-1',amount:1500000,warnings:[]}}
  const view=await open('/tai-chinh?tab=pending')
  const pick=async name=>{view.root.querySelector('.ag-row[row-id="'+name+'"] [role=checkbox][aria-label="Chọn '+name+'"]').click();for(let i=0;i<3;i++)await tick()}
  await pick('PR-1');await pick('PR-2')
  assert.ok(button(view.root,'Lập hóa đơn (2)').disabled,'two suppliers cannot share one invoice')
  await pick('PR-2')
- const make=button(view.root,'Lập hóa đơn (1)');assert.ok(!make.disabled);make.click();await tick()
+ const make=button(view.root,'Lập hóa đơn (1)');assert.ok(!make.disabled);make.click();for(let i=0;i<4;i++)await tick()
  const modal=document.body.querySelector('dialog[open] form')
- const input=modal.querySelector('input');input.value='HD-001';input.dispatchEvent(new window.Event('input'));await tick()
+ const label=[...modal.querySelectorAll('label')].find(l=>l.textContent.trim().startsWith('Số hóa đơn'))
+ const input=document.getElementById(label.getAttribute('for'));input.value='HD-001';input.dispatchEvent(new window.Event('input'));await tick()
  modal.dispatchEvent(new window.Event('submit',{cancelable:true}));for(let i=0;i<4;i++)await tick()
- const sent=calls.find(c=>c.method===F+'payments.make_goods_invoice')
- assert.deepEqual([JSON.parse(sent.args.receipts),sent.args.bill_no,sent.args.vat_code],[['PR-1'],'HD-001','KCT'])
+ const sent=calls.find(c=>c.method===F+'supplier_invoice.create')
+ const args=typeof sent.args.receipts==='string'?JSON.parse(sent.args.receipts):sent.args.receipts
+ const lines=typeof sent.args.lines==='string'?JSON.parse(sent.args.lines):sent.args.lines
+ assert.deepEqual([args,sent.args.bill_no,lines[0].source_item,lines[0].qty,lines[0].vat_code],[['PR-1'],'HD-001','L1',10,'KCT'])
+ assert.ok(!calls.some(c=>c.method===F+'payments.make_goods_invoice'),'no separate single-rate invoice path')
  view.unmount()
 })
 

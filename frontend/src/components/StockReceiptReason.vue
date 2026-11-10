@@ -41,5 +41,5 @@ defineExpose({validate})
   <LotusField v-if="!fixed" :mobile="mobile" label="Lý do nhập kho" :model-value="reason" :options="mobile?[{value:'',label:'Chọn lý do…'},...options.reasons]:options.reasons" :searchable="false" required @update:model-value="emit('update:reason',$event)"/>
   <LotusField v-if="options.reasons.find(r=>r.value===reason)?.supplier" :mobile="mobile" label="Nhà cung cấp" :model-value="supplier" :options="(options.suppliers||[]).map(r=>({value:r.name,label:r.supplier_name||r.name}))" required @update:model-value="emit('update:supplier',$event)"/>
  </component>
- <p v-if="!fixed&&options?.reasons.find(r=>r.value===reason)?.supplier" class="lotus-form-note">Hàng mua cần giá cho từng dòng. Đã có đơn mua thì dùng <b>Nhận hàng theo đơn mua</b> để đơn và đề nghị được cập nhật.</p>
+ <p v-if="!fixed&&options?.reasons.find(r=>r.value===reason)?.supplier" class="lotus-form-note">Hàng mua cần giá cho từng dòng. Đã có đơn mua thì dùng <b>Nhận hàng theo đơn mua</b> để đơn và đề xuất được cập nhật.</p>
 </template>

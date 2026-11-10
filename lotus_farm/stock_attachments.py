@@ -11,7 +11,8 @@ from lotus_farm.warehouse import _stock_doc
 
 STOCK_DOCTYPES = ('Stock Entry', 'Stock Reconciliation')
 # Purchasing documents only need read access to the document itself (buyers may not read stock entries).
-PURCHASE_DOCTYPES = ('Purchase Receipt', 'Purchase Order', 'Supplier Quotation', 'Material Request')
+PURCHASE_DOCTYPES = ('Purchase Receipt', 'Purchase Order', 'Supplier Quotation', 'Material Request',
+                     'Purchase Invoice', 'Payment Entry', 'Journal Entry')
 DOCTYPES = STOCK_DOCTYPES + PURCHASE_DOCTYPES
 EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.pdf'}
 MAX_FILES = 20
@@ -48,7 +49,23 @@ def files(doctype, name):
 @frappe.whitelist(methods=['POST'])
 def attach(doctype, name, file_url):
     doc = _document(doctype, name)
-    file = frappe.get_doc('File', {'file_url': file_url})
+    attach_uploaded(doc, file_url)
+    return _rows(doctype, doc.name)
+
+
+def attach_uploaded(doc, file_url):
+    """Attach one private file the caller has just uploaded to a document they may read."""
+    doctype, name = doc.doctype, doc.name
+    rows = frappe.get_all('File', filters={'file_url': file_url}, fields=['name', 'owner', 'attached_to_doctype', 'attached_to_name'],
+                          order_by='creation desc') if file_url else []
+    if not rows:
+        frappe.throw('Không tìm thấy tệp vừa tải lên. Tải lại tệp.')
+    # Identical content uploaded twice shares one URL: take the row already on this document, else the caller's own upload.
+    here = [r for r in rows if (r.attached_to_doctype, r.attached_to_name) == (doctype, name)]
+    own = [r for r in rows if r.owner == frappe.session.user and not r.attached_to_name]
+    file = frappe.get_doc('File', (here or own or rows)[0].name)
+    if (file.attached_to_doctype, file.attached_to_name) == (doctype, name):
+        return file
     if file.owner != frappe.session.user:
         frappe.throw('Chỉ đính kèm được tệp do chính bạn vừa tải lên.', frappe.PermissionError)
     if file.attached_to_name and (file.attached_to_doctype, file.attached_to_name) != (doctype, name):
@@ -59,7 +76,7 @@ def attach(doctype, name, file_url):
         frappe.throw(f'Mỗi phiếu đính kèm tối đa {MAX_FILES} tệp.')
     file.attached_to_doctype, file.attached_to_name, file.is_private = doctype, doc.name, 1
     file.save(ignore_permissions=True)
-    return _rows(doctype, doc.name)
+    return file
 
 
 @frappe.whitelist(methods=['POST'])

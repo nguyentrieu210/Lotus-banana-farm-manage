@@ -83,7 +83,7 @@ export const extraStateNames = Object.freeze({
   'Chart Transfer': 'Chuyển hệ thống tài khoản',
   'Cost Closing': 'Kết chuyển chi phí',
   Adjustment: 'Bút toán điều chỉnh',
-  Purchase: 'Mua ngoài',
+  Purchase: 'Mua nhanh',
   Recovery: 'Thu hồi vật tư',
   Surplus: 'Thừa kiểm kê',
   Harvest: 'Thu hoạch',
