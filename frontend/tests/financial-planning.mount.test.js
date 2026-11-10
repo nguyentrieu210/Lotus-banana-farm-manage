@@ -92,12 +92,13 @@ test('invalid quantities stay in the row editor and never reach the server',asyn
 })
 
 test('source import shows the proposed sources and sends their fingerprint',async t=>{
- setup();const source={name:'HF-1',month:'2026-01',farm:'F1',gross_kg:1000,sales_kg:800}
- handlers[API+'forecast_preview']={sources:[source],rows:[],warnings:['Phiếu qua nhiều tháng'],fingerprint:'FP1'}
+ setup();const source={name:'2026-01|F1|cut',month:'2026-01',farm:'F1',layer:'cut',layer_label:'Buồng đã cắt bắp',bunches:50,gross_kg:1000,sales_kg:980}
+ handlers[API+'forecast_preview']={sources:[source],rows:[],warnings:['Một số lô đang dùng thông số dự thu mặc định'],fingerprint:'FP1'}
  handlers[API+'apply_forecast']=()=>doc({source_snapshot:{sources:[source]}})
  const view=await mount();button(view.root,'Lấy sản lượng dự thu').click();await settle()
  t.after(view.unmount)
- assert.match(modal().textContent,/HF-1/)
+ assert.match(modal().textContent,/Buồng đã cắt bắp/)
+ assert.match(modal().textContent,/thông số dự thu mặc định/)
  assert.match(modal().textContent,/Tháng không có nguồn về 0/)
  button(modal(),'Thay sản lượng các tháng').click();await settle()
  assert.deepEqual(calls.find(c=>c.method===API+'apply_forecast').args,{name:'LFP-2026-00001',modified:'2026-10-23 10:00:00',fingerprint:'FP1'})

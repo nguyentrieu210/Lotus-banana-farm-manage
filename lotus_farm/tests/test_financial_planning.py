@@ -1,11 +1,12 @@
 """Real Frappe persistence/permissions. Run only on a disposable .test site."""
-import json
 import unittest
+from datetime import date
 from uuid import uuid4
 from unittest.mock import patch
 
 import frappe
 
+from lotus_farm import block_forecast
 from lotus_farm.finance import planning, setup
 
 
@@ -121,40 +122,44 @@ class TestFinancialPlanningOnSite(unittest.TestCase):
         with self.assertRaises(frappe.PermissionError):
             planning.detail(doc['name'])
 
-    def fixture_forecast(self, label, farm, state, gross=1000, packed=800):
-        # These minimal historical snapshots deliberately bypass the harvest
-        # controller: its biology/release pipeline has a separate integration suite.
-        doc = frappe.get_doc(dict(doctype='Harvest Forecast', name='HF-FP-' + self.key + '-' + label,
-            farm=farm, company=frappe.db.get_value('Farm', farm, 'company'), period_start_date='2027-01-10', period_end_date='2027-01-15',
-            supply_state=state, gross_forecast_kg=gross, packed_forecast_kg=packed))
-        doc.db_insert()
-        return doc.name
+    def forecast(self, bunches=50):
+        """What the shared forecast hands over for a farm: (summary, bunch cohorts). The forecast itself is built from
+        the sổ lô and has its own suites; here 50 bunches of 20 kg, 80% packed, are due in January 2027."""
+        return {}, [dict(layer='cut', block='LO', tag=None, cycle=2, profile='BO-THONG-SO', days=[(date(2027, 1, 12), bunches)],
+                         config=dict(kg_cycle_1=19, kg_cycle_2=20, kg_cycle_3=19, pack_rate=.8))]
 
     def test_import_replaces_quantities_retains_budgets_and_checks_source_changes(self):
-        name = self.fixture_forecast('active', self.farm, 'Released')
-        self.fixture_forecast('draft', self.farm, 'Draft')
-        self.fixture_forecast('replaced', self.farm, 'Superseded')
-        self.fixture_forecast('foreign', self.other_farm, 'Released', gross=9000, packed=8000)
         doc = self.save()
-        preview = planning.forecast_preview(doc['name'])
-        self.assertEqual([r['name'] for r in preview['sources']], [name])
-        frappe.db.set_value('Harvest Forecast', name, 'packed_forecast_kg', 700)
-        with self.assertRaises(frappe.ValidationError):
-            planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
-        preview = planning.forecast_preview(doc['name'])
-        imported = planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
-        self.assertEqual(imported['values']['rows'][0]['sales_kg'], 700)
-        self.assertEqual(imported['values']['rows'][0]['labour'], 3000000)
-        self.assertEqual(imported['source_snapshot']['sources'][0]['name'], name)
-        again = planning.forecast_preview(doc['name'])
-        imported = planning.apply_forecast(doc['name'], imported['modified'], again['fingerprint'])
-        self.assertEqual(imported['values']['rows'][0]['sales_kg'], 700)
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()) as read:
+            preview = planning.forecast_preview(doc['name'])
+        self.assertEqual([call.args for call in read.call_args_list], [(self.farm,)], 'a company plan reads the farms of its own company only')
+        self.assertEqual([(s['month'], s['farm'], s['layer'], s['sales_kg']) for s in preview['sources']], [('2027-01', self.farm, 'cut', 800)])
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast(bunches=40)):
+            with self.assertRaises(frappe.ValidationError):
+                planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
+            preview = planning.forecast_preview(doc['name'])
+            imported = planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
+            self.assertEqual((imported['values']['rows'][0]['gross_kg'], imported['values']['rows'][0]['sales_kg']), (800, 640))
+            self.assertEqual(imported['values']['rows'][0]['labour'], 3000000)
+            self.assertEqual(imported['source_snapshot']['sources'][0]['bunches'], 40)
+            again = planning.forecast_preview(doc['name'])
+            imported = planning.apply_forecast(doc['name'], imported['modified'], again['fingerprint'])
+            self.assertEqual(imported['values']['rows'][0]['sales_kg'], 640)
+
+    def test_forecast_import_needs_the_right_to_see_the_farm(self):
+        doc = self.save()
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()) as read:
+            with self.assertRaises(frappe.PermissionError):
+                self.as_user('accountant', planning.forecast_preview, doc['name'])
+        read.assert_not_called()
+        self.assertFalse(self.as_user('accountant', planning.overview)['can_forecast'])
+        self.assertTrue(planning.overview()['can_forecast'])
 
     def test_manual_updates_keep_source_audit_and_scope_change_clears_it(self):
-        self.fixture_forecast('active', self.farm, 'Released')
         doc = self.save()
-        preview = planning.forecast_preview(doc['name'])
-        imported = planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
+        with patch.object(block_forecast, 'bunch_summary', return_value=self.forecast()):
+            preview = planning.forecast_preview(doc['name'])
+            imported = planning.apply_forecast(doc['name'], doc['modified'], preview['fingerprint'])
         values = imported['values']
         values['rows'][0]['sales_kg'] = 600
         updated = planning.save(values, name=doc['name'], modified=imported['modified'])

@@ -18,10 +18,10 @@
       "in_list_view": 1
     },
     {
-      "fieldname": "lotus_crop_cycle",
-      "label": "Vụ",
-      "fieldtype": "Link",
-      "options": "Crop Cycle"
+      "fieldname": "cycle_no",
+      "label": "Vụ số",
+      "fieldtype": "Int",
+      "read_only": 1
     },
     {
       "fieldname": "wip_open",
@@ -60,7 +60,13 @@
     },
     {
       "fieldname": "adjustment",
-      "label": "Chênh lệch",
+      "label": "Chênh lệch vào giá vốn 632",
+      "fieldtype": "Currency",
+      "in_list_view": 0
+    },
+    {
+      "fieldname": "unsold_adjustment",
+      "label": "Chênh lệch của hàng còn tồn (ở lại 154)",
       "fieldtype": "Currency",
       "in_list_view": 0
     },
@@ -85,7 +91,7 @@
   "field_order": [
     "lotus_farm",
     "lotus_farm_block",
-    "lotus_crop_cycle",
+    "cycle_no",
     "wip_open",
     "cost_month",
     "provisional",
@@ -93,6 +99,7 @@
     "kg_remaining",
     "absorbed",
     "adjustment",
+    "unsold_adjustment",
     "wip_close",
     "cost_per_kg",
     "basis"

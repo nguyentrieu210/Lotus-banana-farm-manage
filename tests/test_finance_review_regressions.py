@@ -147,16 +147,55 @@ class FinanceSecurityTests(unittest.TestCase):
         self.assertEqual(rows[0]['account'], '131 - LOTUS')
 
     def test_unsold_harvest_never_generates_cogs_adjustment(self):
-        responses = [[NS(item_code='BANANA', warehouse='FINISHED')],
-                     [(10,)]]
+        # 1 200 kg came in this month; 250 kg of the first item are still on hand at month end, the second is sold out.
+        responses = [[NS(item_code='BANANA', kg=1000), NS(item_code='SECOND', kg=200)], [(250,)], [(None,)]]
         db = NS(sql=lambda *a, **k: responses.pop(0))
-        frappe = NS(db=db)
-        env = dict(frappe=frappe, _bounds=lambda m: ('2026-10-01', '2026-10-31'),
+        env = dict(frappe=NS(db=db), _bounds=lambda m: ('2026-10-01', '2026-10-31'),
                    _receipts=lambda company: ['SE-01'], flt=lambda x: float(x or 0))
-        check = extract('lotus_farm/finance/costing.py', '_unsold_inventory_issues', env)
-        issues = check('LOTUS', '2026-10', [dict(adjustment=100000)])
-        self.assertEqual(len(issues), 1)
-        self.assertIn('632', issues[0])
+        unsold = extract('lotus_farm/finance/costing.py', '_unsold', env)
+        measured = unsold('LOTUS', '2026-10')
+        self.assertEqual((measured['kg_received'], measured['kg_unsold'], measured['share']), (1200, 250, round(250 / 1200, 6)))
+        # Older stock of the item on top of this month's: never more than the month's own kg.
+        responses[:] = [[NS(item_code='BANANA', kg=1000)], [(1500,)]]
+        self.assertEqual(unsold('LOTUS', '2026-10')['share'], 1)
+        env['_receipts'] = lambda company: []
+        self.assertEqual(unsold('LOTUS', '2026-10'), dict(kg_received=0, kg_unsold=0, share=0), 'no harvest receipt, nothing to measure')
+        from lotus_farm.finance import rules
+        pool = dict(lotus_farm='F', lotus_farm_block='A1', wip_open=0, cost_month=900_000, provisional=600_000, kg_harvested=300, kg_remaining=0)
+        row = rules.costing_rows([pool], measured['share'])[0]
+        self.assertEqual((row['adjustment'], row['unsold_adjustment'], row['wip_close']), (237_500, 62_500, 62_500),
+                         'the difference of the fruit still in stock is not cost of goods sold: it stays in 154')
+
+    def test_remaining_kg_come_from_the_shared_forecast_after_the_month(self):
+        import datetime
+        from contextlib import contextmanager
+        from unittest.mock import patch
+        import lotus_farm
+        asked = []
+        summary = dict(weeks=[dict(week='2026-W44', start='2026-10-26'), dict(week='2026-W45', start='2026-11-02')],
+                       rows=[dict(week='2026-W44', block='A1', kg=100.0), dict(week='2026-W45', block='A1', kg=250.5),
+                             dict(week='2026-W45', block='A2', kg=40)])
+        forecast = NS(bunch_summary=lambda farm, as_of=None: (asked.append((farm, as_of)), (summary, []))[1])
+        clock = [datetime.datetime(2026, 10, 20, 9)]
+        env = dict(frappe=NS(), datetime=datetime, get_datetime=lambda day: datetime.datetime.fromisoformat(str(day)),
+                   now_datetime=lambda: clock[0], _whole_farm=contextmanager(lambda: (yield)), flt=lambda x: float(x or 0))
+        forecast_kg = extract('lotus_farm/finance/costing.py', '_forecast_kg', env)
+        with patch.object(lotus_farm, 'block_forecast', forecast, create=True):
+            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 250.5, 'A2': 40.0}, 'a running month: the weeks that start after it')
+            self.assertEqual(asked[-1], ('F', None), 'read as the forecast stands now')
+            clock[0] = datetime.datetime(2026, 11, 5, 9)
+            self.assertEqual(forecast_kg('F', '2026-10-31'), {'A1': 350.5, 'A2': 40.0}, 'a month already over: all that was then still expected')
+            self.assertEqual(asked[-1], ('F', datetime.datetime(2026, 11, 1)), 'read as the sổ lô stood when the month ended')
+
+    def test_forecast_is_read_for_the_whole_farm_and_the_session_comes_back(self):
+        from contextlib import contextmanager
+        session, local = NS(user='accountant'), NS(user_perms='cached')
+        whole_farm = contextmanager(extract('lotus_farm/finance/costing.py', '_whole_farm', dict(frappe=NS(session=session, local=local))))
+        with self.assertRaises(RuntimeError):
+            with whole_farm():
+                self.assertEqual(session.user, 'Administrator')
+                raise RuntimeError('the forecast failed')
+        self.assertEqual((session.user, local.user_perms), ('accountant', None))
 
     def test_historical_reconciliation_uses_payment_ledger_and_date(self):
         source = (ROOT / 'lotus_farm/finance/reports.py').read_text(encoding='utf-8')

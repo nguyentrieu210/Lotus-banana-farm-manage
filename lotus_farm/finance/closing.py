@@ -1,6 +1,6 @@
 """Tài chính – Kế toán: month-end entries (Thông tư 99).
 
-1. Cost closing: the month's balance of 621 / 622 / 623 / 627 on every farm / lot / crop cycle / work type is moved to
+1. Cost closing: the month's balance of 621 / 622 / 623 / 627 on every farm / lot / work type is moved to
    154 on the same dimensions (Nợ 154 / Có 62x), one Journal Entry per month, so work in progress keeps the cost of
    each lot. Reversing it reopens the month's costs.
 2. Result closing, after the costing run: every income and expense account's balance of the month goes to 911 and

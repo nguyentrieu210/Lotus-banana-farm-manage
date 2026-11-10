@@ -98,6 +98,20 @@ test('receipts of one supplier become one invoice; mixing suppliers is not allow
  view.unmount()
 })
 
+test('a closed packhouse shift without a stock receipt gets its draft receipt from the pending list',async()=>{
+ calls.length=0
+ routes={[F+'reports.overview']:overview(),[F+'costing.receive_shift']:{stock_entry:'MAT-STE-1',kg:2000,amount:4000000,docstatus:0},
+  [F+'reports.pending']:{receipts:[],payroll:[],issues:[],vouchers:[],shifts:[{name:'PS-1',shift_code:'CA-1',farm:'LOTUS-222',posting_date:'2026-10-21',finished_kg:1600,secondary_kg:400,cartons:120}]}}
+ const view=await open('/tai-chinh?tab=pending')
+ assert.match(text(view.root),/Ca đóng gói đã đóng, chưa nhập kho/)
+ assert.match(text(view.root),/CA-1\s*LOTUS-222\s*21\/10\/2026\s*1\.600\s*400\s*120/)
+ button(view.root,'Lập phiếu nhập kho').click();for(let i=0;i<4;i++)await tick()
+ assert.equal(calls.some(c=>c.method===F+'costing.receive_shift'),false,'the accountant confirms before the receipt is made')
+ ;[...document.body.querySelectorAll('dialog[open] button')].find(b=>b.textContent.trim()==='Đồng ý').click();for(let i=0;i<4;i++)await tick()
+ assert.deepEqual(calls.find(c=>c.method===F+'costing.receive_shift').args,{shift:'PS-1'})
+ view.unmount()
+})
+
 test('B01 shows the TT99 lines with negative (*) figures in brackets and the balance check',async()=>{
  routes={[F+'reports.overview']:overview(),[F+'reports.lookups']:lookups,[F+'reports.trial_balance']:{rows:[],totals:{},balanced:true},
   [F+'statements.b01']:{form:'B01-DN',title:'BÁO CÁO TÌNH HÌNH TÀI CHÍNH',on_date:'2026-10-22',compare_date:'2025-12-31',source:'Thông tư 99/2025/TT-BTC',notes:[],uncovered:[],double:[],
