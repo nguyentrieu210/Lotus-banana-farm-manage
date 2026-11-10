@@ -22,6 +22,12 @@ Harvest Forecast, Forecast Allocation, Forecast Output Plan, Forecast Source Cla
 
 OneDrive Feed, Source File Registry, Source Import Batch, Source Import Mapping, Source Import Row, Source Inventory Item, Source Mapping Field, Integration Event, Integration Task, Lotus Process Adoption, Legacy Organization Map, Cancellation Reason Alias.
 
+### E. Khung ứng dụng cũ chỉ còn phục vụ các luồng trên (3, thêm khi rà soát ngày 10/11)
+
+Lotus Alert (trang Cảnh báo và việc chạy mỗi giờ, mọi loại cảnh báo đều đọc bảng ở nhóm A–C), Lotus Farm Settings (trang Cấu hình: 13 ngưỡng và hệ số chỉ các luồng đã xóa đọc), Market (danh mục thị trường, chỉ Packout Output trỏ tới). Trên bản thật: Lotus Alert 0 dòng, Market 0 dòng, Lotus Farm Settings chỉ có giá trị mặc định 0 và một ghi chú. Phần "Sáng nay" của báo cáo mới (spec 002, US5) thay cho cảnh báo.
+
+Ngoài các bảng, lần dọn gỡ thêm các cột của luồng cũ trên bảng giữ: chiều kế toán "Vụ" `lotus_crop_cycle` (60 bảng), `lotus_work_plan`, `lotus_harvest_lot`, `lotus_packout_run`, `lotus_forecast_impacts_json` (Stock Entry), `lotus_requirement`, `lotus_requirement_line` (Stock Entry Detail, Material Request Item), `process_adoption`, `source_version` (Bunch Tag), `category` (Work Type, 168 việc đang mang nhóm việc cũ; giá trị được lưu trong tệp lưu trữ), `posted_event` (Lotus Work Entry), `harvest_lot` (Packhouse Preprocessing), `norm_profile` (Work Schedule Rule). Không cột nào có giá trị trên chứng từ đã ghi sổ.
+
 ## 2. Bảng giữ (23) và bảng mới (2)
 
 **Giữ**: Farm, Farm Block, Farm Block Geometry, Banana Variety, Work Type, Work Team, Work Schedule Rule (rút gọn thành vòng chăm sóc), Lotus Work Assignment, Lotus Work Entry, Lotus Work Entry Person, Lotus Work Entry Material, Lotus Work Session, Lotus Work Inspection, Lotus Piece Rate, Bunch Tag, Cancellation Reason, Cancellation Reason Group, Disease, Packhouse Shift, Packhouse Shift Labor, Packhouse Preprocessing, Lotus Block Forecast Profile, Lotus Forecast Snapshot.

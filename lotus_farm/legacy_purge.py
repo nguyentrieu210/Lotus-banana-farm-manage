@@ -1,24 +1,27 @@
-"""Dọn 76 bảng đời cũ của mảng vườn (spec 002, US7; danh sách và lý do ở specs/002-cham-soc-thu-hoach-du-thu/cleanup.md).
+"""Dọn các bảng đời cũ (spec 002, US7; danh sách và lý do ở specs/002-cham-soc-thu-hoach-du-thu/cleanup.md): 76 bảng của
+mảng vườn cũ (nhóm A–D) và 3 bảng của khung ứng dụng cũ chỉ còn phục vụ các luồng đã xóa (nhóm E).
 
 preview() only reads:
-- rows in each legacy table (and the size of the table, for the archive);
+- rows in each legacy table (for a Single, its stored values) and the size of the table, for the archive;
 - fields of kept documents that point at a legacy table (the "Vụ" accounting dimension, the old plan and harvest-lot
-  links on stock documents…) with how many values they hold, and how many of those sit on posted documents;
+  links on stock documents, the work category…) with how many values they hold, and how many of those sit on posted
+  documents;
 - closed timekeeping periods whose month had Labor Allocation rows (their payroll was computed with them);
-- the block list: a legacy value on a posted accounting document stops the purge until the owner decides; the books
-  are never edited to make room.
+- the block list: a legacy value on a posted accounting document, such a payroll period, or opening bunches of the old
+  bunch ledger not yet moved to the sổ lô stop the purge until the owner decides; the books are never edited to make room.
 
-commit(archive_dir) writes every legacy table to a JSON file with its row count and checksum, checks the files against
-the tables, and only then removes, in this order: the rows, the fields and accounting dimensions that pointed at the
-tables, the DocTypes, the tables, and what else in the database still named them (menus, reports, history rows). It
-stops before removing anything when preview has a block list. Run again, it finds nothing and changes nothing. (If a
-run is cut short after the archive, the folder of that first run is the archive; a later run writes its own folder of
-what was still there.)
+commit(archive_dir) writes every legacy table (and the rows elsewhere that only describe legacy documents: history,
+comments, the recycle bin, permissions) to JSON files with row counts and checksums, reads them back and compares them
+with the database, and only then removes, in this order: the columns of the fields that pointed at legacy tables, their
+metadata and accounting dimensions, the DocTypes, the tables, and what else in the database still named them. Columns go
+before their metadata, so a run cut short can be started again and still finds what is left. It stops before removing
+anything when preview has a block list. Run again, it finds nothing and changes nothing.
 
 verify() lists what in the database still names a legacy table (empty when clean).
 
-bench --site frontend execute lotus_farm.legacy_purge.preview
-bench --site frontend execute lotus_farm.legacy_purge.commit
+Run with bench only (commit is not callable over HTTP):
+    bench --site frontend execute lotus_farm.legacy_purge.preview
+    bench --site frontend execute lotus_farm.legacy_purge.commit
 """
 import hashlib
 import json
@@ -44,6 +47,9 @@ LEGACY = {
     "D": ["OneDrive Feed", "Source File Registry", "Source Import Batch", "Source Import Mapping", "Source Import Row", "Source Inventory Item",
           "Source Mapping Field", "Integration Event", "Integration Task", "Lotus Process Adoption", "Legacy Organization Map",
           "Cancellation Reason Alias"],
+    # The old desktop shell: proactive alerts and the settings page, both fed only by the flows above, and the market
+    # list whose only link was the old packout output.
+    "E": ["Lotus Alert", "Lotus Farm Settings", "Market"],
 }
 ALL = [name for group in LEGACY.values() for name in group]
 REPORTS = ("Daily Operations", "Harvest Availability")  # script reports of the old chain, removed with it
@@ -52,13 +58,19 @@ ACCOUNTING = {"GL Entry", "Journal Entry", "Journal Entry Account", "Stock Entry
               "Purchase Receipt", "Purchase Receipt Item", "Sales Invoice", "Sales Invoice Item", "Delivery Note", "Delivery Note Item", "Payment Entry",
               "Stock Ledger Entry", "Asset", "Asset Capitalization", "Landed Cost Voucher"}
 LINKS = ["Link", "Dynamic Link", "Table", "Table MultiSelect"]
-# Links to a legacy table already taken out of a kept DocType by the first deployment: the column stayed behind.
-STALE_COLUMNS = {("Lotus Work Entry", "posted_event"): "Lotus Bunch Event", ("Packhouse Preprocessing", "harvest_lot"): "Harvest Lot",
-                 ("Work Schedule Rule", "norm_profile"): "Material Norm Profile"}
-# Fields that carried data of the old flows without being links (ids of requirement lines, forecast notes of the old
-# stock bridge): removed with the tables they described.
-FLOW_FIELDS = {("Stock Entry", "lotus_forecast_impacts_json"): "Harvest Forecast", ("Stock Entry Detail", "lotus_requirement_line"): "Material Requirement Line",
-               ("Material Request Item", "lotus_requirement_line"): "Material Requirement Line"}
+# Columns known to belong to the legacy flows, looked for even when their metadata is already gone (a run cut short, a
+# kept DocType synced from its new JSON): links taken out of kept DocTypes, and fields that carried data of the old flows
+# without being links (requirement line ids, the forecast notes of the old stock bridge, the OneDrive source version).
+KNOWN_COLUMNS = {("Lotus Work Entry", "posted_event"): "Lotus Bunch Event", ("Packhouse Preprocessing", "harvest_lot"): "Harvest Lot",
+                 ("Work Schedule Rule", "norm_profile"): "Material Norm Profile", ("Bunch Tag", "process_adoption"): "Lotus Process Adoption",
+                 ("Bunch Tag", "source_version"): "Source Import Batch", ("Work Type", "category"): "Work Category",
+                 ("Stock Entry", "lotus_work_plan"): "Daily Work Plan", ("Stock Entry", "lotus_harvest_lot"): "Harvest Lot",
+                 ("Stock Entry", "lotus_packout_run"): "Packout Run", ("Stock Entry", "lotus_forecast_impacts_json"): "Harvest Forecast",
+                 ("Stock Entry Detail", "lotus_requirement"): "Material Requirement",
+                 ("Stock Entry Detail", "lotus_requirement_line"): "Material Requirement Line",
+                 ("Material Request Item", "lotus_requirement"): "Material Requirement",
+                 ("Material Request Item", "lotus_requirement_line"): "Material Requirement Line"}
+DIMENSION_COLUMN = "lotus_crop_cycle"  # the "Vụ" accounting dimension (Crop Cycle), on every document that carries dimensions
 # Rows elsewhere that only describe a document by its DocType name: (table, column holding the DocType name).
 HISTORY = (("Version", "ref_doctype"), ("Comment", "reference_doctype"), ("Activity Log", "reference_doctype"), ("DocShare", "share_doctype"),
            ("ToDo", "reference_type"), ("View Log", "reference_doctype"), ("Communication", "reference_doctype"),
@@ -71,10 +83,17 @@ HISTORY = (("Version", "ref_doctype"), ("Comment", "reference_doctype"), ("Activ
            ("User Permission", "allow"), ("Data Import", "reference_doctype"), ("DocType Link", "link_doctype"))
 
 
+def _single(doctype):
+    return bool(frappe.db.exists("DocType", doctype) and frappe.db.get_value("DocType", doctype, "issingle"))
+
+
 def _rows(doctype):
-    if not frappe.db.table_exists(doctype):
-        return None
-    return frappe.db.count(doctype)
+    """Rows of a legacy table (a Single: its stored values), or None when it no longer exists."""
+    if frappe.db.table_exists(doctype):
+        return frappe.db.count(doctype)
+    if _single(doctype) or frappe.db.count("Singles", {"doctype": doctype}):
+        return frappe.db.count("Singles", {"doctype": doctype})
+    return None
 
 
 def _size(doctype):
@@ -91,7 +110,8 @@ def _dimensions():
 
 def _legacy_fields():
     """{(DocType, field): legacy table} over kept DocTypes: custom fields, the accounting dimensions built on a legacy
-    table, fields of the DocType itself (as the database still has it) and columns left by the first deployment."""
+    table, fields of the DocType itself (as the database still has it), and the known legacy columns still present
+    (also those whose metadata is already gone)."""
     found = {}
     for f in frappe.get_all("Custom Field", filters={"fieldtype": ["in", LINKS], "options": ["in", ALL]}, fields=["dt", "fieldname", "options"],
                             limit_page_length=0):
@@ -105,9 +125,14 @@ def _legacy_fields():
                             fields=["parent", "fieldname", "options"], limit_page_length=0):
         if f.parent not in ALL:
             found[(f.parent, f.fieldname)] = f.options
-    for (dt, fieldname), target in {**STALE_COLUMNS, **FLOW_FIELDS}.items():
+    for (dt, fieldname), target in KNOWN_COLUMNS.items():
         if frappe.db.table_exists(dt) and frappe.db.has_column(dt, fieldname):
             found.setdefault((dt, fieldname), target)
+    for (table,) in frappe.db.sql("""select table_name from information_schema.columns where table_schema = database() and column_name = %s""",
+                                  DIMENSION_COLUMN):
+        dt = table[3:] if table.startswith("tab") else table
+        if dt not in ALL:
+            found.setdefault((dt, DIMENSION_COLUMN), "Crop Cycle")
     return found
 
 
@@ -135,11 +160,19 @@ def _payroll_months():
 
 
 def _unmoved_bunch_events():
-    """Confirmed rows of the old bunch ledger with no line in the sổ lô (the first deployment moves them all)."""
-    if not frappe.db.table_exists("Lotus Bunch Event") or not frappe.db.has_column("Lotus Bunch Event", "source_key"):
-        return 0
-    return frappe.db.sql("""select count(*) from `tabLotus Bunch Event` e where e.state = 'Confirmed'
-                            and not exists (select 1 from `tabLotus Work Entry` w where w.source_key = e.source_key)""")[0][0]
+    """Confirmed rows of the old bunch ledger with no line in the sổ lô (release 1 of spec 002 moves them all), or a
+    message when the site never got release 1 (the sổ lô has no source keys yet)."""
+    if not frappe.db.table_exists("Lotus Bunch Event") or not frappe.db.count("Lotus Bunch Event", {"state": "Confirmed"}):
+        return None
+    if not frappe.db.table_exists("Lotus Work Entry") or not frappe.db.has_column("Lotus Work Entry", "source_key"):
+        return ("Sổ lô chưa có ở bản này: triển khai bản phát hành 1 của spec 002 (40f8330) và chạy lot_ledger_migrate.commit của bản đó "
+                "trước khi dọn bảng cũ.")
+    unmoved = frappe.db.sql("""select count(*) from `tabLotus Bunch Event` e where e.state = 'Confirmed'
+                               and not exists (select 1 from `tabLotus Work Entry` w where w.source_key = e.source_key)""")[0][0]
+    if unmoved:
+        return (f"Sổ cắt bắp đầu kỳ còn {unmoved} dòng chưa chuyển sang sổ lô: chạy lot_ledger_migrate.commit của bản phát hành 1 (40f8330) "
+                "trước khi dọn bảng cũ.")
+    return None
 
 
 def _scan():
@@ -147,7 +180,8 @@ def _scan():
     for group, names in LEGACY.items():
         for name in names:
             rows = _rows(name)
-            tables.append({"group": group, "doctype": name, "exists": rows is not None, "rows": rows or 0, "bytes": _size(name) if rows is not None else 0})
+            tables.append({"group": group, "doctype": name, "single": _single(name), "exists": rows is not None, "rows": rows or 0,
+                           "bytes": _size(name) if rows is not None else 0})
     fields, block = [], []
     for (dt, fieldname), target in sorted(_legacy_fields().items()):
         total, posted = _values(dt, fieldname)
@@ -159,7 +193,7 @@ def _scan():
         block.append(f"Kỳ công {p['month']} của {p['company']} đã khóa và có dùng Labor Allocation: giữ số đã tính, xem lại trước khi xóa bảng.")
     unmoved = _unmoved_bunch_events()
     if unmoved:
-        block.append(f"Sổ cắt bắp đầu kỳ còn {unmoved} dòng chưa chuyển sang sổ lô: chạy bước chuyển dữ liệu của lần triển khai 1 trước.")
+        block.append(unmoved)
     return {"tables": tables, "table_count": len(tables), "rows": sum(t["rows"] for t in tables), "bytes": sum(t["bytes"] for t in tables),
             "with_data": [t["doctype"] for t in tables if t["rows"]], "fields": fields, "payroll_periods": payroll, "block": block}
 
@@ -180,8 +214,14 @@ def _dump(rows):
 
 
 def _table_rows(doctype):
+    if not frappe.db.table_exists(doctype):  # a Single keeps its values in tabSingles
+        return frappe.db.sql("select * from `tabSingles` where doctype = %s order by field", doctype, as_dict=True)
     order = "parent, parentfield, idx, name" if frappe.db.has_column(doctype, "parent") else "name"
     return frappe.db.sql(f"select * from `tab{doctype}` order by {order}", as_dict=True)
+
+
+def _count(doctype):
+    return frappe.db.count(doctype) if frappe.db.table_exists(doctype) else frappe.db.count("Singles", {"doctype": doctype})
 
 
 def _write(folder, filename, payload):
@@ -192,8 +232,8 @@ def _write(folder, filename, payload):
 
 
 def _archive(folder, scan):
-    """One JSON file per legacy table that exists, the values of the fields about to be removed, and a manifest.
-    Every file is read back and compared with the table before anything is deleted."""
+    """One JSON file per legacy table that exists, the rows elsewhere that only describe legacy documents, the values of
+    the fields about to be removed, and a manifest. Every file is read back and compared before anything is deleted."""
     os.makedirs(folder, exist_ok=True)
     manifest = {"site": frappe.local.site, "made_at": str(now_datetime()), "made_by": frappe.session.user, "tables": [], "fields": [], "files": []}
     for t in scan["tables"]:
@@ -203,9 +243,10 @@ def _archive(folder, scan):
         body = _dump(rows)
         name = t["doctype"].replace(" ", "_") + ".json"
         checksum = hashlib.sha256(body.encode("utf-8")).hexdigest()
-        head = _dump({"doctype": t["doctype"], "rows": len(rows), "sha256": checksum})
+        head = _dump({"doctype": t["doctype"], "single": t["single"], "rows": len(rows), "sha256": checksum})
         _write(folder, name, head[:-1] + ',"data":' + body + "}")
-        manifest["tables"].append({"doctype": t["doctype"], "group": t["group"], "file": name, "rows": len(rows), "sha256": checksum})
+        manifest["tables"].append({"doctype": t["doctype"], "group": t["group"], "single": t["single"], "file": name, "rows": len(rows),
+                                   "sha256": checksum})
     for f in scan["fields"]:
         values = []
         if f["values"]:
@@ -240,7 +281,7 @@ def _archive(folder, scan):
         with open(os.path.join(folder, entry["file"]), encoding="utf-8") as handle:
             saved = json.load(handle)
         again = _dump(saved["data"])
-        if saved["rows"] != entry["rows"] or len(saved["data"]) != frappe.db.count(entry["doctype"]) or \
+        if saved["rows"] != entry["rows"] or len(saved["data"]) != _count(entry["doctype"]) or \
                 hashlib.sha256(again.encode("utf-8")).hexdigest() != entry["sha256"]:
             frappe.throw(f"Tệp lưu trữ {entry['file']} không khớp bảng {entry['doctype']}: dừng, chưa xóa gì.")
     return manifest
@@ -254,7 +295,11 @@ def _drop_column(dt, fieldname):
 
 
 def _remove_fields(scan):
-    """The accounting dimensions built on a legacy table, then every field of a kept document that pointed at one."""
+    """Every column of a kept document that pointed at a legacy table first (DDL commits on its own), then the metadata
+    that described it and the accounting dimensions built on a legacy table. A run cut short in the middle leaves
+    metadata or known columns that the next run finds again."""
+    for f in scan["fields"]:
+        _drop_column(f["doctype"], f["fieldname"])
     for d in _dimensions():
         doc = frappe.get_doc("Accounting Dimension", d.name)
         try:
@@ -270,16 +315,18 @@ def _remove_fields(scan):
         frappe.db.delete("Property Setter", {"doc_type": dt, "field_name": fieldname})
         frappe.db.delete("DocField", {"parent": dt, "parenttype": "DocType", "fieldname": fieldname})
     frappe.db.commit()
-    for f in scan["fields"]:
-        _drop_column(f["doctype"], f["fieldname"])
-        frappe.clear_cache(doctype=f["doctype"])
+    for dt in sorted({f["doctype"] for f in scan["fields"]}):
+        frappe.clear_cache(doctype=dt)
 
 
 def _remove_tables(scan):
     for t in scan["tables"]:
         doctype = t["doctype"]
         if t["exists"] and t["rows"]:
-            frappe.db.delete(doctype)
+            if frappe.db.table_exists(doctype):
+                frappe.db.delete(doctype)
+            else:
+                frappe.db.delete("Singles", {"doctype": doctype})
         if frappe.db.exists("DocType", doctype):
             frappe.delete_doc("DocType", doctype, force=True, ignore_permissions=True, ignore_missing=True, delete_permanently=True)
     frappe.db.commit()
@@ -297,6 +344,7 @@ def _remove_mentions():
             frappe.db.delete(table, {column: ["in", ALL]})
     if frappe.db.table_exists("Deleted Document"):
         frappe.db.delete("Deleted Document", {"deleted_doctype": "DocType", "deleted_name": ["in", ALL]})
+    frappe.db.delete("Singles", {"doctype": ["in", ALL]})
     if frappe.db.table_exists("File"):  # the files stay (they are the farm's papers); only the pointer to the removed document goes
         frappe.db.sql("update `tabFile` set attached_to_doctype = null, attached_to_name = null, attached_to_field = null where attached_to_doctype in %s",
                       (tuple(ALL),))
@@ -314,9 +362,9 @@ def _as_migration(fn):
         frappe.flags.in_migrate = before
 
 
-@frappe.whitelist()
 def commit(archive_dir=None):
-    """Archive, check the archive, then remove. Stops with nothing removed when preview has a block list."""
+    """Archive, check the archive, then remove. Stops with nothing removed when preview has a block list. Not
+    whitelisted: run it with bench execute or through the patch purge_legacy_doctypes."""
     frappe.only_for("System Manager")
     scan = _scan()
     if scan["block"]:
@@ -346,6 +394,9 @@ def verify():
             left.append(f"bảng tab{name}")
         if frappe.db.exists("DocType", name):
             left.append(f"DocType {name}")
+    singles = frappe.db.count("Singles", {"doctype": ["in", ALL]})
+    if singles:
+        left.append(f"{singles} giá trị Singles của bảng cũ")
     for (dt, fieldname), target in sorted(_legacy_fields().items()):
         left.append(f"trường {dt}.{fieldname} → {target}")
     for d in _dimensions():

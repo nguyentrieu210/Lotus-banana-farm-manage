@@ -59,7 +59,7 @@ try:
     gl = book_hash("GL Entry", ["name", "account", "debit", "credit", "posting_date", "voucher_no", "is_cancelled"])
     sle = book_hash("Stock Ledger Entry", ["name", "item_code", "warehouse", "actual_qty", "stock_value_difference", "voucher_no", "is_cancelled"])
     first = quiet(legacy_purge.preview)
-    check("preview lists the 76 tables", first["table_count"] == 76, first["table_count"])
+    check("preview lists every legacy table", first["table_count"] == len(legacy_purge.ALL), first["table_count"])
     check("preview writes nothing", counts() == before and quiet(legacy_purge.preview)["rows"] == first["rows"])
     existing = [t for t in first["tables"] if t["exists"]]
     print(f"     tables present: {len(existing)}, rows: {first['rows']}, fields pointing at them: {len(first['fields'])}, block: {first['block']}")
@@ -99,7 +99,7 @@ try:
         check("fields with values are kept in the manifest", all(len(f["kept_values"]) == f["values"] for f in manifest["fields"]))
         check("commit reports what it removed", result["tables"] == len(manifest["tables"]) and result["rows"] == scan["rows"], result)
     check("no legacy table, DocType, field or dimension is left", result["left"] == [] and legacy_purge.verify() == [], result["left"][:10])
-    check("no table of the 76 exists", not any(frappe.db.table_exists(name) for name in legacy_purge.ALL))
+    check("no legacy table exists", not any(frappe.db.table_exists(name) for name in legacy_purge.ALL))
     after = counts()
     check("kept tables keep their rows", after == before, {k: (before[k], after.get(k)) for k in before if before[k] != after.get(k)})
     check("the general ledger is untouched", gl == book_hash("GL Entry", ["name", "account", "debit", "credit", "posting_date", "voucher_no", "is_cancelled"]))
