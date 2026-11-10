@@ -416,7 +416,9 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
   - `lot_ledger_migrate.commit`;
   - `legacy_purge.preview` trên bản thật, chủ vườn xem kết quả, rồi `commit`;
   - tạo tài khoản tổ trưởng Đội khu A + B (cần danh sách từ chủ vườn).
-- [ ] T096 Tùy chọn, chỉ khi chủ vườn yêu cầu trước khi bản mới lên: sửa nóng trên main, chặn dòng thu hoạch khi lô đang cách ly trong lotus_farm/bunch_posting.py của bản đang chạy
+- [x] T096 Tùy chọn, chỉ khi chủ vườn yêu cầu trước khi bản mới lên: sửa nóng trên main, chặn dòng thu hoạch khi lô đang cách ly trong lotus_farm/bunch_posting.py của bản đang chạy. **Không cần nữa**: bản mới (có chặn thu hoạch khi cách ly) đã lên ngày 10/11.
+
+**Ghi chú triển khai (10/11)**: lần 1 đã lên bản thật lúc 20:29 (`lotus-release:40f8330`), kết quả ở baseline.md mục "Rà soát độc lập và triển khai lần 1". Còn chờ chủ vườn: danh sách tổ trưởng Đội khu A + B để tạo tài khoản; 10 ảnh phiếu giấy thật cho T083.
 
 ---
 
