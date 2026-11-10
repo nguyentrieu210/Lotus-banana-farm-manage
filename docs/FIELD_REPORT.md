@@ -1,54 +1,78 @@
-# Công việc ngoài vườn: phiếu giao việc theo lô (Vườn 222)
+# Công việc ngoài vườn: báo cáo ngày theo lô (Vườn 222)
 
-Làm lại ngày 31/10/2026, thay cho báo cáo ngày theo đội (29/10). Thiết kế dựa trên nghiên cứu
-`reports/Thiết kế việc ngoài vườn chuối.md`. Nguyên tắc: **máy chấm công chỉ chứng minh có mặt; tiền khoán chỉ tính
-từ lô đã được đối chiếu hoặc nghiệm thu.**
+Làm lại ngày 10/11/2026 theo spec 002. Đơn vị nhỏ nhất là lô. Mỗi tổ có một báo cáo mỗi ngày, gồm các dòng của từng lô.
+Số chỉ được tính (dự thu, bảng màu dây, vòng chăm sóc, tiền khoán) sau khi đội trưởng xác nhận.
 
-## Phiếu giao (Lotus Work Assignment)
-- Mỗi phiếu = một lô × một việc × một tổ × một lượt. Đội trưởng giao, chọn được nhiều lô một lần (mỗi lô một phiếu).
-  Một lô + việc chỉ có một phiếu đang mở.
-- **Cách trả đi theo việc** trong danh mục (`Work Type.lotus_pay_mode`), quản lý vườn đặt ở "Việc & cách trả":
-  - **Khoán số lượng** (Count): buồng, cây, bao. Trần đối chiếu: số buồng đã cắt bắp cùng màu ở lô, hoặc số cây lô.
-  - **Khoán lô** (Lot): trả cả lô (ha hoặc cây × đơn giá) một lần, chỉ khi kỹ thuật vườn nghiệm thu đạt.
-  - **Công nhật** (Daywork): tiền theo máy chấm công; phiếu chỉ ghi việc đã làm.
-  Lúc giao, phiếu chụp lại nhóm việc, cách trả, đơn giá, định mức, trần, diện tích và số cây của lô. Người giao không
-  sửa được cách trả.
-- Trạng thái: Đang làm → Tổ báo xong → (đội trưởng duyệt) → [khoán lô: Chờ nghiệm thu → Đạt / Không đạt (làm lại)] →
-  Đã khoá, tính tiền. Huỷ hoặc đổi tổ phải ghi lý do.
+Menu **Việc hằng ngày** trên máy tính có 7 mục: Hôm nay, Giao việc, Màu dây & thu hoạch, Xưởng, Dự thu, Báo cáo và Thiết lập.
+Trên điện thoại (`/work`) có 4 tab: Hôm nay, Giao việc, Xác nhận, Tôi.
 
-## Báo cáo trên phiếu (Lotus Work Entry, một báo cáo / phiếu / ngày)
-- Tổ trưởng chọn **người làm theo buổi**: chỉ hiện người máy chấm công có lượt (sáng trước 7h, chiều sau 17h), mặc
-  định người có mặt của tổ.
-- Ba luật cứng:
-  1. Mỗi buổi của một người chỉ thuộc một phiếu (Lotus Work Session, khoá duy nhất người × ngày × buổi trong DB).
-  2. Không có lượt máy buổi đó thì không ghi được.
-  3. Khối lượng không vượt trần của lô.
-- Ô theo nhóm việc: **Buồng** (số buồng, màu dây: cắt bắp tự lấy màu tuần, bao/tỉa/chống đổ chọn màu, cộng dồn không
-  vượt số cắt bắp cùng màu; trước 01/12/2026 chỉ cảnh báo), **Vườn** (khối lượng, báo xong lô), **BVTV / phân bón**
-  (bắt buộc vật tư, liều, phiếu xuất kho; thuốc có thời gian cách ly `Item.lotus_phi_days` ghi
-  `Farm Block.lotus_quarantine_until` và **chặn Harvest Actual** đến hết cách ly).
-- Tick "Đã làm xong cả lô" khi lưu là báo xong.
+## Tổ trưởng: nhập và gửi báo cáo ngày
 
-## Duyệt, nghiệm thu, tiền
-- Đội trưởng duyệt phiếu báo xong (không còn xác nhận báo cáo hằng ngày). Khoán số lượng và công nhật: khoá luôn.
-- Khoán lô: **kỹ thuật vườn** (vai trò Lotus Field Inspector, hoặc quản lý vườn) nghiệm thu; đội trưởng không nghiệm thu
-  đội mình. Cách chọn mẫu do hệ thống đưa ra; mức đạt Buồng 95%, Vườn / BVTV 90% (`field_report_rules.PASS_MARK`).
-- Khoá: tiền phiếu chia cho người làm theo số buổi (`split_by_sessions`).
-- **Bảng lương** (`hr_period._sheet`): buổi làm trên phiếu khoán **không tính công nhật**; tiền khoán của các phiếu khoá
-  trong tháng cộng vào; nếu tiền khoán quy ra giờ thấp hơn lương tối thiểu giờ (Lotus Pay Rate MinimumHourly, vùng II
-  22.700 đ) thì bù. Khoán và bù chịu thuế TNCN như lương; phụ cấp công việc vẫn cộng sau thuế.
-- **Chi phí theo lô**: `finance/payroll._work_rows` lấy buổi công trên phiếu (0,5 công / buổi) theo lô × việc.
-- Màn chấm công hiện nhãn "Khoán" cho buổi đã ghi trên phiếu khoán.
+1. Mở **Hôm nay**, kiểm tra đúng ngày và đúng tổ.
+2. Mỗi lô được giao cho tổ là một thẻ. Bấm vào thẻ lô để mở hộp nhập của lô đó. Lô làm thêm ngoài lô được giao thì chọn ở **Nhập cho lô khác**.
+3. Trong hộp của lô, bấm nút việc đã làm, ví dụ **+ Cắt bắp**, **+ Bao buồng**, **+ Thu hoạch**, rồi nhập số:
+   - **Cắt bắp**: số buồng. Màu dây tự lấy theo ngày.
+   - **Bao buồng**, **Thu hoạch**, **Hủy sau cắt bắp**: chọn màu dây. Hộp hiện số buồng còn lại của màu đó. Nhập quá số còn lại thì không lưu được.
+   - **Thu hoạch**: bắt buộc nhập kg. Lô đang cách ly thuốc thì không thu được.
+   - **Việc vườn** (cắt lá, làm cỏ…): khối lượng, và tick **Đã làm xong cả lô** vào ngày làm xong. Chỉ ngày báo xong mới tính là xong vòng chăm sóc.
+   - **Phun thuốc, bón phân**: bắt buộc ghi vật tư và liều.
+   - **Kiểm tra sâu bệnh**: bệnh, số cây bị, mức độ.
+4. Người làm mặc định là người của tổ có lượt máy chấm công buổi đó. Bỏ tick người không làm việc này.
+5. Bấm **Lưu lô này**. Số đang gõ được giữ trên máy nếu mất sóng.
+6. Làm xong các lô thì bấm **Gửi báo cáo**. Đã gửi thì chỉ đội trưởng mở lại mới sửa được.
 
-## Màn hình (một bộ component, máy tính và điện thoại)
-- `/lotus/cong-viec`: Hôm nay, Giao việc theo lô, Nghiệm thu, Bảng lô × việc, Tiền khoán theo người, Đội-tổ-lô, Bảng giá
-  khoán, Việc & cách trả. `/work`: Hôm nay, Giao việc (đội trưởng), Nghiệm thu (kỹ thuật vườn), Tôi.
-- Component: `components/field/WorkToday.vue`, `WorkEntryForm.vue`, `WorkTicket.vue`, `WorkAssign.vue`, `WorkInspect.vue`,
-  `FieldBoard.vue`; mô hình thuần `field-work-model.js`.
+### Phiếu giấy
 
-## Mã
-- `lotus_farm/field_report.py` (API, quyền), `field_report_rules.py` (quy tắc thuần, `tests/test_field_report_rules.py`),
-  `field_report_seed.py` (`MODES`: nhóm và cách trả của 26 việc F222; `apply_modes` cho site đã nạp).
-- DocType: Lotus Work Assignment, Lotus Work Entry (+ Person, Material), Lotus Work Session, Lotus Work Inspection,
-  Lotus Piece Rate, Lotus Pay Rate.
-- Kiểm thử tích hợp: `tests/integration/verify_field_work.py`.
+Tổ không dùng điện thoại thì in phiếu:
+
+1. Ở **Hôm nay**, phần **Phiếu giấy**, bấm **In phiếu giấy**. Phiếu có mã báo cáo ở góc phải, mỗi lô của tổ một hàng, mỗi cột một việc có mã C1, C2…, và màu dây cắt bắp của ngày.
+2. Tổ ghi số vào ô. Việc vườn làm xong cả lô thì đánh dấu vào ô "xong".
+3. Cuối ngày bấm **Đọc ảnh phiếu** (hoặc **Chụp ảnh phiếu** trên điện thoại), chụp rõ cả tờ phiếu.
+4. Máy điền sẵn các dòng nháp, gắn nhãn "Máy đọc, chưa kiểm". Ảnh hiện cạnh danh sách lô cần kiểm.
+5. Bấm **Kiểm lô này**, so số với ảnh, sửa nếu sai (màu dây, lý do hủy…), rồi bấm **Đã kiểm, lưu lô này**.
+6. Còn lô máy đọc chưa kiểm thì chưa gửi được. Lô đã nhập tay trước khi đọc ảnh được giữ nguyên.
+
+## Đội trưởng
+
+**Xác nhận**: tab **Xác nhận** trên điện thoại hoặc dải tình hình các tổ trên **Hôm nay** cho biết tổ nào chưa gửi, chờ xác nhận, đã xác nhận. Mở tổ, xem số, bấm **Xác nhận**.
+
+- Không xác nhận được báo cáo do chính mình nhập hộ; cần quản lý vườn xác nhận.
+- Sửa số đã xác nhận: bấm **Sửa có lý do**, nhập số đúng và lý do. Nhập 0 nếu dòng đó nhập nhầm. Dòng cũ được giữ trong lịch sử.
+- **Mở lại** báo cáo đã gửi hoặc đã xác nhận phải ghi lý do; dòng đã xác nhận vẫn giữ, tổ chỉ thêm hoặc sửa dòng chưa xác nhận.
+
+**Giao việc** (giao theo vòng chăm sóc):
+
+- Mỗi việc có một thẻ: bao nhiêu lô quá hạn, đến hạn trong kỳ, đã giao, chưa giao. Chọn kỳ: tuần này, hai tuần hoặc bốn tuần tới.
+- Bấm thẻ việc, tick các lô (hoặc **Chọn cả khu**), chọn tổ, hạn xong, bấm **Giao cho tổ**. Mỗi lô thành một phiếu; lô đã có phiếu đang mở cho việc đó thì không giao lại.
+- **Bảng lô × việc** cho cái nhìn toàn đội.
+- **Phiếu đã giao**: xem, đổi tổ hoặc hủy (phải ghi lý do). Phiếu riêng (không theo vòng) dùng cho việc khoán cả lô cần nghiệm thu.
+- Tổ báo xong cả lô và đội trưởng xác nhận ngày đó thì phiếu tự đóng, lô sang vòng sau. Việc khoán cả lô thì chờ nghiệm thu.
+
+## Kỹ thuật vườn: nghiệm thu khoán cả lô
+
+Ở **Giao việc**, phần **Chờ nghiệm thu khoán lô**. Đội trưởng không nghiệm thu đội mình. Mức đạt: việc buồng 95%, việc vườn và BVTV 90%. Đạt thì phiếu khóa và tính tiền cả lô; không đạt thì tổ làm lại.
+
+## Quản lý vườn
+
+**Thiết lập**:
+
+- **Đội, tổ & lô**: đội theo khu, tổ trong đội, tổ trưởng và đội trưởng.
+- **Việc & cách trả**: nhóm việc, cách trả (khoán số lượng, khoán cả lô, công nhật), có bắt buộc ghi vật tư không.
+- **Bảng giá khoán**: đơn giá theo ngày hiệu lực. Việc khoán số lượng chưa có giá thì không xác nhận được.
+- **Vòng chăm sóc**: mỗi việc vườn làm lại sau bao nhiêu ngày, cho cả vườn hoặc một khu, từ ngày nào. Mỗi thay đổi là một phiên bản mới, chờ duyệt rồi mới áp dụng. Lô đến hạn = ngày báo xong cả lô gần nhất + số ngày của vòng; lô chưa làm lần nào đến hạn từ ngày áp dụng.
+- **Màu dây cắt bắp**, **Tham số dự thu**.
+
+## Tiền khoán
+
+- Khoán số lượng: số đã xác nhận × đơn giá của ngày, chia cho người làm theo buổi.
+- Khoán cả lô: trả khi nghiệm thu đạt.
+- Công nhật: theo máy chấm công; buổi làm khoán không tính công nhật.
+- **Báo cáo › Tháng** có tiền khoán theo lô; **Tiền khoán theo người** mở từ đó. Số này vào bảng lương.
+
+## Cho người bảo trì
+
+- Sổ lô: `Lotus Work Entry` (trạng thái Nháp → Đã gửi → Đã xác nhận / Đã hủy, `source_key` duy nhất), `Lotus Daily Report` (tổ-ngày), `Lotus Work Session` (buổi có trọng số).
+- API: `lotus_farm/lot_report.py` (today, open_report, save_lot, send, confirm, amend, reopen, status, my_pay), `lot_paper_form.py` (phiếu giấy, đọc ảnh), `care_cycle.py` (vòng chăm sóc), `field_report.py` (phiếu giao, nghiệm thu, tiền khoán).
+- Quy tắc thuần có test: `lot_ledger_rules.py`, `care_cycle_rules.py`, `lot_paper_form_rules.py`, `field_report_rules.py`.
+- Màn: `frontend/src/components/field/` (LotToday, LotCards, LotEntryModal, PaperPhotoReview, CareDueList, CareCycleSettings, WorkAssign, WorkTicket, WorkInspect).
+- Kiểm thử tích hợp: `tests/integration/verify_lot_ledger.py`, `verify_bunch_forecast.py`, `verify_care_cycle.py`, `verify_paper_form.py`.

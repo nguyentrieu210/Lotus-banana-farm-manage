@@ -64,3 +64,8 @@
 
 - `tests/integration/verify_field_reports.py`: 12 kiểm tra qua (Sáng nay đủ 6 câu hỏi; Tuần có thu hoạch, xưởng, việc theo lô, tình trạng lô cho bản đồ, thẻ dự thu nói rõ có bản chốt hay không; Tháng có kg/buồng, thùng/buồng theo lô, vật tư báo dùng so với xuất kho, công và tiền theo lô). `verify_bunch_forecast.py` vẫn qua với sổ cắt bắp chuyển sang ribbon_board.
 - Frontend 611/611 qua (đã xóa các test của báo cáo pivot). Trình duyệt: menu Việc hằng ngày còn Hôm nay, Giao việc, Màu dây & thu hoạch, Xưởng, Dự thu, Báo cáo, Thiết lập; ba tab báo cáo và bản đồ tình trạng lô hiện đúng, không lỗi, không tràn ngang.
+
+## Phase 11 (hoàn thiện)
+
+- Hiệu năng trên máy test local (máy chủ, tốt nhất của 3 lần, dữ liệu LOTUS-222 bản sao): Hôm nay `lot_report.today` 123 ms; lưu một lô `save_lot` 203 ms; Giao việc `care_cycle.due` 38 ms; Màu dây `ribbon_board.board` 34 ms; báo cáo Sáng nay 147 ms, Tuần 109 ms, Tháng 19 ms; Dự thu toàn vườn `block_forecast.board` 2.159 ms. Đều trong mục tiêu của plan.md (2 giây, 1 giây, 3 giây); dự thu toàn vườn sát ngưỡng nhất.
+- Hướng dẫn mới: docs/FIELD_REPORT.md, docs/CHAM_BUONG_DU_THU.md. Mục "Có gì mới" 2026-11-10. Kế hoạch triển khai: deploy.md.
