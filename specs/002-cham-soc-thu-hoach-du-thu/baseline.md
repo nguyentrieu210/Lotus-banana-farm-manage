@@ -52,3 +52,10 @@
 - `lotus_farm/tests/test_packout_rules.py`: 8/8 qua (tổng kg nguồn bằng kg vào; số buồng không vượt số đã thu chưa vào xưởng; thùng chia nguyên theo kg; kg/buồng, thùng/buồng, tỷ lệ; giá trị nhập kho theo kg × giá lô).
 - `tests/integration/verify_packout_sources.py`: 16 kiểm tra qua (ca nhận từ hai lô, chặn nhận quá, chặn đóng quá kg vào, chia thùng 121/60, truy vết ra dòng thu và dòng phun, phiếu nhập kho nháp đúng giá trị từng lô, một phiếu một ca, chỉ kế toán lập).
 - Các test tích hợp khác vẫn qua. Frontend 634/635 lần đầu (thiếu nhãn "Packhouse Shift Source"), đã sửa. Trình duyệt: màn Xưởng và hộp thêm ca không lỗi, không tràn ngang.
+
+## Phase 9 (US1 phần sau, phiếu giấy và đọc ảnh)
+
+- `lotus_farm/tests/test_lot_paper_form.py`: 6/6 qua (bố cục cột; lô/cột không có trên phiếu thành ghi chú; số buồng không nguyên, vượt số còn lại, thu hoạch thiếu kg, không rõ màu, hủy thiếu lý do bị đánh dấu; ô in sẵn mà trống được nêu).
+- `tests/integration/verify_paper_form.py`: 14 kiểm tra qua, với kết quả AI giả lập (in phiếu, trang in có mã và cột, đọc ảnh ra dòng nháp có cờ, lô đã nhập tay giữ nguyên, chặn gửi khi còn dòng chưa kiểm, lưu lô thì hết cờ và gửi được).
+- Frontend 640/640 qua. Trình duyệt: in phiếu từ màn Hôm nay mở trang A4 ngang đúng tổ, ngày, màu dây Cam tuần 46.
+- Chưa đo tỷ lệ đọc đúng trên phiếu thật (T083): cần 10 ảnh phiếu thật của vườn.

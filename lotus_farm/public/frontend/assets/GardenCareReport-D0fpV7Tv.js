@@ -1,1 +1,0 @@
-import{W as e,y as t}from"./vue.runtime.esm-bundler-Dx9eLHme.js";import{t as n}from"./WorkGroupReport-B7ZyI-65.js";var r={__name:`GardenCareReport`,props:{embedded:Boolean,navigationKey:String},setup(r){return(r,i)=>(e(),t(n,{method:`field_care`,filename:`Bao-cao-cham-soc-vuon`,empty:`Chưa có báo cáo chăm sóc vườn trong phần đang lọc.`}))}};export{r as default};

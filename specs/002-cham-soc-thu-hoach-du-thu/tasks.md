@@ -351,18 +351,20 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests
 
-- [ ] T078 [P] [US1] Unit test các kiểm tra cố định cho dòng máy đọc trong lotus_farm/tests/test_lot_paper_form.py: lô hay việc không có trên phiếu; số buồng không nguyên; vượt trần; ô trống mà phiếu in có
-- [ ] T079 [P] [US1] Mount test PaperPhotoReview trong frontend/tests/paper-photo-review.mount.test.js
+- [x] T078 [P] [US1] Unit test các kiểm tra cố định cho dòng máy đọc trong lotus_farm/tests/test_lot_paper_form.py: lô hay việc không có trên phiếu; số buồng không nguyên; vượt trần; ô trống mà phiếu in có
+- [x] T079 [P] [US1] Mount test PaperPhotoReview trong frontend/tests/paper-photo-review.mount.test.js
 
 ### Implementation
 
-- [ ] T080 [US1] Viết trang in phiếu tổ-ngày trong lotus_farm/www/lotus_daily_form.html và lotus_farm/www/lotus_daily_form.py: mã báo cáo, bảng lô × việc đến hạn, ô số to, màu dây cắt bắp in sẵn
-- [ ] T081 [US1] Viết `form_url` và `read_photo` trong lotus_farm/lot_paper_form.py, thêm khuôn đọc phiếu ngày trong lotus_farm/document_ai.py:
+- [x] T080 [US1] Viết trang in phiếu tổ-ngày trong lotus_farm/www/lotus_daily_form.html và lotus_farm/www/lotus_daily_form.py: mã báo cáo, bảng lô × việc đến hạn, ô số to, màu dây cắt bắp in sẵn
+- [x] T081 [US1] Viết `form_url` và `read_photo` trong lotus_farm/lot_paper_form.py, thêm khuôn đọc phiếu ngày trong lotus_farm/document_ai.py:
   - lưu kết quả vào `machine_draft`;
   - tạo dòng Nháp có `machine_read` và `review_flags`;
   - dùng chung giới hạn lượt với `document_ai.read`.
-- [ ] T082 [US1] Viết frontend/src/components/field/PaperPhotoReview.vue: đặt ảnh cạnh các dòng, kiểm từng dòng bị đánh dấu, chặn gửi khi còn dòng máy đọc chưa kiểm
+- [x] T082 [US1] Viết frontend/src/components/field/PaperPhotoReview.vue: đặt ảnh cạnh các dòng, kiểm từng dòng bị đánh dấu, chặn gửi khi còn dòng máy đọc chưa kiểm
 - [ ] T083 [US1] Đo tỷ lệ đọc đúng trên 10 phiếu thật của vườn và ghi kết quả vào mục R9 của specs/002-cham-soc-thu-hoach-du-thu/research.md trước khi bật cho các tổ
+
+**Ghi chú khi làm (10/11)**: Trang in ở /lotus/in-phieu-ngay (service worker bỏ qua như các trang in khác). form_url (POST) chốt bố cục phiếu vào machine_draft để ảnh đọc sau khớp cột in. Mọi dòng máy đọc đều mang cờ "Máy đọc, chưa kiểm" cộng các cờ cố định; lưu lô (kể cả không sửa, nút "Đã kiểm, lưu lô này") là bước kiểm và xóa cờ. Lô đã có số nhập tay thì giữ nguyên, số máy đọc chỉ thành ghi chú. T083 chờ ảnh phiếu thật của vườn (chưa có), nên chưa bật cho các tổ.
 
 **Checkpoint**: Ảnh phiếu thật cho ra các dòng nháp đúng, dòng nghi ngờ được đánh dấu
 

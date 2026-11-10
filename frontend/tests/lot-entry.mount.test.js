@@ -123,3 +123,19 @@ test('thu hoạch shows the buồng left of its colour and more than that is sto
  assert.match(dialog().textContent,/nhiều buồng hơn số còn lại/)
  view.unmount()
 })
+
+test('a lô read from a photo is saved as checked even without a change',async()=>{
+ const read=lot(A5,'A5',{assignments:[{kind:'Round',work_type:'CL'}],lines:[{name:'m1',state:'Draft',work_type:'CB',stage:'Cut Bud',qty:12,bunch_tag:'tag-o',
+  machine_read:1,review_flags:'Máy đọc, chưa kiểm',people:[{employee:'E1',morning:1,afternoon:0}],materials:[]}]})
+ replies={today:()=>today({lots:[read]}),save_lot:()=>({saved:1,removed:0,errors:[],lines:[],modified:'m2'})}
+ const view=open();await settle()
+ view.root.querySelector('.lot-card__main').click();await settle()
+ assert.match(dialog().textContent,/Máy đọc từ ảnh, cần kiểm: Máy đọc, chưa kiểm/)
+ const submit=dialog().querySelector('button[type=submit]')
+ assert.match(submit.textContent,/Đã kiểm, lưu lô này/)
+ assert.ok(!submit.disabled,'nothing changed, yet the check can be saved')
+ submit.click();await settle()
+ const save=calls.find(c=>c.method==='save_lot')
+ assert.ok(save,'save_lot is called');assert.equal(save.body.lines[0].machine_read,1)
+ view.unmount()
+})

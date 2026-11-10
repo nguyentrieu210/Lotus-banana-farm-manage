@@ -33,6 +33,8 @@ const severityOptions=severities.map(s=>({value:s,label:s}))
 const present=computed(()=>[...(props.data.present||[])])
 const title=computed(()=>'Lô '+props.lot.code+' · '+formatDate(props.data.date))
 const dirty=computed(()=>fingerprint(lines.value)!==baseline.value)
+// Lines read from a photo wait for a person: saving the lô, changed or not, is that check.
+const unchecked=computed(()=>lines.value.some(l=>l.machine_read&&l.review_flags))
 
 function fill(){
  const parts=linesFromLot(props.lot)
@@ -104,7 +106,7 @@ async function save(){
 
 <template>
  <ModalForm class="lot-entry-modal" :model-value="true" :title="title" width="860px" :busy="saving" :error="error" :readonly="!editable"
-  submit-label="Lưu lô này" :submit-disabled="!dirty" @update:model-value="requestClose" @submit="save">
+  :submit-label="unchecked?'Đã kiểm, lưu lô này':'Lưu lô này'" :submit-disabled="!dirty&&!unchecked" @update:model-value="requestClose" @submit="save">
   <div class="lot-entry__facts">
    <span>Khu {{lot.zone}}</span><span v-if="lot.area_ha">{{amountText(lot.area_ha)}} ha</span><span v-if="lot.trees">{{amountText(lot.trees)}} cây</span><span>Vụ {{lot.cycle||'—'}}</span>
    <span v-if="data.ribbon" class="lot-entry__ribbon"><i :style="{background:swatch(data.ribbon.code)}" aria-hidden="true"></i>Màu dây hôm nay: <b>{{data.ribbon.label}}</b></span>

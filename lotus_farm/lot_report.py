@@ -7,6 +7,8 @@ Who may do what (field_report.access):
     is confirmed by the quản lý vườn;
   - a confirmed line is corrected only by voiding it with a reason and writing a new one (amend).
 """
+import json
+
 import frappe
 from frappe.utils import add_days, cint, flt, get_first_day, get_last_day, getdate, now_datetime, nowdate
 
@@ -166,6 +168,19 @@ def _assignments(farm, team, day):
     return rows
 
 
+def _paper(report):
+    """The paper form of the report: printed or not, the photo read and what the reader noted."""
+    if not report:
+        return None
+    try:
+        draft = json.loads(frappe.db.get_value(REPORT, report, "machine_draft") or "{}") or {}
+    except ValueError:
+        return None
+    if not draft:
+        return None
+    return {"printed_at": draft.get("printed_at"), "photo": draft.get("photo"), "read_at": draft.get("read_at"), "notes": draft.get("notes") or []}
+
+
 @frappe.whitelist(methods=["POST"])
 def open_report(farm, team, date=None):
     """The tổ's report of a day, created as a draft the first time someone allowed to enter starts entering or sends."""
@@ -217,6 +232,7 @@ def today(farm, team, date=None):
             "report": _report_row(name) if name else None, "lots": lots,
             "blocks": [{"block": n, "code": b["block_code"], "zone": b["zone"]} for n, b in blocks.items()],
             "works": _work_rows(lot_ledger.works(farm)),
+            "paper": _paper(name),
             "ribbon": ribbon and {"name": ribbon.name, "label": ribbon.color_label or ribbon.display_name, "code": ribbon.color_code,
                                   "week": ribbon.week_number},
             "reasons": _reasons(), "diseases": _diseases(), "severities": list(rules.SEVERITIES),
@@ -256,6 +272,32 @@ def _free_key(key):
         n += 1
         candidate = f"{key}:{n}"
     return candidate
+
+
+def _write_line(doc, report, block, clean, existing, cycle, rounds, standing, names, review_flags=None):
+    """Write one Draft line of a lô in the tổ's report (new, or replacing the unsent line with the same key)."""
+    line = frappe.get_doc(ENTRY, existing.name, for_update=True) if existing else frappe.new_doc(ENTRY)
+    work = clean["work"]
+    stage = clean["stage"] or None
+    line_cycle = cycle
+    if stage == rules.SUCKER:
+        bud = frappe.db.exists(ENTRY, {"farm_block": block, "cycle_no": cycle, "state": ["!=", rules.VOIDED], "stage": ["in", [rules.INJECT, rules.CUT]]})
+        line_cycle = rules.sucker_cycle(cycle, bool(bud))
+    line.update({"daily_report": report, "farm": doc.farm, "company": doc.company, "crew": doc.crew, "work_team": doc.work_team,
+                 "farm_block": block, "work_type": work.name, "stage": stage, "pay_mode": work.pay_mode, "cycle_no": line_cycle,
+                 "posting_date": getdate(doc.report_date), "qty": clean["qty"], "uom": work.uom, "area_ha": clean["area_ha"], "bunch_tag": clean["bunch_tag"],
+                 "reject_stage": clean["reject_stage"], "reason": clean["reason"], "weight_kg": clean["weight_kg"],
+                 "disease": clean["disease"], "severity": clean["severity"], "done": clean["done"], "notes": clean["notes"],
+                 "state": rules.DRAFT, "source_type": rules.PHOTO if clean["machine_read"] else rules.DAILY,
+                 "source_key": existing.source_key if existing else _free_key(clean["key"]), "machine_read": clean["machine_read"],
+                 "review_flags": review_flags or None, "entered_by": frappe.session.user,
+                 "assignment": rounds.get(work.name) or (standing if work.group == rules.BUNCH_GROUP else None),
+                 "morning_people": sum(f["morning"] for f in clean["people"].values()),
+                 "afternoon_people": sum(f["afternoon"] for f in clean["people"].values())})
+    line.set("people", [{"employee": e, "employee_name": names.get(e, e), **f} for e, f in clean["people"].items()])
+    line.set("materials", [{k: m[k] for k in ("item_code", "qty", "uom", "dose", "stock_entry", "phi_days")} for m in clean["materials"]])
+    _store(line)
+    return line
 
 
 @frappe.whitelist(methods=["POST"])
@@ -340,28 +382,7 @@ def save_lot(report, block, lines=None, expected_modified=None):
         return {"saved": 0, "removed": 0, "errors": errors}
     saved = removed = 0
     for key, clean in wanted.items():
-        existing = live.get(key)
-        line = frappe.get_doc(ENTRY, existing.name, for_update=True) if existing else frappe.new_doc(ENTRY)
-        work = clean["work"]
-        stage = clean["stage"] or None
-        line_cycle = cycle
-        if stage == rules.SUCKER:
-            bud = frappe.db.exists(ENTRY, {"farm_block": block, "cycle_no": cycle, "state": ["!=", rules.VOIDED], "stage": ["in", [rules.INJECT, rules.CUT]]})
-            line_cycle = rules.sucker_cycle(cycle, bool(bud))
-        line.update({"daily_report": report, "farm": doc.farm, "company": doc.company, "crew": doc.crew, "work_team": doc.work_team,
-                     "farm_block": block, "work_type": work.name, "stage": stage, "pay_mode": work.pay_mode, "cycle_no": line_cycle,
-                     "posting_date": day, "qty": clean["qty"], "uom": work.uom, "area_ha": clean["area_ha"], "bunch_tag": clean["bunch_tag"],
-                     "reject_stage": clean["reject_stage"], "reason": clean["reason"], "weight_kg": clean["weight_kg"],
-                     "disease": clean["disease"], "severity": clean["severity"], "done": clean["done"], "notes": clean["notes"],
-                     "state": rules.DRAFT, "source_type": rules.PHOTO if clean["machine_read"] else rules.DAILY,
-                     "source_key": existing.source_key if existing else _free_key(key), "machine_read": clean["machine_read"],
-                     "review_flags": None, "entered_by": frappe.session.user,
-                     "assignment": rounds.get(work.name) or (standing if work.group == rules.BUNCH_GROUP else None),
-                     "morning_people": sum(f["morning"] for f in clean["people"].values()),
-                     "afternoon_people": sum(f["afternoon"] for f in clean["people"].values())})
-        line.set("people", [{"employee": e, "employee_name": names.get(e, e), **f} for e, f in clean["people"].items()])
-        line.set("materials", [{k: m[k] for k in ("item_code", "qty", "uom", "dose", "stock_entry", "phi_days")} for m in clean["materials"]])
-        _store(line)
+        _write_line(doc, report, block, clean, live.get(key), cycle, rounds, standing, names)
         saved += 1
     for key, existing in live.items():
         if existing.state == rules.DRAFT and key not in wanted:

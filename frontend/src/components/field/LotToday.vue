@@ -9,6 +9,7 @@ import {Button as UiButton} from '../ui/button'
 import LotCards from './LotCards.vue'
 import LotEntryModal from './LotEntryModal.vue'
 import CrewStatus from './CrewStatus.vue'
+import PaperPhotoReview from './PaperPhotoReview.vue'
 import {useReasonDialog} from '../../use-reason-dialog'
 import {formatDate} from '../../format'
 import {stateLabels,stateTone,stageLabels,amountText} from '../../lot-entry-model.js'
@@ -88,6 +89,7 @@ async function submitAmend(){
  finally{amendBusy.value=false}
 }
 function pickTeam(name){team.value=name}
+async function paperChanged(text){if(text)notice.value=text;await load()}
 </script>
 
 <template>
@@ -120,6 +122,7 @@ function pickTeam(name){team.value=name}
     <p v-else>Xác nhận báo cáo {{formatDate(day)}} của {{data.team_name}}? Số đã xác nhận đi vào sổ lô, dự thu và tiền khoán; muốn sửa phải ghi lý do.</p>
     <div class="lotus-delete-confirm__actions"><UiButton type="button" variant="outline" @click="asking=''">Chưa</UiButton><UiButton type="button" :disabled="acting" @click="act(asking)">{{asking==='send'?'Gửi':'Xác nhận'}}</UiButton></div>
    </div>
+   <PaperPhotoReview v-if="team&&(data.rights?.write||data.paper)" :data="data" :farm="farm" :team="team" :date="day" :editable="editable" :mobile="mobile" @changed="paperChanged" @open-lot="openLot"/>
    <LotCards :lots="data.lots" :works="data.works" :editable="editable" :mobile="mobile" @open="openLot"/>
   </template>
 

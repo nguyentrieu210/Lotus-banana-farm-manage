@@ -276,8 +276,8 @@
     "file": "assets/StockDocumentDetail-DdaBZkEz.css",
     "src": "_StockDocumentDetail-DdaBZkEz.css"
   },
-  "_WorkGroupReport-B7ZyI-65.js": {
-    "file": "assets/WorkGroupReport-B7ZyI-65.js",
+  "_WorkGroupReport-DBSdXxeO.js": {
+    "file": "assets/WorkGroupReport-DBSdXxeO.js",
     "name": "WorkGroupReport",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -289,12 +289,12 @@
       "_PivotFilter-BzXaNeAG.js"
     ]
   },
-  "_WorkInspect-Cmeo2mBD.css": {
-    "file": "assets/WorkInspect-Cmeo2mBD.css",
-    "src": "_WorkInspect-Cmeo2mBD.css"
+  "_WorkInspect-B2f7t54y.css": {
+    "file": "assets/WorkInspect-B2f7t54y.css",
+    "src": "_WorkInspect-B2f7t54y.css"
   },
-  "_WorkInspect-DhZrhCYj.js": {
-    "file": "assets/WorkInspect-DhZrhCYj.js",
+  "_WorkInspect-Dj6RUL99.js": {
+    "file": "assets/WorkInspect-Dj6RUL99.js",
     "name": "WorkInspect",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -308,7 +308,7 @@
       "_FormSection-BlP1L1uS.js"
     ],
     "css": [
-      "assets/WorkInspect-Cmeo2mBD.css"
+      "assets/WorkInspect-B2f7t54y.css"
     ]
   },
   "_WorkspaceListToolbar-C3XThudi.js": {
@@ -541,7 +541,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CSpVerpQ.js",
+    "file": "assets/index-CelsrKV8.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -606,7 +606,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-qD5NRZvV.js",
+    "file": "assets/BlockForecastApp-PHX1ahLz.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -644,7 +644,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-DTFunFxH.js",
+    "file": "assets/FarmLandApp-Cm79DwhR.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -668,7 +668,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-NM1e4l1H.js",
+    "file": "assets/FieldReportApp-DaXyxF_r.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -682,7 +682,7 @@
       "_hr-catalog-labels-CSAYCmjS.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
-      "_WorkInspect-DhZrhCYj.js",
+      "_WorkInspect-Dj6RUL99.js",
       "_ListPage-BIJitpyy.js",
       "_FormSection-BlP1L1uS.js",
       "_use-desktop-workspace-BngrhkO-.js",
@@ -693,7 +693,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-B7x0wnnW.js",
+    "file": "assets/FinanceApp-CrtKiVaU.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -720,7 +720,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-B7YUJo6E.js",
+    "file": "assets/HrApp-DAz4uX6s.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -749,7 +749,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-BqH5eWdU.js",
+    "file": "assets/StockApp-DdkADAyt.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -775,7 +775,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-Cl7eWia9.js",
+    "file": "assets/TimekeepingApp-BDaVrg2E.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -817,7 +817,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-DRNSR7TX.js",
+    "file": "assets/OneDriveProcessWorkspace-Bg8ABLyo.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -838,7 +838,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CpLk3j70.js",
+    "file": "assets/OpsList-j525iOAt.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -850,7 +850,7 @@
     ]
   },
   "src/components/report/BunchCareReport.vue": {
-    "file": "assets/BunchCareReport-DSuGhPbI.js",
+    "file": "assets/BunchCareReport-DlLSxYH_.js",
     "name": "BunchCareReport",
     "src": "src/components/report/BunchCareReport.vue",
     "isDynamicEntry": true,
@@ -865,17 +865,17 @@
     ]
   },
   "src/components/report/GardenCareReport.vue": {
-    "file": "assets/GardenCareReport-D0fpV7Tv.js",
+    "file": "assets/GardenCareReport-D2DoXo3N.js",
     "name": "GardenCareReport",
     "src": "src/components/report/GardenCareReport.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_WorkGroupReport-B7ZyI-65.js"
+      "_WorkGroupReport-DBSdXxeO.js"
     ]
   },
   "src/components/report/PackhouseReport.vue": {
-    "file": "assets/PackhouseReport-CmJe6wi9.js",
+    "file": "assets/PackhouseReport-Bwcfc5zX.js",
     "name": "PackhouseReport",
     "src": "src/components/report/PackhouseReport.vue",
     "isDynamicEntry": true,
@@ -889,13 +889,13 @@
     ]
   },
   "src/components/report/ProtectionReport.vue": {
-    "file": "assets/ProtectionReport-DAhvz37a.js",
+    "file": "assets/ProtectionReport-NRQI4w1u.js",
     "name": "ProtectionReport",
     "src": "src/components/report/ProtectionReport.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_WorkGroupReport-B7ZyI-65.js"
+      "_WorkGroupReport-DBSdXxeO.js"
     ]
   },
   "warehouse.html": {
@@ -920,7 +920,7 @@
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-CkP3pCQx.js",
+    "file": "assets/work-mobile-Cv8S6q7n.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
@@ -933,7 +933,7 @@
       "_mobile-ui-DlmhIhWT.js",
       "_use-mobile-confirm-BA3R0sxA.js",
       "_ReleaseNotes-FbFAWi7s.js",
-      "_WorkInspect-DhZrhCYj.js"
+      "_WorkInspect-Dj6RUL99.js"
     ],
     "css": [
       "assets/work-mobile-DRvDeh0i.css"
