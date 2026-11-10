@@ -55,6 +55,10 @@ LINKS = ["Link", "Dynamic Link", "Table", "Table MultiSelect"]
 # Links to a legacy table already taken out of a kept DocType by the first deployment: the column stayed behind.
 STALE_COLUMNS = {("Lotus Work Entry", "posted_event"): "Lotus Bunch Event", ("Packhouse Preprocessing", "harvest_lot"): "Harvest Lot",
                  ("Work Schedule Rule", "norm_profile"): "Material Norm Profile"}
+# Fields that carried data of the old flows without being links (ids of requirement lines, forecast notes of the old
+# stock bridge): removed with the tables they described.
+FLOW_FIELDS = {("Stock Entry", "lotus_forecast_impacts_json"): "Harvest Forecast", ("Stock Entry Detail", "lotus_requirement_line"): "Material Requirement Line",
+               ("Material Request Item", "lotus_requirement_line"): "Material Requirement Line"}
 # Rows elsewhere that only describe a document by its DocType name: (table, column holding the DocType name).
 HISTORY = (("Version", "ref_doctype"), ("Comment", "reference_doctype"), ("Activity Log", "reference_doctype"), ("DocShare", "share_doctype"),
            ("ToDo", "reference_type"), ("View Log", "reference_doctype"), ("Communication", "reference_doctype"),
@@ -101,7 +105,7 @@ def _legacy_fields():
                             fields=["parent", "fieldname", "options"], limit_page_length=0):
         if f.parent not in ALL:
             found[(f.parent, f.fieldname)] = f.options
-    for (dt, fieldname), target in STALE_COLUMNS.items():
+    for (dt, fieldname), target in {**STALE_COLUMNS, **FLOW_FIELDS}.items():
         if frappe.db.table_exists(dt) and frappe.db.has_column(dt, fieldname):
             found.setdefault((dt, fieldname), target)
     return found
