@@ -54,6 +54,7 @@ Thiết lập › **Đóng tháng — danh sách kiểm tra** tự đánh dấu 
 
 - Kg thu là kg nhập kho trong tháng (thành phẩm + phụ phẩm).
 - Kg dự thu còn lại là kg thành phẩm dự thu chung (màn Dự thu) còn chờ ở lô sau ngày cuối tháng, đếm theo ngày đến hết một vòng cây: chồi chọn ngày cuối tháng tới khi thu xong, theo bộ thông số dự thu (mặc định 6 tháng tới trổ, 86 ngày tới thu, thu trong 30 ngày). Quả xa hơn mọc trên cây chưa có, chưa nhận chi phí nào.
+- Phần dự thu theo số cây chỉ tính trong 36 tháng kể từ tháng có Trổ dự kiến sớm nhất của các lô. Khi khung đó dừng trước ngày cần (lô có Trổ dự kiến cũ, chưa cập nhật theo vụ đang trồng), Lotus không tính giá thành mà báo ngày dự thu dừng, ngày cần và các lô cần cập nhật Trổ dự kiến (cùng Vụ hiện tại) ở Vườn & lô.
 - Kg đó quy về kg nhập kho theo tỷ lệ kg nhập / kg thành phẩm của lô trong tháng (lô chỉ có phụ phẩm thì theo cả vườn); cột "Cách tính" ghi hệ số.
 - Sổ lô tính theo ngày làm việc của dòng: buồng thu ngày cuối tháng, sáng hôm sau mới xác nhận, vẫn là của tháng.
 - Lô không còn kg dự thu thì dồn hết. Chi phí chung của vườn (không gắn lô) chia theo kg của cả vườn. Phần chưa thu nằm lại 154.

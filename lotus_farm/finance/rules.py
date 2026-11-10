@@ -495,6 +495,30 @@ def remaining_kg(cohorts, end):
     return {block: round(value, 3) for block, value in kg.items()}
 
 
+def forecast_gap(end, reach):
+    """Whether the tree-count forecast covers every day remaining_kg reads after `end`. Its waves stop at the last day of
+    a window that starts in the month of the farm's earliest estimated flowering date; bunches due later are missing
+    without a word, and the costing would charge their cost to this month's fruit.
+    reach: dict(until, since: the window's last and first day, waves: [(the last day a wave comes in, its parameter
+    set)], flowering: {lô: estimated flowering date}). The crops beyond the window would follow the parameter sets of the
+    waves still to come in after `end` (of every wave when none is left): the day read last is one crop pipeline after
+    `end` by the longest of them. Returns None when the window reaches it (or the farm has no tree-count forecast), else
+    dict(need: that day, until, start: the first month the window must start in to reach it, blocks: the lô whose
+    estimated flowering date is earlier, sorted)."""
+    waves = reach.get('waves') or []
+    if not waves:
+        return None
+    end = to_date(end)
+    configs = [config for last, config in waves if to_date(last) > end] or [config for _, config in waves]
+    need, until = max(pipeline_end(end, c) for c in configs), to_date(reach['until'])
+    if need <= until:
+        return None
+    after = until + dt.timedelta(days=1)  # the first day of a month: the window covers whole months
+    start = months_after(to_date(reach['since']), (need.year - after.year) * 12 + need.month - after.month + 1)
+    return dict(need=need, until=until, start=start,
+                blocks=sorted(b for b, day in (reach.get('flowering') or {}).items() if to_date(day) < start))
+
+
 def kg_mix(*pairs):
     """kg received in stock per kg of finished fruit, from the first (kg received, kg finished) pair that has finished
     fruit, else 1. Receipts count finished + secondary kg and the forecast finished kg only: this puts the forecast on

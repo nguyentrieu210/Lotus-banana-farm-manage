@@ -8,7 +8,8 @@ costing run absorbs the lô's work in progress into the harvest by the shared fo
 by day up to one crop pipeline, on the basis of the kg received), posts the difference of the fruit sold to 632 and
 leaves the difference of the fruit still in stock in 154, so the sheet closes on the ledger. A month already over reads
 the sổ lô by work day. An accountant without any farm scope gets the same figures. A second run is refused, and
-reversing the costing voucher marks the sheet Reversed.
+reversing the costing voucher marks the sheet Reversed. A lô whose estimated flowering date is so old that the tree-count
+forecast stops before one crop pipeline after the month makes the costing refuse, naming that lô.
 
 docker exec -i lotus-vps-test-backend-1 bash -lc 'cd /home/frappe/frappe-bench/sites && ../env/bin/python -' < tests/integration/verify_costing.py
 """
@@ -27,7 +28,7 @@ from lotus_farm import block_forecast, lot_ledger  # noqa: E402
 from lotus_farm import field_report as field  # noqa: E402
 from lotus_farm import lot_ledger_rules as ledger  # noqa: E402
 from lotus_farm import shift as shift_api  # noqa: E402
-from lotus_farm.block_forecast_engine import weight_kg  # noqa: E402
+from lotus_farm.block_forecast_engine import months_after, weight_kg  # noqa: E402
 from lotus_farm.finance import api, closing, costing, posting, reports, rules, setup  # noqa: E402
 
 FARM = os.environ.get('FARM', 'LOTUS-222')
@@ -259,6 +260,20 @@ try:
         if 'lotus_farm.finance.costing.costing_reversed' not in str(frappe.get_hooks('doc_events').get('Journal Entry', {})):
             costing.costing_reversed(frappe.get_doc('Journal Entry', done['voucher']))
         assert frappe.db.get_value(costing.RUN, done['run'], 'state') == 'Reversed'
+
+    # 7. The tree-count waves run over a window that starts in the month of the farm's earliest estimated flowering date.
+    #    A lô whose date was never moved on ends it before one crop pipeline after the month: the costing is refused, not
+    #    run on a forecast cut short, and names that lô.
+    stale = frappe.db.sql("""select name, block_code from `tabFarm Block` where farm=%s and active=1 and lotus_tree_count > 0
+        and lotus_estimated_flowering_date is not null order by lotus_estimated_flowering_date, block_code limit 1""", FARM, as_dict=True)[0]
+    frappe.db.set_value('Farm Block', stale.name, 'lotus_estimated_flowering_date', months_after(start, -36))
+    try:
+        costing.preview(month)
+        raise AssertionError('a forecast that stops before one crop pipeline must refuse the costing')
+    except frappe.ValidationError as exc:
+        message = unicodedata.normalize('NFC', str(exc))
+        frappe.clear_messages()
+    assert 'Trổ dự kiến' in message and message.rsplit('(', 1)[1].split(')')[0].split(', ') == [stale.block_code or stale.name], message
     report.update(receipt=received, unsold=unsold, run=done, lot=dict(
         block=block.block_code, kg=row.kg_harvested, kg_remaining=row.kg_remaining, absorbed=row.absorbed, per_kg=row.cost_per_kg, adjustment=row.adjustment,
         unsold_adjustment=row.unsold_adjustment, wip_close=row.wip_close), rollback=True)

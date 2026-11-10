@@ -201,6 +201,25 @@ class FinanceRules(unittest.TestCase):
         self.assertTrue(all(day > dt.date(2026, 11, 30) for c in cohorts for day, _ in c['days']))
         self.assertEqual(rules.remaining_kg(cohorts, '2026-11-30'), {'A1': round(57 * 20 * .98, 3)})
 
+    def test_costing_is_refused_while_the_tree_count_forecast_stops_before_one_crop_pipeline(self):
+        config = validate(DEFAULTS)
+        # The farm's earliest estimated flowering date is in November 2026: the tree-count waves run to 31/10/2029.
+        reach = dict(until=dt.date(2029, 10, 31), since=dt.date(2026, 11, 1), waves=[(dt.date(2027, 3, 30), config), (dt.date(2029, 10, 31), config)],
+                     flowering={'B-1': dt.date(2026, 12, 1), 'A-2': dt.date(2026, 11, 20), 'A-1': dt.date(2026, 11, 1)})
+        self.assertIsNone(rules.forecast_gap('2028-12-31', reach), 'December 2028 reads up to 23/10/2029, inside the window')
+        self.assertEqual(rules.forecast_gap(dt.date(2029, 1, 31), reach),
+                         dict(need=dt.date(2029, 11, 23), until=dt.date(2029, 10, 31), start=dt.date(2026, 12, 1), blocks=['A-1', 'A-2']),
+                         'January 2029 reads up to 23/11/2029: the window must start in December 2026, the lô flowering in November hold it back')
+        longer = dict(config, sucker_to_flower_months=8)
+        self.assertIsNone(rules.forecast_gap('2028-12-31', dict(reach, waves=[(dt.date(2027, 3, 30), longer), (dt.date(2029, 10, 31), config)])),
+                          'a parameter set only crops already in followed says nothing of the crops beyond the window')
+        self.assertEqual(rules.forecast_gap('2029-01-31', dict(reach, waves=[(dt.date(2029, 6, 30), config), (dt.date(2029, 10, 31), longer)])),
+                         dict(need=dt.date(2030, 1, 23), until=dt.date(2029, 10, 31), start=dt.date(2027, 2, 1), blocks=['A-1', 'A-2', 'B-1']),
+                         'the longest pipeline of the crops still to come in')
+        self.assertEqual(rules.forecast_gap('2029-12-31', dict(reach, waves=[(dt.date(2029, 10, 31), config)]))['need'], dt.date(2030, 10, 23),
+                         'a window over before the month: by every wave')
+        self.assertIsNone(rules.forecast_gap('2031-06-30', dict(reach, waves=[])), 'no tree-count forecast: nothing to stop short')
+
     def test_forecast_kg_go_on_the_basis_of_the_kg_received(self):
         self.assertEqual(rules.kg_mix((2000, 1600), (5000, 4500)), 1.25, 'the pool\'s own month: finished + secondary per finished kg')
         self.assertEqual(rules.kg_mix((300, 0), (5000, 4000)), 1.25, 'secondary fruit only: the farm\'s month')

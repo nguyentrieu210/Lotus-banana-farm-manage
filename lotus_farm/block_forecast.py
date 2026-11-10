@@ -148,12 +148,22 @@ def bunches_after(farm,day):
     """Month-end costing: the bunches of the farm's active lô (cohorts, as bunch_summary hands them over) still to come
     after a day. The sổ lô counts as it stands now, but only its lines of work days up to that day, whenever they were
     confirmed: a harvest of the last day confirmed the next morning was harvested that day. Bunches come in from the next
-    day, or from today while that day is still ahead. Parameter sets, tree counts and flowering dates are today's."""
+    day, or from today while that day is still ahead. Parameter sets, tree counts and flowering dates are today's.
+
+    Returns (cohorts, reach). The tree-count waves stop at the end of the projection window, which starts in the month of
+    the earliest estimated flowering date of the farm's lô; nothing in the cohorts says so. reach tells the caller how far
+    they go: until (the window's last day), since (its first day), waves ([(the last day a wave comes in, its parameter
+    set)]) and flowering ({lô code: the estimated flowering date the window starts from})."""
     day=date(day)
     start=min(day+dt.timedelta(days=1),date(nowdate()))
-    result,_,_=_projection(farm)
+    result,projected,profiles=_projection(farm)
     blocks=_bunch_scope(farm)
-    return _bunch_cohorts(farm,blocks,result["rows"],_bunch_lines(farm,blocks,until=day),start=start)
+    sources,_=source_rows(projected)
+    codes={b["name"]:b.get("block_code") or b["name"] for b in projected}
+    reach=dict(until=date(result["window_end"]),since=date(result["window_start"]),
+               waves=[(date(w["harvest_window_end"]),w["timing"]) for w in result["rows"]],
+               flowering={codes[s["farm_block"]]:projection_config(s,profiles)[2] for s in sources})
+    return _bunch_cohorts(farm,blocks,result["rows"],_bunch_lines(farm,blocks,until=day),start=start),reach
 
 LAYER_NOTES={"cut":"Mức tin cậy cao: buồng đã cắt bắp.","inject":"Mức tin cậy khá: đã chích bắp, chưa cắt.","sucker":"Mức tin cậy thấp: số chồi ước tính từ diện tích đã chọn, mốc thời gian theo ngày chọn thật.",
     "tree":"Mức tin cậy thấp: tính từ số cây và ngày trổ ước tính theo khu."}

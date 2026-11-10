@@ -178,10 +178,19 @@ def _forecast_kg(farm, end):
     work day of its lines, as it stands when the costing runs: what was harvested up to the last day is no longer
     expected, whenever it was confirmed, and what is still due comes in from the next day, or from today while the month
     is still running (block_forecast.bunches_after). A preview or run after a correction of the sổ lô, of the parameter
-    sets or of the tree counts uses the corrected figures."""
+    sets or of the tree counts uses the corrected figures. The tree-count forecast covers a window that starts in the
+    month of the farm's earliest estimated flowering date: when it ends before the last day read, the costing is refused
+    (rules.forecast_gap) and names the lô whose date holds the window back, rather than run on a forecast cut short."""
     from lotus_farm import block_forecast
     with _whole_farm():
-        cohorts = block_forecast.bunches_after(farm, end)
+        cohorts, reach = block_forecast.bunches_after(farm, end)
+    gap = rules.forecast_gap(end, reach)
+    if gap:
+        until, need, last, start = (getdate(d).strftime('%d/%m/%Y') for d in (gap['until'], gap['need'], end, gap['start']))
+        lots = ', '.join(gap['blocks'][:10]) + (', …' if len(gap['blocks']) > 10 else '')
+        frappe.throw('Chưa tính được giá thành: dự thu theo số cây của vườn %s chỉ tính tới %s, vì khung dự thu bắt đầu từ tháng trổ dự kiến sớm nhất '
+                     'của các lô; giá thành cần dự thu tới %s (hết một vòng cây sau ngày %s). Ở Vườn & lô, cập nhật Trổ dự kiến theo vụ đang trồng '
+                     '(cùng Vụ hiện tại) cho các lô có Trổ dự kiến trước %s (%s), rồi tính lại.' % (farm, until, need, last, start, lots))
     return rules.remaining_kg(cohorts, end)
 
 
