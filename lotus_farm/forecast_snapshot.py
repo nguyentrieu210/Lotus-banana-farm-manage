@@ -22,6 +22,7 @@ SNAPSHOT = "Lotus Forecast Snapshot"
 LIMITS = ("Dựng lại theo sổ lô lúc 0 giờ thứ Hai. Số cây, ngày trổ ước tính và lô đang hoạt động lấy giá trị lúc dựng, "
           "không phải giá trị của ngày đó.")
 WEEKS_CACHE = "lotus_forecast_weeks"
+MAX_VARIANCE_WEEKS = 104
 
 
 def _write(farm, kind, as_of=None):
@@ -77,7 +78,9 @@ def ensure_weeks(farm):
 
 
 def ensure_all():
-    """Every farm with a sổ lô. Runs in the background; remembered for the week once done."""
+    """Every farm with a sổ lô. Runs in the background; remembered for the week once done. The copy is the farm's, not
+    the view of whoever's login queued it, so it is built with full rights."""
+    frappe.set_user("Administrator")
     monday = str(rules.monday_of(nowdate()))
     farms = sorted({r.farm for r in frappe.get_all(ENTRY, filters={"stage": ["is", "set"], "state": "Confirmed"}, fields=["farm"], distinct=True,
                                                     limit_page_length=0)})
@@ -144,6 +147,8 @@ def variance(farm, from_week, to_week, group_by="week"):
     _require(farm)
     snapshots = _snapshots(farm)
     first, last = rules.week_monday(from_week), rules.week_monday(to_week)
+    if last < first or (last - first).days > MAX_VARIANCE_WEEKS * 7:
+        frappe.throw(f"Chọn khoảng tuần hợp lệ, tối đa {MAX_VARIANCE_WEEKS} tuần.")
     forecast, used, cursor, weeks = [], {}, first, []
     while cursor <= last:
         week = rules.week_key(cursor)

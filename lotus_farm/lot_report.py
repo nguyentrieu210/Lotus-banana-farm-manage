@@ -42,7 +42,7 @@ def _rights(farm, team):
     row = _team(farm, team)
     rights = field.access(farm, row.lotus_parent_team)
     write = rights.supervisor or team in rights.teams
-    if not (write or rights.read):
+    if not (write or rights.inspector):
         frappe.throw("Bạn không thuộc đội của tổ này.", frappe.PermissionError)
     return frappe._dict(rights, team=row, write=write, confirm=rights.supervisor)
 
@@ -192,6 +192,7 @@ def open_report(farm, team, date=None):
         frappe.throw("Không nhập cho ngày tương lai.")
     name = frappe.db.get_value(REPORT, {"farm": farm, "work_team": team, "report_date": day})
     if not name:
+        field._closed(frappe.db.get_value("Farm", farm, "company"), getdate(day))
         lock("Farm", farm)
         name = frappe.db.get_value(REPORT, {"farm": farm, "work_team": team, "report_date": day})
     if not name:
@@ -227,7 +228,7 @@ def today(farm, team, date=None):
                      "assignments": [a for a in assignments if a.farm_block == block_name],
                      "lines": [l for l in lines if l.farm_block == block_name], "colours": colours.get(block_name, [])})
     ribbon = field.ribbon(farm, day)
-    crew_teams = {t.name for t in field._teams(farm) if t.lotus_parent_team == rights.team.lotus_parent_team} | {team}
+    crew_teams = _crew_teams(farm, rights.team.lotus_parent_team, team)
     return {"date": day, "farm": farm, "team": team, "team_name": rights.team.team_name, "crew": rights.team.lotus_parent_team,
             "report": _report_row(name) if name else None, "lots": lots,
             "blocks": [{"block": n, "code": b["block_code"], "zone": b["zone"]} for n, b in blocks.items()],
@@ -255,11 +256,18 @@ def _clean_items(materials):
     return result
 
 
-def _check_people(people, here, names):
+def _crew_teams(farm, crew, team):
+    return {t.name for t in field._teams(farm) if t.lotus_parent_team == crew} | {team}
+
+
+def _check_people(people, here, names, crew_teams):
+    """Only people of the đội's tổ, and only the buổi the clock shows them present."""
     for employee, flags in people.items():
         if employee not in names:
             raise rules.LineError("Có người không có trong danh sách nhân sự.")
         seen = here.get(employee) or {}
+        if seen.get("team") not in crew_teams:
+            raise rules.LineError(f"{names[employee]} không thuộc tổ nào của đội này.")
         for session, label in (("morning", "sáng"), ("afternoon", "chiều")):
             if flags[session] and not seen.get(session):
                 raise rules.LineError(f"{names[employee]}: máy chấm công không có lượt buổi {label}.")
@@ -328,6 +336,7 @@ def save_lot(report, block, lines=None, expected_modified=None):
     reasons = {r.name for r in _reasons()}
     diseases = {d.name for d in _diseases()}
     here = field.presence(doc.company, day)
+    crew_teams = _crew_teams(doc.farm, doc.crew, doc.work_team)
     cycle = cint(_cycles([block]).get(block))
     given = [a for a in _assignments(doc.farm, doc.work_team, str(day)) if a.farm_block == block]
     rounds = {a.work_type: a.name for a in given if a.kind == field.rules.ROUND}
@@ -360,7 +369,7 @@ def save_lot(report, block, lines=None, expected_modified=None):
                     raise rules.LineError(f"Lô đang cách ly thuốc đến hết {held[1].strftime('%d/%m/%Y')}, chưa được thu hoạch.")
             clean["materials"] = _clean_items(clean["materials"])
             clean["people"] = rules.clean_people(raw.get("people"))
-            _check_people(clean["people"], here, names)
+            _check_people(clean["people"], here, names, crew_teams)
             if clean["stage"] == rules.SUCKER:
                 clean["qty"] = rules.sucker_estimate(lot["trees"], clean["area_ha"], lot.get("area_ha"))
                 if not clean["qty"]:
@@ -388,7 +397,6 @@ def save_lot(report, block, lines=None, expected_modified=None):
         if existing.state == rules.DRAFT and key not in wanted:
             frappe.delete_doc(ENTRY, existing.name, ignore_permissions=True, force=True)
             removed += 1
-    write_sessions(doc.company, day)
     doc.entered_by = frappe.session.user
     doc.on_behalf = 0 if rights.team.lotus_leader == frappe.session.user else 1
     if doc.on_behalf and doc.source == "Phone":
@@ -418,8 +426,9 @@ def _cap_errors(doc, block, lot, cycle, wanted, live):
 
 
 def write_sessions(company, day):
-    """Rewrite the buổi of everyone on a day's live lines: one buổi of one person, shared by the lines they were on."""
-    names = frappe.get_all(ENTRY, filters={"company": company, "posting_date": day, "state": ["!=", rules.VOIDED]}, pluck="name")
+    """Rewrite the buổi of everyone on a day's confirmed lines: one buổi of one person, shared by the lines they were on.
+    Unsent and unconfirmed lines hold nobody, so a draft of one tổ never changes what another tổ's confirmed line pays."""
+    names = frappe.get_all(ENTRY, filters={"company": company, "posting_date": day, "state": rules.CONFIRMED}, pluck="name")
     people = frappe.get_all(PERSON, filters={"parenttype": ENTRY, "parent": ["in", names or [""]]},
                             fields=["parent", "employee", "morning", "afternoon"], limit_page_length=0)
     if not names:
@@ -524,6 +533,7 @@ def confirm(report, expected_modified=None):
         _store(line)
         if line.done and line.assignment:
             done_rounds[line.assignment] = line
+    write_sessions(doc.company, getdate(doc.report_date))
     for name, line in done_rounds.items():
         _finish_round(name, user, now, line)
     doc.update({"state": state, "confirmed_by": user, "confirmed_at": now})

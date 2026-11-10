@@ -171,5 +171,5 @@ def approve_rule(name):
 def delete_rule(name):
     doc = frappe.get_doc(RULE, name)
     _require_manager(doc.farm)
-    doc.delete()
+    doc.delete(ignore_permissions=True)
     return {"deleted": name}

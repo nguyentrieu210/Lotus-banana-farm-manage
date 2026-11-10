@@ -258,7 +258,8 @@ def bootstrap():
     from lotus_farm.forecast_snapshot import queue_missing_weeks
     queue_missing_weeks()
     roles = _roles()
-    return {"user": frappe.session.user, "today": nowdate(), "csrf_token": get_csrf_token(),
+    from lotus_farm.shift import can_open as packhouse
+    return {"user": frappe.session.user, "today": nowdate(), "csrf_token": get_csrf_token(), "packhouse": packhouse(),
             "farms": frappe.get_all("Farm", filters={"name": ["in", farm_names() or [""]]}, fields=["name", "farm_name", "company"]),
             "manager": is_manager(), "supervisor": SUPERVISOR in roles, "leader": LEADER in roles, "inspector": is_inspector()}
 
@@ -649,21 +650,38 @@ def work_rows(company, begin, end):
     return [dict(r, lotus_crop_cycle=None, workdays=flt(r.workdays)) for r in rows]
 
 
+def pay_scope(farm):
+    """Whose khoán money this user may see: {đội: None (every tổ) | the tổ they lead}. The manager sees every đội, a đội
+    trưởng their đội, a tổ trưởng their tổ. Kỹ thuật vườn nghiệm thu but does not see money."""
+    teams = _teams(farm)
+    user = frappe.session.user
+    if is_manager():
+        return {t.name: None for t in teams if t.lotus_team_level == CREW}
+    scope = {t.name: None for t in teams if t.lotus_team_level == CREW and t.lotus_leader == user}
+    for t in teams:
+        if t.lotus_team_level == TEAM and t.lotus_leader == user and t.lotus_parent_team and scope.get(t.lotus_parent_team, set()) is not None:
+            scope.setdefault(t.lotus_parent_team, set()).add(t.name)
+    return scope
+
+
 @frappe.whitelist()
 def payable(farm, month):
     """Tiền khoán của tháng theo người: dòng khoán số lượng đã xác nhận và lô khoán đã nghiệm thu, chia theo buổi."""
     require_farm(farm)
-    if not (is_manager() or _visible_crews(farm)):
+    allowed = pay_scope(farm)
+    if not allowed:
         frappe.throw("Không có quyền xem tiền khoán.", frappe.PermissionError)
     begin = getdate(str(month)[:7] + "-01")
     end = get_last_day(begin)
-    crews = list(_visible_crews(farm)) or [""]
+    crews = list(allowed)
     lines = frappe.get_all(ENTRY, filters={"farm": farm, "crew": ["in", crews], "state": "Confirmed", "pay_mode": rules.PAY_COUNT,
                                            "posting_date": ["between", [begin, end]], "amount": [">", 0]},
-                           fields=["name", "farm_block", "work_type", "work_team", "amount", "posting_date", "pay_mode"], limit_page_length=0)
+                           fields=["name", "farm_block", "work_type", "work_team", "crew", "amount", "posting_date", "pay_mode"], limit_page_length=0)
     tickets = frappe.get_all(ASSIGNMENT, filters={"farm": farm, "crew": ["in", crews], "state": rules.LOCKED, "pay_mode": rules.PAY_LOT,
                                                   "locked_at": ["between", [str(begin) + " 00:00:00", str(end) + " 23:59:59"]]},
                              fields=ASSIGN_FIELDS, limit_page_length=0)
+    lines = [l for l in lines if allowed[l.crew] is None or l.work_team in allowed[l.crew]]
+    tickets = [t for t in tickets if allowed[t.crew] is None or t.work_team in allowed[t.crew]]
     _decorate(farm, lines)
     _decorate(farm, tickets)
     by_line = _weights({"_by": "entry", "names": [l.name for l in lines]})

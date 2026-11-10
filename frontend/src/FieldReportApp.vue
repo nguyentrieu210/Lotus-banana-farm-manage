@@ -45,13 +45,18 @@ const workName=name=>(setup.value?.works||[]).find(w=>w.name===name)?.work_name|
 
 function query(extra={}){return {...(route?.query||{}),field_view:view.value,farm:farm.value||undefined,crew:crew.value||undefined,date:day.value||undefined,...extra}}
 async function go(next,extra={}){
- view.value=normalizeFieldView(next);notice.value=''
+ view.value=setup.value?.limited?'packhouse':normalizeFieldView(next);notice.value=''
  if(router)await router.push({path:'/cong-viec',query:query({field_view:view.value,...extra})})
  await loadView()
 }
 async function loadSetup(){
  if(!farm.value){setup.value=null;return}
- setup.value=await api('setup',{farm:farm.value})
+ try{setup.value=await api('setup',{farm:farm.value})}
+ catch(e){
+  // Packhouse staff and the accountant are not in the field teams: they get the Xưởng view only.
+  if(!session.value?.packhouse)throw e
+  setup.value={crews:[],teams:[],blocks:[],works:[],rates:[],my_crews:[],my_teams:[],zones:[],limited:true};view.value='packhouse'
+ }
  if(!myCrews.value.some(c=>c.name===crew.value))crew.value=myCrews.value[0]?.name||''
 }
 async function boot(){
@@ -66,7 +71,7 @@ async function boot(){
  finally{busy.value=false}
 }
 onMounted(boot)
-watch(()=>props.fieldView,value=>{const next=normalizeFieldView(value);if(next!==view.value){view.value=next;loadView()}})
+watch(()=>props.fieldView,value=>{const next=setup.value?.limited?'packhouse':normalizeFieldView(value);if(next!==view.value){view.value=next;loadView()}})
 
 async function loadView(){
  if(!setup.value)return

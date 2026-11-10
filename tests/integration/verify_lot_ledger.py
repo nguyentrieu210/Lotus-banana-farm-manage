@@ -169,10 +169,13 @@ try:
     other_block = frappe.get_all("Farm Block", filters={"farm": FARM, "farm_zone": "A", "active": 1, "name": ["!=", block]}, pluck="name", limit=1)[0]
     out = lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1.5, "people": [{"employee": e1, "morning": 1}]}])
     check("cắt lá on another lô, same morning", not out["errors"], out)
-    sessions = {(s.entry, s.employee, s.session): s.weight for s in frappe.get_all(field.SESSION, filters={"posting_date": today, "employee": ["in", workers]},
-                                                                                  fields=["entry", "employee", "session", "weight"])}
-    e1_morning = sorted(w for (en, emp, se), w in sessions.items() if emp == e1 and se == "Morning")
-    check("one morning split between two việc: 0,5 + 0,5", e1_morning == [0.5, 0.5], sessions)
+    check("unsent lines hold nobody's buổi", not frappe.db.count(field.SESSION, {"posting_date": today, "employee": ["in", workers]}))
+    outsider = frappe.get_all("Employee", filters={"company": company, "status": "Active", "name": ["not in", workers]}, pluck="name", limit=1)
+    if outsider:
+        frappe.db.set_value("Employee", outsider[0], "lotus_work_team", None)
+        frappe.get_doc({"doctype": "Employee Checkin", "employee": outsider[0], "time": f"{today} 06:35:00", "log_type": "IN"}).insert(ignore_permissions=True)
+        far = lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1.5, "people": [{"employee": e1, "morning": 1}, {"employee": outsider[0], "morning": 1}]}])
+        check("a person outside the đội is refused", far["saved"] == 0 and any("không thuộc tổ" in e["message"] for e in far["errors"]), far)
     refused("a person the clock does not show is refused", lambda: (_ for _ in ()).throw(frappe.ValidationError) if
             lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1, "people": [{"employee": "NOT-A-PERSON", "morning": 1}]}])["errors"] else None)
     spray_out = lr.save_lot(report, other_block, [{"work_type": field_work.name, "qty": 1.5, "people": [{"employee": e1, "morning": 1}]},
@@ -190,6 +193,10 @@ try:
     frappe.set_user(leader)
     lr.confirm(report)
     frappe.set_user("Administrator")
+    sessions = {(s.entry, s.employee, s.session): s.weight for s in frappe.get_all(field.SESSION, filters={"posting_date": today, "employee": ["in", workers]},
+                                                                                  fields=["entry", "employee", "session", "weight"])}
+    e1_morning = sorted(w for (en, emp, se), w in sessions.items() if emp == e1 and se == "Morning")
+    check("confirmed: one morning split between two việc: 0,5 + 0,5", e1_morning == [0.5, 0.5], sessions)
     line = frappe.get_all(lot_ledger.ENTRY, filters={"daily_report": report, "stage": rules.BAG}, fields=["name", "rate", "amount"])[0]
     rate = field.rules.rate_for(field._rates(FARM), bag.name, today)
     check("the khoán price is taken at confirmation", rate and line.rate == rate.rate and line.amount == round(50 * rate.rate), (line, rate))

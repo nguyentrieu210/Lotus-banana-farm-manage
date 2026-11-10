@@ -192,6 +192,18 @@ def week(farm, week=None):
 
 # ---------------------------------------------------------------- Tháng
 
+def _pay_blocks(farm):
+    """Lô whose khoán money this user sees in the month report: every lô for the manager (None), the khu of the đội for
+    its đội trưởng, none for a tổ trưởng or kỹ thuật vườn (a tổ trưởng sees their tổ in Tiền khoán theo người)."""
+    if field.is_manager():
+        return None
+    zones = set()
+    for t in field._teams(farm):
+        if t.lotus_team_level == field.CREW and t.lotus_leader == frappe.session.user:
+            zones |= set(field.rules.crew_zones(t.lotus_zones))
+    return {name for name, b in field._block_map(farm).items() if b["zone"] in zones}
+
+
 @frappe.whitelist()
 def month(farm, month=None):
     """A month of one farm: harvest and the rates that drive the forecast (cắt bắp per tree, thu per cắt bắp, kg and
@@ -224,6 +236,7 @@ def month(farm, month=None):
     total_cut = sum(r["cut"] for r in rate_rows)
     total_harvest = sum(r["harvested"] for r in rate_rows)
     total_kg = sum(r["kg"] for r in rate_rows)
+    pay_blocks = _pay_blocks(farm)
     # Công (buổi of the sổ lô, weighted) and money per lô: khoán số lượng lines confirmed in the month, khoán lô locked in it.
     labour = {r.farm_block: flt(r.sessions) for r in frappe.db.sql("""select farm_block, sum(weight) as sessions from `tabLotus Work Session`
         where farm = %s and posting_date between %s and %s group by farm_block""", (farm, begin, end), as_dict=True)}
@@ -233,7 +246,8 @@ def month(farm, month=None):
         and state = 'Locked' and locked_at between %s and %s group by farm_block""", (farm, begin, f"{end} 23:59:59"), as_dict=True)}
     pay_rows = [{"code": codes.get(b, ""), "workdays": round(labour.get(b, 0) / 2, 2), "count_pay": round(count_pay.get(b, 0)), "lot_pay": round(lot_pay.get(b, 0)),
                  "total": round(count_pay.get(b, 0) + lot_pay.get(b, 0))}
-                for b in sorted(set(labour) | set(count_pay) | set(lot_pay), key=lambda b: (len(codes.get(b, "")), codes.get(b, "")))]
+                for b in sorted(set(labour) | set(count_pay) | set(lot_pay), key=lambda b: (len(codes.get(b, "")), codes.get(b, "")))
+                if pay_blocks is None or b in pay_blocks]
     # Materials: reported on confirmed lines against issued from stock to the lô (Material Issue rows carrying the lô).
     used = frappe.db.sql(f"""select e.farm_block, m.item_code, sum(m.qty) as qty from `tabLotus Work Entry Material` m join `tab{ENTRY}` e on e.name = m.parent
         where e.farm = %s and e.state = 'Confirmed' and e.posting_date between %s and %s group by e.farm_block, m.item_code""", (farm, begin, end), as_dict=True)
@@ -264,4 +278,6 @@ def month(farm, month=None):
               [_col("code", "Lô"), _col("item", "Vật tư"), _col("issued", "Xuất kho", "number"), _col("used", "Báo dùng", "number"), _col("gap", "Chênh", "number")],
               "warn" if gaps else "good", "dòng"),
     ]
+    if pay_blocks is not None and not pay_blocks:
+        cards = [c for c in cards if c["key"] != "pay"]
     return {"month": str(begin)[:7], "from": str(begin), "to": str(end), "cards": cards}

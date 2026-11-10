@@ -123,10 +123,10 @@ def receive_shift(shift, posting_date=None):
         frappe.throw('Chọn "Chuối thành phẩm" và "Kho thành phẩm" ở Tài chính – Kế toán › Thiết lập trước khi nhập kho theo ca.')
     from lotus_farm import packout_rules
     from lotus_farm.controls import lock
-    doc = frappe.get_doc('Packhouse Shift', shift)
+    lock('Packhouse Shift', shift)
+    doc = frappe.get_doc('Packhouse Shift', shift, for_update=True)  # read after the lock: a second caller sees the first receipt
     if doc.docstatus != 1:
         frappe.throw('Ca %s chưa đóng.' % doc.name)
-    lock('Packhouse Shift', doc.name)
     if doc.stock_entry and frappe.db.get_value('Stock Entry', doc.stock_entry, 'docstatus') in (0, 1):
         frappe.throw('Ca %s đã có phiếu nhập kho %s.' % (doc.name, doc.stock_entry))
     if flt(doc.secondary_kg) > 0 and not cfg.get('secondary_item'):

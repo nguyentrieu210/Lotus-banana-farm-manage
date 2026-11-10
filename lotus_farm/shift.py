@@ -128,8 +128,11 @@ class ShiftDocument(DailyDocument):
 
     def before_cancel(self):
         day_guard(self)
-        if self.stock_entry and frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") == 1:
+        state = frappe.db.get_value("Stock Entry", self.stock_entry, "docstatus") if self.stock_entry else None
+        if state == 1:
             frappe.throw("Ca đã nhập kho thành phẩm. Hủy phiếu nhập kho trước khi hủy ca.")
+        if state == 0:
+            frappe.throw(f"Ca đang có phiếu nhập kho nháp {self.stock_entry}. Xóa phiếu nháp trước khi hủy ca.")
 
 
 def shift_summary(shift):
@@ -188,8 +191,21 @@ def _require(farm, write=False):
     from lotus_farm.controls import farm_allowed
     if frappe.session.user == "Guest" or not farm or not farm_allowed(farm):
         frappe.throw("Bạn không có quyền với vườn này.", frappe.PermissionError)
-    if not frappe.has_permission(SHIFT, "write" if write else "read"):
-        frappe.throw("Bạn không có quyền với ca đóng gói.", frappe.PermissionError)
+    if frappe.has_permission(SHIFT, "write" if write else "read") or (not write and _can_receive()):
+        return
+    frappe.throw("Bạn không có quyền với ca đóng gói.", frappe.PermissionError)
+
+
+def can_open():
+    """The Xưởng screen: whoever may read shifts, and the accountant who receives closed shifts into stock."""
+    return bool(frappe.has_permission(SHIFT, "read") or _can_receive())
+
+
+def _read(doc):
+    from lotus_farm.controls import farm_allowed
+    if _can_receive() and farm_allowed(doc.farm):
+        return
+    doc.check_permission("read")
 
 
 def _labels(farm):
@@ -232,7 +248,8 @@ def shifts(farm, from_date=None, to_date=None):
     _require(farm)
     end = getdate(to_date or nowdate())
     begin = getdate(from_date or add_days(end, -30))
-    rows = frappe.get_list(SHIFT, filters={"farm": farm, "posting_date": ["between", [begin, end]], "docstatus": ["<", 2]}, fields=SHIFT_FIELDS,
+    reader = frappe.get_list if frappe.has_permission(SHIFT, "read") else frappe.get_all  # the accountant passed _require
+    rows = reader(SHIFT, filters={"farm": farm, "posting_date": ["between", [begin, end]], "docstatus": ["<", 2]}, fields=SHIFT_FIELDS,
                            order_by="posting_date desc, shift_code asc", limit_page_length=0)
     counts = {r.parent: (cint(r.bunches), cint(r.lots)) for r in frappe.db.sql(
         f"select parent, sum(bunches) as bunches, count(distinct farm_block) as lots from `tab{SOURCE}` where parent in %(names)s group by parent",
@@ -246,7 +263,7 @@ def shifts(farm, from_date=None, to_date=None):
 @frappe.whitelist()
 def shift(name):
     doc = frappe.get_doc(SHIFT, name)
-    doc.check_permission("read")
+    _read(doc)
     blocks, tags = _labels(doc.farm)
     sources = [dict(s.as_dict(), block_code=blocks.get(s.farm_block, ""), colour=tags.get(s.bunch_tag, {}).get("label", "")) for s in doc.sources]
     split = rules.split([{k: s[k] for k in ("farm_block", "bunch_tag", "bunches", "kg", "harvest_entry", "block_code", "colour")} for s in sources],
@@ -303,7 +320,7 @@ def trace(shift):
     """Where the fruit of a shift came from: each source → its harvest lines → the spraying on that lô in the
     TRACE_DAYS before the harvest (product, dose, cách ly)."""
     doc = frappe.get_doc(SHIFT, shift)
-    doc.check_permission("read")
+    _read(doc)
     blocks, tags = _labels(doc.farm)
     out = []
     for s in doc.sources:

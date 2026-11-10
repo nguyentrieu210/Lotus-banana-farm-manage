@@ -5,7 +5,7 @@ export const workspaceModules={
  'nhan-su':{label:'Hồ sơ nhân viên',capability:'hr'},
  'cham-cong':{label:'Chấm công',capability:'attendance'},
  'kho':{label:'Quản lý kho',capability:'stock'},
- 'cong-viec':{label:'Công việc ngoài vườn',capability:'field_report'},
+ 'cong-viec':{label:'Công việc ngoài vườn',capability:'field_report',also:'packhouse'},
  farms:{label:'Vườn & lô',module:'farms'},
  forecast:{label:'Dự thu',module:'forecast'},
  'mau-day':{label:'Danh mục màu dây',module:'mau-day'},

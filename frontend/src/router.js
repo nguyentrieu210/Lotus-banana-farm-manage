@@ -16,7 +16,7 @@ export function permittedRoute(path,session,query={}){
   if(!item)return !!session.capabilities?.purchasing  // an ERP section (Yêu cầu báo giá…), already permission-filtered
   return !!session.capabilities?.purchasing&&(!item.finance||!!session.capabilities?.purchasing_finance)&&(!item.invoice||!!session.capabilities?.purchasing_invoice_read)
  }
- if(workspaceModules[page]){const module=workspaceModules[page];return module.capability?!!session.capabilities?.[module.capability]:!!session.modules?.[module.module]?.length}
+ if(workspaceModules[page]){const module=workspaceModules[page];return module.capability?(!!session.capabilities?.[module.capability]||!!(module.also&&session.capabilities?.[module.also])):!!session.modules?.[module.module]?.length}
  if(['today','reports'].includes(page))return !!session.capabilities.home
  if(/^(farms|farm|blocks|block|plots|plot|cycles|cycle)\//.test(page))return !!session.modules.farms?.length
  const key=moduleKey(page)

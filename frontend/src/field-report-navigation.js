@@ -22,8 +22,9 @@ const views=new Set(fieldNavigation.filter(r=>r.path==='cong-viec').map(r=>r.id)
 export function normalizeFieldView(value){return views.has(value)?value:'today'}
 export const fieldQuery=id=>id==='forecast-params'?{tab:'profiles'}:fieldNavigation.find(r=>r.id===id)?.path==='cong-viec'?{field_view:id}:{}
 export const fieldViewTitle=value=>fieldNavigation.find(r=>r.id===normalizeFieldView(value)).label
-// The menu: the views need the field-report capability; Dự thu and Màu dây cắt bắp stay for anyone allowed those pages.
+// The menu: the views need the field-report capability; Dự thu and Màu dây cắt bắp stay for anyone allowed those pages,
+// and Xưởng for packhouse supervisors and the accountant who receives shifts (they are not in the field teams).
 export function visibleFieldNavigation(session){
- const field=!!session?.capabilities?.field_report
- return fieldNavigation.filter(r=>!r.hidden&&(field||r.open))
+ const field=!!session?.capabilities?.field_report,packhouse=!!session?.capabilities?.packhouse
+ return fieldNavigation.filter(r=>!r.hidden&&(field||r.open||(packhouse&&r.id==='packhouse')))
 }

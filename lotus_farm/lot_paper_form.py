@@ -99,6 +99,7 @@ def read_photo(report, file_url):
         frappe.throw("Bạn chỉ nhập cho tổ của mình.", frappe.PermissionError)
     if not rules.can_edit(doc.state):
         frappe.throw("Báo cáo đã gửi. Nhờ đội trưởng mở lại nếu cần đọc lại phiếu.")
+    field._closed(doc.company, getdate(doc.report_date))
     draft = _draft(doc)
     form = draft.get("form") or _form(doc)
     document_ai.count_use()
@@ -142,7 +143,7 @@ def _write(doc, rights, data, lots, lines, columns, notes):
     lock("Farm", doc.farm)
     day = getdate(doc.report_date)
     works = lot_ledger.works(doc.farm)
-    crew_teams = {t.name for t in field._teams(doc.farm) if t.lotus_parent_team == rights.team.lotus_parent_team} | {doc.work_team}
+    crew_teams = lr._crew_teams(doc.farm, rights.team.lotus_parent_team, doc.work_team)
     present = [p for p in lr._present(doc.company, day, doc.work_team, crew_teams) if p["own"]]
     people = {p["employee"]: {"morning": 1 if p.get("morning") else 0, "afternoon": 1 if p.get("afternoon") else 0} for p in present}
     names = {p["employee"]: p.get("employee_name") or p["employee"] for p in present}
@@ -172,5 +173,4 @@ def _write(doc, rights, data, lots, lines, columns, notes):
                 clean["reject_stage"] = "After Cut" if line["bunch_tag"] else "Before Cut"
             entry = lr._write_line(doc, doc.name, block, clean, None, cint(cycles.get(block)), rounds, standing, names, "; ".join(flags))
             written[code].append(entry.name)
-    lr.write_sessions(doc.company, day)
     return written
