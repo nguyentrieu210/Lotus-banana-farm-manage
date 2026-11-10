@@ -108,3 +108,18 @@ test('a việc already on the lô is not added twice; bao buồng may take anoth
  assert.equal(dialog().querySelectorAll('.lot-entry__line').length,3,'bao buồng can be entered for two colours')
  view.unmount()
 })
+
+test('thu hoạch shows the buồng left of its colour and more than that is stopped before the server',async()=>{
+ const held=lot(A5,'A5',{assignments:[{kind:'Round',work_type:'CL'}],colours:[{tag:'red',label:'Đỏ',week:43,code:'DO',cut:10,bag:0,used:8,left:2,bag_left:10}],
+  lines:[{name:'e1',state:'Draft',work_type:'TH',stage:'Harvest',qty:8,bunch_tag:'red',weight_kg:160,people:[],materials:[]}]})
+ replies={today:()=>today({lots:[held]}),save_lot:()=>({saved:1,removed:0,errors:[],lines:[],modified:'m2'})}
+ const view=open();await settle()
+ view.root.querySelector('.lot-card__main').click();await settle()
+ assert.match(dialog().textContent,/Còn 10 buồng trên cây, lưu xong còn 2/,'its own draft of 8 is given back to the colour')
+ type(dialog().querySelector('.lot-entry__line input'),'12');await settle()
+ assert.match(dialog().textContent,/Vượt 2 buồng: màu này chỉ còn 10 buồng trên cây/)
+ dialog().querySelector('button[type=submit]').click();await settle()
+ assert.equal(calls.filter(c=>c.method==='save_lot').length,0,'nothing is sent')
+ assert.match(dialog().textContent,/nhiều buồng hơn số còn lại/)
+ view.unmount()
+})

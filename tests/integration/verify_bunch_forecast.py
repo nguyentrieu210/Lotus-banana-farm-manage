@@ -329,15 +329,25 @@ try:
     # ------------------------------------------------------------ the daily reports
     from lotus_farm import bunch_report as report_view
     frappe.set_user("Administrator")
-    stock = report_view.stock(FARM)
-    red = next(c for c in stock["cards"] if c["colour"] == "Đỏ" and c["week"] == 43 and c["lan"] == 1)
-    check("stock has a card per colour and half-week", red["cut"] == sum(x[1] or 0 for x in data), red["cut"])
-    check("stock left adds up", stock["left"] == sum(c["left"] for c in stock["cards"]) and stock["left"] > 0, stock["left"])
-    check("a zone with no cuts has no cards", report_view.stock(FARM, {"zone": ["B"]})["cards"] == [])
-    in_week = report_view.stock(FARM, {"week": ["2026-W43"]})["cards"]
-    check("a week keeps the colours cut in it", {c["week"] for c in in_week} == {43}, [c["week"] for c in in_week])
-    check("the opening book has its own tick in Tổ", "Sổ đầu kỳ" in {o["value"] for o in report_view.stock(FARM)["options"]["team"]})
+    from lotus_farm import ribbon_board
+    board = ribbon_board.board(FARM)
+    red = next(c for c in board["cards"] if c["colour"] == "Đỏ" and c["week"] == 43 and c["lan"] == 1)
+    check("the ribbon board has a card per colour and half-week", red["cut"] == sum(x[1] or 0 for x in data), red["cut"])
+    check("the ribbon board left adds up", board["left"] == sum(c["left"] for c in board["cards"]) and board["left"] > 0, board["left"])
+    check("each lô of a colour has cut, bag, rejected, harvested, left and its age",
+          all({"cut", "bag", "bag_left", "rejected", "harvested", "left", "quarantine_until"} <= set(lot) for lot in red["lots"]) and red["age_weeks"] >= 0, red["lots"][:1])
+    check("a lô adds up: left = cut - rejected after cut - harvested",
+          all(lot["left"] == max(0, lot["cut"] - lot["rejected"] - lot["harvested"]) for c in board["cards"] for lot in c["lots"]))
+    check("a zone with no cuts has no cards", ribbon_board.board(FARM, "B")["cards"] == [])
+    due = ribbon_board.harvest_due(FARM)
+    check("the due list holds only colours in or past their window, lô with bunches left",
+          all(r["status"] in ("due", "overdue") and r["left"] > 0 for r in due), due[:2])
+    later = ribbon_board.harvest_due(FARM, str(frappe.utils.add_days(nowdate(), 70)))
+    check("a later week has at least what is due now", len(later) >= len(due), (len(later), len(due)))
+    stock = report_view.sections(FARM, {"week": ["2026-W43"]})["stock"]
+    check("a week keeps the colours cut in it", {c["week"] for c in stock["cards"]} == {43}, [c["week"] for c in stock["cards"]])
     parts = report_view.sections(FARM)
+    check("the opening book has its own tick in Tổ", "Sổ đầu kỳ" in {o["value"] for o in parts["options"]["team"]})
     check("sections answer", {"progress", "injection", "rejects", "harvest", "dashboard", "stock", "cut_weeks", "options"} <= set(parts), list(parts))
     check("the dashboard adds up to the book", parts["dashboard"]["totals"]["cut"] == sum(w["cut"] for w in parts["dashboard"]["weeks"]) >= 593, parts["dashboard"]["totals"])
     check("injection counts what was recorded", parts["injection"]["injected"] >= 200, parts["injection"]["injected"])

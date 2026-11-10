@@ -62,6 +62,29 @@ def stock(lines, tags, blocks, days_for, today):
     return {"cards": cards, "left": sum(c["left"] for c in cards), "due": sum(c["left"] for c in cards if c["status"] == DUE), "overdue": sum(c["left"] for c in cards if c["status"] == OVERDUE)}
 
 
+def ribbon(cards, bags, quarantine, today):
+    """The bảng màu dây: the stock cards with what was bagged per lô and colour, what is still to bag, the age of the
+    colour in weeks and the lô under quarantine. bags: {(lô, màu): bao buồng}; quarantine: {lô: last day held}."""
+    today = _day(today)
+    for card in cards:
+        card["age_weeks"] = (today - _day(card["first_cut"])).days // 7
+        for lot in card["lots"]:
+            lot["bag"] = int(bags.get((lot["block"], card["tag"]), 0))
+            lot["bag_left"] = max(lot["cut"] - lot["bag"], 0)
+            until = quarantine.get(lot["block"])
+            lot["quarantine_until"] = str(until) if until and _day(until) >= today else None
+        card["bag"] = sum(lot["bag"] for lot in card["lots"])
+    return {"cards": cards, "left": sum(c["left"] for c in cards), "due": sum(c["left"] for c in cards if c["status"] == DUE),
+            "overdue": sum(c["left"] for c in cards if c["status"] == OVERDUE)}
+
+
+def due_rows(cards):
+    """Lô and colours to harvest now: colours in or past their harvest window, lô with bunches left, oldest first."""
+    rows = [dict(lot, tag=c["tag"], colour=c["colour"], code_colour=c["code"], week=c["week"], lan=c["lan"], start=c["start"], end=c["end"],
+                 status=c["status"]) for c in cards if c["status"] in (DUE, OVERDUE) for lot in c["lots"] if lot["left"] > 0]
+    return sorted(rows, key=lambda r: (r["start"], _natural(r["code"])))
+
+
 def cut_weeks(lines, tags, blocks):
     """Cutting by week and lần, from the first week with a cut to the last, weeks without a cut included. A lần comes from the colour's half-week."""
     found = {}

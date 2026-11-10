@@ -1,5 +1,5 @@
 <script setup>
-import {computed,onMounted,ref,watch} from 'vue'
+import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {call} from '../../api'
 import LotusField from '../form/LotusField.vue'
 import FormGrid from '../form/FormGrid.vue'
@@ -8,7 +8,7 @@ import LineItemsEditor from '../form/LineItemsEditor.vue'
 import {Button as UiButton} from '../ui/button'
 import {formatDate} from '../../format'
 import {unitLabel} from '../../units'
-import {workSchema,blankLine,linesFromLot,payloadLines,fingerprint,defaultPeople,peopleCount,colourChoices,saveDraft,loadDraft,clearDraft,
+import {workSchema,blankLine,linesFromLot,payloadLines,fingerprint,defaultPeople,peopleCount,colourRoom,colourChoices,colourCheck,saveDraft,loadDraft,clearDraft,
  stageLabels,groupLabels,stateLabels,severities,rejectStages,AFTER_CUT,amountText,swatch} from '../../lot-entry-model.js'
 // Every việc of one lô for one tổ and day, in one dialog (lotus_farm.lot_report.save_lot): việc vườn, phun bón with
 // materials, kiểm tra sâu bệnh, bunch stages and thu hoạch. Lines already sent or confirmed are shown, not edited.
@@ -42,11 +42,21 @@ function fill(){
  rowErrors.value=[];error.value=''
 }
 onMounted(fill)
+// Typing is kept 400 ms after the last key, and at once when the dialog goes away; a save or a drop cancels what is pending.
 let timer=null
-watch(lines,()=>{if(!editable.value)return;clearTimeout(timer);timer=setTimeout(()=>dirty.value?saveDraft(props.report.name,props.lot.block,lines.value,props.report.modified||''):clearDraft(props.report.name,props.lot.block),400)},{deep:true})
+function keepDraft(){timer=null;if(editable.value)dirty.value?saveDraft(props.report.name,props.lot.block,lines.value,props.report.modified||''):clearDraft(props.report.name,props.lot.block)}
+function forgetDraft(){clearTimeout(timer);timer=null;clearDraft(props.report.name,props.lot.block)}
+watch(lines,()=>{if(!editable.value)return;clearTimeout(timer);timer=setTimeout(keepDraft,400)},{deep:true})
+onBeforeUnmount(()=>{if(timer){clearTimeout(timer);keepDraft()}})
 
 const schema=line=>workSchema(works.value[line.work_type])
 const label=line=>works.value[line.work_type]?.label||'Chọn việc'
+// Buồng left of a colour: shown under the colour, and too many blocks the save before the server is asked.
+const room=computed(()=>colourRoom(props.lot))
+const stageOf=line=>works.value[line.work_type]?.stage||''
+const colours=(line,stage)=>colourChoices(props.lot,stage,line.bunch_tag,room.value)
+const check=line=>colourCheck(room.value,lines.value,stageOf,line)
+const over=computed(()=>lines.value.some(l=>check(l).error))
 const unit=line=>unitLabel(works.value[line.work_type]?.uom)||works.value[line.work_type]?.uom||''
 // One line per việc and lô, except bao, thu and hủy, which can take several colours or reasons.
 const SEVERAL=['Bag','Harvest','Reject']
@@ -77,14 +87,15 @@ const materialColumns=[
 ]
 
 function requestClose(open){if(open||saving.value)return;if(dirty.value&&editable.value){askDrop.value=true;return};emit('close')}
-function dropChanges(){clearDraft(props.report.name,props.lot.block);emit('close')}
+function dropChanges(){forgetDraft();emit('close')}
 async function save(){
  if(saving.value||!editable.value)return
+ if(over.value){error.value='Có dòng nhiều buồng hơn số còn lại của màu dây: sửa số trước khi lưu.';return}
  saving.value=true;error.value='';rowErrors.value=[];askDrop.value=false
  try{
   const result=await call('lotus_farm.lot_report.save_lot',{report:props.report.name,block:props.lot.block,lines:payloadLines(lines.value),expected_modified:props.report.modified},true)
   if(result.errors?.length){rowErrors.value=result.errors;return}
-  clearDraft(props.report.name,props.lot.block)
+  forgetDraft()
   emit('saved',result)
  }catch(e){error.value=e.message}
  finally{saving.value=false}
@@ -132,14 +143,14 @@ async function save(){
       :inputmode="schema(line).whole?'numeric':'decimal'" :required="schema(line).kind==='bunch'" :mobile="mobile" :disabled="!editable"/>
      <div v-if="schema(line).autoColour" class="lot-entry__fact"><span>Màu dây</span><strong>{{data.ribbon?.label||'Chưa có lịch màu dây'}}</strong></div>
      <LotusField v-if="schema(line).pickColour" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
-      :options="colourChoices(lot,schema(line).stage,line.bunch_tag)" :mobile="mobile" :disabled="!editable"
-      :hint="!colourChoices(lot,schema(line).stage,line.bunch_tag).length?'Lô này chưa có buồng cắt bắp còn lại.':''"/>
+      :options="colours(line,schema(line).stage)" :mobile="mobile" :disabled="!editable"
+      :hint="!colours(line,schema(line).stage).length?'Lô này chưa có buồng cắt bắp còn lại.':check(line).hint" :error="check(line).error"/>
      <LotusField v-if="schema(line).kg" v-model="line.weight_kg" label="Khối lượng thu (kg)" type="number" inputmode="decimal" required :mobile="mobile" :disabled="!editable"/>
      <template v-if="schema(line).reason">
       <LotusField v-model="line.reject_stage" label="Hủy trước hay sau cắt bắp" type="select" :searchable="false" :options="rejectStages" required :mobile="mobile" :disabled="!editable"/>
       <LotusField v-model="line.reason" label="Lý do" type="select" :searchable="false" :options="reasonOptions" required :mobile="mobile" :disabled="!editable"/>
       <LotusField v-if="line.reject_stage===AFTER_CUT" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
-       :options="colourChoices(lot,'Reject',line.bunch_tag)" :mobile="mobile" :disabled="!editable"/>
+       :options="colours(line,'Reject')" :mobile="mobile" :disabled="!editable" :hint="check(line).hint" :error="check(line).error"/>
      </template>
     </template>
     <LotusField v-if="schema(line).done" v-model="line.done" type="checkbox" label="Đã làm xong cả lô" :mobile="mobile" :disabled="!editable"/>

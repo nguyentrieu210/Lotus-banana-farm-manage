@@ -80,16 +80,6 @@ def _chosen(raw):
     return report_filters.clean(frappe.parse_json(raw) if raw else {})
 
 
-@frappe.whitelist()
-def stock(farm=None, filters=None):
-    ctx, wanted = _context(farm), _chosen(filters)
-    tags = _tags(ctx.farm)
-    facts = _ledger_facts(ctx, tags)
-    pairs = _chosen_colours(facts, wanted)
-    lines = [l for l, _ in facts if (l.farm_block, l.bunch_tag) in pairs]
-    return dict(_head(ctx), options=report_filters.options([f for _, f in facts], wanted, BUNCH_FIELDS), **rules.stock(lines, tags, ctx.blocks, _days_for(ctx.farm), nowdate()))
-
-
 def _entry_facts(ctx, tags):
     """Bao, tỉa and chống đổ from the phiếu, with the same fields to filter on."""
     teams = {t.name: t.team_name.strip() for t in field._teams(ctx.farm)}

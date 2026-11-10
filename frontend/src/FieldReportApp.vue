@@ -10,6 +10,7 @@ import {groups,payModes,payShort,capBases,money,amountText} from './field-work-m
 import {unitLabel} from './units'
 import {formatDate} from './format'
 import LotToday from './components/field/LotToday.vue'
+import RibbonBoard from './components/field/RibbonBoard.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
 import ForecastCarePlan from './components/ForecastCarePlan.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
@@ -173,6 +174,11 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
     </template>
 
     <WorkInspect v-else-if="view==='inspect'" :farm="farm" :setup="setup"/>
+
+    <template v-else-if="view==='ribbon'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <RibbonBoard v-if="farm" :key="farm" :farm="farm"/>
+    </template>
 
     <template v-else-if="view==='care-plan'">
      <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>

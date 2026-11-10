@@ -21,3 +21,15 @@
 - Dự thu LOTUS-222 trước và sau khi chuyển sang sổ lô: 7.347 buồng (cắt bắp 577, theo cây 6.770), 144.001,2 kg, 1.446 đợt. Bằng nhau.
 - `lot_ledger_migrate.commit` chạy lần hai: 0 dòng chuyển thêm.
 - `tests/integration/verify_lot_ledger.py`: 24/24 qua.
+
+## Phase 3 (US1, báo cáo ngày theo lô)
+
+- `tests/integration/verify_bunch_forecast.py` viết lại cho lot_report: tất cả qua.
+- Frontend: 635/635 test qua; kiểm trên trình duyệt (máy tính và điện thoại): chọn lô, nhập Cắt bắp 12, lưu, thẻ lô hiện "1 việc · Chưa gửi", không lỗi console.
+
+## Phase 4 (US2, màu dây và thu hoạch)
+
+- Bảng màu dây LOTUS-222 local: 593 buồng còn trên cây, 4 đợt màu (Đỏ 43 lần 1: 113; Trắng 44 lần 1: 182; Tím 45 lần 1: 236; Tím 45 lần 2: 62), khớp sổ cắt bắp đầu kỳ. Chưa màu nào đến tuổi thu (cắt sớm nhất 21/10, thu từ khoảng 20/12).
+- `lotus_farm/tests/test_ribbon_board.py` + `test_bunch_report_rules.py`: 39/39 qua. `verify_bunch_forecast.py`: tất cả qua (thêm 7 kiểm tra bảng màu dây và danh sách cần thu).
+- Frontend: 638/638 test qua. Trình duyệt máy tính và điện thoại (tab Xác nhận): không tràn ngang, không lỗi console.
+- `bunch_report.stock` và `BunchStockCards.vue` đã xóa; tồn theo màu có lọc kiểu pivot vẫn ở `bunch_report.sections`.

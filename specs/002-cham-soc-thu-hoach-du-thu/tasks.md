@@ -148,18 +148,18 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 2
 
-- [ ] T031 [P] [US2] Unit test bảng màu dây trong lotus_farm/tests/test_ribbon_board.py:
+- [x] T031 [P] [US2] Unit test bảng màu dây trong lotus_farm/tests/test_ribbon_board.py:
   - cắt, bao, hủy sau cắt, đã thu, còn trên cây, tuổi tuần;
   - hai chu kỳ cùng màu tách riêng;
   - đến tuổi thu theo bộ tham số đang hiệu lực.
-- [ ] T032 [P] [US2] Mount test RibbonBoard trong frontend/tests/ribbon-board.mount.test.js
+- [x] T032 [P] [US2] Mount test RibbonBoard trong frontend/tests/ribbon-board.mount.test.js
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Viết `board(farm, zone, block)` và `harvest_due(farm, week)` trong lotus_farm/ribbon_board.py: đọc sổ lô qua bunch_flow_rules, đánh dấu lô đang cách ly
-- [ ] T034 [US2] Sửa phần thu hoạch trong frontend/src/components/field/LotEntryModal.vue: chỉ chọn đợt màu còn buồng, bắt buộc kg, hiện số còn lại, chặn khi vượt
-- [ ] T035 [US2] Viết frontend/src/components/field/RibbonBoard.vue: thẻ theo đợt màu, bấm vào mở hộp chi tiết theo lô, danh sách cần thu của tuần
-- [ ] T036 [US2] Thêm mục "Màu dây & thu hoạch" vào frontend/src/FieldReportApp.vue và phần tồn màu cho đội trưởng trên frontend/src/WorkMobile.vue; xóa frontend/src/components/report/BunchStockCards.vue
+- [x] T033 [US2] Viết `board(farm, zone, block)` và `harvest_due(farm, week)` trong lotus_farm/ribbon_board.py: đọc sổ lô qua bunch_flow_rules, đánh dấu lô đang cách ly
+- [x] T034 [US2] Sửa phần thu hoạch trong frontend/src/components/field/LotEntryModal.vue: chỉ chọn đợt màu còn buồng, bắt buộc kg, hiện số còn lại, chặn khi vượt
+- [x] T035 [US2] Viết frontend/src/components/field/RibbonBoard.vue: thẻ theo đợt màu, bấm vào mở hộp chi tiết theo lô, danh sách cần thu của tuần
+- [x] T036 [US2] Thêm mục "Màu dây & thu hoạch" vào frontend/src/FieldReportApp.vue và phần tồn màu cho đội trưởng trên frontend/src/WorkMobile.vue; xóa frontend/src/components/report/BunchStockCards.vue
 
 **Checkpoint**: Bảng màu dây khớp từng ô với số đã nhập. Thu hoạch ở lô cách ly bị chặn.
 

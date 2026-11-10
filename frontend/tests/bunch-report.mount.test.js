@@ -6,7 +6,6 @@ import {createRouter,createMemoryHistory} from 'vue-router'
 import {pages,navGroups} from '../src/domain.js'
 
 const card=(extra={})=>({tag:'T1',colour:'Đỏ',week:43,lan:1,first_cut:'2026-10-21',start:'2026-12-20',end:'2026-12-30',status:'waiting',cut:113,rejected:0,harvested:0,left:113,lots:[{block:'B1',code:'A1',cut:20,rejected:1,harvested:2,left:17}],...extra})
-const stock=(cards=[card()],extra={})=>({farm:'F',zone:'',farms:[{name:'F',farm_name:'Vườn 222'}],zones:['A'],cards,left:cards.reduce((n,c)=>n+c.left,0),due:0,overdue:0,...extra})
 let calls=[],replies={}
 globalThis.fetch=async(url)=>{
  const u=new URL(url,'http://localhost'),method=u.pathname.replace('/api/method/lotus_farm.bunch_report.','')
@@ -14,53 +13,14 @@ globalThis.fetch=async(url)=>{
  if(!(method in replies))return {ok:false,status:404,json:async()=>({message:'Missing '+method})}
  return {ok:true,status:200,json:async()=>({message:replies[method]})}
 }
-const Cards=await load('components/report/BunchStockCards.vue')
 async function settle(){for(let i=0;i<8;i++)await tick()}
 const dialog=()=>document.querySelector('dialog[open]')
-const show=(props={})=>{calls=[];return mount({setup:()=>()=>h(Cards,{farm:'F',...props})})}
 
 test('Báo cáo công việc holds the four reports, Dự thu stays apart',()=>{
  const group=navGroups.find(g=>g.label==='Báo cáo công việc')
  assert.deepEqual(group.items.map(i=>i[2]),['Báo cáo chăm sóc vườn','Báo cáo chăm sóc buồng','Xưởng đóng gói','BVTV'])
  assert.ok(navGroups.find(g=>g.label==='Dự thu').items.some(i=>i[0]==='forecast'))
  for(const [id] of group.items)assert.ok(pages.some(([p])=>p===id),id)
-})
-test('stock: one card per colour of a half-week, figures on top',async()=>{
- replies={stock:stock([card(),card({tag:'T2',colour:'Trắng',week:44,left:182,cut:182})])}
- const view=show();await settle()
- assert.equal(view.root.querySelectorAll('.bunch-stock__card').length,2)
- assert.match(view.root.querySelector('.bunch-report__tiles').textContent,/Tồn buồng\s*295 buồng/)
- assert.match(view.root.querySelector('.bunch-stock__card').textContent,/Đỏ\s*Tuần 43 · lần 1.*113.*Cắt 113 · Hủy 0 · Thu 0.*20\/12 – 30\/12.*Chưa đến kỳ thu/)
- view.unmount()
-})
-test('stock: a card opens its lô',async()=>{
- replies={stock:stock()}
- const view=show();await settle()
- view.root.querySelector('.bunch-stock__card').click();await settle()
- assert.match(dialog().textContent,/Đỏ · tuần 43 · lần 1/)
- assert.match(dialog().textContent,/A1.*Cắt 20 · Hủy 1 · Thu 2.*Tồn 17/)
- view.unmount()
-})
-test('stock: overdue is said in words too, finished colours wait behind a button',async()=>{
- replies={stock:stock([card({status:'overdue'}),card({tag:'T2',status:'done',left:0})])}
- const view=show();await settle()
- const cards=view.root.querySelectorAll('.bunch-stock__card')
- assert.equal(cards.length,1);assert.match(cards[0].textContent,/Quá hạn thu/)
- ;[...view.root.querySelectorAll('.bunch-report__chips button')].find(b=>b.textContent.includes('Đã thu xong')).click();await settle()
- assert.match(view.root.querySelector('.bunch-stock__card').textContent,/Đã thu xong/)
- view.unmount()
-})
-test('stock: an empty ledger says so',async()=>{
- replies={stock:stock([])}
- const view=show();await settle()
- assert.match(view.root.textContent,/Chưa có buồng đã cắt bắp/)
- view.unmount()
-})
-test('stock: the filter goes to the server',async()=>{
- replies={stock:stock()}
- const view=show({filters:{zone:['B']}});await settle()
- assert.equal(new URLSearchParams(calls[0].query).get('filters'),JSON.stringify({zone:['B']}))
- view.unmount()
 })
 const round={tag:'T',colour:'Đỏ',year:2026,week:43,lan:1,first_cut:'2026-10-21',cut:100,bag:88,care:40,prop:0,rejected:0,harvested:0,left:100,lots:[]}
 const fact={w:'2026-W43',m:'2026-10',z:'A',b:'A1',t:'Tổ 01',c:'Đỏ',l:'1',k:0}

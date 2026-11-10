@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {workSchema,blankLine,linesFromLot,payloadLines,fingerprint,defaultPeople,peopleCount,colourChoices,lotSummary,saveDraft,loadDraft,clearDraft,swatch} from '../src/lot-entry-model.js'
+import {workSchema,blankLine,linesFromLot,payloadLines,fingerprint,defaultPeople,peopleCount,colourRoom,colourChoices,colourCheck,lotSummary,saveDraft,loadDraft,clearDraft,swatch} from '../src/lot-entry-model.js'
 
 const lot={block:'A5',code:'A5',colours:[{tag:'red',label:'Đỏ',week:43,left:40,bag_left:0},{tag:'white',label:'Trắng',week:44,left:0,bag_left:12}],
  assignments:[{kind:'Round',work_type:'CL'},{kind:'Bunch'}],quarantine_until:'2026-11-20',
@@ -48,6 +48,19 @@ test('colours: bao buồng picks unbagged colours, thu hoạch colours still on 
  assert.deepEqual(colourChoices(lot,'Bag','').map(c=>c.value),['white'])
  assert.deepEqual(colourChoices(lot,'Harvest','').map(c=>c.value),['red'])
  assert.deepEqual(colourChoices(lot,'Harvest','white').map(c=>c.value),['red','white'])
+})
+test('buồng left: own drafts come back, every line of the dialog on the colour is taken off, too many is an error',()=>{
+ const harvested={...lot,lines:[{name:'d1',state:'Draft',stage:'Harvest',qty:15,bunch_tag:'red'},{name:'s1',state:'Sent',stage:'Harvest',qty:5,bunch_tag:'red'}]}
+ const room=colourRoom(harvested)
+ assert.equal(room.red.left,55,'the server count of 40 already took the draft of 15 off; the sent 5 stays off')
+ assert.match(colourChoices(harvested,'Harvest','',room)[0].label,/còn 55/)
+ const stageOf=l=>({TH:'Harvest',HB:'Reject',BB:'Bag'})[l.work_type]
+ const lines=[{work_type:'TH',bunch_tag:'red',qty:50},{work_type:'HB',bunch_tag:'red',reject_stage:'After Cut',qty:3},{work_type:'HB',bunch_tag:'red',reject_stage:'Before Cut',qty:9}]
+ assert.deepEqual(colourCheck(room,lines,stageOf,lines[0]),{hint:'Còn 55 buồng trên cây, lưu xong còn 2',error:''},'hủy trước cắt bắp takes nothing off a colour')
+ lines[0].qty=60
+ assert.match(colourCheck(room,lines,stageOf,lines[0]).error,/Vượt 8 buồng: màu này chỉ còn 55 buồng trên cây/)
+ assert.match(colourCheck(room,[{work_type:'BB',bunch_tag:'white',qty:13}],stageOf,{work_type:'BB',bunch_tag:'white',qty:13}).error,/Vượt 1 buồng.*12 buồng chưa bao/)
+ assert.deepEqual(colourCheck(room,lines,stageOf,{work_type:'TH',bunch_tag:''}),{hint:'',error:''})
 })
 
 test('a lô card says what was entered and what holds the lô',()=>{

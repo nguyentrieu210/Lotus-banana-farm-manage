@@ -8,6 +8,7 @@ import LotusMobileDialog from './components/LotusMobileDialog.vue'
 import LotusMobileSignatureSettings from './components/LotusMobileSignatureSettings.vue'
 import LotToday from './components/field/LotToday.vue'
 import CrewStatus from './components/field/CrewStatus.vue'
+import RibbonBoard from './components/field/RibbonBoard.vue'
 import MyPay from './components/field/MyPay.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
 import ReleaseNotes from './components/ReleaseNotes.vue'
@@ -84,7 +85,11 @@ onBeforeUnmount(()=>finishLeave(false))
     <LotusMobileFeedback v-if="setup&&!crewOptions.length&&screen!=='inspect'&&screen!=='profile'" kind="warning">Tài khoản chưa là tổ trưởng hoặc đội trưởng của đội nào. Nhờ quản lý vườn xếp ở Công việc ngoài vườn → Đội, tổ &amp; lô.</LotusMobileFeedback>
 
     <LotToday v-if="screen==='home'&&setup&&crew&&date" :key="'today'+refreshKey+crew" v-model:date="date" :farm="farm" :crew="crew" :setup="setup" :initial-team="pickedTeam" mobile/>
-    <CrewStatus v-else-if="screen==='confirm'&&setup&&crew" :key="'confirm'+refreshKey+crew" :farm="farm" :crew="crew" :date="date" mobile @pick="openTeam"/>
+    <template v-else-if="screen==='confirm'&&setup&&crew">
+     <CrewStatus :key="'confirm'+refreshKey+crew" :farm="farm" :crew="crew" :date="date" mobile @pick="openTeam"/>
+     <h2 class="work-section-title">Màu dây &amp; cần thu</h2>
+     <RibbonBoard :key="'ribbon'+refreshKey+farm" :farm="farm" mobile compact/>
+    </template>
     <WorkAssign v-else-if="screen==='assign'&&setup&&crew" :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
     <WorkInspect v-else-if="screen==='inspect'&&setup" :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/>
 
@@ -110,4 +115,5 @@ onBeforeUnmount(()=>finishLeave(false))
 
 <style>
 .lotus-work .work-scope{display:grid;gap:8px;margin-bottom:12px}
+.lotus-work .work-section-title{margin:18px 0 8px;font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text-strong)}
 </style>

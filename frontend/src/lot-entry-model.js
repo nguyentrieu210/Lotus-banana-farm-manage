@@ -65,12 +65,38 @@ export function defaultPeople(present){
 }
 export const peopleCount=people=>Object.values(people||{}).reduce((n,f)=>n+Number(!!f.morning)+Number(!!f.afternoon),0)
 
+// What is left of each colour on this lô before the lines of the dialog: the server's count (lines already sent and other
+// tổ included) plus this lô's own drafts, which saving replaces. left: on the plants; bag: not bagged yet.
+const takesLeft=(stage,rejectStage)=>stage==='Harvest'||(stage==='Reject'&&rejectStage===AFTER_CUT)
+export function colourRoom(lot){
+ const room={}
+ for(const c of lot?.colours||[])room[c.tag]={left:Number(c.left)||0,bag:Number(c.bag_left)||0}
+ for(const l of lot?.lines||[]){
+  const slot=l.state==='Draft'&&room[l.bunch_tag]
+  if(!slot)continue
+  if(l.stage==='Bag')slot.bag+=Number(l.qty)||0
+  else if(takesLeft(l.stage,l.reject_stage))slot.left+=Number(l.qty)||0
+ }
+ return room
+}
+
 // Colours a line may take on this lô: bao buồng those with bunches still unbagged, thu hoạch and hủy sau cắt those with
 // bunches still on the plants. A line already on a colour keeps it.
-export function colourChoices(lot,stage,current){
- const field=stage==='Bag'?'bag_left':'left'
- const rows=(lot?.colours||[]).filter(c=>c.tag===current||Number(c[field])>0)
- return rows.map(c=>({value:c.tag,label:c.label+' · tuần '+c.week+' · còn '+c[field]}))
+export function colourChoices(lot,stage,current,room=colourRoom(lot)){
+ const field=stage==='Bag'?'bag':'left'
+ const rows=(lot?.colours||[]).filter(c=>c.tag===current||(room[c.tag]?.[field]||0)>0)
+ return rows.map(c=>({value:c.tag,label:c.label+' · tuần '+c.week+' · còn '+(room[c.tag]?.[field]||0)}))
+}
+
+// The chosen colour of a bao, thu or hủy sau cắt line against what is left of it, all lines of the dialog on that colour
+// taken off: the count left as a hint, or an error once they take more than there is. stageOf(line) -> stage of its việc.
+export function colourCheck(room,lines,stageOf,line){
+ const stage=stageOf(line),tag=line.bunch_tag,slot=room[tag],bag=stage==='Bag'
+ if(!tag||!slot||(!bag&&!takesLeft(stage,line.reject_stage)))return {hint:'',error:''}
+ const base=bag?slot.bag:slot.left,word=bag?'chưa bao':'trên cây'
+ const used=lines.filter(l=>l.bunch_tag===tag&&(bag?stageOf(l)==='Bag':takesLeft(stageOf(l),l.reject_stage))).reduce((n,l)=>n+(Number(l.qty)||0),0)
+ if(used>base)return {hint:'',error:'Vượt '+(used-base)+' buồng: màu này chỉ còn '+base+' buồng '+word+'.'}
+ return {hint:'Còn '+base+' buồng '+word+(used?', lưu xong còn '+(base-used):''),error:''}
 }
 
 // What the card of a lô says: how many việc today and where the report stands.
