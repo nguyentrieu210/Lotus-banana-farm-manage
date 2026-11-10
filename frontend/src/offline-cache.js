@@ -1,7 +1,7 @@
 const DB='lotus-vue-read-cache-v1',STORE='reads',MAX_AGE=24*60*60*1000
 let active=''
 try{active=localStorage.getItem('lotus-vue-active-user')||''}catch{}
-const allowed=new Set(['lotus_farm.console.bootstrap','lotus_farm.console.schema','lotus_farm.console.scope_options','lotus_farm.console.link_options','lotus_farm.console.listing','lotus_farm.daily_api.daily_overview','lotus_farm.field.bootstrap','lotus_farm.field.available_labor'])
+const allowed=new Set(['lotus_farm.console.bootstrap','lotus_farm.console.schema','lotus_farm.console.scope_options','lotus_farm.console.link_options','lotus_farm.console.listing'])
 export const cachedMethod=method=>allowed.has(method)
 export function activeUser(){return active}
 export function setActiveUser(user){active=user==='Guest'?'':user;try{if(active)localStorage.setItem('lotus-vue-active-user',active);else localStorage.removeItem('lotus-vue-active-user')}catch{}}

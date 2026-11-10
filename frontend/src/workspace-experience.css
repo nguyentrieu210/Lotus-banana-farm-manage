@@ -7,9 +7,9 @@
 .lotus-ui :is(input,select,textarea),.pn-dialog :is(input,select,textarea){color:var(--lotus-text);border-color:var(--lotus-border)}
 .lotus-ui input:is([type=checkbox],[type=radio]),.pn-dialog input:is([type=checkbox],[type=radio]){appearance:auto;width:16px;height:16px;min-height:0;padding:0;flex-shrink:0;box-shadow:none;background-image:none;accent-color:var(--lotus-accent)}
 .lotus-ui input[type=radio]{border-radius:50%}
-:is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment){background:var(--lotus-surface,#fff);color:var(--lotus-text,var(--lotus-neutral-800));border-color:var(--lotus-border,var(--lotus-neutral-200));border-radius:12px;box-shadow:0 20px 70px #17233d30}
-:is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment)::backdrop{background:#151c2c66;backdrop-filter:blur(2px)}
-:is(.pn-dialog,.farm-editor,.stock-dialog,.command-dialog,.farm-assignment)[open],.lotus-ui .modal-backdrop>:is(.document-dialog,.small-dialog){animation:lotus-dialog-enter 180ms var(--lotus-ease,ease-out)}
+:is(.pn-dialog,.stock-dialog,.command-dialog){background:var(--lotus-surface,#fff);color:var(--lotus-text,var(--lotus-neutral-800));border-color:var(--lotus-border,var(--lotus-neutral-200));border-radius:12px;box-shadow:0 20px 70px #17233d30}
+:is(.pn-dialog,.stock-dialog,.command-dialog)::backdrop{background:#151c2c66;backdrop-filter:blur(2px)}
+:is(.pn-dialog,.stock-dialog,.command-dialog)[open],.lotus-ui .modal-backdrop>:is(.document-dialog,.small-dialog){animation:lotus-dialog-enter 180ms var(--lotus-ease,ease-out)}
 .lotus-ui .modal-backdrop{z-index:80;background:#151c2c66;backdrop-filter:blur(2px)}
 .lotus-ui .modal-backdrop>:is(.document-dialog,.small-dialog){background:var(--lotus-surface);color:var(--lotus-text)}
 .pn-dialog .schema-grid label{min-width:0}
@@ -37,8 +37,6 @@
 .workspace-module-host{min-width:0}
 .workspace-module-host .embedded-workspace{display:block;min-height:0;background:transparent;width:100%}
 .workspace-module-host .embedded-workspace>.stock-main{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important}
-.workspace-module-host .embedded-workspace .farm-heading{display:none}
-.workspace-module-host .embedded-workspace .farm-work-scope{padding-top:0}
 .workspace-loading{display:grid;gap:12px;min-height:260px;color:var(--lotus-muted);font-size:12px}
 .workspace-loading div{height:48px;border-radius:8px;background:var(--lotus-hover);animation:lotus-pulse 1.4s ease-in-out infinite}
 .workspace-loading div:nth-of-type(2){animation-delay:.15s}.workspace-loading div:nth-of-type(3){animation-delay:.3s}
@@ -179,10 +177,10 @@
 :root:root :is(.pn-warning,.forecast-warning,.hr-payroll-warning,.calendar-demo-warning){background:var(--lotus-warning-soft);color:var(--lotus-warning-700);border-color:color-mix(in srgb,var(--lotus-warning) 25%,transparent)}
 :root.dark :is(.pn-warning,.forecast-warning,.hr-payroll-warning,.calendar-demo-warning){color:var(--lotus-warning)}
 /* One look for small HTML tables (AG Grid keeps its own theme): header, rule lines, padding, hover. Widths stay per table. */
-:root:root :is(.farm-table-wrap table,.hr-ops-scroll table,.pn-table,.forecast-week-table,.hr-table table){border-collapse:collapse;font-size:var(--lotus-text-md);text-align:left}
-:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) th,:root:root :is(.pn-table,.forecast-week-table) th{padding:10px 12px;background:var(--lotus-table-header);color:var(--lotus-table-heading);font-size:var(--lotus-text-sm);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--lotus-border)}
-:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) td,:root:root :is(.pn-table,.forecast-week-table) td{padding:10px 12px;border-bottom:1px solid var(--lotus-border);vertical-align:middle}
-:root:root :is(.farm-table-wrap,.hr-ops-scroll,.pn-table-scroll,.hr-table) tbody tr:hover,:root:root :is(.pn-table,.forecast-week-table) tbody tr:hover{background:var(--lotus-soft)}
+:root:root :is(.hr-ops-scroll table,.pn-table,.forecast-week-table,.hr-table table){border-collapse:collapse;font-size:var(--lotus-text-md);text-align:left}
+:root:root :is(.hr-ops-scroll,.pn-table-scroll,.hr-table) th,:root:root :is(.pn-table,.forecast-week-table) th{padding:10px 12px;background:var(--lotus-table-header);color:var(--lotus-table-heading);font-size:var(--lotus-text-sm);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--lotus-border)}
+:root:root :is(.hr-ops-scroll,.pn-table-scroll,.hr-table) td,:root:root :is(.pn-table,.forecast-week-table) td{padding:10px 12px;border-bottom:1px solid var(--lotus-border);vertical-align:middle}
+:root:root :is(.hr-ops-scroll,.pn-table-scroll,.hr-table) tbody tr:hover,:root:root :is(.pn-table,.forecast-week-table) tbody tr:hover{background:var(--lotus-soft)}
 /* Sidebar footer links: only the first one pushes the group to the bottom, the rest stack with the sidebar gap. */
 .app-shell .sidebar .field-link~.field-link{margin-top:0}
 .lotus-table-skeleton{display:grid;gap:8px;padding:12px 0}

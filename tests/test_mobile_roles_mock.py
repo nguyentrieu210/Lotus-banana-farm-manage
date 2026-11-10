@@ -1,8 +1,7 @@
-"""DB-free security regression tests for Lotus mobile role + team boundaries.
+"""DB-free security regression tests for Lotus role + team boundaries.
 
 Run with Python inside the Frappe image; never creates site users or transactions.
 """
-import datetime
 import importlib.util
 import os
 from pathlib import Path
@@ -21,74 +20,32 @@ class AccessDenied(Exception):
     pass
 
 
-class FakeFarm:
-    def __init__(self, name):
-        self.name = name
-        self.farm_name = name
-        self.doctype = "Farm"
-
-    def check_permission(self, *_args, **_kwargs):
-        return True
-
-
-class Database:
-    def get_value(self, doctype, name, field, as_dict=False):
-        if doctype == "Daily Work Plan Line":
-            value = LINES.get(name)
-            return Row(parent=value.parent, work_team=value.work_team, work_type=value.work_type) if value else None
-        if doctype == "Work Type":
-            return "Bao buồng"
-        if doctype == "Farm Block":
-            return "Lô A01"
-        return None
-
-    def exists(self, *_args, **_kwargs):
-        return False
-
-
 GRANTS = {
     "lead.a": {"farms": {"Farm-A"}, "teams": {"Team-A"}},
     "lead.b": {"farms": {"Farm-A"}, "teams": {"Team-B"}},
     "supervisor.a": {"farms": {"Farm-A"}, "teams": {"Team-A", "Team-B"}},
     "manager.a": {"farms": {"Farm-A"}, "teams": set()},
+    "auditor.a": {"farms": {"Farm-A"}, "teams": set()},
     "outsider": {"farms": {"Farm-B"}, "teams": {"Team-C"}},
     "unassigned": {"farms": {"Farm-A"}, "teams": set()},
+    "clerk": {"farms": {"Farm-A"}, "teams": {"Team-A"}},
 }
 ROLES = {
     "lead.a": {"Lotus Team Leader"},
     "lead.b": {"Lotus Team Leader"},
     "supervisor.a": {"Lotus Field Supervisor"},
     "manager.a": {"Lotus Farm Manager"},
+    "auditor.a": {"Lotus Auditor"},
     "outsider": {"Lotus Team Leader"},
     "unassigned": {"Lotus Team Leader"},
+    "clerk": {"Stock User"},
 }
 TEAMS = {
     "Team-A": Row(name="Team-A", farm="Farm-A", active=1, team_name="Tổ A"),
     "Team-B": Row(name="Team-B", farm="Farm-A", active=1, team_name="Tổ B"),
     "Team-C": Row(name="Team-C", farm="Farm-B", active=1, team_name="Tổ C"),
+    "Team-Old": Row(name="Team-Old", farm="Farm-A", active=0, team_name="Tổ đã nghỉ"),
 }
-LINES = {
-    "Line-A": Row(name="Line-A", parent="DWP-1", work_team="Team-A", farm_block="Block-A",
-                  farm_plot=None, crop_cycle=None, sucker_selection_batch=None,
-                  work_type="WT-1", planned_qty=800, required_workdays=10,
-                  uom="Bunch", execution_state="Planned", blocked_reason="",
-                  start_at=None, due_at=None),
-    "Line-B": Row(name="Line-B", parent="DWP-1", work_team="Team-B", farm_block="Block-A",
-                  farm_plot=None, crop_cycle=None, sucker_selection_batch=None,
-                  work_type="WT-1", planned_qty=1200, required_workdays=12,
-                  uom="Bunch", execution_state="Planned", blocked_reason="",
-                  start_at=None, due_at=None),
-}
-PLAN = Row(name="DWP-1", farm="Farm-A", docstatus=1, posting_date="2026-10-17",
-           lines=list(LINES.values()))
-RESULTS = [
-    Row(name="WR-A", farm="Farm-A", docstatus=1, posting_date="2026-10-17",
-        farm_block="Block-A", farm_plot=None, work_plan="DWP-1", work_plan_line="Line-A",
-        completed_qty=800, actual_workdays=9, unfinished_reason="", modified="2026-10-17"),
-    Row(name="WR-B", farm="Farm-A", docstatus=1, posting_date="2026-10-17",
-        farm_block="Block-A", farm_plot=None, work_plan="DWP-1", work_plan_line="Line-B",
-        completed_qty=1200, actual_workdays=11, unfinished_reason="", modified="2026-10-17"),
-]
 
 
 def records(doctype, filters, fields=None, pluck=None, **_kwargs):
@@ -103,56 +60,22 @@ def records(doctype, filters, fields=None, pluck=None, **_kwargs):
         if isinstance(filters.get("name"), list):
             rows = [t for t in rows if t.name in filters["name"][1]]
         return [t.name for t in rows] if pluck else rows
-    if doctype == "Daily Work Plan":
-        return ["DWP-1"] if filters.get("farm") == "Farm-A" and filters.get("docstatus") == 1 else []
-    if doctype == "Daily Work Result":
-        matches = [r for r in RESULTS if
-                   (not filters.get("work_plan_line") or r.work_plan_line == filters["work_plan_line"])]
-        if filters.get("farm"):
-            matches = [r for r in matches if r.farm == filters["farm"]]
-        return [r.name for r in matches] if pluck else matches
-    if doctype in ("Labor Allocation", "Material Requirement"):
-        return []
-    if doctype == "Daily Work Plan Line":
-        return [Row(name=name, norm_profile=None) for name in filters["name"][1] if name in LINES]
     raise AssertionError("Unexpected query: " + doctype)
-
-
-def doc(doctype, name):
-    if doctype == "Farm":
-        return FakeFarm(name)
-    if doctype == "Daily Work Plan":
-        if name != "DWP-1":
-            raise ValueError("Unknown plan")
-        return PLAN
-    raise AssertionError("Unexpected doc: " + doctype)
 
 
 frappe = types.ModuleType("frappe")
 frappe.PermissionError = AccessDenied
 frappe.session = types.SimpleNamespace(user="lead.a")
-frappe.db = Database()
 frappe.get_all = records
-frappe.get_list = records
-frappe.get_doc = doc
 frappe.get_roles = lambda user=None: list(ROLES.get(user or frappe.session.user, ()))
-frappe.has_permission = lambda *_a, **_k: True
 frappe.throw = lambda message, exception=None: (_ for _ in ()).throw((exception or ValueError)(message))
-frappe.whitelist = lambda *_a, **_k: lambda f: f
-utils = types.ModuleType("frappe.utils")
-utils.flt = lambda value: float(value or 0)
-utils.getdate = lambda value: value if isinstance(value, datetime.date) else datetime.date.fromisoformat(str(value))
-utils.add_days = lambda value, days: utils.getdate(value) + datetime.timedelta(days=int(days))
 package = types.ModuleType("lotus_farm")
 package.__path__ = []
 controls = types.ModuleType("lotus_farm.controls")
 controls.farm_allowed = lambda farm, user=None: farm in GRANTS.get(user or frappe.session.user, {}).get("farms", ())
-daily_api = types.ModuleType("lotus_farm.daily_api")
-daily_api.daily_overview = lambda *_args: {"tasks": []}
 # Stubs are only installed while loading and inside each test, so other test
 # modules in the same process still import the real lotus_farm package.
-STUBS = {"frappe": frappe, "frappe.utils": utils, "lotus_farm": package,
-         "lotus_farm.controls": controls, "lotus_farm.daily_api": daily_api}
+STUBS = {"frappe": frappe, "lotus_farm": package, "lotus_farm.controls": controls}
 
 source = Path(os.environ.get("LOTUS_RBAC_SOURCE_ROOT", Path(__file__).resolve().parents[1] / "lotus_farm"))
 
@@ -179,41 +102,31 @@ class MobileAccessTest(unittest.TestCase):
 
     def test_leader_only_sees_own_team(self):
         self.assertEqual(access.allowed_teams("Farm-A"), {"Team-A"})
-        with self.assertRaises(AccessDenied):
-            access.require_team("Farm-A", "Team-B")
+        self.assertEqual(access.allowed_teams("Farm-A", "lead.b"), {"Team-B"})
         with self.assertRaises(AccessDenied):
             access.allowed_teams("Farm-B")
+        with self.assertRaises(AccessDenied):
+            access.allowed_teams("Farm-A", "outsider")
 
-    def test_supervisor_and_manager_permissions(self):
-        self.assertFalse(access.can_assign("lead.a"))
-        self.assertTrue(access.can_capture("lead.a"))
-        self.assertTrue(access.can_assign("supervisor.a"))
+    def test_supervisor_manager_and_auditor_scope(self):
+        self.assertFalse(access.is_manager("lead.a"))
+        self.assertFalse(access.is_manager("supervisor.a"))
+        self.assertTrue(access.is_manager("manager.a"))
+        self.assertTrue(access.is_manager("Administrator"))
         self.assertEqual(access.allowed_teams("Farm-A", "supervisor.a"), {"Team-A", "Team-B"})
-        self.assertEqual(access.allowed_teams("Farm-A", "manager.a"), {"Team-A", "Team-B"})
+        self.assertEqual(access.allowed_teams("Farm-A", "manager.a"), {"Team-A", "Team-B"}, "every active team, no retired one")
+        self.assertEqual(access.allowed_teams("Farm-A", "auditor.a"), {"Team-A", "Team-B"})
+
+    def test_no_team_without_a_grant_or_a_field_role(self):
         self.assertEqual(access.allowed_teams("Farm-A", "unassigned"), set())
+        self.assertEqual(access.allowed_teams("Farm-A", "clerk"), set(), "a team grant without a field role opens nothing")
+        self.assertEqual(access.roles("Guest"), set())
 
-    def test_forged_capture_scope_is_rejected(self):
-        valid = dict(work_plan="DWP-1", work_plan_line="Line-A", posting_date="2026-10-17",
-                     farm_block="Block-A", completed_qty=800, actual_workdays=10)
-        self.assertEqual(access.validate_capture("Farm-A", valid)[1].name, "Line-A")
-        with self.assertRaises(AccessDenied):
-            access.validate_capture("Farm-A", dict(valid, work_plan_line="Line-B"))
-        with self.assertRaises(AccessDenied):
-            access.validate_capture("Farm-A", dict(valid, farm_block="Block-B"))
-        with self.assertRaises(AccessDenied):
-            access.validate_capture("Farm-A", dict(valid, admin_override=True))
-        with self.assertRaises(ValueError):
-            access.validate_capture("Farm-A", dict(valid, completed_qty=1500))
-        with self.assertRaises(ValueError):
-            access.validate_capture("Farm-A", dict(valid, completed_qty=float("nan")))
-
-    def test_permission_bypass_lifetime_is_scoped(self):
-        result = Row(doctype="Daily Work Result", work_plan="DWP-1", work_plan_line="Line-A")
-        self.assertFalse(access.can_skip_plan_read(result))
-        with access.scoped_result_capture("DWP-1", "Line-A"):
-            self.assertTrue(access.can_skip_plan_read(result))
-            self.assertFalse(access.can_skip_plan_read(Row(doctype="Daily Work Result", work_plan="DWP-1", work_plan_line="Line-B")))
-        self.assertFalse(access.can_skip_plan_read(result))
+    def test_farm_grant_is_required(self):
+        access.require_farm("Farm-A")
+        for farm in ("Farm-B", "", None):
+            with self.assertRaises(AccessDenied):
+                access.require_farm(farm)
 
 
 if __name__ == "__main__":

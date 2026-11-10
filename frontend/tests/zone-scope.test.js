@@ -5,11 +5,12 @@ import {createPinia,setActivePinia} from 'pinia'
 import {pages,navGroups} from '../src/domain.js'
 setActivePinia(createPinia())
 const {useScope}=await loadModule('store.js')
-test('changing zone clears care block and old parcel/cycle scopes',()=>{
- const scope=useScope();Object.assign(scope,{farm:'LOTUS-222',zone:'B',block:'A1',plot:'legacy',cycle:'old'})
+test('changing zone clears the care block; the scope stops at the lô',()=>{
+ const scope=useScope();Object.assign(scope,{farm:'LOTUS-222',zone:'B',block:'A1'})
  scope.clearBelow('zone')
  assert.equal(scope.zone,'B');assert.equal(scope.farm,'LOTUS-222')
- assert.equal(scope.block,'');assert.equal(scope.plot,'');assert.equal(scope.cycle,'')
+ assert.equal(scope.block,'')
+ assert.deepEqual(Object.keys(scope.$state).filter(k=>['plot','cycle'].includes(k)),[])
  assert.equal(scope.query().zone,'B')
  scope.clearBelow('farm');assert.equal(scope.zone,'')
 })

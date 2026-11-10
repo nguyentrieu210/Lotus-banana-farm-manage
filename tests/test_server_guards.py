@@ -36,8 +36,8 @@ class TestServerGuards(unittest.TestCase):
         self.controls = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.controls)
         self.doc = types.SimpleNamespace(
-            doctype="Harvest Forecast",
-            name="HF-A",
+            doctype="Packhouse Shift",
+            name="PS-A",
             flags=types.SimpleNamespace(lotus_allocation_command=True),
         )
 
@@ -48,12 +48,12 @@ class TestServerGuards(unittest.TestCase):
         self.assertFalse(self.controls.command_allowed(self.doc, "allocation"))
 
     def test_command_authorization_is_scoped_and_restored(self):
-        other = types.SimpleNamespace(doctype="Harvest Forecast", name="HF-B")
+        other = types.SimpleNamespace(doctype="Packhouse Shift", name="PS-B")
         with self.controls.command(self.doc, "allocation"):
             self.assertTrue(self.controls.command_allowed(self.doc, "allocation"))
             self.assertFalse(self.controls.command_allowed(other, "allocation"))
             self.assertFalse(self.controls.command_allowed(self.doc, "supply"))
-            self.doc.name = "HF-generated"
+            self.doc.name = "PS-generated"
             self.assertTrue(self.controls.command_allowed(self.doc, "allocation"))
         self.assertFalse(self.controls.command_allowed(self.doc, "allocation"))
 
@@ -73,7 +73,7 @@ class TestServerGuards(unittest.TestCase):
         self.assertTrue(self.controls.farm_allowed("FARM-A"))
         self.assertFalse(self.controls.farm_allowed("FARM-B"))
         self.frappe.get_all = lambda *args, **kwargs: []
-        self.assertEqual(self.controls.query_condition("Harvest Forecast"), "1=0")
+        self.assertEqual(self.controls.query_condition("Packhouse Shift"), "1=0")
 
     def test_device_timestamp_normalizes_to_site_timezone(self):
         self.assertEqual(

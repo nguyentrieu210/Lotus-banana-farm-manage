@@ -23,22 +23,3 @@ class TestSchema(unittest.TestCase):
         for path in ROOT.rglob("*.py"):
             if ".git" not in path.parts:
                 ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
-
-    def test_raw_reading_and_event_keys_are_unique(self):
-        for slug, field in [("bunch_operation", "client_event_id"), ("scale_reading", "event_key")]:
-            doc = json.loads((ROOT / f"lotus_farm/lotus_farm/doctype/{slug}/{slug}.json").read_text())
-            self.assertEqual(next(f for f in doc["fields"] if f["fieldname"] == field)["unique"], 1)
-
-    def test_exact_sales_order_line_required_by_controller(self):
-        doc = json.loads(
-            (ROOT / "lotus_farm/lotus_farm/doctype/forecast_allocation/forecast_allocation.json").read_text()
-        )
-        self.assertIn("sales_order_item", doc["field_order"])
-        self.assertIn("forecast_output", doc["field_order"])
-        self.assertEqual(doc["istable"], 1)  # Existing child table identity preserved for migration.
-
-        forecast = json.loads(
-            (ROOT / "lotus_farm/lotus_farm/doctype/harvest_forecast/harvest_forecast.json").read_text()
-        )
-        output = next(field for field in forecast["fields"] if field["fieldname"] == "output_plan")
-        self.assertEqual(output["options"], "Forecast Output Plan")

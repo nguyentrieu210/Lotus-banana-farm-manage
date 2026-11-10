@@ -17,7 +17,6 @@ import CareDueList from './components/field/CareDueList.vue'
 import PackhouseShifts from './components/field/PackhouseShifts.vue'
 import FieldReports from './components/report/FieldReports.vue'
 import CareCycleSettings from './components/field/CareCycleSettings.vue'
-import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
 import LotusField from './components/form/LotusField.vue'
 import FormGrid from './components/form/FormGrid.vue'
@@ -233,7 +232,6 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
      <ListPage title="Việc & cách trả" :rows="setup.works" :columns="catalogColumns" :searchable="false" row-key="name" storage-key="field-work-modes" :interactive="setup.manager" @open="editMode" @refresh="loadSetup">
       <template #before><p class="lotus-form-note">Cách trả đi theo việc: khoán số lượng (có trần đối chiếu), khoán lô (kỹ thuật vườn nghiệm thu) hoặc công nhật. Người giao việc không đổi được. Quản lý vườn bấm một việc để sửa.</p></template>
      </ListPage>
-     <FormSection title="Danh mục công việc đầy đủ"><FarmWorkApp embedded/></FormSection>
     </template>
    </template>
   </component>

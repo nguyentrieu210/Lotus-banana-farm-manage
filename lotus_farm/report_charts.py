@@ -1,12 +1,10 @@
 """Pure aggregations for the /lotus report charts (no Frappe import, unit-tested in tests/).
 
 Inputs are permission-filtered rows from lotus_farm.reporting.charts. Quantities with different
-units are never summed together: work completion is averaged per task, workdays are summed.
+units are never summed together.
 """
 from collections import defaultdict
 from datetime import date, timedelta
-
-from lotus_farm.promax_rules import work_completion
 
 UNZONED = 'Chưa chia khu'
 OTHER = 'Khác'
@@ -57,29 +55,30 @@ def flowering_by_month(blocks):
     return [dict(month=month, **months[month]) for month in sorted(months)]
 
 
-def work_by_day(days):
-    """days: [(date, tasks)] from daily_overview; every listed day is kept so gaps stay visible."""
-    result = []
-    for day, tasks in days:
-        planned = [t for t in tasks if _num(t.get('planned_qty')) > 0]
-        result.append(dict(date=str(_day(day)), tasks=len(tasks), completion_percent=work_completion(planned) if planned else None,
-                           required_workdays=sum(_num(t.get('required_workdays')) for t in tasks),
-                           actual_workdays=sum(_num(t.get('actual_workdays')) for t in tasks)))
-    return result
+def work_by_day(lines, start, end):
+    """Confirmed sổ lô lines per work day (posting_date, workdays); every day of the period is kept so gaps stay visible."""
+    days, cursor, last = {}, _day(start), _day(end)
+    while cursor <= last:
+        days[cursor] = dict(lines=0, workdays=0.0)
+        cursor += timedelta(days=1)
+    for line in lines:
+        bucket = days.get(_day(line['posting_date'])) if line.get('posting_date') else None
+        if bucket is not None:
+            bucket['lines'] += 1
+            bucket['workdays'] += _num(line.get('workdays'))
+    return [dict(date=str(day), **values) for day, values in days.items()]
 
 
-def work_by_type(tasks, limit=10):
-    groups = defaultdict(lambda: dict(required_workdays=0.0, actual_workdays=0.0, tasks=0))
-    for task in tasks:
-        row = groups[task.get('work_name') or task.get('work_type') or OTHER]
-        row['tasks'] += 1
-        row['required_workdays'] += _num(task.get('required_workdays'))
-        row['actual_workdays'] += _num(task.get('actual_workdays'))
-    rows = sorted(groups.items(), key=lambda item: (-item[1]['required_workdays'], item[0]))
+def work_by_type(lines, limit=10):
+    groups = defaultdict(lambda: dict(workdays=0.0, lines=0))
+    for line in lines:
+        row = groups[line.get('work_name') or OTHER]
+        row['lines'] += 1
+        row['workdays'] += _num(line.get('workdays'))
+    rows = sorted(groups.items(), key=lambda item: (-item[1]['workdays'], item[0]))
     if len(rows) > limit:
         rest = rows[limit - 1:]
-        rows = rows[:limit - 1] + [(OTHER, dict(required_workdays=sum(r['required_workdays'] for _, r in rest),
-                                                 actual_workdays=sum(r['actual_workdays'] for _, r in rest), tasks=sum(r['tasks'] for _, r in rest)))]
+        rows = rows[:limit - 1] + [(OTHER, dict(workdays=sum(r['workdays'] for _, r in rest), lines=sum(r['lines'] for _, r in rest)))]
     return [dict(work=name, **values) for name, values in rows]
 
 
