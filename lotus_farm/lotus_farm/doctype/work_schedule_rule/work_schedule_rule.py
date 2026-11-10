@@ -1,17 +1,16 @@
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint
 
-from lotus_farm.care_cycle_rules import APPROVED, check_rule, zone_of
+from lotus_farm.care_cycle_rules import APPROVED, check_rule, version_error, zone_of
 from lotus_farm.controls import check_farm, lock, validate_version
 
 
 class WorkScheduleRule(Document):
     """Vòng chăm sóc: one việc every N days, for the farm or one khu. Approved versions are kept.
 
-    A cycle is a farm and a name: all its versions are for the same việc, a new version is numbered above the others and
-    waits for approval, and only one version waits at a time. These hold however the rule is saved: Công việc ngoài vườn
-    (care_cycle.save_rule), Danh mục or Desk."""
+    A cycle is a farm and a name: all its versions are for the same việc, a new version starts as a draft waiting for
+    approval, a version not approved yet is numbered above every other one, and only one version waits at a time. These
+    hold however the rule is saved: Công việc ngoài vườn (care_cycle.save_rule), Danh mục or Desk."""
 
     def before_insert(self):
         # One new version at a time per farm: two people cannot both add the version waiting for approval.
@@ -30,17 +29,14 @@ class WorkScheduleRule(Document):
         self.keep_cycle()
 
     def keep_cycle(self):
+        before = self.get_doc_before_save()
+        if before and before.approval_state == APPROVED:
+            return  # validate_version keeps an approved version exactly as it was
         others = frappe.get_all("Work Schedule Rule", filters={"farm": self.farm, "rule_name": self.rule_name, "name": ["!=", self.name]},
                                 fields=["work_type", "version", "approval_state"])
-        if any(o.work_type != self.work_type for o in others):
-            frappe.throw(f"Tên vòng \"{self.rule_name}\" đang dùng cho việc khác.")
-        if self.is_new():
-            if self.approval_state != "Draft":
-                frappe.throw("Phiên bản mới của vòng chăm sóc phải chờ duyệt: lưu bản nháp rồi duyệt.")
-            if any(cint(o.version) >= cint(self.version) for o in others):
-                frappe.throw(f"Phiên bản mới của vòng \"{self.rule_name}\" phải lớn hơn {max(cint(o.version) for o in others)}.")
-        if self.approval_state != APPROVED and any(o.approval_state != APPROVED for o in others):
-            frappe.throw(f"Vòng \"{self.rule_name}\" đang có phiên bản chờ duyệt. Duyệt hoặc xóa bản đó trước.")
+        error = version_error(self.as_dict(), others, self.is_new())
+        if error:
+            frappe.throw(error)
 
     def on_trash(self):
         if self.approval_state == "Approved":

@@ -3,12 +3,13 @@
 A rule says: việc X every N days, on the whole farm or on one khu, from a day (to a day). The rule in force on a lô is
 the approved one valid that day, the khu's own before the farm's, then the newest version. A lô is done with a việc on
 the day a confirmed line says the whole lô is done; the days before are work in progress. A lô never done is due from
-the day the rule starts. A việc without a rule is never due.
+the day the rule starts. A việc without a rule is never due. The versions of one cycle (a farm and a name) keep one việc,
+and the version waiting for approval is numbered above the others (version_error).
 """
 import datetime as dt
 
 OVERDUE, DUE, LATER = "overdue", "due", "later"
-APPROVED = "Approved"
+DRAFT, APPROVED = "Draft", "Approved"
 
 
 def _day(value):
@@ -121,3 +122,30 @@ def check_rule(rule):
     elif rule.get("valid_to") and _day(rule["valid_to"]) < _day(rule["valid_from"]):
         errors.append("Ngày hết áp dụng không được trước ngày bắt đầu.")
     return errors
+
+
+def _whole(value):
+    try:
+        return int(float(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def version_error(rule, others, new):
+    """Why a version of a cycle cannot be saved beside the other versions of the same farm and name, or None.
+
+    A cycle keeps one việc. A new version starts as a draft waiting for approval. A version not approved yet, whether
+    new, edited or being approved, is numbered above every other one: in_force takes the highest version that has
+    started, so a lower one would never apply. Only one version waits at a time. A version already approved is not
+    checked here: it does not change."""
+    name = rule.get("rule_name")
+    if new and rule.get("approval_state") != DRAFT:
+        return "Phiên bản mới của vòng chăm sóc phải chờ duyệt: lưu bản nháp rồi duyệt."
+    if any(o.get("work_type") != rule.get("work_type") for o in others):
+        return f"Tên vòng \"{name}\" đang dùng cho việc khác."
+    top = max((_whole(o.get("version")) for o in others), default=0)
+    if _whole(rule.get("version")) <= top:
+        return f"Phiên bản chờ duyệt của vòng \"{name}\" phải lớn hơn {top}."
+    if rule.get("approval_state") != APPROVED and any(o.get("approval_state") != APPROVED for o in others):
+        return f"Vòng \"{name}\" đang có phiên bản chờ duyệt. Duyệt hoặc xóa bản đó trước."
+    return None

@@ -109,6 +109,21 @@ try:
     other_draft = direct()
     refused("one version waiting at a time, however it is saved", lambda: direct(version=3))
     cc.delete_rule(other_draft.name)
+    # The highest version that has started applies: a draft numbered below an approved version would never apply. Another
+    # cycle, starting far ahead, so that nothing below changes: v1 and v3 approved, then the v4 draft renumbered to 2.
+    ahead = dict(rule_name="Vòng thử thứ tự phiên bản", valid_from=str(add_days(day, 200)))
+    for number in (1, 3):
+        cc.approve_rule(direct(version=number, **ahead).name)
+    refused("a new draft is numbered above the approved versions", lambda: direct(version=2, **ahead))
+    draft = direct(version=4, **ahead)
+    draft.version = 2
+    refused("a draft is not renumbered below an approved version", draft.save)
+    draft.reload()
+    draft.update({"version": 2, "approval_state": "Approved"})
+    refused("nor renumbered and approved in one save", draft.save)
+    draft.reload()
+    check("the draft keeps its number", draft.version == 4 and draft.approval_state == "Draft", (draft.version, draft.approval_state))
+    cc.delete_rule(draft.name)
     listed = cc.rule_list(FARM)
     check("the list shows the cycles in force", {r["name"] for r in listed["rules"] if r["in_force"]} == {rule["name"], leaf_rule["name"]}, listed["rules"])
 
