@@ -9,7 +9,6 @@ import DataTable from './DataTable.vue'
 import ListPage from './ListPage.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import ModalForm from './form/ModalForm.vue'
-import LotusField from './form/LotusField.vue'
 import {DateRangePicker} from './ui/date-picker'
 import {Button as UiButton} from './ui/button'
 // Nhu cầu cấp cho công việc: approved demand vs stock, purchase requests still to order and purchase orders still to receive.
@@ -18,7 +17,7 @@ const props=defineProps({company:String,warehouse:String,today:String})
 const emit=defineEmits(['receive','open-receipt'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse_planning.'+name,args,write)
 const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),from=ref(props.today||''),to=ref(shiftISODate(props.today,6)||''),search=ref(''),searchDraft=ref(''),start=ref(0),pageSize=ref(50),filters=ref({}),view=ref('coverage')
-const detail=ref(null),detailOpen=ref(false),selectedStores=ref({}),request=ref(null),requestOpen=ref(false),confirmAction=ref('')
+const detail=ref(null),detailOpen=ref(false),request=ref(null),requestOpen=ref(false),confirmAction=ref('')
 const sortModel=ref([])
 let version=0
 const fmt=value=>value==null?'—':Number(value).toLocaleString('vi-VN',{maximumFractionDigits:3})
@@ -40,15 +39,13 @@ const requestRows=computed(()=>{const q=search.value.toLocaleLowerCase('vi');ret
 const orderRows=computed(()=>{const q=search.value.toLocaleLowerCase('vi');return (data.value?.orders||[]).filter(r=>!q||[r.name,r.item_name,r.supplier,r.warehouse].some(x=>String(x||'').toLocaleLowerCase('vi').includes(q)))})
 const numeric=(field,headerName)=>({field,headerName,minWidth:92,type:'numericColumn',valueFormatter:p=>fmt(p.value)})
 const columns=[{field:'item',headerName:'Tên hàng',minWidth:210,flex:1.8,valueFormatter:p=>p.data?p.data.item_name+' · '+p.value:p.value,tooltip:p=>p.data.item_name+' · '+p.value},{field:'warehouse',headerName:'Kho cấp',minWidth:130,valueFormatter:p=>warehouseLabel(p.value)},{field:'uom',headerName:'ĐVT',minWidth:65,valueFormatter:p=>unit(p.value)},numeric('remaining_qty','Cần dùng'),numeric('available_qty','Có thể dùng'),numeric('shortage_qty','Còn thiếu'),numeric('incoming_qty','Sắp về'),numeric('to_buy_qty','Cần mua'),{field:'status',headerName:'Tình trạng',minWidth:120}]
-const sourceColumns=[{field:'name',headerName:'Nguồn',minWidth:210},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)},{field:'farm',headerName:'Vườn',minWidth:150},{field:'area',headerName:'Khu vực / lô',minWidth:150},numeric('required_qty','Nhu cầu duyệt'),numeric('issued_qty','Đã cấp'),numeric('draft_qty','Đang lập phiếu'),numeric('remaining_qty','Còn cần cấp')]
+const sourceColumns=[{field:'name',headerName:'Nguồn',minWidth:210},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)},{field:'area',headerName:'Khu vực / lô',minWidth:150},numeric('required_qty','Nhu cầu duyệt'),numeric('issued_qty','Đã cấp'),numeric('draft_qty','Đang lập phiếu'),numeric('remaining_qty','Còn cần cấp')]
 const orderColumns=[{field:'name',headerName:'Đơn mua',minWidth:210},{field:'supplier',headerName:'Nhà cung cấp',minWidth:170},{field:'item_name',headerName:'Tên hàng',minWidth:210},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},numeric('qty','Chưa nhận'),{field:'uom',headerName:'Đơn vị',minWidth:80,valueFormatter:p=>unit(p.value)},{field:'date',headerName:'Dự kiến về',minWidth:110,valueFormatter:p=>formatDate(p.value)},{field:'overdue',headerName:'Tiến độ',minWidth:110,valueFormatter:p=>p.value?'Quá hẹn':'Đang chờ'}]
 const requestColumns=[{field:'name',headerName:'Đề xuất mua',minWidth:210},{field:'item_name',headerName:'Vật tư',minWidth:210},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},numeric('qty','Chưa mua'),{field:'uom',headerName:'Đơn vị',minWidth:80,valueFormatter:p=>unit(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)},{field:'status',headerName:'Trạng thái',minWidth:110}]
 const purchaseItems=[{field:'item_name',headerName:'Vật tư',minWidth:220},numeric('qty','Số lượng'),{field:'uom',headerName:'Đơn vị',valueFormatter:p=>unit(p.value)},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)}]
-const storeOptions=computed(()=>(data.value?.warehouses||[]).map(store=>({value:store.name,label:store.warehouse_name})))
 function show(row){detail.value=row;detailOpen.value=true}
 async function openRequest(name){try{request.value=await api('purchase_request',{name});if(request.value.proposal_url){location.assign(request.value.proposal_url);return}confirmAction.value='';requestOpen.value=true}catch(e){error.value=e.message}}
 async function buy(row){if(saving.value)return;saving.value=true;error.value='';try{const result=await api('create_purchase_request',{company:props.company,warehouse:row.warehouse,from_date:from.value,to_date:to.value,items:[row.item]},true);notice.value=result.name?'Đã tạo đề xuất mua nháp '+result.name:result.note;detailOpen.value=false;await load();if(result.name)await openRequest(result.name)}catch(e){error.value=e.message}finally{saving.value=false}}
-async function assign(source){if(saving.value)return;saving.value=true;try{await api('assign_warehouse',{company:props.company,requirement:source.name,warehouse:selectedStores.value[source.name]},true);await load()}catch(e){error.value=e.message}finally{saving.value=false}}
 async function act(action){if(saving.value)return;saving.value=true;error.value='';try{await api('purchase_action',{name:request.value.name,modified:request.value.modified,action},true);requestOpen.value=false;notice.value=action==='submit'?'Đã duyệt đề xuất mua. Chưa tính là hàng chờ nhập cho tới khi có đơn mua đã duyệt.':'Đã xóa đề xuất mua nháp.';await load()}catch(e){error.value=e.message}finally{saving.value=false}}
 const printURL=(doctype,name)=>'/lotus/in-phieu?'+new URLSearchParams({doctype,name})
 function openOrder(name){emit('receive',name)}
@@ -66,14 +63,14 @@ defineExpose({refresh:()=>load(true),openReceipt})
   <WorkspaceTabs :items="views" :model-value="view" label="Nhu cầu và mua hàng" @update:model-value="value=>view=value"/>
   <p v-for="warning in data?.warnings" :key="warning" class="stock-error" role="alert">{{warning}}</p>
   <section v-if="unresolved.length" class="planning-unmapped"><strong>Nhu cầu chưa xác định kho cấp</strong>
-   <div v-for="source in unresolved" :key="source.name+source.line"><span>{{source.name}} · {{source.item_name}} · {{fmt(source.remaining_qty)}} {{unit(source.uom)}} · {{source.area}}</span><LotusField v-if="source.can_assign" v-model="selectedStores[source.name]" aria-label="Kho cấp cho nhu cầu" :options="storeOptions" :searchable="false" empty-option="Chọn kho cấp"/><UiButton v-if="source.can_assign" variant="outline" :disabled="saving||!selectedStores[source.name]" @click="assign(source)">Gán kho</UiButton></div>
+   <div v-for="source in unresolved" :key="source.name+source.line"><span>{{source.name}} · {{source.item_name}} · {{fmt(source.remaining_qty)}} {{unit(source.uom)}} · {{source.area}}</span></div>
   </section>
   <ListPage :title="views.find(v=>v.id===view).label" :rows="listRows" :columns="listColumns" :loading="busy" :error="error" v-model:search="searchDraft" search-placeholder="Tìm vật tư, phiếu…" @refresh="load(true)"
     :paged="view==='coverage'" :start="start" :page-size="pageSize" @update:page-size="value=>{pageSize=value;start=0;load()}" :total="data?.total_count" :has-more="data?.has_more" @update:start="value=>{start=value;load()}"
     :storage-key="'lotus-stock-planning-'+view" show-empty-headers interactive :server-sort="view==='coverage'" :filter-values="view==='coverage'?data?.filter_values:undefined" :server-filters="view==='coverage'?filters:{}" :empty="empty[view]"
     @sort="model=>{sortModel=model;load(true)}" @filter="filter" @open="openRow">
    <template #filters><slot name="scope"/><DateRangePicker v-model:from="from" v-model:to="to"/><UiButton v-if="hasFilters" variant="outline" @click="resetFilters">Bỏ lọc</UiButton></template>
-   <template #actions><slot name="actions"/><UiButton v-if="view==='coverage'" as="a" variant="outline" href="/lotus/materials">Lập và duyệt nhu cầu vật tư</UiButton></template>
+   <template #actions><slot name="actions"/></template>
   </ListPage>
 
   <ModalForm v-model="detailOpen" :title="(detail?.item_name||'')+' · '+warehouseLabel(detail?.warehouse)" :busy="saving" :error="error" readonly width="1080px">

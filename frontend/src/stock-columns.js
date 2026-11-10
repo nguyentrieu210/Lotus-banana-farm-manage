@@ -64,8 +64,7 @@ export function movementColumns(warehouseLabel){return [
  number('out_qty','Xuất',90),
  number('qty_after_transaction','Tồn sau',105),
  {field:'receiver',headerName:'Người giao / nhận',minWidth:170},
- {field:'usage_area',headerName:'Khu / lô sử dụng',minWidth:170},
- {field:'work_team',headerName:'Tổ liên quan',minWidth:160}
+ {field:'usage_area',headerName:'Khu / lô sử dụng',minWidth:170}
 ]}
 
 // Nhập – xuất – tồn (quantities). The value version of this report lives in Kế toán → Báo cáo.

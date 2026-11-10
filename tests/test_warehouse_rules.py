@@ -8,7 +8,7 @@ class TestCoverage(unittest.TestCase):
         self.assertEqual((row['remaining_qty'],row['shortage_qty'],row['to_buy_qty']),(100,40,15))
         self.assertEqual(row['status'],'Cần mua')
 
-    def test_issued_goods_are_not_requested_again_when_consumption_is_later(self):
+    def test_issued_goods_are_not_requested_again(self):
         row=coverage(100,40,60)
         self.assertEqual((row['remaining_qty'],row['shortage_qty']),(60,0))
 
@@ -30,10 +30,6 @@ class TestCoverage(unittest.TestCase):
         row=coverage(100,0,-5,reserved=10,drafts=5)
         self.assertEqual((row['available_qty'],row['shortage_qty']),(-20,120))
 
-    def test_fulfilled_requirement_does_not_require_another_issue(self):
+    def test_fulfilled_demand_does_not_require_another_issue(self):
         self.assertEqual(coverage(100,100,0)['status'],'Đủ hàng')
         self.assertEqual(coverage(100,100,0,drafts=50)['to_buy_qty'],0)
-
-    def test_returned_unused_stock_reopens_only_net_issued_quantity(self):
-        row=coverage(100,20,80)
-        self.assertEqual((row['remaining_qty'],row['shortage_qty']),(80,0))
