@@ -84,3 +84,18 @@ Từ đây mọi test, build và diễn tập chạy trên VPS (khu thử `/srv/
 - So đầu ra 37 API đọc của tài chính, kho, nhân sự, vườn giữa mã cũ (df7bd70) và mã mới trên cùng dữ liệu: 36 giống hệt; `block_forecast.board` chỉ khác thứ tự dòng lô và mất `params.work_reference` (đã bỏ có chủ ý).
 - **Triển khai 20:25–20:29 ngày 10/11**: image `lotus-release:40f8330` (gồm bản sửa nóng 20b006c). Sao lưu `20261110_202529`, hồ sơ ở `/srv/lotus-build/40f8330/`. Sau khi lên: sổ sách không đổi, số liệu chuyển đúng như diễn tập, các màn Hôm nay, Màu dây, Báo cáo, Dự thu trả số liệu, nhật ký lỗi chỉ có "Session Stopped" lúc bảo trì.
 - `legacy_purge.preview` trên bản thật: 76 bảng, 960 dòng (Farm Plot 210, Lotus Cut Journal Entry 358, Lotus Handover Cohort 301, Work Category 36, Lotus Bunch Event 38, Source File Registry 9 và vài bảng 1–2 dòng), 63 trường trỏ bảng cũ đều không có giá trị, không kỳ lương đã khóa, danh sách chặn trống.
+
+## US7: xóa hẳn bảng đời cũ (10–11/11)
+
+- Làm trên năm nhánh song song rồi gộp. Một vòng rà soát độc lập theo 5 mảng (mỗi mảng có người kiểm phản biện) nêu 53 điểm, gộp trùng còn khoảng 30 việc; không điểm nào bị bác. Đã sửa trên ba nhánh tách file, mỗi nhánh có người kiểm và một vòng sửa lại, cộng phần của người điều phối:
+  - tài chính: giá thành tháng tính kg còn lại theo dự thu chung trong một vòng cây (từ chọn chồi đến hết đợt thu, khoảng 9,8 tháng với tham số đã duyệt), cùng gốc kg với kg nhập kho (thành phẩm + phụ phẩm), đọc sổ lô theo ngày phát sinh; Vụ số lấy từ dòng thu hoạch của tháng; phiếu nhập kho nháp giữ ca trong "Chờ hạch toán" và chặn kết chuyển; "Lấy sản lượng dự thu" chỉ thay tháng hiện tại về sau; tổng kg không đếm hai lần;
+  - khung cũ: gỡ hẳn trang Cảnh báo, trang Cấu hình, danh mục Thị trường (3 bảng thêm vào lần dọn, nhóm E trong cleanup.md); prompt trợ lý AI theo bảng mới; dọn nhãn, bản dịch, tài liệu, Dockerfile lớp cũ;
+  - bảng giữ: màu dây đã dùng vẫn sửa được tên và trạng thái (so ngày đúng kiểu); lô đã có dữ liệu không đổi được vườn hay mã lô; vòng chăm sóc giữ các quy tắc phiên bản ở mọi đường sửa, khóa duy nhất theo vườn;
+  - dọn bảng: lưu trữ cả các dòng lịch sử, bình luận, thùng rác nhắc bảng cũ; gỡ cột trước siêu dữ liệu để chạy lại được; không gọi được qua web; patch không bỏ qua được; image phát hành bỏ hẳn tệp đã xóa (trang hiện trường tĩnh, script Desk cũ);
+  - test mới: `tests/test_frontend_calls.py` (mọi lời gọi `lotus_farm.*` của giao diện và của bản build là hàm whitelisted còn tồn tại; bản build khớp mã nguồn), `tests/test_no_legacy_names.py` quét cả bản dịch và văn bản.
+- Kiểm trên khu thử VPS (bản 0264c52): unit Python 276 test qua; frontend 547/547 qua, build được.
+- Diễn tập trên bản sao dữ liệu thật lấy lúc 00:09 ngày 11/11:
+  - xem trước bằng mã mới: 79 bảng, 980 dòng (gồm 20 giá trị của trang Cấu hình), 74 cột trỏ bảng cũ (chỉ Work Type.category có giá trị: 168 việc, được lưu trong tệp lưu trữ), danh sách chặn trống;
+  - `legacy_purge.commit`: 81 tệp lưu trữ (1,6 MB), `verify()` trống; migrate 149 giây, chạy lại không lỗi; sổ sách 26 bảng không đổi; dự thu 7.347 buồng, 144.001,2 kg không đổi;
+  - so 37 đầu ra API giữa mã đang chạy và mã mới: sau khi bỏ các khóa đã xóa hoặc thêm có chủ ý (chiều Vụ, thửa, đợt trồng, ca chờ nhập kho, bước "ca đóng gói" của danh sách cuối tháng), mọi con số giống hệt;
+  - test tích hợp: 8 bộ của spec 002, `verify_costing` (viết lại cho luồng ca đóng gói), `verify_warehouse_audit`, `verify_kho_e2e` (61/61), `verify_checklist`, `verify_master_guards` đều qua; `verify_legacy_purge` trên một bản sao riêng qua hết (chặn khi có giá trị cũ trên chứng từ đã ghi sổ, lưu trữ đủ, xóa sạch, sổ cái và sổ kho không đổi, chạy lại được).
