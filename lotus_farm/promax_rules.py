@@ -79,14 +79,6 @@ def split_amount(reserved, available, requested):
     return float(requested),float(reserved-requested)
 
 
-def weighted_packout(samples, minimum):
-    if len(samples)<minimum or minimum<1:raise RuleError('Chưa đủ mẫu đóng gói đã đối chiếu đầy đủ.')
-    raw=sum(quantity(s['input_kg'],positive=True) for s in samples)
-    finished=sum(quantity(s['finished_kg']) for s in samples)
-    if finished>raw:raise RuleError('Khối lượng thành phẩm vượt nguyên liệu đầu vào đã đối chiếu.')
-    return dict(sample_count=len(samples),input_kg=float(raw),finished_kg=float(finished),packout_rate_percent=float(finished/raw*100))
-
-
 def kml_geometries(data):
     """Preview placemarks; names never become automatic Farm/Plot mappings."""
     from xml.etree import ElementTree

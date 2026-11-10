@@ -16,7 +16,7 @@ const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':req
   await cache.saveRead('alice','lotus_farm.console.scope_options',{farm:'A',company:'C'},{scope:{farm:'A'}});
   check((await cache.cachedRead('alice','lotus_farm.console.scope_options',{company:'C',farm:'A'})).scope.farm==='A','Cache key depends on argument ordering');
   check(await cache.cachedRead('alice','lotus_farm.console.scope_options',{farm:'B',company:'C'})===null,'Cross-scope read cache');
-  const event={client_event_id:'event-1',farm:'Farm A',target_doctype:'Bunch Cancellation',captured_at:'2026-10-07T10:00:00Z',values:{bunch_qty:3}}
+  const event={client_event_id:'event-1',farm:'Farm A',target_doctype:'Lotus Work Entry',captured_at:'2026-10-07T10:00:00Z',values:{bunch_qty:3}}
   await queue.queueCapture('alice',event,new Blob(['photo-bytes'],{type:'image/jpeg'}))
   let rows=await queue.queueRows('alice');check(rows[0].event.expected_user==='alice','Missing server account binding');check(rows.length===1&&rows[0].photo.size===11,'Committed event/photo missing')
   check((await queue.queueRows('bob')).length===0,'Cross-account queue visibility')
