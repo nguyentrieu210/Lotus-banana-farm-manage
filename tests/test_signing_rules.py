@@ -63,6 +63,23 @@ class SigningRules(unittest.TestCase):
         self.assertIn('trả lại', sr.verdict([sr.SIGNED, sr.RETURNED], True))
         self.assertIn('hủy', sr.verdict([sr.SIGNED], True, cancelled=True))
 
+    def test_alert_goes_to_a_phone_app_the_signer_uses(self):
+        self.assertEqual(sr.notify_app('buying', ['buying', 'work']), 'buying')
+        self.assertEqual(sr.notify_app('buying', []), 'buying')
+        self.assertEqual(sr.notify_app('buying', ['work', 'warehouse']), 'work')
+        # Payment vouchers belong to the desktop Finance app: announced in Mua hàng, never 'finance' (bug B1).
+        self.assertEqual(sr.notify_app('finance', []), 'buying')
+        self.assertEqual(sr.notify_app('finance', ['buying']), 'buying')
+        self.assertEqual(sr.notify_app('finance', ['warehouse']), 'warehouse')
+        for chain in sr.CHAINS.values():
+            self.assertIn(sr.notify_app(chain['app'], []), sr.PHONE_APPS)
+
+    def test_push_link_stays_inside_the_app_that_shows_it(self):
+        self.assertEqual(sr.push_link('buying', '/buying?doc=PUR-ORD-1', 'Purchase Order', 'PUR-ORD-1'), '/buying?doc=PUR-ORD-1')
+        self.assertEqual(sr.push_link('buying', '/lotus/tai-chinh?tab=cash&doc=ACC-PAY-1', 'Payment Entry', 'ACC-PAY-1'),
+                         '/buying?sign_dt=Payment+Entry&sign_dn=ACC-PAY-1')
+        self.assertEqual(sr.push_link('hr', '/lotus/in-luong?month=2026-11', 'Lotus Timekeeping Period', 'P-1'), '/lotus/in-luong?month=2026-11')
+
 
 if __name__ == '__main__':
     unittest.main()

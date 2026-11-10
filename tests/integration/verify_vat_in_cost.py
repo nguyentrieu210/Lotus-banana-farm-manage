@@ -98,6 +98,34 @@ try:
         p._match_invoice_total(pinv, 224000000); R.append(('FAIL', 'hóa đơn lệch lớn bị chặn', 'not blocked'))
     except frappe.ValidationError as e:
         R.append(('PASS' if 'khác tổng cộng' in str(e) else 'FAIL', 'hóa đơn lệch lớn bị chặn', str(e)[:200]))
+
+    # Lỗi B4: Tài chính › Chờ hạch toán lập hóa đơn theo phiếu nhận / hóa đơn dịch vụ cho hộ kinh doanh — không ghi 1331.
+    def receipt():
+        doc = frappe.get_doc(dict(doctype='Purchase Receipt', company=company, supplier=supplier, posting_date=today, set_warehouse=A,
+                                  items=[dict(item_code=X, qty=8, uom=tonne, conversion_factor=1000, rate=26571428.571, warehouse=A, lotus_line_vat='5')]))
+        doc.set_missing_values()
+        p.apply_line_taxes(doc)
+        doc.insert()
+        doc.submit()
+        return doc
+    pr5 = receipt()
+    inv5 = payments.make_goods_invoice([pr5.name], '0008' + tag, today, posting_date=today, vat_code='5')
+    entries = gl(inv5['invoice'])
+    ok('Tài chính: hóa đơn theo phiếu nhận không ghi 1331', entries and not any(g['account'].startswith('133') for g in entries), entries)
+    clearing = setup.valuation_tax_account(company)
+    left = sum(flt(g['debit']) - flt(g['credit']) for g in gl(pr5.name) + entries if g['account'] == clearing)
+    ok('Tài chính: TK thuế tạm về 0 sau phiếu nhận + hóa đơn', abs(left) < 1, left)
+    ok('Tài chính: tổng hóa đơn = 223.200.000', abs(flt(inv5['amount']) - 223200000) < 1, inv5)
+    pr6 = receipt()
+    blocked('Tài chính: thuế suất khác phiếu nhận bị chặn', lambda: payments.make_goods_invoice([pr6.name], '0009' + tag, today, posting_date=today, vat_code='8'),
+            'lấy theo từng dòng phiếu nhận')
+    svc = payments.make_service_invoice(supplier, '0010' + tag, today, [dict(description='Sửa máy bơm', amount=1000000, cost='admin')],
+                                        posting_date=today, vat_code='8')
+    entries = gl(svc['invoice'])
+    admin = setup.mapping()['admin_expense']
+    expense = sum(flt(g['debit']) for g in entries if g['account'] == admin)
+    ok('Tài chính: hóa đơn dịch vụ không ghi 1331, thuế vào chi phí', not any(g['account'].startswith('133') for g in entries)
+       and abs(flt(svc['amount']) - 1080000) < 0.5 and abs(expense - 1080000) < 0.5, (svc, entries))
 except Exception:
     R.append(('FAIL', 'exception', traceback.format_exc()[-1500:]))
 finally:
