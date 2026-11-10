@@ -20,7 +20,7 @@
 1. Tiếng Việt đơn giản: Vườn, Lô, Kế hoạch, Dự thu, Kho, Mua hàng.
 2. Nhập và tìm kiếm như bảng: không bắt Enter để lọc khi giao diện có sẵn dữ liệu tại máy; giữ riêng API tra cứu dữ liệu lớn.
 3. Giữ nguyên quyền backend. Ẩn nút không thay cho kiểm tra quyền máy chủ.
-4. Dự thu 36 tháng là **ước tính sản lượng**, không tự phát hành, không tự tạo hàng tồn hoặc cam kết bán.
+4. Dự thu 36 tháng theo lô là **ước tính sản lượng**, tính lại mỗi lần xem; không tạo hàng tồn hoặc cam kết bán.
 5. Màn đầu nhìn ngay dữ liệu, lọc Vườn/Lô và thời gian; số liệu thiếu phải báo lý do, không tự bịa.
 6. Không thay phần điện thoại và ứng dụng Kho PWA. Mọi CSS desktop mới chỉ ở min-width 901px.
 7. Giao diện nhìn giống nhau nhưng không được sửa quy trình và dữ liệu chỉ để làm đẹp.
