@@ -1,0 +1,1 @@
+import{u as e}from"./use-workspace-confirm-DllvDvM1.js";function t(){try{return e().farm||``}catch{return``}}export{t};
