@@ -255,6 +255,8 @@ def bootstrap():
     if frappe.session.user == "Guest":
         frappe.throw("Vui lòng đăng nhập.", frappe.AuthenticationError)
     from frappe.sessions import get_csrf_token
+    from lotus_farm.forecast_snapshot import queue_missing_weeks
+    queue_missing_weeks()
     roles = _roles()
     return {"user": frappe.session.user, "today": nowdate(), "csrf_token": get_csrf_token(),
             "farms": frappe.get_all("Farm", filters={"name": ["in", farm_names() or [""]]}, fields=["name", "farm_name", "company"]),

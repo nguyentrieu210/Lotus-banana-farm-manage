@@ -11,6 +11,7 @@ from frappe.utils import nowdate
 from lotus_farm.block_forecast_engine import forecast, date, months_after, source_rows, projection_config
 from lotus_farm.forecast_parameters import DEFAULTS, approved_version, validate
 from lotus_farm import bunch_flow_rules, bunch_forecast_engine
+from lotus_farm import forecast_snapshot_rules as snapshot_rules
 
 REQUIRES_FIELD_SURVEY={"CV021"}
 
@@ -53,12 +54,14 @@ def _sources(farm,zone=None,block=None):
         c["cycle_no"]=cycles[c.crop_cycle].cycle_no if c.crop_cycle in cycles else None
     return blocks,co
 
-def _profiles(farm):
+def _profiles(farm,as_of=None):
+    """Approved parameter sets; as_of: only those already approved at that moment (a weekly copy rebuilt later)."""
     if not frappe.has_permission("Lotus Block Forecast Profile","read"):
         return []
-    return frappe.get_list("Lotus Block Forecast Profile",
+    rows=frappe.get_list("Lotus Block Forecast Profile",
         filters={"farm":farm,"approval_state":"Approved","active":1},
         fields=["*"],limit_page_length=1000)
+    return snapshot_rules.profiles_as_of(rows,as_of) if as_of else rows
 
 def _observations(farm,block=None):
     """Actual field observations are reported separately; not counted twice."""
@@ -74,10 +77,11 @@ def _observations(farm,block=None):
     return records
 
 
-def _projection(farm,zone=None,block=None,include_daily=False):
-    """All readers use the same farm-wide 36-month window and lot source."""
+def _projection(farm,zone=None,block=None,include_daily=False,as_of=None):
+    """All readers use the same farm-wide 36-month window and lot source. Tree counts and flowering dates are always
+    today's values, also for a copy rebuilt as of an earlier Monday (written in its limits)."""
     all_blocks,all_cohorts=_sources(farm)
-    profiles=_profiles(farm)
+    profiles=_profiles(farm,as_of)
     all_sources,_=source_rows(all_blocks,all_cohorts)
     anchors=[projection_config(s,profiles)[2] for s in all_sources]
     start=min(anchors).replace(day=1) if anchors else None
@@ -101,14 +105,23 @@ def _can_import_opening():
     from lotus_farm.field_report import is_manager
     return is_manager()
 
-def _bunch_lines(farm,blocks=None):
-    """Confirmed lines of the sổ lô. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021)."""
+LINE_FIELDS=["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg","reason","source_type",
+             "source_name","confirmed_by"]
+
+def _bunch_lines(farm,blocks=None,as_of=None):
+    """Confirmed lines of the sổ lô. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021).
+    as_of: the sổ lô as it stood then (confirmed before, not voided before)."""
     from lotus_farm.lot_ledger import bunch_rows
     filters={"farm":farm,"state":"Confirmed"}
     if blocks is not None:
         filters["farm_block"]=["in",list(blocks) or [""]]
-    return bunch_rows(filters,["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg",
-                               "reason","source_type","source_name","confirmed_by"])
+    if not as_of:
+        return bunch_rows(filters,LINE_FIELDS)
+    filters.update(state=["in",["Confirmed","Voided"]],confirmed_at=["<",as_of])
+    return snapshot_rules.lines_as_of(bunch_rows(filters,LINE_FIELDS+["confirmed_at","voided_at"]),as_of)
+
+def _today(as_of=None):
+    return str(as_of.date()) if as_of else nowdate()
 
 def _bunch_params(profiles):
     def params_for(block,cut_day):
@@ -127,11 +140,11 @@ def _bunch_scope(farm,zone=None,block=None):
 def _tag_labels(farm):
     return {t.name:t.color_label or t.name for t in frappe.get_all("Bunch Tag",filters={"farm":farm},fields=["name","color_label"],limit_page_length=0)}
 
-def _bunch_cohorts(farm,blocks,waves,lines=None):
+def _bunch_cohorts(farm,blocks,waves,lines=None,as_of=None):
     """Every bunch of these lô, once, at the stage nearest to harvest."""
-    today=nowdate()
-    lines=_bunch_lines(farm,blocks) if lines is None else lines
-    params=_bunch_params(_profiles(farm))
+    today=_today(as_of)
+    lines=_bunch_lines(farm,blocks,as_of) if lines is None else lines
+    params=_bunch_params(_profiles(farm,as_of))
     cut=bunch_flow_rules.cut_cohorts(lines,params,today)
     injected,observed=bunch_flow_rules.inject_cohorts(lines,params,today)
     suckers,claimed=bunch_flow_rules.sucker_cohorts(lines,observed,params,today)
@@ -146,24 +159,25 @@ def _unconfirmed(farm,blocks):
     for r in rows:totals[r.event_type]=totals.get(r.event_type,0)+int(r.qty)
     return totals
 
-def _bunch_weekly(farm,waves,zone=None,block=None):
+def _bunch_weekly(farm,waves,zone=None,block=None,as_of=None):
+    today=_today(as_of)
     blocks=_bunch_scope(farm,zone,block)
-    lines=_bunch_lines(farm,blocks)
-    cohorts=_bunch_cohorts(farm,blocks,waves,lines)
-    result=bunch_forecast_engine.summarize(cohorts,blocks,_tag_labels(farm),nowdate())
-    result["unconfirmed"]=_unconfirmed(farm,blocks)
-    result["pace"]=bunch_forecast_engine.cut_pace(cohorts,lines,nowdate())
+    lines=_bunch_lines(farm,blocks,as_of)
+    cohorts=_bunch_cohorts(farm,blocks,waves,lines,as_of)
+    result=bunch_forecast_engine.summarize(cohorts,blocks,_tag_labels(farm),today)
+    result["unconfirmed"]={} if as_of else _unconfirmed(farm,blocks)
+    result["pace"]=bunch_forecast_engine.cut_pace(cohorts,lines,today)
     result["coverage"]={"with_data":len({l.farm_block for l in lines if l.event_type in ("Cut Bud","Bud Injection")}),"total":len(blocks)}
     # Crops years ahead are outside every approved set for now; only what is on the screen deserves a warning.
-    shown=months_after(date(nowdate()).replace(day=1),bunch_forecast_engine.MONTHS)
+    shown=months_after(date(today).replace(day=1),bunch_forecast_engine.MONTHS)
     if any(not c["profile"] and c["days"] and c["days"][0][0]<shown for c in cohorts):
         result["warnings"].append("Một số lô đang dùng thông số mặc định, chưa có bộ thông số được duyệt.")
     return result,cohorts
 
-def bunch_summary(farm):
-    """The whole farm, for a frozen copy of the forecast."""
-    result,_,_,_=_projection(farm)
-    return _bunch_weekly(farm,result["rows"])
+def bunch_summary(farm,as_of=None):
+    """The whole farm, for a frozen copy of the forecast: now, or as the sổ lô stood at a moment."""
+    result,_,_,_=_projection(farm,as_of=as_of)
+    return _bunch_weekly(farm,result["rows"],as_of=as_of)
 
 LAYER_NOTES={"cut":"Mức tin cậy cao: buồng đã cắt bắp.","inject":"Mức tin cậy khá: đã chích bắp, chưa cắt.","sucker":"Mức tin cậy thấp: số chồi ước tính từ diện tích đã chọn, mốc thời gian theo ngày chọn thật.",
     "tree":"Mức tin cậy thấp: tính từ số cây và ngày trổ ước tính theo khu."}

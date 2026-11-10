@@ -55,7 +55,7 @@ const adviceValue=v=>v==null?'—':v<=1&&v>0?fmt(v*100,1)+'%':fmt(v,2)
   </div>
   <p v-if="error" role="alert" class="land-bad">{{error}}</p>
   <p v-if="notice" role="status" class="notice">{{notice}}</p>
-  <p class="land-note">Hệ thống tự chốt bản dự thu sáng thứ 2 hằng tuần. Mỗi tuần được so với bản đã chốt trước khi tuần đó bắt đầu.</p>
+  <p class="land-note">Mỗi tuần có một bản chốt dự thu tính theo sổ lô lúc 0 giờ thứ Hai (người đầu tiên mở ứng dụng trong tuần sẽ kích hoạt việc dựng, kể cả bù tuần bị lỡ). Mỗi tuần được so với bản chốt của chính tuần đó.</p>
   <p v-if="data&&!cards.length" class="land-note">Chưa có tuần nào để so. Cần có bản dự thu đã chốt và số thu hoạch đã xác nhận.</p>
   <div class="bunch-weekly__grid">
    <button v-for="c in cards" :key="c.week" type="button" class="bunch-week" @click="openWeek(c)">

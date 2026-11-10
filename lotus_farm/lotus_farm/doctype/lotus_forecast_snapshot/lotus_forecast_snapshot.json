@@ -38,6 +38,33 @@
       "reqd": 1
     },
     {
+      "fieldname": "week_start",
+      "fieldtype": "Date",
+      "label": "Thứ Hai đầu tuần",
+      "description": "Bản chốt tuần: dự thu như hệ thống thấy lúc 0 giờ ngày này."
+    },
+    {
+      "fieldname": "as_of",
+      "fieldtype": "Datetime",
+      "label": "Tính theo số đến lúc",
+      "description": "Chỉ dòng sổ lô đã xác nhận trước lúc này và chưa bị hủy trước lúc này."
+    },
+    {
+      "fieldname": "weekly_key",
+      "fieldtype": "Data",
+      "label": "Khóa tuần",
+      "unique": 1,
+      "read_only": 1,
+      "hidden": 1,
+      "description": "Vườn:thứ Hai, chỉ bản chốt tuần; giữ mỗi tuần một bản."
+    },
+    {
+      "fieldname": "limits",
+      "fieldtype": "Small Text",
+      "label": "Giới hạn khi dựng lại",
+      "read_only": 1
+    },
+    {
       "fieldname": "profile_refs",
       "fieldtype": "Small Text",
       "label": "Bộ tham số đã dùng"
@@ -102,6 +129,10 @@
     "snapshot_date",
     "week_label",
     "kind",
+    "week_start",
+    "as_of",
+    "weekly_key",
+    "limits",
     "profile_refs",
     "total_bunches",
     "total_kg",

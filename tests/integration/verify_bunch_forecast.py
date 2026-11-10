@@ -379,6 +379,30 @@ try:
     before_params = frappe.get_all("Lotus Block Forecast Profile", fields=["name", "modified"], order_by="name")
     advice = snap.suggest_parameters(FARM)
     check("suggestions change nothing", advice["applied"] is False and before_params == frappe.get_all("Lotus Block Forecast Profile", fields=["name", "modified"], order_by="name"), advice)
+
+    # ------------------------------------------------------------ weekly copies as of 0 giờ Monday, built when someone opens the app
+    from lotus_farm import block_forecast as bf
+    from lotus_farm import forecast_snapshot_rules as snap_rules
+    monday = snap_rules.monday_of(day)
+    moment = snap_rules.week_moment(monday)
+    # The opening book stands as confirmed ten days before this Monday; what this test confirmed today stays today.
+    frappe.db.sql("""update `tabLotus Work Entry` set confirmed_at = %s where farm = %s and state in ('Confirmed', 'Voided')
+                     and (source_type = 'Opening Import' or confirmed_at < %s)""", (f"{frappe.utils.add_days(monday, -10)} 08:00:00", FARM, f"{day} 00:00:00"))
+    frappe.db.delete("Lotus Forecast Snapshot", {"farm": FARM, "kind": "Weekly"})
+    built = snap.ensure_weeks(FARM)
+    check("nobody opened the app for weeks: opening it builds the missing Mondays, this one included",
+          built == [str(frappe.utils.add_days(monday, -7)), str(monday)], built)
+    week_copy = frappe.get_doc("Lotus Forecast Snapshot", {"farm": FARM, "kind": "Weekly", "week_start": monday})
+    check("the copy stands for 0 giờ Monday and says what it could not rebuild",
+          str(week_copy.as_of) == str(moment) and week_copy.weekly_key == f"{FARM}:{monday}" and "Số cây" in (week_copy.limits or ""),
+          (week_copy.as_of, week_copy.weekly_key))
+    check("it leaves out what was confirmed after the Monday", 0 < len(bf._bunch_lines(FARM, None, moment)) < len(bf._bunch_lines(FARM)))
+    as_then, _ = bf.bunch_summary(FARM, as_of=moment)
+    check("its total is the forecast as the sổ lô stood on Monday", week_copy.total_bunches == as_then["totals"]["bunches"],
+          (week_copy.total_bunches, as_then["totals"]["bunches"]))
+    check("opening the app again builds nothing", snap.ensure_weeks(FARM) == [])
+    refused("two sessions at once still keep one copy a week", lambda: snap._write(FARM, "Weekly", as_of=moment), frappe.UniqueValidationError)
+    check("a week compares against its own Monday copy", snap._forecast_for(snap._snapshots(FARM), snap_rules.week_key(monday)).name == week_copy.name)
 finally:
     frappe.set_user("Administrator")
     frappe.db.rollback()

@@ -223,28 +223,30 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 4
 
-- [ ] T048 [P] [US4] Unit test dựng bản chốt theo mốc trong lotus_farm/tests/test_forecast_snapshot.py:
+- [x] T048 [P] [US4] Unit test dựng bản chốt theo mốc trong lotus_farm/tests/test_forecast_snapshot.py:
   - chỉ lấy dòng xác nhận trước mốc và chưa bị hủy trước mốc;
   - lấy tham số đang hiệu lực tại mốc;
   - tuần bị bỏ lỡ được tạo bù.
-- [ ] T049 [P] [US4] Integration test trong tests/integration/verify_bunch_forecast.py:
+- [x] T049 [P] [US4] Integration test trong tests/integration/verify_bunch_forecast.py:
   - không mở ứng dụng cả tuần, sau đó mở thì có bản chốt đúng mốc;
   - hai phiên mở cùng lúc không tạo trùng;
   - Tổng quan, kế hoạch tài chính và trang dự thu cùng một số.
 
 ### Implementation for User Story 4
 
-- [ ] T050 [US4] Thêm `week_start`, `as_of`, `limits` và khóa duy nhất vườn × `week_start` × `kind` (với Weekly) trong lotus_farm/lotus_farm/doctype/lotus_forecast_snapshot/lotus_forecast_snapshot.json
-- [ ] T051 [US4] Viết `ensure_weeks(farm)` trong lotus_farm/forecast_snapshot.py:
+- [x] T050 [US4] Thêm `week_start`, `as_of`, `limits` và khóa duy nhất vườn × `week_start` × `kind` (với Weekly) trong lotus_farm/lotus_farm/doctype/lotus_forecast_snapshot/lotus_forecast_snapshot.json
+- [x] T051 [US4] Viết `ensure_weeks(farm)` trong lotus_farm/forecast_snapshot.py:
   - dựng bản chốt theo mốc 0 giờ thứ Hai, dùng `confirmed_at` và `voided_at`;
   - ghi giới hạn vào `limits`: số cây và ngày trổ lấy giá trị hiện tại.
-- [ ] T052 [US4] Gọi `ensure_weeks` khi khởi động phiên trong lotus_farm/console.py; nếu lỗi thì ghi lại và không chặn việc mở ứng dụng
+- [x] T052 [US4] Gọi `ensure_weeks` khi khởi động phiên trong lotus_farm/console.py; nếu lỗi thì ghi lại và không chặn việc mở ứng dụng
 - [ ] T053 [US4] Cho Tổng quan và kế hoạch tài chính gọi `block_forecast.board` và bỏ đọc Harvest Forecast trong lotus_farm/reporting.py, frontend/src/components/OverviewBoard.vue và lotus_farm/finance/planning.py
 - [ ] T054 [US4] Gỡ các nơi đọc dự thu cũ (danh sách T040 của spec 001) trong lotus_farm/ và frontend/src/:
   - sửa: frontend/src/App.vue, lotus_farm/console.py;
   - xóa: lotus_farm/forecast_calendar.py, lotus_farm/vip126_timeline.py, lotus_farm/vip126_trial.py, lotus_farm/vip126_live.py, lotus_farm/vip126_profile.py, lotus_farm/vip126_zone_plan.py, lotus_farm/onedrive_supply.py, frontend/src/components/Vip126RollingForecast.vue, frontend/src/components/OneDriveSupplyDialog.vue và test tương ứng.
-- [ ] T055 [US4] Sửa `variance` và `suggest_parameters` đọc thu hoạch thật từ sổ lô (kg/buồng, tỷ lệ thu, số ngày từ cắt bắp đến thu) trong lotus_farm/forecast_snapshot.py
-- [ ] T056 [US4] Sửa trang Dự thu trong frontend/src/BlockForecastApp.vue: bỏ các khóa của engine cũ, thêm nút "Tạo bản chốt" cho quản lý
+- [x] T055 [US4] Sửa `variance` và `suggest_parameters` đọc thu hoạch thật từ sổ lô (kg/buồng, tỷ lệ thu, số ngày từ cắt bắp đến thu) trong lotus_farm/forecast_snapshot.py
+- [x] T056 [US4] Sửa trang Dự thu trong frontend/src/BlockForecastApp.vue: bỏ các khóa của engine cũ, thêm nút "Tạo bản chốt" cho quản lý
+
+**Ghi chú khi làm (10/11)**: Không có bộ chạy lịch trên máy chủ, nên bootstrap (console và field_report) xếp `forecast_snapshot.ensure_all` vào hàng đợi short một lần mỗi tuần (job_id theo thứ Hai, có dedupe; đánh dấu trong cache khi xong). Khóa duy nhất là trường `weekly_key` = vườn:thứ Hai (bản Manual để trống). T053 và T054 làm cùng US7 (dọn đồ cũ) và US5 (báo cáo): Tổng quan cũ, kế hoạch tài chính và các bộ dự thu cũ đều nằm trong danh sách xóa hoặc thay ở hai phần đó.
 
 **Checkpoint**: Có bản chốt tuần dù không ai mở trang; ba màn cùng một số
 

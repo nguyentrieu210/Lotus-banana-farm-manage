@@ -38,6 +38,8 @@ def allowed(doctype,permission='read'):
 @frappe.whitelist()
 def bootstrap():
     from lotus_farm.field import session_info
+    from lotus_farm.forecast_snapshot import queue_missing_weeks
+    queue_missing_weeks()
     session=session_info()
     session['farms']=frappe.get_list('Farm',fields=['name','farm_name','company'],limit_page_length=1000) if frappe.has_permission('Farm','read') else []
     session['modules']={k:[t for t in types if frappe.has_permission(t,'read')] for k,types in MODULES.items()}

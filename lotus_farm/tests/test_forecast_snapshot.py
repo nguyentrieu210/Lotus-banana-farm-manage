@@ -92,3 +92,31 @@ class Weeks(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AsOfMonday(unittest.TestCase):
+    MONDAY = dt.date(2026, 11, 16)
+
+    def line(self, confirmed, voided=None, qty=10):
+        return dict(cut(qty), confirmed_at=confirmed, voided_at=voided)
+
+    def test_only_lines_confirmed_before_the_moment_and_not_voided_before_it(self):
+        moment = rules.week_moment(dt.date(2026, 11, 18))
+        self.assertEqual(moment, dt.datetime(2026, 11, 16, 0, 0))
+        lines = [self.line("2026-11-15 17:00:00", qty=1), self.line("2026-11-16 07:00:00", qty=2), self.line(None, qty=3),
+                 self.line("2026-11-10 09:00:00", "2026-11-15 10:00:00", qty=4), self.line("2026-11-10 09:00:00", "2026-11-17 10:00:00", qty=5)]
+        self.assertEqual([l["qty"] for l in rules.lines_as_of(lines, moment)], [1, 5], "a line voided after the Monday was still counted then")
+
+    def test_parameters_approved_after_the_moment_are_left_out(self):
+        profiles = [{"name": "p1", "approved_at": "2026-11-01 10:00:00"}, {"name": "p2", "approved_at": "2026-11-17 10:00:00"},
+                    {"name": "p3", "approved_at": None, "creation": "2026-10-01 08:00:00"}, {"name": "p4", "approved_at": None}]
+        self.assertEqual([p["name"] for p in rules.profiles_as_of(profiles, self.MONDAY)], ["p1", "p3"])
+
+    def test_missed_weeks_are_built_from_the_first_monday_after_the_first_confirmation(self):
+        weeks = rules.weeks_to_build(dt.datetime(2026, 10, 28, 9, 0), [dt.date(2026, 11, 9)], dt.date(2026, 11, 18))
+        self.assertEqual(weeks, [dt.date(2026, 11, 2), dt.date(2026, 11, 16)], "W45 and this week; W46 is there")
+
+    def test_nothing_before_the_sổ_lô_has_a_confirmed_line_and_at_most_eight_weeks_back(self):
+        self.assertEqual(rules.weeks_to_build(None, [], dt.date(2026, 11, 18)), [])
+        self.assertEqual(rules.weeks_to_build(dt.datetime(2026, 11, 17, 9, 0), [], dt.date(2026, 11, 18)), [], "the first copy is next Monday's")
+        self.assertEqual(len(rules.weeks_to_build(dt.datetime(2025, 1, 6, 9, 0), [], dt.date(2026, 11, 18))), 9)
