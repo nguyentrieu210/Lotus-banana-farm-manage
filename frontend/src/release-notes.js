@@ -1,6 +1,11 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
+ {id:'2026-11-11',title:'Cập nhật ngày 11/11/2026: dọn hẳn các màn hình cũ',items:[
+  {title:'Bỏ các màn cũ không còn dùng',text:'Các màn ghi chép, kế hoạch, dự thu và nhập liệu đời cũ (thửa, vụ, kế hoạch ngày, lô thu hoạch, nhập OneDrive…), trang Cảnh báo và trang Cấu hình đã được gỡ. Việc ngoài vườn, màu dây, thu hoạch, xưởng, dự thu và báo cáo nằm ở Công việc ngoài vườn; dữ liệu cũ được lưu trữ trước khi xóa.'},
+  {title:'Kho',text:'Phiếu xuất dùng còn hai cách: Thủ công và Theo yêu cầu đã duyệt.'},
+  {title:'Tài chính',text:'Bỏ chiều "Vụ" trong báo cáo chi phí. Danh sách chờ hạch toán liệt kê ca đóng gói đã đóng mà chưa có phiếu nhập kho đã duyệt; giá thành tháng chờ các phiếu này.'},
+ ]},
  {id:'2026-11-10',title:'Cập nhật ngày 10/11/2026: báo cáo ngày theo lô',items:[
   {title:'Hôm nay: nhập theo lô',text:'Mỗi lô của tổ là một thẻ. Bấm vào lô để nhập mọi việc của lô trong ngày: việc vườn, phun bón, kiểm tra sâu bệnh, cắt bắp, bao buồng, thu hoạch. Tổ trưởng gửi một lần cho cả ngày, đội trưởng xác nhận.'},
   {title:'Phiếu giấy',text:'In phiếu cho tổ ghi tay, chụp ảnh phiếu để máy điền sẵn. Dòng máy đọc phải được kiểm (mở lô, bấm "Đã kiểm, lưu lô này") rồi mới gửi được.'},
