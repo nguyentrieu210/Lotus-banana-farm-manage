@@ -41,6 +41,11 @@ def _require_access():
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)
     if not any(frappe.has_permission(dt, 'create') for dt in ('Purchase Order', 'Supplier Quotation', 'Material Request', 'Stock Entry', 'Purchase Receipt')):
         frappe.throw('Bạn cần quyền lập chứng từ mua hàng hoặc phiếu kho để dùng AI đọc chứng từ.', frappe.PermissionError)
+    count_use()
+
+
+def count_use():
+    """One AI reading for this user: at most HOURLY_LIMIT an hour, shared by every reader (chứng từ, phiếu ngày)."""
     key = 'lotus-document-ai:' + frappe.session.user
     used = int(frappe.cache().get_value(key) or 0)
     if used >= HOURLY_LIMIT:
@@ -107,11 +112,11 @@ def _call(key, body):
             time.sleep(1.5 * (attempt + 1))
 
 
-def _ask(content):
+def _ask(content, max_tokens=1000):
     keys = _keys()
     if not keys:
         frappe.throw('Chưa cấu hình khóa AI trên máy chủ (groq_api_key).')
-    body = json.dumps({'model': MODEL, 'messages': [{'role': 'user', 'content': content}], 'temperature': 0, 'max_tokens': 1000, 'reasoning_effort': 'none'}).encode()
+    body = json.dumps({'model': MODEL, 'messages': [{'role': 'user', 'content': content}], 'temperature': 0, 'max_tokens': max_tokens, 'reasoning_effort': 'none'}).encode()
     status = None
     # Fall back to the next key when one is rate-limited, rejected, or the provider/network fails for it.
     for index, key in enumerate(keys):
@@ -191,6 +196,15 @@ def _unit(text, allowed):
         if _norm(uom) == word or UNIT_WORDS.get(_norm(uom)) == word:
             return uom
     return None
+
+
+def read_photo(file_url, prompt, max_tokens=3000):
+    """A photo the user has just uploaded, read with a fixed prompt: the JSON the prompt asks for. The caller checks access
+    and counts the use."""
+    ext, data = _file(file_url)
+    if ext not in IMAGES:
+        frappe.throw('Chỉ đọc được ảnh chụp (JPG, PNG, WEBP).')
+    return _ask([{'type': 'text', 'text': prompt}, _image_part(data)], max_tokens)
 
 
 @frappe.whitelist(methods=['POST'])

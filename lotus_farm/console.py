@@ -38,6 +38,8 @@ def allowed(doctype,permission='read'):
 @frappe.whitelist()
 def bootstrap():
     from lotus_farm.field import session_info
+    from lotus_farm.forecast_snapshot import queue_missing_weeks
+    queue_missing_weeks()
     session=session_info()
     session['farms']=frappe.get_list('Farm',fields=['name','farm_name','company'],limit_page_length=1000) if frappe.has_permission('Farm','read') else []
     session['modules']={k:[t for t in types if frappe.has_permission(t,'read')] for k,types in MODULES.items()}
@@ -71,6 +73,9 @@ def bootstrap():
     session.setdefault('capabilities',{})['attendance']=bool(frappe.db.exists('DocType','Attendance') and frappe.has_permission('Attendance','read')) or bool(frappe.db.exists('DocType','Lotus Crew Attendance') and frappe.has_permission('Lotus Crew Attendance','read'))
     from lotus_farm.field_report import farm_names as report_farms
     session['capabilities']['field_report']=frappe.session.user=='Administrator' or (has_role('Lotus Farm Manager','Lotus Field Supervisor','Lotus Team Leader','Lotus Field Inspector') and bool(report_farms()))
+    from lotus_farm.shift import can_open as packhouse_open
+    # Xưởng: packhouse supervisors and the accountant who receives shifts into stock are not in the field teams.
+    session['capabilities']['packhouse']=frappe.session.user=='Administrator' or (bool(report_farms()) and packhouse_open())
     from lotus_farm.finance.setup import can_view as finance_view
     from lotus_farm.signing_rules import CHIEF_ACCOUNTANTS, DIRECTORS
     installed=bool(frappe.db.exists('DocType','Lotus Finance Settings'))
@@ -83,7 +88,7 @@ def bootstrap():
     # ERPNext/HRMS sections added into Kho, Mua hàng, Tài chính, Nhân sự (lotus_farm.erp_catalog), filtered by permission.
     from lotus_farm import erp_workbench
     session['erp_sections']=erp_workbench.catalog()['sections'] if erp_workbench.can_access() else {}
-    if session['capabilities']['field_report']:
+    if session['capabilities']['field_report'] or session['capabilities']['packhouse']:
         existing = {f['name'] for f in session['farms']}
         session['farms'] += frappe.get_all('Farm', filters={'name': ['in', [f for f in report_farms() if f not in existing] or ['']]}, fields=['name','farm_name','company'])
     return session

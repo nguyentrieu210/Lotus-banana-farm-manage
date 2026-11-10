@@ -1,0 +1,36 @@
+{#- Phiếu báo cáo ngày của tổ (spec 002): one row per lô given to the tổ, one column per việc with its code (C1, C2…)
+printed big so a photo can be read back. Bunch columns take numbers of buồng; thu hoạch also kg; việc vườn a number and
+a box "xong cả lô". The report code at the top right lets the reader match the photo to the tổ and the day. -#}
+{% set form = p.form %}
+<div class="lp-daily-head">
+ <div><b>Mã báo cáo: {{ p.number }}</b><small>Ghi số vào ô. Việc vườn: đánh dấu ✓ vào ô "xong" khi đã làm xong cả lô.</small></div>
+ {% if form.ribbon and form.ribbon.label %}<div class="lp-daily-ribbon">Màu dây cắt bắp hôm nay: <b>{{ form.ribbon.label }}</b>{% if form.ribbon.week %} (tuần {{ form.ribbon.week }}){% endif %}</div>{% endif %}
+</div>
+<table class="lp-table lp-daily">
+ <colgroup><col style="width:7%">{% for c in form.columns %}<col>{% endfor %}</colgroup>
+ <thead><tr><th>Lô</th>{% for c in form.columns %}<th class="center"><span class="lp-daily-code">{{ c.code }}</span>{{ c.label }}{% if c.kg %}<small>buồng · kg</small>{% elif c.done %}<small>số · xong</small>{% elif c.stage %}<small>buồng</small>{% endif %}</th>{% endfor %}</tr></thead>
+ <tbody>
+ {% for r in form.rows %}<tr><td class="lp-daily-lot">{{ r.code }}</td>{% for c in form.columns %}<td class="lp-daily-cell{% if [r.code, c.code] in form.expected %} lp-daily-due{% endif %}">{% if c.kg %}<span class="lp-daily-split"><i>buồng</i><i>kg</i></span>{% elif c.done %}<span class="lp-daily-split"><i>số</i><i class="lp-daily-box">xong ☐</i></span>{% endif %}</td>{% endfor %}</tr>
+ {% endfor %}
+ {% for _ in range(p.blank_rows) %}<tr><td class="lp-daily-lot">&nbsp;</td>{% for c in form.columns %}<td class="lp-daily-cell"></td>{% endfor %}</tr>{% endfor %}
+ </tbody>
+</table>
+<p class="lp-daily-note">Ô tô đậm: việc đã giao cho tổ ở lô đó. Hủy buồng: ghi số buồng, lý do ghi bên dưới. Ghi chú, người vắng: ………………………………………………………………………………………………</p>
+<div class="lp-daily-sign"><div>Tổ trưởng<small>(Ký, ghi rõ họ tên)</small></div><div>Đội trưởng xác nhận<small>(Ký, ghi rõ họ tên)</small></div></div>
+<style>
+.lp-daily-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin:0 0 8px}
+.lp-daily-head small{display:block;color:#5b6370;font-size:8.5pt;margin-top:2px}
+.lp-daily-ribbon{border:1.5px solid #1d2430;padding:4px 8px;font-size:10pt}
+.lp-daily th{vertical-align:bottom;font-size:8.5pt}
+.lp-daily th small{display:block;font-weight:normal;color:#5b6370}
+.lp-daily-code{display:block;font-size:13pt;font-weight:bold;letter-spacing:.5px}
+.lp-daily td{height:13mm;border:1px solid #8a919c}
+.lp-daily tbody tr:nth-child(even) td{background:none}
+.lp-daily-lot{font-size:14pt;font-weight:bold;text-align:center;vertical-align:middle}
+.lp-daily-due{box-shadow:inset 0 0 0 2px #1d2430}
+.lp-daily-split{display:flex;justify-content:space-between;font-size:7pt;color:#8a919c}
+.lp-daily-split i{font-style:normal}
+.lp-daily-note{font-size:9pt;margin:8px 0}
+.lp-daily-sign{display:flex;justify-content:space-around;margin-top:14px;text-align:center;font-weight:bold;font-size:10pt}
+.lp-daily-sign small{display:block;font-weight:normal;color:#5b6370;margin-bottom:18mm}
+</style>

@@ -34,8 +34,7 @@
       "fieldname": "category",
       "label": "Category",
       "fieldtype": "Link",
-      "options": "Work Category",
-      "reqd": 1
+      "options": "Work Category"
     },
     {
       "fieldname": "uom",

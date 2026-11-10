@@ -44,6 +44,18 @@ def can_post():
     return _has(ACCOUNTANTS)
 
 
+def check_fruit_item(item, label):
+    """The finished and secondary banana items are received by kg, without batches: anything else would post kg as
+    another unit or leave a draft receipt that the warehouse cannot submit."""
+    row = frappe.db.get_value('Item', item, ['disabled', 'is_stock_item', 'stock_uom', 'has_batch_no', 'has_serial_no'], as_dict=True)
+    if not row or row.disabled or not row.is_stock_item:
+        frappe.throw('%s: chọn mặt hàng tồn kho đang dùng.' % label)
+    if (row.stock_uom or '').strip().lower() != 'kg':
+        frappe.throw('%s: đơn vị tồn kho của mặt hàng phải là Kg (đang là %s).' % (label, row.stock_uom))
+    if row.has_batch_no or row.has_serial_no:
+        frappe.throw('%s: không dùng mặt hàng quản lý theo lô hàng hay số sê-ri.' % label)
+
+
 def is_chief():
     return _has(CHIEFS)
 
@@ -203,6 +215,8 @@ def install():
                  insert_after='lotus_supplier'),
             dict(fieldname='lotus_harvest_lot', label='Lô thu hoạch nhập kho', fieldtype='Link', options='Harvest Lot', read_only=1, no_copy=1,
                  insert_after='lotus_purchase_invoice'),
+            dict(fieldname='lotus_packhouse_shift', label='Ca đóng gói nhập kho', fieldtype='Link', options='Packhouse Shift', read_only=1, no_copy=1,
+                 insert_after='lotus_harvest_lot'),
             dict(fieldname='lotus_issue_purpose', label='Mục đích xuất kho', fieldtype='Select', options='\nProduction\nSale\nDisposal\nShortage\nPacking',
                  insert_after='lotus_purchase_invoice', depends_on="eval:doc.stock_entry_type=='Material Issue'"),
             # Supplier's invoice behind a direct purchase (Mua nhanh): what is printed on it, and whether its VAT went into cost.

@@ -16,6 +16,7 @@
     "work_type",
     "assigned_on",
     "due_date",
+    "cycle_rule",
     "state",
     "ended_on",
     "done_report",
@@ -116,6 +117,14 @@
       "label": "Hạn xong"
     },
     {
+      "fieldname": "cycle_rule",
+      "fieldtype": "Link",
+      "label": "Vòng chăm sóc",
+      "options": "Work Schedule Rule",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
       "fieldname": "state",
       "fieldtype": "Select",
       "label": "Trạng thái",
@@ -132,7 +141,7 @@
       "fieldname": "done_report",
       "fieldtype": "Link",
       "label": "Báo cáo xong",
-      "options": "Lotus Field Report",
+      "options": "Lotus Daily Report",
       "ignore_user_permissions": 1,
       "read_only": 1
     },

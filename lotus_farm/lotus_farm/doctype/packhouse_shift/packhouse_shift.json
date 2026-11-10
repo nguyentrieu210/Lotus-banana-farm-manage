@@ -50,36 +50,39 @@
       "reqd": 1
     },
     {
+      "fieldname": "sources",
+      "fieldtype": "Table",
+      "label": "Nguồn buồng",
+      "options": "Packhouse Shift Source"
+    },
+    {
       "fieldname": "labor",
       "label": "Labor",
       "fieldtype": "Table",
-      "options": "Packhouse Shift Labor",
-      "reqd": 1
+      "options": "Packhouse Shift Labor"
     },
     {
       "fieldname": "preprocessing",
       "label": "Preprocessing",
       "fieldtype": "Table",
-      "options": "Packhouse Preprocessing",
-      "reqd": 1
+      "options": "Packhouse Preprocessing"
     },
     {
       "fieldname": "input_kg",
       "label": "Input Kg",
       "fieldtype": "Float",
-      "read_only": 1
+      "read_only": 1,
+      "description": "Tổng kg các nguồn buồng."
     },
     {
       "fieldname": "finished_kg",
       "label": "Finished Kg",
-      "fieldtype": "Float",
-      "read_only": 1
+      "fieldtype": "Float"
     },
     {
       "fieldname": "secondary_kg",
       "label": "Secondary Kg",
-      "fieldtype": "Float",
-      "read_only": 1
+      "fieldtype": "Float"
     },
     {
       "fieldname": "loss_kg",
@@ -90,8 +93,7 @@
     {
       "fieldname": "cartons",
       "label": "Cartons",
-      "fieldtype": "Int",
-      "read_only": 1
+      "fieldtype": "Int"
     },
     {
       "fieldname": "packout_percent",
@@ -115,6 +117,16 @@
       "fieldname": "amendment_reason",
       "label": "Amendment Reason",
       "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "stock_entry",
+      "fieldtype": "Link",
+      "label": "Phiếu nhập kho thành phẩm",
+      "options": "Stock Entry",
+      "read_only": 1,
+      "no_copy": 1,
+      "allow_on_submit": 1,
+      "ignore_user_permissions": 1
     }
   ],
   "field_order": [
@@ -125,6 +137,7 @@
     "started_at",
     "ended_at",
     "supervisor",
+    "sources",
     "labor",
     "preprocessing",
     "input_kg",
@@ -135,7 +148,8 @@
     "packout_percent",
     "notes",
     "amended_from",
-    "amendment_reason"
+    "amendment_reason",
+    "stock_entry"
   ],
   "autoname": "hash",
   "is_submittable": 1,

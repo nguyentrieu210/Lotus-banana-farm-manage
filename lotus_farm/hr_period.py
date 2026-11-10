@@ -472,12 +472,14 @@ def _sheet(company, month, begin, end):
     pieces, hourly_minimum = month_piece(company, begin, end), rate_on(company, MINIMUM_HOURLY, end)
     for e in employees:
         p = pieces.get(e['employee']) or {}
-        sessions = cint(p.get('khoan_sessions'))
+        sessions = round(flt(p.get('khoan_sessions')), 4)  # buổi weights: a buổi shared with công nhật counts in part
         deduct = min(round(sessions * flt(e.get('daily_rate')) / 2), round(flt(e.get('regular_pay')))) if e['payment_basis'] == 'Daywork' else 0
         piece = round(flt(p.get('piece')))
         topup = minimum_topup(piece, p.get('piece_sessions'), hourly_minimum) if piece or p.get('piece_sessions') else 0
-        e.update(wage=round(flt(e['gross'])) - deduct, khoan_sessions=sessions, khoan_deduction=deduct, piece=piece,
-                 piece_sessions=cint(p.get('piece_sessions')), topup=topup)
+        # Whole numbers stay int: a sheet sent for signature before buổi could be shared must hash the same afterwards.
+        whole = lambda v: int(v) if float(v).is_integer() else v
+        e.update(wage=round(flt(e['gross'])) - deduct, khoan_sessions=whole(sessions), khoan_deduction=deduct, piece=piece,
+                 piece_sessions=whole(round(flt(p.get('piece_sessions')), 2)), topup=topup)
         if deduct or piece or topup:
             gross = e['wage'] + piece + topup
             tax = taxes.get(e['employee']) or {}

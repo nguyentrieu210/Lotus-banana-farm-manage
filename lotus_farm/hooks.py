@@ -41,7 +41,8 @@ permission_query_conditions = {
 # Công việc ngoài vườn: written only through lotus_farm.field_report, read by farm.
 for _name, _query in (("Lotus Work Assignment", "assignment_query"), ("Lotus Work Entry", "entry_query"),
                       ("Lotus Work Session", "session_query"), ("Lotus Work Inspection", "inspection_query"),
-                      ("Lotus Bunch Event", "bunch_event_query"), ("Lotus Forecast Snapshot", "forecast_snapshot_query")):
+                      ("Lotus Bunch Event", "bunch_event_query"), ("Lotus Forecast Snapshot", "forecast_snapshot_query"),
+                      ("Lotus Daily Report", "daily_report_query")):
     has_permission[_name] = "lotus_farm.field_report.permission"
     permission_query_conditions[_name] = "lotus_farm.field_report." + _query
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}
@@ -114,7 +115,9 @@ doc_events["Packout Run"]["before_validate"].append("lotus_farm.daily_operations
 doc_events["Stock Entry"]["before_cancel"] = [
     "lotus_farm.daily_operations.stock_context_cancel",
     "lotus_farm.stock_bridge.before_stock_cancel",
+    "lotus_farm.shift.release_receipt",
 ]
+doc_events["Stock Entry"]["on_trash"] = "lotus_farm.shift.release_receipt"
 
 for _name in ("Secondary Product Movement", "Cycle Closing Report"):
     has_permission[_name] = "lotus_farm.controls.farm_permission"
@@ -159,7 +162,7 @@ for _name in ('Harvest Actual','Harvest Lot','Packout Run'):
     _old = doc_events[_name].get('validate',[])
     if isinstance(_old,str):_old=[_old]
     doc_events[_name]['validate']=[*_old,'lotus_farm.shift.scale_link_guard']
-website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/in-don-mua','to_route':'lotus_purchase_order_print'},{'from_route':'/lotus/in-hoa-don','to_route':'lotus_invoice_print'},{'from_route':'/lotus/in-phieu-chi','to_route':'lotus_payment_print'},{'from_route':'/lotus/in-doi-chieu','to_route':'lotus_statement_print'},{'from_route':'/lotus/mo','to_route':'lotus_open'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
+website_route_rules = [{'from_route':'/login','to_route':'lotus_login'},{'from_route':'/lotus/in-phieu','to_route':'lotus_stock_print'},{'from_route':'/lotus/in-cong','to_route':'lotus_timekeeping_print'},{'from_route':'/lotus/in-de-xuat','to_route':'lotus_material_proposal_print'},{'from_route':'/lotus/in-luong','to_route':'lotus_payroll_print'},{'from_route':'/lotus/in-phieu-ngay','to_route':'lotus_daily_form'},{'from_route':'/hr-mobile','to_route':'hr_mobile'},{'from_route':'/lotus/in-don-mua','to_route':'lotus_purchase_order_print'},{'from_route':'/lotus/in-hoa-don','to_route':'lotus_invoice_print'},{'from_route':'/lotus/in-phieu-chi','to_route':'lotus_payment_print'},{'from_route':'/lotus/in-doi-chieu','to_route':'lotus_statement_print'},{'from_route':'/lotus/mo','to_route':'lotus_open'},{'from_route':'/lotus/<path:app_path>','to_route':'lotus'}]
 doc_events['Daily Work Plan'] = {**doc_events.get('Daily Work Plan',{}),'validate':'lotus_farm.console.work_state_guard'}
 
 doc_events['Harvest Actual']['on_submit']='lotus_farm.harvest_matching.refresh_supply'

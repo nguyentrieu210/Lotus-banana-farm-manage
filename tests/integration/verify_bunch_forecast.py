@@ -1,21 +1,24 @@
-"""The daily bunch sheet end to end on a site that has Vườn 222 set up. Everything runs in one transaction and is rolled back.
+"""The daily report of a tổ, the sổ lô behind it and the bunch forecast, end to end on a site that has Vườn 222 set up.
+Everything runs in one transaction and is rolled back.
 
-docker exec -i ... python - < tests/integration/verify_bunch_forecast.py
+docker exec -i lotus-vps-test-backend-1 bash -lc 'cd /home/frappe/frappe-bench/sites && ../env/bin/python -' < tests/integration/verify_bunch_forecast.py
 """
 import json
+import os
 
 import frappe
 from frappe.utils import nowdate
 
-SITE = "frontend"
+SITE = os.environ.get("SITE", "frontend")
 FARM = "LOTUS-222"
-EVENT = "Lotus Bunch Event"
+ENTRY = "Lotus Work Entry"
 
 frappe.init(site=SITE)
 frappe.connect()
 
-from lotus_farm import bunch_posting as api  # noqa: E402
 from lotus_farm import field_report as field  # noqa: E402
+from lotus_farm import lot_ledger  # noqa: E402
+from lotus_farm import lot_report as lr  # noqa: E402
 
 failures = []
 
@@ -38,17 +41,10 @@ def refused(label, fn, kind=frappe.ValidationError):
         check(label, False, "no error")
 
 
-def rows_of(block=None):
-    filters = {"farm": FARM, "event_date": day, "state": ["!=", "Voided"]}
-    if block:
-        filters["farm_block"] = block
-    return frappe.get_all(EVENT, filters=filters, fields=["name", "event_type", "qty", "state", "bunch_tag", "entered_by", "confirmed_by"])
-
-
 day = nowdate()
-crew = "9krktf6h66"
+crew = frappe.get_all("Work Team", filters={"farm": FARM, "lotus_team_level": "Crew"}, pluck="name", order_by="creation asc")[0]
 leader = frappe.db.get_value("Work Team", crew, "lotus_leader")
-teams = frappe.get_all("Work Team", filters={"lotus_parent_team": crew}, pluck="name", order_by="team_name asc")
+teams = frappe.get_all("Work Team", filters={"lotus_parent_team": crew, "lotus_team_level": "Team"}, pluck="name", order_by="team_name asc")
 team, other_team = teams[0], teams[1]
 foreman = next(u for u in frappe.get_all("User Permission", filters={"allow": "Farm", "for_value": FARM}, pluck="user")
                if u != leader and not field.is_manager(u) and frappe.db.exists("User", u))
@@ -62,130 +58,181 @@ A1, A5, A6 = blocks["A1"], blocks["A5"], blocks["A6"]
 reasons = {r.reason_code: r.name for r in frappe.get_all("Cancellation Reason", fields=["name", "reason_code"])}
 reason = reasons["GAY-DO"]
 tag = field.ribbon(FARM, day).name
-frappe.db.delete(EVENT, {"farm": FARM, "event_date": day})
+works = {w.stage: w for w in lot_ledger.works(FARM).values() if w.stage}
+frappe.db.delete(ENTRY, {"farm": FARM, "posting_date": day})
+frappe.db.delete(lr.REPORT, {"farm": FARM, "report_date": day})
+
+
+def as_line(row):
+    line = {k: v for k, v in row.items() if k not in ("block", "event_type")}
+    line["work_type"] = works[row["event_type"]].name
+    return line
+
+
+def report_name(of_team, user):
+    frappe.set_user(user)
+    return lr.open_report(FARM, of_team, day)["name"]
+
+
+def put(of_team, user, rows, on_day=None):
+    """Save rows (block + event_type) on the tổ's report of the day, lô by lô; lô of the report left out are emptied."""
+    frappe.set_user(user)
+    report = lr.open_report(FARM, of_team, on_day or day)["name"]
+    by_block = {}
+    for row in rows:
+        by_block.setdefault(row["block"], []).append(as_line(row))
+    for block in {l.farm_block for l in frappe.get_all(ENTRY, filters={"daily_report": report, "state": "Draft"}, fields=["farm_block"])}:
+        by_block.setdefault(block, [])
+    out = {"saved": 0, "removed": 0, "errors": []}
+    for block, lines in by_block.items():
+        result = lr.save_lot(report, block, lines)
+        for k in ("saved", "removed"):
+            out[k] += result[k]
+        out["errors"] += result["errors"]
+    return out
+
+
+def confirm(of_team, sender, confirmer):
+    report = report_name(of_team, sender)
+    if frappe.db.get_value(lr.REPORT, report, "state") in ("Draft", "Reopened"):
+        lr.send(report)
+    frappe.set_user(confirmer)
+    return lr.confirm(report)
+
+
+def reopen(of_team, why="bổ sung"):
+    report = frappe.db.get_value(lr.REPORT, {"farm": FARM, "work_team": of_team, "report_date": day})
+    if frappe.db.get_value(lr.REPORT, report, "state") in ("Sent", "Confirmed"):
+        frappe.set_user(leader)
+        lr.reopen(report, why)
+
+
+def rows_of(block=None):
+    filters = {"farm": FARM, "posting_date": day, "state": ["!=", "Voided"]}
+    if block:
+        filters["farm_block"] = block
+    return frappe.get_all(ENTRY, filters=filters, fields=["name", "stage", "qty", "state", "bunch_tag", "entered_by", "confirmed_by"])
+
 
 try:
     # ------------------------------------------------------------ tổ trưởng enters
     frappe.set_user(foreman)
-    sheet = api.day_sheet(FARM, crew, day)
-    check("foreman sees only their tổ", [t["name"] for t in sheet["teams"]] == [team], sheet["teams"])
-    check("sheet carries the ribbon of the day", sheet["ribbon"]["name"] == tag)
-    check("sheet lists the lots of the đội", any(b["code"] == "A1" for b in sheet["blocks"]))
-    check("sheet lists reject reasons", len(sheet["reasons"]) == 4)
+    sheet = lr.today(FARM, team, day)
+    check("foreman may enter for their tổ", sheet["rights"]["write"] and not sheet["rights"]["confirm"], sheet["rights"])
+    check("today carries the ribbon of the day", sheet["ribbon"]["name"] == tag)
+    check("today lists the lots of the đội", any(b["code"] == "A1" for b in sheet["blocks"]))
+    check("today lists reject reasons", len(sheet["reasons"]) == 4)
     first = [dict(block=A1, event_type="Bud Injection", qty=10), dict(block=A5, event_type="Cut Bud", qty=120, bunch_tag="ignored"),
              dict(block=A6, event_type="Reject", qty=2, reject_stage="Before Cut", reason=reason)]
-    out = api.save_day(FARM, crew, day, team, first)
+    out = put(team, foreman, first)
     check("three lines saved", out["saved"] == 3 and not out["errors"], out)
-    cut = [r for r in rows_of(A5)][0]
+    cut = rows_of(A5)[0]
     check("cut takes the ribbon, not what was sent", cut.bunch_tag == tag)
     check("lines start as Draft by the foreman", cut.state == "Draft" and cut.entered_by == foreman)
-    out = api.save_day(FARM, crew, day, team, first)
-    check("saving the same sheet changes nothing", out["saved"] == 0 and len(rows_of()) == 3, out)
+    put(team, foreman, first)
+    check("saving the same lines again makes no copies", len(rows_of()) == 3)
     second = [dict(first[0], qty=15), first[1]]
-    out = api.save_day(FARM, crew, day, team, second)
-    check("saving replaces and drops removed lines", out["saved"] == 1 and out["removed"] == 1 and len(rows_of()) == 2, out)
-    bad = [dict(block=A1, event_type="Bud Injection", qty=2.5), dict(block=A5, event_type="Cut Bud", qty=999)]
-    out = api.save_day(FARM, crew, day, team, bad)
-    check("a bad line stops the whole save", out["saved"] == 0 and len(out["errors"]) == 1, out)
-    check("nothing changed after the refused save", sum(r.qty for r in rows_of(A5)) == 120)
-    over = second + [dict(block=A5, event_type="Harvest", qty=121, bunch_tag=tag, weight_kg=2000)]
-    out = api.save_day(FARM, crew, day, team, over)
+    out = put(team, foreman, second)
+    check("saving replaces and drops removed lines", out["removed"] == 1 and len(rows_of()) == 2, out)
+    report = report_name(team, foreman)
+    out = lr.save_lot(report, A1, [as_line(dict(block=A1, event_type="Bud Injection", qty=2.5))])
+    check("a bad line stops the save of its lô", out["saved"] == 0 and len(out["errors"]) == 1, out)
+    check("nothing changed after the refused save", sum(r.qty for r in rows_of(A1)) == 15)
+    out = lr.save_lot(report, A5, [as_line(second[1]), as_line(dict(block=A5, event_type="Harvest", qty=121, bunch_tag=tag, weight_kg=2000))])
     check("harvest above the cut of the colour is refused", out["saved"] == 0 and "vượt" in out["errors"][0]["message"], out)
-    refused("foreman cannot enter for another tổ", lambda: api.save_day(FARM, crew, day, other_team, second), frappe.PermissionError)
-    refused("foreman cannot confirm", lambda: api.confirm_day(FARM, crew, day), frappe.PermissionError)
-    refused("no entry for a future day", lambda: api.save_day(FARM, crew, "2099-01-01", team, second))
+    refused("the foreman cannot read another tổ's day", lambda: lr.today(FARM, other_team, day), frappe.PermissionError)
+    refused("the foreman cannot open another tổ's report", lambda: lr.open_report(FARM, other_team, day), frappe.PermissionError)
+    check("reading a day writes nothing", frappe.db.count(lr.REPORT, {"farm": FARM, "work_team": other_team, "report_date": day}) == 0)
+    refused("foreman cannot confirm", lambda: lr.confirm(report), frappe.PermissionError)
+    check("no report for a future day", lr.today(FARM, team, "2099-01-01")["report"] is None and not lr.today(FARM, team, "2099-01-01")["rights"]["write"])
+    refused("a future day cannot be opened", lambda: lr.open_report(FARM, team, "2099-01-01"))
 
     # ------------------------------------------------------------ đội trưởng confirms
     frappe.set_user(leader)
-    sheet = api.day_sheet(FARM, crew, day)
-    check("đội trưởng sees all tổ", len(sheet["teams"]) == len(teams))
-    out = api.save_day(FARM, crew, day, other_team, [dict(block=A6, event_type="Bud Injection", qty=7)])
+    out = put(other_team, leader, [dict(block=A6, event_type="Bud Injection", qty=7)])
     check("đội trưởng can enter for a tổ", out["saved"] == 1, out)
-    out = api.confirm_day(FARM, crew, day)
-    check("two confirmed, own line refused", out["confirmed"] == 2 and len(out["errors"]) == 1, out)
-    states = {r.event_type: r.state for r in rows_of(A5)}
-    check("cut is confirmed", states["Cut Bud"] == "Confirmed")
-    check("own line stays Draft", [r.state for r in rows_of(A6)] == ["Draft"])
+    other = report_name(other_team, leader)
+    check("entering for a tổ marks the report as nhập hộ", frappe.db.get_value(lr.REPORT, other, "on_behalf") == 1)
+    lr.send(other)
+    refused("đội trưởng cannot confirm what they entered", lambda: lr.confirm(other))
     frappe.set_user("Administrator")
-    out = api.confirm_day(FARM, crew, day)
-    check("the manager confirms it", out["confirmed"] == 1, out)
-    out = api.confirm_day(FARM, crew, day)
-    check("confirming again does nothing", out["confirmed"] == 0 and not out["errors"], out)
+    lr.confirm(other)
+    check("the manager confirms it", [r.state for r in rows_of(A6)] == ["Confirmed"])
+    frappe.set_user(foreman)
+    lr.send(report)
+    refused("a sent report cannot be edited", lambda: lr.save_lot(report, A1, [as_line(first[0])]))
+    frappe.set_user(leader)
+    lr.confirm(report)
+    states = {r.stage: r.state for r in rows_of(A5)}
+    check("cut is confirmed", states["Cut Bud"] == "Confirmed")
+    refused("confirming again is refused", lambda: lr.confirm(report))
 
     # ------------------------------------------------------------ after confirmation
+    reopen(team, "thêm thu hoạch")
     frappe.set_user(foreman)
-    out = api.save_day(FARM, crew, day, team, second)
-    check("same numbers after confirmation are accepted", out["saved"] == 0 and not out["errors"], out)
-    out = api.save_day(FARM, crew, day, team, [dict(first[0], qty=99), first[1]])
-    check("changed number after confirmation is refused", out["saved"] == 0 and len(out["errors"]) == 1, out)
-    harvest = second + [dict(block=A5, event_type="Harvest", qty=100, bunch_tag=tag, weight_kg=1800.5),
-                        dict(block=A5, event_type="Reject", qty=20, reject_stage="After Cut", reason=reason, bunch_tag=tag)]
-    out = api.save_day(FARM, crew, day, team, harvest)
+    out = lr.save_lot(report, A5, [as_line(dict(block=A5, event_type="Cut Bud", qty=99))])
+    check("a confirmed line cannot be changed from the report", out["saved"] == 0 and len(out["errors"]) == 1, out)
+    harvest = [dict(block=A5, event_type="Harvest", qty=100, bunch_tag=tag, weight_kg=1800.5),
+               dict(block=A5, event_type="Reject", qty=20, reject_stage="After Cut", reason=reason, bunch_tag=tag)]
+    out = lr.save_lot(report, A5, [as_line(h) for h in harvest])
     check("harvest + reject up to the cut are accepted", out["saved"] == 2 and not out["errors"], out)
-    frappe.set_user(leader)
-    out = api.confirm_day(FARM, crew, day)
-    check("harvest and reject confirmed", out["confirmed"] == 2 and not out["errors"], out)
+    confirm(team, foreman, leader)
     cuts, _ = field._bunch_counts(FARM, [tag])
-    check("caps count cuts from the ledger", cuts.get((A5, tag)) == 120, cuts)
+    check("caps count cuts from the sổ lô", cuts.get((A5, tag)) == 120, cuts)
 
-    event = frappe.get_all(EVENT, filters={"farm_block": A5, "event_date": day, "event_type": "Harvest", "state": "Confirmed"}, pluck="name")[0]
-    refused("amend needs a reason", lambda: api.amend(event, {"qty": 90}, ""))
-    refused("amend above the cut is refused", lambda: api.amend(event, {"qty": 101}, "đếm lại"))
+    line = frappe.get_all(ENTRY, filters={"farm_block": A5, "posting_date": day, "stage": "Harvest", "state": "Confirmed"}, pluck="name")[0]
+    frappe.set_user(leader)
+    refused("amend needs a reason", lambda: lr.amend(line, {"qty": 90}, ""))
+    refused("amend above the cut is refused", lambda: lr.amend(line, {"qty": 101}, "đếm lại"))
     frappe.set_user(foreman)
-    refused("foreman cannot amend", lambda: api.amend(event, {"qty": 90}, "đếm lại"), frappe.PermissionError)
+    refused("foreman cannot amend", lambda: lr.amend(line, {"qty": 90}, "đếm lại"), frappe.PermissionError)
     frappe.set_user(leader)
-    out = api.amend(event, {"qty": 90, "weight_kg": 1620}, "đếm lại")
-    old, new = frappe.get_doc(EVENT, out["voided"]), frappe.get_doc(EVENT, out["event"])
+    out = lr.amend(line, {"qty": 90, "weight_kg": 1620}, "đếm lại")
+    old, new = frappe.get_doc(ENTRY, out["voided"]), frappe.get_doc(ENTRY, out["entry"])
     check("old line voided with its reason", old.state == "Voided" and old.void_reason == "đếm lại" and old.qty == 100)
-    check("new line carries the correction", new.state == "Confirmed" and new.qty == 90 and new.weight_kg == 1620 and new.confirmed_by == leader)
-    refused("a voided line cannot be amended", lambda: api.amend(event, {"qty": 80}, "lại"))
-    cut_name = frappe.get_all(EVENT, filters={"farm_block": A5, "event_date": day, "event_type": "Cut Bud", "state": "Confirmed"}, pluck="name")[0]
-    refused("cut cannot go below what was used", lambda: api.amend(cut_name, {"qty": 50}, "đếm lại"))
-    out = api.amend(new.name, {"qty": 0}, "nhập nhầm")
-    check("amending to zero only voids", out["event"] is None and frappe.db.get_value(EVENT, new.name, "state") == "Voided", out)
+    check("new line carries the correction", new.state == "Confirmed" and new.qty == 90 and new.weight_kg == 1620 and new.confirmed_by == leader
+          and new.replaces == old.name)
+    refused("a voided line cannot be amended", lambda: lr.amend(line, {"qty": 80}, "lại"))
+    cut_name = frappe.get_all(ENTRY, filters={"farm_block": A5, "posting_date": day, "stage": "Cut Bud", "state": "Confirmed"}, pluck="name")[0]
+    refused("cut cannot go below what was used", lambda: lr.amend(cut_name, {"qty": 50}, "đếm lại"))
+    out = lr.amend(new.name, {"qty": 0}, "nhập nhầm")
+    check("amending to zero only voids", out["entry"] is None and frappe.db.get_value(ENTRY, new.name, "state") == "Voided", out)
 
-    # ------------------------------------------------------------ the ledger protects itself
+    # ------------------------------------------------------------ the sổ lô protects itself
     frappe.set_user("Administrator")
-    refused("a confirmed line cannot be deleted", lambda: frappe.delete_doc(EVENT, cut_name, force=True))
-    doc = frappe.get_doc(EVENT, cut_name)
+    refused("a confirmed line cannot be deleted", lambda: frappe.delete_doc(ENTRY, cut_name, force=True))
+    doc = frappe.get_doc(ENTRY, cut_name)
     doc.qty = 121
-    refused("a confirmed line cannot be edited", lambda: api._store(doc))
+    refused("a confirmed line cannot be edited", lambda: lr._store(doc))
 
-    # ------------------------------------------------------------ chọn chồi from a phiếu
-    sucker_work = frappe.db.get_value("Work Type", {"lotus_bunch_stage": "Sucker Select", "lotus_farm": FARM}) \
-        or frappe.get_all("Work Type", filters={"lotus_bunch_stage": "Sucker Select"}, pluck="name")[0]
-    entry = frappe.new_doc("Lotus Work Entry")
-    entry.update(dict(farm=FARM, crew=crew, work_team=team, farm_block=A6, work_type=sucker_work, posting_date=day, qty=1, entered_by=foreman,
-                      company=frappe.db.get_value("Farm", FARM, "company")))
-    entry.flags.ignore_mandatory = entry.flags.ignore_links = True
-    field._store(entry)
+    # ------------------------------------------------------------ chọn chồi in hectares
+    reopen(team, "chọn chồi")
     trees, area = frappe.db.get_value("Farm Block", A6, ["lotus_tree_count", "area_ha"])
-    frappe.set_user(leader)
-    pending = api.day_sheet(FARM, crew, day)["suckers"]
-    check("confirm screen lists the pending Chọn F", len(pending) == 1 and pending[0]["name"] == entry.name, pending)
-    out = api.confirm_day(FARM, crew, day)
-    check("Chọn F is written on confirm", out["suckers"] == 1, out)
-    posted = frappe.db.get_value("Lotus Work Entry", entry.name, ["posted_event", "confirmed_by"], as_dict=True)
-    line = frappe.get_doc(EVENT, posted.posted_event)
-    check("entry links its ledger line", posted.confirmed_by == leader and line.source_key == "work-entry:" + entry.name)
-    check("estimate = trees x ha / area", line.qty == min(trees, round(trees / area)), line.qty)
-    check("lot with bud work: next vụ (FR-026)", line.cycle_no == 3, line.cycle_no)
-    out = api.confirm_day(FARM, crew, day)
-    check("confirming again writes no second Chọn F", out["suckers"] == 0, out)
-    frappe.db.set_value("Lotus Work Entry", entry.name, "qty", 0.5)
-    out = api.confirm_day(FARM, crew, day)
-    posted2 = frappe.db.get_value("Lotus Work Entry", entry.name, "posted_event")
-    check("a changed report replaces its line", out["suckers"] == 1 and posted2 != line.name
-          and frappe.db.get_value(EVENT, line.name, "state") == "Voided", out)
-    out = api.amend(posted2, {"qty": 0}, "không chọn")
-    check("voided Chọn F is not written back", api.confirm_day(FARM, crew, day)["suckers"] == 0, out)
-
-    # ------------------------------------------------------------ the opening book and the 12-week forecast
-    from lotus_farm import bunch_opening_import as opening, bunch_opening_rules, block_forecast
-    import base64, glob, io, unicodedata
+    frappe.set_user(foreman)
+    out = lr.save_lot(report, A6, [{"work_type": works["Sucker Select"].name, "area_ha": 1}])
+    check("chọn chồi (khoán lô) waits for the lô to be given to the tổ", out["saved"] == 0 and "chưa giao cho tổ" in out["errors"][0]["message"], out)
     frappe.set_user("Administrator")
-    frappe.db.delete(EVENT, {"farm": FARM})
-    frappe.db.delete("Lotus Work Entry", {"name": entry.name})
+    frappe.db.set_value(field.ASSIGNMENT, {"farm": FARM, "kind": "Round", "work_type": works["Sucker Select"].name, "farm_block": A6,
+                                           "state": ["in", list(field.OPEN_STATES)]}, "state", "Cancelled")
+    field.assign(FARM, crew, works["Sucker Select"].name, team, [A6])
+    worker = frappe.get_all("Employee", filters={"company": frappe.db.get_value("Farm", FARM, "company"), "status": "Active"}, pluck="name", limit=1)[0]
+    frappe.db.set_value("Employee", worker, "lotus_work_team", team)
+    for hour in ("06:30:00", "17:30:00"):
+        frappe.get_doc({"doctype": "Employee Checkin", "employee": worker, "time": f"{day} {hour}", "log_type": "IN"}).insert(ignore_permissions=True)
+    frappe.set_user(foreman)
+    out = lr.save_lot(report, A6, [{"work_type": works["Sucker Select"].name, "area_ha": 1, "people": [{"employee": worker, "morning": 1}]}])
+    check("chọn chồi is saved from hectares", out["saved"] == 1 and not out["errors"], out)
+    sucker = frappe.get_all(ENTRY, filters={"daily_report": report, "stage": "Sucker Select"}, fields=["qty", "cycle_no", "area_ha"])[0]
+    check("estimate = trees x ha / area", sucker.qty == min(trees, round(trees / area)), sucker.qty)
+    check("lot with bud work: next vụ (FR-026)", sucker.cycle_no == 3, sucker.cycle_no)
+    confirm(team, foreman, leader)
+
+    # ------------------------------------------------------------ the opening book and the 13-week forecast
+    from lotus_farm import bunch_opening_import as opening, bunch_opening_rules, block_forecast
+    import base64, io
+    frappe.set_user("Administrator")
+    frappe.db.delete(ENTRY, {"farm": FARM})
+    frappe.db.delete(lr.REPORT, {"farm": FARM})
     import openpyxl
     book = openpyxl.Workbook()
     sheet = book.active
@@ -206,20 +253,20 @@ try:
     frappe.set_user(foreman)
     refused("only the manager imports", lambda: opening.preview(FARM, content), frappe.PermissionError)
     frappe.set_user("Administrator")
-    before = frappe.db.count(EVENT, {"farm": FARM})
+    before = frappe.db.count(ENTRY, {"farm": FARM})
     first_look = opening.preview(FARM, content, "so.xlsx")
     check("preview reads 593 bunches with no errors", first_look["summary"]["bunches"] == 593 and not first_look["errors"], first_look["errors"][:3])
     check("preview colours match the farm's count", {c["label"]: c["bunches"] for c in first_look["summary"]["colours"]} == {"Đỏ": 113, "Trắng": 182, "Tím": 298}, first_look["summary"])
-    check("preview writes nothing", frappe.db.count(EVENT, {"farm": FARM}) == before)
+    check("preview writes nothing", frappe.db.count(ENTRY, {"farm": FARM}) == before)
     done = opening.commit(FARM, first_look["token"])
     check("commit writes the book", done["bunches"] == 593 and done["skipped"] == 0, done)
-    lines = frappe.get_all(EVENT, filters={"farm": FARM}, fields=["source_type", "state", "event_date", "qty", "farm_block", "source_key", "cycle_no"])
-    check("lines are confirmed opening balance on vụ 2", all(l.source_type == "Opening Import" and l.state == "Confirmed" and l.cycle_no == 2 for l in lines))
-    check("lần 1 is Wednesday, lần 2 Saturday", {str(l.event_date) for l in lines if l.farm_block == A1} == {"2026-10-21", "2026-10-28", "2026-11-04", "2026-11-07"})
+    lines = frappe.get_all(ENTRY, filters={"farm": FARM}, fields=["source_type", "state", "posting_date", "qty", "farm_block", "source_key", "cycle_no", "stage"])
+    check("lines are confirmed opening cắt bắp on vụ 2", all(l.source_type == "Opening Import" and l.state == "Confirmed" and l.cycle_no == 2 and l.stage == "Cut Bud" for l in lines))
+    check("lần 1 is Wednesday, lần 2 Saturday", {str(l.posting_date) for l in lines if l.farm_block == A1} == {"2026-10-21", "2026-10-28", "2026-11-04", "2026-11-07"})
     again = opening.preview(FARM, content, "so.xlsx")
     check("second preview finds nothing new", again["summary"]["new_bunches"] == 0 and not again["ready"], again["summary"])
     done = opening.commit(FARM, again["token"])
-    check("importing again adds nothing", done["written"] == 0 and sum(l.qty for l in frappe.get_all(EVENT, filters={"farm": FARM}, fields=["qty"])) == 593, done)
+    check("importing again adds nothing", done["written"] == 0 and sum(l.qty for l in frappe.get_all(ENTRY, filters={"farm": FARM}, fields=["qty"])) == 593, done)
     cuts, _ = field._bunch_counts(FARM, [field.ribbon(FARM, "2026-10-21").name])
     check("caps see the opening cuts", cuts.get((A1, field.ribbon(FARM, "2026-10-21").name)) == 20, cuts)
 
@@ -230,8 +277,6 @@ try:
     check("pace shows the real cuts", board["pace"]["last_actual"]["actual"] == 298 and board["pace"]["last_actual"]["number"] == 45, board["pace"]["last_actual"])
     check("coverage counts lots with real numbers", board["coverage"] == {"with_data": 13, "total": 64}, board["coverage"])
     check("containers are worked out", board["totals"]["containers"] > 0 and abs(board["totals"]["containers"] * 1320 - board["totals"]["cartons"]) < 1, board["totals"]["containers"])
-    check("each khu says when it starts", set(board["zone_starts"]) == {"A", "B", "C", "D", "E"}, board["zone_starts"])
-    # 97% of 593 is 575.2; each lô and colour rounds on its own, so the sum sits a little above it.
     check("the cut layer applies the 97% once", 575 <= board["totals"]["layers"]["cut"] <= 580, board["totals"])
     check("rows add up to the total", expected == board["totals"]["bunches"], (expected, board["totals"]))
     zoned = block_forecast.board(FARM, zone="B")["bunch"]
@@ -240,24 +285,22 @@ try:
     check("lot filter", single["rows"] and all(r["block"] == A1 for r in single["rows"]))
     row = next(r for r in single["rows"] if r["layer"] == "cut")
     info = block_forecast.trace(FARM, A1, row["week"], "cut", row["tag"], row["cycle"])
-    check("trace returns ledger lines and parameters", info["lines"] and info["params"]["min_days"] == 60 and info["groups"], info)
+    check("trace returns sổ lô lines and parameters", info["lines"] and info["params"]["min_days"] == 60 and info["groups"], info)
 
-    # A reject comes off the colour; a draft does not change the forecast until it is confirmed.
+    # A reject comes off the colour; an unconfirmed line does not change the forecast until it is confirmed.
     tag43 = field.ribbon(FARM, "2026-10-21").name
-    frappe.set_user(foreman)
     before_total = block_forecast.board(FARM, block=A5)["bunch"]["totals"]["bunches"]
-    out = api.save_day(FARM, crew, day, team, [dict(block=A5, event_type="Reject", qty=5, reject_stage="After Cut", reason=reason, bunch_tag=tag43),
-                                               dict(block=A5, event_type="Cut Bud", qty=10)])
+    out = put(team, foreman, [dict(block=A5, event_type="Reject", qty=5, reject_stage="After Cut", reason=reason, bunch_tag=tag43),
+                              dict(block=A5, event_type="Cut Bud", qty=10)])
     check("foreman records a reject against the opening cut", out["saved"] == 2 and not out["errors"], out)
     frappe.set_user("Administrator")
     check("drafts do not move the forecast", block_forecast.board(FARM, block=A5)["bunch"]["totals"]["bunches"] == before_total)
-    frappe.set_user(leader)
-    api.confirm_day(FARM, crew, day)
+    confirm(team, foreman, leader)
     frappe.set_user("Administrator")
     after = block_forecast.board(FARM, block=A5)["bunch"]["totals"]["bunches"]
     check("confirmed numbers move the forecast", after != before_total, (before_total, after))
     third = opening.preview(FARM, content, "so.xlsx")
-    check("a book never overwrites what is in the ledger", not third["errors"] and third["summary"]["new_bunches"] == 0, third["errors"][:2])
+    check("a book never overwrites what is in the sổ lô", not third["errors"] and third["summary"]["new_bunches"] == 0, third["errors"][:2])
 
     # ------------------------------------------------------------ the layers on real lots
     tree_row = next((r for r in block_forecast.board(FARM)["bunch"]["rows"] if r["layer"] == "tree"), None)
@@ -265,10 +308,9 @@ try:
         info = block_forecast.trace(FARM, tree_row["block"], tree_row["week"], "tree", None, tree_row["cycle"])
         check("a tree number traces to its count", info["groups"] and info["params"], info)
     a6_before = sum(m["bunches"] for m in block_forecast.board(FARM, block=A6)["bunch"]["months"])
-    frappe.set_user(foreman)
-    out = api.save_day(FARM, crew, day, team, [dict(block=A6, event_type="Bud Injection", qty=200)])
-    frappe.set_user(leader)
-    api.confirm_day(FARM, crew, day)
+    reopen(team, "chích thêm")
+    out = put(team, foreman, [dict(block=A6, event_type="Bud Injection", qty=200)])
+    confirm(team, foreman, leader)
     frappe.set_user("Administrator")
     board_a6 = block_forecast.board(FARM, block=A6)["bunch"]
     months_inject = sum(m["layers"]["inject"] for m in board_a6["months"])
@@ -277,114 +319,49 @@ try:
     a6_after = sum(m["bunches"] for m in board_a6["months"])
     check("the tree layer gave way: bunches moved, not added", abs(a6_after - a6_before) <= 2, (a6_before, a6_after))
     all_months = block_forecast.board(FARM)["bunch"]["months"]
-    from lotus_farm import block_forecast as bf
-    old, _, _, _ = bf._projection(FARM)
+    old, _, _, _ = block_forecast._projection(FARM)
     window = {m["month"] for m in all_months}
     old_total = sum(int(m["bunches"]) for m in old["monthly"] if m["month"] in window)
     new_total = sum(m["bunches"] for m in all_months)
     check("the new total stays close to the tree forecast", abs(new_total - old_total) / old_total < .02, (new_total, old_total))
 
-    # ------------------------------------------------------------ the morning list
+    # ------------------------------------------------------------ the morning list and the tree cap
     frappe.set_user(leader)
-    status = api.day_status(FARM, crew, day)
-    check("day status answers", {"pending", "not_reported", "anomalies"} <= set(status), status)
+    status = lr.status(FARM, crew, day)
+    check("status answers per tổ", {"teams", "anomalies", "overdue"} <= set(status) and any(t["team"] == team and t["state"] == "Confirmed" for t in status["teams"]), status)
     frappe.set_user(foreman)
-    refused("foreman has no morning list", lambda: api.day_status(FARM, crew, day), frappe.PermissionError)
+    refused("foreman has no morning list", lambda: lr.status(FARM, crew, day), frappe.PermissionError)
+    reopen(team, "chích A7")
     trees_a7 = frappe.db.get_value("Farm Block", blocks["A7"], "lotus_tree_count")
-    out = api.save_day(FARM, crew, day, team, [dict(block=A6, event_type="Bud Injection", qty=200), dict(block=blocks["A7"], event_type="Bud Injection", qty=trees_a7 + 1)])
-    frappe.set_user(leader)
-    done = api.confirm_day(FARM, crew, day)
-    check("confirming above the trees warns with lot and number", any(w["block"] == "A7" and str(trees_a7) in w["message"] for w in done["warnings"]), done)
-    check("the warning is also on the morning list", any(a["block"] == "A7" and a["kind"] == "inject" for a in api.day_status(FARM, crew, day)["anomalies"]))
+    frappe.set_user(foreman)
+    out = lr.save_lot(report_name(team, foreman), blocks["A7"], [as_line(dict(block=blocks["A7"], event_type="Bud Injection", qty=trees_a7 + 1))])
+    check("chích bắp above the trees of the lô is refused with lot and number", out["saved"] == 0 and str(trees_a7) in out["errors"][0]["message"], out)
 
     # ------------------------------------------------------------ the daily reports
-    from lotus_farm import bunch_report as report
     frappe.set_user("Administrator")
-    stock = report.stock(FARM)
-    red = next(c for c in stock["cards"] if c["colour"] == "Đỏ" and c["week"] == 43 and c["lan"] == 1)
-    check("stock has a card per colour and half-week", red["cut"] == sum(x[1] or 0 for x in data), red["cut"])
-    check("stock left adds up", stock["left"] == sum(c["left"] for c in stock["cards"]) and stock["left"] > 0, stock["left"])
-    check("a zone with no cuts has no cards", report.stock(FARM, {"zone": ["B"]})["cards"] == [])
-    in_week = report.stock(FARM, {"week": ["2026-W43"]})["cards"]
-    check("a week keeps the colours cut in it", {c["week"] for c in in_week} == {43}, [c["week"] for c in in_week])
-    numbers = {w["number"] for w in report.cut_weeks(FARM, {"month": ["2026-11"]})["weeks"]}
-    check("a month filters cutting", 45 in numbers and 43 not in numbers and 44 not in numbers, numbers)
-    check("a year is the whole book", report.stock(FARM, {"year": ["2026"]})["left"] == stock["left"])
-    check("colour, lot and khu combine", {c["colour"] for c in report.stock(FARM, {"colour": ["Tím"], "zone": ["A"], "block": ["A1"]})["cards"]} == {"Tím"})
-    narrowed = report.stock(FARM, {"colour": ["Đỏ"]})["options"]
-    offered = {o["value"] for o in narrowed["week"]}
-    check("the lists narrow by the other fields", "2026-W43" in offered and not offered & {"2026-W44", "2026-W45"}, offered)
-    check("the opening book has its own tick in Tổ", "Sổ đầu kỳ" in {o["value"] for o in report.stock(FARM)["options"]["team"]})
-    check("a list ignores its own filter", {"Đỏ", "Trắng", "Tím"} <= {o["value"] for o in narrowed["colour"]}, narrowed["colour"])
-    check("nothing ticked shows nothing", report.stock(FARM, {"zone": []})["cards"] == [])
-    teams_stock = report.stock(FARM, {"team": ["no such team"]})
-    check("the book has no tổ, so a tổ filter leaves it out", all(c["week"] != 43 for c in teams_stock["cards"]), [c["week"] for c in teams_stock["cards"]])
-    parts = report.sections(FARM)
-    check("sections answer", {"progress", "injection", "rejects", "harvest", "dashboard", "stock", "cut_weeks", "options"} <= set(parts), list(parts))
-    check("the dashboard adds up to the book", parts["dashboard"]["totals"]["cut"] == sum(w["cut"] for w in parts["dashboard"]["weeks"]) >= 593, parts["dashboard"]["totals"])
-    check("the pivot rows add up to the same", sum(r["q"] for r in parts["cube"] if r["s"] == "cut") == parts["dashboard"]["totals"]["cut"])
-    check("tồn in the pivot rows matches the stock", sum(r["q"] for r in parts["cube"] if r["s"] == "left") == parts["stock"]["left"])
-    check("each pivot row names its khu and lô", all(r["z"] and r["b"] for r in parts["cube"]))
-    check("one week filters the dashboard", {w["number"] for w in report.sections(FARM, {"week": ["2026-W45"]})["dashboard"]["weeks"]} == {45})
-    check("progress starts from the cut colours", any(c["cut"] and c["colour"] == "Đỏ" for c in parts["progress"]), parts["progress"][:1])
-    check("injection counts what was recorded", parts["injection"]["injected"] >= 200, parts["injection"]["injected"])
-    check("rejects carry a rate", parts["rejects"]["total"] >= 5 and parts["rejects"]["rate"] is not None, parts["rejects"])
-    colour_only = report.sections(FARM, {"colour": ["Đỏ"]})
-    check("a colour filter keeps chích, which has no colour", colour_only["injection"]["injected"] == parts["injection"]["injected"])
-    check("a colour filter narrows progress", all(c["colour"] == "Đỏ" for c in colour_only["progress"]), [c["colour"] for c in colour_only["progress"]])
-    weeks = report.cut_weeks(FARM)["weeks"]
-    check("cut weeks follow the book", [(w["number"], w["total"]) for w in weeks[:3]][:3] == [(43, 113), (44, 182), (45, 298)] or weeks[0]["total"] == 113, [(w["number"], w["total"]) for w in weeks])
+    from lotus_farm import ribbon_board
+    board = ribbon_board.board(FARM)
+    red = next(c for c in board["cards"] if c["colour"] == "Đỏ" and c["week"] == 43 and c["lan"] == 1)
+    check("the ribbon board has a card per colour and half-week", red["cut"] == sum(x[1] or 0 for x in data), red["cut"])
+    check("the ribbon board left adds up", board["left"] == sum(c["left"] for c in board["cards"]) and board["left"] > 0, board["left"])
+    check("each lô of a colour has cut, bag, rejected, harvested, left and its age",
+          all({"cut", "bag", "bag_left", "rejected", "harvested", "left", "quarantine_until"} <= set(lot) for lot in red["lots"]) and red["age_weeks"] >= 0, red["lots"][:1])
+    check("a lô adds up: left = cut - rejected after cut - harvested",
+          all(lot["left"] == max(0, lot["cut"] - lot["rejected"] - lot["harvested"]) for c in board["cards"] for lot in c["lots"]))
+    check("a zone with no cuts has no cards", ribbon_board.board(FARM, "B")["cards"] == [])
+    due = ribbon_board.harvest_due(FARM)
+    check("the due list holds only colours in or past their window, lô with bunches left",
+          all(r["status"] in ("due", "overdue") and r["left"] > 0 for r in due), due[:2])
+    later = ribbon_board.harvest_due(FARM, str(frappe.utils.add_days(nowdate(), 70)))
+    check("a later week has at least what is due now", len(later) >= len(due), (len(later), len(due)))
+    from lotus_farm import bunch_report_rules as report_rules
+    weeks = report_rules.cut_weeks(lot_ledger.bunch_rows({"farm": FARM, "state": "Confirmed", "event_type": "Cut Bud"}, ribbon_board.FIELDS),
+                                   ribbon_board._tags(FARM), ribbon_board._context(FARM).blocks)
     check("lần 1 and lần 2 are split", weeks[2]["lan1"] == 236 and weeks[2]["lan2"] == 62, weeks[2])
-    daily = report.day_report(FARM, None, day, day)
-    check("day report groups by tổ", daily["teams"] and all(r["date"] == day for r in daily["rows"]), daily["totals"])
-    check("day report shows the opening book nowhere", not any(r["team"] is None for r in daily["rows"]))
-    refused("a wrong range is refused", lambda: report.day_report(FARM, None, day, "2000-01-01"))
-    report.export_cut_book(FARM)
-    import openpyxl as _xl
-    exported = _xl.load_workbook(io.BytesIO(frappe.local.response.filecontent), data_only=True).worksheets[0]
+    ribbon_board.export_cut_book(FARM)
+    exported = openpyxl.load_workbook(io.BytesIO(frappe.local.response.filecontent), data_only=True).worksheets[0]
     back = bunch_opening_rules.parse(list(exported.iter_rows(values_only=True)))
     check("the exported book reads back", not back["errors"] and back["year"] == 2026, back["errors"][:3])
-    first_three = sum(x["qty"] for x in back["lines"] if x["week"] in (43, 44, 45))
-    check("the exported book has the same cuts", first_three >= 593, first_three)
-    frappe.set_user(foreman)
-    check("a tổ trưởng can read the reports", isinstance(report.stock(FARM)["cards"], list))
-    frappe.set_user("Administrator")
-
-    # ------------------------------------------------------------ chăm sóc vườn, BVTV, xưởng
-    from lotus_farm import work_report as works
-    def add_entry(group, stage=None):
-        work = frappe.get_all("Work Type", filters=dict(lotus_work_group=group, lotus_farm=FARM, **({"lotus_bunch_stage": stage} if stage else {"lotus_bunch_stage": ["is", "not set"]})), pluck="name", limit=1)[0]
-        doc = frappe.new_doc("Lotus Work Entry")
-        doc.update(dict(farm=FARM, crew=crew, work_team=team, farm_block=A6, work_type=work, posting_date=day, qty=2, entered_by=foreman, morning_people=4, afternoon_people=2, company=frappe.db.get_value("Farm", FARM, "company")))
-        doc.flags.ignore_mandatory = doc.flags.ignore_links = True
-        return doc
-    care_entry = add_entry("Field")
-    field._store(care_entry)
-    care = works.field_care(FARM, {"day": [day]})
-    check("garden care report sums phiếu per việc", care["entries"] >= 1 and any(r["name"] == care_entry.name for c in care["cards"] for r in c["rows"]), care["entries"])
-    check("the garden filter offers tổ and việc", care["options"]["team"] and care["options"]["work"], care["options"])
-    check("garden care counts công from buổi", any(r["workdays"] == 3 for c in care["cards"] for r in c["rows"] if r["name"] == care_entry.name))
-    spray = add_entry("Protection")
-    item = frappe.get_all("Item", pluck="name", limit=1)[0]
-    spray.append("materials", dict(item_code=item, qty=1.5, uom="Lít", dose="1/1000", phi_days=7))
-    field._store(spray)
-    frappe.db.set_value("Farm Block", A6, "lotus_quarantine_until", frappe.utils.add_days(day, 5))
-    bvtv = works.protection(FARM, {"day": [day]})
-    check("BVTV lists the spray and what it used", any(c["materials"] and c["materials"][0]["item"] == item for c in bvtv["cards"]), bvtv["cards"])
-    check("BVTV lists lots under quarantine", [q["days"] for q in bvtv["quarantine"] if q["block"] == A6] == [5], bvtv["quarantine"])
-    bag = add_entry("Bunch", "Bag")
-    field._store(bag)
-    daily2 = report.day_report(FARM, None, day, day)
-    check("the bunch day report includes bao buồng from phiếu", daily2["totals"]["Bag"]["qty"] == 2, daily2["totals"]["Bag"])
-    bag.db_set("bunch_tag", field.ribbon(FARM, "2026-10-21").name, update_modified=False)
-    frappe.db.set_value("Lotus Work Entry", bag.name, "farm_block", A5, update_modified=False)
-    tagged = next(c for c in report.sections(FARM)["progress"] if c["tag"] == field.ribbon(FARM, "2026-10-21").name)
-    check("progress counts bao buồng from phiếu", tagged["bag"] == 2, tagged)
-    press = works.packhouse(FARM, {"day": [day]})
-    check("the packhouse report answers empty", press["days"] == [] and press["totals"]["packout"] is None, press["totals"])
-    frappe.set_user(foreman)
-    check("a tổ trưởng reads the garden report", isinstance(works.field_care(FARM)["cards"], list))
-    frappe.set_user("Administrator")
 
     # ------------------------------------------------------------ frozen copies and the comparison
     from lotus_farm import forecast_snapshot as snap
@@ -398,16 +375,36 @@ try:
     doc.total_kg = 1
     refused("a frozen copy cannot be edited", lambda: field._store(doc))
     refused("a frozen copy cannot be deleted", lambda: frappe.delete_doc("Lotus Forecast Snapshot", made["name"], force=True))
-    snap.weekly()
-    snap.weekly()
-    week_now = snap.bunch_forecast_engine.week_key(frappe.utils.getdate(day))
-    check("the Monday job writes one copy a week", frappe.db.count("Lotus Forecast Snapshot", {"farm": FARM, "week_label": week_now, "kind": "Weekly"}) == 1)
     forecast_week = next(r["week"] for r in json.loads(doc.rows_json) if r["layer"] == "cut")
     variance = snap.variance(FARM, forecast_week, forecast_week)
     check("a future week compares against the frozen copy", variance["rows"] and variance["rows"][0]["forecast_bunches"] > 0 and variance["rows"][0]["actual_bunches"] == 0, variance)
     before_params = frappe.get_all("Lotus Block Forecast Profile", fields=["name", "modified"], order_by="name")
     advice = snap.suggest_parameters(FARM)
     check("suggestions change nothing", advice["applied"] is False and before_params == frappe.get_all("Lotus Block Forecast Profile", fields=["name", "modified"], order_by="name"), advice)
+
+    # ------------------------------------------------------------ weekly copies as of 0 giờ Monday, built when someone opens the app
+    from lotus_farm import block_forecast as bf
+    from lotus_farm import forecast_snapshot_rules as snap_rules
+    monday = snap_rules.monday_of(day)
+    moment = snap_rules.week_moment(monday)
+    # The opening book stands as confirmed ten days before this Monday; what this test confirmed today stays today.
+    frappe.db.sql("""update `tabLotus Work Entry` set confirmed_at = %s where farm = %s and state in ('Confirmed', 'Voided')
+                     and (source_type = 'Opening Import' or confirmed_at < %s)""", (f"{frappe.utils.add_days(monday, -10)} 08:00:00", FARM, f"{day} 00:00:00"))
+    frappe.db.delete("Lotus Forecast Snapshot", {"farm": FARM, "kind": "Weekly"})
+    built = snap.ensure_weeks(FARM)
+    check("nobody opened the app for weeks: opening it builds the missing Mondays, this one included",
+          built == [str(frappe.utils.add_days(monday, -7)), str(monday)], built)
+    week_copy = frappe.get_doc("Lotus Forecast Snapshot", {"farm": FARM, "kind": "Weekly", "week_start": monday})
+    check("the copy stands for 0 giờ Monday and says what it could not rebuild",
+          str(week_copy.as_of) == str(moment) and week_copy.weekly_key == f"{FARM}:{monday}" and "Số cây" in (week_copy.limits or ""),
+          (week_copy.as_of, week_copy.weekly_key))
+    check("it leaves out what was confirmed after the Monday", 0 < len(bf._bunch_lines(FARM, None, moment)) < len(bf._bunch_lines(FARM)))
+    as_then, _ = bf.bunch_summary(FARM, as_of=moment)
+    check("its total is the forecast as the sổ lô stood on Monday", week_copy.total_bunches == as_then["totals"]["bunches"],
+          (week_copy.total_bunches, as_then["totals"]["bunches"]))
+    check("opening the app again builds nothing", snap.ensure_weeks(FARM) == [])
+    refused("two sessions at once still keep one copy a week", lambda: snap._write(FARM, "Weekly", as_of=moment), frappe.UniqueValidationError)
+    check("a week compares against its own Monday copy", snap._forecast_for(snap._snapshots(FARM), snap_rules.week_key(monday)).name == week_copy.name)
 finally:
     frappe.set_user("Administrator")
     frappe.db.rollback()

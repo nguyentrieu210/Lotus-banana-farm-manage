@@ -117,6 +117,45 @@ def apply_modes(commit=0):
     return changed
 
 
+# Việc the sổ lô needs that are not in the khoán list (spec 002): code, name, uom, stage, group, flags.
+LEDGER_WORKS = [
+    ("F222-27", "Hủy buồng", "Buồng", "Reject", "Bunch", {}),
+    ("F222-28", "Thu hoạch buồng", "Buồng", "Harvest", "Bunch", {}),
+    ("F222-29", "Kiểm tra sâu bệnh", "Cây", "", "Protection", {"lotus_records_disease": 1}),
+]
+
+
+def apply_ledger_works(commit=0):
+    """Add hủy buồng, thu hoạch and kiểm tra sâu bệnh as việc of LOTUS-222 (công nhật: no money on the line).
+    A stage that already has a việc keeps it. Dry run unless commit=1."""
+    frappe.only_for("System Manager")
+    created = []
+    for code, name, uom, stage, group, flags in LEDGER_WORKS:
+        if stage and frappe.db.exists("Work Type", {"lotus_bunch_stage": stage, "lotus_farm": FARM, "active": 1}):
+            continue
+        if not stage and frappe.db.exists("Work Type", {"lotus_records_disease": 1, "lotus_farm": FARM, "active": 1}):
+            continue
+        if frappe.db.exists("Work Type", {"work_code": code}):
+            doc = frappe.get_doc("Work Type", frappe.db.get_value("Work Type", {"work_code": code}))
+        else:
+            doc = frappe.new_doc("Work Type")
+        if not frappe.db.exists("UOM", uom):
+            frappe.get_doc({"doctype": "UOM", "uom_name": uom}).insert(ignore_permissions=True)
+        doc.update({"work_code": code, "work_name": name, "uom": uom, "active": 1, "allow_daywork": 1, "allow_piecework": 0,
+                    "piecework_rate": 0, "productivity_per_workday": 1, "lotus_farm": FARM, "lotus_bunch_stage": stage or None,
+                    "lotus_work_group": group, "lotus_pay_mode": "Daywork", "lotus_cap_basis": "None", "lotus_requires_material": 0,
+                    **flags})
+        doc.save(ignore_permissions=True)
+        created.append(code)
+    print("Việc thêm cho sổ lô:", created or "không có")
+    if int(commit):
+        frappe.db.commit()
+    else:
+        frappe.db.rollback()
+        print("Dry run only. Run with commit=1 to write.")
+    return created
+
+
 def _category(name):
     found = frappe.db.get_value("Work Category", {"category_name": name})
     if not found:

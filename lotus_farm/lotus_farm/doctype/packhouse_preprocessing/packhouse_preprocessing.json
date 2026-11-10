@@ -5,13 +5,6 @@
   "track_changes": 1,
   "fields": [
     {
-      "fieldname": "harvest_lot",
-      "label": "Harvest Lot",
-      "fieldtype": "Link",
-      "options": "Harvest Lot",
-      "reqd": 1
-    },
-    {
       "fieldname": "processed_bunches",
       "label": "Processed Bunches",
       "fieldtype": "Int",
@@ -35,7 +28,6 @@
     }
   ],
   "field_order": [
-    "harvest_lot",
     "processed_bunches",
     "processed_kg",
     "started_at",

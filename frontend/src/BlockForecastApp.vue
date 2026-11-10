@@ -72,7 +72,6 @@ onMounted(load)
  <section class="land lotus-ui block-forecast">
   <header class="land-head">
    <div class="land-actions">
-    <UiButton variant="outline" @click="router.push({path:'/plan-norm',query:{farm}})">Quản lý đợt cây & định mức</UiButton>
    </div>
   </header>
   <p v-if="error" role="alert" class="land-bad">{{error}}</p>

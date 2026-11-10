@@ -17,14 +17,13 @@ test('cross-module links stay inside the workspace and preserve their query',()=
  assert.equal(internalWorkspaceTarget('/private/files/report.pdf',origin),null)
 })
 
-test('every workspace page resolves independently, including both planning pages',()=>{
+test('every workspace page resolves independently',()=>{
  const router=createRouter({history:createMemoryHistory(),routes:pageRoutes({template:'<div />'})})
  for(const [path] of pages){
   const resolved=router.resolve('/'+path)
   assert.equal(resolved.matched.length,1,path)
   assert.equal(resolved.name,path)
  }
- assert.notEqual(router.resolve('/plans').name,router.resolve('/plan-norm').name)
 })
 
 test('schedule fields and choices are Vietnamese while enum keys stay intact',()=>{

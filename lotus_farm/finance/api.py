@@ -17,7 +17,13 @@ def settings():
     accounts = frappe.get_all('Account', filters={'company': company, 'is_group': 0, 'disabled': 0},
                               fields=['name', 'account_number', 'account_name', 'root_type', 'account_type'], order_by='account_number, name')
     return dict(enabled=bool(cfg.finance_enabled), company=cfg.company or company, cutover_date=str(cfg.cutover_date or ''),
-                harvest_standard_cost=flt(cfg.get('harvest_standard_cost')), minimum_wage_region=cfg.get('minimum_wage_region') or '', vat_in_cost=bool(cfg.get('vat_in_cost')),
+                harvest_standard_cost=flt(cfg.get('harvest_standard_cost')), packed_item=cfg.get('packed_item') or '', secondary_item=cfg.get('secondary_item') or '',
+                packed_warehouse=cfg.get('packed_warehouse') or '',
+                items=frappe.get_all('Item', filters={'disabled': 0, 'is_stock_item': 1}, fields=['name', 'item_name', 'stock_uom'], order_by='item_name asc',
+                                     limit_page_length=2000),
+                warehouses=frappe.get_all('Warehouse', filters={'company': cfg.company or company, 'is_group': 0, 'disabled': 0}, pluck='name',
+                                          order_by='name asc'),
+                minimum_wage_region=cfg.get('minimum_wage_region') or '', vat_in_cost=bool(cfg.get('vat_in_cost')),
                 payroll_params=_payroll_params(), coa_version=cfg.coa_version or '', coa_applied_at=str(cfg.coa_applied_at or ''), coa_applied_by=cfg.coa_applied_by or '',
                 mapping=setup.mapping(cfg), keys=[dict(key=k, label=v[0], roots=v[1], account_type=v[2]) for k, v in rules.KEYS.items()],
                 errors=setup.mapping_errors(cfg), accounts=accounts, periods=posting.periods(company), is_chief=setup.is_chief())
@@ -101,6 +107,18 @@ def save_settings(values):
         doc.vat_in_cost = 1 if values.get('vat_in_cost') in (1, True, '1', 'true') else 0
     if 'harvest_standard_cost' in values:
         doc.harvest_standard_cost = max(0, flt(values.get('harvest_standard_cost')))
+    for key, doctype in (('packed_item', 'Item'), ('secondary_item', 'Item'), ('packed_warehouse', 'Warehouse')):
+        if key in values:
+            value = values.get(key) or None
+            if value and not frappe.db.exists(doctype, value):
+                frappe.throw('Không tìm thấy %s.' % value)
+            if value and doctype == 'Item':
+                setup.check_fruit_item(value, 'Chuối thành phẩm' if key == 'packed_item' else 'Chuối phụ phẩm')
+            if value and doctype == 'Warehouse':
+                warehouse = frappe.db.get_value('Warehouse', value, ['company', 'is_group', 'disabled'], as_dict=True)
+                if warehouse.company != doc.company or warehouse.is_group or warehouse.disabled:
+                    frappe.throw('Kho thành phẩm phải là kho đang dùng (không phải kho nhóm) của công ty.')
+            doc.set(key, value)
     if 'minimum_wage_region' in values:
         if values.get('minimum_wage_region') not in ('', None, 'I', 'II', 'III', 'IV'):
             frappe.throw('Vùng lương tối thiểu không hợp lệ.')

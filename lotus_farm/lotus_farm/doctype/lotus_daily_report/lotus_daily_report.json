@@ -1,0 +1,183 @@
+{
+  "name": "Lotus Daily Report",
+  "autoname": "hash",
+  "track_changes": 1,
+  "title_field": "work_team",
+  "sort_field": "report_date",
+  "fields": [
+    {
+      "fieldname": "farm",
+      "fieldtype": "Link",
+      "label": "Vườn",
+      "options": "Farm",
+      "ignore_user_permissions": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Công ty",
+      "options": "Company",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "crew",
+      "fieldtype": "Link",
+      "label": "Đội",
+      "options": "Work Team",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "work_team",
+      "fieldtype": "Link",
+      "label": "Tổ",
+      "options": "Work Team",
+      "ignore_user_permissions": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "report_date",
+      "fieldtype": "Date",
+      "label": "Ngày",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Draft\nSent\nConfirmed\nReopened",
+      "default": "Draft",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "entered_by",
+      "fieldtype": "Link",
+      "label": "Người nhập",
+      "options": "User",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "on_behalf",
+      "fieldtype": "Check",
+      "label": "Nhập hộ từ phiếu giấy"
+    },
+    {
+      "fieldname": "source",
+      "fieldtype": "Select",
+      "label": "Nguồn",
+      "options": "Phone\nPaper\nPhoto",
+      "default": "Phone"
+    },
+    {
+      "fieldname": "sent_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc gửi",
+      "read_only": 1
+    },
+    {
+      "fieldname": "confirmed_by",
+      "fieldtype": "Link",
+      "label": "Người xác nhận",
+      "options": "User",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "confirmed_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc xác nhận",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reopen_reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do mở lại"
+    },
+    {
+      "fieldname": "present_morning",
+      "fieldtype": "Int",
+      "label": "Có mặt buổi sáng",
+      "read_only": 1
+    },
+    {
+      "fieldname": "present_afternoon",
+      "fieldtype": "Int",
+      "label": "Có mặt buổi chiều",
+      "read_only": 1
+    },
+    {
+      "fieldname": "machine_draft",
+      "fieldtype": "Long Text",
+      "label": "Bản máy đọc từ ảnh",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Lotus Farm Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Supervisor",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Team Leader",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "Lotus Field Inspector",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "doctype": "DocType",
+  "module": "Lotus Farm",
+  "field_order": [
+    "farm",
+    "company",
+    "crew",
+    "work_team",
+    "report_date",
+    "state",
+    "entered_by",
+    "on_behalf",
+    "source",
+    "sent_at",
+    "confirmed_by",
+    "confirmed_at",
+    "reopen_reason",
+    "present_morning",
+    "present_afternoon",
+    "machine_draft",
+    "notes"
+  ]
+}

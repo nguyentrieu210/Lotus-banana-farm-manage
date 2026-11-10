@@ -13,7 +13,8 @@ import {Input as UiInput} from './ui/input'
 import {FormField} from './ui/form-field'
 import {DatePicker} from './ui/date-picker'
 import {Pagination} from './ui/pagination'
-import {day} from '../plan-norm-engine'
+// A day N days after an ISO date, as an ISO date ('' for anything else).
+const day=(date,offset=0)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date||'')))return '';const d=new Date(String(date)+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+Number(offset||0));return d.toISOString().slice(0,10)}
 
 const props=defineProps({payload:{type:Object,default:()=>({})},farm:{type:String,default:''},zone:{type:String,default:''},block:{type:String,default:''},cycle:{type:String,default:''},company:{type:String,default:''},fromDate:String,loading:Boolean,forecastOnly:Boolean})
 const emit=defineEmits(['reload','edit','navigate'])
@@ -126,7 +127,7 @@ function inheritedCycle(){emit('edit','Crop Cycle',null,{farm:props.farm,farm_bl
    <DataTable :rows="filter(showColorHistory?sourceColors:payload.colors)" :columns="showColorHistory?colorCols.filter(c=>c.field!=='farm'):colorCols" :loading="loading"/>
   </template>
   <template v-else-if="tab==='parameters'">
-   <div class="process-toolbar"><UiButton v-if="payload.can_configure" :disabled="!farm" @click="openConfig()">Thêm phiên bản áp dụng</UiButton><UiButton variant="outline" @click="emit('navigate','plan-norm')">Định mức vật tư & nhân công</UiButton></div>
+   <div class="process-toolbar"><UiButton v-if="payload.can_configure" :disabled="!farm" @click="openConfig()">Thêm phiên bản áp dụng</UiButton></div>
    <DataTable :rows="filter(payload.adoptions)" :columns="adoptionCols" interactive @open="openConfig"/>
    <DataTable :rows="filter(payload.library?.defaults)" :columns="parameterCols"/>
    <div class="process-toolbar"><SearchSelect v-model="reference" :options="referenceOptions" label="Bảng thông số chi tiết" @change="loadReference()"/><UiInput v-model="referenceSearch" aria-label="Tìm thông số nguồn" placeholder="Tìm mã thửa, vườn, năm…" @keyup.enter="loadReference()"/><UiButton variant="outline" :disabled="!reference||busy" @click="loadReference()">Đọc thông số chi tiết</UiButton></div>

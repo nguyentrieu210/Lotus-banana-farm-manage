@@ -1,72 +1,61 @@
-# Chăm sóc buồng và dự thu chuối
+# Màu dây, thu hoạch, xưởng và dự thu
 
-Hướng dẫn cho tổ trưởng, đội trưởng và quản lý vườn. Đơn vị nhỏ nhất là lô.
+Hướng dẫn cho đội trưởng, quản lý vườn, xưởng và kế toán (spec 002, 10/11/2026). Mọi số ở đây đọc từ sổ lô đã xác nhận; cách nhập số mỗi ngày xem `FIELD_REPORT.md`.
 
-## Tổ trưởng: nhập số mỗi ngày
+## Màu dây & thu hoạch
 
-Mở điện thoại, vào **Công việc ngoài vườn**, chọn tab **Buồng**.
+Mỗi màu dây của một tuần cắt bắp (lần 1 hoặc lần 2) là một thẻ: số đã cắt, đã bao, hủy sau cắt, đã thu, còn trên cây, tuổi (tuần) và khoảng ngày thu dự kiến theo bộ tham số đang áp dụng.
 
-1. Kiểm tra đúng ngày.
-2. Bấm việc đã làm: **Chích bắp**, **Cắt bắp**, **Hủy buồng** hoặc **Thu hoạch**.
-3. Nhập số vào lô đã làm. Lô không làm thì để trống.
-4. Bấm **Lưu**.
+- **Cần thu tuần này**: lô và màu đến tuổi hoặc quá tuổi thu, cũ nhất trước. Chọn **Tuần sau** hoặc **Hai tuần nữa** để chuẩn bị người cắt và xưởng.
+- Lô đang cách ly thuốc được ghi rõ ngày hết cách ly; trong thời gian đó dòng thu hoạch bị chặn.
+- Bấm thẻ màu để xem từng lô; bảng xuất Excel được.
+- **Xuất sổ cắt bắp (Excel)**: số cắt bắp đã xác nhận theo đúng mẫu sổ của vườn, mười tuần một trang.
+- Trên điện thoại, đội trưởng xem phần **Màu dây & cần thu** ở tab **Xác nhận**.
 
-Quy tắc khi nhập:
+## Xưởng
 
-- Số buồng là số nguyên.
-- Cắt bắp tự lấy màu dây của ngày, không phải chọn. Ngày chưa có màu dây thì báo quản lý vườn bổ sung lịch màu dây.
-- Hủy buồng phải chọn lý do. Hủy sau cắt bắp phải chọn màu dây.
-- Thu hoạch phải có màu dây và số kg. Chỉ chọn được màu còn buồng ở lô đó.
-- Thu hoạch cộng hủy sau cắt không được vượt số đã cắt bắp của lô và màu đó.
-- Chưa xác nhận thì sửa được, cứ mở lại việc đó, đổi số rồi lưu.
+Màn **Xưởng** (quyền ca đóng gói: tổ trưởng xưởng hoặc quản lý vườn).
 
-Chọn chồi vẫn báo trên phiếu **Chọn F** theo số ha như cũ. Hệ thống tự ước tính số chồi.
+1. Bấm **Thêm ca**: mã ca, ngày, giờ bắt đầu và kết thúc.
+2. Tick các dòng thu hoạch đã xác nhận làm nguồn buồng. Mặc định lấy hết số buồng còn lại của dòng và kg tương ứng; sửa nếu ca chỉ nhận một phần.
+3. Nhập kết quả: kg thành phẩm, kg phụ phẩm, số thùng. Hao hụt và tỷ lệ đóng gói tự tính.
+4. **Lưu ca** để sửa tiếp sau, hoặc **Lưu và đóng ca**. Đóng ca thì không sửa được.
 
-Chống đổ, tỉa và bao buồng báo trên phiếu ở mục **Hôm nay**. Chống đổ và tỉa làm trước cắt bắp nên không chọn màu dây, không báo quá số cây của lô. Bao buồng phải chọn màu dây, không báo quá số đã cắt của màu đó.
+Một màu của một lô không nhận quá số buồng đã thu mà chưa vào ca khác. Ca đã đóng hiện bảng chia theo lô: kg vào, thành phẩm, thùng, kg/buồng, thùng/buồng, tỷ lệ đóng gói. **Truy vết về lô** cho biết buồng của ca đến từ dòng thu nào, và lô đó đã phun gì trong 90 ngày trước khi thu (thuốc, liều, thời gian cách ly).
 
-## Đội trưởng: xác nhận mỗi ngày
+**Kế toán: nhập kho thành phẩm theo ca**
 
-Vào tab **Buồng**, xem số của các tổ rồi bấm **Xác nhận N dòng**.
+- Trước tiên chọn **Chuối thành phẩm**, **Chuối phụ phẩm** và **Kho thành phẩm** ở Tài chính – Kế toán › Thiết lập. Kho thành phẩm ghi vào TK 155.
+- Mở ca đã đóng, bấm **Lập phiếu nhập kho thành phẩm**. Hệ thống tạo phiếu nhập kho **nháp**: mỗi lô nguồn có dòng thành phẩm và phụ phẩm theo kg, giá trị = kg buồng của lô vào ca × giá thành tạm tính của lô (giá thực tế tháng gần nhất, nếu chưa có thì giá kế hoạch đặt ở Thiết lập). Nợ 155 / Có 154 theo lô.
+- Kế toán kiểm phiếu ở Kho rồi duyệt. Mỗi ca một phiếu.
 
-- Số chỉ vào dự thu sau khi được xác nhận.
-- Không xác nhận được dòng do chính mình nhập. Dòng đó cần quản lý vườn xác nhận.
-- Muốn sửa số đã xác nhận: bấm **Sửa có lý do**, nhập số đúng và lý do. Nhập 0 nếu dòng đó nhập nhầm. Dòng cũ vẫn được giữ trong lịch sử.
-- Mục **Cần kiểm tra** cho biết hôm trước lô nào có phiếu mà chưa có số, và số nào bất thường.
+## Dự thu
 
-## Quản lý vườn
-
-**Danh mục lô** (Quản lý vườn, Lô): sửa số cây, vụ hiện tại, ngày trổ dự kiến, ngày chọn chồi, trên màn hình hoặc bằng Excel. Khu D, E được bổ sung tại đây khi có số.
-
-**Nạp sổ cắt bắp** (trang Dự thu): chọn file, xem trước, rồi ghi. File có lỗi thì không ghi dòng nào. Nạp lại cùng file không làm tăng số. Sau khi tổ đã nhập hằng ngày cho một màu thì không nạp sổ cho màu đó nữa.
-
-**Duyệt tham số** (trang Dự thu, tab Bộ thông số): tham số đề xuất từ số thu thực tế không tự áp dụng.
-
-## Báo cáo công việc
-
-Nhóm **Báo cáo công việc** trên máy tính. Vườn chọn ở ô trên cùng. Bộ lọc giống Pivot trong Excel: mỗi nút Năm, Tháng, Tuần, Khu, Lô… mở danh sách để tick chọn, danh sách tự thu hẹp theo các nút khác. Bấm vào một thẻ để xem chi tiết.
-
-- **Báo cáo chăm sóc vườn:** cắt lá, làm cỏ, chọn chồi và các việc vườn khác trên phiếu, theo từng việc, số lô, số công.
-- **Báo cáo chăm sóc buồng:** trang biểu đồ theo thứ tự công đoạn: Chích bắp, Chống đổ, Tỉa, Cắt bắp, Bao buồng, Hủy buồng, Tồn buồng, Thu hoạch. Mỗi biểu đồ có ô chọn riêng: xem theo gì (Khu, Tuần, Tháng, Màu dây, Tổ, Lô), kiểu biểu đồ (cột, thanh ngang, đường, miền, tròn) và tách theo gì. Đổi biểu đồ nào chỉ biểu đồ đó đổi. Bấm vào một cột để xem chi tiết theo lô. Lọc theo Tổ thì số trong sổ đầu kỳ không hiện vì sổ không ghi tổ.
-- **Xưởng đóng gói:** đầu vào, thành phẩm, phụ phẩm, hao hụt, số thùng, tỷ lệ đóng gói theo ngày.
-- **BVTV:** phun thuốc, bón phân kèm vật tư đã dùng, lô đang cách ly chưa được thu, và sâu bệnh đã ghi nhận.
-
-Đội trưởng xem nhanh **Tồn theo màu dây** ngay trên điện thoại, trong tab **Buồng**.
-
-## Đọc dự thu
-
-Trang **Dự thu**, tab **13 tuần** và **12 tháng**. Số chắc chắn và số ước tính được tách riêng, đổi đơn vị bằng nút Buồng, Kg, Thùng, Cont, lọc khu bằng nút A đến E. Mỗi buồng chỉ được tính một lần, ở mốc gần thu hoạch nhất:
+Trang **Dự thu**, tab **13 tuần** và **12 tháng**. Mỗi buồng chỉ tính một lần, ở mốc gần thu hoạch nhất:
 
 | Nguồn | Mức tin cậy | Ý nghĩa |
 |---|---|---|
-| Đã cắt bắp | Cao | Số thật theo lô và màu dây, thu sau 60 đến 70 ngày |
-| Đã chích bắp | Khá | Đã chích, chưa cắt, cắt sau khoảng 16 ngày |
+| Đã cắt bắp | Cao | Số thật theo lô và màu dây |
+| Đã chích bắp | Khá | Đã chích, chưa cắt |
 | Theo chọn chồi | Thấp | Số chồi ước tính từ diện tích, thời gian theo ngày chọn thật |
 | Theo số cây | Thấp | Số cây và ngày trổ ước tính theo khu |
 
-Bấm một cột tuần để xem theo lô. Bấm một lô để xem số lấy từ dòng sổ nào và dùng tham số nào.
+**Bản chốt mỗi tuần**: mỗi thứ Hai có một bản chốt dự thu, tính như sổ lô lúc 0 giờ sáng thứ Hai (chỉ dòng đã xác nhận trước đó, bộ tham số đã duyệt trước đó). Máy chủ không có lịch chạy riêng: người đầu tiên mở ứng dụng trong tuần sẽ kích hoạt việc dựng, kể cả bù các tuần bị lỡ (tối đa 8 tuần). Bản dựng lại lấy số cây và ngày trổ hiện tại; điều này được ghi trong bản chốt.
 
-Ô **Nhịp cắt bắp** so số cắt thật với số cần cắt để đạt phần ước tính. Cảnh báo chênh lệch lớn nghĩa là ước tính đang cao hơn thực tế hoặc ngày trổ của khu cần sửa.
+Tab **So với thực tế** so mỗi tuần với bản chốt của chính tuần đó, kèm kg/buồng và thùng/buồng thật của xưởng. Mục tiêu sai số 10% cho 4 tuần tới, 15% cho 12 tuần tới ở cấp toàn vườn. Quản lý vườn bấm **Chốt bản dự thu hôm nay** khi cần một bản giữa tuần. Tham số đề xuất từ số thu thật không tự áp dụng; quản lý vườn duyệt ở tab **Bộ thông số**.
 
-**Lịch chăm sóc theo lô** nằm ở mục Việc hằng ngày.
+## Báo cáo
 
-Tab **So với thực tế** so mỗi tuần với bản đã chốt trước khi tuần đó bắt đầu. Hệ thống tự chốt sáng thứ 2. Mục tiêu sai số là 10% cho 4 tuần tới và 15% cho 12 tuần tới, ở cấp toàn vườn.
+Màn **Báo cáo**, ba tab. Mỗi thẻ là một câu hỏi với một con số; bấm thẻ để xem bảng chi tiết, lọc và xuất Excel.
+
+- **Sáng nay**: tổ chưa gửi báo cáo hôm qua, báo cáo chờ xác nhận, số bất thường, việc quá hạn vòng chăm sóc, lô đang cách ly, màu dây đến tuổi thu.
+- **Tuần**: việc đã làm theo lô, buồng còn trên cây, thu hoạch, xưởng, dự thu so với thực tế, lô cần chú ý, và bản đồ lô tô màu theo tình trạng (cách ly, quá hạn, có thu hoạch).
+- **Tháng**: sản lượng thu, cắt bắp/cây, kg/buồng, thùng/buồng theo lô; công và tiền khoán theo lô; vật tư xuất kho so với vật tư báo dùng theo lô.
+
+## Cho người bảo trì
+
+- `lotus_farm/ribbon_board.py` (bảng màu dây, cần thu, sổ cắt bắp) trên `bunch_report_rules.py`.
+- `lotus_farm/shift.py` (ca theo nguồn buồng, truy vết) trên `packout_rules.py`; `finance/costing.receive_shift` (phiếu nhập kho nháp).
+- `lotus_farm/forecast_snapshot.py` (`ensure_weeks`, `ensure_all`, `queue_missing_weeks`) trên `forecast_snapshot_rules.py`; dự thu `block_forecast.bunch_summary(farm, as_of)`.
+- `lotus_farm/field_reports.py` (morning, week, month); màn `frontend/src/components/report/FieldReports.vue`, `ReportCards.vue`.
+- Kiểm thử tích hợp: `verify_bunch_forecast.py`, `verify_packout_sources.py`, `verify_field_reports.py`.

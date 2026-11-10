@@ -3,6 +3,17 @@ from datetime import date
 from lotus_farm import field_report_rules as r
 
 
+class WeightedSplitTest(unittest.TestCase):
+    def test_money_follows_buoi_weights_and_adds_up(self):
+        shares = r.split_by_sessions(200000, {"E1": 0.5, "E2": 2})
+        self.assertEqual(shares, {"E1": 40000, "E2": 160000})
+
+    def test_rounding_rest_goes_to_the_biggest_weight(self):
+        shares = r.split_by_sessions(100000, {"E1": 1 / 3, "E2": 1 / 3, "E3": 1 / 3 + 0.1})
+        self.assertEqual(sum(shares.values()), 100000)
+        self.assertEqual(max(shares, key=shares.get), "E3")
+
+
 class FieldWorkRulesTest(unittest.TestCase):
     rates = [
         {"work_type": "CL", "rate": 300000, "basis": "Area", "valid_from": "2026-10-21"},
@@ -76,6 +87,8 @@ class FieldWorkRulesTest(unittest.TestCase):
         self.assertEqual(r.minimum_topup(800000, 10, 22700), 108000)
         self.assertEqual(r.minimum_topup(1000000, 10, 22700), 0)
         self.assertEqual(r.minimum_topup(0, 0, 22700), 0)
+        self.assertEqual(r.minimum_topup(0, 0.5, 22700), 45400)       # half a buổi shared with công nhật still has a floor
+        self.assertEqual(r.minimum_topup(0, 19.9999999, 22700), 1816000)
 
     def test_quarantine_and_state_display(self):
         self.assertEqual(r.quarantine_until("2026-11-02", 7), date(2026, 11, 9))

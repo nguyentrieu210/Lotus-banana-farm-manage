@@ -3,6 +3,7 @@
   "name": "Work Schedule Rule",
   "module": "Lotus Farm",
   "track_changes": 1,
+  "description": "Vòng chăm sóc: một việc vườn làm lại mỗi bao nhiêu ngày, cho cả vườn hoặc một khu, từ ngày nào. Lô đến hạn = ngày báo xong cả lô gần nhất + vòng.",
   "fields": [
     {
       "fieldname": "farm",
@@ -25,35 +26,16 @@
       "reqd": 1
     },
     {
-      "fieldname": "anchor",
-      "label": "Anchor",
-      "fieldtype": "Select",
-      "options": "Planting\nSelection\nShooting\nCut Bud",
-      "reqd": 1
-    },
-    {
-      "fieldname": "offset_days",
-      "label": "Offset Days",
-      "fieldtype": "Int",
-      "reqd": 1
+      "fieldname": "farm_zone",
+      "label": "Khu",
+      "fieldtype": "Data",
+      "description": "Để trống: áp dụng cả vườn. Luật của khu được ưu tiên hơn luật cả vườn."
     },
     {
       "fieldname": "repeat_days",
       "label": "Repeat Days",
-      "fieldtype": "Int"
-    },
-    {
-      "fieldname": "quantity_basis",
-      "label": "Quantity Basis",
-      "fieldtype": "Select",
-      "options": "Trees\nSelected Suckers\nBunches\nArea",
+      "fieldtype": "Int",
       "reqd": 1
-    },
-    {
-      "fieldname": "norm_profile",
-      "label": "Norm Profile",
-      "fieldtype": "Link",
-      "options": "Material Norm Profile"
     },
     {
       "fieldname": "valid_from",
@@ -64,8 +46,7 @@
     {
       "fieldname": "valid_to",
       "label": "Valid To",
-      "fieldtype": "Date",
-      "reqd": 1
+      "fieldtype": "Date"
     },
     {
       "fieldname": "version",
@@ -82,33 +63,22 @@
       "default": "Draft"
     },
     {
-      "fieldname": "offset_months",
-      "label": "Lệch mốc (tháng lịch)",
-      "fieldtype": "Int",
-      "default": "0"
-    },
-    {
-      "fieldname": "repeat_months",
-      "label": "Lặp mỗi (tháng lịch)",
-      "fieldtype": "Int",
-      "default": "0"
+      "fieldname": "notes",
+      "label": "Ghi chú",
+      "fieldtype": "Small Text"
     }
   ],
   "field_order": [
     "farm",
     "rule_name",
     "work_type",
-    "anchor",
-    "offset_days",
+    "farm_zone",
     "repeat_days",
-    "quantity_basis",
-    "norm_profile",
     "valid_from",
     "valid_to",
     "version",
     "approval_state",
-    "offset_months",
-    "repeat_months"
+    "notes"
   ],
   "autoname": "hash",
   "permissions": [

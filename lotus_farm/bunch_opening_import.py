@@ -1,4 +1,4 @@
-"""Opening balance of the bunch ledger from the farm's cut-bud book: preview first, then write. Running it again adds nothing."""
+"""Opening balance of the sổ lô (cắt bắp lines) from the farm's cut-bud book: preview first, then write. Running it again adds nothing."""
 import base64
 import json
 from io import BytesIO
@@ -8,9 +8,9 @@ from frappe.utils import cint, getdate, now_datetime
 
 from lotus_farm import bunch_opening_rules as rules
 from lotus_farm import field_report as field
+from lotus_farm import lot_ledger
 from lotus_farm.controls import lock
 
-EVENT = "Lotus Bunch Event"
 OPENING = "Opening Import"
 CACHE = "lotus_bunch_opening:"
 
@@ -38,11 +38,10 @@ def _resolve(farm, parsed):
     tags = {(t.week_year, t.week_number, str(t.week_half)): t for t in frappe.get_all(
         "Bunch Tag", filters={"farm": farm, "period_basis": "Cut Bud", "week_year": parsed["year"]},
         fields=["name", "week_year", "week_number", "week_half", "color_label", "valid_from", "valid_to"], limit_page_length=0)}
-    current = {r.source_key: r for r in frappe.get_all(EVENT, filters={"farm": farm, "source_type": OPENING, "state": ["!=", "Voided"]},
-                                                       fields=["source_key", "qty"], limit_page_length=0)}
-    daily = {(r.farm_block, r.bunch_tag) for r in frappe.get_all(EVENT, filters={"farm": farm, "event_type": "Cut Bud", "state": ["!=", "Voided"],
-                                                                                 "source_type": ["!=", OPENING]},
-                                                                 fields=["farm_block", "bunch_tag"], limit_page_length=0)}
+    current = {r.source_key: r for r in lot_ledger.bunch_rows({"farm": farm, "source_type": OPENING, "state": ["!=", "Voided"]},
+                                                              ["source_key", "qty"])}
+    daily = {(r.farm_block, r.bunch_tag) for r in lot_ledger.bunch_rows({"farm": farm, "event_type": "Cut Bud", "state": ["!=", "Voided"],
+                                                                        "source_type": ["!=", OPENING]}, ["farm_block", "bunch_tag"])}
     rows = []
     for line in parsed["lines"]:
         def bad(message):
@@ -113,13 +112,18 @@ def commit(farm, token):
         frappe.throw("File còn lỗi, chưa ghi dòng nào. Hãy xem trước lại.")
     written = skipped = 0
     user, now = frappe.session.user, now_datetime()
+    work = lot_ledger.work_for_stage(farm, "Cut Bud")
+    if not work:
+        frappe.throw("Vườn chưa có việc cắt bắp trong danh mục việc.")
+    company = frappe.db.get_value("Farm", farm, "company")
     for r in rows:
         if r["exists"]:
             skipped += 1
             continue
-        doc = frappe.new_doc(EVENT)
-        doc.update({"farm": farm, "farm_block": r["block"], "cycle_no": r["cycle"], "event_type": "Cut Bud", "event_date": getdate(r["date"]), "qty": r["qty"],
-                    "bunch_tag": r["tag"], "source_type": OPENING, "source_name": str(payload["filename"])[:140], "source_key": r["key"], "state": "Confirmed",
+        doc = frappe.new_doc(lot_ledger.ENTRY)
+        doc.update({"farm": farm, "company": company, "farm_block": r["block"], "cycle_no": r["cycle"], "work_type": work.name, "stage": "Cut Bud",
+                    "pay_mode": work.pay_mode, "uom": work.uom, "posting_date": getdate(r["date"]), "qty": r["qty"], "bunch_tag": r["tag"],
+                    "source_type": OPENING, "source_name": str(payload["filename"])[:140], "source_key": r["key"], "state": "Confirmed",
                     "entered_by": user, "confirmed_by": user, "confirmed_at": now})
         field._store(doc)
         written += 1

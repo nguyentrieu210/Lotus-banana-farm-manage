@@ -1267,20 +1267,12 @@ class TestBRDOnSite(unittest.TestCase):
         with self.assertRaises(frappe.ValidationError):import_rows(altered['batch'])
 
 
-    def test_360_scale_binding_and_schedule_due_tasks(self):
-        from lotus_farm.field import suggest_work,make_suggested_plan
+    def test_360_scale_binding(self):
         frappe.db.set_single_value('Lotus Farm Settings','require_registered_scale',1)
         with self.assertRaises(frappe.ValidationError):ingest_scale(self.farm,'unregistered',self.tag,nowdate()+' 00:00:00',100,5)
         self.make('Scale Device',farm=self.farm,device_id='360-'+self.tag,integration_user='Administrator',calibrated_on=add_days(nowdate(),-1),calibration_due=add_days(nowdate(),1),unit='Kg')
         result=ingest_scale(self.farm,'360-'+self.tag,self.tag,nowdate()+' 00:00:00',100,5);self.assertEqual(result['net_kg'],95)
         with self.assertRaises(frappe.ValidationError):ingest_scale(self.farm,'360-'+self.tag,'old',add_days(nowdate(),-2)+' 00:00:00',100,5)
-        plan,_,_=self.daily_plan(material=False)
-        self.make('Work Schedule Rule',farm=self.farm,rule_name='BAG-SCHEDULE-'+self.tag,work_type=plan.lines[0].work_type,
-                  anchor='Selection',offset_days=100,repeat_days=7,quantity_basis='Selected Suckers',valid_from=add_days(nowdate(),-1),valid_to=add_days(nowdate(),30),version=1,approval_state='Approved')
-        cycle=frappe.get_doc('Crop Cycle',self.cycle);cycle.status='Active';cycle.save()
-        suggested=suggest_work(self.farm,nowdate());self.assertEqual(len(suggested),1);self.assertEqual(suggested[0]['planned_qty'],1000)
-        created=make_suggested_plan(self.farm,nowdate());self.assertEqual(created['docstatus'],0)
-        self.assertEqual(suggest_work(self.farm,nowdate()),[])
 
     def test_360_integration_retry_and_closed_day_blocker(self):
         import hashlib

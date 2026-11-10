@@ -2,17 +2,23 @@
   "name": "Lotus Work Entry",
   "autoname": "hash",
   "track_changes": 1,
-  "title_field": "assignment",
+  "title_field": "farm_block",
   "sort_field": "posting_date",
   "fields": [
     {
+      "fieldname": "daily_report",
+      "fieldtype": "Link",
+      "label": "Báo cáo ngày",
+      "options": "Lotus Daily Report",
+      "ignore_user_permissions": 1,
+      "in_list_view": 1
+    },
+    {
       "fieldname": "assignment",
       "fieldtype": "Link",
-      "label": "Phiếu giao",
+      "label": "Giao việc",
       "options": "Lotus Work Assignment",
-      "ignore_user_permissions": 1,
-      "reqd": 1,
-      "in_list_view": 1
+      "ignore_user_permissions": 1
     },
     {
       "fieldname": "farm",
@@ -51,6 +57,7 @@
       "label": "Lô",
       "options": "Farm Block",
       "ignore_user_permissions": 1,
+      "reqd": 1,
       "in_list_view": 1
     },
     {
@@ -59,42 +66,52 @@
       "label": "Công việc",
       "options": "Work Type",
       "ignore_user_permissions": 1,
+      "reqd": 1,
       "in_list_view": 1
+    },
+    {
+      "fieldname": "stage",
+      "fieldtype": "Select",
+      "label": "Công đoạn buồng",
+      "options": "\nSucker Select\nBud Injection\nCut Bud\nBag\nCare\nProp\nReject\nHarvest",
+      "read_only": 1
+    },
+    {
+      "fieldname": "pay_mode",
+      "fieldtype": "Select",
+      "label": "Cách trả",
+      "options": "\nCount\nLot\nDaywork",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cycle_no",
+      "fieldtype": "Int",
+      "label": "Vụ"
     },
     {
       "fieldname": "posting_date",
       "fieldtype": "Date",
-      "label": "Ngày",
+      "label": "Ngày làm việc",
       "reqd": 1,
       "in_list_view": 1
     },
     {
       "fieldname": "qty",
       "fieldtype": "Float",
-      "label": "Khối lượng hôm nay",
+      "label": "Khối lượng",
       "in_list_view": 1
     },
     {
-      "fieldname": "confirmed_by",
+      "fieldname": "uom",
       "fieldtype": "Link",
-      "label": "Đội trưởng xác nhận",
-      "options": "User",
-      "read_only": 1,
+      "label": "Đơn vị",
+      "options": "UOM",
       "ignore_user_permissions": 1
     },
     {
-      "fieldname": "confirmed_at",
-      "fieldtype": "Datetime",
-      "label": "Lúc xác nhận",
-      "read_only": 1
-    },
-    {
-      "fieldname": "posted_event",
-      "fieldtype": "Link",
-      "label": "Dòng sổ buồng",
-      "options": "Lotus Bunch Event",
-      "read_only": 1,
-      "ignore_user_permissions": 1
+      "fieldname": "area_ha",
+      "fieldtype": "Float",
+      "label": "Diện tích đã làm (ha)"
     },
     {
       "fieldname": "bunch_tag",
@@ -104,14 +121,40 @@
       "ignore_user_permissions": 1
     },
     {
-      "fieldname": "over_cut",
-      "fieldtype": "Check",
-      "label": "Vượt số cắt bắp (cảnh báo)"
+      "fieldname": "reject_stage",
+      "fieldtype": "Select",
+      "label": "Hủy trước / sau cắt bắp",
+      "options": "\nBefore Cut\nAfter Cut"
+    },
+    {
+      "fieldname": "reason",
+      "fieldtype": "Link",
+      "label": "Lý do hủy",
+      "options": "Cancellation Reason",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "weight_kg",
+      "fieldtype": "Float",
+      "label": "Khối lượng thu (kg)"
+    },
+    {
+      "fieldname": "disease",
+      "fieldtype": "Link",
+      "label": "Bệnh",
+      "options": "Disease",
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "severity",
+      "fieldtype": "Select",
+      "label": "Mức độ",
+      "options": "\nNhẹ\nVừa\nNặng"
     },
     {
       "fieldname": "done",
       "fieldtype": "Check",
-      "label": "Báo xong lô"
+      "label": "Đã làm xong cả lô"
     },
     {
       "fieldname": "morning_people",
@@ -132,9 +175,56 @@
       "read_only": 1
     },
     {
-      "fieldname": "notes",
+      "fieldname": "state",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Draft\nSent\nConfirmed\nVoided",
+      "default": "Draft",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source_type",
+      "fieldtype": "Select",
+      "label": "Nguồn",
+      "options": "Daily\nPhoto\nOpening Import\nManual",
+      "default": "Daily",
+      "reqd": 1
+    },
+    {
+      "fieldname": "source_name",
+      "fieldtype": "Data",
+      "label": "Chứng từ nguồn"
+    },
+    {
+      "fieldname": "source_key",
+      "fieldtype": "Data",
+      "label": "Khóa nguồn",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "machine_read",
+      "fieldtype": "Check",
+      "label": "Máy đọc từ ảnh",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_flags",
       "fieldtype": "Small Text",
-      "label": "Ghi chú"
+      "label": "Cần kiểm lại"
+    },
+    {
+      "fieldname": "rate",
+      "fieldtype": "Currency",
+      "label": "Đơn giá khoán",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amount",
+      "fieldtype": "Currency",
+      "label": "Tiền khoán",
+      "read_only": 1
     },
     {
       "fieldname": "entered_by",
@@ -143,6 +233,44 @@
       "options": "User",
       "ignore_user_permissions": 1,
       "read_only": 1
+    },
+    {
+      "fieldname": "confirmed_by",
+      "fieldtype": "Link",
+      "label": "Người xác nhận",
+      "options": "User",
+      "read_only": 1,
+      "ignore_user_permissions": 1
+    },
+    {
+      "fieldname": "confirmed_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc xác nhận",
+      "read_only": 1
+    },
+    {
+      "fieldname": "voided_at",
+      "fieldtype": "Datetime",
+      "label": "Lúc hủy dòng",
+      "read_only": 1
+    },
+    {
+      "fieldname": "void_reason",
+      "fieldtype": "Small Text",
+      "label": "Lý do hủy dòng"
+    },
+    {
+      "fieldname": "replaces",
+      "fieldtype": "Link",
+      "label": "Thay cho dòng",
+      "options": "Lotus Work Entry",
+      "ignore_user_permissions": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
     },
     {
       "fieldname": "people",
@@ -197,6 +325,7 @@
   "doctype": "DocType",
   "module": "Lotus Farm",
   "field_order": [
+    "daily_report",
     "assignment",
     "farm",
     "company",
@@ -204,19 +333,38 @@
     "work_team",
     "farm_block",
     "work_type",
+    "stage",
+    "pay_mode",
+    "cycle_no",
     "posting_date",
     "qty",
-    "confirmed_by",
-    "confirmed_at",
-    "posted_event",
+    "uom",
+    "area_ha",
     "bunch_tag",
-    "over_cut",
+    "reject_stage",
+    "reason",
+    "weight_kg",
+    "disease",
+    "severity",
     "done",
     "morning_people",
     "afternoon_people",
     "under_norm",
-    "notes",
+    "state",
+    "source_type",
+    "source_name",
+    "source_key",
+    "machine_read",
+    "review_flags",
+    "rate",
+    "amount",
     "entered_by",
+    "confirmed_by",
+    "confirmed_at",
+    "voided_at",
+    "void_reason",
+    "replaces",
+    "notes",
     "people",
     "materials"
   ]

@@ -55,6 +55,24 @@
    "description": "Dùng làm giá tạm tính khi lô chưa có giá thành thực tế tháng trước"
   },
   {
+   "fieldname": "packed_item",
+   "fieldtype": "Link",
+   "options": "Item",
+   "label": "Chuối thành phẩm (nhập kho theo ca đóng gói)"
+  },
+  {
+   "fieldname": "secondary_item",
+   "fieldtype": "Link",
+   "options": "Item",
+   "label": "Chuối phụ phẩm (nhập kho theo ca đóng gói)"
+  },
+  {
+   "fieldname": "packed_warehouse",
+   "fieldtype": "Link",
+   "options": "Warehouse",
+   "label": "Kho thành phẩm"
+  },
+  {
    "fieldname": "minimum_wage_region",
    "label": "Vùng lương tối thiểu (trần BHTN)",
    "fieldtype": "Select",
@@ -274,6 +292,9 @@
   "coa_applied_at",
   "coa_applied_by",
   "harvest_standard_cost",
+  "packed_item",
+  "secondary_item",
+  "packed_warehouse",
   "minimum_wage_region",
   "accounts_section",
   "acct_inventory_material",

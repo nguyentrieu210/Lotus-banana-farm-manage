@@ -14,7 +14,6 @@ const items = [
   {group:'Xưởng và vật tư',id:'packhouse',label:'Xưởng đóng gói',detail:'Ca làm và thành phẩm',icon:'boxes',path:'packhouse',module:'packhouse'},
   {group:'Xưởng và vật tư',id:'materials',label:'Vật tư',detail:'Nhu cầu và sử dụng vật tư',icon:'cart',path:'materials',module:'materials'},
   {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Lô, thửa và vụ chuối',icon:'home',path:'farms',module:'farms'},
-  {group:'Điều hành và báo cáo',id:'plan-norm',label:'Kế hoạch & định mức',detail:'Chu kỳ cây, lịch công việc và đơn giá',icon:'settings',path:'plan-norm',module:'plans'},
   {group:'Điều hành và báo cáo',id:'forecast',label:'Dự thu',detail:'Sản lượng dự kiến',icon:'chart',path:'forecast',module:'forecast'},
   {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',icon:'document',path:'reports',capability:'home'},
   {group:'Điều hành và báo cáo',id:'alerts',label:'Cảnh báo',detail:'Điểm cần xử lý',icon:'alert',path:'alerts',module:'alerts'}

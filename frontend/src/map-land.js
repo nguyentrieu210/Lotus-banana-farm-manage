@@ -11,6 +11,8 @@ const DENSITY_EDGES=[1500,1800,2100,2400]
 const DENSITY_STEPS=['var(--lotus-success-100)','var(--lotus-success-300)','var(--lotus-success-500)','var(--lotus-success-700)','var(--lotus-success-900)']
 const MONTH_STEPS=['var(--lotus-info-200)','var(--lotus-info-400)','var(--lotus-info-600)','var(--lotus-info-800)']
 const CATEGORY=['a','b','c','d','e','f'].map(z=>`var(--lotus-map-zone-${z})`)
+// status (báo cáo Tuần): what a lô needs this week; not offered on the land page.
+const STATUS={held:['Đang cách ly thuốc','var(--lotus-danger)'],late:['Có việc quá hạn','var(--lotus-warning)'],harvest:['Có thu hoạch trong tuần','var(--lotus-success-500)'],ok:['Bình thường','var(--lotus-info-200)']}
 
 function densityStep(value){return value==null?null:DENSITY_EDGES.filter(edge=>value>=edge).length}
 
@@ -22,6 +24,7 @@ function monthsAhead(month,today){
 }
 
 export function fillFor(props,mode,context={}){
+ if(mode==='status')return STATUS[props.status]?.[1]||MISSING
  if(mode==='variety'){const i=(context.varieties||[]).indexOf(props.variety);return i<0?MISSING:CATEGORY[i%CATEGORY.length]}
  if(mode==='density'){const step=densityStep(props.density);return step==null?MISSING:DENSITY_STEPS[step]}
  if(mode==='flowering'){const ahead=monthsAhead(props.flowering_month,context.today||new Date().toISOString().slice(0,10));return ahead==null?MISSING:MONTH_STEPS[Math.min(ahead,MONTH_STEPS.length-1)]}
@@ -29,6 +32,7 @@ export function fillFor(props,mode,context={}){
 }
 
 export function legendFor(mode,context={}){
+ if(mode==='status')return Object.values(STATUS).map(([label,color])=>({label,color}))
  if(mode==='variety')return [...(context.varieties||[]).map((v,i)=>({label:v,color:CATEGORY[i%CATEGORY.length]})),{label:'Chưa có giống',color:MISSING}]
  if(mode==='density')return [{label:'< 1.500 cây/ha',color:DENSITY_STEPS[0]},{label:'1.500–1.799',color:DENSITY_STEPS[1]},{label:'1.800–2.099',color:DENSITY_STEPS[2]},{label:'2.100–2.399',color:DENSITY_STEPS[3]},{label:'≥ 2.400',color:DENSITY_STEPS[4]},{label:'Chưa đếm cây',color:MISSING}]
  if(mode==='flowering')return [{label:'Tháng này',color:MONTH_STEPS[0]},{label:'Tháng sau',color:MONTH_STEPS[1]},{label:'2 tháng nữa',color:MONTH_STEPS[2]},{label:'3+ tháng nữa',color:MONTH_STEPS[3]},{label:'Chưa có ngày trổ',color:MISSING}]

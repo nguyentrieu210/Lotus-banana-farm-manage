@@ -1,7 +1,7 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
- {id:'2026-11-10',title:'Mua hàng và ký điện tử (cập nhật 10/11/2026)',items:[
+ {id:'2026-11-10b',title:'Mua hàng và ký điện tử (cập nhật 10/11/2026)',items:[
   {title:'Chờ tôi ký',text:'Một danh sách các chứng từ đang chờ bạn ký, có trên điện thoại và máy tính. Mỗi lần ký đều hỏi lại số chứng từ và số tiền.'},
   {title:'Bản PDF đã ký',text:'Ký đủ thì hệ thống lưu một bản PDF cố định kèm chữ ký và mã QR. Tải lại lúc nào cũng ra đúng bản đó.'},
   {title:'Đề xuất mua',text:'Một tên giai đoạn cho mọi màn: Nháp, Đang ký, Chờ mua, Đang mua, Đã nhận đủ, Đã xong. Đóng phần chưa mua và hủy đề xuất đều ghi lý do.'},
@@ -12,6 +12,15 @@ export const RELEASE_NOTES=[
   {title:'Công nợ nhà cung cấp',text:'Xem theo ngày chốt: tuổi nợ, khoản đến hạn trong 7 ngày, hàng đã nhận chưa có hóa đơn, sổ chi tiết và biên bản đối chiếu từng nhà cung cấp.'},
   {title:'Phiếu chi',text:'Một phiếu chi trả được nhiều hóa đơn; phần trả thêm ghi rõ là tạm ứng. In được phiếu chi và giấy đề nghị chi.'},
   {title:'Mua nhanh',text:'Hàng mua lẻ không qua đơn gọi thống nhất là Mua nhanh ở Kho, Mua hàng và Tài chính.'},
+ ]},
+ {id:'2026-11-10',title:'Cập nhật ngày 10/11/2026: báo cáo ngày theo lô',items:[
+  {title:'Hôm nay: nhập theo lô',text:'Mỗi lô của tổ là một thẻ. Bấm vào lô để nhập mọi việc của lô trong ngày: việc vườn, phun bón, kiểm tra sâu bệnh, cắt bắp, bao buồng, thu hoạch. Tổ trưởng gửi một lần cho cả ngày, đội trưởng xác nhận.'},
+  {title:'Phiếu giấy',text:'In phiếu cho tổ ghi tay, chụp ảnh phiếu để máy điền sẵn. Dòng máy đọc phải được kiểm (mở lô, bấm "Đã kiểm, lưu lô này") rồi mới gửi được.'},
+  {title:'Màu dây & thu hoạch',text:'Bảng buồng còn trên cây theo màu dây và lô, danh sách cần thu của tuần, lô đang cách ly thuốc. Thu hoạch không được vượt số buồng còn lại của màu.'},
+  {title:'Giao việc theo vòng',text:'Mỗi việc vườn có vòng chăm sóc (ví dụ cắt lá 14 ngày). Hệ thống liệt kê lô đến hạn, quá hạn; đội trưởng chọn nhiều lô rồi giao cho tổ một lần. Quản lý vườn đặt vòng ở Thiết lập › Vòng chăm sóc.'},
+  {title:'Xưởng',text:'Ca đóng gói nhận buồng từ dòng thu hoạch theo lô và màu dây; thùng và thành phẩm được chia theo kg cho từng lô; truy vết được về lô và các lần phun. Kế toán lập phiếu nhập kho thành phẩm theo ca.'},
+  {title:'Dự thu chốt mỗi tuần',text:'Mỗi thứ Hai có một bản chốt dự thu tự dựng (kể cả tuần không ai mở ứng dụng), để so với số thu thật.'},
+  {title:'Báo cáo',text:'Ba màn Sáng nay, Tuần, Tháng dạng thẻ; bấm thẻ để xem chi tiết và xuất Excel. Menu Việc hằng ngày gọn còn 7 mục. Sổ cắt bắp (Excel) xuất ở màn Màu dây & thu hoạch.'},
  ]},
  {id:'2026-11-09',title:'Cập nhật ngày 09/11/2026',items:[
   {title:'Báo cáo công việc',text:'Menu mới gom Báo cáo chăm sóc vườn, Báo cáo chăm sóc buồng, Xưởng đóng gói và BVTV vào một chỗ.'},

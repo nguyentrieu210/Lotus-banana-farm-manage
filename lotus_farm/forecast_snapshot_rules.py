@@ -104,3 +104,64 @@ def suggest(results, current):
         line("cut_to_harvest_max_days", "Cắt bắp đến thu, muộn nhất", max(r["max_days"] for r in done), "ngày"),
         line("harvest_rate", "Tỷ lệ thu trên số đã cắt", round(sum(r["harvested"] for r in done) / sum(r["cut"] for r in done), 4)),
         line("kg_cycle_2", "Kg mỗi buồng", round(cycle_kg, 2), "kg")]}
+
+
+# ---------------------------------------------------------------- weekly copies rebuilt as of Monday 00:00
+
+MAX_BACKFILL_WEEKS = 8
+
+
+def _moment(value):
+    if isinstance(value, dt.datetime):
+        return value
+    if isinstance(value, dt.date):
+        return dt.datetime.combine(value, dt.time())
+    return dt.datetime.fromisoformat(str(value))
+
+
+def monday_of(value):
+    day = value.date() if isinstance(value, dt.datetime) else _day(value)
+    return day - dt.timedelta(days=day.weekday())
+
+
+def week_moment(monday):
+    """The moment a weekly copy stands for: 0 giờ of that Monday."""
+    return dt.datetime.combine(monday_of(monday), dt.time())
+
+
+def lines_as_of(lines, moment):
+    """The sổ lô as it stood at a moment: lines confirmed before it and not voided before it. A line voided later was
+    still counted then; its correction, confirmed later, was not."""
+    moment = _moment(moment)
+    kept = []
+    for line in lines:
+        confirmed = line.get("confirmed_at")
+        if not confirmed or _moment(confirmed) >= moment:
+            continue
+        voided = line.get("voided_at")
+        if voided and _moment(voided) < moment:
+            continue
+        kept.append(line)
+    return kept
+
+
+def profiles_as_of(profiles, moment):
+    """The parameter sets already approved at a moment (approved later with an earlier start date does not count)."""
+    moment = _moment(moment)
+    return [p for p in profiles if (p.get("approved_at") or p.get("creation")) and _moment(p.get("approved_at") or p.get("creation")) <= moment]
+
+
+def weeks_to_build(first_confirmed, have, today, back=MAX_BACKFILL_WEEKS):
+    """Mondays still without a weekly copy: from the first Monday after the sổ lô had a confirmed line (at most `back`
+    weeks before this one) up to this week's Monday. `have`: the Mondays already built."""
+    if not first_confirmed:
+        return []
+    this = monday_of(today)
+    start = max(monday_of(first_confirmed) + dt.timedelta(days=7), this - dt.timedelta(days=7 * back))
+    have = {monday_of(d) for d in have}
+    weeks, day = [], start
+    while day <= this:
+        if day not in have:
+            weeks.append(day)
+        day += dt.timedelta(days=7)
+    return weeks

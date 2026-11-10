@@ -9,12 +9,14 @@ import {normalizeFieldView} from './field-report-navigation.js'
 import {groups,payModes,payShort,capBases,money,amountText} from './field-work-model.js'
 import {unitLabel} from './units'
 import {formatDate} from './format'
-import WorkToday from './components/field/WorkToday.vue'
+import LotToday from './components/field/LotToday.vue'
+import RibbonBoard from './components/field/RibbonBoard.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
-import WorkBunch from './components/field/WorkBunch.vue'
-import ForecastCarePlan from './components/ForecastCarePlan.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
-import FieldBoard from './components/field/FieldBoard.vue'
+import CareDueList from './components/field/CareDueList.vue'
+import PackhouseShifts from './components/field/PackhouseShifts.vue'
+import FieldReports from './components/report/FieldReports.vue'
+import CareCycleSettings from './components/field/CareCycleSettings.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
 import LotusField from './components/form/LotusField.vue'
@@ -22,7 +24,7 @@ import FormGrid from './components/form/FormGrid.vue'
 import ModalForm from './components/form/ModalForm.vue'
 import FormSection from './components/form/FormSection.vue'
 import {Button as UiButton} from './components/ui/button'
-// Công việc ngoài vườn (/lotus/cong-viec): Hôm nay (báo cáo trên phiếu), giao việc theo lô, nghiệm thu, bảng lô × việc,
+// Công việc ngoài vườn (/lotus/cong-viec): Hôm nay (báo cáo ngày của tổ theo lô), giao việc theo lô, nghiệm thu, bảng lô × việc,
 // tiền khoán theo người, and the setup (đội, tổ & lô, bảng giá, việc & cách trả). Same components as the /work phone app.
 const {desktop,density,gridDensity}=useDesktopWorkspace({embedded:props.embedded})
 provide('lotusDesktopDensity',gridDensity)
@@ -31,7 +33,7 @@ const api=(name,args={},write=false)=>call('lotus_farm.field_report.'+name,args,
 const view=ref(normalizeFieldView(props.fieldView))
 const session=ref(null),setup=ref(null),farm=ref(''),crew=ref(''),day=ref(''),busy=ref(false),error=ref(''),notice=ref('')
 const today=computed(()=>session.value?.today||'')
-const month=ref('')
+const month=ref(''),assignedKey=ref(0)
 const rows=ref([]),search=ref(''),loading=ref(false)
 
 const farmOptions=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
@@ -43,13 +45,18 @@ const workName=name=>(setup.value?.works||[]).find(w=>w.name===name)?.work_name|
 
 function query(extra={}){return {...(route?.query||{}),field_view:view.value,farm:farm.value||undefined,crew:crew.value||undefined,date:day.value||undefined,...extra}}
 async function go(next,extra={}){
- view.value=normalizeFieldView(next);notice.value=''
+ view.value=setup.value?.limited?'packhouse':normalizeFieldView(next);notice.value=''
  if(router)await router.push({path:'/cong-viec',query:query({field_view:view.value,...extra})})
  await loadView()
 }
 async function loadSetup(){
  if(!farm.value){setup.value=null;return}
- setup.value=await api('setup',{farm:farm.value})
+ try{setup.value=await api('setup',{farm:farm.value})}
+ catch(e){
+  // Packhouse staff and the accountant are not in the field teams: they get the Xưởng view only.
+  if(!session.value?.packhouse)throw e
+  setup.value={crews:[],teams:[],blocks:[],works:[],rates:[],my_crews:[],my_teams:[],zones:[],limited:true};view.value='packhouse'
+ }
  if(!myCrews.value.some(c=>c.name===crew.value))crew.value=myCrews.value[0]?.name||''
 }
 async function boot(){
@@ -64,7 +71,7 @@ async function boot(){
  finally{busy.value=false}
 }
 onMounted(boot)
-watch(()=>props.fieldView,value=>{const next=normalizeFieldView(value);if(next!==view.value){view.value=next;loadView()}})
+watch(()=>props.fieldView,value=>{const next=setup.value?.limited?'packhouse':normalizeFieldView(value);if(next!==view.value){view.value=next;loadView()}})
 
 async function loadView(){
  if(!setup.value)return
@@ -162,28 +169,46 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="['today','bunch','assign','board'].includes(view)">
+    <template v-if="['today','assign'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
-     <WorkToday v-if="view==='today'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
-     <WorkBunch v-else-if="view==='bunch'&&crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
-     <WorkAssign v-else-if="view==='assign'&&crew" :farm="farm" :crew="crew" :setup="setup"/>
-     <FieldBoard v-else-if="view==='board'&&crew" v-model:month="month" :farm="farm" :crew="crew"/>
+     <LotToday v-if="view==='today'&&crew" :key="crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
+     <template v-else-if="view==='assign'&&crew">
+      <CareDueList :key="'due'+crew+assignedKey" :farm="farm" :crew="crew" @assigned="assignedKey++"/>
+      <h2 class="field-report-section">Phiếu đã giao</h2>
+      <WorkAssign :key="'tickets'+crew+assignedKey" :farm="farm" :crew="crew" :setup="setup"/>
+      <template v-if="setup.inspector"><h2 class="field-report-section">Chờ nghiệm thu khoán lô</h2><WorkInspect :farm="farm" :setup="setup"/></template>
+     </template>
     </template>
 
     <WorkInspect v-else-if="view==='inspect'" :farm="farm" :setup="setup"/>
 
-    <template v-else-if="view==='care-plan'">
+    <template v-else-if="view==='ribbon'">
      <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
-     <ForecastCarePlan v-if="farm" :farm="farm" :blocks="setup.blocks"/>
+     <RibbonBoard v-if="farm" :key="farm" :farm="farm"/>
+    </template>
+
+    <template v-else-if="view==='reports'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <FieldReports v-if="farm" :key="farm" :farm="farm" :user="session?.user" @payable="m=>{month=m;go('payable')}"/>
+    </template>
+
+    <template v-else-if="view==='packhouse'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <PackhouseShifts v-if="farm" :key="farm" :farm="farm"/>
+    </template>
+
+    <template v-else-if="view==='cycles'">
+     <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
+     <CareCycleSettings v-if="farm" :key="farm" :farm="farm"/>
     </template>
 
     <ListPage v-else-if="view==='payable'" v-model:search="search" title="Tiền khoán theo người" :rows="filtered" :columns="payableColumns" :loading="loading" row-key="key" storage-key="field-work-payable" @refresh="loadView">
      <template #filters><LotusField v-model="month" type="month" aria-label="Tháng" @update:model-value="loadView"/></template>
-     <template #before><p class="lotus-form-note">Phiếu khoán đã khoá trong tháng, chia theo buổi cho người làm. Số này vào bảng lương; buổi làm khoán không tính công nhật.</p></template>
+     <template #before><p class="lotus-form-note">Dòng khoán số lượng đã xác nhận và lô khoán đã nghiệm thu trong tháng, chia theo buổi cho người làm. Số này vào bảng lương; buổi làm khoán không tính công nhật.</p></template>
     </ListPage>
 
     <template v-else-if="view==='lots'">
@@ -251,4 +276,5 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
 
 <style>
 .field-report-scope{margin-bottom:12px}
+.field-report-section{margin:20px 0 8px;font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text-strong)}
 </style>

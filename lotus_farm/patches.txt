@@ -5,5 +5,6 @@ lotus_farm.patches.proposals_named_signers
 lotus_farm.patches.remove_work_journal
 lotus_farm.patches.remove_work_journal #2 after the release image stopped keeping deleted files
 lotus_farm.patches.household_vat_in_cost
+lotus_farm.patches.care_cycle_rules
 lotus_farm.patches.return_unsigned_pending_orders
 lotus_farm.patches.drop_signing_challenge

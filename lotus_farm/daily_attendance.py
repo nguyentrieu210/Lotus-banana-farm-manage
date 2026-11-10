@@ -94,8 +94,10 @@ def board(company,date=None,search=None,sync=1):
     # Buổi worked on a khoán phiếu (công việc ngoài vườn) are paid by the phiếu, not as công nhật.
     khoan={}
     if frappe.db.table_exists('Lotus Work Session'):
-        for s in frappe.get_all('Lotus Work Session',filters={'company':company,'posting_date':day,'pay_mode':['in',['Count','Lot']]},
-                fields=['employee','session'],limit_page_length=0):
+        # Only buổi on live sổ lô lines (a voided line holds nobody); a buổi shared with công nhật still shows Khoán.
+        for s in frappe.db.sql("""select distinct s.employee, s.session from `tabLotus Work Session` s
+                join `tabLotus Work Entry` e on e.name=s.entry and e.state!='Voided'
+                where s.company=%s and s.posting_date=%s and s.pay_mode in ('Count','Lot')""",(company,day),as_dict=True):
             khoan.setdefault(s.employee,[]).append('morning' if s.session=='Morning' else 'afternoon')
     for person in people:
         if search and str(search).casefold() not in (person.name+' '+person.employee_name).casefold():continue
