@@ -62,7 +62,8 @@ class FrontendCalls(unittest.TestCase):
 
     def test_committed_bundle_matches_the_source(self):
         manifest = json.loads((ROOT / "lotus_farm/public/frontend/.vite/manifest.json").read_text(encoding="utf-8"))
-        missing = sorted({entry["src"] for entry in manifest.values() if entry.get("src") and not (ROOT / "frontend" / entry["src"]).exists()})
+        sources = {entry["src"] for entry in manifest.values() if entry.get("src") and not entry["src"].startswith("_")}  # "_x.js": shared chunks
+        missing = sorted(src for src in sources if not (ROOT / "frontend" / src).exists())
         self.assertEqual(missing, [], "the bundle was built from files that are gone: rebuild and commit lotus_farm/public/frontend")
         problems = {}
         for path in sorted((ROOT / "lotus_farm/public/frontend/assets").glob("*.js")):
