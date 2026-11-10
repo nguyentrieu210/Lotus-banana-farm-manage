@@ -39,6 +39,7 @@ Triển khai hai lần:
 3. `lotus_farm.field_report_seed.apply_ledger_works` với `commit=1`: thêm việc Hủy buồng, Thu hoạch, Kiểm tra sâu bệnh nếu chưa có.
 4. Kiểm dự thu trước và sau bằng `lotus_farm.block_forecast.bunch_summary('LOTUS-222')`: tổng buồng phải bằng nhau (local: 7.347 buồng).
 5. `lotus_farm.forecast_snapshot.ensure_all`: dựng bản chốt tuần (cũng tự chạy khi có người mở ứng dụng).
+6. `lotus_farm.legacy_purge.preview` (chỉ đọc): số dòng từng bảng cũ, các trường còn trỏ bảng cũ, danh sách chặn. Gửi kết quả cho chủ vườn để chuẩn bị lần 2. Trên bản local 10/11: 76 bảng, 960 dòng, 3,5 MB, không có dòng chặn.
 
 ## 5. Việc của chủ vườn sau khi lên
 
