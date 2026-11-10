@@ -1,4 +1,4 @@
-"""Small, retry-safe field commands and explicit work suggestions."""
+"""Small, retry-safe field commands."""
 import json
 import frappe
 from frappe.utils import getdate, add_days, now_datetime, flt
@@ -178,51 +178,6 @@ def capture(client_event_id,farm,target_doctype,values,captured_at,latitude=None
         from lotus_farm.work_review import notify_transition
         notify_transition(doc, 'Pending')
     return dict(capture=evidence.name,document=doc.name,replayed=False,warning=warning,review_state=doc.get('review_state') if work_review else None)
-
-
-@frappe.whitelist()
-def suggest_work(farm,posting_date):
-    from lotus_farm.reporting import records,scope
-    scope(farm);date=getdate(posting_date);suggestions=[]
-    rules=records('Work Schedule Rule',{'farm':farm,'approval_state':'Approved','valid_from':['<=',date],'valid_to':['>=',date]},['name','work_type','anchor','offset_days','repeat_days','offset_months','repeat_months','quantity_basis','norm_profile'])
-    for c in records('Crop Cycle',{'farm':farm,'status':['in',['Active','Harvesting']]},['name','farm_block','farm_plot','cycle_type','planting_date']):
-        if not c.farm_plot:continue
-        cohorts=records('Sucker Selection Batch',{'crop_cycle':c.name},['name','selection_date','selected_sucker_qty'])
-        contexts=cohorts if c.cycle_type=='Ratoon' else [frappe._dict(name=None,selection_date=None,selected_sucker_qty=None)]
-        for cohort in contexts:
-            for rule in rules:
-                anchors=[]
-                if rule.anchor=='Planting' and c.planting_date:anchors=[(str(c.planting_date),c.name,None)]
-                elif rule.anchor=='Selection' and cohort.selection_date:anchors=[(str(cohort.selection_date),cohort.name,cohort.selected_sucker_qty)]
-                elif rule.anchor in ('Shooting','Cut Bud'):
-                    anchors=[(str(o.operation_date),o.name,o.net_bunch_qty) for o in records('Bunch Operation',{'crop_cycle':c.name,'sucker_selection_batch':cohort.name or '', 'operation_type':rule.anchor,'docstatus':1},['name','operation_date','net_bunch_qty'])]
-                for anchor,key,qty in anchors:
-                    from lotus_farm.onedrive_protocol import scheduled_work_due
-                    if not scheduled_work_due(anchor,date,offset_days=rule.offset_days or 0,offset_months=rule.offset_months or 0,
-                                              repeat_days=rule.repeat_days or 0,repeat_months=rule.repeat_months or 0):continue
-                    if rule.quantity_basis=='Area':qty=frappe.db.get_value('Farm Plot',c.farm_plot,'area_ha')
-                    elif rule.quantity_basis=='Selected Suckers':qty=cohort.selected_sucker_qty
-                    elif rule.quantity_basis=='Trees':
-                        qty=sum(flt(p.plant_qty) for p in records('Planting Event',{'crop_cycle':c.name,'docstatus':1,'posting_date':['<=',date]},['plant_qty']))
-                    if not qty:continue
-                    schedule_key=canonical_hash([rule.name,key,str(date),cohort.name])
-                    # Permission-filtered parents prevent an inaccessible plan from leaking.
-                    planned=False
-                    for p in records('Daily Work Plan',{'farm':farm,'posting_date':date,'docstatus':['<',2]},['name']):
-                        if any(l.schedule_key==schedule_key for l in frappe.get_doc('Daily Work Plan',p.name).lines):planned=True
-                    if not planned:suggestions.append(dict(farm_block=c.farm_block,farm_plot=c.farm_plot,crop_cycle=c.name,sucker_selection_batch=cohort.name,
-                        work_type=rule.work_type,planned_qty=qty,norm_profile=rule.norm_profile,schedule_key=schedule_key,rule=rule.name))
-    return suggestions
-
-
-@frappe.whitelist(methods=['POST'])
-def make_suggested_plan(farm,posting_date):
-    require_role('Lotus Farm Manager');lock('Farm',farm)
-    suggestions=suggest_work(farm,posting_date)
-    if not suggestions:frappe.throw('Không có công việc đến hạn ngoài kế hoạch trong ngày này.')
-    doc=frappe.get_doc(dict(doctype='Daily Work Plan',farm=farm,company=frappe.db.get_value('Farm',farm,'company'),posting_date=posting_date,
-        lines=[{k:v for k,v in r.items() if k!='rule'} for r in suggestions])).insert()
-    return dict(plan=doc.name,docstatus=doc.docstatus,tasks=len(doc.lines))
 
 
 @frappe.whitelist()

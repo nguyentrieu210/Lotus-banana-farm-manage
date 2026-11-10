@@ -12,9 +12,9 @@ import {formatDate} from './format'
 import LotToday from './components/field/LotToday.vue'
 import RibbonBoard from './components/field/RibbonBoard.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
-import ForecastCarePlan from './components/ForecastCarePlan.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
-import FieldBoard from './components/field/FieldBoard.vue'
+import CareDueList from './components/field/CareDueList.vue'
+import CareCycleSettings from './components/field/CareCycleSettings.vue'
 import FarmWorkApp from './FarmWorkApp.vue'
 import ListPage from './components/ListPage.vue'
 import LotusField from './components/form/LotusField.vue'
@@ -31,7 +31,7 @@ const api=(name,args={},write=false)=>call('lotus_farm.field_report.'+name,args,
 const view=ref(normalizeFieldView(props.fieldView))
 const session=ref(null),setup=ref(null),farm=ref(''),crew=ref(''),day=ref(''),busy=ref(false),error=ref(''),notice=ref('')
 const today=computed(()=>session.value?.today||'')
-const month=ref('')
+const month=ref(''),assignedKey=ref(0)
 const rows=ref([]),search=ref(''),loading=ref(false)
 
 const farmOptions=computed(()=>(session.value?.farms||[]).map(f=>({value:f.name,label:f.farm_name||f.name})))
@@ -162,15 +162,18 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="['today','assign','board'].includes(view)">
+    <template v-if="['today','assign'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
      <LotToday v-if="view==='today'&&crew" :key="crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
-     <WorkAssign v-else-if="view==='assign'&&crew" :farm="farm" :crew="crew" :setup="setup"/>
-     <FieldBoard v-else-if="view==='board'&&crew" v-model:month="month" :farm="farm" :crew="crew"/>
+     <template v-else-if="view==='assign'&&crew">
+      <CareDueList :key="'due'+crew+assignedKey" :farm="farm" :crew="crew" @assigned="assignedKey++"/>
+      <h2 class="field-report-section">Phiếu đã giao</h2>
+      <WorkAssign :key="'tickets'+crew+assignedKey" :farm="farm" :crew="crew" :setup="setup"/>
+     </template>
     </template>
 
     <WorkInspect v-else-if="view==='inspect'" :farm="farm" :setup="setup"/>
@@ -180,9 +183,9 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
      <RibbonBoard v-if="farm" :key="farm" :farm="farm"/>
     </template>
 
-    <template v-else-if="view==='care-plan'">
+    <template v-else-if="view==='cycles'">
      <FormGrid v-if="farmOptions.length>1" :columns="4" class="field-report-scope"><LotusField :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/></FormGrid>
-     <ForecastCarePlan v-if="farm" :farm="farm" :blocks="setup.blocks"/>
+     <CareCycleSettings v-if="farm" :key="farm" :farm="farm"/>
     </template>
 
     <ListPage v-else-if="view==='payable'" v-model:search="search" title="Tiền khoán theo người" :rows="filtered" :columns="payableColumns" :loading="loading" row-key="key" storage-key="field-work-payable" @refresh="loadView">
@@ -255,4 +258,5 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
 
 <style>
 .field-report-scope{margin-bottom:12px}
+.field-report-section{margin:20px 0 8px;font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text-strong)}
 </style>

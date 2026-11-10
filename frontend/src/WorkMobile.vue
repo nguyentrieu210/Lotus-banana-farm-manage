@@ -9,6 +9,7 @@ import LotusMobileSignatureSettings from './components/LotusMobileSignatureSetti
 import LotToday from './components/field/LotToday.vue'
 import CrewStatus from './components/field/CrewStatus.vue'
 import RibbonBoard from './components/field/RibbonBoard.vue'
+import CareDueList from './components/field/CareDueList.vue'
 import MyPay from './components/field/MyPay.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
 import ReleaseNotes from './components/ReleaseNotes.vue'
@@ -90,7 +91,11 @@ onBeforeUnmount(()=>finishLeave(false))
      <h2 class="work-section-title">Màu dây &amp; cần thu</h2>
      <RibbonBoard :key="'ribbon'+refreshKey+farm" :farm="farm" mobile compact/>
     </template>
-    <WorkAssign v-else-if="screen==='assign'&&setup&&crew" :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
+    <template v-else-if="screen==='assign'&&setup&&crew">
+     <CareDueList :key="'due'+refreshKey+crew" :farm="farm" :crew="crew" mobile @assigned="refreshKey++"/>
+     <h2 class="work-section-title">Phiếu đã giao</h2>
+     <WorkAssign :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
+    </template>
     <WorkInspect v-else-if="screen==='inspect'&&setup" :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/>
 
     <template v-else-if="screen==='profile'">

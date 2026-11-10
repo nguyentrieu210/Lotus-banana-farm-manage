@@ -276,8 +276,8 @@
       "assets/StockDocumentDetail-DdaBZkEz.css"
     ]
   },
-  "_WorkGroupReport-C6uJZZPi.js": {
-    "file": "assets/WorkGroupReport-C6uJZZPi.js",
+  "_WorkGroupReport-CTursib-.js": {
+    "file": "assets/WorkGroupReport-CTursib-.js",
     "name": "WorkGroupReport",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -289,8 +289,12 @@
       "_PivotFilter-oQPF3Vud.js"
     ]
   },
-  "_WorkInspect-C6U_F-aY.js": {
-    "file": "assets/WorkInspect-C6U_F-aY.js",
+  "_WorkInspect-Cmeo2mBD.css": {
+    "file": "assets/WorkInspect-Cmeo2mBD.css",
+    "src": "_WorkInspect-Cmeo2mBD.css"
+  },
+  "_WorkInspect-Cu075Sw_.js": {
+    "file": "assets/WorkInspect-Cu075Sw_.js",
     "name": "WorkInspect",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
@@ -304,12 +308,8 @@
       "_FormSection-BlP1L1uS.js"
     ],
     "css": [
-      "assets/WorkInspect-DlRsiRf1.css"
+      "assets/WorkInspect-Cmeo2mBD.css"
     ]
-  },
-  "_WorkInspect-DlRsiRf1.css": {
-    "file": "assets/WorkInspect-DlRsiRf1.css",
-    "src": "_WorkInspect-DlRsiRf1.css"
   },
   "_WorkspaceListToolbar-C3XThudi.js": {
     "file": "assets/WorkspaceListToolbar-C3XThudi.js",
@@ -541,7 +541,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-CaOwx02Z.js",
+    "file": "assets/index-BesUoD5r.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -581,7 +581,7 @@
       "src/ColorTagCatalogApp.vue"
     ],
     "css": [
-      "assets/index-BoCFnuth.css"
+      "assets/index-BYaQUi6F.css"
     ]
   },
   "login.html": {
@@ -606,7 +606,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-D2Wp4s69.js",
+    "file": "assets/BlockForecastApp-I8cw_tSA.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -644,7 +644,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-BgqGBfTo.js",
+    "file": "assets/FarmLandApp-Bhda4wux.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -668,7 +668,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-CAxmHHAc.js",
+    "file": "assets/FieldReportApp-CiCsYDq9.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -682,19 +682,18 @@
       "_hr-catalog-labels-CSAYCmjS.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
-      "_WorkInspect-C6U_F-aY.js",
+      "_WorkInspect-Cu075Sw_.js",
       "_ListPage-rvJA-pLl.js",
       "_FormSection-BlP1L1uS.js",
       "_use-desktop-workspace-BngrhkO-.js",
       "_SearchSelect-VJzWaWqP.js"
     ],
     "css": [
-      "assets/FieldReportApp-CiGXNJuk.css",
-      "assets/land-MMMrAHuS.css"
+      "assets/FieldReportApp-C7os0pnH.css"
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-CpOBFqb3.js",
+    "file": "assets/FinanceApp-Ca0M1viQ.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -721,7 +720,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-BMri5Z_G.js",
+    "file": "assets/HrApp-1PgComuN.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -750,7 +749,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-SYlG2pHk.js",
+    "file": "assets/StockApp-C1MQepJg.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -776,7 +775,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-uMJk18MY.js",
+    "file": "assets/TimekeepingApp-DWf0fYzb.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -818,7 +817,7 @@
     ]
   },
   "src/components/OneDriveProcessWorkspace.vue": {
-    "file": "assets/OneDriveProcessWorkspace-Y-UtJ7ve.js",
+    "file": "assets/OneDriveProcessWorkspace-BmINIrdg.js",
     "name": "OneDriveProcessWorkspace",
     "src": "src/components/OneDriveProcessWorkspace.vue",
     "isDynamicEntry": true,
@@ -835,11 +834,11 @@
       "_SearchSelect-VJzWaWqP.js"
     ],
     "css": [
-      "assets/OneDriveProcessWorkspace-RHFukytu.css"
+      "assets/OneDriveProcessWorkspace-ClJopnaJ.css"
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-DWfjHk9I.js",
+    "file": "assets/OpsList-DHIlIEg_.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
@@ -851,7 +850,7 @@
     ]
   },
   "src/components/report/BunchCareReport.vue": {
-    "file": "assets/BunchCareReport-e1QiAg1t.js",
+    "file": "assets/BunchCareReport-C9jcg0n-.js",
     "name": "BunchCareReport",
     "src": "src/components/report/BunchCareReport.vue",
     "isDynamicEntry": true,
@@ -866,17 +865,17 @@
     ]
   },
   "src/components/report/GardenCareReport.vue": {
-    "file": "assets/GardenCareReport-DEt8pnru.js",
+    "file": "assets/GardenCareReport-Cthg3Hkq.js",
     "name": "GardenCareReport",
     "src": "src/components/report/GardenCareReport.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_WorkGroupReport-C6uJZZPi.js"
+      "_WorkGroupReport-CTursib-.js"
     ]
   },
   "src/components/report/PackhouseReport.vue": {
-    "file": "assets/PackhouseReport-CPcbB-w-.js",
+    "file": "assets/PackhouseReport-MPsQbBSb.js",
     "name": "PackhouseReport",
     "src": "src/components/report/PackhouseReport.vue",
     "isDynamicEntry": true,
@@ -890,13 +889,13 @@
     ]
   },
   "src/components/report/ProtectionReport.vue": {
-    "file": "assets/ProtectionReport-71iazh3i.js",
+    "file": "assets/ProtectionReport-dq1Ok367.js",
     "name": "ProtectionReport",
     "src": "src/components/report/ProtectionReport.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_WorkGroupReport-C6uJZZPi.js"
+      "_WorkGroupReport-CTursib-.js"
     ]
   },
   "warehouse.html": {
@@ -921,7 +920,7 @@
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-B04j08VK.js",
+    "file": "assets/work-mobile-B44UVspS.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
@@ -934,7 +933,7 @@
       "_mobile-ui-DlmhIhWT.js",
       "_use-mobile-confirm-BA3R0sxA.js",
       "_ReleaseNotes-t2tlDv6r.js",
-      "_WorkInspect-C6U_F-aY.js"
+      "_WorkInspect-Cu075Sw_.js"
     ],
     "css": [
       "assets/work-mobile-DRvDeh0i.css"

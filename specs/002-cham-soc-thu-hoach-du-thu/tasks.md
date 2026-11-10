@@ -173,41 +173,43 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 3
 
-- [ ] T037 [P] [US3] Unit test vòng chăm sóc trong lotus_farm/tests/test_care_cycle_rules.py:
+- [x] T037 [P] [US3] Unit test vòng chăm sóc trong lotus_farm/tests/test_care_cycle_rules.py:
   - đến hạn = ngày xong gần nhất + vòng;
   - lô chưa từng làm thì đến hạn từ ngày áp dụng;
   - việc làm nhiều ngày chỉ tính xong vòng khi báo xong cả lô;
   - luật theo khu được ưu tiên hơn luật cả vườn;
   - việc chưa có vòng thì không hiện đến hạn.
-- [ ] T038 [P] [US3] Integration test trong tests/integration/verify_care_cycle.py:
+- [x] T038 [P] [US3] Integration test trong tests/integration/verify_care_cycle.py:
   - giao nhiều lô, đổi tổ, hủy có lý do;
   - báo xong lô thì Round sang Reported;
   - khoán cả lô đi qua nghiệm thu; cách trả khác khóa khi xác nhận.
-- [ ] T039 [P] [US3] Mount test CareDueList trong frontend/tests/care-due-list.mount.test.js
+- [x] T039 [P] [US3] Mount test CareDueList trong frontend/tests/care-due-list.mount.test.js
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Rút gọn Work Schedule Rule trong lotus_farm/lotus_farm/doctype/work_schedule_rule/work_schedule_rule.json:
+- [x] T040 [US3] Rút gọn Work Schedule Rule trong lotus_farm/lotus_farm/doctype/work_schedule_rule/work_schedule_rule.json:
   - giữ `farm`, `rule_name`, `work_type`, `repeat_days`, `valid_from`, `valid_to`, `version`, `approval_state`; thêm `farm_zone`;
   - bỏ `anchor`, `offset_days`, `offset_months`, `repeat_months`, `quantity_basis`, `norm_profile`;
   - patch lotus_farm/patches/care_cycle_rules.py: lưu trữ các luật định mức cũ ra JSON rồi xóa.
-- [ ] T041 [US3] Xóa định mức cũ, vì dùng các trường vừa bỏ: lotus_farm/plan_norm.py, lotus_farm/plan_book2_reference.py, frontend/src/components/PlanNormSettings.vue, frontend/src/plan-norm-engine.js và test tương ứng (frontend/tests/plan-norm-safety.test.js, tools/verify_plan_norm_live.py)
-- [ ] T042 [US3] Viết module thuần cho quy tắc ở T037 trong lotus_farm/care_cycle_rules.py
-- [ ] T043 [US3] Viết lotus_farm/care_cycle.py:
+- [x] T041 [US3] Xóa định mức cũ, vì dùng các trường vừa bỏ: lotus_farm/plan_norm.py, lotus_farm/plan_book2_reference.py, frontend/src/components/PlanNormSettings.vue, frontend/src/plan-norm-engine.js và test tương ứng (frontend/tests/plan-norm-safety.test.js, tools/verify_plan_norm_live.py)
+- [x] T042 [US3] Viết module thuần cho quy tắc ở T037 trong lotus_farm/care_cycle_rules.py
+- [x] T043 [US3] Viết lotus_farm/care_cycle.py:
   - `due`;
   - `assign`: tạo Round, chụp cách trả và đơn giá; lô đã có Round mở cho việc đó thì báo ra;
   - `reassign`, `cancel`: phải có lý do;
   - `rules`; `save_rule`: tạo phiên bản mới chờ duyệt, chỉ quản lý vườn được dùng.
-- [ ] T044 [US3] Nối Round với báo cáo ngày trong lotus_farm/lot_report.py và lotus_farm/field_report.py:
+- [x] T044 [US3] Nối Round với báo cáo ngày trong lotus_farm/lot_report.py và lotus_farm/field_report.py:
   - dòng `done` thuộc Round thì Round sang Reported;
   - khoán cả lô chờ nghiệm thu (Lotus Work Inspection); cách trả khác khóa khi xác nhận;
   - thêm `cycle_rule` và đổi đích `done_report` sang Lotus Daily Report trong lotus_farm/lotus_farm/doctype/lotus_work_assignment/lotus_work_assignment.json.
-- [ ] T045 [US3] Viết frontend/src/components/field/CareDueList.vue: ma trận lô × việc (lần xong gần nhất, đến hạn, quá hạn), chọn nhiều lô rồi chọn tổ để giao
-- [ ] T046 [US3] Viết màn thiết lập vòng chăm sóc (theo việc, khu, ngày hiệu lực, duyệt) trong frontend/src/components/field/CareCycleSettings.vue
-- [ ] T047 [US3] Xóa phần bị thay trong frontend/src/components/ và lotus_farm/block_forecast.py:
+- [x] T045 [US3] Viết frontend/src/components/field/CareDueList.vue: ma trận lô × việc (lần xong gần nhất, đến hạn, quá hạn), chọn nhiều lô rồi chọn tổ để giao
+- [x] T046 [US3] Viết màn thiết lập vòng chăm sóc (theo việc, khu, ngày hiệu lực, duyệt) trong frontend/src/components/field/CareCycleSettings.vue
+- [x] T047 [US3] Xóa phần bị thay trong frontend/src/components/ và lotus_farm/block_forecast.py:
   - frontend/src/components/ForecastCarePlan.vue ("Lịch chăm sóc theo lô");
   - frontend/src/components/field/WorkAssign.vue và frontend/src/components/field/FieldBoard.vue;
   - phần lịch chăm sóc trong lotus_farm/block_forecast.py.
+
+**Ghi chú khi làm (10/11)**: care_cycle.assign/reassign/cancel gọi lại field_report.assign/reassign/cancel_assignment (một chỗ giao phiếu). WorkAssign.vue được giữ làm danh sách "Phiếu đã giao" và phiếu riêng cho khoán cả lô, nằm dưới danh sách đến hạn; FieldBoard.vue, ForecastCarePlan.vue, block_care_engine.py, field_report.board, field.suggest_work/make_suggested_plan và trang "Cấu hình kế hoạch & định mức" đã xóa. Phiên bản vòng: bản mới nhất đã bắt đầu của cùng tên vòng thay các bản cũ; bản có ngày hết hạn đã qua thì vòng dừng.
 
 **Checkpoint**: Danh sách đến hạn đúng ngày, giao nhiều lô một lần được, nghiệm thu khoán cả lô chạy
 

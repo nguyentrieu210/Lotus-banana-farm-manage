@@ -48,17 +48,3 @@ test('forecast page uses block/cohort API and never opens a cut journal',async()
   assert.doesNotMatch(ui.el.textContent,/Nhật ký chặt mẹ|Nhập nhật ký|NHẬT KÝ GỐC/)
  }finally{ui.close()}
 })
-test('care plan lives on its own and proposes without submitting any document',async()=>{
- calls.length=0
- replies={[M+'preview_care_plan']:{rows:[],materials:[],warnings:[],total_count:0,ready_count:0,can_create:false}}
- const Care=await load('components/ForecastCarePlan.vue')
- const el=document.createElement('div');document.body.appendChild(el)
- const app=createApp({render:()=>h(Care,{farm:'F',blocks:[]})});app.mount(el);await tick()
- try{
-  const preview=[...el.querySelectorAll('button')].find(x=>x.textContent.includes('Xem lịch'))
-  assert.ok(preview);preview.click()
-  for(let i=0;i<5;i++)await tick()
-  assert.ok(calls.some(c=>c.method===M+'preview_care_plan'))
-  assert.ok(!calls.some(c=>c.method===M+'create_care_plan_draft'))
- }finally{app.unmount();el.remove()}
-})

@@ -3,12 +3,11 @@
 export const fieldNavigation=[
  {id:'today',label:'Hôm nay',icon:'clipboard'},
  {id:'ribbon',label:'Màu dây & thu hoạch',icon:'flag'},
- {id:'assign',label:'Giao việc theo lô',icon:'users'},
+ {id:'assign',label:'Giao việc theo vòng',icon:'users'},
  {id:'inspect',label:'Nghiệm thu',icon:'check'},
- {id:'care-plan',label:'Lịch chăm sóc theo lô',icon:'calendar'},
- {id:'board',label:'Bảng lô × việc',icon:'map'},
  {id:'payable',label:'Tiền khoán theo người',icon:'wallet'},
  {id:'lots',label:'Đội, tổ & lô',icon:'people',setup:true},
+ {id:'cycles',label:'Vòng chăm sóc',icon:'refresh',setup:true},
  {id:'rates',label:'Bảng giá khoán',icon:'document',setup:true},
  {id:'catalog',label:'Việc & cách trả',icon:'settings',setup:true},
 ].map(r=>({...r,path:'cong-viec'}))

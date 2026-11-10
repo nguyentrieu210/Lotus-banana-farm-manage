@@ -1,4 +1,4 @@
-"""Public read-only forecast and separately-authorized DAILY draft planning.
+"""Public read-only forecast (dự thu) by lô and khu.
 
 Only Farm Block census, approved Plan Cohort, observed/estimated plant stages.
 NO use of cut-mother journals, uploads or synthetic mother-cut dates.
@@ -6,19 +6,12 @@ NO use of cut-mother journals, uploads or synthetic mother-cut dates.
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
-import json
-from collections import defaultdict
 import frappe
 from frappe.utils import nowdate
 from lotus_farm.block_forecast_engine import forecast, date, months_after, source_rows, projection_config
-from lotus_farm.block_care_engine import work_events as _work_events
 from lotus_farm.forecast_parameters import DEFAULTS, approved_version, validate
-from lotus_farm import plan_book2_reference as book2
 from lotus_farm import bunch_flow_rules, bunch_forecast_engine
 
-SPRAY_CODES={"CV024","CV026","CV028","CV031"}
-MATERIAL_CODES=SPRAY_CODES|{"CV030","CV032","CV033"}
 REQUIRES_FIELD_SURVEY={"CV021"}
 
 def _farm(farm, permission="read"):
@@ -250,149 +243,10 @@ def board(farm=None,zone=None,block=None):
                   for p in profiles],
         can_create=frappe.has_permission("Daily Work Plan","create"),
         bunch=bunch,can_import_opening=_can_import_opening(),
-        params=dict(validate(DEFAULTS),work_reference=book2.SOURCE))
+        params=validate(DEFAULTS))
 
 
 def sync_block_dates(doc,method=None):
     """Select the successor at this crop's flowering, not 94 days before."""
     if doc.meta.has_field('lotus_estimated_sucker_selection_date'):
         doc.lotus_estimated_sucker_selection_date=doc.get('lotus_estimated_flowering_date') or None
-
-
-def _preview(farm,from_date,to_date,block=None):
-    first,last=date(from_date),date(to_date)
-    if last<first or (last-first).days>45:
-        frappe.throw("Chỉ xem tối đa 46 ngày.")
-    projected,blocks,cohorts,profiles=_projection(farm,block=block,include_daily=True)
-    events=_work_events(projected["daily_rows"],first,last)
-    works=frappe.get_list("Work Type",
-        fields=["name","work_code","work_name","uom","active","allow_daywork",
-                "productivity_per_workday","modified"],
-        filters={"active":1},limit_page_length=1000)
-    workmap=defaultdict(list)
-    for w in works:
-        if w.work_code:workmap[w.work_code.strip().upper()].append(w)
-    norms=frappe.get_list("Material Norm Profile",
-        fields=["name","work_type","valid_from","valid_to","approval_state","version"],
-        filters={"farm":farm,"approval_state":"Approved"},limit_page_length=1000) if frappe.has_permission("Material Norm Profile","read") else []
-    materials=defaultdict(float)
-    wage=book2.compare()["daywork_rate"]
-    reserve=book2.compare()["absence_reserve"]
-    for e in events:
-        matches=workmap.get(e["work_code"],[])
-        w=matches[0] if len(matches)==1 else None
-        issue=None
-        if not w:issue="Mã công việc thiếu hoặc trùng trong ERP"
-        elif not w.allow_daywork or float(w.productivity_per_workday or 0)<=0:issue="Chưa duyệt công nhật hoặc năng suất"
-        elif str(w.uom).strip().casefold()!=e["uom"].casefold():issue="Đơn vị tính chưa khớp danh mục"
-        if e["parameter_status"]!="Approved":
-            issue="Chưa có bộ thông số dự thu được duyệt cho lô và ngày."
-        # The prior-period lot count was accepted as Lotus' official
-        # operating baseline. Do not block work merely because the physical
-        # census evidence has a separate provenance status.
-        if e["count_status"] not in ("Cohort Approved","Census Confirmed","Planning Baseline"):
-            issue="Thiếu số cây gốc chốt cho lô hoặc thông tin đợt cây hợp lệ."
-        if e["work_code"] in REQUIRES_FIELD_SURVEY:
-            issue="Chống đổ cần số cây khảo sát thực tế; không giao theo dự thu"
-        norm=None
-        if w and not issue and e["work_code"] in MATERIAL_CODES:
-            applicable=[n for n in norms if n.work_type==w.name and
-                str(n.valid_from or "")<=e["date"] and (not n.valid_to or str(n.valid_to)>=e["date"])]
-            norm=max(applicable,key=lambda r:int(r.version or 0)) if applicable else None
-            if not norm:
-                issue="Chưa có định mức vật tư được duyệt"
-            else:
-                p=frappe.get_doc("Material Norm Profile",norm.name)
-                p.check_permission("read")
-                if not p.lines:issue="Định mức vật tư chưa có dòng"
-                else:
-                    for line in p.lines:
-                        if not all(float(v or 0)>0 for v in
-                            (line.basis_qty,line.norm_qty,line.frequency,line.conversion_factor)):
-                            issue="Định mức vật tư thiếu hệ số đã duyệt"
-                            break
-                    if not issue:
-                        for line in p.lines:
-                            amount=e["planned_qty"]*float(line.norm_qty)*float(line.frequency)*float(line.conversion_factor)/float(line.basis_qty)
-                            materials[(e["date"],e["farm_block"],line.item,line.uom)]+=amount
-        labor=(e["planned_qty"]/float(w.productivity_per_workday)
-               if w and float(w.productivity_per_workday or 0)>0 else None)
-        e.update(work_type=w.name if w else None,work_name=w.work_name if w else None,
-            norm_profile=norm.name if norm else None,
-            norm_version=norm.version if norm else None,blocking_issue=issue,
-            required_workdays=round(labor,3) if labor is not None else None,
-            daywork_cost_estimate=round(labor*wage,0) if labor is not None else None,
-            staffed_workdays=round(labor/(1-reserve),3) if labor is not None else None)
-    snapshot=dict(farm=farm,from_date=str(first),to_date=str(last),block=block,
-        sources=[(c.get("name"),str(c.get("modified")),c.get("planned_qty"),c.get("anchor_date"))
-                 for c in cohorts],
-        blocks=[(b.get("name"),b.get("lotus_tree_count"),str(b.get("lotus_estimated_flowering_date")),str(b.get("modified")),b.get("forecast_count_source")) for b in blocks],
-        profiles=[(p.get("name"),str(p.get("modified")),p.get("version")) for p in _profiles(farm)],
-        works=[(w.name,str(w.modified),w.uom,w.allow_daywork,w.productivity_per_workday) for w in works],
-        events=[(e["schedule_key"],e["planned_qty"],e["work_type"],e["norm_profile"],e["norm_version"],e["blocking_issue"]) for e in events])
-    fingerprint=hashlib.sha256(json.dumps(snapshot,sort_keys=True,default=str).encode()).hexdigest()
-    block_labels={b.name:b.block_name or b.block_code or b.name for b in blocks}
-    return dict(rows=events,materials=[dict(date=k[0],farm_block=k[1],farm_block_label=block_labels.get(k[1],k[1]),item=k[2],
-        uom=k[3],quantity=round(v,5)) for k,v in sorted(materials.items())],
-        warnings=projected["warnings"],fingerprint=fingerprint,
-        ready_count=sum(not e["blocking_issue"] for e in events),
-        total_count=len(events),source_count=projected["source_count"],
-        estimated_workdays=round(sum(e["required_workdays"] or 0 for e in events),2),
-        daywork_cost_reference=round(sum(e["daywork_cost_estimate"] or 0 for e in events),0),
-        staffed_workdays_reference=round(sum(e["staffed_workdays"] or 0 for e in events),2),
-        daywork_rate_reference=wage,absence_reserve_reference=reserve,
-        from_date=str(first),to_date=str(last),block=block)
-
-@frappe.whitelist()
-def preview_care_plan(farm,from_date,to_date,block=None):
-    return dict(_preview(farm,from_date,to_date,block),can_create=frappe.has_permission("Daily Work Plan","create"))
-
-@frappe.whitelist(methods=["POST"])
-def create_care_plan_draft(farm,block,posting_date,fingerprint):
-    if not frappe.has_permission("Daily Work Plan","create"):
-        frappe.throw("Không có quyền tạo kế hoạch nháp.",frappe.PermissionError)
-    if not block:frappe.throw("Phải chọn lô lớn.")
-    from lotus_farm.controls import lock
-    lock("Farm",farm)
-    day=str(date(posting_date))
-    plan=_preview(farm,day,day,block)
-    if fingerprint!=plan["fingerprint"]:
-        frappe.throw("Dữ liệu lô/vụ/đợt vừa thay đổi. Tải lại lịch.")
-    if not plan["rows"]:frappe.throw("Không có lịch chăm sóc cho ngày này.")
-    blockers=sorted(set(r["work_code"] for r in plan["rows"] if r["blocking_issue"]))
-    eligible=[r for r in plan["rows"] if not r["blocking_issue"]]
-    if not eligible:
-        frappe.throw("Ngày này chưa có công việc nào đủ điều kiện tạo nháp; xem cảnh báo.")
-    if len(eligible)>100:frappe.throw("Quá nhiều việc trong ngày.")
-    # Internal uniqueness guard covers plans outside the creator's read scope.
-    # Only the requested work codes are reported; no other plan data is returned.
-    plans=frappe.get_all("Daily Work Plan",
-        filters={"farm":farm,"posting_date":day,"docstatus":["<",2]},
-        fields=["name"],limit_page_length=0)
-    occupied=set()
-    for p in plans:
-        doc=frappe.get_doc("Daily Work Plan",p.name)
-        occupied.update((line.farm_block,line.work_type) for line in doc.lines)
-    company=frappe.db.get_value("Farm",farm,"company")
-    lines=[]
-    for row in eligible:
-        if (block,row["work_type"]) in occupied:
-            frappe.throw("Đã có kế hoạch ngày/lô/công việc: "+row["work_code"])
-        # Current WorkPlan validates all new jobs at large-block scope only.
-        # Do not populate crop_cycle without a Farm Plot. Keep crop-cycle
-        # evidence in lotus_forecast_sources for later audit.
-        lines.append(dict(company=company,farm=farm,farm_block=block,
-            work_type=row["work_type"],uom=row["uom"],
-            planned_qty=row["planned_qty"],payment_mode="Daywork",
-            norm_profile=row["norm_profile"],norm_version=row["norm_version"],
-            schedule_key=row["schedule_key"],
-            lotus_forecast_sources=json.dumps(
-                dict(source="Farm Block / Plan Cohort",waves=row["sources"],details=row["source_details"],
-                     crop_cycle=row["crop_cycle"],cohort=row["cohort"],
-                     profile=row.get("profile")),
-                ensure_ascii=False),execution_state="Planned"))
-    doc=frappe.get_doc(dict(doctype="Daily Work Plan",farm=farm,company=company,
-        posting_date=day,lines=lines))
-    doc.insert() # docstatus=0 only; never submit or issue material.
-    return dict(plan=doc.name,docstatus=doc.docstatus,lines=len(lines),
-                skipped_codes=blockers)

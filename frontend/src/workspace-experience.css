@@ -81,7 +81,7 @@
  .lotus-ui .pn-header h2{font-size:18px}
  .lotus-ui .pn-header .pn-eyebrow{display:none}
  .lotus-ui .pn-header p{font-size:12px}
- .lotus-ui .plan-norm-screen{padding:0 0 24px;gap:12px}
+
  .lotus-ui .pn-section{border-radius:10px;padding:16px}
  .lotus-ui .pn-cards{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
  .lotus-ui .hr-table :is(th,td){padding:10px 12px;font-size:12px}

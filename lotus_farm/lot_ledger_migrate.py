@@ -110,6 +110,9 @@ def commit():
                                 update_modified=False)
         for name in plan["rounds"]:
             frappe.db.set_value(field.ASSIGNMENT, name, {"state": field.rules.CANCELLED, "cancel_reason": DEMO_REASON}, update_modified=False)
+        # done_report now points at the tổ's daily report; links to the old đội reports would fail on the next save.
+        frappe.db.sql(f"""update `tab{field.ASSIGNMENT}` set done_report = null
+                          where ifnull(done_report, '') != '' and done_report not in (select name from `tabLotus Daily Report`)""")
     finally:
         frappe.flags.lotus_ledger_migrating = False
         field._writing.reset(token)

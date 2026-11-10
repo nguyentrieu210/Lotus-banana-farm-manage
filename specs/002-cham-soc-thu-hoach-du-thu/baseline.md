@@ -33,3 +33,10 @@
 - `lotus_farm/tests/test_ribbon_board.py` + `test_bunch_report_rules.py`: 39/39 qua. `verify_bunch_forecast.py`: tất cả qua (thêm 7 kiểm tra bảng màu dây và danh sách cần thu).
 - Frontend: 638/638 test qua. Trình duyệt máy tính và điện thoại (tab Xác nhận): không tràn ngang, không lỗi console.
 - `bunch_report.stock` và `BunchStockCards.vue` đã xóa; tồn theo màu có lọc kiểu pivot vẫn ở `bunch_report.sections`.
+
+## Phase 5 (US3, vòng chăm sóc)
+
+- `lotus_farm/tests/test_care_cycle_rules.py`: 9/9 qua (đến hạn = xong gần nhất + vòng; chưa làm thì từ ngày áp dụng; chỉ dòng "xong cả lô" mới tính; luật khu trước luật vườn; phiên bản và luật theo mùa; việc không có vòng thì không hiện).
+- `tests/integration/verify_care_cycle.py`: 36 kiểm tra qua (đặt và duyệt vòng, giao 2 lô một lần, đổi tổ và huỷ phải có lý do, làm dở không tính xong, báo xong thì sang vòng sau, khoán cả lô chờ nghiệm thu rồi khóa và tính tiền). `verify_lot_ledger.py`, `verify_bunch_forecast.py` vẫn qua.
+- Patch `care_cycle_rules` chạy trên local: 0 luật cũ (local không có). Trên VPS luật cũ có mốc trồng/chọn chồi sẽ được lưu ra `private/files/work_schedule_rule_legacy_*.json` rồi xóa.
+- Frontend: 631/631 test qua. Trình duyệt: Giao việc theo vòng (Cắt lá 64 lô quá hạn, Sửa ống nước khu A 13 lô), hộp giao theo khu, bảng lô × việc, Vòng chăm sóc với bản chờ duyệt; không tràn ngang, không lỗi console.

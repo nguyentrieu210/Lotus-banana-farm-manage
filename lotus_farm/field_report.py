@@ -817,28 +817,6 @@ def cancel_assignment(name, reason, expected_modified=None):
     return ticket(name)
 
 
-@frappe.whitelist()
-def board(farm, crew, month):
-    """Lô × việc for one month: every lô of the đội, every việc given in the month, and per cell the phiếu with their state."""
-    require_farm(farm)
-    rights = access(farm, crew)
-    if not rights.read:
-        frappe.throw("Bạn không thuộc đội này.", frappe.PermissionError)
-    begin = getdate(str(month)[:7] + "-01")
-    end = get_last_day(begin)
-    rows = frappe.get_all(ASSIGNMENT, filters={"farm": farm, "crew": crew, "kind": rules.ROUND, "assigned_on": ["<=", end],
-                                               "state": ["!=", rules.CANCELLED]}, fields=ASSIGN_FIELDS, limit_page_length=0)
-    rows = [r for r in rows if r.state in OPEN_STATES or getdate(r.locked_at or r.modified) >= begin]
-    rows = _decorate(farm, _ticket_rows(rows))
-    blocks = [{"name": b["name"], "block_code": b["block_code"], "area_ha": flt(b["area_ha"]), "trees": b["trees"],
-               "quarantine_until": b["quarantine_until"]}
-              for b in _block_map(farm).values() if b["zone"] in rights.zones]
-    works = sorted({(r.work_type, r.work_name) for r in rows}, key=lambda w: w[1])
-    return {"month": str(begin)[:7], "blocks": blocks, "works": [{"name": n, "work_name": label} for n, label in works],
-            "cells": [{k: r.get(k) for k in ("name", "farm_block", "work_type", "work_team", "team_name", "display", "state",
-                                             "assigned_on", "due_date", "locked_at", "progress", "pay_mode")} for r in rows]}
-
-
 def harvest_guard(doc, method=None):
     """Harvest Actual validate: a lô sprayed with a product that has a pre-harvest interval cannot be harvested before it ends."""
     if not doc.get("farm_block") or not doc.get("harvest_date"):

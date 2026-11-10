@@ -493,7 +493,7 @@ def confirm(report, expected_modified=None):
     if errors:
         frappe.throw("<br>".join(errors))
     now = now_datetime()
-    done_rounds = set()
+    done_rounds = {}
     for l in lines:
         line = frappe.get_doc(ENTRY, l.name, for_update=True)
         rate = field.rules.rate_for(rates, line.work_type, line.posting_date)
@@ -502,21 +502,23 @@ def confirm(report, expected_modified=None):
         line.update({"state": rules.CONFIRMED, "confirmed_by": user, "confirmed_at": now})
         _store(line)
         if line.done and line.assignment:
-            done_rounds.add(line.assignment)
-    for name in done_rounds:
-        _finish_round(name, user, now)
+            done_rounds[line.assignment] = line
+    for name, line in done_rounds.items():
+        _finish_round(name, user, now, line)
     doc.update({"state": state, "confirmed_by": user, "confirmed_at": now})
     _store(doc)
     return _report_row(report)
 
 
-def _finish_round(name, user, now):
+def _finish_round(name, user, now, line=None):
     """A lô reported finished on a confirmed day: the Round goes to Reported, then is approved by this confirmation.
     Khoán lô then waits for the inspection; other pay modes close here (their money, if any, is on the lines)."""
     task = frappe.get_doc(field.ASSIGNMENT, name, for_update=True)
     if task.kind != field.rules.ROUND or task.state not in (field.rules.OPEN, field.rules.FAILED):
         return
     task.qty_total = sum(flt(q) for q in frappe.get_all(ENTRY, filters={"assignment": name, "state": rules.CONFIRMED}, pluck="qty"))
+    if line:
+        task.done_report, task.done_line, task.done_date = line.daily_report, line.name, line.posting_date
     task.state = field.rules.next_state(task.state, "report")
     task.reported_by, task.reported_at = user, now
     task.state = field.rules.next_state(task.state, "approve", task.pay_mode)

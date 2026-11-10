@@ -35,21 +35,18 @@ class DeviceMaster(Document):
 
 
 class ScheduleMaster(Document):
+    """Vòng chăm sóc (Work Schedule Rule): one việc every N days, for the farm or one khu. Approved versions are kept."""
     def validate(self):
+        from lotus_farm.care_cycle_rules import check_rule, zone_of
         check_farm(self)
+        self.farm_zone=zone_of(self.farm_zone) or None
         validate_version(self,'rule_name',('Lotus Farm Manager',))
-        if not -365 <= int(self.offset_days or 0) <= 365 or int(self.repeat_days or 0)<0 or getdate(self.valid_to)<getdate(self.valid_from):
-            frappe.throw('Độ lệch lịch và thời gian hiệu lực không hợp lệ.')
-        if not -120 <= int(self.get('offset_months') or 0) <= 120 or not 0 <= int(self.get('repeat_months') or 0) <= 120:
-            frappe.throw('Khoảng tháng lịch không hợp lệ.')
-        if self.get('repeat_months') and self.repeat_days:
-            frappe.throw('Chỉ chọn lặp theo ngày hoặc theo tháng lịch.')
-        if self.norm_profile:
-            profile=frappe.get_doc('Material Norm Profile',self.norm_profile);profile.check_permission('read')
-            if profile.farm!=self.farm or profile.work_type!=self.work_type or profile.approval_state!='Approved':
-                frappe.throw('Định mức của lịch phải được duyệt cho cùng vườn và loại công việc.')
+        errors=check_rule(self.as_dict())
+        if self.farm_zone and not frappe.db.exists('Farm Block',{'farm':self.farm,'farm_zone':self.farm_zone,'active':1}):
+            errors.append(f'Vườn không có lô nào ở khu {self.farm_zone}.')
+        if errors:frappe.throw('<br>'.join(errors))
     def on_trash(self):
-        if self.approval_state=='Approved':frappe.throw('Không được xóa lịch đã duyệt.')
+        if self.approval_state=='Approved':frappe.throw('Không được xóa vòng chăm sóc đã duyệt; tạo phiên bản mới hoặc đặt ngày hết áp dụng.')
 
 
 class CaptureRecord(Document):
