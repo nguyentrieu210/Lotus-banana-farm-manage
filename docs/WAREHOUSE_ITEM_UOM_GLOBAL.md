@@ -9,7 +9,7 @@
 - Khi lập phiếu nhập thông thường: chọn đơn vị gốc hoặc đơn vị phụ; nhập số lượng và đơn giá theo **đơn vị đang chọn**. Backend kiểm tra đơn vị đã khai báo trong Item.uoms, lấy conversion factor từ server, không tin giá trị do client tự gửi. ERPNext lưu `qty` theo đơn vị nhập, `transfer_qty` theo đơn vị tồn gốc, `basic_rate` theo đơn vị gốc.
 - Ví dụ 4.000 Bao × 25 Kg/Bao = 100.000 Kg. Giá 125.000 VND/Bao → giá vốn gốc 5.000 VND/Kg, tiền vật tư 500.000.000 VND. Hoặc nhập 100.000 Kg với đơn giá 5.000 VND/Kg cho cùng kết quả.
 - Phiếu xuất trên máy tính và điện thoại cho chọn đơn vị gốc hoặc đơn vị đã khai báo quy đổi riêng cho vật tư. Hiển thị lượng quy về đơn vị tồn kho trước khi lưu; phiếu nháp, chi tiết và bản in giữ đơn vị/số lượng người dùng chọn. Ví dụ xuất 2 Bao với hệ số 25 thì phiếu ghi 2 Bao, sổ kho giảm 50 Kg. Hệ số do máy chủ lấy từ Item, bỏ qua hệ số tự gửi từ trình duyệt.
-- Xuất theo kế hoạch/yêu cầu vẫn đối chiếu phần còn cấp bằng đơn vị tồn gốc. Khi đổi đơn vị trên dòng nguồn, số lượng và giới hạn nhập đổi theo để giữ nguyên lượng vật tư dự kiến cấp. Tồn và các phiếu giữ hàng đều tính theo lượng đã quy đổi. Kế hoạch vật tư và chuyển kho giữ các luồng đơn vị gốc hiện có. Không tự đổi đơn vị của chứng từ đã ghi sổ.
+- Xuất theo yêu cầu đã duyệt vẫn đối chiếu phần còn cấp bằng đơn vị tồn gốc. Khi đổi đơn vị trên dòng nguồn, số lượng và giới hạn nhập đổi theo để giữ nguyên lượng vật tư dự kiến cấp. Tồn và các phiếu giữ hàng đều tính theo lượng đã quy đổi. Kế hoạch vật tư và chuyển kho giữ các luồng đơn vị gốc hiện có. Không tự đổi đơn vị của chứng từ đã ghi sổ.
 - Không cho sửa hệ số quy đổi cũ sau khi vật tư có phát sinh Stock Ledger Entry, để không làm thay đổi cách hiểu dữ liệu lịch sử.
 
 ## Kiểm thử

@@ -42,4 +42,4 @@ jobs:
       - run: npm run --prefix frontend build
       - run: npm install --no-save --package-lock=false playwright@1.62.1
       - run: npx playwright install --with-deps chromium
-      - run: node tests/browser/offline_queue.cjs
+      - run: node tests/browser/offline_cache.cjs

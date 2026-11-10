@@ -28,7 +28,7 @@ test('every workspace page resolves independently',()=>{
 
 test('care cycle fields and choices are Vietnamese while enum keys stay intact',()=>{
  for(const field of ['rule_name','repeat_days','valid_from','valid_to','farm_zone','approval_state'])assert.notEqual(label(field),field.replaceAll('_',' '))
- assert.equal(stateLabel('Selected Suckers'),'Số chồi đã chọn')
+ assert.equal(stateLabel('Trees'),'Số cây')
  assert.equal(stateLabel('Area'),'Diện tích')
  assert.equal(stateLabel('LOTUS-BAG'),'LOTUS-BAG')
 })

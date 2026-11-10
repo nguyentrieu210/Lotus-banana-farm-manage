@@ -10,8 +10,7 @@ const items = [
   {group:'Xưởng và vật tư',id:'packhouse',label:'Xưởng đóng gói',detail:'Ca làm và thành phẩm',icon:'boxes',href:'/lotus/cong-viec?field_view=packhouse',capability:'packhouse'},
   {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Khu và lô chuối',icon:'home',path:'farms',module:'farms'},
   {group:'Điều hành và báo cáo',id:'forecast',label:'Dự thu',detail:'Sản lượng dự kiến',icon:'chart',path:'forecast',module:'forecast'},
-  {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',icon:'document',path:'reports',capability:'home'},
-  {group:'Điều hành và báo cáo',id:'alerts',label:'Cảnh báo',detail:'Điểm cần xử lý',icon:'alert',path:'alerts',module:'alerts'}
+  {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',icon:'document',path:'reports',capability:'home'}
 ]
 
 export function hasMobileAccess(session) {
@@ -38,7 +37,7 @@ export function mobileGroups(session) {
 export function mobileTabs(session) {
   const all = mobileActions(session)
   // Every tab must actually open a permitted route. Do not pin empty or unauthorized screens.
-  const order = ['farms','map','forecast','alerts','reports']
+  const order = ['farms','map','forecast','reports']
   const tabs = [{id:'mobile',label:'Trang chủ',path:'mobile',icon:'home'}]
   for (const id of order) {
     const action = all.find(row => row.id === id && row.path)

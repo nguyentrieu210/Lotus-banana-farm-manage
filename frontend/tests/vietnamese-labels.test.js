@@ -19,3 +19,8 @@ test('translation fallbacks retain document identifiers and existing Lotus termi
  assert.equal(systemLabel(1250.5),1250.5)
  assert.equal(docLabel('Lotus Work Session'),'Buổi công theo phiếu')
 })
+
+test('kept fields show their own captions, not those of the removed alerts and forecast allocation',()=>{
+ for(const caption of ['Loại','Loại giao','Loại mức','Nghiệp vụ'])assert.equal(label('kind',caption),caption)
+ assert.equal(label('allocations','Phân bổ nguồn mua'),'Phân bổ nguồn mua')
+})
