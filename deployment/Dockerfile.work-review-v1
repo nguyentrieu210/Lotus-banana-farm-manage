@@ -1,9 +1,0 @@
-FROM lotus-mobile-rbac:v1-20261017
-USER root
-COPY --chown=frappe:frappe lotus_farm/field.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/field.py
-COPY --chown=frappe:frappe lotus_farm/mobile_access.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/mobile_access.py
-COPY --chown=frappe:frappe lotus_farm/work_mobile.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/work_mobile.py
-COPY --chown=frappe:frappe lotus_farm/work_prepare.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/work_prepare.py
-COPY --chown=frappe:frappe lotus_farm/console.py /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/console.py
-COPY --chown=frappe:frappe lotus_farm/public/frontend/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/frontend/
-USER frappe

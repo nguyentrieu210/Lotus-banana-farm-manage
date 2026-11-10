@@ -40,9 +40,6 @@ def warehouse_mapping(user=None):
 def packhouse_shift(user=None):
     return query_condition('Packhouse Shift', user)
 
-def lotus_alert(user=None):
-    return query_condition('Lotus Alert',user)
-
 
 def bunch_tag(user=None):
     condition = query_condition('Bunch Tag', user)

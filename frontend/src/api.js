@@ -10,7 +10,7 @@ export async function call(method,args={},write=false){
  let response
  try{response=await fetch(url,options)}catch(error){
   if(!write&&cachedMethod(method)){const value=await cachedRead(activeUser(),method,args);if(value!==null){window.dispatchEvent(new Event('lotus-cached-read'));return method==='lotus_farm.console.bootstrap'?{...value,offline:true}:value}}
-  throw new Error(write?'Chưa gửi được. Giữ bản ghi trong hàng chờ rồi thử lại khi có mạng.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
+  throw new Error(write?'Chưa gửi được vì mất mạng; dữ liệu chưa được lưu. Kiểm tra kết nối rồi bấm gửi lại.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
  }
  const data=await response.json()
  if(!response.ok||data.exc_type){if(response.status===401||data.exc_type==='AuthenticationError')setActiveUser('');const error=failure(data);error.status=response.status;error.code=data.exc_type;throw error}

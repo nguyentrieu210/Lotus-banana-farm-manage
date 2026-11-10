@@ -89,9 +89,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .stock-shell .stock-actions>button:first-child,.stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600);font-weight:650}
 .stock-shell .stock-actions>button:first-child:hover,.stock-shell .stock-button.primary:hover{background:var(--lotus-primary-700);border-color:var(--lotus-primary-700)}
 .dark .stock-shell .stock-actions>button:first-child,.dark .stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
-.app-shell .kpi{border-top:2px solid var(--lotus-accent);box-shadow:0 2px 5px #18223808}
-.app-shell .kpi strong,.dark .app-shell .kpi strong{font-size:25px;font-weight:750;letter-spacing:-.5px;color:var(--lotus-accent)}
-.app-shell .kpi>span{font-size:12px;font-weight:600;color:var(--lotus-text)}
 .app-shell .mobile-action-text strong{font-size:14px;font-weight:650;color:var(--lotus-text)}
 .app-shell .mobile-action-icon{color:var(--lotus-accent);background:var(--lotus-accent-soft)}
 .stock-shell h2,.app-shell h2,.assignment-workspace h2{font-weight:700;letter-spacing:-.2px}
@@ -121,9 +118,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .app-shell .panel{padding:8px;margin:6px 0;border-radius:6px}
 .app-shell .view-controls{padding:8px 0;gap:7px;flex-wrap:wrap}
 .app-shell .actions{gap:6px;flex-wrap:wrap}
-.app-shell .kpi{min-height:84px;padding:12px;gap:5px}
-.app-shell .kpi strong{font-size:23px}
-.app-shell .kpi-grid{gap:8px;margin:10px 0}
 .app-shell .mobile-welcome{padding:14px 16px;margin:0 0 14px;background:var(--lotus-soft);border-color:var(--lotus-border)}
 .app-shell .mobile-welcome h2{margin:4px 0;font-size:16px}
 .app-shell .mobile-welcome p{margin:4px 0;font-size:12px}
@@ -193,15 +187,12 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .dark input,.dark select,.dark textarea,.dark .stock-dialog,.dark .document-dialog,.dark .small-dialog{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .stock-button,.dark .stock-issue-tabs button,.dark .stock-actions button,.dark .mobile-action,.dark .bar,.dark .top a{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .stock-button.primary,.dark .bar .primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
-.dark .stock-line,.dark .stock-issue-picker,.dark .stock-line input[readonly],.dark .child-row,.dark .work-card,.dark .stock-welcome,.dark .note,.dark .tabs button{background:var(--lotus-soft);color:var(--lotus-text);border-color:var(--lotus-border)}
+.dark .stock-line,.dark .stock-issue-picker,.dark .stock-line input[readonly],.dark .child-row,.dark .stock-welcome,.dark .note,.dark .tabs button{background:var(--lotus-soft);color:var(--lotus-text);border-color:var(--lotus-border)}
 .dark .sidebar .brand,.dark .panel-title{color:var(--lotus-text)}
 .dark .stock-muted,.dark .hint,.dark .muted,.dark .stock-line small{color:var(--lotus-muted)}
 .dark .notice,.dark .stock-success{background:var(--lotus-neutral-800);color:var(--lotus-success-200);border-color:var(--lotus-success-700)}
 .dark .stock-error,.dark .error{background:var(--lotus-neutral-800);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
 .dark .stock-issue-tabs button.active,.dark .tabs .active,.dark .sidebar nav button.active{background:var(--lotus-soft);color:var(--lotus-accent)}
-.dark .app-shell .kpi{background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border)}
-.dark .app-shell .kpi strong{color:var(--lotus-text)}
-.dark .app-shell .kpi span,.dark .app-shell .kpi small{color:var(--lotus-muted)}
 .dark .app-shell .mobile-action-icon{background:var(--lotus-soft);color:var(--lotus-accent)}
 .dark .app-shell .mobile-action-chevron,.dark .mobile-help{color:var(--lotus-muted)}
 @media(min-width:701px){
@@ -242,7 +233,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
  .stock-shell .stock-panel .lotus-mobile-records{display:grid;border:0}
  .app-shell .mobile-action-grid{grid-template-columns:1fr}
  .app-shell .mobile-action{min-height:76px;padding:14px}
- .app-shell .kpi{min-height:90px;padding:12px}
  .assignment-workspace>.workspace-bar{padding:6px 12px}
  .assignment-workspace .shell{padding-top:12px}
  .assignment-workspace input,.assignment-workspace select{height:44px;min-height:44px}

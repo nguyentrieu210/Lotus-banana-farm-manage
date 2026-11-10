@@ -1,8 +1,5 @@
 // Chỉ đổi chữ cho người dùng. Không đổi fieldname, mã phiếu, trạng thái lưu trong ERP.
 export const extraFieldNames = Object.freeze({
-  safety_buffer_percent: 'Tỷ lệ dự phòng (%)',
-  allocations: 'Đã giữ cho đơn bán',
-  confidence: 'Mức độ tin cậy',
   formula_version: 'Phiên bản cách tính',
   source_snapshot: 'Dữ liệu dùng để tính',
   snapshot_hash: 'Mã kiểm tra dữ liệu',
@@ -27,7 +24,6 @@ export const extraStateNames = Object.freeze({
   Disposal: 'Xuất hủy',
   Shortage: 'Thiếu kiểm kê',
   Packing: 'Xuất bao bì đóng gói',
-  'Harvest Receipt': 'Nhập kho thu hoạch',
   Costing: 'Giá thành',
   'Salary Advance': 'Tạm ứng lương',
   'Statutory Payment': 'Nộp bảo hiểm, KPCĐ, thuế',
@@ -52,10 +48,5 @@ export const extraStateNames = Object.freeze({
   Low: 'Thấp',
   Medium: 'Trung bình',
   High: 'Cao',
-  Available: 'Còn nguồn',
-  Tight: 'Nguồn còn ít',
-  Overcommitted: 'Đã giữ vượt dự thu',
   Reserved: 'Đã giữ nguồn',
-  Materialized: 'Đã chuyển thành hàng kho',
-  'In Review': 'Đang kiểm tra',
 })

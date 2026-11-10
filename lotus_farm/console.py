@@ -5,12 +5,11 @@ from lotus_farm.controls import lock
 from lotus_farm.scoping import land_scope, land_filters
 
 MODULES={
- 'alerts':['Lotus Alert'],
  'farms':['Farm','Farm Block'],
  'forecast':['Lotus Block Forecast Profile'],
- 'map':['Farm Block Geometry'],'settings':['Lotus Farm Settings'],
+ 'map':['Farm Block Geometry'],
  'mau-day':['Bunch Tag'],
- 'masters':['Work Type','Work Team','Cancellation Reason Group','Cancellation Reason','Disease','Market','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Banana Variety']}
+ 'masters':['Work Type','Work Team','Cancellation Reason Group','Cancellation Reason','Disease','Bunch Tag','Warehouse Mapping','Work Schedule Rule','Banana Variety']}
 ALLOWED={d for names in MODULES.values() for d in names}
 
 
@@ -147,34 +146,6 @@ def payload_fields(meta,values):
             result[key]=[payload_fields(frappe.get_meta(field.options),v) for v in value]
         else:result[key]=value
     return result
-
-
-def _settings_result(doc,meta):
-    from lotus_farm.rules import canonical_hash
-    result=doc.as_dict()
-    result['_settings_token']=canonical_hash([[f.fieldname,doc.get(f.fieldname)] for f in meta.fields])
-    return result
-
-
-@frappe.whitelist()
-def settings():
-    meta=allowed('Lotus Farm Settings')
-    doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('read')
-    return _settings_result(doc,meta)
-
-
-@frappe.whitelist(methods=['POST'])
-def save_settings(values,base_token=None):
-    meta=allowed('Lotus Farm Settings','write')
-    values=frappe.parse_json(values) if isinstance(values,str) else values
-    clean=payload_fields(meta,values)
-    doc=frappe.get_single('Lotus Farm Settings');doc.check_permission('write')
-    frappe.db.sql("select field from tabSingles where doctype=%s for update",('Lotus Farm Settings',))
-    doc.reload()
-    current=_settings_result(doc,meta)
-    if base_token and current['_settings_token']!=base_token:frappe.throw('Thiết lập vừa được người khác thay đổi. Tải lại trước khi lưu; dữ liệu bạn nhập chưa ghi đè lên.')
-    doc.update(clean);doc.save()
-    return _settings_result(doc,meta)
 
 
 @frappe.whitelist(methods=['POST'])

@@ -19,6 +19,9 @@ before_migrate = "lotus_farm.install.create_roles"
 after_install = "lotus_farm.install.setup"
 after_migrate = "lotus_farm.install.setup"
 
+# The purge of the legacy field tables (spec 002, US7) stops the migration when it fails, even with --skip-failing.
+never_skip_patches = ["lotus_farm.patches.purge_legacy_doctypes"]
+
 # Documents of one farm: read and written only by users granted that farm.
 _scoped_doctypes = [
     "Farm",
@@ -73,10 +76,6 @@ for _dt in ('Purchase Order', 'Material Request', 'Purchase Receipt', 'Stock Ent
             _value = [_value]
         doc_events[_dt][_event] = [*_value, 'lotus_farm.push_notifications.document_hook']
 
-has_permission['Lotus Alert']='lotus_farm.controls.farm_permission'
-permission_query_conditions['Lotus Alert']='lotus_farm.permissions.lotus_alert'
-scheduler_events = {'hourly':['lotus_farm.alerts.refresh_alerts']}
-
 doc_events['Employee'] = {**doc_events.get('Employee', {}),
                           'validate': 'lotus_farm.hr_workspace.employee_identity_guard',
                           'on_update': 'lotus_farm.push_notifications.document_hook'}
@@ -98,7 +97,7 @@ for _dt in ('Attendance', 'Lotus Crew Attendance'):
         if isinstance(_value, str):
             _value = [_value]
         doc_events[_dt][_event] = [*_value, 'lotus_farm.hr_period.period_guard']
-scheduler_events.setdefault('daily', []).append('lotus_farm.hr_operations.sync_yesterday')
+scheduler_events = {'daily': ['lotus_farm.hr_operations.sync_yesterday']}
 
 # Lotus hours on HRMS salary slips (lotus_farm.hr_payroll).
 _slip = doc_events.setdefault('Salary Slip', {})

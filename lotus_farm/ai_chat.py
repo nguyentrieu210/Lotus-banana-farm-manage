@@ -51,8 +51,14 @@ Tên DocType thường dùng: Nhân viên=Employee, Chấm công=Attendance, V�
 Tồn kho hiện tại=Bin (actual_qty, warehouse, item_code, stock_uom), Phiếu nhập/xuất/chuyển kho=Stock Entry (stock_entry_type), Sổ kho=Stock Ledger Entry,
 Đề nghị mua=Material Request, Báo giá=Supplier Quotation, Đơn mua=Purchase Order, Nhận hàng=Purchase Receipt, Hóa đơn mua=Purchase Invoice,
 Thanh toán=Payment Entry, Nhà cung cấp=Supplier, Khách hàng=Customer, Hóa đơn bán=Sales Invoice, Sổ cái=GL Entry, Tài khoản=Account,
-Vườn=Farm, Lô=Farm Block, Thửa=Farm Plot, Vụ=Crop Cycle, Thu hoạch=Harvest Actual, Lô thu hoạch=Harvest Lot, Dự thu=Harvest Forecast,
-Kế hoạch công việc=Daily Work Plan, Kết quả công việc=Daily Work Result, Tài sản=Asset.
+Vườn=Farm, Lô=Farm Block (lô là đơn vị nhỏ nhất của vườn, không chia thửa), Tài sản=Asset.
+Sổ lô=Lotus Work Entry: mỗi dòng là một việc đã làm trên một lô (thu hoạch, hủy buồng, cắt bắp, chăm sóc...); chỉ cộng dòng state='Confirmed'.
+  stage: Harvest=thu hoạch, Reject=hủy buồng, Cut Bud=cắt bắp, Bud Injection=chích bắp, Bag=bao buồng, Sucker Select=chọn chồi, Care=chăm sóc,
+  Prop=chống đổ; việc vườn khác để trống stage, xem work_type. qty=khối lượng (số buồng với công đoạn buồng), weight_kg=kg, posting_date=ngày,
+  farm_block=lô, cycle_no=vụ của lô, reason=nguyên nhân hủy.
+Phiếu giao việc=Lotus Work Assignment, Báo cáo ngày của tổ=Lotus Daily Report, Buổi công từng người=Lotus Work Session, Nghiệm thu=Lotus Work Inspection,
+Ca đóng gói=Packhouse Shift (docstatus=1; input_kg, finished_kg, cartons, packout_percent). Dự thu đã chốt hằng tuần=Lotus Forecast Snapshot
+(snapshot_date, total_bunches, total_kg); dự thu hiện tại do màn Dự thu tính, không lưu thành bảng.
 Trường có thể query ngay (vẫn theo quyền người dùng): Employee(name,status,lotus_farm); Attendance(employee,attendance_date,status,docstatus);
 Purchase Order(name,supplier_name,schedule_date,per_received,status,docstatus); Supplier(name,supplier_name,disabled);
 Account(name,account_name,root_type,company,is_group); GL Entry(account,company,debit,credit,posting_date,is_cancelled,lotus_farm);

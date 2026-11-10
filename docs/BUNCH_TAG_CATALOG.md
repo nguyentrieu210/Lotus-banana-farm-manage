@@ -1,28 +1,21 @@
 # Danh mục màu dây cắt bắp — ngày áp dụng
 
-Mở **Dự thu → Danh mục màu dây** (đường dẫn `/lotus/mau-day`).
+Mở **Việc hằng ngày → Thiết lập → Màu dây cắt bắp** (đường dẫn `/lotus/mau-day`).
 Chọn vườn ở thanh phía trên, xem màu đã dùng, ngày bắt đầu và ngày kết thúc.
 Dòng đã lưu là chứng từ thật, không phải mặc định cho toàn bộ tương lai.
 
-## Hai cách tạo lịch
+## Hai cách có lịch
 
-1. **Lịch thủ công**: quản lý chọn màu và khoảng ngày không trùng kỳ đã có. Hệ thống tạo Bunch Tag mới; không sửa thẻ cũ. Ngày kết thúc không được trước ngày bắt đầu.
-2. **Quy trình nguồn đã duyệt**: nếu vườn đã có Lotus Process Adoption, chỉ dùng chức năng **Tạo kỳ từ lịch đã duyệt**. Kỳ mới dùng hàm `generate_tags` sẵn có, giữ nguyên kỳ nguồn và phiên bản. Không chèn kỳ thủ công vào khoảng lịch đã duyệt.
-
-Dữ liệu tham chiếu `lotus_farm/data/onedrive_protocol_v1.json` hiện gồm **17 màu**,
-mỗi kỳ **5 ngày** theo lịch nguồn. Đây không phải xác nhận Lotus chỉ có 17 hay
-phải áp dụng 5 ngày. Chưa được phép tự cắt xuống 12 màu hoặc đổi lịch nguồn.
-Khi có danh sách 12 màu chính thức và ngày hiệu lực, cần cấu hình một phiên bản
-lịch mới được duyệt (không sửa hồi tố chương trình đã phát hành).
+1. **Lịch Lotus theo tuần** (Vườn 222): mỗi tuần ISO một màu, xoay vòng 12 màu từ tuần 43/2026, lưu thành hai nửa tuần cùng màu (thứ Hai–thứ Năm, thứ Sáu–Chủ nhật). Bảng màu và cách nạp: [LOTUS_RIBBON_2026W43.md](LOTUS_RIBBON_2026W43.md); bảng màu nằm ở `lotus_farm/ribbon_cycle.py`. Vườn đã có lịch tuần thì không thêm kỳ thủ công.
+2. **Lịch thủ công** (vườn chưa có lịch tuần): quản lý chọn một màu trong bảng 12 màu và khoảng ngày không trùng kỳ đã có. Hệ thống tạo Bunch Tag mới; không sửa thẻ cũ. Ngày kết thúc không được trước ngày bắt đầu.
 
 ## Kiểm soát dữ liệu
 
 - Ngày bắt đầu / kết thúc là kỳ **cắt bắp**, không phải ngày thu.
-- Cùng một vườn không được trùng kỳ hai màu trong lịch thủ công.
-- Màu đã liên kết chứng từ cắt bắp không được sửa ngày/màu hoặc xóa.
-- Kỳ đã dùng giữ liên kết Bunch Operation, không cập nhật ngược khi quay vòng màu.
+- Cùng một vườn không được trùng kỳ hai màu.
+- Màu đã có dòng sổ lô (`Lotus Work Entry`) không được sửa mã, màu, ngày hoặc xóa; muốn đổi thì tạo kỳ mới.
 - Xem và tạo phụ thuộc quyền Frappe + phạm vi vườn; không dùng giao diện để thay thế kiểm tra quyền ở máy chủ.
-- Báo cáo ngày (`Lotus Field Report`) tự gắn màu đang hiệu lực vào dòng cắt bắp.
+- Báo cáo ngày tự gắn màu đang hiệu lực vào dòng cắt bắp.
 
-Kiểm tra thuần Python: `python -m unittest tests.test_bunch_tag_rules`. Nghiệm thu
+Kiểm tra thuần Python: `python -m unittest tests.test_bunch_tag_rules tests.test_ribbon_cycle`. Nghiệm thu
 thao tác tạo lịch trên site thử trước khi đưa lên live.

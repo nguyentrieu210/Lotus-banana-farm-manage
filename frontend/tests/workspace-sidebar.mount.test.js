@@ -43,12 +43,12 @@ test('sidebar orders the actual business areas and respects permitted pages',asy
 test('sidebar parent navigates to its first page; the submenu lists every page of the group, the first included',async()=>{
  const session=useSession();Object.assign(session,{user:'u',capabilities:{},commands:{},modules:{}})
  const visited=[]
- const nav=[['reports','Báo cáo'],['alerts','Cảnh báo'],['admin/masters','Danh mục'],['admin/settings','Cấu hình'],['nguoi-dung','Người dùng']]
- const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'admin/settings',onGo:path=>visited.push(path)})});await tick()
+ const nav=[['reports','Báo cáo'],['admin/masters','Danh mục'],['nguoi-dung','Người dùng']]
+ const view=mount({render:()=>h(WorkspaceSidebar,{nav,page:'nguoi-dung',onGo:path=>visited.push(path)})});await tick()
  const parents=[...view.root.querySelectorAll('.nav-parent .nav-label')].map(node=>node.textContent)
  assert.deepEqual(parents,['Tổng quan','Thiết lập'])
- assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Danh mục','Cấu hình','Người dùng & phân quyền'],'the page the group button opens is listed too')
- view.root.querySelectorAll('.nav-group-current .nav-submenu button')[2].click();await tick()
+ assert.deepEqual([...view.root.querySelectorAll('.nav-group-current .nav-submenu button .nav-label')].map(n=>n.textContent),['Danh mục','Người dùng & phân quyền'],'the page the group button opens is listed too')
+ view.root.querySelectorAll('.nav-group-current .nav-submenu button')[1].click();await tick()
  assert.deepEqual(visited,['nguoi-dung'])
  const collapsed=view.root.querySelector('.nav-group-current .nav-toggle')
  collapsed.click();await tick()
