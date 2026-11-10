@@ -108,16 +108,14 @@ def _can_import_opening():
     from lotus_farm.field_report import is_manager
     return is_manager()
 
-BUNCH_EVENT="Lotus Bunch Event"
-
 def _bunch_lines(farm,blocks=None):
-    """Confirmed ledger lines. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021)."""
+    """Confirmed lines of the sổ lô. Drafts stay out of the forecast until the đội trưởng confirms them (FR-021)."""
+    from lotus_farm.lot_ledger import bunch_rows
     filters={"farm":farm,"state":"Confirmed"}
     if blocks is not None:
         filters["farm_block"]=["in",list(blocks) or [""]]
-    return frappe.get_all(BUNCH_EVENT,filters=filters,
-        fields=["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg","reason","source_type","source_name","confirmed_by"],
-        order_by="event_date asc",limit_page_length=0)
+    return bunch_rows(filters,["name","farm_block","bunch_tag","cycle_no","event_type","event_date","qty","reject_stage","weight_kg",
+                               "reason","source_type","source_name","confirmed_by"])
 
 def _bunch_params(profiles):
     def params_for(block,cut_day):
@@ -149,7 +147,8 @@ def _bunch_cohorts(farm,blocks,waves,lines=None):
 
 def _unconfirmed(farm,blocks):
     """Entered but not confirmed: shown apart, never in the forecast."""
-    rows=frappe.get_all(BUNCH_EVENT,filters={"farm":farm,"state":"Draft","farm_block":["in",list(blocks) or [""]]},fields=["event_type","qty"],limit_page_length=0)
+    from lotus_farm.lot_ledger import bunch_rows
+    rows=bunch_rows({"farm":farm,"state":"Draft","farm_block":["in",list(blocks) or [""]]},["event_type","qty"])
     totals={}
     for r in rows:totals[r.event_type]=totals.get(r.event_type,0)+int(r.qty)
     return totals

@@ -6,11 +6,11 @@ from frappe.utils import getdate, nowdate
 
 from lotus_farm import block_forecast, bunch_forecast_engine
 from lotus_farm import field_report as field
+from lotus_farm.lot_ledger import ENTRY, bunch_rows
 from lotus_farm import forecast_snapshot_rules as rules
 from lotus_farm.forecast_parameters import DEFAULTS, validate
 
 SNAPSHOT = "Lotus Forecast Snapshot"
-EVENT = "Lotus Bunch Event"
 
 
 def _write(farm, kind):
@@ -41,7 +41,7 @@ def create(farm):
 def weekly():
     """Monday morning, for every farm with a bunch ledger. Running it twice in one week writes one copy."""
     week = bunch_forecast_engine.week_key(getdate(nowdate()))
-    for farm in {r.farm for r in frappe.get_all(EVENT, fields=["farm"], distinct=True, limit_page_length=0)}:
+    for farm in {r.farm for r in frappe.get_all(ENTRY, filters={"stage": ["is", "set"]}, fields=["farm"], distinct=True, limit_page_length=0)}:
         if not frappe.db.exists(SNAPSHOT, {"farm": farm, "week_label": week, "kind": "Weekly"}):
             _write(farm, "Weekly")
 
@@ -62,8 +62,8 @@ def _forecast_for(snapshots, week):
 
 
 def _actual_rows(farm, first, last):
-    rows = frappe.get_all(EVENT, filters={"farm": farm, "state": "Confirmed", "event_type": "Harvest", "event_date": ["between", [first, last]]},
-                          fields=["farm_block", "bunch_tag", "event_date", "qty", "weight_kg"], limit_page_length=0)
+    rows = bunch_rows({"farm": farm, "state": "Confirmed", "event_type": "Harvest", "event_date": ["between", [first, last]]},
+                      ["farm_block", "bunch_tag", "event_date", "qty", "weight_kg"])
     labels = frappe._dict({t.name: t.color_label for t in frappe.get_all("Bunch Tag", filters={"farm": farm}, fields=["name", "color_label"], limit_page_length=0)})
     codes = {b.name: b.block_code for b in frappe.get_all("Farm Block", filters={"farm": farm}, fields=["name", "block_code"], limit_page_length=0)}
     return [{"week": rules.week_key(r.event_date), "block": r.farm_block, "block_code": codes.get(r.farm_block, ""), "tag": r.bunch_tag, "ribbon": labels.get(r.bunch_tag, ""), "bunches": r.qty, "kg": r.weight_kg}
@@ -97,6 +97,6 @@ def suggest_parameters(farm, block=None):
     filters = {"farm": farm, "state": "Confirmed", "event_type": ["in", ["Cut Bud", "Harvest", "Reject"]]}
     if block:
         filters["farm_block"] = block
-    lines = frappe.get_all(EVENT, filters=filters, fields=["farm_block", "bunch_tag", "event_type", "event_date", "qty", "weight_kg", "reject_stage"], limit_page_length=0)
+    lines = bunch_rows(filters, ["farm_block", "bunch_tag", "event_type", "event_date", "qty", "weight_kg", "reject_stage"])
     result = rules.suggest(rules.colour_results(lines, nowdate()), validate(DEFAULTS))
     return dict(result, applied=False)

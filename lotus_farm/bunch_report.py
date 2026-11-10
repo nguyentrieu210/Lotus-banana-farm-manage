@@ -9,8 +9,8 @@ from lotus_farm import block_forecast, bunch_flow_rules
 from lotus_farm import bunch_report_rules as rules
 from lotus_farm import field_report as field
 from lotus_farm import report_filter_rules as report_filters
+from lotus_farm.lot_ledger import ENTRY, bunch_rows
 
-EVENT = "Lotus Bunch Event"
 MAX_DAYS = 366
 WEEKS_PER_SHEET = 10
 FIELDS = ["name", "farm_block", "work_team", "event_type", "event_date", "qty", "area_ha", "bunch_tag", "reject_stage", "reason", "weight_kg", "state", "source_type"]
@@ -21,7 +21,7 @@ def _context(farm=None, zone=None):
     if not names:
         frappe.throw("Bạn không có quyền với vườn nào.", frappe.PermissionError)
     if not farm:
-        with_ledger = {r.farm for r in frappe.get_all(EVENT, filters={"farm": ["in", names]}, fields=["farm"], distinct=True, limit_page_length=0)}
+        with_ledger = {r.farm for r in frappe.get_all(ENTRY, filters={"farm": ["in", names], "stage": ["is", "set"]}, fields=["farm"], distinct=True, limit_page_length=0)}
         farm = next((n for n in names if n in with_ledger), names[0])
     field.require_farm(farm)
     all_blocks = frappe.get_all("Farm Block", filters={"farm": farm, "active": 1}, fields=["name", "block_code", "farm_zone", "lotus_tree_count"], limit_page_length=0)
@@ -35,7 +35,7 @@ def _head(ctx):
 
 
 def _lines(ctx, states=("Confirmed",), **filters):
-    return frappe.get_all(EVENT, filters=dict(filters, farm=ctx.farm, state=["in", list(states)]), fields=FIELDS, order_by="event_date asc, creation asc", limit_page_length=0)
+    return bunch_rows(dict(filters, farm=ctx.farm, state=["in", list(states)]), FIELDS)
 
 
 def _tags(farm):
@@ -163,16 +163,19 @@ def day_report(farm=None, zone=None, from_date=None, to_date=None):
     labels = {name: tag["label"] for name, tag in _tags(ctx.farm).items()}
     reasons = {r.name: r.reason_name for r in frappe.get_all("Cancellation Reason", fields=["name", "reason_name"], limit_page_length=0)}
     teams = {t.name: t.team_name.strip() for t in field._teams(ctx.farm)}
-    lines = _lines(ctx, ("Draft", "Confirmed"), event_date=["between", [first, last]]) + _phieu_lines(ctx, first, last)
+    lines = _lines(ctx, ("Draft", "Confirmed"), event_date=["between", [first, last]]) + _phieu_lines(ctx, first, last, ("Draft", "Sent", "Confirmed"))
     return dict(_head(ctx), from_date=str(first), to_date=str(last), **rules.day_report(lines, ctx.blocks, teams, labels, reasons))
 
 
-def _phieu_lines(ctx, first=None, last=None):
-    """Bao buồng, tỉa and chống đổ are reported on phiếu and never reach the ledger; they belong in the same report."""
-    stages = {work: stage for work, stage in field._stages(ctx.farm).items() if stage in field.rules.CARE_STAGES}
-    rows = frappe.get_all("Lotus Work Entry", filters={"farm": ctx.farm, "work_type": ["in", list(stages) or [""]], **({"posting_date": ["between", [first, last]]} if first else {})},
-                          fields=["name", "farm_block", "work_team", "work_type", "posting_date", "qty", "bunch_tag"], limit_page_length=0)
-    return [{"name": r.name, "farm_block": r.farm_block, "work_team": r.work_team, "event_type": stages[r.work_type], "event_date": r.posting_date, "qty": r.qty, "bunch_tag": r.bunch_tag, "state": None} for r in rows]
+def _phieu_lines(ctx, first=None, last=None, states=("Confirmed",)):
+    """Bao buồng, tỉa and chống đổ lines of the sổ lô: the colour caps and the report need them next to the ledger stages."""
+    filters = {"farm": ctx.farm, "stage": ["in", list(field.rules.CARE_STAGES)], "state": ["in", list(states)]}
+    if first:
+        filters["posting_date"] = ["between", [first, last]]
+    rows = frappe.get_all(ENTRY, filters=filters, fields=["name", "farm_block", "work_team", "stage", "posting_date", "qty", "bunch_tag", "state"],
+                          limit_page_length=0)
+    return [{"name": r.name, "farm_block": r.farm_block, "work_team": r.work_team, "event_type": r.stage, "event_date": r.posting_date, "qty": r.qty,
+             "bunch_tag": r.bunch_tag, "state": "Draft" if r.state == "Sent" else r.state} for r in rows]
 
 
 

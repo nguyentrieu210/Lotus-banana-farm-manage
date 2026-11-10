@@ -41,7 +41,8 @@ permission_query_conditions = {
 # Công việc ngoài vườn: written only through lotus_farm.field_report, read by farm.
 for _name, _query in (("Lotus Work Assignment", "assignment_query"), ("Lotus Work Entry", "entry_query"),
                       ("Lotus Work Session", "session_query"), ("Lotus Work Inspection", "inspection_query"),
-                      ("Lotus Bunch Event", "bunch_event_query"), ("Lotus Forecast Snapshot", "forecast_snapshot_query")):
+                      ("Lotus Bunch Event", "bunch_event_query"), ("Lotus Forecast Snapshot", "forecast_snapshot_query"),
+                      ("Lotus Daily Report", "daily_report_query")):
     has_permission[_name] = "lotus_farm.field_report.permission"
     permission_query_conditions[_name] = "lotus_farm.field_report." + _query
 doc_events = {name: {"validate": "lotus_farm.controls.check_farm"} for name in _scoped_doctypes}

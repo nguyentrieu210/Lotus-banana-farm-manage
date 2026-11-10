@@ -50,7 +50,7 @@ def install_fields():
         "Work Type": [
             dict(fieldname="lotus_farm", label="Vườn dùng", fieldtype="Link", options="Farm", insert_after="work_name"),
             dict(fieldname="lotus_bunch_stage", label="Công đoạn buồng", fieldtype="Select",
-                 options="\nSucker Select\nBud Injection\nCut Bud\nBag\nCare\nProp", insert_after="lotus_farm"),
+                 options="\nSucker Select\nBud Injection\nCut Bud\nBag\nCare\nProp\nReject\nHarvest", insert_after="lotus_farm"),
             dict(fieldname="lotus_work_group", label="Nhóm việc", fieldtype="Select", options="\nBunch\nField\nProtection",
                  insert_after="lotus_bunch_stage"),
             dict(fieldname="lotus_pay_mode", label="Cách trả", fieldtype="Select", options="\nCount\nLot\nDaywork",
@@ -58,6 +58,8 @@ def install_fields():
             dict(fieldname="lotus_cap_basis", label="Trần theo", fieldtype="Select", options="\nCutBud\nLotTrees\nLotArea\nNone",
                  insert_after="lotus_pay_mode"),
             dict(fieldname="lotus_requires_material", label="Bắt buộc ghi vật tư", fieldtype="Check", insert_after="lotus_cap_basis"),
+            dict(fieldname="lotus_records_disease", label="Ghi sâu bệnh (bệnh, số cây, mức độ)", fieldtype="Check",
+                 insert_after="lotus_requires_material"),
         ],
         "Item": [
             dict(fieldname="lotus_phi_days", label="Lotus · Thời gian cách ly trước thu hoạch (ngày)", fieldtype="Int",
@@ -70,8 +72,13 @@ def install_fields():
         ],
     }, update=True, ignore_validate=True)
     if frappe.db.table_exists(SESSION):
-        # One buổi of one person belongs to one phiếu: held by the database, not only by the API.
-        frappe.db.add_unique(SESSION, ["employee", "posting_date", "session"], "lotus_work_session_once")
+        # One buổi of one person may be shared between several lines of the sổ lô (weights add up to 1), but appears
+        # once per line: held by the database, not only by the API.
+        if frappe.db.has_index(f"tab{SESSION}", "lotus_work_session_once"):
+            frappe.db.sql_ddl(f"alter table `tab{SESSION}` drop index lotus_work_session_once")
+        frappe.db.add_unique(SESSION, ["employee", "posting_date", "session", "entry"], "lotus_work_session_line")
+    if frappe.db.table_exists("Lotus Daily Report"):
+        frappe.db.add_unique("Lotus Daily Report", ["farm", "work_team", "report_date"], "lotus_daily_report_once")
 
 
 # ---------------------------------------------------------------- access
@@ -140,6 +147,7 @@ assignment_query = farm_query(ASSIGNMENT)
 entry_query = farm_query(ENTRY)
 session_query = farm_query(SESSION)
 bunch_event_query = farm_query("Lotus Bunch Event")
+daily_report_query = farm_query("Lotus Daily Report")
 forecast_snapshot_query = farm_query("Lotus Forecast Snapshot")
 inspection_query = farm_query(INSPECTION)
 
@@ -215,7 +223,8 @@ def _works(farm):
     priced = set(frappe.get_all("Lotus Piece Rate", filters={"farm": farm}, pluck="work_type"))
     rows = frappe.get_all("Work Type", filters={"active": 1},
                           fields=["name", "work_code", "work_name", "uom", "lotus_farm", "lotus_bunch_stage", "productivity_per_workday",
-                                  "lotus_work_group", "lotus_pay_mode", "lotus_cap_basis", "lotus_requires_material"],
+                                  "lotus_work_group", "lotus_pay_mode", "lotus_cap_basis", "lotus_requires_material",
+                                  "lotus_records_disease"],
                           order_by="work_code asc", limit_page_length=0)
     return [w for w in rows if (w.lotus_farm == farm or w.name in priced) and w.lotus_pay_mode]
 
@@ -387,23 +396,16 @@ def _bunch_counts(farm, tags, exclude_entry=None):
     tags = [t for t in set(tags) if t]
     if not tags:
         return cut, done
-    stages = _stages(farm)
-    rows = frappe.get_all(ENTRY, filters={"farm": farm, "bunch_tag": ["in", tags], "name": ["!=", exclude_entry or ""]},
-                          fields=["farm_block", "bunch_tag", "work_type", "qty"], limit_page_length=0)
+    # Every line of the sổ lô carries its stage: cắt bắp from daily reports and the opening book alike.
+    rows = frappe.get_all(ENTRY, filters={"farm": farm, "bunch_tag": ["in", tags], "name": ["!=", exclude_entry or ""],
+                                          "state": ["!=", "Voided"]},
+                          fields=["farm_block", "bunch_tag", "stage", "qty"], limit_page_length=0)
     for r in rows:
-        stage = stages.get(r.work_type)
-        if stage == rules.CUT_BUD:
+        if r.stage == rules.CUT_BUD:
             cut[(r.farm_block, r.bunch_tag)] = cut.get((r.farm_block, r.bunch_tag), 0) + flt(r.qty)
-        elif stage in rules.COLOUR_STAGES:
-            key = (r.farm_block, r.bunch_tag, stage)
+        elif r.stage in rules.COLOUR_STAGES:
+            key = (r.farm_block, r.bunch_tag, r.stage)
             done[key] = done.get(key, 0) + flt(r.qty)
-    # The ledger holds cắt bắp from the quick sheet and the opening book; older phiếu count only where it has nothing.
-    ledger = {}
-    for r in frappe.get_all("Lotus Bunch Event", filters={"farm": farm, "bunch_tag": ["in", tags], "event_type": rules.CUT_BUD,
-                                                          "state": ["!=", "Voided"]},
-                            fields=["farm_block", "bunch_tag", "qty"], limit_page_length=0):
-        ledger[(r.farm_block, r.bunch_tag)] = ledger.get((r.farm_block, r.bunch_tag), 0) + flt(r.qty)
-    cut.update(ledger)
     return cut, done
 
 
