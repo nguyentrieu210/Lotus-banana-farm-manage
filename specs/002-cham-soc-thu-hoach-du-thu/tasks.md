@@ -409,7 +409,7 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 - [x] T091 [P] Viết lại hướng dẫn cho tổ trưởng, đội trưởng, quản lý vườn và kế toán (phần nhập kho thành phẩm theo ca) trong docs/FIELD_REPORT.md và docs/CHAM_BUONG_DU_THU.md
 - [x] T092 [P] Thêm mục "Có gì mới" ở đầu frontend/src/release-notes.js
 - [x] T093 Đo hiệu năng theo plan.md (mở Hôm nay dưới 2 giây, lưu một lô dưới 1 giây, báo cáo và dự thu toàn vườn dưới 3 giây); ghi kết quả vào specs/002-cham-soc-thu-hoach-du-thu/baseline.md
-- [ ] T094 Chạy đủ specs/002-cham-soc-thu-hoach-du-thu/quickstart.md và toàn bộ test (`node --test`, unit Python, integration), so với mốc ở T002
+- [x] T094 Chạy đủ specs/002-cham-soc-thu-hoach-du-thu/quickstart.md và toàn bộ test (`node --test`, unit Python, integration), so với mốc ở T002
 - [x] T095 Chuẩn bị triển khai VPS trong specs/002-cham-soc-thu-hoach-du-thu/deploy.md. Chỉ chạy khi chủ vườn ra lệnh và cung cấp mật khẩu SSH. Các bước:
   - sao lưu;
   - migrate;
