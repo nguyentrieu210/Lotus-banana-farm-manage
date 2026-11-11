@@ -21,7 +21,7 @@ function remove(view){views.value=deleteView(props.storageKey,view.name)}
 <template>
  <div v-if="visible" class="lotus-table-views" role="toolbar" aria-label="Bộ lọc và chế độ xem của bảng">
   <div class="lotus-table-views__chips">
-   <span v-for="item in active" :key="item.field" class="lotus-chip">{{item.label}}: {{item.count}} giá trị<button type="button" :aria-label="'Bỏ lọc '+item.label" @click="clearOne(item.field)"><LotusIcon name="x"/></button></span>
+   <span v-for="item in active" :key="item.field" class="lotus-chip lotus-chip--primary lotus-chip--filter">{{item.label}}: {{item.count}} giá trị<button type="button" :aria-label="'Bỏ lọc '+item.label" @click="clearOne(item.field)"><LotusIcon name="x"/></button></span>
    <UiButton v-if="active.length>1" type="button" variant="ghost" size="sm" @click="emit('clear')">Xóa tất cả</UiButton>
   </div>
   <div class="lotus-table-views__actions">
@@ -44,10 +44,11 @@ function remove(view){views.value=deleteView(props.storageKey,view.name)}
 <style>
 .lotus-table-views{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 8px}
 .lotus-table-views__chips,.lotus-table-views__actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.lotus-chip{display:inline-flex;align-items:center;gap:4px;min-height:28px;padding:0 4px 0 10px;border:1px solid var(--lotus-border);border-radius:999px;background:var(--lotus-primary-subtle);color:var(--lotus-primary-text);font-size:var(--lotus-text-sm)}
-.lotus-chip button{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
-.lotus-chip button:hover{background:color-mix(in srgb,currentColor 12%,transparent)}
-.lotus-chip .lotus-icon{width:14px;height:14px}
+/* Active-filter chip: the kit chip (lotus-kit.css) in the primary tone, with a remove button. */
+.lotus-chip--filter{height:auto;min-height:28px;padding:0 4px 0 10px;font-size:var(--lotus-text-sm);font-weight:var(--lotus-weight-medium)}
+.lotus-chip--filter button{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
+.lotus-chip--filter button:hover{background:color-mix(in srgb,currentColor 12%,transparent)}
+.lotus-chip--filter .lotus-icon{width:14px;height:14px}
 .lotus-table-views__save{display:grid;gap:8px;min-width:240px}
 .lotus-table-views__save label{display:grid;gap:4px;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
 </style>

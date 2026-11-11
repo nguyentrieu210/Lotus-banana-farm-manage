@@ -8,9 +8,9 @@
 .lotus-pwa-shell{box-sizing:border-box;min-height:100dvh;background:var(--lotus-pwa-bg);color:var(--lotus-pwa-ink);padding-bottom:calc(76px + env(safe-area-inset-bottom));font-family:var(--lotus-font);font-size:15px;line-height:1.5}
 .lotus-pwa-shell *{box-sizing:border-box}
 .lotus-pwa-shell :is(button,a,select){touch-action:manipulation}
-.lotus-pwa-header{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);background:var(--lotus-primary-600);border-bottom:0;color:#fff}
+.lotus-pwa-header{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);background:linear-gradient(90deg,var(--lotus-topbar),var(--lotus-topbar-end));border-bottom:0;color:#fff}
 .lotus-pwa-header .van-nav-bar{max-width:var(--lotus-pwa-width);margin:auto;background:transparent;box-shadow:none;color:#fff}
-.lotus-pwa-header .van-nav-bar__left{left:0;right:56px;max-width:none;min-width:0;justify-content:flex-start;padding:0 6px 0 12px;text-align:left}
+.lotus-pwa-header .van-nav-bar__left{left:0;right:96px;max-width:none;min-width:0;justify-content:flex-start;padding:0 6px 0 12px;text-align:left}
 .lotus-pwa-header .van-nav-bar__right{right:6px;padding:0}
 .lotus-pwa-header-title{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;min-width:0;line-height:1.3;text-align:left}
 .lotus-pwa-header-title strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.18;font-size:16px;font-weight:700;color:#fff;text-align:left}
@@ -20,7 +20,7 @@
 .lotus-pwa-bottom .van-tabbar{z-index:55;max-width:var(--lotus-pwa-width);left:50%;transform:translateX(-50%);border-top:1px solid var(--lotus-pwa-line);box-shadow:0 -4px 20px color-mix(in srgb,var(--lotus-success-900) 3%,transparent)}
 .lotus-pwa-bottom .van-tabbar-item{min-width:0;min-height:60px;gap:3px}
 .lotus-pwa-bottom .van-tabbar-item__icon{font-size:23px;margin:0}
-.lotus-pwa-bottom .van-tabbar-item__text{font-size:0;line-height:0;white-space:nowrap}
+.lotus-pwa-bottom .van-tabbar-item__text{max-width:100%;font-size:11px;line-height:1.2;white-space:nowrap}.lotus-pwa-tab-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}.lotus-outdoor .lotus-pwa-bottom .van-tabbar-item__text{font-size:12px;font-weight:600}
 .lotus-pwa-bottom .van-tabbar-item--active{background:var(--lotus-page);font-weight:700}
 .lotus-pwa-keyboard{padding-bottom:16px}
 .lotus-sr-only,.lotus-pwa-sr-only{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
@@ -196,3 +196,10 @@
 }
 .lotus-pwa-shell .mobile-empty{margin:0;border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);padding:22px 16px;color:var(--lotus-muted);font-size:14px;text-align:center}
 .lotus-pwa-shell .lotus-pwa-inline-icon{font-size:1em;vertical-align:-.125em}
+
+/* Spec 004: outdoor-mode toggle in the header; the offline bar stays visible under the sticky header. */
+.lotus-pwa-header .van-nav-bar__right{display:flex;align-items:center;gap:2px}
+.lotus-pwa-outdoor{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:10px;background:transparent;color:#fff}
+.lotus-pwa-outdoor[aria-pressed="true"]{background:rgb(255 255 255/.24);box-shadow:inset 0 0 0 1px rgb(255 255 255/.5)}
+.lotus-pwa-outdoor .lotus-icon{width:22px;height:22px}
+.lotus-pwa-shell .lotus-netbar{top:calc(54px + env(safe-area-inset-top));z-index:59}

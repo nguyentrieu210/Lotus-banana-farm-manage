@@ -1,3 +1,4 @@
+import {ribbonBackground} from './ribbon-colors.js'
 // Báo cáo ngày của tổ (lotus_farm.lot_report): pure helpers for the lô cards and the entry dialog of one lô. Which inputs a
 // việc needs, the lines sent back to the server, the colours a line may take, who works by default, and the draft kept on
 // the phone while the network is gone. The server stays the authority on every rule and number.
@@ -126,20 +127,9 @@ export function clearDraft(report,block){
  try{localStorage.removeItem(draftKey(report,block))}catch{/* nothing to clear */}
 }
 
-// The ribbon catalogue stores colour codes (DO, CAM, XANH_LA, DO_XANH_LA…), not CSS colours. Two-colour ribbons show half each.
-const RIBBON={XANH_DUONG:'#1976d2',XANH_LA:'#2e7d32',TRANG:'#ffffff',CAM:'#f57c00',DEN:'#212121',TIM:'#7b1fa2',DO:'#d32f2f'}
-export function swatch(code){
- if(!code)return 'transparent'
- if(/^(#|rgb|hsl)/i.test(code))return code
- let rest=String(code).toUpperCase().replace(/[\s-]+/g,'_')
- const colours=[]
- while(rest){
-  const key=Object.keys(RIBBON).find(k=>rest.startsWith(k))
-  if(!key)return 'transparent'
-  colours.push(RIBBON[key]);rest=rest.slice(key.length).replace(/^_/,'')
- }
- return colours.length>1?`linear-gradient(90deg,${colours[0]} 50%,${colours[1]} 50%)`:colours[0]||'transparent'
-}
+// Ribbon colours (DO, CAM, XANH_LA, DO_XANH_LA…) come from the tokens through ribbon-colors.js (spec 004): one source
+// for every screen, outlined and the same in light, dark and outdoor. Two-colour ribbons show half each.
+export const swatch=code=>ribbonBackground(code)
 
 export const amountText=v=>Number(v||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 export const money=v=>Math.round(Number(v||0)).toLocaleString('vi-VN')+' đ'

@@ -114,8 +114,8 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-item-cell .name{font-weight:600}
 .excel-trigger.active{background:var(--lotus-accent-soft);color:var(--lotus-accent)}
 .excel-popup footer button:last-child{background:var(--lotus-primary-600);color:white;border-color:var(--lotus-primary-600)}
-.excel-popup[popover]{margin:0;inset:auto}
-.excel-popup[popover]:not(:popover-open){display:none}
+
+
 .app-shell .scope-picker{gap:8px;padding:0 0 10px;margin-bottom:8px}
 .app-shell .scope-picker label{min-width:115px;font-size:10px;gap:3px}
 .app-shell .scope-picker input,.app-shell .scope-picker select,.stock-shell .stock-scope input,.stock-shell .stock-scope select{height:32px;min-height:32px;padding:5px 8px;font-size:12px}
@@ -289,5 +289,5 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-excel-popup input[type=checkbox]:focus:not(:focus-visible){outline:none}
 .lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
 .lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--lotus-neutral-200)}
-.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:#fff;color:var(--lotus-neutral-700);font-size:12px}
+.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:var(--lotus-surface);color:var(--lotus-neutral-700);font-size:12px}
 .lotus-excel-popup footer .excel-apply{background:var(--lotus-accent,var(--lotus-primary-600));color:#fff;border-color:var(--lotus-accent,var(--lotus-primary-600))}

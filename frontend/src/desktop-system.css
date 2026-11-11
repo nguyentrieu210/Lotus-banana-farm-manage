@@ -50,8 +50,8 @@
   }
   .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
   .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
-  .lotus-ui :is(.lotus-ag-grid,.ag-root-wrapper,.lotus-data-table) {border-color:var(--lotus-border);border-radius:9px}
-  .lotus-ui :is(.lotus-ag-grid,.calendar-table,.stock-table,.attendance-roster,.hr-table) :is(th,.ag-header-cell) {
+  /* Shared table (.lotus-ag-grid): border, radius, header colours and weight come from grid-theme.js (spec 004). */
+  .lotus-ui :is(.calendar-table,.stock-table,.attendance-roster,.hr-table) th {
     color:var(--lotus-table-heading);background:var(--lotus-table-header);
     border-color:var(--lotus-border);font-weight:650;
   }

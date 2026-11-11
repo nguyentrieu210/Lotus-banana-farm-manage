@@ -48,7 +48,8 @@ test('one card per colour of a week, newest first; harvested-out colours only on
  const view=show();await settle()
  const cards=[...view.root.querySelectorAll('.ribbon-card')]
  assert.deepEqual(cards.map(c=>c.querySelector('strong').textContent),['Trắng tuần 45 lần 1','Đỏ tuần 43 lần 1'])
- assert.match(cards[1].textContent,/Đến tuổi thu · 11 tuần tuổi · 2 lô.*Cắt 100 · bao 80 · thu 16.*Còn 80/)
+ // Spec 004: the card is the kit ribbon batch card — status chip, age and lots, then the four counts.
+ assert.match(cards[1].textContent,/11 tuần tuổi · 2 lô.*Đến tuổi thu.*Cắt bắp\s*100.*Bao\s*80.*Đã thu\s*16.*Còn trên cây\s*80/)
  view.root.querySelector('.ribbon-board__tools input[type=checkbox],.ribbon-board__tools button[role=checkbox]').click();await settle()
  assert.equal(view.root.querySelectorAll('.ribbon-card').length,3,'the done colour shows once asked')
  view.unmount()

@@ -82,9 +82,10 @@ test('a draft survives on the phone until it is cleared, and a broken storage is
 })
 
 test('ribbon codes become colours; two-colour ribbons show half each',()=>{
- assert.equal(swatch('CAM'),'#f57c00')
- assert.equal(swatch('DO_XANH_LA'),'linear-gradient(90deg,#d32f2f 50%,#2e7d32 50%)')
- assert.equal(swatch('XANH_LA_XANH_DUONG'),'linear-gradient(90deg,#2e7d32 50%,#1976d2 50%)')
+ // Spec 004: colours are tokens (lotus-tokens.css --lotus-ribbon-*), so dark and outdoor modes follow.
+ assert.equal(swatch('CAM'),'var(--lotus-ribbon-cam)')
+ assert.equal(swatch('DO_XANH_LA'),'linear-gradient(90deg,var(--lotus-ribbon-do) 0% 50%,var(--lotus-ribbon-xanh-la) 50% 100%)')
+ assert.equal(swatch('XANH_LA_XANH_DUONG'),'linear-gradient(90deg,var(--lotus-ribbon-xanh-la) 0% 50%,var(--lotus-ribbon-xanh-duong) 50% 100%)')
  assert.equal(swatch('#123456'),'#123456')
  assert.equal(swatch('LA'),'transparent');assert.equal(swatch(''),'transparent')
 })

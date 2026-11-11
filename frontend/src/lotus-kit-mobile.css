@@ -1,0 +1,13 @@
+/* Phone-only part of the Lotus kit (spec 004): the offline bar and the outdoor-mode adjustments.
+   Loaded by the phone PWAs and the showcase, not by the desktop app, to keep its stylesheet small (SC-008). */
+.lotus-outdoor .lotus-chip{border-width:2px}
+.lotus-outdoor .lotus-switch__root{width:48px;height:28px}
+.lotus-outdoor .lotus-switch__thumb{width:24px;height:24px}
+.lotus-outdoor .lotus-switch__root[data-state="checked"] .lotus-switch__thumb{transform:translateX(22px)}
+.lotus-outdoor .lotus-lot-tile{min-height:48px;font-size:var(--lotus-text-base)}
+.lotus-netbar{position:sticky;top:0;z-index:var(--lotus-z-sticky);display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--lotus-tone-warning-solid);color:var(--lotus-tone-warning-on);font-size:var(--lotus-text-md);font-weight:var(--lotus-weight-semibold)}
+.lotus-netbar .lotus-icon{flex:none;width:18px;height:18px}
+.lotus-netbar__queue{margin-left:auto;padding:1px 8px;border-radius:var(--lotus-radius-full);background:rgb(0 0 0/.12);font-variant-numeric:tabular-nums}
+.lotus-netbar--online{background:var(--lotus-tone-success-solid);color:var(--lotus-tone-success-on)}
+.lotus-netbar__text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lotus-netbar__queue{flex:none;white-space:nowrap}
