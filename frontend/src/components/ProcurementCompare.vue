@@ -4,21 +4,32 @@ import ListPage from './ListPage.vue'
 import LotusField from './form/LotusField.vue'
 import {Button} from './ui/button'
 import {unitLabel} from '../units'
-import {money,newKey,supplierOffer,cheapestCost,needsReason,defaultChoices,compareSelections} from '../procurement'
+import {money,newKey,supplierOffer,cheapestCost,needsReason,defaultChoices,defaultReasons,compareSelections} from '../procurement'
+import CompareCards from './procurement/CompareCards.vue'
+import LotusMobileButton from './LotusMobileButton.vue'
+import LotusMobileFeedback from './LotusMobileFeedback.vue'
+import {lotusMethod} from './procurement/use-procurement'
 // So sánh giá: one row per request line (or item), one column per supplier. The cheapest landed cost per stock unit
 // is chosen by default; picking another supplier asks for a reason. "Tạo đơn" turns the choices into purchase orders
-// (lotus_farm.procurement.select_quotes): lines from an approved request at the cheapest price are approved at once.
+// (lotus_farm.procurement.select_quotes). Every order is a draft waiting for the director's signature (spec 003, FR-020);
+// choosing an approver here sends the new orders to them at once. On the phone each item is a card (CompareCards).
 const props=defineProps({company:String,mobile:Boolean,canCreate:Boolean,api:{type:Function,required:true}})
 const emit=defineEmits(['created'])
-const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),request=ref(''),choices=ref({}),reasons=ref({}),search=ref(''),key=ref('')
+const data=ref(null),busy=ref(false),saving=ref(false),error=ref(''),request=ref(''),choices=ref({}),reasons=ref({}),search=ref(''),key=ref(''),notice=ref('')
+const approver=ref(''),approvers=ref([])
+async function loadApprovers(){
+ if(!props.canCreate||!props.company)return
+ try{const found=await lotusMethod('purchasing','approver_options',{company:props.company});approvers.value=(found?.candidates?.APPROVE||[]).map(c=>({value:c.user,label:c.name}))}catch{approvers.value=[]}
+}
 const fmt=value=>value==null?'—':Number(value).toLocaleString('vi-VN',{maximumFractionDigits:3})
 async function load(){
  if(!props.company)return
  busy.value=true;error.value=''
- try{data.value=await props.api('compare',{company:props.company,...(request.value?{request:request.value}:{})});choices.value=defaultChoices(data.value.rows);reasons.value={};key.value=''}
+ try{data.value=await props.api('compare',{company:props.company,...(request.value?{request:request.value}:{})});choices.value=defaultChoices(data.value.rows);reasons.value=defaultReasons(data.value.rows);key.value=''}
  catch(e){error.value=e.message}finally{busy.value=false}
 }
 watch(()=>[props.company,request.value],load,{immediate:true})
+watch(()=>props.company,loadApprovers,{immediate:true})
 const suppliers=computed(()=>data.value?.suppliers||[])
 const rows=computed(()=>{const q=search.value.trim().toLocaleLowerCase('vi');return (data.value?.rows||[]).filter(r=>!q||[r.item_name,r.item,r.request].some(x=>String(x||'').toLocaleLowerCase('vi').includes(q)))})
 const requestOptions=computed(()=>(data.value?.requests||[]).map(r=>({value:r.name,label:r.name+' · '+r.state})))
@@ -36,9 +47,23 @@ async function create(){
  if(saving.value||!chosen.value.length)return
  saving.value=true;error.value=''
  try{
-  const result=await props.api('select_quotes',{company:props.company,selections:chosen.value,client_key:key.value||=newKey()},true)
+  const result=await props.api('select_quotes',{company:props.company,selections:chosen.value,client_key:key.value||=newKey(),...(approver.value?{approver:approver.value}:{})},true)
   key.value=''
   emit('created',result)
+  await load()
+ }catch(e){error.value=e.message}finally{saving.value=false}
+}
+// Lưu lựa chọn mà chưa tạo đơn: the choice stays on the proposal line, so "Lập đơn từ đề xuất" brings supplier and price.
+const savable=computed(()=>rows.value.filter(r=>r.request&&r.request_line&&(choices.value[r.key]||'')!==(r.selected_line||'')))
+async function saveChoices(){
+ if(saving.value||!savable.value.length||missingReason.value)return
+ saving.value=true;error.value='';notice.value=''
+ try{
+  for(const row of savable.value){
+   const offer=(row.offers||[]).find(o=>o.line===choices.value[row.key])
+   await props.api('choose_quote',{company:props.company,request:row.request,request_item:row.request_line,quotation:offer?.quotation||'',quotation_item:offer?.line||'',reason:offer&&needsReason(row,offer.line)?String(reasons.value[row.key]||'').trim():''},true)
+  }
+  notice.value='Đã lưu lựa chọn báo giá.'
   await load()
  }catch(e){error.value=e.message}finally{saving.value=false}
 }
@@ -46,14 +71,28 @@ defineExpose({refresh:load})
 </script>
 
 <template>
+ <section v-if="mobile" class="compare-mobile" aria-label="So sánh giá">
+  <LotusField v-model="request" mobile label="Đề xuất mua" :options="requestOptions" empty-option="Mọi đề xuất và báo giá lẻ"/>
+  <LotusMobileFeedback v-if="error" kind="error">{{error}}</LotusMobileFeedback>
+  <LotusMobileFeedback v-if="notice" kind="success">{{notice}}</LotusMobileFeedback>
+  <LotusMobileFeedback v-if="busy" kind="loading">Đang tải báo giá…</LotusMobileFeedback>
+  <p v-if="!busy&&!rows.length" class="mobile-empty">Chưa có báo giá còn hiệu lực.</p>
+  <CompareCards v-model:choices="choices" v-model:reasons="reasons" :rows="rows" :suppliers="suppliers" :disabled="saving"/>
+  <p v-if="pendingRequests" class="lotus-form-note" role="status">Có dòng thuộc đề xuất chưa duyệt xong: chưa tạo đơn được cho các dòng này.</p>
+  <template v-if="canCreate&&rows.length">
+   <LotusField v-if="approvers.length" v-model="approver" mobile label="Gửi duyệt ngay cho" :options="approvers" empty-option="Chỉ tạo đơn nháp" :searchable="false"/>
+   <LotusMobileButton :disabled="saving||!savable.length||missingReason" @click="saveChoices">Lưu lựa chọn ({{savable.length}})</LotusMobileButton>
+   <LotusMobileButton variant="primary" :disabled="saving||busy||!chosen.length||missingReason" @click="create">Tạo đơn từ lựa chọn ({{chosen.length}})</LotusMobileButton>
+  </template>
+ </section>
  <!-- ListPage forwards the cell-* slots it sees when created: rebuild it when the supplier columns change. -->
- <ListPage :key="suppliers.map(s=>s.name).join('|')" title="So sánh giá" :rows="rows" :columns="columns" :loading="busy" :error="error" v-model:search="search" search-placeholder="Tìm mặt hàng, đề nghị…" row-key="key" :row-detail="false"
+ <ListPage v-else :key="suppliers.map(s=>s.name).join('|')" title="So sánh giá" :rows="rows" :columns="columns" :loading="busy" :error="error" v-model:search="search" search-placeholder="Tìm mặt hàng, đề xuất…" row-key="key" :row-detail="false"
    empty="Chưa có báo giá còn hiệu lực. Thêm báo giá hoặc Nhập Excel ở mục Báo giá." @refresh="load">
-  <template #filters><LotusField v-model="request" aria-label="Đề nghị mua" :options="requestOptions" empty-option="Mọi đề nghị và báo giá lẻ"/></template>
-  <template #actions><Button v-if="canCreate" :disabled="saving||busy||!chosen.length||missingReason" @click="create">Tạo đơn từ lựa chọn ({{chosen.length}})</Button></template>
+  <template #filters><LotusField v-model="request" aria-label="Đề xuất mua" :options="requestOptions" empty-option="Mọi đề xuất và báo giá lẻ"/></template>
+  <template #actions><Button v-if="canCreate" :disabled="saving||busy||!chosen.length||missingReason" @click="create">Tạo đơn từ lựa chọn ({{chosen.length}})</Button><Button v-if="canCreate" variant="outline" :disabled="saving||!savable.length||missingReason" @click="saveChoices">Lưu lựa chọn ({{savable.length}})</Button><LotusField v-if="canCreate&&approvers.length" v-model="approver" aria-label="Gửi duyệt ngay cho" :options="approvers" empty-option="Chỉ tạo đơn nháp" :searchable="false"/></template>
   <template #before>
-   <p class="lotus-form-note">Giá đủ đã gồm VAT và vận chuyển, tính trên 1 đơn vị tồn kho. Ô được tô là nhà cung cấp đang chọn; mặc định chọn giá thấp nhất. Dòng thuộc đề nghị đã duyệt và chọn giá thấp nhất sẽ thành đơn mua đã duyệt ngay; các dòng khác thành đơn nháp chờ duyệt.</p>
-   <p v-if="pendingRequests" class="lotus-form-note" role="status">Có dòng thuộc đề nghị chưa duyệt xong: chưa tạo đơn được cho các dòng này, bỏ chọn hoặc chờ đề nghị được duyệt.</p>
+   <p class="lotus-form-note">Giá đủ đã gồm VAT và vận chuyển, tính trên 1 đơn vị tồn kho. Ô được tô là nhà cung cấp đang chọn; mặc định chọn giá thấp nhất. Mọi đơn tạo ra đều chờ giám đốc ký duyệt.</p>
+   <p v-if="pendingRequests" class="lotus-form-note" role="status">Có dòng thuộc đề xuất chưa duyệt xong: chưa tạo đơn được cho các dòng này, bỏ chọn hoặc chờ đề xuất được duyệt.</p>
   </template>
   <template v-for="(s,i) in suppliers" :key="s.name" #[`cell-s${i}`]="{row}">
    <button v-if="supplierOffer(row,s.name)" type="button" class="compare-offer" :class="{'is-chosen':choices[row.key]===supplierOffer(row,s.name).line,'is-best':supplierOffer(row,s.name).unit_cost===cheapestCost(row)}"

@@ -82,7 +82,7 @@ description: "Danh sách việc: đúc lại bộ giao diện Lotus đạt chu�
 
 - [x] T037 [US6] `frontend/src/components/UiShowcase.vue` và sáu phần trong `frontend/src/components/showcase/`, dữ liệu mẫu cố định `sample-data.js`, tham số `?section=&mode=&density=`
 - [x] T038 [US6] `frontend/tests/showcase-coverage.test.js` (đủ thành phần, ghi rõ dữ liệu mẫu, không gọi máy chủ, không vào bản chạy thật)
-- [ ] T039 [US6] Chủ vườn xem và duyệt trang mẫu (SC-010), nhất là thanh dưới có chữ và nút phá hủy mới
+- [x] T039 [US6] Chủ vườn xem và duyệt trang mẫu (SC-010), nhất là thanh dưới có chữ và nút phá hủy mới. Chủ vườn duyệt ngày 11/11/2026 (gồm thanh dưới có chữ, nút Xóa tô nhạt, dòng bảng 36px).
 
 ## Phase 9: User Story 7, 8 – Chuyển phân hệ, biểu đồ, bản in (P3)
 
@@ -94,7 +94,7 @@ description: "Danh sách việc: đúc lại bộ giao diện Lotus đạt chu�
 
 - [x] T043 Toàn bộ test frontend trên VPS: xem kết quả mới nhất trong `baseline.md`
 - [x] T044 Dung lượng kiểu sau nén ≤ +15% mỗi ứng dụng (SC-008): máy tính +14,8%, Kho +11,8%, Mua hàng +11,3%, Công việc +11,3%, Nhân sự +13,1%
-- [ ] T045 Gộp lại `main` và nhánh 003 (`lotus-tokens.css` thêm `--lotus-signature-ink`; `tests/design-tokens.test.js` quét thêm thư mục con), chạy lại toàn bộ test. Đợt 2: đã gộp `main` 737f686 (commit 9e1646f, 599/599). Nhánh 003 còn ~49 tệp chưa commit nên chưa gộp được. Hai nhánh cùng sửa `lotus-tokens.css` (004 viết lại cả tệp; 003 thêm `--lotus-signature-ink`: thêm token đó vào bộ mới), `LotusMobileShell.vue`, `WorkspaceBar.vue`, `buying-mobile.css`, `tests/design-tokens.test.js`.
+- [x] T045 Gộp lại `main` và nhánh 003 (`lotus-tokens.css` thêm `--lotus-signature-ink`; `tests/design-tokens.test.js` quét thêm thư mục con), chạy lại toàn bộ test. Đợt 2: đã gộp `main` 737f686 (commit 9e1646f, 599/599). Nhánh 003 còn ~49 tệp chưa commit nên chưa gộp được. Hai nhánh cùng sửa `lotus-tokens.css` (004 viết lại cả tệp; 003 thêm `--lotus-signature-ink`: thêm token đó vào bộ mới), `LotusMobileShell.vue`, `WorkspaceBar.vue`, `buying-mobile.css`, `tests/design-tokens.test.js`. Gộp `main` a8a304a (đã có spec 003, đang chạy thật 68dd563) ngày 11/11: giữ token "Đất và lá" và thêm `--lotus-signature-ink`; `mobile-ui.css` theo bộ chọn `:is(.lotus-pwa-shell,.lotus-pwa-dialog)` của 003; khung điện thoại có cả nút ngoài trời và hộp ký; cột trạng thái đơn mua là chip kèm "· quá hẹn". Frontend 641/641. Kiểu sau nén so với main mới: máy tính +9,1%, Kho +5,7%, Mua hàng +5,7%, Công việc +8,9%, Nhân sự +6,6%.
 - [ ] T046 Dựng bản phát hành và đưa lên VPS khi chủ vườn yêu cầu
 
 ## Đợt 2: việc phát sinh

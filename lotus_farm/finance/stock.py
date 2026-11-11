@@ -36,7 +36,7 @@ def block_from_text(text, farm=None):
 
 RECEIPT_REASONS = {
     # reason -> (label, mapping key of the credited account, needs a lot, needs a supplier)
-    'Purchase': ('Mua ngoài chưa qua đơn mua (chờ hóa đơn)', 'received_not_billed', False, True),
+    'Purchase': ('Mua nhanh, không qua đơn mua (chờ hóa đơn)', 'received_not_billed', False, True),
     'Recovery': ('Thu hồi vật tư thừa từ lô', 'material_cost', True, False),
     'Surplus': ('Thừa khi kiểm kê / chờ xử lý', 'stock_adjustment', False, False),
 }

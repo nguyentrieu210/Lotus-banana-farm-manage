@@ -42,6 +42,16 @@ try:
                                 enabled=1)).insert(ignore_permissions=True).name
     signing._notify(voucher, 'payment_voucher', dict(assignee=other), 'Đến lượt bạn ký: Giám đốc duyệt chi')
     assert frappe.get_all('Lotus Mobile Alert', filters={'user': other, 'document_name': voucher.name, 'app': 'buying'}), 'kept in the bell'
+    # A full background queue (Frappe's size check raises a bare PermissionError for anyone but a System Manager) must not
+    # undo the submit that queues a document alert: the director could not sign a proposal on the test stack (11/11/2026).
+    logged = frappe.db.count('Error Log', {'method': 'Lotus: thông báo chứng từ'})
+    original_enqueue = frappe.enqueue
+    frappe.enqueue = lambda *args, **kwargs: (_ for _ in ()).throw(frappe.PermissionError())
+    try:
+        pn.document_hook(frappe._dict(doctype='Material Request', name='MAT-MR-TEST-' + tag), 'on_submit')
+    finally:
+        frappe.enqueue = original_enqueue
+    assert frappe.db.count('Error Log', {'method': 'Lotus: thông báo chứng từ'}) == logged + 1, 'a full queue is logged, never raised'
     report.update(voucher_alert=alerts[0]['url'], ok=True)
 finally:
     frappe.db.rollback()

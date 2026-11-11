@@ -12,7 +12,7 @@ const columns=[{field:'item_name',headerName:'Vật tư',minWidth:180},{field:'u
  {field:'qty',headerName:'Đề xuất'},{field:'ordered_qty',headerName:'Đã đặt'},{field:'remaining_order_qty',headerName:'Còn đặt'},
  {field:'received_qty',headerName:'Đã nhận'},{field:'remaining_receive_qty',headerName:'Còn nhận'},{field:'billed_qty',headerName:'Đã lập hóa đơn'}]
 const groups=[['proposals','needs','Đề xuất'],['orders','orders','Đơn mua'],['receipts','receipts','Phiếu nhận'],['invoices','invoices','Hóa đơn'],['payments','payments','Thanh toán']]
-const url=(row,type)=>'/lotus/mua-hang?'+new URLSearchParams({buying_view:type,purchase_doc:row.name,purchase_type:type})
+const url=(row,type)=>'/lotus/mua-hang?'+new URLSearchParams({buying_view:type,purchase_doc:row.name,purchase_type:type,...(row.doctype?{purchase_doctype:row.doctype}:{})})
 function open(event,row,type){if(props.navigate){event.preventDefault();emit('open',row,type)}}
 </script>
 <template>

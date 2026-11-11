@@ -102,7 +102,7 @@ await check('receipt input rejects an empty date before making a write request',
  button(mounted.root,'NCC 1PO1 · Hẹn 2026-10-161 mặt hàng còn chờNhận hàng ›').click();await tick()
  input(mounted.root.querySelector('input[inputmode=decimal]'),'2');input(mounted.root.querySelector('input[type=date]'),'');await tick()
  const before=api.calls.filter(c=>c.write).length
- button(mounted.root,'Lưu hàng đã nhận →').click();await tick()
+ button(mounted.root,'Xác nhận nhập kho').click();await tick()
  assert.equal(api.calls.filter(c=>c.write).length,before);assert.match(mounted.root.querySelector('[role=alert]').textContent,/Chọn ngày/)
 })
 mounted.app.unmount();mounted.root.remove()

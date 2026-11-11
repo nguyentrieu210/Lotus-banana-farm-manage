@@ -1,6 +1,24 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
+ {id:'2026-11-11b',title:'Mua hàng và ký điện tử (cập nhật 11/11/2026)',items:[
+  {title:'Chờ tôi ký',text:'Một danh sách các chứng từ đang chờ bạn ký, có trên điện thoại và máy tính. Mỗi lần ký đều hỏi lại số chứng từ và số tiền.'},
+  {title:'Bản PDF đã ký',text:'Ký đủ thì hệ thống lưu một bản PDF cố định kèm chữ ký và mã QR. Tải lại lúc nào cũng ra đúng bản đó.'},
+  {title:'Đề xuất mua',text:'Một tên giai đoạn cho mọi màn: Nháp, Đang ký, Chờ mua, Đang mua, Đã nhận đủ, Đã xong. Đóng phần chưa mua và hủy đề xuất đều ghi lý do.'},
+  {title:'Đơn mua',text:'Giám đốc ký mọi đơn. Đơn lập từ đề xuất giữ nhà cung cấp và giá của báo giá đã chọn. Lưu đơn là thấy ngay dòng nào sẽ bị chặn khi duyệt.'},
+  {title:'Nhập kho theo đơn',text:'Nhận hàng một bước: số thực nhận, chi phí, ảnh, người giao ký trên màn hình hoặc chụp phiếu giao hàng có chữ ký. Bấm Xác nhận nhập kho là thủ kho ký.'},
+  {title:'Trả hàng, hủy phiếu',text:'Trả hàng và hủy phiếu nhập làm ngay trong Lotus, có lý do. Phiếu đã có hóa đơn thì hệ thống nhắc lập hóa đơn điều chỉnh.'},
+  {title:'Hóa đơn chờ nhập',text:'Mọi phiếu nhập chưa có hóa đơn, kể cả Mua nhanh, nằm ở một danh sách. Kế toán gõ hóa đơn theo bản in, file gốc hiện ngay cạnh biểu mẫu.'},
+  {title:'Hóa đơn khác giá phiếu nhận',text:'Phần chênh giá hoặc thuế của đúng số lượng trên hóa đơn vào giá vốn (kỳ đã khóa sổ thì vào chi phí kỳ này), chi tiết hóa đơn ghi rõ từng khoản điều chỉnh. Hàng đã trả không bị tính lại vào hóa đơn và ra khỏi kho đúng giá vốn. Hóa đơn điều chỉnh đi theo cách hóa đơn gốc đã ghi.'},
+  {title:'Phí vận chuyển theo từng dòng',text:'Mỗi mặt hàng mang đúng phí vận chuyển của nó. Phí của dòng dịch vụ tính vào chi phí dịch vụ.'},
+  {title:'Thuế 8% hết hạn',text:'Hàng đặt với thuế 8% mà nhận hoặc có hóa đơn sau 31/12/2026 tự chuyển sang 10%.'},
+  {title:'Trả hết hàng',text:'Phiếu nhận đã trả hết hàng ghi "Đã trả hết hàng", không cần lập hóa đơn. Hàng trả sau khi đã có hóa đơn hiện riêng ở Công nợ là khoản NCC phải hoàn, chờ hóa đơn điều chỉnh.'},
+  {title:'Đơn đã đóng, tháng đã kết chuyển',text:'Hàng đã nhận của đơn đã đóng phần còn lại vẫn nhập được hóa đơn khác giá. Hóa đơn dùng tiền tạm ứng trả từ tháng đã kết chuyển vẫn ghi sổ được.'},
+  {title:'Đối chiếu Tài chính',text:'Ô "Hàng về chưa có hóa đơn" và phép đối chiếu tính cả thuế chờ hóa đơn (33881), cùng số với màn Công nợ của Mua hàng.'},
+  {title:'Công nợ nhà cung cấp',text:'Xem theo ngày chốt: tuổi nợ, khoản đến hạn trong 7 ngày, hàng đã nhận chưa có hóa đơn, sổ chi tiết và biên bản đối chiếu từng nhà cung cấp.'},
+  {title:'Phiếu chi',text:'Một phiếu chi trả được nhiều hóa đơn; phần trả thêm ghi rõ là tạm ứng. Tạm ứng theo đơn chỉ tới phần chưa có hóa đơn, kiểm lại khi giám đốc ký. In được phiếu chi và giấy đề nghị chi.'},
+  {title:'Mua nhanh',text:'Hàng mua lẻ không qua đơn gọi thống nhất là Mua nhanh ở Kho, Mua hàng và Tài chính.'},
+ ]},
  {id:'2026-11-11',title:'Cập nhật ngày 11/11/2026: dọn hẳn các màn hình cũ',items:[
   {title:'Bỏ các màn cũ không còn dùng',text:'Các màn ghi chép, kế hoạch, dự thu và nhập liệu đời cũ (thửa, vụ, kế hoạch ngày, lô thu hoạch, nhập OneDrive…), trang Cảnh báo và trang Cấu hình đã được gỡ. Việc ngoài vườn, màu dây, thu hoạch, xưởng, dự thu và báo cáo nằm ở Công việc ngoài vườn; dữ liệu cũ được lưu trữ trước khi xóa.'},
   {title:'Kho',text:'Phiếu xuất dùng còn hai cách: Thủ công và Theo yêu cầu đã duyệt.'},

@@ -343,13 +343,14 @@ def sign_period(company, month):
     if _frozen(company, month, begin, end)[1] != doc.snapshot_hash:
         frappe.throw('Chấm công hoặc bảng lương đã thay đổi sau khi gửi duyệt. Trả lại để người lập gửi duyệt lại.')
     from lotus_farm import signing
-    info = signing.sign(doc)
-    if info['done']:
+    def close():
         doc.reload()
         doc.update(dict(status='Closed', closed_by=frappe.session.user, closed_at=now_datetime()))
         doc.flags.lotus_period_action = True
         doc.flags.ignore_permissions = True  # the director signs as the named last signer, not as HR
         doc.save()
+
+    signing.sign(doc, effect=close)
     return signing.status(doc, 'timekeeping_period')
 
 

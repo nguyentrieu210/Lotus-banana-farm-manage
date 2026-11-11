@@ -1,0 +1,11 @@
+{#- Phiếu chi / giấy đề nghị chi — data from lotus_farm.finance.payments._voucher_info. -#}
+{% set f = p.fmt %}
+<table class="lp-table">
+ <colgroup><col style="width:6%"><col style="width:54%"><col style="width:18%"><col style="width:22%"></colgroup>
+ <thead><tr><th class="stt">STT</th><th>Nội dung chi</th><th class="center">Ngày hóa đơn</th><th class="num">Số tiền</th></tr></thead>
+ <tbody>{% for r in p.rows %}<tr><td class="stt">{{ loop.index }}</td><td>{{ r.label }}{% if r.name and r.name not in r.label %}<small>{{ r.name }}</small>{% endif %}</td>
+  <td class="center nowrap">{{ r.date }}</td><td class="num">{{ f.number(r.amount, 0) }}</td></tr>{% endfor %}
+ <tr class="lp-total"><td></td><td colspan="2">Tổng số tiền chi</td><td class="num">{{ f.number(p.grand_total, 0) }}</td></tr></tbody>
+</table>
+<p class="lp-words">Số tiền bằng chữ: <b>{{ f.words(p.grand_total, p.currency) }}</b></p>
+{% if p.cash %}<p class="lp-proof__file">Đã nhận đủ số tiền (viết bằng chữ): ........................................................................................</p>{% endif %}

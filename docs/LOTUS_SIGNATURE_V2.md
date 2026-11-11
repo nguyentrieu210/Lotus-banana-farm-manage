@@ -1,5 +1,16 @@
 # Lotus — thiết kế chữ ký trên chứng từ (tham khảo Documenso, OpenSign, Dropbox Sign)
 
+## Cập nhật spec 003 (10/11/2026)
+
+- **Ký = đăng nhập + hộp xác nhận.** Hộp xác nhận nêu loại chứng từ, số, số tiền và bước ký. Không còn phiên QR ký (`Lotus Signing Challenge` đã bỏ), không PIN, không OTP.
+- **Chờ tôi ký:** `signing.inbox` / `inbox_count` cho chuông trên điện thoại và trang `/lotus/cho-ky` trên máy tính; `sign_many` ký nhiều chứng từ, mỗi chứng từ một savepoint.
+- **Bản PDF đã ký:** chữ ký cuối chạy hiệu lực của chứng từ (ghi sổ, duyệt, khóa kỳ) rồi `signed_copy.archive` lưu một PDF cố định (`Lotus Signed Copy`, kèm SHA-256). Tải lại luôn ra bản đã lưu; trang `/verify/lotus` báo có khớp bản lưu hay không.
+- **Chuỗi ký:** đề xuất mua 4 bước, đơn mua 2 bước, phiếu chi 3 bước, bảng công 3 bước, phiếu kho 3 bước, và chuỗi mới `purchase_receipt` một bước (thủ kho ký khi xác nhận nhập kho theo đơn).
+- **Ký nháy:** người kiểm tra nội dung có ký nháy ở chân từng trang của bản in nhiều trang.
+- **Nhật ký:** mỗi lần ký lưu IP, thiết bị, vai trò, chức danh, vòng ký, dấu nội dung và SHA-256 của ảnh chữ ký.
+- **Thông báo:** lỗi gửi thông báo không làm hỏng việc ký; chỉ ghi vào Error Log. Link trong email mở `/lotus/mo`, tự chuyển sang giao diện điện thoại hoặc máy tính.
+- **Quyền xem:** người có tên trong vòng ký xem được chứng từ mình ký dù không có quyền đọc loại chứng từ đó.
+
 Ngày nghiên cứu: 19/10/2026.
 
 ## Nguồn và điểm rút ra

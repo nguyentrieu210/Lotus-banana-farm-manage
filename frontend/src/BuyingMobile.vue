@@ -8,7 +8,7 @@ import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
 import MobileSupplierForm from './components/MobileSupplierForm.vue'
 import MobilePurchaseProposal from './components/MobilePurchaseProposal.vue'
-import {newPurchaseDraft,purchaseFromRequest,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
+import {newPurchaseDraft,purchaseFromRequest,purchaseDraftFromOrder,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
 import {purchasePdfUrl,sharePurchasePdf} from './purchase-document'
 import {useMobileConfirm} from './use-mobile-confirm'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
@@ -20,12 +20,20 @@ import LotusMobileShell from './components/LotusMobileShell.vue'
 import {logoutPwa} from './mobile-push-session'
 import LotusMobileAction from './components/LotusMobileAction.vue'
 import LotusMobileInput from './components/LotusMobileInput.vue'
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
+import {nextTick,computed, onMounted, onUnmounted, ref, watch} from 'vue'
+import {openDeepLink} from './mobile-deep-link'
+import {ORDER_STATES} from './purchase-status'
+// Chờ tôi ký lives in the shared shell header; the home card shows its number and opens it (spec 003).
+const signCount=ref(0)
+const onSignCount=event=>{signCount.value=Number(event.detail)||0}
+const openSignInbox=()=>window.dispatchEvent(new CustomEvent('lotus-open-sign-inbox'))
+if(typeof window!=='undefined')window.addEventListener('lotus-sign-count',onSignCount)
 import {call, setCSRF, upload} from './api'
 import MobileLinkField from './components/MobileLinkField.vue'
 import SignerPicker from './components/SignerPicker.vue'
 import {unitLabel} from './units'
 import {useMobileViewport} from './use-mobile-viewport'
+import './purchase-mobile-shared.css'
 import './buying-mobile.css'
 import './register-buying-worker'
 
@@ -35,12 +43,11 @@ const {keyboard}=useMobileViewport()
 function openSetup(){window.dispatchEvent(new Event('lotus:open-setup'))}
 const session=ref(null),company=ref(''),catalog=ref(null),orders=ref([]),requests=ref([]),suppliers=ref([])
 const tab=ref('home'),view=ref(''),busy=ref(false),saving=ref(false),error=ref(''),notice=ref('')
-const proposal=ref(null),proposalTitle=ref('Đề xuất mua vật tư'),proposalTodo=ref(0)
+const proposal=ref(null),proposalTitle=ref('Đề xuất mua vật tư')
 const procurement=ref(null),mobileMasters=ref(null),procurementInitialView=ref('needs'),procurementParty=ref('')
 async function navigateSupplier(next,party){if(next==='close-master'){if(!mobileMasters.value?.hasChanges()||await askLeave('Bỏ hồ sơ chưa lưu và đóng?'))mobileMasters.value?.close();return}procurementInitialView.value=next;procurementParty.value=party||'';openView('procurement')}
 const filter=ref(''),status=ref('Tất cả'),detail=ref(null),draft=ref(null),quote=ref(null),rejectReason=ref('')
 const savedPurchase=ref(null)
-const qrChallenge=ref(null),qrDialog=ref(null),qrSignToken=ref(''),qrSignPending=ref(false)
 const newEta=ref(''),deliveryReason=ref(''),closeReason=ref(''),cancelReason=ref('')
 const showReschedule=ref(false),pendingFinalAction=ref(''),finalDialog=ref(null)
 const supplierForm=ref(null),supplierSearch=ref(''),selectedRequest=ref('')
@@ -64,7 +71,7 @@ const mobileTabs=[
  {name:'suppliers',label:'Nhà cung cấp',icon:'shop-o'},
  {name:'profile',label:'Tôi',icon:'user-o'}
 ]
-const mobileTitle=computed(()=>view.value?({form:'Đơn mua hàng',detail:'Chi tiết đơn mua',supplier:'Nhà cung cấp',requests:'Đề nghị chờ đặt hàng',proposals:proposalTitle.value})[view.value]||'Mua hàng Lotus':
+const mobileTitle=computed(()=>view.value?({form:'Đơn mua hàng',detail:'Chi tiết đơn mua',supplier:'Nhà cung cấp',requests:'Đề xuất chờ đặt hàng',proposals:proposalTitle.value})[view.value]||'Mua hàng Lotus':
  ({home:'Mua hàng Lotus',orders:'Đơn mua hàng',suppliers:'Nhà cung cấp',profile:'Tôi'})[tab.value])
 
 const canCreate=computed(()=>session.value?.can_create)
@@ -74,10 +81,10 @@ const money=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:0})+' 
 const number=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const counts=computed(()=>({
  pending:orders.value.filter(r=>r.approval_status==='Chờ duyệt').length,
- shipping:orders.value.filter(r=>r.docstatus===1&&['Chờ hàng','Về một phần','Quá hẹn'].includes(r.status)).length,
+ shipping:orders.value.filter(r=>r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng').length,
  requests:requests.value.length
 }))
-const visibleOrders=computed(()=>orders.value.filter(r=>(status.value==='Tất cả'||status.value===r.approval_status||status.value===r.status)&&
+const visibleOrders=computed(()=>orders.value.filter(r=>(status.value==='Tất cả'||status.value===r.status||status.value==='Quá hẹn'&&r.overdue)&&
   (!filter.value||(r.name+' '+r.supplier_name+' '+r.status).toLocaleLowerCase().includes(filter.value.toLocaleLowerCase()))))
 const purchaseSignCurrent=computed(()=>((detail.value?.signing?.steps)||[]).findIndex(s=>s.state!=='Đã ký'&&s.state!=='Trả lại'))
 const visibleSuppliers=computed(()=>suppliers.value.filter(r=>!supplierSearch.value||
@@ -88,6 +95,13 @@ async function changeTab(next){
  if(saving.value||!view.value&&tab.value===next||!await confirmLeave())return
  resetFeedback();view.value='';detail.value=null;tab.value=next
  if(navigationReady&&!restoring)window.history.pushState({lotusBuying:true,tab:next,view:''},'',location.href)
+}
+// A related document tapped in a proposal's progress stays in this app (spec 003, FR-004): orders open here,
+// receipts, invoices and payments in the embedded Mua hàng workspace.
+async function openRelated(row,type){
+ if(type==='orders'){await openOrder(row.name);return}
+ if(type==='needs'){proposal.value?.open(row.name);return}
+ procurementInitialView.value=type;procurementParty.value='';openView('procurement');await nextTick();await procurement.value?.openDocument(row,type)
 }
 function openView(next){
  resetFeedback();view.value=next
@@ -130,7 +144,6 @@ async function refresh(){
    api('orders',{company:company.value}),api('requests',{company:company.value}),api('suppliers')
   ])
   orders.value=list;requests.value=req;suppliers.value=providers
-  try{proposalTodo.value=(await call('lotus_farm.purchase_proposal.proposals',{company:company.value,view:'todo'})).length}catch{proposalTodo.value=0}
  }finally{busy.value=false}
 }
 async function initialize(){
@@ -179,10 +192,8 @@ async function openOrder(name){
 }
 function editOrder(){
  if(!detail.value?.can_write||!['Nháp','Từ chối'].includes(detail.value?.approval_status))return
- const d=detail.value
- draft.value={name:d.name,modified:d.modified,supplier:d.supplier,mode:d.mode,warehouse:d.items[0]?.warehouse||warehouses.value[0]?.name||'',
-   expected_date:d.expected_date,notes:d.notes,items:d.items.map(r=>({...blank(),item:r.item,qty:r.qty,
-   rate:r.rate,uom:r.uom,warehouse:r.warehouse,material_request:r.material_request,material_request_item:r.material_request_item}))}
+ // Every line field is kept (quote link, VAT, freight): editing must not strip what approval checks.
+ draft.value=purchaseDraftFromOrder(detail.value,warehouses.value[0]?.name||'')
  quote.value=null;savedPurchase.value=null;openView('form')
 }
 async function saveOrder(){
@@ -205,7 +216,6 @@ async function applyAction(action){
   if(!detail.value)return
   const d=detail.value
   const args={name:d.name,modified:d.modified}
-  if(action==='approve_order'&&qrSignToken.value)args.sign_token=qrSignToken.value
   if(action==='reject_order')args.reason=rejectReason.value.trim()
   if(action==='request_approval')args.approver=approverChoice.value.APPROVE
   if(action==='reschedule_order'){args.expected_date=newEta.value;args.reason=deliveryReason.value.trim()}
@@ -219,25 +229,6 @@ async function applyAction(action){
    reschedule_order:'Đã cập nhật ngày giao mới.',close_order:'Đã đóng phần hàng không giao.',
    cancel_order:'Đã hủy đơn mua.'
   }[action]||'Đã cập nhật.'
- })
-}
-async function initialPurchaseOrder(){
- await run(async()=>{
-  if(!detail.value?.can_initial)return
-  await call('lotus_farm.digital_signature.initial_purchase_order',
-   {name:detail.value.name,modified:detail.value.modified},true)
-  const name=detail.value.name
-  await refresh()
-  await openOrder(name)
-  notice.value='Đã ký nháy xác nhận kiểm tra.'
- })
-}
-async function showSigningQR(){
- await run(async()=>{
-  if(!detail.value?.can_approve)return
-  qrChallenge.value=await call('lotus_farm.digital_signature.create_signing_challenge',
-   {name:detail.value.name,modified:detail.value.modified},true)
-  qrDialog.value?.showModal()
  })
 }
 function confirmFinalAction(action){
@@ -295,8 +286,14 @@ onMounted(()=>{window.history.replaceState({lotusBuying:true,tab:'home',view:''}
  window.addEventListener('beforeunload',beforeUnload)
  window.addEventListener('online',refreshNetwork);window.addEventListener('offline',refreshNetwork)
  initialize().then(()=>{
- const doc=new URLSearchParams(location.search).get('doc')
- if(session.value&&doc)openOrder(doc)
+ if(!session.value)return
+ // Links from alerts and other apps (spec 003): ?doctype=&doc=, older ?doc= (an order) and ?proposal=.
+ // Signing links (?sign_dt=) are opened by Chờ tôi ký in the shared shell.
+ openDeepLink({
+  'Purchase Order':link=>openOrder(link.name),
+  'Material Request':async link=>{openView('proposals');await nextTick();proposal.value?.open(link.name)},
+  open:link=>{if(!link.doctype)openOrder(link.name)},
+ })
 })})
 onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.removeEventListener('online',refreshNetwork);
  window.removeEventListener('beforeunload',beforeUnload)
@@ -319,7 +316,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    <div class="buy-summary">
     <LotusMobileButton @click="status='Chờ duyệt';changeTab('orders')"><b>{{counts.pending}}</b><small>Chờ duyệt</small></LotusMobileButton>
     <LotusMobileButton @click="status='Tất cả';changeTab('orders')"><b>{{counts.shipping}}</b><small>Chờ giao</small></LotusMobileButton>
-    <LotusMobileButton @click="openView('proposals')"><b>{{proposalTodo}}</b><small>Đề xuất chờ ký</small></LotusMobileButton>
+    <LotusMobileButton @click="openSignInbox"><b>{{signCount}}</b><small>Chờ tôi ký</small></LotusMobileButton>
     <LotusMobileButton @click="openView('requests')"><b>{{counts.requests}}</b><small>Chờ đặt hàng</small></LotusMobileButton>
    </div>
    <div class="mobile-actions" aria-label="Thao tác Mua hàng">
@@ -337,7 +334,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
 
   <template v-if="!view&&tab==='orders'">
    <div class="buy-toolbar"><LotusMobileInput v-model="filter" type="search" placeholder="Tìm số đơn, nhà cung cấp…" aria-label="Tìm đơn mua"/>
-    <LotusMobileSelect v-model="status" aria-label="Lọc đơn mua"><option>Tất cả</option><option>Nháp</option><option>Chờ duyệt</option><option>Đã duyệt</option><option>Từ chối</option><option>Đã đóng</option><option>Đã hủy</option><option>Quá hẹn</option><option>Về một phần</option><option>Đã nhận đủ</option></LotusMobileSelect></div>
+    <LotusMobileSelect v-model="status" aria-label="Lọc đơn mua"><option>Tất cả</option><option v-for="s in ORDER_STATES" :key="s">{{s}}</option><option>Quá hẹn</option></LotusMobileSelect></div>
    <LotusMobileButton v-if="canCreate" class="buy-primary" @click="newOrder()">+ Tạo đơn mua</LotusMobileButton>
    <BuyingOrderCard v-for="r in visibleOrders" :key="r.name" :order="r" :currency="catalog?.currency||'VND'" show-date @select="openOrder"/>
    <p v-if="!visibleOrders.length&&!busy" class="mobile-empty">Không tìm thấy đơn phù hợp.</p>
@@ -360,7 +357,7 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <small>Ngày cần {{r.expected_date}} · Người gửi {{r.owner}}</small>
     <p v-for="(line,i) in r.items.slice(0,5)" :key="i" class="buy-request-line">{{line.item_name}} · {{number(line.qty)}} {{unitLabel(line.uom)}}</p>
     <a :href="'/lotus_material_proposal_print?name='+encodeURIComponent(r.name)" target="_blank" rel="noopener noreferrer" class="buy-request-print">Xem / in phiếu đề xuất mua vật tư (PDF) ↗</a>
-    <LotusMobileButton class="buy-outline" :disabled="!canCreate" @click="newOrder(true);useRequest(r.name)">Lập đơn mua từ đề nghị này</LotusMobileButton>
+    <LotusMobileButton class="buy-outline" :disabled="!canCreate" @click="newOrder(true);useRequest(r.name)">Lập đơn mua từ đề xuất này</LotusMobileButton>
    </div>
    <p v-if="!requests.length&&!busy" class="mobile-empty">Chưa có đề xuất mua còn thiếu hàng.</p>
   </template>
@@ -381,13 +378,8 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
     <SignerPicker v-model="approverChoice" :options="approverOptions" :disabled="saving"/>
     <LotusMobileButton class="buy-primary" :disabled="saving||!online||!approverChoice.APPROVE" @click="applyAction('request_approval')">Gửi duyệt đơn mua</LotusMobileButton>
    </template>
-   <div v-if="detail.can_initial" class="buy-card">
-    <p v-if="detail.initials_by" class="buy-muted">Đã ký nháy: {{detail.initials_by}} · {{detail.initials_at}}</p>
-    <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="initialPurchaseOrder()">Ký nháy xác nhận đã kiểm tra</LotusMobileButton>
-   </div>
    <div v-if="detail.can_approve">
     <LotusMobileButton class="buy-primary" :disabled="saving||!online" @click="applyAction('approve_order')">Duyệt đơn mua</LotusMobileButton>
-    <LotusMobileButton class="buy-outline" :disabled="saving||!online" @click="showSigningQR()">Hiện QR để duyệt trên điện thoại</LotusMobileButton>
     <div class="buy-field"><label>Lý do từ chối</label><LotusMobileInput type="textarea" v-model="rejectReason" rows="2" placeholder="Nêu lý do để người lập sửa lại…"/></div>
     <LotusMobileButton class="buy-danger" :disabled="saving||!online||rejectReason.trim().length<3" @click="applyAction('reject_order')">Trả lại đơn</LotusMobileButton>
    </div>
@@ -415,19 +407,10 @@ onUnmounted(()=>{window.removeEventListener('popstate',browserBack);window.remov
    </section>
   </template>
 
-  <MobilePurchaseProposal v-if="view==='proposals'" ref="proposal" :company="company" :online="online" :today="session?.today||''" @title="proposalTitle=$event" @notice="notice=$event;error=''" @error="error=$event;notice=''"/>
+  <MobilePurchaseProposal v-if="view==='proposals'" ref="proposal" @open-document="openRelated" :company="company" :online="online" :today="session?.today||''" @title="proposalTitle=$event" @notice="notice=$event;error=''" @error="error=$event;notice=''"/>
   <ProcurementWorkspace v-if="view==='procurement'" ref="procurement" :buying-view="procurementInitialView" :initial-supplier="procurementParty" :company="company" :today="session?.today||''" mobile/>
   <MobileSupplierForm v-if="view==='supplier'&&supplierForm" v-model="supplierForm" :saving="saving" :online="online" @submit="saveSupplier"/>
  </main>
- <LotusMobileDialog ref="qrDialog" class="mobile-leave-dialog">
-  <div class="mobile-leave-content">
-   <h2>QR xác nhận duyệt trên điện thoại</h2>
-   <p>Mã chỉ dùng trong 2 phút, dành riêng cho tài khoản đang đăng nhập. Sau khi quét vẫn phải bấm Duyệt.</p>
-   <img v-if="qrChallenge" :src="qrChallenge.qr_image" alt="QR duyệt bằng điện thoại" style="width:230px;max-width:100%;margin:12px auto;display:block"/>
-   <p v-if="qrChallenge">Hết hạn: {{qrChallenge.expires_at}}</p>
-   <LotusMobileButton type="button" @click="qrDialog?.close()">Đóng</LotusMobileButton>
-  </div>
- </LotusMobileDialog>
  <LotusMobileDialog ref="finalDialog" class="mobile-leave-dialog">
   <div class="mobile-leave-content"><h2>{{pendingFinalAction==='cancel_order'?'Xác nhận hủy đơn?':'Xác nhận đóng đơn?'}}</h2>
    <p>{{pendingFinalAction==='cancel_order'?'Không thể hủy nếu đơn có phiếu nhập hoặc chứng từ liên quan.':'Phần chưa giao sẽ không còn nằm trong hàng chờ về.'}}</p>

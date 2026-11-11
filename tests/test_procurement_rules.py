@@ -55,5 +55,35 @@ class ProcurementRules(unittest.TestCase):
         self.assertFalse(r.needs_reason(5_000, [None, 5_000]))  # unpriced offers do not count as cheaper
 
 
+    def test_printed_total_within_one_dong_per_goods_line(self):
+        self.assertEqual(r.printed_total_gap(1150000, 1150002, 3), (2.0, True))
+        self.assertEqual(r.printed_total_gap(1150000, 1149996, 3), (-4.0, False))
+        self.assertEqual(r.printed_total_gap(500000, 500001, 0), (1.0, True), 'a service-only invoice still gets 1 đ')
+        self.assertFalse(r.printed_total_gap(500000, 500001.5, 1)[1])
+
+    def test_suspect_lines_name_the_likely_entry_error(self):
+        lines = [dict(line=1, name='Ure', qty=10, rate=100000, vat=0.05), dict(line=2, name='Vôi', qty=4, rate=25000, vat=0.08)]
+        self.assertEqual(r.suspect_lines(lines, 30000), [dict(line=1, name='Ure', reason='thuế suất có thể là 8%')])
+        self.assertEqual(r.suspect_lines(lines, -27000), [dict(line=2, name='Vôi', reason='số lượng có thể thừa 1')])
+        self.assertEqual(r.suspect_lines(lines, 210000), [dict(line=1, name='Ure', reason='số lượng có thể thiếu 2')])
+        self.assertEqual(r.suspect_lines(lines, 777), [], 'no simple explanation: the message asks to check every line')
+
+    def test_aging_by_due_date_on_the_closing_date(self):
+        day = '2026-11-10'
+        cases = {'2026-11-10': 'current', '2026-12-01': 'current', '2026-11-09': 'd1_30', '2026-10-11': 'd1_30', '2026-10-10': 'd31_60',
+                 '2026-09-11': 'd31_60', '2026-09-10': 'd61_90', '2026-08-12': 'd61_90', '2026-08-11': 'd90_plus', None: 'no_due'}
+        for due, bucket in cases.items():
+            self.assertEqual(r.aging_bucket(due, day), bucket, due)
+        totals = r.age([dict(amount=100, due_date='2026-11-20'), dict(amount=40, due_date='2026-10-01'), dict(amount=5, due_date=None)], day)
+        self.assertEqual((totals['current'], totals['d31_60'], totals['no_due'], sum(totals.values())), (100, 40, 5, 145))
+        self.assertEqual(set(totals), set(r.AGING_BUCKETS))
+        self.assertEqual(set(r.AGING_LABELS), set(r.AGING_BUCKETS))
+
+    def test_due_in_the_next_seven_days(self):
+        day = '2026-11-10'
+        self.assertEqual([r.due_within(d, day) for d in ('2026-11-10', '2026-11-11', '2026-11-17', '2026-11-18', '2026-11-01', None)],
+                         [False, True, True, False, False, False])
+
+
 if __name__ == '__main__':
     unittest.main()

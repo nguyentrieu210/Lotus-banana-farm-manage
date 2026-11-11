@@ -38,6 +38,8 @@
   --lotus-ribbon-den:#212121;--lotus-ribbon-xanh-duong:#1976d2;--lotus-ribbon-xanh-la:#2e7d32;
   --lotus-ribbon-outline:#8f897d;
   /* Distinct geographic categories, fixed across farms, zoom levels and themes (tuned for satellite imagery). */
+  /* Ink of drawn signatures (spec 003). */
+  --lotus-signature-ink:var(--lotus-info-800);
   --lotus-map-zone-a:#f46963;--lotus-map-zone-b:#43d99a;--lotus-map-zone-c:#ffd166;
   --lotus-map-zone-d:#65baff;--lotus-map-zone-e:#c89cff;--lotus-map-zone-f:#ff9d57;
 

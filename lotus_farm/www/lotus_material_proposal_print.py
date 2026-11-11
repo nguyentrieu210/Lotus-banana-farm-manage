@@ -80,6 +80,12 @@ def build(name):
         frappe.throw('Vui lòng đăng nhập để in phiếu đề xuất vật tư.', frappe.PermissionError)
     if not name:
         frappe.throw('Cần chọn số phiếu đề xuất vật tư.')
+    # People named in the signing round see what they sign even without rights on proposals (spec 003, FR-027).
+    from lotus_farm.signed_copy import as_reader
+    return as_reader(frappe.get_doc('Material Request', name), lambda: _build(name))
+
+
+def _build(name):
     doc = frappe.get_doc('Material Request', name)
     doc.check_permission('read')
     doc.check_permission('print')
@@ -105,6 +111,7 @@ def build(name):
     named = signing.print_signatures(doc)
     if named:
         p.signatures = named
+        p.initials = signing.print_initials(doc)
         p.verify = signing.print_verification(doc)
     else:
         titles = BUY_SIGNERS if purchase else ISSUE_SIGNERS
@@ -127,5 +134,12 @@ def get_context(context, name=None):
 
 @frappe.whitelist()
 def download_pdf(name):
+    if frappe.db.exists('Material Request', name):
+        # Once signed in full, the download is the stored signed copy (spec 003, FR-014), not a new render.
+        from lotus_farm import signed_copy, signing
+        doc = frappe.get_doc('Material Request', name)
+        copy = signed_copy.current(doc)
+        if copy and signing.can_view(doc=doc):
+            return signed_copy.respond(copy, 'de-xuat-mua-' + name)
     p = build(name)
     pk.send_pdf(pk.render('proposal.html', p), ('de-xuat-mua-' if p.purchase else 'de-xuat-cap-') + name, landscape=True)

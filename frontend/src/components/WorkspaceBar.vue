@@ -1,7 +1,7 @@
 <script setup>
 import UiSelect from './ui/select/Select.vue'
 import WorkspaceModal from './WorkspaceModal.vue'
-import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
+import {computed,defineAsyncComponent,nextTick,onMounted,onUnmounted,ref,watch} from 'vue'
 import LotusIcon from './LotusIcon.vue'
 import {Button as UiButton} from './ui/button'
 import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuLabel,DropdownMenuSeparator} from './ui/dropdown-menu'
@@ -10,6 +10,8 @@ import {useWorkspace} from '../workspace'
 import {dismissOnBackdrop} from '../dialogs'
 import {call,consoleAPI} from '../api'
 import {loadWorkspaceDirectory,mergeWorkspaceActions} from '../workspace-directory'
+import {inboxCount} from '../use-signing'
+const SignatureSettings=defineAsyncComponent(()=>import('./signing/SignatureSettings.vue'))
 const emit=defineEmits(['update:farm','whats-new'])
 const props=defineProps({farms:{type:Array,default:()=>[]},farm:{type:String,default:''},user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
 const {dark,density,sidebarCollapsed,toggleTheme,setDensity,toggleSidebar}=useWorkspace()
@@ -36,6 +38,12 @@ function choose(action){if(!action)return;palette.value.close();if(action.run)ac
 function shortcut(event){if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();if(palette.value.open)palette.value.close();else open()}}
 function keys(event){if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();selected.value=(selected.value+(event.key==='ArrowDown'?1:-1)+results.value.length)%Math.max(1,results.value.length)}if(event.key==='Enter'){event.preventDefault();choose(results.value[selected.value])}}
 onMounted(()=>window.addEventListener('keydown',shortcut))
+// Chờ tôi ký (spec 003): the count is polled while the window is in view and after any signing action.
+const signCount=ref(0),signatureOpen=ref(false)
+let signTimer
+async function refreshSignCount(){if(document.visibilityState!=='visible')return;try{signCount.value=await inboxCount()}catch{}}
+onMounted(()=>{refreshSignCount();signTimer=setInterval(refreshSignCount,60000);window.addEventListener('focus',refreshSignCount);window.addEventListener('lotus-signing-changed',refreshSignCount)})
+onUnmounted(()=>{clearInterval(signTimer);window.removeEventListener('focus',refreshSignCount);window.removeEventListener('lotus-signing-changed',refreshSignCount)})
 onMounted(async()=>{directory.value=await loadWorkspaceDirectory(()=>consoleAPI('bootstrap'))})
 onUnmounted(()=>window.removeEventListener('keydown',shortcut))
 </script>
@@ -53,6 +61,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
   </div>
   <UiButton class="workspace-search" variant="outline" aria-label="Tìm nhanh (Ctrl K)" @click="open"><LotusIcon name="search" class="workspace-search-icon"/><span>Tìm nhanh…</span><kbd>Ctrl K</kbd></UiButton>
   <div class="workspace-right">
+   <Tooltip content="Chờ tôi ký"><a class="workspace-sign" href="/lotus/cho-ky" :aria-label="signCount?'Chờ tôi ký: '+signCount+' chứng từ':'Chờ tôi ký'"><LotusIcon name="edit"/><span v-if="signCount" class="workspace-sign__count">{{signCount>99?'99+':signCount}}</span></a></Tooltip>
    <Tooltip :content="dark?'Giao diện sáng':'Giao diện tối'"><UiButton class="hover:bg-white/15 hover:text-white" variant="ghost" size="icon" :aria-label="dark?'Chuyển giao diện sáng':'Chuyển giao diện tối'" @click="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/></UiButton></Tooltip>
    <DropdownMenu>
     <DropdownMenuTrigger as-child><button type="button" class="workspace-user-trigger" :aria-label="'Tài khoản '+user"><span class="workspace-avatar">{{initials}}</span><span class="workspace-username">{{user||'Đang kết nối…'}}</span></button></DropdownMenuTrigger>
@@ -61,6 +70,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
      <DropdownMenuLabel class="lotus-menu__label lotus-menu__user">{{user||'Đang kết nối…'}}</DropdownMenuLabel>
      <DropdownMenuSeparator/>
      <DropdownMenuItem @select="emit('whats-new')"><LotusIcon name="check-circle"/>Có gì mới</DropdownMenuItem>
+     <DropdownMenuItem @select="signatureOpen=true"><LotusIcon name="edit"/>Chữ ký của tôi</DropdownMenuItem>
      <DropdownMenuItem @select="open"><LotusIcon name="search"/>Tìm nhanh<kbd class="lotus-menu__kbd">Ctrl K</kbd></DropdownMenuItem>
      <DropdownMenuItem @select="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/>{{dark?'Giao diện sáng':'Giao diện tối'}}</DropdownMenuItem>
      <DropdownMenuItem @select="setDensity(density==='compact'?'comfortable':'compact')"><LotusIcon name="layers"/>{{density==='compact'?'Bảng thoáng hơn':'Bảng gọn hơn'}}</DropdownMenuItem>
@@ -76,4 +86,11 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
   <div id="lotus-command-results" role="listbox" class="command-results"><UiButton v-for="(action,index) in results" :id="'lotus-command-'+index" :key="action.id" variant="ghost" role="option" :aria-selected="index===selected" :class="{selected:index===selected}" @click="choose(action)">{{action.label}} <small>{{action.record?action.kind:action.navigation?'Đi đến':'Thao tác'}}</small></UiButton><p v-if="searching" role="status">Đang tìm bản ghi…</p><p v-else-if="!results.length" role="status">Không tìm thấy kết quả.</p></div>
   <footer>↑ ↓ chọn · Enter mở · Esc đóng</footer>
  </WorkspaceModal>
+ <SignatureSettings v-if="signatureOpen" v-model="signatureOpen"/>
 </template>
+
+<style>
+.workspace-sign{position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--lotus-radius-md,8px);color:inherit}
+.workspace-sign:hover{background:color-mix(in srgb,white 15%,transparent)}
+.workspace-sign__count{position:absolute;top:1px;right:0;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:white;color:var(--lotus-primary);font-size:11px;font-weight:700;line-height:17px;text-align:center}
+</style>

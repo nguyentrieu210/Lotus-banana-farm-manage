@@ -25,7 +25,7 @@ ROLE_LABELS = {
     "Lotus Purchase Approver": "Người duyệt mua hàng Lotus",
     "Lotus Warehouse Manager": "Quản lý kho Lotus",
     "Lotus Warehouse Receiver": "Nhân viên nhận hàng Lotus",
-    "Lotus Purchase Requester": "Người đề nghị mua hàng Lotus",
+    "Lotus Purchase Requester": "Người đề xuất mua hàng Lotus",
     "Lotus Warehouse Operator": "Nhân viên nghiệp vụ kho Lotus",
     "Lotus Crew Leader": "Tổ trưởng chấm công",
     "Employee Self Service": "Nhân viên tự phục vụ",

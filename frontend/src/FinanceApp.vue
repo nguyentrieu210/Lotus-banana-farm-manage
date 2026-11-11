@@ -24,6 +24,7 @@ import WorkspaceTabs from './components/WorkspaceTabs.vue'
 import WorkspaceSummaryStrip from './components/WorkspaceSummaryStrip.vue'
 import ListPage from './components/ListPage.vue'
 import ModalForm from './components/form/ModalForm.vue'
+import InvoiceForm from './components/procurement/InvoiceForm.vue'
 import FormGrid from './components/form/FormGrid.vue'
 import FormSection from './components/form/FormSection.vue'
 import LotusField from './components/form/LotusField.vue'
@@ -185,10 +186,7 @@ const picked=ref(new Set()),invoiceOpen=ref(false),invoice=ref({bill_no:'',bill_
 const pickedReceipts=computed(()=>(pendingData.value?.receipts||[]).filter(r=>picked.value.has(r.name)))
 const pickedSupplier=computed(()=>[...new Set(pickedReceipts.value.map(r=>r.supplier))])
 function togglePick(name){const next=new Set(picked.value);next.has(name)?next.delete(name):next.add(name);picked.value=next}
-async function makeInvoice(){saving.value=true
- try{const r=await call(F+'payments.make_goods_invoice',{receipts:JSON.stringify([...picked.value]),bill_no:invoice.value.bill_no,bill_date:invoice.value.bill_date,due_date:invoice.value.due_date||null,vat_code:invoice.value.vat_code||'KCT'},true)
-  notice.value='Đã ghi hóa đơn '+r.invoice+' ('+vnd(r.amount)+').';invoiceOpen.value=false;picked.value=new Set();await load()}
- catch(e){error.value=e.message}finally{saving.value=false}}
+async function invoiceMade(r){notice.value='Đã ghi hóa đơn '+r.invoice+' ('+vnd(r.amount)+').'+(r.warnings?.length?' '+r.warnings.join(' '):'');picked.value=new Set();await load()}
 const payrollView=ref(null)
 async function previewPayroll(name){await ensureLookups();await run(async()=>{payrollView.value=await call(F+'payroll.preview',{period:name})})}
 async function postPayroll(){saving.value=true
@@ -706,10 +704,7 @@ useNoticeToast(notice)
   </FormSection>
  </template>
 
- <ModalForm v-model="invoiceOpen" title="Hóa đơn nhà cung cấp" :busy="saving" width="720px" submit-label="Ghi hóa đơn" :submit-disabled="!invoice.bill_no" :description="pickedReceipts.length+' phiếu nhận · '+(pickedReceipts[0]?.supplier_name||'')+' · '+vnd(pickedReceipts.reduce((s,r)=>s+Number(r.to_bill||0),0))" @submit="makeInvoice">
-  <FormGrid><LotusField v-model="invoice.bill_no" label="Số hóa đơn" required/><LotusField v-model="invoice.bill_date" label="Ngày hóa đơn" type="date" required/><LotusField v-model="invoice.due_date" label="Hạn thanh toán" type="date"/><LotusField v-model="invoice.vat_code" label="Thuế suất GTGT" :options="vatChoices" :searchable="false" :empty-option="null"/></FormGrid>
-  <p class="lotus-form-note">Ghi Nợ hàng về chưa có hóa đơn / Có phải trả người bán; thuế GTGT đầu vào Nợ 1331.</p>
- </ModalForm>
+ <InvoiceForm v-model="invoiceOpen" :receipts="[...picked]" :today="today" @created="invoiceMade"/>
 
  <ModalForm :model-value="!!payrollView" title="Bút toán lương" :busy="saving" width="1080px" :readonly="!(overview?.can_post&&!payrollView?.posted)" submit-label="Ghi sổ" :submit-disabled="!!payrollView?.issues.length||!overview?.enabled" @update:model-value="v=>{if(!v)payrollView=null}" @submit="postPayroll">
   <template v-if="payrollView">

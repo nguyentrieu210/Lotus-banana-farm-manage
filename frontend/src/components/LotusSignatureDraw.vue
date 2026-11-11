@@ -1,55 +1,21 @@
 <script setup>
-import {ref,watch,nextTick,onBeforeUnmount} from 'vue'
+// Phone sheet around the shared SignaturePad (spec 003, FR-018): draw, clear, use.
+import {ref,watch,nextTick} from 'vue'
 import {Popup,Icon} from 'vant'
+import SignaturePad from './signing/SignaturePad.vue'
 const props=defineProps({show:Boolean,title:{type:String,default:'Vẽ chữ ký'}})
 const emit=defineEmits(['save','cancel'])
-const canvas=ref(null),drawn=ref(false)
-let down=false,previous=null
-function initCanvas(){
- const el=canvas.value
- if(!el)return
- const ratio=Math.min(3,window.devicePixelRatio||1)
- const width=el.clientWidth||320
- el.width=Math.floor(width*ratio)
- el.height=Math.floor(190*ratio)
- const ctx=el.getContext('2d')
- ctx.scale(ratio,ratio)
- ctx.strokeStyle='#133b86'
- ctx.lineWidth=2.4
- ctx.lineCap='round'
- ctx.lineJoin='round'
- drawn.value=false
- previous=null
-}
-watch(()=>props.show,async showing=>{if(showing){await nextTick();initCanvas()}},{flush:'post'})
-function pos(event){const rect=canvas.value.getBoundingClientRect();return {x:event.clientX-rect.left,y:event.clientY-rect.top}}
-function start(event){
- if(!canvas.value)return
- down=true;previous=pos(event)
- canvas.value.setPointerCapture?.(event.pointerId)
- event.preventDefault()
-}
-function move(event){
- if(!down||!previous)return
- const next=pos(event),ctx=canvas.value.getContext('2d')
- ctx.beginPath();ctx.moveTo(previous.x,previous.y);ctx.lineTo(next.x,next.y);ctx.stroke()
- previous=next;drawn.value=true
- event.preventDefault()
-}
-function stop(){down=false;previous=null}
-function clear(){initCanvas()}
-function save(){
- if(!drawn.value||!canvas.value)return
- emit('save',canvas.value.toDataURL('image/png'))
-}
-onBeforeUnmount(stop)
+const pad=ref(null),drawn=ref(false)
+watch(()=>props.show,async showing=>{if(showing){await nextTick();pad.value?.reset()}},{flush:'post'})
+function clear(){pad.value?.clear()}
+function save(){const data=pad.value?.toDataURL();if(data)emit('save',data)}
 </script>
 <template>
  <Popup :show="show" position="bottom" round :close-on-click-overlay="false" class="lotus-signature-draw" @update:show="open=>{if(!open)emit('cancel')}">
   <div class="lotus-signature-draw-body">
    <header><strong>{{title}}</strong><button type="button" aria-label="Đóng vẽ chữ ký" @click="emit('cancel')"><Icon name="cross"/></button></header>
    <p>Dùng ngón tay vẽ chữ ký trên khung trắng. Bản vẽ chỉ lưu sau khi bấm Dùng chữ ký này.</p>
-   <canvas ref="canvas" class="lotus-signature-draw-canvas" aria-label="Vùng vẽ chữ ký" @pointerdown="start" @pointermove="move" @pointerup="stop" @pointercancel="stop" @lostpointercapture="stop"></canvas>
+   <SignaturePad ref="pad" class="lotus-signature-draw-canvas" :height="190" @change="drawn=$event"/>
    <footer><button type="button" @click="clear">Xóa và vẽ lại</button><button type="button" :disabled="!drawn" @click="save">Dùng chữ ký này</button></footer>
   </div>
  </Popup>

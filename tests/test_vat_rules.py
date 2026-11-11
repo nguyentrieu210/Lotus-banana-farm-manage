@@ -17,6 +17,14 @@ class VatRules(unittest.TestCase):
             rules.vat_rate('7', '2026-10-01')
         self.assertTrue(all(r.get('source') for r in rules.load_vat()['rates']))
 
+    def test_a_code_that_ended_gives_way_to_the_one_that_followed(self):
+        # Goods ordered at 8 % in 2026 and received in 2027 are back at 10 % (Nghị quyết 204/2025/QH15).
+        self.assertEqual(rules.vat_code_on('8', '2026-12-31'), '8')
+        self.assertEqual(rules.vat_code_on('8', '2027-01-04'), '10')
+        self.assertEqual(rules.vat_code_on(None, '2027-01-04'), 'KCT')
+        with self.assertRaises(ValueError):
+            rules.vat_code_on('7', '2027-01-04')
+
     def test_monthly_summary(self):
         purchases = [dict(code='10', net=1_000_000, tax=100_000), dict(code='KCT', net=500_000, tax=0), dict(code='10', net=200_000, tax=20_000)]
         sales = [dict(code='KCT', net=30_000_000, tax=0), dict(code='8', net=2_000_000, tax=160_000)]

@@ -232,15 +232,58 @@ def _month(month):
     return start, get_last_day(start)
 
 
+def _purchase_listing(company, start, end):
+    """Purchase invoices of the month, one row per VAT rate. Lotus invoices carry the rate on each line (spec 003): the
+    net is split by line rate and the VAT is only the VAT rows (not freight, service costs or round-off), shared between
+    the rates by each rate's own VAT. Invoices without line rates keep their header code (third review, 11/11/2026)."""
+    has = frappe.get_meta(PI).has_field('lotus_vat_code')
+    heads = frappe.db.sql("""select p.name, p.bill_no, p.bill_date, p.posting_date, p.supplier, s.supplier_name, s.tax_id, p.net_total net,
+            %s code from `tabPurchase Invoice` p left join tabSupplier s on s.name=p.supplier
+        where p.company=%%s and p.docstatus=1 and p.posting_date between %%s and %%s order by p.posting_date, p.name""" % ("p.lotus_vat_code" if has else "'KCT'"),
+                          (company, start, end), as_dict=True)
+    if not heads:
+        return []
+    names = tuple(h.name for h in heads)
+    taxes = dict(frappe.db.sql("""select parent, sum(if(add_deduct_tax='Deduct', -1, 1) * base_tax_amount_after_discount_amount)
+        from `tabPurchase Taxes and Charges` where parenttype='Purchase Invoice' and parent in %s and (description like %s or account_head=%s)
+        group by parent""", (names, '%GTGT%', setup.mapping().get('input_vat') or '')))
+    lines = {}
+    if frappe.get_meta('Purchase Invoice Item').has_field('lotus_line_vat'):
+        for parent, code, net in frappe.db.sql("""select parent, lotus_line_vat, sum(base_net_amount) from `tabPurchase Invoice Item`
+                where parent in %s group by parent, lotus_line_vat""", (names,)):
+            lines.setdefault(parent, []).append((code, flt(net)))
+    out = []
+    for h in heads:
+        tax = flt(taxes.get(h.name))
+        groups = {}
+        for code, net in lines.get(h.name, []):
+            key = str(code or h.code or 'KCT')
+            groups[key] = groups.get(key, 0.0) + net
+        if not any(code for code, _ in lines.get(h.name, [])):
+            out.append(dict(h, tax=tax, code=h.code or 'KCT'))
+            continue
+        day = h.bill_date or h.posting_date
+        weights = {}
+        for code, net in groups.items():
+            try:
+                weights[code] = abs(net) * rules.vat_rate(code, day)
+            except ValueError:
+                weights[code] = 0.0
+        total = sum(weights.values())
+        codes = sorted(groups)
+        left = tax
+        for i, code in enumerate(codes):
+            part = left if i == len(codes) - 1 else flt(tax * (weights[code] / total if total else (1 if i == 0 else 0)), 0)
+            left -= part
+            out.append(dict(h, net=groups[code], tax=part, code=code))
+    return out
+
+
 def vat_listing(month):
     """Purchase and sales invoices of the month with net, rate code and VAT (bảng kê hóa đơn mua vào / bán ra)."""
     company = setup.company()
     start, end = _month(month)
-    has = frappe.get_meta(PI).has_field('lotus_vat_code')
-    purchases = frappe.db.sql("""select p.name, p.bill_no, p.bill_date, p.posting_date, p.supplier, s.supplier_name, s.tax_id, p.net_total net,
-            p.total_taxes_and_charges tax, %s code from `tabPurchase Invoice` p left join tabSupplier s on s.name=p.supplier
-        where p.company=%%s and p.docstatus=1 and p.posting_date between %%s and %%s order by p.posting_date, p.name""" % ("p.lotus_vat_code" if has else "'KCT'"),
-                              (company, start, end), as_dict=True)
+    purchases = _purchase_listing(company, start, end)
     has = frappe.get_meta(SI).has_field('lotus_vat_code')
     sales = frappe.db.sql("""select i.name, %s, i.posting_date, i.customer, c.customer_name, c.tax_id, i.net_total net, i.total_taxes_and_charges tax, %s code
         from `tabSales Invoice` i left join tabCustomer c on c.name=i.customer
@@ -268,8 +311,13 @@ def vat_report(month):
             return 0
         return flt(frappe.db.sql("""select sum(%s) from `tabGL Entry` where company=%%s and account=%%s and is_cancelled=0 and posting_date between %%s and %%s
             and voucher_type in ('Purchase Invoice', 'Sales Invoice')""" % side, (company, account, start, end))[0][0])
-    checks = [dict(label='Thuế GTGT đầu vào: bảng kê so với TK 1331', listing=summary['input_tax'], ledger=moved(m.get('input_vat'), 'debit-credit')),
-              dict(label='Thuế GTGT đầu ra: bảng kê so với TK 33311', listing=summary['output_tax'], ledger=moved(m.get('output_vat'), 'credit-debit'))]
+    if setup.vat_in_cost():
+        # Household business: input VAT goes into the cost of goods and services, never to 1331; nothing to compare.
+        first = dict(label='Hộ kinh doanh: thuế GTGT đầu vào tính vào giá vốn và chi phí, không khấu trừ (không đối chiếu TK 1331)',
+                     listing=summary['input_tax'], ledger=summary['input_tax'])
+    else:
+        first = dict(label='Thuế GTGT đầu vào: bảng kê so với TK 1331', listing=summary['input_tax'], ledger=moved(m.get('input_vat'), 'debit-credit'))
+    checks = [first, dict(label='Thuế GTGT đầu ra: bảng kê so với TK 33311', listing=summary['output_tax'], ledger=moved(m.get('output_vat'), 'credit-debit'))]
     for c in checks:
         c['ok'] = abs(round(c['listing']) - round(c['ledger'])) < 1
     return dict(month=str(month)[:7], from_date=str(start), to_date=str(end), purchases=purchases, sales=sales, summary=summary, checks=checks)

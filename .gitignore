@@ -12,3 +12,4 @@ frontend/dist-showcase/
 
 # Local build/test output
 /*.log
+/.local/

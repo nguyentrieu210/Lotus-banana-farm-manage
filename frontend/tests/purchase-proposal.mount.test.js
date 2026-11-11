@@ -24,11 +24,12 @@ const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textCo
 
 test('the todo list shows proposals waiting for my signature and opens the four-step detail',async()=>{
  calls.length=0
- routes={[P+'proposals']:[{name:'MAT-MR-1',date:'2026-10-20',needed:'2026-10-22',state:'Chờ phụ trách bộ phận',proposer:'An',department:'Đội A',reason:'Chăm sóc vườn',total:0,lines:1,can_sign:true}],
+ routes={[P+'proposals']:{rows:[{name:'MAT-MR-1',date:'2026-10-20',needed:'2026-10-22',state:'Chờ phụ trách bộ phận',stage:'Đang ký',waiting_me:true,proposer:'An',department:'Đội A',reason:'Chăm sóc vườn',total:0,lines:1,can_sign:true}],counts:{'Đang ký':1,'Chờ tôi ký':1}},
   [P+'detail']:detail({can_sign:true,can_return:true})}
  const view=mount(Proposal,{company:'Lotus',today:'2026-10-20'});await tick()
  assert.equal(calls[0].args.view,'todo','opens on what waits for me')
- assert.match(text(view.root),/MAT-MR-1.*Chờ phụ trách bộ phận/)
+ assert.match(text(view.root),/MAT-MR-1.*Đang ký/,'the board shows the stage')
+ assert.match(text(view.root),/Chờ tôi ký \(1\)/)
  button(view.root,'MAT-MR-1').click();await tick()
  const steps=[...view.root.querySelectorAll('.lotus-signature-timeline__list li')]
  assert.equal(steps.length,4)
@@ -44,7 +45,7 @@ const signerOptions={steps:[{key:'PROPOSE',title:'Người đề xuất'},{key:'
 
 test('a new proposal repeats date and purpose on added lines, then saves and signs',async()=>{
  calls.length=0
- routes={[P+'proposals']:[],[P+'form_data']:{proposer:'An',department:'Đội A',warehouses:[{name:'KHO 1',warehouse_name:'KHO 1'}],items:[{name:'UREA',item_name:'Ure',stock_uom:'Tonne'}],conversions:[]},
+ routes={[P+'proposals']:{rows:[],counts:{}},[P+'form_data']:{proposer:'An',department:'Đội A',warehouses:[{name:'KHO 1',warehouse_name:'KHO 1'}],items:[{name:'UREA',item_name:'Ure',stock_uom:'Tonne'}],conversions:[]},
   [P+'stock_on_hand']:{qty:4},[P+'signer_options']:signerOptions,[P+'save_proposal']:detail({state:'Nháp',step:0,signatures:signatures(0),modified:'m0'}),[P+'sign']:detail()}
  const view=mount(Proposal,{company:'Lotus',today:'2026-10-20'});await tick()
  button(view.root,'+ Lập đề xuất mua').click();await tick()
@@ -58,6 +59,9 @@ test('a new proposal repeats date and purpose on added lines, then saves and sig
  const second=[...lines()[1].querySelectorAll('input')].find(i=>i.placeholder.startsWith('VD: Bón'))
  assert.equal(second.value,'Bón khu A','the next line copies the purpose')
  button(view.root,'Ký và gửi phụ trách bộ phận').click();await tick();await tick()
+ assert.ok(!calls.some(c=>c.method===P+'sign'),'nothing is signed before the confirmation')
+ assert.match(document.body.textContent,/Phiếu đề xuất mua vật tư.*bước Người đề xuất/,'the confirmation names what is signed')
+ ;[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Đồng ý').click();await tick();await tick();await tick()
  assert.deepEqual(calls.filter(c=>c.method.startsWith(P)&&['save_proposal','sign'].includes(c.method.slice(P.length))).map(c=>c.method.slice(P.length)),['save_proposal','sign'])
  assert.equal(calls.find(c=>c.method===P+'sign').args.modified,'m0','signs the version just saved')
  assert.deepEqual(calls.find(c=>c.method===P+'sign').args.signers,{DEPARTMENT:'binh@lotus',PURCHASING:'chi@lotus',APPROVE:'dung@lotus'},'the only eligible person of each step is preselected')
@@ -65,7 +69,7 @@ test('a new proposal repeats date and purpose on added lines, then saves and sig
 })
 
 test('accounting step edits prices only',async()=>{
- routes={[P+'proposals']:[{name:'MAT-MR-1',date:'2026-10-20',needed:'2026-10-22',state:'Chờ kế toán / mua hàng',proposer:'An',reason:'x',total:0,lines:1,can_sign:true}],
+ routes={[P+'proposals']:{rows:[{name:'MAT-MR-1',date:'2026-10-20',needed:'2026-10-22',state:'Chờ kế toán / mua hàng',stage:'Đang ký',proposer:'An',reason:'x',total:0,lines:1,can_sign:true}],counts:{'Đang ký':1}},
   [P+'detail']:detail({state:'Chờ kế toán / mua hàng',step:2,step_title:'Phòng Kế toán / Mua hàng',signatures:signatures(2),edit:'prices',can_sign:true}),
   [P+'form_data']:{proposer:'An',warehouses:[{name:'KHO 1'}],items:[{name:'UREA',item_name:'Ure',stock_uom:'Tonne'}],conversions:[]}}
  const view=mount(Proposal,{company:'Lotus',today:'2026-10-20'});await tick()

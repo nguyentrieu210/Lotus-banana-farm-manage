@@ -135,7 +135,7 @@ defineExpose({open:show,hasChanges:()=>open.value,discardChanges:()=>{open.value
    <FormSection title="Trạng thái và phạm vi dùng">
     <FormGrid :columns="3">
      <LotusField :model-value="!master.disabled" type="checkbox" label="Đang sử dụng" :readonly="readonly" hint="Bỏ chọn để ngừng dùng: mã không hiện khi lập chứng từ mới, lịch sử vẫn giữ." @update:model-value="master.disabled=!$event"/>
-     <LotusField v-model="master.is_purchase_item" type="checkbox" label="Hàng mua" :readonly="readonly" hint="Hiện trong đề nghị mua, đơn mua, hóa đơn mua."/>
+     <LotusField v-model="master.is_purchase_item" type="checkbox" label="Hàng mua" :readonly="readonly" hint="Hiện trong đề xuất mua, đơn mua, hóa đơn mua."/>
      <LotusField v-model="master.is_sales_item" type="checkbox" label="Hàng bán" :readonly="readonly" hint="Hiện trong đơn bán, hóa đơn bán (phụ phẩm, vật tư bán lại…)."/>
     </FormGrid>
    </FormSection>

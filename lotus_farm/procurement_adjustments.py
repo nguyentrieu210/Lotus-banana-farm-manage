@@ -35,6 +35,8 @@ def credit_note(company, name, posting_date, quantities, client_key, bill_no=Non
     if {r.purchase_invoice_item for r in kept}!=set(selected):
         frappe.throw('Dòng hóa đơn đã thay đổi. Mở lại hóa đơn.')
     d.set('items',kept)
+    from lotus_farm.procurement import renumber
+    renumber(d)
     d.update(dict(posting_date=posting_date,set_posting_time=1,update_stock=0,bill_no=bill_no or source.bill_no,
                   bill_date=bill_date or posting_date,lotus_procurement_key=key,lotus_procurement_hash=fingerprint))
     if any(r.get('lotus_purchase_kind') or r.get('lotus_line_vat') for r in source.items):

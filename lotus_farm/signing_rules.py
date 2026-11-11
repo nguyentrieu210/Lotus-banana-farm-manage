@@ -31,6 +31,10 @@ CHAINS = {
         _step('STOREKEEPER', 'Thủ kho', STOREKEEPERS), _step('APPROVE', 'Giám đốc NT / Người phê duyệt', DIRECTORS))),
     'purchase_order': dict(app='buying', gate=True, label='Đơn mua hàng', steps=(
         _step('PREPARE', 'Người lập đơn'), _step('APPROVE', 'Người duyệt mua', PURCHASE_APPROVER))),
+    # Phiếu nhập kho theo đơn (spec 003, FR-043): confirming the receipt is the storekeeper's signature. The person
+    # delivering has no Lotus account: they sign on the screen or on the delivery note photographed with the receipt.
+    'purchase_receipt': dict(app='warehouse', gate=True, label='Phiếu nhập kho theo đơn', steps=(
+        _step('STOREKEEPER', 'Thủ kho nhận hàng'),)),
     'stock_document': dict(app='warehouse', gate=False, label='Phiếu kho', steps=(
         _step('PREPARE', 'Người lập phiếu'), _step('HANDOVER', 'Người giao / nhận', ()),
         _step('STOREKEEPER', 'Thủ kho / người kiểm tra', STOREKEEPERS))),
@@ -43,6 +47,13 @@ CHAINS = {
 
 WAITING, SIGNED, RETURNED, PENDING = 'Chờ ký', 'Đã ký', 'Trả lại', 'Chưa đến lượt'
 
+# The step whose signer checked the content; their ký nháy is printed on every page of the signed copy.
+CHECKER_STEPS = {'purchase_proposal': 2, 'purchase_order': 0, 'payment_voucher': 1}
+
+
+def checker_step(key):
+    return CHECKER_STEPS.get(key)
+
 # Phone apps (PWA) that can show a signing alert, with their root path. A chain whose own app is not a
 # phone app (payment vouchers live in the desktop Finance app) is announced in the fallback app.
 PHONE_APPS = {'buying': '/buying', 'warehouse': '/warehouse', 'work': '/work', 'hr': '/hr-mobile'}
@@ -50,8 +61,11 @@ FALLBACK_APP = {'finance': 'buying'}
 
 
 def notify_app(chain_app, device_apps):
-    """The phone app that carries a signing alert for one signer: the chain's own app (or its fallback) when the
-    signer has a phone there or no phone at all; otherwise the app they last used with a phone."""
+    """The phone app that carries a signing alert for one signer.
+
+    The chain's own app (or its fallback) when the signer has a phone subscribed there or has no phone
+    at all (the alert still waits in that app's bell); otherwise the app they last used with a phone,
+    so the push actually reaches them. device_apps is ordered most recently used first."""
     devices = [app for app in device_apps if app in PHONE_APPS]
     home = chain_app if chain_app in PHONE_APPS else FALLBACK_APP.get(chain_app)
     if home and (home in devices or not devices):
@@ -66,10 +80,10 @@ def sign_link(app, doctype, name):
 
 
 def push_link(app, link, doctype, name):
-    """Keep a chain's own link when it already points inside the chosen phone app or to a Lotus print page;
-    otherwise open the document in that app. Push targets must stay inside the app that shows them."""
+    """Keep a chain's own link when it already points inside the chosen phone app; otherwise open the
+    document's signing sheet in that app. Push targets must stay inside the app that shows them."""
     from urllib.parse import urlsplit
-    if urlsplit(link).path == PHONE_APPS[app] or link.startswith('/lotus/in-'):
+    if urlsplit(link).path == PHONE_APPS[app]:
         return link
     return sign_link(app, doctype, name)
 # Fields of a line that define what was signed (quantities, prices, places); labels and notes may change.

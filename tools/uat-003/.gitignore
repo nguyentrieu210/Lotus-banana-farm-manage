@@ -1,0 +1,4 @@
+# Written by a run on the VPS test location: the generated accounts (secret), screenshots and upload fixtures.
+.uat
+uat/
+fixtures/

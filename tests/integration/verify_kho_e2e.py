@@ -143,7 +143,7 @@ try:
 
     # Cột nghiệp vụ của từng danh sách phiếu
     rec = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r1['name'])
-    ok('phiếu nhập: lý do + NCC', rec.reason == 'Mua ngoài' and rec.supplier == supplier, (rec.reason, rec.supplier))
+    ok('phiếu nhập: lý do + NCC', rec.reason == 'Mua nhanh' and rec.supplier == supplier, (rec.reason, rec.supplier))
     rec4 = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r4['name'])
     ok('phiếu thu hồi: lý do', rec4.reason == 'Thu hồi từ lô', rec4.reason)
     iss = next(r for r in w.documents(company, kind='issues', warehouse=A)['rows'] if r.name == i1['name'])

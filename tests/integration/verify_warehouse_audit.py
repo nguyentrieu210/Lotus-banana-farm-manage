@@ -59,7 +59,7 @@ try:
  row=coverage();assert row['required_qty']==120 and row['remaining_qty']==80 and row['shortage_qty']==30,row
  supplier=make('Supplier',supplier_name='Audit supplier '+tag,supplier_type='Company',supplier_group='All Supplier Groups').name
  material=frappe.get_doc('Item',item);material.append('uoms',dict(uom='Box',conversion_factor=10));material.save()
- order=make('Purchase Order',company=company,supplier=supplier,transaction_date=today,schedule_date=today,currency='VND',items=[dict(item_code=item,qty=2,uom='Box',conversion_factor=10,rate=1000,warehouse=store,schedule_date=today)]);frappe.local.lotus_policy_approved=order.name;order.submit();frappe.local.lotus_policy_approved=None
+ order=make('Purchase Order',company=company,supplier=supplier,transaction_date=today,schedule_date=today,currency='VND',items=[dict(item_code=item,qty=2,uom='Box',conversion_factor=10,rate=1000,warehouse=store,schedule_date=today)]);flow=frappe.conf.get('lotus_purchase_flow_company');frappe.conf.lotus_purchase_flow_company=None;order.db_set('lotus_approval_status','Chờ duyệt',update_modified=False);order.submit();frappe.conf.lotus_purchase_flow_company=flow
  row=coverage();assert row['incoming_qty']==20 and row['to_buy_qty']==10,row
  main=w.overview(company,warehouse=store,search=item,from_date=today,to_date=today)['items'][0]
  assert (main.demand_qty,main.available_qty,main.demand_shortage_qty,main.incoming_qty,main.to_buy_qty,main.coverage_status)==(80,50,30,20,10,'Cần mua'),main
