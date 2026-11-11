@@ -1,0 +1,1 @@
+var e=`lotus-draft:`;function t(t,n){try{localStorage.setItem(e+t,JSON.stringify({savedAt:Date.now(),values:n}))}catch{}}function n(t){try{let n=JSON.parse(localStorage.getItem(e+t)||`null`);return!n||!n.values||Date.now()-n.savedAt>6048e5?(localStorage.removeItem(e+t),null):n}catch{return null}}function r(t){try{localStorage.removeItem(e+t)}catch{}}export{n,t as r,r as t};
