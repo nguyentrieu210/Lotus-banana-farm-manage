@@ -104,7 +104,7 @@ description: "Danh sách việc: đúc lại bộ giao diện Lotus đạt chu�
 - [x] T049 Màu dây trong hộp nhập lô có "lần": `field_report._ribbon_tags` đọc `week_half`, `lot_report._colours` trả `lan`; nhãn "Tím · tuần 45 lần 2 · còn 31". Trước đây hai đợt cùng màu cùng tuần hiện giống hệt nhau. Test Python `test_lot_paper_form`, `test_care_stage_rules`, `test_ribbon_board` đạt trên site thử; test JS trong `tests/lot-entry-model.test.js`.
 - [x] T050 `NumberStepper`: từ ô rỗng, "+" cho một bước (trước là 0).
 - [x] T051 Bộ xem thử ứng dụng thật trên VPS (R14) và ảnh chụp các màn đã đổi.
-- [ ] T052 Gỡ bộ thử `lotus-004-test` cùng volume khi chủ vườn duyệt xong; gỡ khóa API Administrator đã tạo trên site thử `mua.test` của bộ 003 (bộ đó đang dừng).
+- [ ] T052 Đã gỡ bộ thử `lotus-004-test` cùng volume (11/11). Còn gỡ khóa API Administrator đã tạo trên site thử `mua.test` của bộ 003 khi bộ đó chạy lại.
 
 ## Dependencies & Execution Order
 
