@@ -23,6 +23,18 @@ Không tạo DocType mới. Yêu cầu là Material Request của ERPNext. Các 
 
 ## Clarifications
 
+### Quyết định của chủ vườn 11/11/2026 (thay các điểm về người lập và người duyệt bên dưới)
+
+Chủ vườn: "đội trưởng duyệt, không cần tổ trưởng, đội trưởng nhập luôn".
+
+- Tổ trưởng **không** lập yêu cầu cấp vật tư.
+- Đội trưởng của đội lập yêu cầu cho đội mình (có thể ghi một tổ nhận) và **duyệt, kể cả yêu cầu của chính mình**. Đây là ngoại lệ rõ ràng của chủ vườn cho luật "không ai tự duyệt" (nguyên tắc III cho phép khi chủ vườn cho phép rõ ràng). Người duyệt ghi trên chứng từ và sự kiện APPROVE là đội trưởng đó.
+- Quản lý vườn lập cho mọi đội của vườn được cấp và duyệt mọi yêu cầu, kể cả của mình.
+- Đội trưởng được "Lưu và duyệt" một lần (`save(..., approve=1)`, hoặc `approve` ngay trên yêu cầu nháp của mình). Trạng thái "Chờ duyệt" vẫn giữ cho khi cần (đội trưởng gửi để quản lý vườn xem; quản lý vườn trả lại có lý do trước khi Kho cấp).
+- Hook máy chủ vẫn chặn mọi submit không qua hàm duyệt của Lotus; người duyệt phải là đội trưởng của đội hoặc quản lý vườn.
+
+Các câu "Ai được lập?", "Ai duyệt, mấy bước?", US1 kịch bản 1, 3, 7 và FR-001, FR-010 dưới đây đọc theo quyết định này.
+
 ### Session 2026-11-11
 
 Chủ vườn chỉ trả lời "có, làm", không trả lời chi tiết. Các điểm dưới đây là mặc định do người viết spec chọn, kèm lý do. Chủ vườn có thể đổi bất kỳ điểm nào trước khi làm.
@@ -194,7 +206,7 @@ Thủ kho ở kho vườn mở /warehouse, thấy "Cấp theo yêu cầu (N)", c
 ### Functional Requirements
 
 **Lập và gửi**
-- **FR-001**: Hệ thống PHẢI cho tổ trưởng, đội trưởng và quản lý vườn lập yêu cầu cấp vật tư trong Công việc (máy tính) và /work (điện thoại), với quyền tính ở máy chủ bằng `field_report.access(farm, crew)`; không tin danh sách tổ do trình duyệt gửi.
+- **FR-001**: (11/11/2026: chỉ đội trưởng và quản lý vườn, tổ trưởng không lập) Hệ thống PHẢI cho tổ trưởng, đội trưởng và quản lý vườn lập yêu cầu cấp vật tư trong Công việc (máy tính) và /work (điện thoại), với quyền tính ở máy chủ bằng `field_report.access(farm, crew)`; không tin danh sách tổ do trình duyệt gửi.
 - **FR-002**: Một yêu cầu PHẢI có: vườn, đội, tổ (hoặc trống = cả đội), một việc, một kho cấp, ngày cần, người nhận (nhân viên), lý do; và 1–100 dòng, mỗi dòng một vật tư cho một lô, số lượng lớn hơn 0 theo đơn vị tồn kho.
 - **FR-003**: Mỗi dòng PHẢI lưu lô ở chiều kế toán `lotus_farm_block`, vườn ở `lotus_farm`, việc ở `lotus_work_type`, mã lô ở `lotus_usage_area`, tên việc ở `lotus_purpose`, liều và ghi chú ở `lotus_notes`, kho ở `warehouse`. Các giá trị này do máy chủ điền từ lô và việc đã kiểm.
 - **FR-004**: Máy chủ PHẢI từ chối: lô không hoạt động hoặc ngoài khu của đội; việc không thuộc vườn; tổ ngoài đội hoặc không phải tổ của tổ trưởng đó; vật tư tắt, không tồn kho, có lô/serial; kho không thuộc công ty hoặc là nhóm; trùng vật tư × lô; ngày cần ở quá khứ khi gửi.
@@ -203,7 +215,8 @@ Thủ kho ở kho vườn mở /warehouse, thấy "Cấp theo yêu cầu (N)", c
 - **FR-007**: Khi lưu, máy chủ PHẢI cảnh báo (không chặn): vật tư × lô đã có trong yêu cầu khác còn mở; kho không đủ hàng; lô đang cách ly.
 
 **Duyệt**
-- **FR-010**: Hệ thống PHẢI xác định người duyệt theo luật: yêu cầu của tổ trưởng → đội trưởng của đội hoặc quản lý vườn; của đội trưởng hoặc đội không có đội trưởng → quản lý vườn; của quản lý vườn → quản lý vườn khác. Người lập không bao giờ duyệt yêu cầu của mình.
+- **FR-010** (sửa theo quyết định chủ vườn 11/11/2026): Người duyệt là đội trưởng của đội hoặc quản lý vườn, kể cả khi chính họ lập yêu cầu. Đội không có đội trưởng → quản lý vườn. Tổ trưởng và người khác không duyệt.
+- ~~FR-010 cũ~~: yêu cầu của tổ trưởng → đội trưởng; của đội trưởng → quản lý vườn; của quản lý vườn → quản lý vườn khác; không ai tự duyệt.
 - **FR-011**: Người duyệt PHẢI có thể: Duyệt; Giảm số rồi duyệt (chỉ giảm hoặc bỏ dòng, có lý do, lưu số trước/sau); Trả lại (có lý do). Người lập PHẢI có thể Rút lại khi đang chờ duyệt.
 - **FR-012**: Duyệt PHẢI là submit Material Request, chỉ chạy trong hàm duyệt của Lotus; khi duyệt ghi người duyệt, giờ duyệt, một Lotus Signature Event `APPROVE` và một dòng bình luận.
 - **FR-013**: Hệ thống PHẢI chặn mọi submit, hủy, dừng, mở lại Material Request loại Material Issue không đi qua Lotus (Desk, REST, script), và chặn sửa nội dung khi yêu cầu đang chờ duyệt hoặc đã duyệt.
