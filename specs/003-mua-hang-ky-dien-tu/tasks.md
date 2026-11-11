@@ -582,7 +582,12 @@ Bốn người rà soát đọc phần mã viết trong và sau vòng 2. Có 25 
   - tìm và sửa lỗi đường link thẳng của `main` (đang có trên site thật);
   - phiếu nghiệm thu cho người dùng thật: `checklists/acceptance.md`.
 
-  Còn lại, chờ chủ vườn: commit, gộp thật, đưa lên, và vòng nghiệm thu SC-011.
+  Đã lên site thật ngày 11/11/2026 07:29, `lotus-release:68dd563`, theo lệnh của chủ vườn:
+  - chạy thử trên bản sao dữ liệu thật cùng ngày: migrate 150 giây, sổ sách 26 bảng không đổi;
+  - triển khai bằng `/srv/lotus-build/68dd563/rollout3.sh`: bảo trì 07:25:47–07:28:47, sao lưu `20261111_072550`, sổ sách không đổi;
+  - quay lại bản cũ: `rollback.sh 68dd563 --restore-db`.
+
+  Còn lại: vòng nghiệm thu SC-011 với người dùng thật (`checklists/acceptance.md`).
 - [x] T148 Chạy lại toàn bộ bộ kiểm trên VPS: procurement 51/51, complete 62/62, flow 23/23, concurrency 4/4, vat_in_cost 24/24, signing, proposal và sign_notify qua, giao diện 650/650. `verify_sales` và `verify_finance` chạy trên bản sao site thật, kết quả ghi ở quickstart §5. Kịch bản trình duyệt 16/16, 11/11, 7/7, 11/11.
 
 ---
