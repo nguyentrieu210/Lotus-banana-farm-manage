@@ -121,7 +121,8 @@ try:
 
     # ------------------------------------------------------------ 4. lower and approve
     doc.reload()
-    lowered = {doc.items[0].name: 1}
+    # every line is sent: a line left out of the dict is dropped (rules.lowered); only the first is lowered to 1
+    lowered = {r.name: (1 if i == 0 else flt(r.qty)) for i, r in enumerate(doc.items)}
     refused("lowering needs a reason", lambda: fx.as_user(who.leader, api.approve, name, str(doc.modified), "a0-" + tag, json.dumps(lowered)))
     refused("raising is refused", lambda: fx.as_user(who.leader, api.approve, name, str(doc.modified), "a1-" + tag,
                                                     json.dumps({doc.items[0].name: 9}), "nhiều hơn"))
@@ -178,7 +179,9 @@ try:
 
     # ------------------------------------------------------------ 6. over-issue, then the rest
     left = warehouse.issue_lines(company, "Request", name)["rows"]
-    row0 = next(r for r in left if r["material_request_item"] == first["material_request_item"])
+    # the first line was lowered to 1 and may be issued in full already: try the over-issue on any line still open
+    check("lines still open after a partial issue", bool(left), left)
+    row0 = left[0]
     refused("issuing more than is left is refused", lambda: warehouse.create_draft(
         company=company, kind="issue", posting_date=today, source=store, receiver_employee=employee, issue_mode="Request", notes="vượt",
         lines=[dict(item=row0["item"], qty=row0["remaining_qty"] + 1, uom=row0["stock_uom"], area=row0["area"], material_request=name,

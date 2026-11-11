@@ -1059,6 +1059,9 @@ def delete_draft(name, modified, client_event_id=None):
             frappe.throw("Chỉ người lập xóa yêu cầu nháp.", frappe.PermissionError)
         if rules.state(doc.docstatus, doc.status, doc.get("lotus_issue_sent_at"), doc.get("lotus_issue_return_reason")) not in rules.EDITABLE:
             frappe.throw("Chỉ xóa yêu cầu nháp hoặc bị trả lại.")
+        # The double-click guard rows of earlier saves point at the draft; keep them (their result stays) but unlink them,
+        # otherwise Frappe refuses the delete as a linked document.
+        frappe.db.sql("update `tabLotus ERP Command` set reference_name=null where reference_doctype=%s and reference_name=%s", (DT, doc.name))
         token = _writing.set(True)
         try:
             frappe.delete_doc(DT, doc.name, ignore_permissions=True)
