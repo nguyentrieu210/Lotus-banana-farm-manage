@@ -17,6 +17,8 @@ export const fieldNavigation=[
  {id:'forecast-params',label:'Tham số dự thu',icon:'sliders',path:'forecast',setup:true,open:true},
  {id:'inspect',label:'Nghiệm thu',icon:'check',hidden:true},
  {id:'payable',label:'Tiền khoán theo người',icon:'wallet',hidden:true},
+ // Spec 005: yêu cầu cấp vật tư, reached from Giao việc ("Xem tất cả") and from alerts (?field_view=materials&request=).
+ {id:'materials',label:'Yêu cầu cấp vật tư',icon:'package',hidden:true},
 ].map(r=>({path:'cong-viec',...r}))
 const views=new Set(fieldNavigation.filter(r=>r.path==='cong-viec').map(r=>r.id))
 export function normalizeFieldView(value){return views.has(value)?value:'today'}

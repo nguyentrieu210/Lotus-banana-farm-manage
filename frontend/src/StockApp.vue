@@ -21,6 +21,7 @@ import StockDocumentForm from './components/stock/StockDocumentForm.vue'
 import StockDocumentDetail from './components/stock/StockDocumentDetail.vue'
 import StockMasterForm from './components/stock/StockMasterForm.vue'
 import StockScope from './components/stock/StockScope.vue'
+import IssueRequestQueue from './components/stock/IssueRequestQueue.vue'
 import ErpSection from './components/erp/ErpSection.vue'
 import {erpSection} from './erp-sections.js'
 import {Button as UiButton} from './components/ui/button'
@@ -55,8 +56,17 @@ async function initialize(){
   if(props.stockView==='buying'){await openBuying({buying_view:'orders'},true);return}
   await loadScope()
  }catch(e){error.value=e.message}finally{busy.value=false}
+ // Spec 005: an alert link /lotus/kho?stock_view=issues&issue_request=… opens the issue form for that request.
+ const linked=String(route?.query?.issue_request||'')
+ if(session.value&&linked){view.value='issues';await openFromRequest(linked)}
 }
 onMounted(initialize)
+// "Cấp theo yêu cầu (N)": approved yêu cầu cấp vật tư still to issue, in Xuất kho.
+const issueQueue=ref(null),issueQueueCount=ref(null)
+async function openFromRequest(name){
+ error.value=''
+ try{await documentForm.value.openFromRequest(name)}catch(e){error.value=e.message}
+}
 
 // ERP section keys (erp_tab, name, new, erp_doctype) belong to the section being left; they never follow to another view.
 const erpKeys=new Set(['erp_tab','name','new','erp_doctype'])
@@ -109,7 +119,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải kho…</p>
    <template v-if="session">
     <StockInventory v-if="view==='stock'" v-bind="listProps" v-on="listEvents" :can-create="canCreate" :show-purchase="desktop||embedded" @create="kind=>documentForm.open(kind)" @receive="receivingView.openPicker()" @purchase="openBuying({buying_view:'orders',action:'create_order'})" @edit-master="(kind,name)=>masterForm.open(kind,name)"/>
-    <StockDocumentList v-else-if="documentViews[view]" :kind="view" v-bind="listProps" v-on="listEvents" :can-create="canCreate" @create="kind=>documentForm.open(kind)" @receive="receivingView.openPicker()"/>
+    <StockDocumentList v-else-if="documentViews[view]" :kind="view" v-bind="listProps" v-on="listEvents" :can-create="canCreate" :issue-queue-count="view==='issues'&&session?.permissions?.['Stock Entry']?issueQueueCount:null" @create="kind=>documentForm.open(kind)" @receive="receivingView.openPicker()" @issue-queue="issueQueue?.show()"/>
     <StockLedger v-else-if="view==='movements'" v-bind="listProps" v-on="listEvents"/>
     <StockReport v-else-if="view==='report'" v-bind="listProps" v-on="listEvents"/>
     <WarehousePlanning v-else-if="view==='planning'" ref="planningView" :company="company" :warehouse="warehouse" :today="session.today" @receive="name=>receivingView.openOrder(name)" @open-receipt="name=>receivingView.openReceipt(name)">
@@ -124,6 +134,7 @@ const tabs=computed(()=>(warehousePwa?stockNavigation.filter(r=>mobileViews.incl
   </component>
   <WarehouseReceiving ref="receivingView" :company="company" :warehouse="warehouse" :warehouses="warehouses" :today="session?.today" :confirm="confirm.ask" @changed="changed"/>
   <StockDocumentForm ref="documentForm" :company="company" :warehouse="warehouse" :warehouses="warehouses" :session="session" @saved="documentSaved"/>
+  <IssueRequestQueue ref="issueQueue" :company="company" :warehouse="warehouse" :active="view==='issues'&&!!session?.permissions?.['Stock Entry']" :refresh-key="refreshKey" :today="session?.today" @count="n=>issueQueueCount=n" @issue="openFromRequest"/>
   <StockDocumentDetail ref="documentDetail" :warehouses="warehouses" :session="session" @changed="changed" @edit="current=>documentForm.edit(current)"/>
   <StockMasterForm ref="masterForm" :company="company" :session="session" @saved="masterSaved"/>
   <WorkspaceConfirm :open="confirm.open.value" :title="confirm.title.value" :message="confirm.message.value" :alert-only="confirm.alertOnly.value" @answer="confirm.finish"/>

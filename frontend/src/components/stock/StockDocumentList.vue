@@ -9,8 +9,8 @@ import {Button as UiButton} from '../ui/button'
 import {documentColumns} from '../../stock-columns'
 import {updateColumnFilter,hasStockSearchFilters} from '../../stock-filter-state'
 // Nhập kho · Xuất kho · Chuyển kho · Kiểm kê: one list per kind of stock document, each with its own create buttons.
-const props=defineProps({kind:{type:String,required:true},company:String,warehouse:String,session:Object,warehouses:{type:Array,default:()=>[]},refreshKey:Number,canCreate:Boolean})
-const emit=defineEmits(['update:warehouse','update:company','create','receive','open-document'])
+const props=defineProps({kind:{type:String,required:true},company:String,warehouse:String,session:Object,warehouses:{type:Array,default:()=>[]},refreshKey:Number,canCreate:Boolean,issueQueueCount:{type:Number,default:null}})
+const emit=defineEmits(['update:warehouse','update:company','create','receive','open-document','issue-queue'])
 const titles={receipts:'Phiếu nhập kho',issues:'Phiếu xuất kho',transfers:'Phiếu chuyển kho',counts:'Phiếu kiểm kê'}
 const creators={
  receipts:[{kind:'receipt-order',label:'Nhập theo đơn mua',icon:'receive',doctype:'Purchase Receipt'},{kind:'receipt',label:'Nhập không theo đơn',icon:'download',doctype:'Stock Entry'}],
@@ -48,6 +48,6 @@ defineExpose({refresh:()=>load()})
    :storage-key="'lotus-stock-documents-'+kind" show-empty-headers server-sort interactive :filter-values="data?.filter_values" :server-filters="filters" empty="Không có phiếu phù hợp. Thử bỏ lọc hoặc thay đổi khoảng ngày."
    @sort="model=>{sort=model;load(true)}" @filter="({field,values})=>{filters=updateColumnFilter(filters,field,values);load(true)}" @open="row=>emit('open-document',row.doctype,row.name)">
   <template #filters><StockScope dates v-model:from="from" v-model:to="to" :warehouse="warehouse" :company="company" :warehouses="warehouses" :companies="session?.companies||[]" :disabled="busy" @update:warehouse="emit('update:warehouse',$event)" @update:company="emit('update:company',$event)"/><UiButton v-if="hasFilters" variant="outline" @click="clearFilters">Bỏ lọc</UiButton></template>
-  <template #actions><UiButton v-for="(action,index) in creators[kind]" :key="action.kind" :variant="index?'outline':'default'" :disabled="!canCreate||!session?.permissions?.[action.doctype]" @click="act(action)"><LotusIcon :name="action.icon"/>{{action.label}}</UiButton></template>
+  <template #actions><UiButton v-if="kind==='issues'&&issueQueueCount!=null" variant="outline" class="issue-queue-button" :disabled="!session?.permissions?.['Stock Entry']" @click="emit('issue-queue')"><LotusIcon name="issue"/>Cấp theo yêu cầu ({{issueQueueCount}})</UiButton><UiButton v-for="(action,index) in creators[kind]" :key="action.kind" :variant="index?'outline':'default'" :disabled="!canCreate||!session?.permissions?.[action.doctype]" @click="act(action)"><LotusIcon :name="action.icon"/>{{action.label}}</UiButton></template>
  </ListPage>
 </template>

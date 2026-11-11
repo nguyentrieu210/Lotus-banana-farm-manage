@@ -14,6 +14,9 @@ import MyPay from './components/field/MyPay.vue'
 import WorkAssign from './components/field/WorkAssign.vue'
 import ReleaseNotes from './components/ReleaseNotes.vue'
 import WorkInspect from './components/field/WorkInspect.vue'
+import MaterialRequests from './components/field/MaterialRequests.vue'
+import MaterialRequestDetail from './components/field/MaterialRequestDetail.vue'
+import ModalForm from './components/form/ModalForm.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import {useMobileViewport} from './use-mobile-viewport'
 import {logoutPwa} from './mobile-push-session'
@@ -37,6 +40,11 @@ const supervises=computed(()=>(setup.value?.supervised_crews||[]).length>0)
 const mobileTabs=computed(()=>allTabs.filter(t=>t.name==='assign'?supervises.value||!!setup.value?.inspector:t.name!=='confirm'||supervises.value))
 const tabs=computed(()=>mobileTabs.value.map(t=>t.name))
 const farmName=computed(()=>(session.value?.farms||[]).find(f=>f.name===farm.value)?.farm_name||farm.value||'Chọn vườn')
+// Spec 005 (owner decision 11/11/2026): the đội trưởng and the quản lý vườn create and approve yêu cầu cấp vật tư; tổ
+// trưởng keep their tabs. "Chờ bạn duyệt" heads Xác nhận, the requests sit in Giao việc. An alert link
+// /work?request=… opens that request over the Xác nhận tab.
+const linkedRequest=ref(new URLSearchParams(globalThis.location?.search||'').get('request')||'')
+function dropRequestLink(){try{const url=new URL(location.href);if(url.searchParams.has('request')){url.searchParams.delete('request');history.replaceState(history.state,'',url.pathname+url.search+url.hash)}}catch{}}
 const refreshKey=ref(0),pickedTeam=ref('')
 function openTeam(team){pickedTeam.value=team;refreshKey.value++;changeTab('home')}
 
@@ -51,6 +59,7 @@ async function bootstrap(){
   date.value=session.value.today
   // Start on the first farm where this account leads a đội or tổ.
   for(const f of session.value.farms){farm.value=f.name;await loadSetup();if(crews.value.length)break}
+  if(linkedRequest.value){dropRequestLink();if(tabs.value.includes('confirm'))screen.value='confirm'}
  }catch(e){error.value=e.message}
  finally{busy.value=false}
 }
@@ -88,6 +97,7 @@ onBeforeUnmount(()=>finishLeave(false))
 
     <LotToday v-if="screen==='home'&&setup&&crew&&date" :key="'today'+refreshKey+crew" v-model:date="date" :farm="farm" :crew="crew" :setup="setup" :initial-team="pickedTeam" mobile/>
     <template v-else-if="screen==='confirm'&&setup&&crew">
+     <MaterialRequests :key="'mr-approve'+refreshKey+crew" class="work-approve" :farm="farm" :crew="crew" :setup="setup" view="approve" compact mobile/>
      <CrewStatus :key="'confirm'+refreshKey+crew" :farm="farm" :crew="crew" :date="date" mobile @pick="openTeam"/>
      <h2 class="work-section-title">Màu dây &amp; cần thu</h2>
      <RibbonBoard :key="'ribbon'+refreshKey+farm" :farm="farm" mobile compact/>
@@ -98,6 +108,7 @@ onBeforeUnmount(()=>finishLeave(false))
       <h2 class="work-section-title">Phiếu đã giao</h2>
       <WorkAssign :key="'assign'+refreshKey" :farm="farm" :crew="crew" :setup="setup" mobile/>
      </template>
+     <template v-if="crew&&(supervises||setup.inspector)"><h2 class="work-section-title">Yêu cầu cấp vật tư</h2><MaterialRequests :key="'mr'+refreshKey+crew" :farm="farm" :crew="crew" :setup="setup" compact mobile/></template>
      <template v-if="setup.inspector"><h2 class="work-section-title">Chờ nghiệm thu khoán lô</h2><WorkInspect :key="'inspect'+refreshKey" :farm="farm" :setup="setup" mobile/></template>
     </template>
 
@@ -115,6 +126,9 @@ onBeforeUnmount(()=>finishLeave(false))
    </template>
   </main>
   <ReleaseNotes :user="session?.user||''"/>
+  <ModalForm :model-value="!!(linkedRequest&&session)" title="Yêu cầu cấp vật tư" width="880px" readonly @update:model-value="v=>{if(!v){linkedRequest='';refreshKey++}}">
+   <MaterialRequestDetail v-if="linkedRequest&&session" :name="linkedRequest" mobile/>
+  </ModalForm>
   <LotusMobileDialog ref="leaveDialog" class="mobile-leave-dialog" @cancel.prevent="finishLeave(false)">
    <div class="mobile-leave-content"><h2>Rời màn hình?</h2><p>{{leaveMessage}}</p><div><LotusMobileButton type="button" autofocus @click="finishLeave(false)">Ở lại</LotusMobileButton><LotusMobileButton type="button" class="danger" @click="finishLeave(true)">Rời đi</LotusMobileButton></div></div>
   </LotusMobileDialog>
@@ -123,5 +137,6 @@ onBeforeUnmount(()=>finishLeave(false))
 
 <style>
 .lotus-work .work-scope{display:grid;gap:8px;margin-bottom:12px}
+.lotus-work .work-approve{margin-bottom:12px}
 .lotus-work .work-section-title{margin:18px 0 8px;font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text-strong)}
 </style>
