@@ -16,7 +16,7 @@ test('record cards retain the same row actions as the desktop grid',async()=>{
 test('interactive cards keep selection separate from opening the record without nested buttons',async()=>{
  let opened
  const row={name:'TS1'}
- const view=mount(Component,{rows:[row],columns:[{field:'name',headerName:'Mã'},{colId:'actions',headerName:'Thao tác'}],rowKey:'name',interactive:true,onOpen:value=>{opened=value}},{'cell-actions':()=>h('button',{},'Nested')})
+ const view=mount(Component,{rows:[row],columns:[{field:'name',headerName:'Mã'},{colId:'actions',headerName:'Thao tác'}],rowKey:'name',selectionEnabled:true,interactive:true,onOpen:value=>{opened=value}},{'cell-actions':()=>h('button',{},'Nested')})
  await tick()
  const records=view.root.querySelector('.lotus-mobile-records'),card=records.querySelector('.lotus-mobile-record')
  assert.equal(records.querySelectorAll('button').length,2,'one selection button and one record button')
