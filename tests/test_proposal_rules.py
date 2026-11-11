@@ -37,6 +37,38 @@ class ProposalRules(unittest.TestCase):
         from lotus_farm.signing_rules import chain
         self.assertEqual([s['key'] for s in chain('purchase_proposal_small')['steps']], ['PROPOSE', 'DEPARTMENT'])
 
+    def test_board_stage_before_signing_ends(self):
+        self.assertEqual(pr.stage(0, pr.DRAFT, []), 'Nháp')
+        self.assertEqual(pr.stage(0, None, []), 'Nháp')
+        self.assertEqual(pr.stage(0, pr.WAITING[0], []), 'Đang ký')
+        self.assertEqual(pr.stage(0, pr.WAITING[2], []), 'Đang ký')
+        self.assertEqual(pr.stage(0, pr.RETURNED, []), 'Bị trả lại')
+        self.assertEqual(pr.stage(2, pr.APPROVED, [dict(qty=5, ordered=5)]), 'Đã hủy')
+
+    def test_board_stage_after_signing(self):
+        line = lambda **kw: dict(dict(qty=10, ordered=0, received=0, returned=0, billed=0, closed=0), **kw)
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(), line()]), 'Chờ mua')
+        # A draft order already counts as buying (it holds the quantity).
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=4), line()]), 'Đang mua')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=10), line(ordered=10, received=6)]), 'Đang mua')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=10), line(ordered=10, received=10)]), 'Đã nhận đủ')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=10, billed=10)]), 'Đã xong')
+
+    def test_short_closed_order_and_stopped_proposal_settle_their_lines(self):
+        line = lambda **kw: dict(dict(qty=10, ordered=0, received=0, returned=0, billed=0, closed=0), **kw)
+        # Order closed after 6 of 10 arrived: the 4 left are closed, so the proposal is no longer stuck "Đang mua".
+        closed_order = [line(ordered=10, received=6, closed=4, billed=6), line(ordered=10, received=10, billed=10)]
+        self.assertEqual(pr.stage(1, pr.APPROVED, closed_order), 'Đã xong')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=6, closed=4, billed=2)]), 'Đã nhận đủ')
+        # US2 scenario: 3 lines received and invoiced, 2 lines never ordered then closed with the proposal.
+        bought = [line(ordered=10, received=10, billed=10) for _ in range(3)]
+        self.assertEqual(pr.stage(1, pr.APPROVED, bought + [line(), line()]), 'Đang mua')
+        self.assertEqual(pr.stage(1, pr.APPROVED, bought + [line(closed=10), line(closed=10)]), 'Đã xong')
+        # Returned goods must be received again (or closed) before the line is settled.
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=10, returned=2, billed=8)]), 'Đang mua')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(ordered=10, received=10, returned=2, closed=2, billed=8)]), 'Đã xong')
+        self.assertEqual(pr.stage(1, pr.APPROVED, [line(qty='x', received=None)]), 'Đã xong')  # unreadable qty counts as 0
+
 
 if __name__ == '__main__':
     unittest.main()

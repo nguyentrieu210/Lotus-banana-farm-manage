@@ -1,13 +1,13 @@
 /* Canonical Vant 4 layout for every Lotus mobile PWA. Load after app-specific CSS. */
 /* Match desktop interaction timing while keeping touch controls stable. */
-.lotus-pwa-shell :is(button,a,input,select,textarea){transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease}
-.lotus-pwa-shell :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--lotus-pwa-accent);outline-offset:3px}
-.lotus-pwa-shell :is(button,a):active{filter:brightness(.96)}
-@media(prefers-reduced-motion:reduce){.lotus-pwa-shell *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(button,a,input,select,textarea){transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease,box-shadow 160ms ease}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--lotus-pwa-accent);outline-offset:3px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(button,a):active{filter:brightness(.96)}
+@media(prefers-reduced-motion:reduce){:is(.lotus-pwa-shell,.lotus-pwa-dialog) *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 :root{--lotus-pwa-accent:var(--lotus-primary);--lotus-pwa-bg:var(--lotus-page);--lotus-pwa-line:var(--lotus-border);--lotus-pwa-ink:var(--lotus-text);--lotus-pwa-muted:var(--lotus-muted);--lotus-pwa-width:600px;--van-nav-bar-height:54px;--van-tabbar-height:60px}
 .lotus-pwa-shell{box-sizing:border-box;min-height:100dvh;background:var(--lotus-pwa-bg);color:var(--lotus-pwa-ink);padding-bottom:calc(76px + env(safe-area-inset-bottom));font-family:var(--lotus-font);font-size:15px;line-height:1.5}
-.lotus-pwa-shell *{box-sizing:border-box}
-.lotus-pwa-shell :is(button,a,select){touch-action:manipulation}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) *{box-sizing:border-box}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(button,a,select){touch-action:manipulation}
 .lotus-pwa-header{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);background:var(--lotus-primary-600);border-bottom:0;color:#fff}
 .lotus-pwa-header .van-nav-bar{max-width:var(--lotus-pwa-width);margin:auto;background:transparent;box-shadow:none;color:#fff}
 .lotus-pwa-header .van-nav-bar__left{left:0;right:56px;max-width:none;min-width:0;justify-content:flex-start;padding:0 6px 0 12px;text-align:left}
@@ -24,15 +24,15 @@
 .lotus-pwa-bottom .van-tabbar-item--active{background:var(--lotus-page);font-weight:700}
 .lotus-pwa-keyboard{padding-bottom:16px}
 .lotus-sr-only,.lotus-pwa-sr-only{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
-.lotus-pwa-shell :is(.mobile-container,.buy-main){width:100%;max-width:var(--lotus-pwa-width);margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
-.lotus-pwa-shell :is(.mobile-container,.buy-main)>h1,.lotus-pwa-shell .mobile-screen-bar{display:none}
-.lotus-pwa-shell h2{font-size:17px;line-height:1.4}
-.lotus-pwa-shell :is(.mobile-field,.buy-field){min-width:0;gap:6px;margin-bottom:12px;color:var(--lotus-pwa-ink);font-size:14px}
-.lotus-pwa-shell :is(.mobile-field,.buy-field)>label{font-size:13px;font-weight:650;color:var(--lotus-pwa-muted)}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-container,.buy-main){width:100%;max-width:var(--lotus-pwa-width);margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-container,.buy-main)>h1,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-screen-bar{display:none}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) h2{font-size:17px;line-height:1.4}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-field,.buy-field){min-width:0;gap:6px;margin-bottom:12px;color:var(--lotus-pwa-ink);font-size:14px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-field,.buy-field)>label{font-size:13px;font-weight:650;color:var(--lotus-pwa-muted)}
 .lotus-pwa-field.van-cell{margin:0;width:100%;min-width:0;padding:12px;border:1px solid var(--lotus-pwa-line);border-radius:12px;background:var(--lotus-surface);overflow:hidden}
-.lotus-pwa-shell .lotus-pwa-field :is(input,textarea,select){width:100%;min-width:0;min-height:24px;height:auto;padding:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;font:inherit;font-size:16px;line-height:1.5;color:var(--lotus-pwa-ink)}
-.lotus-pwa-shell .lotus-pwa-field textarea{min-height:64px;resize:vertical}
-.lotus-pwa-shell .lotus-pwa-field input[type=date]{min-height:24px;display:block}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-field :is(input,textarea,select){width:100%;min-width:0;min-height:24px;height:auto;padding:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;font:inherit;font-size:16px;line-height:1.5;color:var(--lotus-pwa-ink)}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-field textarea{min-height:64px;resize:vertical}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-field input[type=date]{min-height:24px;display:block}
 .lotus-pwa-field.van-field--label-top{display:block}
 .lotus-pwa-field .van-field__value{min-width:0;width:100%}
 .lotus-pwa-field:focus-within{border-color:var(--lotus-primary-600);box-shadow:0 0 0 3px color-mix(in srgb,var(--lotus-primary-400) 7%,transparent)}
@@ -41,77 +41,77 @@
 .lotus-pwa-select .van-field__body{position:relative}
 .lotus-pwa-select select{appearance:none;padding-right:26px!important}
 .lotus-pwa-select-arrow{position:absolute;right:0;pointer-events:none;color:var(--lotus-subtle);font-size:16px}
-.lotus-pwa-shell .mobile-link-native-box::after{display:none}
-.lotus-pwa-shell .mobile-inline-input>.lotus-pwa-field{flex:1;width:0;min-width:0}
-.lotus-pwa-shell .mobile-inline-input>.van-button{flex:0 0 auto;min-width:64px;padding:10px 12px;white-space:nowrap}
-.lotus-pwa-shell .buy-toolbar>.lotus-pwa-field{flex:1;width:0;min-width:0}
-.lotus-pwa-shell .buy-toolbar>.lotus-pwa-select{flex:0 0 110px}
-.lotus-pwa-shell .van-button__text{display:contents}
-.lotus-pwa-shell .van-button{font-family:inherit;white-space:normal;line-height:1.4}
-.lotus-pwa-shell :is(.mobile-submit,.buy-primary,.work-primary){display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;height:auto;padding:12px 16px;margin:16px 0;background:var(--lotus-primary-600);color:#fff;border:1px solid var(--lotus-primary-600);border-radius:12px;font-size:16px;font-weight:700;box-shadow:none}
-.lotus-pwa-shell :is(.mobile-add,.buy-outline,.work-outline){min-height:46px;height:auto;border:1px solid var(--lotus-primary-200);border-radius:12px;color:var(--lotus-primary-600);background:var(--lotus-soft);font-size:15px}
-.lotus-pwa-shell :is(.mobile-list-card,.mobile-line,.buy-card,.work-list-row){border:1px solid var(--lotus-pwa-line);border-radius:14px;box-shadow:none;background:var(--lotus-surface)}
-.lotus-pwa-shell .mobile-line{padding:14px;margin:12px 0}
-.lotus-pwa-shell .mobile-line-title{margin-bottom:12px}
-.lotus-pwa-shell .mobile-line-title button{min-height:var(--lotus-touch);height:auto;padding:6px 10px;color:var(--van-danger-color);font-size:13px}
-.lotus-pwa-shell .mobile-qty-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.lotus-pwa-shell .mobile-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0 20px}
-.lotus-pwa-shell .lotus-pwa-action{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;width:100%;min-width:0;min-height:112px;height:auto;padding:16px 10px;text-align:center;border:1px solid var(--lotus-pwa-line);border-radius:16px;background:var(--lotus-surface);box-shadow:none}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-native-box::after{display:none}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-inline-input>.lotus-pwa-field{flex:1;width:0;min-width:0}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-inline-input>.van-button{flex:0 0 auto;min-width:64px;padding:10px 12px;white-space:nowrap}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .buy-toolbar>.lotus-pwa-field{flex:1;width:0;min-width:0}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .buy-toolbar>.lotus-pwa-select{flex:0 0 110px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .van-button__text{display:contents}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .van-button{font-family:inherit;white-space:normal;line-height:1.4}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-submit,.buy-primary,.work-primary){display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;height:auto;padding:12px 16px;margin:16px 0;background:var(--lotus-primary-600);color:#fff;border:1px solid var(--lotus-primary-600);border-radius:12px;font-size:16px;font-weight:700;box-shadow:none}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-add,.buy-outline,.work-outline){min-height:46px;height:auto;border:1px solid var(--lotus-primary-200);border-radius:12px;color:var(--lotus-primary-600);background:var(--lotus-soft);font-size:15px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-list-card,.mobile-line,.buy-card,.work-list-row){border:1px solid var(--lotus-pwa-line);border-radius:14px;box-shadow:none;background:var(--lotus-surface)}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-line{padding:14px;margin:12px 0}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-line-title{margin-bottom:12px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-line-title button{min-height:var(--lotus-touch);height:auto;padding:6px 10px;color:var(--van-danger-color);font-size:13px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-qty-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0 20px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-action{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;width:100%;min-width:0;min-height:112px;height:auto;padding:16px 10px;text-align:center;border:1px solid var(--lotus-pwa-line);border-radius:16px;background:var(--lotus-surface);box-shadow:none}
 .lotus-pwa-action .van-button__content{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px}
-.lotus-pwa-action.is-primary .van-button__content,.lotus-pwa-shell .mobile-actions>.lotus-pwa-action:last-child:nth-child(even) .van-button__content{flex-direction:row;gap:12px}
+.lotus-pwa-action.is-primary .van-button__content,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-actions>.lotus-pwa-action:last-child:nth-child(even) .van-button__content{flex-direction:row;gap:12px}
 .lotus-pwa-action-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--lotus-primary-subtle);color:var(--lotus-pwa-accent);font-size:27px;flex-shrink:0}
 .lotus-pwa-action:nth-child(2) .lotus-pwa-action-icon{background:var(--lotus-hover);color:var(--lotus-success-600)}
 .lotus-pwa-action:nth-child(3) .lotus-pwa-action-icon{background:var(--lotus-hover);color:var(--lotus-info-500)}
 .lotus-pwa-action:nth-child(4) .lotus-pwa-action-icon{background:var(--lotus-hover);color:var(--lotus-info-500)}
 .lotus-pwa-action:nth-child(5) .lotus-pwa-action-icon{background:var(--lotus-warning-soft);color:var(--lotus-warning-500)}
 .lotus-pwa-action-name{font-size:15px;font-weight:650;line-height:1.35;min-width:0;overflow-wrap:anywhere}
-.lotus-pwa-shell .lotus-pwa-action.is-primary{grid-column:1/-1;min-height:82px;flex-direction:row;justify-content:flex-start;padding:16px;background:var(--lotus-primary-subtle);border-color:var(--lotus-primary-200);text-align:left}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-action.is-primary{grid-column:1/-1;min-height:82px;flex-direction:row;justify-content:flex-start;padding:16px;background:var(--lotus-primary-subtle);border-color:var(--lotus-primary-200);text-align:left}
 .lotus-pwa-action.is-primary .lotus-pwa-action-name{flex:1;font-size:17px}
 .lotus-pwa-action-arrow{color:var(--lotus-pwa-accent);font-size:18px}
 .lotus-pwa-action.is-disabled{opacity:.45}
-.lotus-pwa-shell .mobile-actions>.lotus-pwa-action:last-child:nth-child(even){grid-column:1/-1;min-height:76px;flex-direction:row}
-.lotus-pwa-shell .mobile-install{margin:12px 0;font-size:13px}
-.lotus-pwa-shell .mobile-install button{height:auto;min-height:44px;font-size:14px;padding:10px 12px}
-.lotus-pwa-shell .mobile-pages{display:flex;justify-content:space-between;gap:12px}
-.lotus-pwa-shell .mobile-pages button{min-height:44px;height:auto;font-size:14px}
-.lotus-pwa-shell .mobile-switcher{display:flex;gap:8px;margin:0 0 12px}
-.lotus-pwa-shell .mobile-switcher button{min-height:44px;height:auto;font-size:14px}
-.lotus-pwa-shell .mobile-switcher button.active{background:var(--lotus-primary-subtle);border-color:var(--lotus-primary-200);color:var(--lotus-primary-600)}
-.lotus-pwa-shell .mobile-loading{top:calc(64px + env(safe-area-inset-top))}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-actions>.lotus-pwa-action:last-child:nth-child(even){grid-column:1/-1;min-height:76px;flex-direction:row}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-install{margin:12px 0;font-size:13px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-install button{height:auto;min-height:44px;font-size:14px;padding:10px 12px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-pages{display:flex;justify-content:space-between;gap:12px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-pages button{min-height:44px;height:auto;font-size:14px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-switcher{display:flex;gap:8px;margin:0 0 12px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-switcher button{min-height:44px;height:auto;font-size:14px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-switcher button.active{background:var(--lotus-primary-subtle);border-color:var(--lotus-primary-200);color:var(--lotus-primary-600)}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-loading{top:calc(64px + env(safe-area-inset-top))}
 .mobile-floating-options .van-cell-group{background:var(--lotus-surface)}
 .mobile-floating-options .van-button{height:auto;min-height:48px;width:100%;border:0;border-radius:0;text-align:left;justify-content:space-between;font-size:15px}
 .mobile-floating-options .van-button__text{display:contents}
-.lotus-pwa-shell .mobile-link-box.van-cell,.lotus-pwa-shell .mobile-live-box.van-cell{display:block;padding:10px 12px}
-.lotus-pwa-shell .mobile-link-box input,.lotus-pwa-shell .mobile-live-box input{min-height:26px;padding:0;border:0;box-shadow:none}
-.lotus-pwa-shell .mobile-link-box button,.lotus-pwa-shell .mobile-live-box button{padding:0;border:0;background:transparent}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-box.van-cell,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-live-box.van-cell{display:block;padding:10px 12px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-box input,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-live-box input{min-height:26px;padding:0;border:0;box-shadow:none}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-box button,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-live-box button{padding:0;border:0;background:transparent}
 .mobile-leave-dialog.van-dialog{padding:0;border:0;border-radius:20px;max-height:calc(var(--warehouse-visible-height,100dvh) - 32px);overflow:auto}
 .mobile-leave-dialog .van-button__text{display:contents}
 .mobile-leave-dialog .lotus-pwa-field :is(input,textarea){border:0;min-height:24px;font-size:16px}
 .lotus-purchase-form,.lotus-supplier-form{font-size:15px;line-height:1.5}
 .lotus-purchase-form>.mobile-form-fields,.lotus-supplier-form>.mobile-form-fields{display:flex;flex-direction:column;gap:12px}
 .lotus-purchase-form .mobile-field{margin:0}
-.lotus-pwa-shell .lotus-purchase-form .lotus-pwa-field,.lotus-pwa-shell .lotus-supplier-form .lotus-pwa-field{padding:12px;margin:0}
-.lotus-pwa-shell .lotus-purchase-form .van-field__label--top,.lotus-pwa-shell .lotus-supplier-form .van-field__label--top{font-size:13px;font-weight:650;color:var(--lotus-pwa-muted);margin-bottom:6px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-form .lotus-pwa-field,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-supplier-form .lotus-pwa-field{padding:12px;margin:0}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-form .van-field__label--top,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-supplier-form .van-field__label--top{font-size:13px;font-weight:650;color:var(--lotus-pwa-muted);margin-bottom:6px}
 .lotus-purchase-form h2{font-size:17px;margin:8px 0 0}
-.lotus-pwa-shell .lotus-purchase-line{display:flex;flex-direction:column;gap:12px;margin:0;padding:14px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-line{display:flex;flex-direction:column;gap:12px;margin:0;padding:14px}
 .lotus-purchase-line .mobile-line-title{display:flex;align-items:center;justify-content:space-between;margin:0}
 .lotus-purchase-form .mobile-qty-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:0}
-.lotus-pwa-shell .lotus-purchase-add-supplier{align-self:flex-start;min-height:var(--lotus-touch);height:auto;border:0;background:transparent;color:var(--lotus-pwa-accent);padding:4px 0;font-size:14px;margin:-4px 0 0}
-.lotus-pwa-shell .lotus-purchase-form :is(.mobile-add,.mobile-submit){margin:0;width:100%}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-add-supplier{align-self:flex-start;min-height:var(--lotus-touch);height:auto;border:0;background:transparent;color:var(--lotus-pwa-accent);padding:4px 0;font-size:14px;margin:-4px 0 0}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-form :is(.mobile-add,.mobile-submit){margin:0;width:100%}
 .lotus-purchase-total{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;font-size:14px}
 .lotus-purchase-total strong{font-size:18px;overflow-wrap:anywhere;text-align:right}
 .lotus-purchase-result{display:flex;flex-direction:column;gap:12px;text-align:center;background:var(--lotus-surface);border:1px solid var(--lotus-pwa-line);border-radius:16px;padding:24px 16px}
 .lotus-purchase-result>.van-icon{font-size:48px;color:var(--van-success-color)}
 .lotus-purchase-result>.van-icon.has-warning{color:var(--lotus-warning-500)}
 .lotus-purchase-result h2{margin:0}.lotus-purchase-result .van-notice-bar{text-align:left;border-radius:10px}
-.lotus-pwa-shell .lotus-purchase-result :is(.mobile-submit,.mobile-add){margin:0;width:100%}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-result :is(.mobile-submit,.mobile-add){margin:0;width:100%}
 .lotus-pwa-feedback.mobile-message{padding:0;border:0;margin:0 0 12px;background:none;box-shadow:none;font-size:14px}
 .lotus-pwa-feedback>.van-notice-bar{border-radius:12px;font-size:14px;line-height:1.5;padding:12px}
 .lotus-purchase-detail{display:flex;flex-direction:column;gap:12px}
 .lotus-order-summary,.lotus-order-line{border:1px solid var(--lotus-pwa-line);border-radius:14px;overflow:hidden}
 .lotus-purchase-detail .van-cell__title{flex:1;min-width:0}.lotus-purchase-detail .van-cell__value{flex:1;overflow-wrap:anywhere}
 @media(min-width:740px){.lotus-pwa-shell{max-width:var(--lotus-pwa-width);margin:auto;box-shadow:0 0 32px color-mix(in srgb,var(--lotus-success-900) 4%,transparent)}}
-@media(max-width:360px){.lotus-pwa-shell :is(.mobile-container,.buy-main){padding:12px}.lotus-pwa-header-title strong{font-size:15px}.lotus-pwa-shell .mobile-actions{gap:10px}.lotus-pwa-action-name{font-size:14px}}
+@media(max-width:360px){:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(.mobile-container,.buy-main){padding:12px}.lotus-pwa-header-title strong{font-size:15px}:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-actions{gap:10px}.lotus-pwa-action-name{font-size:14px}}
 
 /* Shared PWA push inbox on the Vant header */
 .lotus-notification-trigger{position:relative;display:grid;place-items:center;border:0;background:transparent;min-height:44px;min-width:44px;color:#fff;padding:0}
@@ -131,9 +131,9 @@
 .lotus-notification-ok{font-size:13px;color:var(--lotus-success-700);background:var(--lotus-page);padding:8px;border-radius:8px}
 
 /* Cross-app primitives must not depend on warehouse-mobile.css. */
-.lotus-pwa-shell .mobile-form-fields{margin:0;padding:0;border:0;min-width:0;width:100%}
-.lotus-pwa-shell .mobile-link-field{width:100%;min-width:0;position:relative;font-size:16px;font-weight:500;isolation:auto}
-.lotus-pwa-shell .mobile-link-box button,.lotus-pwa-shell .mobile-live-box button{width:44px;min-width:44px;height:44px;min-height:44px;flex:none;color:var(--lotus-subtle);font-size:20px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-form-fields{margin:0;padding:0;border:0;min-width:0;width:100%}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-field{width:100%;min-width:0;position:relative;font-size:16px;font-weight:500;isolation:auto}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-link-box button,:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-live-box button{width:44px;min-width:44px;height:44px;min-height:44px;flex:none;color:var(--lotus-subtle);font-size:20px}
 .mobile-floating-options,.mobile-floating-options.mobile-link-up{position:fixed;right:auto;bottom:auto;z-index:200;max-width:calc(100vw - 16px);margin:0;overflow-y:auto;isolation:isolate;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:thin;background:var(--lotus-surface);border:1px solid var(--lotus-primary-200);border-radius:12px;box-shadow:0 10px 24px #32281b29;font-family:var(--lotus-font)}
 .mobile-floating-options .van-button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;width:100%;min-height:56px;height:auto;border:0;border-bottom:1px solid var(--lotus-border);border-radius:0;background:var(--lotus-surface);padding:10px 14px;text-align:left;font-size:16px;font-weight:600;color:var(--lotus-text);line-height:1.35;overflow-wrap:anywhere;touch-action:pan-y}
 .mobile-floating-options .van-button__content{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left}
@@ -142,7 +142,7 @@
 .mobile-leave-dialog{width:min(360px,calc(100vw - 32px));color:var(--lotus-text);box-shadow:0 15px 60px #0004;overscroll-behavior:contain;font-family:var(--lotus-font)}
 .mobile-leave-content{padding:24px}.mobile-leave-content h2{margin:0 0 10px;font-size:21px}.mobile-leave-content p{font-size:16px;line-height:1.5;margin:0 0 24px}
 .mobile-leave-content>div{display:flex;gap:10px}.mobile-leave-content button{flex:1;min-height:48px;height:auto;border:1px solid var(--lotus-border-strong);border-radius:12px;background:var(--lotus-surface);color:var(--lotus-text-secondary);font-size:16px;font-weight:700}.mobile-leave-content button.danger{background:var(--lotus-primary-600);color:white;border-color:var(--lotus-primary-600)}
-.lotus-pwa-shell .lotus-pwa-file input{font-size:16px;font-weight:500;line-height:24px;min-height:24px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-file input{font-size:16px;font-weight:500;line-height:24px;min-height:24px}
 /* First-run setup: shared across Kho, Mua hàng and Công việc ngoài vườn. */
 .lotus-pwa-setup.van-popup{width:100%;max-width:600px;left:50%;transform:translateX(-50%);background:var(--lotus-surface);color:var(--lotus-text);overflow-y:auto;box-sizing:border-box}
 .lotus-pwa-setup-content{display:flex;flex-direction:column;gap:12px;padding:20px 20px calc(24px + env(safe-area-inset-bottom));font-family:var(--lotus-font);line-height:1.5}
@@ -165,8 +165,8 @@
 .lotus-pwa-setup-content .lotus-pwa-setup-error{font-size:13px;background:var(--lotus-primary-subtle);padding:9px;border-radius:10px;color:var(--lotus-primary-600)}
 .lotus-pwa-setup-skip{align-self:center;min-height:var(--lotus-touch);padding:6px 12px;background:transparent;border:0;color:var(--lotus-muted);font-size:14px}
 /* Mobile print: separate navigation keeps the PWA open, with a 44+ px tap target. */
-.lotus-pwa-shell a.lotus-pwa-print-link{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:12px 16px;margin:14px 0;border-radius:12px;background:var(--lotus-page);border:1px solid var(--lotus-primary-300);color:var(--lotus-primary-600);font-size:16px;font-weight:700;text-align:center;text-decoration:none;line-height:1.4}
-.lotus-pwa-shell a.lotus-pwa-print-link:focus-visible{outline:3px solid var(--lotus-primary-600);outline-offset:2px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) a.lotus-pwa-print-link{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:12px 16px;margin:14px 0;border-radius:12px;background:var(--lotus-page);border:1px solid var(--lotus-primary-300);color:var(--lotus-primary-600);font-size:16px;font-weight:700;text-align:center;text-decoration:none;line-height:1.4}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) a.lotus-pwa-print-link:focus-visible{outline:3px solid var(--lotus-primary-600);outline-offset:2px}
 
 /* Shared touch, focus and narrow-screen rules. All PWA entrypoints import this last. */
 :root{--lotus-pwa-touch:var(--lotus-touch);--lotus-pwa-focus:var(--lotus-primary-300);--lotus-pwa-space-1:var(--lotus-space-1);--lotus-pwa-space-2:var(--lotus-space-2);--lotus-pwa-space-3:var(--lotus-space-3);--lotus-pwa-space-4:var(--lotus-space-4);--lotus-pwa-space-6:var(--lotus-space-6)}
@@ -174,25 +174,25 @@
 .lotus-pwa-back{width:44px;min-width:44px;flex:0 0 44px}
 .lotus-pwa-header-title{gap:6px}
 .lotus-pwa-logo-frame{flex-shrink:0}
-.lotus-pwa-shell :is(button,a,input,select,textarea,[role="option"]):focus-visible{outline:3px solid var(--lotus-pwa-focus);outline-offset:2px}
-.lotus-pwa-shell .mobile-line-title button{min-height:44px}
-.lotus-pwa-shell .lotus-purchase-add-supplier{min-height:44px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) :is(button,a,input,select,textarea,[role="option"]):focus-visible{outline:3px solid var(--lotus-pwa-focus);outline-offset:2px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-line-title button{min-height:44px}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-purchase-add-supplier{min-height:44px}
 .lotus-pwa-setup-close{width:44px;height:44px}
 .lotus-pwa-field-hint{display:block;color:var(--lotus-pwa-muted);font-size:13px;line-height:1.45;margin:5px 2px 0}
-.lotus-pwa-shell .lotus-pwa-field.van-field--error{border-color:var(--lotus-primary-600)}
-.lotus-pwa-shell .lotus-pwa-field .van-field__error-message{font-size:13px;line-height:1.5}
-.lotus-pwa-shell #lotus-content{scroll-margin-top:calc(60px + env(safe-area-inset-top))}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-field.van-field--error{border-color:var(--lotus-primary-600)}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-field .van-field__error-message{font-size:13px;line-height:1.5}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) #lotus-content{scroll-margin-top:calc(60px + env(safe-area-inset-top))}
 @media(max-width:360px){
  .lotus-pwa-header .van-nav-bar__left{left:0;right:54px;padding-left:6px;padding-right:4px}
  .lotus-pwa-header-title{gap:5px}
  .lotus-pwa-logo-frame{width:94px;flex-basis:94px;height:36px}
  .lotus-pwa-header-title strong{font-size:14px;line-height:1.22}
- .lotus-pwa-shell .buy-toolbar>.lotus-pwa-select{flex-basis:98px}
+ :is(.lotus-pwa-shell,.lotus-pwa-dialog) .buy-toolbar>.lotus-pwa-select{flex-basis:98px}
 }
 @media(max-height:480px) and (orientation:landscape){
  .lotus-pwa-setup.van-popup{max-height:92dvh!important}
  .lotus-pwa-setup-content{gap:8px;padding-top:12px}
  .lotus-pwa-setup-hero{display:none}
 }
-.lotus-pwa-shell .mobile-empty{margin:0;border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);padding:22px 16px;color:var(--lotus-muted);font-size:14px;text-align:center}
-.lotus-pwa-shell .lotus-pwa-inline-icon{font-size:1em;vertical-align:-.125em}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .mobile-empty{margin:0;border-radius:var(--lotus-radius-lg);background:var(--lotus-surface);padding:22px 16px;color:var(--lotus-muted);font-size:14px;text-align:center}
+:is(.lotus-pwa-shell,.lotus-pwa-dialog) .lotus-pwa-inline-icon{font-size:1em;vertical-align:-.125em}

@@ -36,7 +36,9 @@ test('purchase order is saved once if quote upload fails and quote can retry sep
  assert.match(app,/order\.value\.name=result\.name/)
  assert.match(app,/failedQuote\.value=!!result.quoteError/)
  assert.match(app,/function retryQuote/)
- assert.match(app,/order\.value\.name\|\|savedPurchase\.value\)return/)
+ // A saved draft is not sent twice from the same form; only an explicit edit of an existing draft saves again (spec 003).
+ assert.match(app,/order\.value\.name&&!editingOrder\.value\|\|savedPurchase\.value\)return/)
+ assert.match(app,/editingOrder\.value=false\n? *\}catch|failedQuote\.value=!!result\.quoteError;editingOrder\.value=false/)
 })
 test('link dropdown supports keyboard, pop-up above screen bottom and larger tap targets',()=>{
  assert.match(link,/ArrowDown/)

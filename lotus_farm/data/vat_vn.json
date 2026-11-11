@@ -27,7 +27,7 @@
    "label": "8% (giảm 2% theo Nghị quyết 204/2025/QH15)",
    "rate": 0.08,
    "from": "2025-07-01",
-   "to": "2026-12-31",
+   "to": "2026-12-31", "then": "10",
    "source": "Nghị quyết 204/2025/QH15: giảm 2% cho nhóm hàng hóa, dịch vụ thuế suất 10% (khoản 3 Điều 9), từ 01/7/2025 đến hết 31/12/2026, trừ các nhóm loại trừ trong Nghị quyết."
   },
   {

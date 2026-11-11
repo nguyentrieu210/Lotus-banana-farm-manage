@@ -150,8 +150,12 @@ def page(company, title, number_, posting_date=None, docstatus=None, landscape=F
     """Common context: identity, document block, printed by/at. Callers add info rows, body data and signatures."""
     import frappe
     from frappe.utils import now_datetime
-    user = frappe.session.user
+    user = getattr(frappe.flags, 'lotus_print_user', None) or frappe.session.user  # the real person behind a system-rights render
     printer = frappe.db.get_value('User', user, 'full_name') if user and user != 'Guest' else ''
+    archived_by = getattr(frappe.flags, 'lotus_signed_copy_by', None)
+    if archived_by:
+        # The signed copy is rendered with system rights; its footer names the last signer instead.
+        printer = 'Bản lưu khi ký đủ · ' + (frappe.db.get_value('User', archived_by, 'full_name') or archived_by)
     context = frappe._dict(identity=identity(company), title=title, number=number_, date=vn_date(posting_date),
                            status=status_label(docstatus) if docstatus is not None else '', watermark=watermark(docstatus) if docstatus is not None else None,
                            landscape=landscape, printed_at=vn_datetime(now_datetime()), printed_by=printer or user,
@@ -161,8 +165,10 @@ def page(company, title, number_, posting_date=None, docstatus=None, landscape=F
     return context
 
 
-def signature(title, name='', image=None, signed_at=None, hint='(Ký, ghi rõ họ tên)'):
-    return dict(title=title, name=name or '', image=image, signed_at=vn_datetime(signed_at) if signed_at else '', hint=hint)
+def signature(title, name='', image=None, signed_at=None, hint='(Ký, ghi rõ họ tên)', designation='', electronic=False):
+    """electronic: signed in Lotus; without an image the box says so instead of staying blank (spec 003)."""
+    return dict(title=title, name=name or '', image=image, signed_at=vn_datetime(signed_at) if signed_at else '', hint=hint,
+                designation=designation or '', electronic=bool(electronic and signed_at))
 
 
 _env = None

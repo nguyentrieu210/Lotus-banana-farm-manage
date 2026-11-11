@@ -134,6 +134,75 @@ class CompleteProcurement(base.ProcurementIntegration):
         self.assertEqual(cancelled[0]['reason'],'PCT cancel attempt')
 
 
+    # ---- Spec 003 · US6: payables on a closing date, supplier statement, one payment voucher for several invoices ----
+    def test_30_payables_statement_and_one_voucher_for_several_invoices(self):
+        from lotus_farm.finance import supplier_invoice as si, supplier_payment as sp, posting
+        from lotus_farm.www import lotus_payment_print, lotus_statement_print
+        from lotus_farm import print_kit
+        C, DAY, ACC, CHIEF, DIR = base.C, base.DAY, base.ACC, base.CHIEF, base.DIR
+        first = self.receive(self.order(qty=10, rate=100000), 10)
+        a = base.as_user(ACC, si.create, receipts=[first.name], bill_no='A-' + self.tag, bill_date=DAY, due_date=add_days(DAY, 5), client_key=self.tag + 'a')
+        tag = self.tag
+        self.tag = uuid.uuid4().hex[:8]
+        second = self.receive(self.order(qty=5, rate=100000), 5)
+        b = base.as_user(ACC, si.create, receipts=[second.name], bill_no='B-' + tag, bill_date=DAY, due_date=add_days(DAY, 20), client_key=tag + 'b')
+        self.tag = uuid.uuid4().hex[:8]
+        waiting = self.receive(self.order(qty=2, rate=100000), 2)  # received, not invoiced
+        now = base.as_user(ACC, queries.payables, C, DAY, self.supplier)
+        mine = next(s for s in now['suppliers'] if s['supplier'] == self.supplier)
+        self.assertEqual((mine['invoiced'], mine['aging']['current'], mine['due_7d'], mine['unbilled']), (1500000, 1500000, 1000000, 200000))
+        self.assertEqual((now['aging']['current'], now['due_7d'], now['unbilled'], now['ledger_matches']), (1500000, 1000000, 200000, True))
+        self.assertEqual(base.as_user(ACC, queries.unbilled, C, DAY, self.supplier)['rows'][0]['name'], waiting.name)
+        later = base.as_user(ACC, queries.payables, C, add_days(DAY, 45), self.supplier)
+        self.assertEqual((later['aging']['d31_60'], later['aging']['d1_30'], later['aging']['current'], later['due_7d']), (1000000, 500000, 0, 0))
+        soon = base.as_user(ACC, queries.due_soon, C, DAY)
+        self.assertIn(a['invoice'], [r['name'] for r in soon['rows']])
+        self.assertNotIn(b['invoice'], [r['name'] for r in soon['rows']])
+        # One voucher: two invoices and an advance; nothing above what is owed unless it is called an advance.
+        items = base.as_user(ACC, sp.open_items, self.supplier)
+        self.assertEqual({i['name']: i['payable'] for i in items['items'] if i['doctype'] == 'Purchase Invoice'}, {a['invoice']: 1000000, b['invoice']: 500000})
+        signers = dict(CHIEF=CHIEF, APPROVE=DIR)
+        frappe.db.savepoint('over_pay')
+        with self.assertRaises(frappe.ValidationError) as over:
+            base.as_user(ACC, sp.prepare, supplier=self.supplier, allocations=[dict(doctype='Purchase Invoice', name=b['invoice'], amount=600000)],
+                         mode='cash', posting_date=DAY, signers=signers, client_key=tag + 'over')
+        frappe.db.rollback(save_point='over_pay')
+        self.assertIn('tạm ứng', str(over.exception))
+        args = dict(supplier=self.supplier, advance_amount=100000, mode='bank', reference_no='UNC-' + tag, posting_date=DAY, signers=signers,
+                    allocations=[dict(doctype='Purchase Invoice', name=a['invoice'], amount=400000), dict(doctype='Purchase Invoice', name=b['invoice'], amount=500000)])
+        voucher = base.as_user(ACC, sp.prepare, client_key=tag + 'pay', **args)
+        self.assertEqual(base.as_user(ACC, sp.prepare, client_key=tag + 'pay', **args)['voucher'], voucher['voucher'], 'the same request makes one voucher')
+        draft = frappe.get_doc('Payment Entry', voucher['voucher'])
+        self.assertEqual((flt(draft.paid_amount), draft.docstatus, len(draft.references)), (1000000, 0, 2))
+        self.assertEqual(next(i['payable'] for i in base.as_user(ACC, sp.open_items, self.supplier)['items'] if i['name'] == a['invoice']), 600000,
+                         'a voucher waiting for signatures holds its amount')
+        page = base.as_user(ACC, lambda: str(lotus_payment_print.html(draft)))
+        for text in ('GIẤY ĐỀ NGHỊ CHI', 'UNC-' + tag, 'Hóa đơn A-' + tag, 'Tạm ứng cho nhà cung cấp'):
+            self.assertIn(text, page)
+        base.signed(voucher)
+        self.assertEqual(frappe.db.get_value('Payment Entry', voucher['voucher'], 'docstatus'), 1)
+        self.assertTrue(frappe.db.exists('Lotus Signed Copy', {'document_type': 'Payment Entry', 'document_name': voucher['voucher']}),
+                        'the signed voucher keeps its PDF')
+        self.assertEqual([flt(frappe.db.get_value('Purchase Invoice', n, 'outstanding_amount')) for n in (a['invoice'], b['invoice'])], [600000, 0])
+        info = base.as_user(ACC, base.p.voucher, 'Payment Entry', voucher['voucher'])
+        self.assertEqual((info['mode'], info['unallocated'], bool(info['signed_copy']), bool(info['posting']), info['can_reverse']), ('bank', 100000, True, True, False))
+        statement = base.as_user(ACC, queries.supplier_statement, C, self.supplier, DAY, DAY)
+        self.assertEqual((statement['opening'], statement['credit'], statement['debit'], statement['closing'], statement['ledger_matches']),
+                         (0, 1500000, 1000000, 500000, True))
+        self.assertEqual(sorted(l['kind'] for l in statement['lines']), ['invoice', 'invoice', 'payment'])
+        sheet = base.as_user(ACC, lambda: str(print_kit.render('statement.html', lotus_statement_print.build(self.supplier, DAY, DAY))))
+        self.assertIn('BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ', sheet)
+        after = next(s for s in base.as_user(ACC, queries.payables, C, DAY, self.supplier)['suppliers'] if s['supplier'] == self.supplier)
+        self.assertEqual((after['invoiced'], after['advance'], after['net']), (600000, 100000, 500000))
+        # Only the chief accountant reverses a posted voucher.
+        frappe.db.savepoint('reverse_try')
+        with self.assertRaises(frappe.PermissionError):
+            base.as_user(ACC, posting.reverse, info['posting'], 'Chi nhầm nhà cung cấp')
+        frappe.db.rollback(save_point='reverse_try')
+        base.as_user(CHIEF, posting.reverse, info['posting'], 'Chi nhầm nhà cung cấp')
+        self.assertEqual([flt(frappe.db.get_value('Purchase Invoice', n, 'outstanding_amount')) for n in (a['invoice'], b['invoice'])], [1000000, 500000])
+
+
 if __name__=='__main__':
     try: unittest.main(verbosity=2)
     finally:

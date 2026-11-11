@@ -1,5 +1,51 @@
 # Mua hàng nối kho và tài chính
 
+## Hoàn thiện mua hàng và ký điện tử (spec 003, 10/11/2026)
+
+Tài liệu đầy đủ: `specs/003-mua-hang-ky-dien-tu/` (spec, plan, research, data-model, contracts, quickstart, tasks).
+
+Một khoản mua đi một đường: **đề xuất → đơn mua → nhập kho → hóa đơn NCC → công nợ → trả tiền**, làm được trên điện thoại và máy tính, không mở ERPNext Desk.
+
+| Bước | Quy tắc | Mã chính |
+|---|---|---|
+| Đề xuất mua | Một tên giai đoạn cho mọi người xem; đóng phần chưa mua và hủy có lý do | `proposal_rules.stage`, `purchase_proposal.py` |
+| Báo giá | Lựa chọn báo giá lưu trên dòng đề xuất; chọn giá không thấp nhất phải có lý do | `procurement.choose_quote` |
+| Đơn mua | Giám đốc được chỉ định ký mọi đơn; lưu đơn trả ngay các dòng sẽ bị chặn | `purchasing.check_submission`, `purchase_flow.order_issues` |
+| Nhập kho theo đơn | Một bước; cần người giao ký kèm họ tên hoặc ảnh phiếu giao; xác nhận là thủ kho ký; lưu PDF | `warehouse_planning.receive_order`, `purchase_flow.receipt_evidence`, `receipt_signed` |
+| Hóa đơn NCC | Một lõi cho mọi đường nhập; gõ tay, file chỉ là bằng chứng; hộ kinh doanh không ghi 1331; tổng in lệch tối đa 1 đ mỗi dòng | `finance/supplier_invoice.py` |
+| Công nợ | Theo ngày chốt: tuổi nợ, đến hạn 7 ngày, hàng chưa có hóa đơn, sổ chi tiết, biên bản đối chiếu | `procurement_queries.payables`, `supplier_statement`, `unbilled` |
+| Phiếu chi | Một phiếu trả nhiều hóa đơn, phần vượt ghi tạm ứng; ký đủ mới ghi sổ; lưu PDF | `finance/supplier_payment.py` |
+
+Tên trạng thái dùng chung nằm ở `lotus_farm/purchase_status.py` và `frontend/src/purchase-status.js`. Hàng mua lẻ không qua đơn gọi là **Mua nhanh** ở mọi màn.
+
+Trang in mới: `/lotus/in-don-mua`, `/lotus/in-hoa-don`, `/lotus/in-phieu-chi`, `/lotus/in-doi-chieu`; phiếu nhập in tại `/lotus/in-phieu` có chữ ký người giao.
+
+Thiết lập ERPNext do `procurement_setup.install` đặt: cho phép hóa đơn khác giá đơn mua (Lotus bắt buộc ghi lý do, tối đa gấp 2 giá phiếu nhận). Tắt cơ chế định giá lại theo giá hóa đơn của ERPNext và tắt "tính hóa đơn cho hàng bị loại".
+
+Giá vốn theo hóa đơn (`finance/invoice_cost.py`): hóa đơn khác giá hoặc thuế suất với phiếu nhận thì phần chênh, tính cho đúng số lượng trên hóa đơn, vào giá vốn.
+- Kỳ phiếu nhận còn mở:
+  - Landed Cost Voucher ghi Có 3388;
+  - phần thuế của hộ kinh doanh chuyển sang 33881 bằng bút toán ngày hóa đơn;
+  - khi có hàng trả, phần chênh được chia lại theo số đã có hóa đơn, để hàng trả ra khỏi kho đúng giá vốn. Hàng trả sau khi đã có hóa đơn là khoản NCC phải hoàn trên 3388, đến khi có hóa đơn điều chỉnh.
+- Kỳ phiếu nhận đã khóa: phần chênh ghi vào chi phí kỳ hóa đơn. "Đã khóa" gồm cả khi đã kết chuyển cuối kỳ (Period Closing Voucher) hoặc đã khóa kho (Stock Closing Entry).
+- Hóa đơn điều chỉnh đi theo cách hóa đơn gốc đã ghi.
+
+Các chứng từ này gắn với hóa đơn, hủy cùng hóa đơn, và không hủy riêng được.
+
+Phiếu nhận "đã có hóa đơn" đo trên phần còn giữ, mỗi dòng theo giá trị. Phiếu trả hết ghi "Đã trả hết hàng". Đơn mua "đã có hóa đơn" tính theo số đã đặt. Tạm ứng theo đơn chỉ tới phần chưa có hóa đơn, kiểm lại khi ký cuối.
+
+Hộ kinh doanh:
+- phí vận chuyển của hàng kho và tài sản ghi 3388; mỗi dòng mang đúng phí của nó;
+- thuế và phí vận chuyển của dòng dịch vụ vào chính chi phí của dòng.
+
+Thuế suất hết hạn (8% đến 31/12/2026) tự chuyển sang mã thay thế (10%) khi nhận hàng hoặc lập hóa đơn sau ngày đó.
+
+Lý do từng điểm: research.md R16 của spec 003.
+
+Giới hạn hiện tại: một hóa đơn chưa gồm được cả phiếu nhận theo đơn và phiếu Mua nhanh; nhập thành hai lần với hai phiếu khác loại sẽ bị chặn trùng số hóa đơn.
+
+Kiểm thử: `tools/test_site_procurement.sh` dựng bộ thử dùng-rồi-bỏ `procurement.test`; các script `tests/integration/verify_procurement*.py` và `verify_purchase_flow.py` chạy trên đó.
+
 ## Luồng đề xuất mua ngày 07/11/2026
 
 Lotus lập Đề xuất mua độc lập theo bộ phận, lý do, kho nhận, vật tư, số lượng và ngày cần. Giá dự kiến có thể để trống. Mọi đề xuất mới ký đủ Người đề xuất → Phụ trách bộ phận → Kế toán/mua hàng → Giám đốc. Bổ sung giá sau khi ký trả phiếu về người đề xuất để gửi vòng ký mới. Các cửa tạo từ Kho và API cũ cùng tạo nháp và mở quy trình ký này.

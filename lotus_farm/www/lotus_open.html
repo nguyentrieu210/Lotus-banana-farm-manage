@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ title | e }}</title>
+<script>
+(function () {
+  var phone = window.matchMedia('(max-width: 820px)').matches || window.matchMedia('(display-mode: standalone)').matches;
+  window.location.replace(phone ? {{ mobile_url | tojson }} : {{ desktop_url | tojson }});
+})();
+</script>
+<style>body{font-family:system-ui,sans-serif;margin:24px;color:#1f2937}a{color:#c43224}</style>
+</head>
+<body>
+<p>Đang mở chứng từ {{ document_name | e }}…</p>
+<p><a href="{{ desktop_url | e }}">Mở trên máy tính</a> · <a href="{{ mobile_url | e }}">Mở trên điện thoại</a></p>
+</body>
+</html>

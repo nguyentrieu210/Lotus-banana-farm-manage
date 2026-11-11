@@ -17,7 +17,7 @@ test('every view keeps its own URL and lights up the entry it lives under',()=>{
  assert.equal(buyingMenu('receipts'),'orders')
  assert.equal(buyingMenu('payables'),'invoices')
  assert.equal(buyingMenu('quick'),'quick')
- assert.deepEqual(buyingGroupViews('payments').map(r=>r.id),['invoices','payments','payables','reports'])
+ assert.deepEqual(buyingGroupViews('payments').map(r=>r.id),['invoices','invoice-queue','payments','payables','reports'])
  assert.deepEqual(buyingGroupViews('needs').map(r=>r.id),['needs'],'a single view needs no tabs')
 })
 

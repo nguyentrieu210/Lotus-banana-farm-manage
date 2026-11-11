@@ -32,15 +32,16 @@ test('independent proposal form exposes department, reason, stock and expected p
 
 test('mobile proposals filter purchasing progress independently of signature state',async()=>{
  const previous=globalThis.fetch
- globalThis.fetch=async()=>({ok:true,json:async()=>({message:[{name:'MR-DRAFT',state:'Nháp',stage:'Nháp'},
-  {name:'MR-ORDERED',state:'Đã duyệt',stage:'Đang mua'}]})})
+ globalThis.fetch=async()=>({ok:true,json:async()=>({message:{rows:[{name:'MR-DRAFT',state:'Nháp',stage:'Nháp'},
+  {name:'MR-ORDERED',state:'Đã duyệt',stage:'Đang mua'}],counts:{'Nháp':1,'Đang mua':1}}})})
  const view=mount(Mobile,{company:'C'})
  try {
   await tick();await tick()
   ;[...view.root.querySelectorAll('[role=tab]')].find(b=>b.textContent==='Tất cả').click()
   await tick();await tick()
-  const select=view.root.querySelector('select[aria-label="Tiến độ"]')
+  const select=view.root.querySelector('select[aria-label="Giai đoạn"]')
   assert.ok(select)
+  assert.match(select.textContent,/Đang mua \(1\)/,'each stage shows its count')
   select.value='Đang mua';select.dispatchEvent(new window.Event('change',{bubbles:true}))
   await tick()
   assert.match(view.root.textContent,/MR-ORDERED/)
@@ -80,7 +81,7 @@ test('editing a proposal preserves each existing line needed date',async()=>{
 test('proposal return requires a reason and calls the shared signing workflow',async()=>{
  const previous=globalThis.fetch
  let returned
- let detail={name:'MR',company:'C',modified:'v1',docstatus:0,state:'Chờ phụ trách bộ phận',can_return:true,can_sign:false,items:[],signatures:[],progress:{lines:[]}}
+ let detail={name:'MR',company:'C',modified:'v1',docstatus:0,state:'Chờ phụ trách bộ phận',stage:'Đang ký',step:1,can_return:true,can_sign:false,items:[],signatures:[],progress:{lines:[]}}
  globalThis.fetch=async(url,opts={})=>{
   const u=new URL(url,'http://localhost'),method=u.pathname.split('/').pop(),args=opts.body?JSON.parse(opts.body):Object.fromEntries(u.searchParams)
   let message=[]
@@ -96,12 +97,13 @@ test('proposal return requires a reason and calls the shared signing workflow',a
   await tick();await tick()
   const row=[...view.root.querySelectorAll('.van-cell')].find(cell=>cell.textContent.includes('MR'))
   row.click();await tick();await tick()
-  const button=[...window.document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Trả lại đề xuất')
-  assert.ok(button.disabled)
+  const find=text=>[...window.document.querySelectorAll('button')].find(b=>b.textContent.trim()===text)
+  find('Trả lại').click();await tick()
+  assert.ok(find('Trả lại người đề xuất').disabled,'a return needs a reason')
   const reason=window.document.querySelector('textarea')
   reason.value='Kiểm tra lại số lượng';reason.dispatchEvent(new window.Event('input',{bubbles:true}));await tick()
-  assert.equal(button.disabled,false)
-  button.click();await tick();await tick()
+  assert.equal(find('Trả lại người đề xuất').disabled,false)
+  find('Trả lại người đề xuất').click();await tick();await tick()
   assert.equal(returned.reason,'Kiểm tra lại số lượng')
   assert.equal(returned.name,'MR')
  } finally {view.unmount();globalThis.fetch=previous}

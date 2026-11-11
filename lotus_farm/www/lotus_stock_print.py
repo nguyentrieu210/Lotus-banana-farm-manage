@@ -17,6 +17,14 @@ TITLES = {'Material Receipt': 'PHIẾU NHẬP KHO', 'Material Issue': 'PHIẾU X
 
 
 def build(doctype, name):
+    if doctype not in ('Stock Entry', 'Stock Reconciliation', 'Purchase Receipt'):
+        frappe.throw('Loại phiếu không hỗ trợ in.', frappe.PermissionError)
+    # People named in the signing round see what they sign even without stock rights (spec 003, FR-027).
+    from lotus_farm.signed_copy import as_reader
+    return as_reader(frappe.get_doc(doctype, name), lambda: _build(doctype, name))
+
+
+def _build(doctype, name):
     if doctype in ('Stock Entry', 'Stock Reconciliation'):
         from lotus_farm.warehouse import document
         info = document(doctype, name)
@@ -24,7 +32,7 @@ def build(doctype, name):
     elif doctype == 'Purchase Receipt':
         from lotus_farm.warehouse_planning import purchase_receipt
         info = purchase_receipt(name)
-        title = 'PHIẾU NHẬN HÀNG'
+        title = 'PHIẾU TRẢ HÀNG NHÀ CUNG CẤP' if info.get('is_return') else 'PHIẾU NHẬN HÀNG'
     else:
         frappe.throw('Loại phiếu không hỗ trợ in.', frappe.PermissionError)
     doc = frappe.get_doc(doctype, name)
@@ -50,10 +58,59 @@ def build(doctype, name):
                 info=details, info_columns=len(details), notes=strip_html(doc.get('remarks') or info.get('notes') or '').strip())
     p.signatures = signing.print_signatures(doc) or [pk.signature(s['title'], owner if i == 0 else '')
                                                       for i, s in enumerate(signing.rules.chain('stock_document')['steps'])]
+    if doctype == 'Purchase Receipt' and signing.chain_for(doc) == 'purchase_receipt':
+        _receipt_people(doc, p)
     p.verify = signing.print_verification(doc)
     p.pdf_url = '/api/method/lotus_farm.www.lotus_stock_print.download_pdf?' + urlencode({'doctype': doctype, 'name': name})
     p.back_url, p.back_label = '/warehouse', 'Về Kho'
     return p
+
+
+def _attached(doc, url):
+    name = url and frappe.db.get_value('File', {'file_url': url, 'attached_to_doctype': doc.doctype, 'attached_to_name': doc.name})
+    return frappe.get_doc('File', name) if name else None
+
+
+def _image_uri(file, side):
+    """A private image of the document as a data URI, scaled down so a phone photo does not bloat the PDF.
+    Empty when the file is not an image the server can read (PDF, HEIC)."""
+    from base64 import b64encode
+    from io import BytesIO
+    from PIL import Image, ImageOps
+    try:
+        with Image.open(BytesIO(file.get_content(encodings=[]))) as image:
+            image = ImageOps.exif_transpose(image)
+            image.thumbnail((side, side))
+            out = BytesIO()
+            if image.mode in ('RGBA', 'LA', 'P'):
+                image.convert('RGBA').save(out, format='PNG', optimize=True)
+                kind = 'png'
+            else:
+                image.convert('RGB').save(out, format='JPEG', quality=72)
+                kind = 'jpeg'
+    except Exception:
+        return ''
+    return 'data:image/%s;base64,%s' % (kind, b64encode(out.getvalue()).decode('ascii'))
+
+
+def _receipt_people(doc, p):
+    """Phiếu nhập theo đơn (spec 003, FR-042, FR-043): người giao hàng — signed on screen, or on the delivery note
+    photographed with the receipt — beside the storekeeper whose confirmation posted the goods."""
+    from lotus_farm import signing
+    name = doc.get('lotus_deliverer_name') or ''
+    drawn = _attached(doc, doc.get('lotus_deliverer_signature'))
+    proof = _attached(doc, doc.get('lotus_delivery_proof'))
+    if drawn:
+        deliverer = pk.signature('Người giao hàng', name, _image_uri(drawn, 600) or None, hint='(Ký trên màn hình khi giao hàng)')
+    elif proof:
+        deliverer = pk.signature('Người giao hàng', name, hint='(Đã ký trên phiếu giao hàng đính kèm)')
+    else:
+        deliverer = pk.signature('Người giao hàng', name)
+    keeper = signing.print_signatures(doc) or [pk.signature(signing.rules.chain('purchase_receipt')['steps'][0]['title'], '')]
+    p.signatures = [deliverer, *keeper]
+    if proof:
+        p.delivery_proof = _image_uri(proof, 1400)
+        p.delivery_proof_name = proof.file_name
 
 
 def get_context(context, doctype=None, name=None):
@@ -73,4 +130,10 @@ def download_pdf(doctype, name):
     if doctype == 'Material Request':
         from lotus_farm.www.lotus_material_proposal_print import download_pdf as proposal_pdf
         return proposal_pdf(name)
+    if doctype in ('Stock Entry', 'Stock Reconciliation', 'Purchase Receipt') and frappe.db.exists(doctype, name):
+        from lotus_farm import signed_copy, signing
+        doc = frappe.get_doc(doctype, name)
+        copy = signed_copy.current(doc)
+        if copy and signing.can_view(doc=doc):
+            return signed_copy.respond(copy, name)
     pk.send_pdf(pk.render('stock.html', build(doctype, name)), name)

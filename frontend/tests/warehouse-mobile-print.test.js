@@ -8,7 +8,10 @@ const read=path=>readFileSync(new URL(path,root),'utf8')
 test('Kho phone offers print for ALL posted stock vouchers in history, including receiving',()=>{
  const ui=read('src/WarehouseMobile.vue')
  assert.match(ui,/const stockPrintURL=\(doctype,name\)=>'\/lotus\/in-phieu\?'\+new URLSearchParams\(\{doctype,name\}\)/)
- assert.match(ui,/\['Stock Entry','Stock Reconciliation','Purchase Receipt'\]\.includes\(historyDetail\.doctype\)&&historyDetail\.docstatus===1/)
+ assert.match(ui,/\['Stock Entry','Stock Reconciliation'\]\.includes\(historyDetail\.doctype\)&&historyDetail\.docstatus===1/)
+ // A receipt against an order prints from the shared receipt detail (print link and the signed PDF).
+ assert.match(ui,/<ReceiptDetail v-else-if="historyDetail\.doctype==='Purchase Receipt'"/)
+ assert.match(read('src/components/procurement/ReceiptDetail.vue'),/:href="d\.print_url"/)
  assert.match(ui,/stockPrintURL\(historyDetail\.doctype,historyDetail\.name\)/)
  assert.match(ui,/In phiếu \/ Lưu PDF/)
  assert.match(ui,/target="_blank" rel="noopener noreferrer"/)
@@ -16,7 +19,7 @@ test('Kho phone offers print for ALL posted stock vouchers in history, including
 test('Kho shows print after regular stock posting and after purchase-order receiving',()=>{
  const ui=read('src/WarehouseMobile.vue')
  assert.match(ui,/lastPostedDocument\.value=\{doctype:d\.doctype,name:d\.name\}/)
- assert.match(ui,/lastPostedDocument\.value=\{doctype:'Purchase Receipt',name:postedReceipt\.value\.name\}/)
+ assert.match(ui,/lastPostedDocument\.value=\{doctype:'Purchase Receipt',name:result\.name\}/)
  assert.match(ui,/v-if="lastPostedDocument"/)
  assert.match(ui,/stockPrintURL\(lastPostedDocument\.doctype,lastPostedDocument\.name\)/)
  assert.match(ui,/function startRequest\(\)\{\s+lastPostedDocument\.value=null/)

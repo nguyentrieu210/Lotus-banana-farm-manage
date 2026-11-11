@@ -326,6 +326,23 @@ def vat_rate(code, on_date, data=None):
     raise ValueError('Thuế suất GTGT "%s" không áp dụng cho ngày %s' % (code, str(on_date)[:10]))
 
 
+def vat_code_on(code, on_date, data=None):
+    """The code to use on a date: the code itself while in force, else the code that followed it ('then', e.g. the 8 %
+    reduction of Nghị quyết 204/2025/QH15 ends on 31/12/2026 and goods received later are back at 10 %)."""
+    data = data or load_vat()
+    code = str(code or 'KCT')
+    seen = set()
+    while code not in seen:
+        seen.add(code)
+        if any(r['code'] == code for r in vat_rates(on_date, data)):
+            return code
+        follow = next((r.get('then') for r in data['rates'] if r['code'] == code and r.get('then')), None)
+        if not follow:
+            break
+        code = str(follow)
+    raise ValueError('Thuế suất GTGT "%s" không áp dụng cho ngày %s' % (code, str(on_date)[:10]))
+
+
 def vat_summary(purchases, sales):
     """Monthly VAT figures (tờ khai 01/GTGT, tham khảo): rows of dict(code, net, tax) for purchases and sales ->
     totals by code, input and output tax and the VAT payable (negative = carried forward)."""

@@ -77,14 +77,70 @@ def protect_delete(doc):
         frappe.throw('Không xóa khoản chi hộ đã có bút toán; giữ chứng từ để đối chiếu.')
 
 
+ORDER_DONE = ('Closed', 'Cancelled', 'Stopped', 'Completed')
+
+
+def _unapplied_advance(order):
+    """Advance paid on an order and not yet applied to one of its invoices. ERPNext 16 keeps an applied advance in the
+    order's advance_paid: the invoice row made at reconciliation keeps advance_voucher_type/no = the order
+    (accounts.utils.update_reference_in_payment_entry / _in_journal_entry), and advance_paid sums the Advance Payment
+    Ledger against the order."""
+    applied = 0.0
+    if frappe.get_meta('Payment Entry Reference').has_field('advance_voucher_no'):
+        applied += flt(frappe.db.sql('''select sum(r.allocated_amount) from `tabPayment Entry Reference` r join `tabPayment Entry` p on p.name=r.parent
+            where p.docstatus=1 and r.advance_voucher_type='Purchase Order' and r.advance_voucher_no=%s and r.reference_doctype!='Purchase Order' ''',
+                                    order.name)[0][0])
+    if frappe.get_meta('Journal Entry Account').has_field('advance_voucher_no'):
+        applied += flt(frappe.db.sql('''select sum(a.debit_in_account_currency-a.credit_in_account_currency) from `tabJournal Entry Account` a
+            join `tabJournal Entry` j on j.name=a.parent where j.docstatus=1 and a.advance_voucher_type='Purchase Order' and a.advance_voucher_no=%s
+            and ifnull(a.reference_type, '')!='Purchase Order' ''', order.name)[0][0])
+    return max(0.0, flt(order.advance_paid) - applied)
+
+
+def _order_left_to_invoice(order):
+    """The order total still to be invoiced: for each line, the quantity not invoiced yet at the line's own value with its
+    VAT and freight (third review, 11/11/2026: a share of the total by net value let a line with VAT that was invoiced in
+    full leave room on the others)."""
+    from lotus_farm.finance import rules as finance_rules
+    rows = [r for r in order.items if flt(r.qty) > 0]
+    if not rows:
+        return 0.0
+    billed = dict(frappe.db.sql('''select pii.po_detail, sum(pii.qty) from `tabPurchase Invoice Item` pii join `tabPurchase Invoice` pi
+        on pi.name=pii.parent where pi.docstatus=1 and pii.po_detail in %s group by pii.po_detail''', (tuple(r.name for r in rows),)))
+    conversion = flt(order.get('conversion_rate')) or 1
+
+    def own(row):
+        try:
+            rate = finance_rules.vat_rate(row.get('lotus_line_vat') or 'KCT', order.transaction_date)
+        except ValueError:
+            rate = 0.0
+        return abs(flt(row.base_net_amount)) * (1 + rate) + abs(flt(row.get('lotus_line_freight'))) * conversion
+
+    weights = {r.name: own(r) for r in rows}
+    total = sum(weights.values())
+    if not total:
+        return flt(order.grand_total) * (100 - flt(order.per_billed)) / 100
+    left = sum(weights[r.name] * max(0.0, 1 - flt(billed.get(r.name)) / flt(r.qty)) for r in rows)
+    return flt(order.grand_total) * left / total
+
+
+def order_advance_room(order):
+    """How much more may be advanced on an order: what is not invoiced yet, less the advance still waiting to be applied,
+    and never past the order total. What is invoiced is paid through its invoice."""
+    if order.status in ORDER_DONE or flt(order.per_billed) >= 99.99:
+        return 0.0
+    return max(0.0, min(flt(order.grand_total) - flt(order.advance_paid), _order_left_to_invoice(order) - _unapplied_advance(order)))
+
+
 def _remaining_source(dt, name, exclude=None, lock_rows=True):
     d = frappe.get_doc(dt, name, for_update=lock_rows)
     if dt == 'Purchase Invoice':
         base = flt(d.outstanding_amount)
     else:
-        base = max(0, flt(d.grand_total)-flt(d.advance_paid))
-        if d.status in ('Closed', 'Cancelled', 'Stopped'):
-            frappe.throw('Đơn mua đã dừng hoặc đóng.')
+        if d.status in ORDER_DONE or flt(d.per_billed) >= 99.99:
+            frappe.throw('Đơn mua %s đã có hóa đơn đủ, đã dừng hoặc đã đóng: không tạm ứng thêm theo đơn. Trả tiền theo hóa đơn '
+                         'của đơn.' % d.name)
+        base = order_advance_room(d)
     held = flt(frappe.db.sql('''select sum(a.debit_in_account_currency-a.credit_in_account_currency)
         from `tabJournal Entry Account` a join `tabJournal Entry` j on j.name=a.parent
         where j.docstatus=0 and a.party_type='Supplier' and a.reference_type=%s and a.reference_name=%s
@@ -105,8 +161,10 @@ def options(company):
         mapping=funding_accounts(), is_chief=setup.is_chief(),
         accounts=frappe.get_list('Account', filters={'company': company, 'is_group': 0, 'disabled': 0, 'root_type': ['in', ['Liability', 'Equity']]},
             fields=['name', 'account_name', 'root_type', 'account_type'], limit_page_length=0),
+        # Only what can still take money: a closed or fully invoiced order would refuse it (and used to stop the list).
         sources={dt: [dict(name=r.name, supplier=r.supplier, amount=_remaining_source(dt, r.name,lock_rows=False))
-            for r in frappe.get_list(dt, filters={'company': company, 'docstatus': 1}, fields=['name', 'supplier'], limit_page_length=0)]
+            for r in frappe.get_list(dt, filters=dict({'company': company, 'docstatus': 1}, **({'status': ['not in', list(ORDER_DONE)],
+                'per_billed': ['<', 99.99]} if dt == 'Purchase Order' else {})), fields=['name', 'supplier'], limit_page_length=0)]
             for dt in ('Purchase Invoice', 'Purchase Order')})
 
 

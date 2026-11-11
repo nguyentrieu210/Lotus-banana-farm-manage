@@ -15,6 +15,18 @@ import StockDocumentForm from './stock/StockDocumentForm.vue'
 import StockDocumentDetail from './stock/StockDocumentDetail.vue'
 import {Cell,CellGroup} from 'vant'
 import {call,upload,setCSRF} from '../api'
+import {purchasePdfUrl} from '../purchase-document'
+import {procurementApi,lotusMethod} from './procurement/use-procurement'
+import NeedDetail from './procurement/NeedDetail.vue'
+import OrderDetail from './procurement/OrderDetail.vue'
+import ReceiptDetail from './procurement/ReceiptDetail.vue'
+import InvoiceQueue from './procurement/InvoiceQueue.vue'
+import InvoiceForm from './procurement/InvoiceForm.vue'
+import InvoiceDetail from './procurement/InvoiceDetail.vue'
+import PayablesView from './procurement/PayablesView.vue'
+import PaymentForm from './procurement/PaymentForm.vue'
+import VoucherDetail from './procurement/VoucherDetail.vue'
+import {PROPOSAL_STAGES} from '../purchase-status'
 import {Button} from './ui/button'
 import {DateRangePicker} from './ui/date-picker'
 import DataTable from './DataTable.vue'
@@ -29,7 +41,6 @@ import LineItemsEditor from './form/LineItemsEditor.vue'
 import ResponsiveForm from './form/ResponsiveForm.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 import ProcurementSigners from './ProcurementSigners.vue'
-import LotusSignatureTimeline from './LotusSignatureTimeline.vue'
 import PurchaseProgress from './PurchaseProgress.vue'
 import ProcurementDocumentForm from './ProcurementDocumentForm.vue'
 import MobilePurchaseOrderForm from './MobilePurchaseOrderForm.vue'
@@ -38,15 +49,15 @@ import LotusMobileButton from './LotusMobileButton.vue'
 import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import WorkspaceModal from './WorkspaceModal.vue'
 import LotusMobileDialog from './LotusMobileDialog.vue'
-import {newPurchaseDraft,purchasePayload,purchaseFromRequest} from '../mobile-purchase'
-import {procurementTabs,purchaseKinds,money,newKey,quoteChoices,docUrl,purchaseRequest} from '../procurement'
+import {newPurchaseDraft,purchasePayload,purchaseFromRequest,purchaseDraftFromOrder} from '../mobile-purchase'
+import {procurementTabs,purchaseKinds,money,newKey,quoteChoices} from '../procurement'
 import {toast} from '../use-toast'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import {useMobileConfirm} from '../use-mobile-confirm'
 
 const props=defineProps({company:String,warehouse:String,today:String,mobile:Boolean,embedded:Boolean,buyingView:String,navigationKey:String,initialSupplier:String})
-const api=(method,args={},write=false)=>purchaseRequest(call,'lotus_farm.procurement.'+method,args,write)
-const method=(module,name,args={},write=false)=>purchaseRequest(call,'lotus_farm.'+module+'.'+name,args,write)
+const api=procurementApi
+const method=lotusMethod
 const router=inject(routerKey,null),route=inject(routeLocationKey,null)
 const masterView=ref(null),quickMaster=ref(''),quickLine=ref(0),masterDialog=ref(null),masterSaving=ref(null),receivingView=ref(null)
 const queryStart=ref(0),queryPageSize=ref(50),queryTotal=ref(0),queryMore=ref(false),queryState=ref(''),fromDate=ref(''),toDate=ref(''),debt=ref(null),fundingRows=ref([]),deliveryReason=ref(''),deliveryDate=ref('')
@@ -65,7 +76,9 @@ const link=computed(()=>props.mobile?'a':Button)
 const company=ref(props.company||''),session=ref(null),catalog=ref(null),tab=ref(props.buyingView?normalizeBuyingView(props.buyingView):props.embedded?'orders':'needs'),rows=ref([])
 const busy=ref(false),saving=ref(false),error=ref(''),notice=ref(''),search=ref(''),form=ref(''),draft=ref(null),key=ref('')
 const pendingOnly=ref(false),proposalStage=ref('')
-const proposalStages=['Nháp','Chờ ký','Đã duyệt chờ mua','Đang mua','Hoàn tất']
+// Bảng đề xuất (spec 003, FR-026): one stage vocabulary, each with its count; Chờ tôi ký is a filter, not a stage.
+const WAITING_ME='Chờ tôi ký'
+const proposalStageOptions=computed(()=>[WAITING_ME,...PROPOSAL_STAGES].map(value=>({value,label:value+' ('+rows.value.filter(r=>value===WAITING_ME?r.waiting_me:r.stage===value).length+')'})))
 // Mua nhanh reuses the Kho receipt form and detail (reason Purchase, posted at once); they need the company's warehouses.
 const quickForm=ref(null),quickDetail=ref(null),stockWarehouses=ref([])
 const stockSession=computed(()=>({...session.value,today:asof.value,companies:[{name:company.value,default_currency:'VND'}]}))
@@ -81,9 +94,9 @@ const file=ref(null),fileUrl=ref(''),preview=ref(null),mappings=ref({}),importWa
 const workspaceConfirm=useWorkspaceConfirm(),mobileConfirm=useMobileConfirm()
 const confirmOpen=workspaceConfirm.open,confirmTitle=workspaceConfirm.title,confirmMessage=workspaceConfirm.message
 const mobileDialog=mobileConfirm.dialog,mobileMessage=mobileConfirm.message
-const visibleTabs=computed(()=>procurementTabs.filter(([k])=>k!=='quick'||catalog.value?.can_quick&&!props.mobile).filter(([k])=>k!=='payments'||catalog.value?.can_view_finance).filter(([k])=>!['invoices','payables','reports','payments'].includes(k)||catalog.value?.can_view_finance).filter(([k])=>k!=='invoices'||catalog.value?.can_invoice))
+const visibleTabs=computed(()=>procurementTabs.filter(([k])=>k!=='quick'||catalog.value?.can_quick&&!props.mobile).filter(([k])=>k!=='payments'||catalog.value?.can_view_finance).filter(([k])=>!['invoices','invoice-queue','payables','reports','payments'].includes(k)||catalog.value?.can_view_finance).filter(([k])=>!['invoices','invoice-queue'].includes(k)||catalog.value?.can_invoice))
 const options=(values,label)=>values?.map(r=>({value:r.name,label:r[label]||r.name}))||[]
-const shownRows=computed(()=>rows.value.filter(r=>(tab.value!=='needs'||!proposalStage.value||r.stage===proposalStage.value)&&(!pendingOnly.value||tab.value!=='orders'||r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng')&&(!supplier.value||['reports','payables','payments','invoices'].includes(tab.value)||r.supplier===supplier.value)&&(!search.value||Object.values(r).filter(x=>typeof x!=='object').join(' ').toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))))
+const shownRows=computed(()=>rows.value.filter(r=>(tab.value!=='needs'||!proposalStage.value||(proposalStage.value===WAITING_ME?r.waiting_me:r.stage===proposalStage.value))&&(!pendingOnly.value||tab.value!=='orders'||r.docstatus===1&&Number(r.remaining_lines)>0&&r.status!=='Đã đóng')&&(!supplier.value||['reports','payables','payments','invoices'].includes(tab.value)||r.supplier===supplier.value)&&(!search.value||Object.values(r).filter(x=>typeof x!=='object').join(' ').toLocaleLowerCase().includes(search.value.toLocaleLowerCase()))))
 const columns=computed(()=>tab.value==='quick'?quickColumns:tab.value==='invoices'?[{field:'name',headerName:'Hóa đơn',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:180},{field:'bill_no',headerName:'Số hóa đơn NCC'},{field:'date',headerName:'Ngày ghi sổ'},{field:'due_date',headerName:'Hạn thanh toán'},{field:'amount',headerName:'Tổng tiền',valueFormatter:p=>money(p.value)},{field:'outstanding_amount',headerName:'Còn nợ',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payments'?[{field:'name',headerName:'Chứng từ',minWidth:180,valueGetter:p=>p.data.voucher_name||p.data.name},{field:'kind',headerName:'Loại giao dịch',minWidth:180},{field:'supplier',headerName:'Nhà cung cấp'},{field:'date',headerName:'Ngày'},{field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='payables'?[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:190},{field:'name',headerName:'Chứng từ',minWidth:170},{field:'bill_no',headerName:'Hóa đơn NCC'},{field:'due_date',headerName:'Hạn trả'},{field:'amount',headerName:'Còn nợ / dư trả',valueFormatter:p=>money(p.value)},{field:'overdue_days',headerName:'Ngày quá hạn'},{field:'status',headerName:'Tình trạng',valueFormatter:p=>stateLabel(p.value)}]:tab.value==='quotes'?[
  // A list to read: choosing a quote (and the reason when it is not the cheapest) happens in So sánh giá.
  {field:'item_name',headerName:'Mặt hàng',minWidth:200},{field:'supplier',headerName:'Nhà cung cấp',minWidth:140},
@@ -98,7 +111,10 @@ const columns=computed(()=>tab.value==='quick'?quickColumns:tab.value==='invoice
  {field:'supplier',headerName:'Nhà cung cấp'},{field:'item_name',headerName:'Mặt hàng',minWidth:180},
  {field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)}]:[
  {field:'name',headerName:'Số chứng từ',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',valueGetter:p=>p.data.supplier_name||p.data.supplier||''},
- {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)},
+ {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{field:'status',headerName:'Trạng thái',minWidth:150,valueGetter:p=>stateLabel(p.data.status)+(p.data.overdue?' · quá hẹn':'')},
+ ...(tab.value==='orders'?[{field:'billed_percent',headerName:'Đã có hóa đơn',sum:false,valueFormatter:p=>p.data?.docstatus===1?Math.round(Number(p.value||0))+'%':''},
+  {field:'paid_percent',headerName:'Đã trả tiền',sum:false,valueFormatter:p=>p.data?.docstatus===1&&p.value!=null?Math.round(Number(p.value))+'%':''},
+  {field:'reject_reason',headerName:'Lý do trả lại',minWidth:180,sum:false,defaultHidden:true}]:[]),
  {field:'amount',headerName:'Giá trị',valueFormatter:p=>money(p.value)}])
 const lineColumns=[{field:'item_name',headerName:'Mặt hàng',minWidth:180},{field:'qty',headerName:'Số lượng'},{field:'uom',headerName:'ĐVT',valueFormatter:p=>unitLabel(p.value)},{field:'rate',headerName:'Đơn giá',valueFormatter:p=>money(p.value)},{field:'vat_code',headerName:'VAT'},{field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'order',headerName:'Đơn mua'},{field:'receipt',headerName:'Phiếu nhận'}]
 const sourceOptions=computed(()=>form.value==='refund'?[{value:source.value,label:source.value}]:(finance.value?.sources?.[sourceType.value]||[]).map(r=>({value:r.name,label:r.name+' · '+r.supplier+' · còn '+money(r.amount)})))
@@ -112,19 +128,18 @@ const tabLabel=computed(()=>procurementTabs.find(([k])=>k===tab.value)?.[1]||'Mu
 const summary=computed(()=>tab.value==='payables'&&debt.value?[{label:'Phải trả',value:money(debt.value.owed)},{label:'Tạm ứng',value:money(debt.value.advance)},{label:'Quá hạn',value:money(debt.value.overdue)},{label:'Số dư thuần',value:money(debt.value.net)}]:tab.value==='reports'&&report.value?Object.entries(report.value.stages||{}).map(([id,label])=>({label,value:money(report.value.totals[id])})):[])
 const detailLabels={orders:'Đơn mua',needs:'Đề xuất mua',quotes:'Báo giá',receipts:'Phiếu nhận',invoices:'Hóa đơn',payments:'Phiếu chi',voucher:'Phiếu chi'}
 const detailTitle=computed(()=>current.value?(detailLabels[detailType.value]||'Chứng từ')+' · '+(current.value.voucher_name||current.value.name):'Chứng từ')
-const detailUrl=computed(()=>current.value&&detailType.value!=='quotes'&&!current.value.audit_only?docUrl(detailType.value==='orders'?'Purchase Order':detailType.value==='needs'?'Material Request':detailType.value==='invoices'?'Purchase Invoice':current.value.doctype||'Purchase Receipt',current.value.name):'')
 const stageColumns=[{field:'item_name',label:'Mặt hàng',width:'minmax(220px,2fr)'},{field:'qty',label:'Số lượng',width:'minmax(140px,1fr)'}]
 const importUnits=code=>[catalog.value.items.find(i=>i.name===code)?.stock_uom,...catalog.value.conversions.filter(c=>c.parent===code).map(c=>c.uom)].filter(Boolean)
-const formSubmitLabel=computed(()=>({order:'Lưu nháp đơn mua',quote:'Lưu nháp báo giá',need:'Lưu nháp đề xuất',invoice:'Ghi nhận hóa đơn',credit:'Ghi nhận hóa đơn',return:'Tạo phiếu nháp',payment:'Lập phiếu và trình ký',funding:'Lập phiếu và trình ký',reimburse:'Lập phiếu và trình ký',refund:'Lập phiếu và trình ký',accounts:'Lưu tài khoản',import:'Xác nhận tạo nháp'}[form.value]||'Lưu'))
+const formSubmitLabel=computed(()=>({order:'Lưu nháp đơn mua',quote:'Lưu nháp báo giá',need:'Lưu nháp đề xuất',invoice:'Ghi nhận hóa đơn',credit:'Ghi nhận hóa đơn',payment:'Lập phiếu và trình ký',funding:'Lập phiếu và trình ký',reimburse:'Lập phiếu và trình ký',refund:'Lập phiếu và trình ký',accounts:'Lưu tài khoản',import:'Xác nhận tạo nháp'}[form.value]||'Lưu'))
 const formDisabled=computed(()=>form.value==='import'?!preview.value?.valid:form.value==='funding'?!evidence.value||!allocations.value.length:false)
 function submitForm(){
  if(['order','quote','need'].includes(form.value))return saveDocument()
- if(['return','invoice','credit'].includes(form.value))return submitStage()
+ if(['invoice','credit'].includes(form.value))return submitStage()
  if(['payment','funding','reimburse','refund'].includes(form.value))return pay()
  if(form.value==='accounts')return saveAccounts()
  if(form.value==='import')return importCommit()
 }
-const formTitle=computed(()=>({order:'Đơn mua',quote:'Báo giá',need:'Đề xuất mua',receive:'Nhận / nghiệm thu',invoice:'Lập hóa đơn',payment:'Chi / tạm ứng NCC',funding:'Ghi nhận chi hộ',reimburse:'Hoàn tiền chi hộ',accounts:'Tài khoản chi hộ',import:'Nhập Excel',return:'Trả hàng',credit:'Hóa đơn điều chỉnh trả hàng',refund:'Ghi nhận NCC hoàn tiền'}[form.value]||''))
+const formTitle=computed(()=>({order:'Đơn mua',quote:'Báo giá',need:'Đề xuất mua',receive:'Nhận / nghiệm thu',invoice:'Lập hóa đơn',payment:'Chi / tạm ứng NCC',funding:'Ghi nhận chi hộ',reimburse:'Hoàn tiền chi hộ',accounts:'Tài khoản chi hộ',import:'Nhập Excel',credit:'Hóa đơn điều chỉnh trả hàng',refund:'Ghi nhận NCC hoàn tiền'}[form.value]||''))
 
 function defaultWarehouse(){return props.warehouse||(catalog.value?.warehouses?.length===1?catalog.value.warehouses[0].name:'')}
 async function loadWarehouses(name=company.value){try{stockWarehouses.value=(await call('lotus_farm.warehouse.overview',{company:name,start:0})).warehouses||[]}catch{stockWarehouses.value=[]}}
@@ -143,7 +158,7 @@ async function load(){
  busy.value=true;error.value='';if(queryPageSize.value===0&&isPaged.value)rows.value=[]
  try{
   let resultRows=[],resultReport=null,resultQuery=null,resultFinance=null
-  if(view==='compare')return  // ProcurementCompare loads its own matrix
+  if(['compare','invoice-queue','payables'].includes(view))return  // these views load their own data
   if(view==='quick'){resultRows=await api('quick_purchases',{company:selectedCompany});if(!stockWarehouses.value.length)await loadWarehouses(selectedCompany)}
   if(view==='needs')resultRows=await api('needs',{company:selectedCompany})
   if(view==='quotes')resultRows=await api('quotations',{company:selectedCompany})
@@ -168,7 +183,7 @@ async function load(){
 
 function reportFilters(){return {company:company.value,month:period.value,as_of:asof.value,farm:farm.value,supplier:supplier.value,kind:kind.value}}
 async function initialize(){
- try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=props.company||company.value||session.value.companies?.[0]?.name||'';if(!props.today&&session.value.today){asof.value=session.value.today;date.value=asof.value;billdate.value=asof.value;dueDate.value=asof.value;period.value=asof.value.slice(0,7)};if(company.value){await companyChanged();const query=route?.query||Object.fromEntries(new URLSearchParams(location.search));if(query.purchase_doc)await open({name:query.purchase_doc},query.purchase_type||tab.value)}}
+ try{session.value=await api('bootstrap');setCSRF(session.value.csrf_token);company.value=props.company||company.value||session.value.companies?.[0]?.name||'';if(!props.today&&session.value.today){asof.value=session.value.today;date.value=asof.value;billdate.value=asof.value;dueDate.value=asof.value;period.value=asof.value.slice(0,7)};if(company.value){await companyChanged();const query=route?.query||Object.fromEntries(new URLSearchParams(location.search));if(query.purchase_doc)await open({name:query.purchase_doc,...(query.purchase_doctype?{doctype:query.purchase_doctype}:{})},query.purchase_type||tab.value)}}
  catch(e){error.value=e.message}
 }
 async function companyChanged(){current.value=null;form.value='';catalog.value=await api('bootstrap',{company:company.value});importWarehouse.value=defaultWarehouse();if(!erpSection('buying',tab.value)&&!visibleTabs.value.some(([k])=>k===tab.value))tab.value='needs';await load();if(router&&route.query.company!==company.value)await router.replace({path:route.path,query:{...route.query,company:company.value}})}
@@ -207,13 +222,13 @@ async function start(type){
 async function saveDocument(){await run(async()=>{
  let answer
  if(form.value==='need')answer=await method('purchase_proposal','save_proposal',{company:company.value,name:draft.value.name||null,modified:draft.value.modified||null,values:{reason:draft.value.notes,department:draft.value.department,warehouse:draft.value.warehouse,items:draft.value.items.map(r=>({...r,item_code:r.item,warehouse:r.warehouse||draft.value.warehouse,schedule_date:r.schedule_date||draft.value.expected_date}))}},true)
- else if(form.value==='quote')answer=await api('save_quotation',{company:company.value,data:draft.value,client_key:key.value},true)
+ else if(form.value==='quote')answer=await api('save_quotation',{company:company.value,data:draft.value,client_key:key.value,name:draft.value.name||null,modified:draft.value.modified||null},true)
  else answer=await method('warehouse_buying_lite','save_order',{company:company.value,data:purchasePayload(draft.value,catalog.value),name:draft.value.name||null,modified:draft.value.modified||null},true)
  const doctype={need:'Material Request',quote:'Supplier Quotation'}[form.value]||'Purchase Order'
  // Photos / PDFs read by AI become attachments of the saved document.
  let attachNote=''
  for(const file_url of draft.value.ai_files||[]){try{await call('lotus_farm.stock_attachments.attach',{doctype,name:answer.name,file_url},true)}catch(e){attachNote=' Chưa gắn được chứng từ AI: '+e.message}}
- const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();if(type==='needs')await open({name:answer.name},'needs');success('Đã lưu nháp '+answer.name+(draft.value.ai_files?.length&&!attachNote?' kèm chứng từ đã đọc.':'')+attachNote)
+ const type=form.value==='need'?'needs':form.value==='quote'?'quotes':'orders';form.value='';tab.value=type;await load();if(type!=='quotes')await open({name:answer.name},type);success('Đã lưu nháp '+answer.name+(answer.warnings?.length?'. Có '+answer.warnings.length+' dòng sẽ bị chặn khi duyệt, xem trong đơn':'')+(draft.value.ai_files?.length&&!attachNote?' kèm chứng từ đã đọc.':'')+attachNote)
 })}
 async function fromRequest(name){await run(async()=>{const request=await method('warehouse_buying_lite','request_detail',{name,company:company.value,allow_pending:form.value==='quote'?1:0});draft.value=purchaseFromRequest(draft.value,request)})}
 async function open(row,type=tab.value){error.value='';try{
@@ -226,7 +241,7 @@ async function open(row,type=tab.value){error.value='';try{
   signerOptions.value=await method('purchasing','approver_options',{company:company.value})
  }else if(type==='invoices')current.value=await method('procurement_queries','invoice',{company:company.value,name:row.name})
  else if(type==='needs'){
-  current.value=await method('purchase_proposal','detail',{name:row.name});signers.value={...current.value.signers};signerOptions.value=await method('purchase_proposal','signer_options',{company:company.value,name:row.name})
+  current.value=await method('purchase_proposal','detail',{name:row.name})
  }else if(type==='receipts')current.value=await api('receipt',{name:row.name})
  else if(type==='quotes')current.value={...row,line_id:row.name,name:row.quotation}
  else if(type==='payments'){current.value=await api('voucher',{doctype:row.doctype||'Journal Entry',name:row.journal_entry||row.name});if(row.lotus_purchase_funding)current.value.funding=fundingRows.value.find(r=>r.name===row.lotus_purchase_funding)}
@@ -247,19 +262,54 @@ async function prepareReceipt(type){
 async function submitStage(){await run(async()=>{
  const selected=Object.fromEntries(Object.entries(quantities.value).filter(([,q])=>Number(q)>0))
  let result
- if(form.value==='return')result=await api('return_receipt',{name:receiveInfo.value.name,posting_date:date.value,quantities:selected,client_key:key.value},true)
  if(form.value==='credit')result=await method('procurement_adjustments','credit_note',{company:company.value,name:receiveInfo.value.name,posting_date:date.value,bill_no:bill.value,bill_date:billdate.value,quantities:selected,client_key:key.value},true)
  if(form.value==='invoice')result=await api('invoice_receipt',{name:receiveInfo.value.name,bill_no:bill.value,bill_date:billdate.value,posting_date:date.value,due_date:dueDate.value,quantities:selected,client_key:key.value,invoice_series:billSeries.value,cqt_code:cqtCode.value,invoice_total:invoiceTotal.value,invoice_vat:invoiceVat.value},true)
  const target=result.invoice?'invoices':'receipts';form.value='';current.value=null;await changeTab(target);await open({name:result.invoice||result.name},target);success('Đã tạo '+(result.name||result.invoice))
 })}
 async function chooseQuotes(){await run(async()=>{const result=await api('select_quotes',{company:company.value,selections:quoteChoices(rows.value,selections.value),client_key:key.value||=newKey()},true);key.value='';tab.value='orders';await load();ordersCreated(result)})}
 // Orders from approved requests at the cheapest price are approved at once (procurement._approve_by_policy).
-function ordersCreated(result){const ok=result.approved||[],draft=result.orders.filter(n=>!ok.includes(n));success([ok.length?'Đơn đã duyệt, chờ nhận hàng: '+ok.join(', '):'',draft.length?'Đơn nháp chờ trình duyệt: '+draft.join(', '):''].filter(Boolean).join(' · '))}
+function ordersCreated(result){const sent=result.sent||[],draft=result.orders.filter(n=>!sent.includes(n));success([sent.length?'Đã gửi giám đốc duyệt: '+sent.join(', '):'',draft.length?'Đơn nháp chờ gửi duyệt: '+draft.join(', '):''].filter(Boolean).join(' · '))}
 async function compareCreated(result){ordersCreated(result);await changeTab('orders')}
 function selection(row){return selections.value[row.line_id||row.name]||=( {selected:false,reason:'',qty:row.qty})}
 async function editProposal(){const d=current.value;await start('need');draft.value={...draft.value,name:d.name,modified:d.modified,edit:d.edit,department:d.department,notes:d.reason,warehouse:d.warehouse||d.items[0]?.warehouse||'',expected_date:d.items[0]?.schedule_date||asof.value,items:d.items.map(r=>({...r,item:r.item_code,kind:r.kind||r.lotus_purchase_kind}))}}
 async function orderFromProposal(){const name=current.value.name;await start('order');await fromRequest(name)}
-async function proposalSign(){await act('sign','purchase_proposal',{signers:signers.value})}
+// NeedDetail performed an action: show the fresh detail and refresh the board behind it.
+async function proposalChanged(detail){current.value=detail;await load()}
+async function proposalDeleted(){current.value=null;await load()}
+// OrderDetail performed an action: fresh detail and related documents, then the list behind it.
+async function orderChanged(detail,related){current.value=detail;chain.value=related;await load()}
+async function orderDeleted(){current.value=null;await load()}
+// ReceiptDetail performed an action (confirm, return, cancel): keep the fresh detail, refresh the list behind it.
+async function receiptChanged(detail){if(detail&&current.value?.name===detail.name)current.value=detail;await load()}
+async function receiptDeleted(){current.value=null;await load()}
+// Nhập hóa đơn cho các phiếu nhận đã chọn (spec 003, US5): một biểu mẫu, một lõi ghi sổ.
+const invoiceForm=ref(false),invoiceReceipts=ref([])
+// Phiếu chi (spec 003, US6): một biểu mẫu trả nhiều hóa đơn của một nhà cung cấp.
+const paymentForm=ref(false),paymentSupplier=ref(''),paymentPreset=ref([])
+function payInvoice(detail){paymentSupplier.value=detail.supplier;paymentPreset.value=[detail.name];current.value=null;paymentForm.value=true}
+async function paymentCreated(result){success('Đã lập phiếu chi '+result.voucher+' và gửi người ký.');await changeTab('payments');await open({doctype:result.doctype,name:result.voucher},'payments')}
+async function voucherGone(){current.value=null;await load()}
+function enterInvoice(receipts){invoiceReceipts.value=receipts;current.value=null;invoiceForm.value=true}
+async function invoiceCreated(result){success('Đã ghi hóa đơn '+result.invoice+'.'+(result.warnings?.length?' '+result.warnings.join(' '):''));await changeTab('invoices');await open({name:result.invoice},'invoices')}
+// A return of goods that were already invoiced: go to the invoice so the adjustment invoice can be made from it.
+async function creditAfterReturn(detail){const invoice=detail?.invoices?.[0];if(invoice&&catalog.value?.can_finance){await changeTab('invoices');await open({name:invoice},'invoices')}}
+// Báo giá (spec 003, FR-034): a draft is edited in the same form; a confirmed quote is never edited in place — it is
+// cancelled (with a reason) or cancelled and replaced by a draft copy to correct. A quote used by an order is refused by the server.
+async function openQuoteForm(name){const q=await api('quotation',{name});await start('quote');draft.value={...draft.value,name:q.name,modified:q.modified,supplier:q.supplier,date:q.date,valid_till:q.valid_till||asof.value,expected_date:q.expected_date||asof.value,warehouse:q.warehouse||draft.value.warehouse,items:q.items.map(r=>({...draft.value.items[0],id:r.name,item:r.item,qty:r.qty,uom:r.uom,rate:r.rate,warehouse:r.warehouse,kind:r.kind||'',vat_code:r.vat_code||'KCT',freight:r.freight||0,material_request:r.material_request,material_request_item:r.material_request_item}))}}
+async function editQuote(){const name=current.value.name;await run(()=>openQuoteForm(name))}
+async function cancelQuote(amend){
+ const q=current.value
+ if(q.docstatus===0&&!await ask('Xóa báo giá nháp '+q.name+'?'))return
+ if(amend&&!await ask('Hủy báo giá '+q.name+' và tạo bản nháp mới để sửa?'))return
+ await run(async()=>{
+  const result=await api('cancel_quotation',{name:q.name,modified:q.modified,reason:notes.value,amend:amend?1:0},true)
+  current.value=null;await load()
+  if(result.amended_from){success('Đã hủy '+q.name+', sửa bản nháp '+result.name+'.');await openQuoteForm(result.name)}
+  else success(result.deleted?'Đã xóa báo giá nháp '+q.name+'.':'Đã hủy báo giá '+q.name+'.')
+ })
+}
+// Sửa đơn nháp hoặc đơn bị trả lại trên máy tính và điện thoại (spec 003, FR-035): the same form, every line field kept.
+async function editOrder(){const d=current.value;await start('order');draft.value=purchaseDraftFromOrder(d,defaultWarehouse())}
 async function pay(){await run(async()=>{
  let result
  if(form.value==='refund')result=await method('procurement_adjustments','refund',{company:company.value,name:source.value,amount:amount.value,mode:mode.value,posting_date:date.value,reference_no:reference.value,signers:signers.value,client_key:key.value},true)
@@ -287,11 +337,16 @@ function hasChanges(){return !!form.value||!!quickMaster.value||!!masterView.val
 let initialLoad=Promise.resolve()
 async function createOrder(){await initialLoad;if(!catalog.value?.can_create)return;if(!await changeTab('orders'))return;await start('order')}
 async function startReceiving(){await initialLoad;if(!await changeTab('orders'))return;search.value='';pendingOnly.value=true}
-defineExpose({hasChanges,discardChanges,scopeParams,refresh:load,createOrder,startReceiving})
+// openDocument: a host app (Mua hàng on the phone) opens a related document of another kind in this workspace.
+async function openDocument(row,type){await initialLoad;const view=type==='needs'?'needs':type;if(tab.value!==view&&visibleTabs.value.some(([k])=>k===view)){tab.value=view;await load()}await open(row,type)}
+defineExpose({hasChanges,discardChanges,scopeParams,refresh:load,createOrder,startReceiving,openDocument})
 let consumingAction=false
 async function consumeAction(){if(consumingAction||route?.query.action!=='create_order')return;consumingAction=true;try{await createOrder();const q={...route.query};delete q.action;await router.replace({path:route.path,query:q})}finally{consumingAction=false}}
 onMounted(()=>{initialLoad=initialize();initialLoad.then(consumeAction)})
-watch(()=>props.navigationKey,()=>{if(catalog.value)consumeAction()})
+// A later link to a document (Chờ tôi ký, alerts, progress rows) opens it even though the page stays alive (KeepAlive).
+let lastLinked=''
+async function openLinked(){const q=route?.query||{};if(!q.purchase_doc)return;const key=[q.purchase_doc,q.purchase_doctype,q.purchase_type].join('|');if(key===lastLinked)return;lastLinked=key;await open({name:q.purchase_doc,...(q.purchase_doctype?{doctype:q.purchase_doctype}:{})},q.purchase_type||tab.value)}
+watch(()=>props.navigationKey,()=>{if(catalog.value){consumeAction();openLinked()}})
 watch(()=>props.buyingView,async value=>{const next=normalizeBuyingView(value);if(next!==tab.value)await changeTab(next,true)})
 watch(()=>props.company,async value=>{if(value&&value!==company.value){company.value=value;await companyChanged()}})
 </script>
@@ -305,6 +360,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
  <nav v-if="!mobile&&groupTabs.length>1" class="procurement-subtabs" :aria-label="tabLabel"><button v-for="[id,label] in groupTabs" :key="id" type="button" :aria-current="tab===id?'page':undefined" :disabled="saving" @click="changeTab(id)">{{label}}</button></nav>
 
+ <p v-if="!mobile&&error&&['payables','invoice-queue'].includes(tab)&&!form&&!current" role="alert" class="lotus-list-page__error">{{error}}</p>
  <ProcurementMasters v-if="isMaster" ref="masterView" :key="company+tab" :company="company" :kind="tab" :mobile="mobile" @navigate="navigateMaster"><template #scope><LotusField v-if="companyOptions.length>1" v-model="company" :mobile="mobile" :label="mobile?'Công ty':undefined" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" :disabled="hasChanges()" @update:model-value="companyChanged"/></template></ProcurementMasters>
 
  <ErpSection v-else-if="erpView" :key="erpView.id" :section="erpView" view-param="buying_view" :company="company"/>
@@ -314,12 +370,16 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
   <ErpReport :key="erpReportSel.name" :name="erpReportSel.name" :label="erpReportSel.label" :company="company" :show-back="false"/>
  </section>
 
+ <PayablesView v-else-if="tab==='payables'&&!(mobile&&(current||form))" :key="'payables-'+company" :company="company" :mobile="mobile" :today="asof" :can-pay="!!catalog.can_finance" :suppliers="supplierOptions"
+  @open="(row,type)=>open(row,type)" @notice="success" @error="value=>error=value"/>
+ <InvoiceQueue v-else-if="tab==='invoice-queue'&&!(mobile&&(current||form))" :key="'invoice-queue-'+company" :company="company" :mobile="mobile" :today="asof" :can-post="!!catalog.can_finance" :suppliers="supplierOptions"
+  @created="invoiceCreated" @open="row=>open(row,row.mua_nhanh?'quick':'receipts')" @notice="success" @error="value=>error=value"/>
  <ProcurementCompare v-else-if="tab==='compare'" :key="'compare-'+company" :company="company" :mobile="mobile" :can-create="catalog.can_create" :api="api" @created="compareCreated"/>
 
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
    :paged="isPaged" :start="queryStart" :page-size="queryPageSize" @update:page-size="value=>{queryPageSize=value;queryReset()}" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
    :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
-  <template #filters><LotusField v-if="tab==='needs'" v-model="proposalStage" aria-label="Tiến độ đề xuất" :options="proposalStages.map(value=>({value,label:value}))" empty-option="Mọi tiến độ" :searchable="false"/>
+  <template #filters><LotusField v-if="tab==='needs'" v-model="proposalStage" aria-label="Tiến độ đề xuất" :options="proposalStageOptions" empty-option="Mọi giai đoạn" :searchable="false"/>
    <LotusField v-if="companyOptions.length>1" v-model="company" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" @update:model-value="companyChanged"/>
    <template v-if="isPaged">
     <LotusField v-model="supplier" aria-label="Nhà cung cấp" :options="supplierOptions" placeholder="Tất cả nhà cung cấp" @update:model-value="queryReset"/>
@@ -377,76 +437,41 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  <ResponsiveForm :mobile="mobile" :model-value="!!current&&!form" :title="detailTitle" readonly width="1080px" :busy="saving" :error="error" @update:model-value="value=>!value&&(current=null)">
   <template v-if="current">
    <MobilePurchaseOrderDetail v-if="mobile&&detailType==='orders'" :order="current" :warehouses="catalog.warehouses"/>
-   <CellGroup v-else-if="mobile&&current.items" :border="false"><Cell v-for="(r,i) in current.items" :key="r.line||i" :title="r.item_name" :label="r.uom" :value="String(r.qty)"/></CellGroup>
-   <DataTable v-else-if="current.items" :rows="current.items" :columns="lineColumns"/>
+   <CellGroup v-else-if="mobile&&current.items&&!['receipts','invoices'].includes(detailType)" :border="false"><Cell v-for="(r,i) in current.items" :key="r.line||i" :title="r.item_name" :label="r.uom" :value="String(r.qty)"/></CellGroup>
+   <DataTable v-else-if="current.items&&!['receipts','invoices'].includes(detailType)" :rows="current.items" :columns="lineColumns"/>
 
-   <template v-if="detailType==='needs'">
-    <p class="lotus-form-note">{{current.state||current.status}} · {{current.reason}}</p>
-    <LotusField v-if="current.can_return" v-model="notes" :mobile="mobile" label="Lý do trả lại đề xuất" type="textarea"/>
-    <p v-if="current.policy_notice||current.return_reason" role="status">{{current.policy_notice||current.return_reason}}</p>
-    <LotusSignatureTimeline :steps="current.signatures" :current="current.step" title="Các bước ký"/>
-    <ProcurementSigners v-if="current.needs_signers&&current.can_sign" :mobile="mobile" v-model="signers" :options="signerOptions"/>
-   </template>
-   <PurchaseProgress v-if="detailType==='needs'&&current.progress" :progress="current.progress" :mobile="mobile" navigate @open="(row,type)=>open(row,type)"/>
-   <PurchaseProgress v-if="detailType==='orders'&&chain" :progress="{...chain,lines:chain.progress}" :mobile="mobile" navigate @open="(row,type)=>open(row,type)"/>
+   <NeedDetail v-if="detailType==='needs'" :detail="current" :mobile="mobile" :company="company" :can-order="!!catalog.can_create" :saving="saving" :ask="ask"
+    @changed="proposalChanged" @deleted="proposalDeleted" @edit="editProposal" @order="orderFromProposal" @open="(row,type)=>open(row,type)"
+    @notice="success" @error="value=>error=value"/>
    <template v-if="detailType==='quotes'">
     <dl class="lotus-form-totals"><div><dt>Nhà cung cấp</dt><dd>{{current.supplier}}</dd></div><div><dt>Giá đủ / ĐVT kho</dt><dd>{{money(current.unit_cost)}}</dd></div><div><dt>Ngày giao</dt><dd>{{current.delivery_date||'—'}}</dd></div></dl>
     <LotusField v-if="mobile" mobile v-model="selection(current).reason" label="Lý do lựa chọn"/>
+    <LotusField v-if="current.docstatus===1&&catalog.can_quote" v-model="notes" :mobile="mobile" label="Lý do hủy báo giá" placeholder="Chỉ cần khi hủy hẳn báo giá đã xác nhận"/>
    </template>
-   <template v-if="detailType==='orders'">
-    <FormSection v-if="current.can_manage||current.can_close" title="Hẹn giao / đóng phần còn lại">
-     <FormGrid :columns="mobile?1:2"><LotusField v-model="deliveryDate" :mobile="mobile" type="date" label="Ngày giao hẹn lại"/><LotusField v-model="deliveryReason" :mobile="mobile" label="Lý do đổi hẹn / đóng phần còn lại"/></FormGrid>
-    </FormSection>
-    <ProcurementSigners v-if="current.can_request_approval" :mobile="mobile" v-model="signers" :options="signerOptions"/>
-    <FormSection v-if="chain&&(chain.receipts?.length||chain.invoices?.length||chain.payments?.length||chain.funding?.length)" title="Chứng từ liên quan">
-     <div class="procurement-actions"><component :is="button" v-for="r in chain.receipts" :key="r.name" type="button" variant="outline" size="sm" @click="open(r,'receipts')">{{r.name}} · {{r.date}} · {{r.docstatus===1?'Đã xác nhận':r.docstatus===2?'Đã hủy':'Nháp'}}</component><component :is="button" v-for="r in chain.invoices" :key="r.name" type="button" variant="outline" size="sm" @click="open(r,'invoices')">{{r.name}} · {{money(r.amount)}}</component></div>
-     <p v-for="r in chain.payments" :key="r.name" class="lotus-form-note">{{r.name}} · {{r.docstatus===1?'Đã trả':'Chờ ký'}} · {{money(r.amount)}}</p>
-     <p v-for="r in chain.funding" :key="r.name" class="lotus-form-note">{{r.name}} · {{r.status}} · Chi hộ {{money(r.amount)}} · Còn hoàn {{money(r.remaining)}}</p>
-    </FormSection>
-   </template>
-   <template v-if="detailType==='invoices'">
-    <dl class="lotus-form-totals"><div><dt>Nhà cung cấp</dt><dd>{{current.supplier}}</dd></div><div><dt>Hóa đơn</dt><dd>{{current.bill_no}}</dd></div><div><dt>Hạn trả</dt><dd>{{current.due_date}}</dd></div><div><dt>Tổng</dt><dd>{{money(current.amount)}}</dd></div><div><dt>Còn nợ</dt><dd>{{money(current.outstanding_amount)}}</dd></div></dl>
-    <p v-for="t in current.taxes" :key="t.description" class="lotus-form-note">{{t.description}} · {{money(t.amount)}}</p>
-    <div class="procurement-actions"><template v-for="r in current.items" :key="r.line"><component :is="button" v-if="r.order" type="button" variant="outline" size="sm" @click="open({name:r.order},'orders')">Đơn {{r.order}}</component><component :is="button" v-if="r.receipt" type="button" variant="outline" size="sm" @click="open({name:r.receipt},'receipts')">Phiếu nhận {{r.receipt}}</component></template></div>
-   </template>
-   <template v-if="detailType==='receipts'"><div class="procurement-actions"><component :is="button" v-for="name in [...new Set(current.items.map(r=>r.order).filter(Boolean))]" :key="name" type="button" variant="outline" @click="open({name},'orders')">Đơn mua {{name}}</component></div>
-    <dl v-if="current.incoming_total!=null" class="lotus-form-totals"><div><dt>Tiền hàng</dt><dd>{{money(current.goods_total)}}</dd></div><div><dt>Chi phí phân bổ</dt><dd>{{money(current.valuation_charges)}}</dd></div><div><dt>Giá trị nhập</dt><dd>{{money(current.incoming_total)}}</dd></div></dl>
-    <p class="lotus-form-note">{{current.docstatus===1?'Đã xác nhận':current.docstatus===2?'Đã hủy':'Nháp'}} · {{current.supplier}}</p>
-   </template>
-   <template v-if="['voucher','payments'].includes(detailType)">
-    <p v-if="current.reason" class="lotus-form-note">{{current.reason}}</p>
-    <dl class="lotus-form-totals"><div><dt>Loại</dt><dd>{{current.kind||current.classification}}</dd></div><div><dt>Số tiền</dt><dd>{{money(current.amount)}}</dd></div><div><dt>Chờ ký</dt><dd>{{current.signing?.waiting_for||'—'}}</dd></div></dl>
-    <p v-for="s in current.signing?.steps||[]" :key="s.key" class="lotus-form-note">{{s.title}} · {{s.name}} · {{s.state}}</p>
-    <LotusField v-if="current.signing?.can_sign||catalog.can_finance&&current.docstatus===0" :mobile="mobile" v-model="notes" label="Lý do trả lại / hủy phiếu nháp"/>
-   </template>
+   <OrderDetail v-if="detailType==='orders'" :detail="current" :chain="chain" :mobile="mobile" :company="company" :saving="saving" :ask="ask"
+    @changed="orderChanged" @deleted="orderDeleted" @edit="editOrder" @receive="prepareReceipt('receive')" @open="(row,type)=>open(row,type)"
+    @notice="success" @error="value=>error=value"/>
+   <InvoiceDetail v-if="detailType==='invoices'" :name="current.name" :mobile="mobile" :ask="ask" @changed="load" @open="(row,type)=>open(row,type)"
+    @pay="payInvoice" @credit="prepareReceipt('credit')" @notice="success" @error="value=>error=value"/>
+   <ReceiptDetail v-if="detailType==='receipts'" :name="current.name" :mobile="mobile" :today="asof" :can-invoice="!!catalog.can_finance" :ask="ask"
+    @changed="receiptChanged" @deleted="receiptDeleted" @open="(row,type)=>open(row,type)" @invoice="enterInvoice([current.name])" @credit="creditAfterReturn"
+    @notice="success" @error="value=>error=value"/>
+   <VoucherDetail v-if="['voucher','payments'].includes(detailType)&&!current.audit_only" :doctype="current.doctype||'Journal Entry'" :name="current.voucher_name||current.name" :mobile="mobile" :ask="ask"
+    @changed="load" @deleted="voucherGone" @open="(row,type)=>open(row,type)" @notice="success" @error="value=>error=value"/>
   </template>
   <template #actions><template v-if="current">
-   <component :is="link" v-if="detailUrl&&!mobile" as="a" variant="outline" :href="detailUrl" target="_blank" rel="noopener">Chứng từ gốc</component>
-   <template v-if="detailType==='needs'"><component :is="button" v-if="current.can_return" type="button" variant="outline" :disabled="saving||notes.trim().length<3" @click="act('return_proposal','purchase_proposal',{reason:notes})">Trả lại đề xuất</component><component :is="button" v-if="current.edit" type="button" variant="outline" @click="editProposal">{{current.edit==='prices'?'Bổ sung giá / nhà cung cấp':'Sửa đề xuất'}}</component><component :is="button" v-if="current.can_send||current.can_sign||current.can_submit" type="button" :disabled="saving" @click="proposalSign">Ký / gửi duyệt đề xuất</component><component :is="link" as="a" variant="outline" :href="'/buying?proposal='+encodeURIComponent(current.name)">Mở quy trình đề xuất</component><component :is="button" v-if="current.docstatus===1&&catalog.can_create" type="button" @click="orderFromProposal">Lập đơn từ đề xuất</component></template>
-   <template v-if="detailType==='quotes'"><component :is="button" v-if="mobile&&current.docstatus===1&&current.gross!=null" type="button" @click="selection(current).selected=true;current=null">Chọn báo giá này</component><component :is="button" v-if="current.docstatus===0&&catalog.can_quote" type="button" :disabled="saving" @click="act('confirm_quotation','procurement')">Xác nhận báo giá</component></template>
-   <template v-if="detailType==='orders'">
-    <component :is="link" as="a" variant="outline" :href="'/lotus/in-phieu?'+new URLSearchParams({doctype:'Purchase Order',name:current.name})" target="_blank" rel="noopener">In đơn mua</component>
-    <component :is="button" v-if="current.can_manage&&!current.sent_at" type="button" variant="outline" :disabled="saving" @click="act('mark_order_sent')">Đã gửi NCC</component>
-    <component :is="button" v-if="current.can_manage&&current.sent_at&&!current.supplier_confirmed_at" type="button" variant="outline" :disabled="saving" @click="act('confirm_supplier_order')">NCC đã xác nhận</component>
-    <component :is="button" v-if="current.can_manage" type="button" variant="outline" :disabled="saving||!deliveryDate||!deliveryReason.trim()" @click="act('reschedule_order','purchasing',{expected_date:deliveryDate,reason:deliveryReason})">Đổi hẹn giao</component>
-    <component :is="button" v-if="current.can_close" type="button" variant="outline" :disabled="saving||!deliveryReason.trim()" @click="act('close_order','purchasing',{reason:deliveryReason})">Đóng phần chưa giao</component>
-    <component :is="button" v-if="current.can_request_approval" type="button" :disabled="saving" @click="act('request_approval','purchasing',{approver:signers.APPROVE})">Trình duyệt đơn</component>
-    <component :is="button" v-if="current.can_approve" type="button" :disabled="saving" @click="act('approve_order')">Duyệt đơn</component>
-    <component :is="button" v-if="current.can_receive" type="button" @click="prepareReceipt('receive')">Nhận / nghiệm thu từng phần</component>
-   </template>
-   <template v-if="detailType==='invoices'&&catalog.can_finance&&current.docstatus===1"><component :is="button" v-if="!current.is_return" type="button" @click="start('payment')">Thanh toán hóa đơn</component><component :is="button" v-if="!current.is_return" type="button" variant="outline" @click="prepareReceipt('credit')">Lập hóa đơn điều chỉnh trả hàng</component><component :is="button" v-if="current.is_return&&current.outstanding_amount<0" type="button" @click="start('refund')">Ghi nhận NCC hoàn tiền</component></template>
-   <template v-if="detailType==='receipts'"><component :is="button" v-if="current.can_submit" type="button" :disabled="saving" @click="act('receipt_action','warehouse_planning',{action:'submit'})">Xác nhận nhận / nghiệm thu</component><component :is="button" v-if="current.docstatus===1&&!current.is_return&&catalog.can_finance" type="button" @click="prepareReceipt('invoice')">Lập hóa đơn</component><component :is="button" v-if="current.docstatus===1&&!current.is_return" type="button" variant="outline" @click="prepareReceipt('return')">Lập phiếu trả hàng</component><component :is="button" v-if="current.can_cancel" type="button" variant="destructive" :disabled="saving" @click="ask('Hủy phiếu nhận và đảo sổ kho?').then(ok=>ok&&act('receipt_action','warehouse_planning',{action:'cancel'}))">Hủy phiếu nhận</component><component :is="link" v-if="current.is_return&&current.docstatus===0" as="a" variant="outline" :href="docUrl('Purchase Receipt',current.name)" target="_blank" rel="noopener">Xác nhận phiếu trả trên ERP</component></template>
-   <template v-if="['voucher','payments'].includes(detailType)"><component :is="button" v-for="r in current.references||[]" :key="r.name" type="button" variant="outline" @click="open(r,r.type)">{{r.name}}</component><component :is="link" v-if="current.evidence" as="a" variant="outline" :href="current.evidence" target="_blank" rel="noopener">Chứng từ gốc</component><component :is="button" v-if="current.signing?.can_sign&&current.docstatus===0" type="button" :disabled="saving" @click="signVoucher">Ký duyệt</component><component :is="button" v-if="current.signing?.can_sign" type="button" variant="outline" :disabled="saving||!notes.trim()" @click="returnVoucher">Trả lại</component><component :is="button" v-if="catalog.can_finance&&current.docstatus===0" type="button" variant="destructive" :disabled="saving||!notes.trim()" @click="cancelVoucher">Hủy phiếu chưa ghi sổ</component><component :is="button" v-if="catalog.can_finance&&current.funding?.classification==='Reimbursable'&&current.funding.remaining>0&&current.docstatus===1" type="button" @click="reimburse(current.funding)">Hoàn từng phần · còn {{money(current.funding.remaining)}}</component></template>
+   <template v-if="detailType==='quotes'"><component :is="button" v-if="mobile&&current.docstatus===1&&current.gross!=null" type="button" @click="selection(current).selected=true;current=null">Chọn báo giá này</component><component :is="button" v-if="current.docstatus===0&&catalog.can_quote" type="button" :disabled="saving" @click="act('confirm_quotation','procurement')">Xác nhận báo giá</component><component :is="button" v-if="current.docstatus===0&&catalog.can_quote" type="button" variant="outline" :disabled="saving" @click="editQuote">Sửa báo giá</component><component :is="button" v-if="current.docstatus===0&&catalog.can_quote" type="button" variant="outline" :disabled="saving" @click="cancelQuote(false)">Xóa báo giá nháp</component><component :is="button" v-if="current.docstatus===1&&catalog.can_quote" type="button" variant="outline" :disabled="saving" @click="cancelQuote(true)">Hủy để sửa lại</component><component :is="button" v-if="current.docstatus===1&&catalog.can_quote" type="button" variant="outline" :disabled="saving||notes.trim().length<3" @click="cancelQuote(false)">Hủy báo giá</component></template>
+   <template v-if="['voucher','payments'].includes(detailType)"><component :is="link" v-if="current.evidence" as="a" variant="outline" :href="current.evidence" target="_blank" rel="noopener">Chứng từ gốc</component><component :is="button" v-if="catalog.can_finance&&current.funding?.classification==='Reimbursable'&&current.funding.remaining>0&&current.docstatus===1" type="button" @click="reimburse(current.funding)">Hoàn từng phần · còn {{money(current.funding.remaining)}}</component></template>
   </template></template>
  </ResponsiveForm>
 
  <MobilePurchaseOrderForm v-if="mobile&&form==='order'" v-model="draft" :items="catalog.items" :conversions="catalog.conversions" :suppliers="catalog.suppliers" :farms="catalog.farms" :warehouses="catalog.warehouses" :can-create-supplier="catalog.can_create_supplier" :can-create-item="catalog.can_create_item" :saving="saving" @add-supplier="openQuickMaster('suppliers')" @add-item="openQuickMaster('items',$event)" @submit="saveDocument"/>
  <ResponsiveForm v-else :mobile="mobile" :model-value="!!form" :title="formTitle" width="1180px" :busy="saving" :error="error" :submit-label="formSubmitLabel" :submit-disabled="formDisabled" @update:model-value="value=>!value&&closeForm()" @submit="submitForm">
   <ProcurementDocumentForm v-if="['order','quote','need'].includes(form)" v-model="draft" :mobile="mobile" :catalog="catalog" :type="form" :saving="saving" @add-supplier="openQuickMaster('suppliers')" @add-item="openQuickMaster('items',$event)" @request="fromRequest"/>
-  <template v-else-if="['return','invoice','credit'].includes(form)">
+  <template v-else-if="['invoice','credit'].includes(form)">
    <FormGrid :columns="mobile?1:4"><LotusField :mobile="mobile" v-model="date" label="Ngày ghi sổ" type="date" required/><template v-if="['invoice','credit'].includes(form)"><LotusField :mobile="mobile" v-model="bill" label="Số hóa đơn" required/><LotusField :mobile="mobile" v-model="billdate" label="Ngày hóa đơn" type="date" required/><LotusField v-if="form==='invoice'" :mobile="mobile" v-model="dueDate" label="Hạn thanh toán" type="date" required/></template></FormGrid>
    <FormGrid v-if="form==='invoice'" :columns="mobile?1:4"><LotusField :mobile="mobile" v-model="billSeries" label="Ký hiệu hóa đơn" placeholder="VD: 1C26TKN" maxlength="20"/><LotusField :mobile="mobile" v-model="cqtCode" label="Mã cơ quan thuế" maxlength="60"/><LotusField :mobile="mobile" v-model="invoiceVat" label="Tiền thuế trên hóa đơn" type="money" min="0"/><LotusField :mobile="mobile" v-model="invoiceTotal" label="Tổng cộng trên hóa đơn" type="money" min="0" hint="Nhập đúng số in trên hóa đơn để khớp từng đồng"/></FormGrid>
-   <LineItemsEditor :model-value="receiveInfo?.items||[]" :title="form==='return'?'Số lượng trả':'Số lượng lập hóa đơn'" :columns="stageColumns" :mobile="mobile" fixed>
+   <LineItemsEditor :model-value="receiveInfo?.items||[]" title="Số lượng lập hóa đơn" :columns="stageColumns" :mobile="mobile" fixed>
     <template #cell-item_name="{row}"><span class="receiving-line"><strong>{{row.item_name}}</strong><small>{{unitLabel(row.uom)}} · tối đa {{row.remaining_qty??row.qty}}</small></span></template>
     <template #cell-qty="{row}"><LotusField v-model="quantities[row.line]" :mobile="mobile" :aria-label="'Số lượng '+row.item_name" type="number" min="0" :max="row.remaining_qty??row.qty"/></template>
    </LineItemsEditor>
@@ -503,7 +528,9 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
  </template>
  <template v-if="!mobile&&catalog?.can_quick"><StockDocumentForm ref="quickForm" :company="company" :warehouse="props.warehouse" :warehouses="stockWarehouses" :session="stockSession" @saved="quickSaved"/>
  <StockDocumentDetail ref="quickDetail" :warehouses="stockWarehouses" :session="stockSession" @changed="load" @edit="d=>quickForm.edit(d)"/></template>
- <WarehouseReceiving ref="receivingView" :company="company" :warehouse="props.warehouse" :today="asof" :mobile="mobile" :confirm="ask" @changed="load"/>
+ <PaymentForm v-model="paymentForm" :supplier="paymentSupplier" :company="company" :preset="paymentPreset" :mobile="mobile" :today="asof" @created="paymentCreated"/>
+ <InvoiceForm v-model="invoiceForm" :receipts="invoiceReceipts" :suppliers="supplierOptions" :mobile="mobile" :today="asof" @created="invoiceCreated"/>
+ <WarehouseReceiving ref="receivingView" :company="company" :warehouse="props.warehouse" :today="asof" :mobile="mobile" :confirm="ask" :can-invoice="!!catalog?.can_finance" @changed="load" @open="(row,type)=>open(row,type)" @invoice="d=>enterInvoice([d.name])"/>
  <WorkspaceModal v-if="!mobile" :model-value="!!quickMaster" :title="quickMaster==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'" width="1080px" @update:model-value="value=>!value&&closeQuickMaster()"><ProcurementMasterForm v-if="quickMaster" ref="masterSaving" :company="company" :kind="quickMaster" @saved="quickMasterSaved"/></WorkspaceModal>
  <LotusMobileDialog v-else ref="masterDialog" @cancel="closeQuickMaster"><h3>{{quickMaster==='suppliers'?'Thêm nhà cung cấp':'Thêm hàng mua'}}</h3><ProcurementMasterForm v-if="quickMaster" ref="masterSaving" :company="company" :kind="quickMaster" mobile @saved="quickMasterSaved"/><LotusMobileButton @click="closeQuickMaster">Đóng</LotusMobileButton></LotusMobileDialog>
  <WorkspaceConfirm v-if="!mobile" :open="confirmOpen" :title="confirmTitle" :message="confirmMessage" confirm-label="Xác nhận" cancel-label="Quay lại" @answer="workspaceConfirm.finish"/>

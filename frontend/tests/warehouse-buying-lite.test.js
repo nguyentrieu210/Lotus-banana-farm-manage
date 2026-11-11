@@ -27,11 +27,16 @@ test('supplier, item, quote and investor-directed purchase fields are supported'
 })
 
 test('purchase orders track arrival and can be received in parts using standard ERPNext receipts',()=>{
- for(const state of ['Nháp','Chờ hàng','Về một phần','Quá hẹn','Đã nhận đủ'])assert.ok(backend.includes(state),state)
+ // One status vocabulary computed in purchase_status.order_state; late delivery is the separate flag `overdue`.
+ assert.match(backend,/purchase_status\.order_state\(/)
+ assert.match(backend,/overdue=_overdue\(doc\)/)
+ const states=readFileSync(new URL('../../lotus_farm/purchase_status.py',import.meta.url),'utf8')
+ for(const state of ['Nháp','Chờ duyệt','Bị trả lại','Đã duyệt','Đã gửi NCC','NCC đã xác nhận','Đang nhận','Đã nhận đủ','Đã đóng','Đã hủy'])assert.ok(states.includes("'"+state+"'"),state)
  assert.match(receiving,/api\('receive_order'/)
- assert.match(receiving,/action:'submit'/)
- assert.match(backend,/doc\.check_permission\('submit'\)/)
- assert.match(backend,/flt\(r\.rate\)<=0/)
+ assert.match(receiving,/post:1/)
+ assert.match(readFileSync(new URL('../src/components/procurement/ReceiptDetail.vue',import.meta.url),'utf8'),/action\('submit',extra\)/)
+ // Spec 003: no submit without the named approver's signature (purchasing.approve_order / check_submission).
+ assert.doesNotMatch(backend,/def submit_order/)
 })
 
 test('purchase list is permission-scoped and server-side faceted filtered',()=>{
@@ -48,5 +53,5 @@ test('approved material request can populate a purchase order without losing lin
  assert.match(backend,/material_request=doc.name/)
  assert.match(backend,/material_request_item=r.name/)
  assert.match(backend,/material_request_item=original.name/)
- assert.match(backend,/Số lượng vượt phần đề nghị mua còn lại/)
+ assert.match(backend,/Số lượng vượt phần đề xuất mua còn lại/)
 })

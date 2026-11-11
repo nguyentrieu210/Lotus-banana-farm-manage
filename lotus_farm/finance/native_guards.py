@@ -32,7 +32,13 @@ def payment_approved(doc):
 def guard(doc, method=None):
     if not _enabled_for(doc):
         return
-    if method in ('before_submit', 'before_cancel', 'before_update_after_submit'):
+    # ERPNext links an advance to a new invoice by saving the old Payment Entry / Journal Entry again
+    # (accounts.utils.reconcile_against_document, flag ignore_reposting_on_reconciliation): only references and payment
+    # ledger rows change, the advance's GL and its month's result stay as they are. Clients cannot set flags.
+    reconciling = (method == 'before_update_after_submit' and doc.doctype in ('Payment Entry', 'Journal Entry')
+                   and doc.flags.get('ignore_reposting_on_reconciliation')
+                   and not doc.get('book_advance_payments_in_separate_party_account'))
+    if method in ('before_submit', 'before_cancel', 'before_update_after_submit') and not reconciling:
         date = doc.get('posting_date')
         if date:
             month = str(getdate(date))[:7]

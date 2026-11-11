@@ -58,7 +58,7 @@ def _supply(company,warehouses,to_date):
     incoming=defaultdict(float);requested=defaultdict(float);late=defaultdict(float);warnings=[];orders=[];requests=[]
     for dt in ('Purchase Order','Material Request'):
         if not frappe.has_permission(dt,'read'):
-            warnings.append('Chưa có quyền đọc '+dt+'. Chưa xác định đủ phần chờ nhập/đã đề nghị.');continue
+            warnings.append('Chưa có quyền đọc '+dt+'. Chưa xác định đủ phần chờ nhập/đã đề xuất.');continue
         filters={'company':company,'docstatus':1 if dt=='Purchase Order' else ['<',2],
                  'status':['not in',['Closed','Stopped','Cancelled','Completed']]}
         if dt=='Material Request':filters['material_request_type']='Purchase'
@@ -164,15 +164,15 @@ def create_purchase_request(company,warehouse,from_date,to_date,items):
     from lotus_farm.warehouse import _access,_company,_warehouse
     from lotus_farm.controls import lock
     _access();_company(company);_warehouse(warehouse,company)
-    if getdate(to_date)<getdate(nowdate()):frappe.throw('Kỳ nhu cầu đã kết thúc. Chọn kỳ hiện tại để lập đề nghị mua cho nhu cầu còn thiếu.')
-    if not frappe.has_permission('Material Request','create'):frappe.throw('Chưa có quyền tạo đề nghị mua.',frappe.PermissionError)
+    if getdate(to_date)<getdate(nowdate()):frappe.throw('Kỳ nhu cầu đã kết thúc. Chọn kỳ hiện tại để lập đề xuất mua cho nhu cầu còn thiếu.')
+    if not frappe.has_permission('Material Request','create'):frappe.throw('Chưa có quyền tạo đề xuất mua.',frappe.PermissionError)
     selected=frappe.parse_json(items)
     if not isinstance(selected,list) or not selected or len(selected)>100:frappe.throw('Chọn từ 1 đến 100 vật tư.')
     lock('Company',company)
     result=snapshot(company,warehouse,from_date,to_date)
-    if result['warnings'] or result['unmapped']:frappe.throw('Xác định kho và quyền đọc nguồn trước khi tạo đề nghị mua.')
+    if result['warnings'] or result['unmapped']:frappe.throw('Xác định kho và quyền đọc nguồn trước khi tạo đề xuất mua.')
     rows=[r for r in result['rows'] if r['item'] in selected and (r['to_request_qty'] or 0)>0]
-    if not rows:return dict(name=None,note='Phần thiếu đã có đề nghị mua hoặc đã đủ hàng. Không tạo thêm phiếu.')
+    if not rows:return dict(name=None,note='Phần thiếu đã có đề xuất mua hoặc đã đủ hàng. Không tạo thêm phiếu.')
     from lotus_farm.purchase_flow import enabled
     if enabled(company):
         from lotus_farm.purchase_proposal import save_proposal, detail
@@ -198,7 +198,7 @@ def purchase_request(name):
     from lotus_farm.warehouse import _access,_company
     _access()
     doc=frappe.get_doc('Material Request',name);doc.check_permission('read');_company(doc.company)
-    if doc.material_request_type!='Purchase':frappe.throw('Chọn đề nghị mua vật tư.')
+    if doc.material_request_type!='Purchase':frappe.throw('Chọn đề xuất mua vật tư.')
     from lotus_farm.purchase_flow import enabled
     if enabled(doc.company):
         from lotus_farm.purchase_proposal import detail
@@ -218,8 +218,8 @@ def purchase_action(name,modified,action):
     from lotus_farm.controls import lock
     lock('Material Request',name)
     info=purchase_request(name)
-    if info['modified']!=modified:frappe.throw('Đề nghị mua đã thay đổi. Mở lại để kiểm tra.')
-    if info['docstatus']!=0:frappe.throw('Chỉ xử lý đề nghị mua nháp tại đây.')
+    if info['modified']!=modified:frappe.throw('Đề xuất mua đã thay đổi. Mở lại để kiểm tra.')
+    if info['docstatus']!=0:frappe.throw('Chỉ xử lý đề xuất mua nháp tại đây.')
     doc=frappe.get_doc('Material Request',name)
     from lotus_farm.purchase_flow import enabled
     if enabled(doc.company):
@@ -248,8 +248,10 @@ def purchase_order(name):
         from `tabPurchase Receipt Item` d join `tabPurchase Receipt` p on p.name=d.parent
         where d.purchase_order=%s and p.docstatus=0 and p.is_return=0 group by d.purchase_order_item''',doc.name,as_dict=True)
     held={r.line:flt(r.qty) for r in holds}
-    return dict(name=doc.name,company=doc.company,supplier=doc.supplier,currency=doc.currency,
-        can_receive=frappe.has_permission('Purchase Receipt','create'),
+    from lotus_farm.purchase_flow import enabled
+    return dict(name=doc.name,company=doc.company,supplier=doc.supplier,supplier_name=doc.supplier_name or doc.supplier,currency=doc.currency,
+        can_receive=frappe.has_permission('Purchase Receipt','create'),can_post=frappe.has_permission('Purchase Receipt','submit'),
+        needs_evidence=enabled(doc.company),
         items=[dict(line=r.name,item=r.item_code,item_name=r.item_name,warehouse=r.warehouse,
             ordered_qty=flt(r.stock_qty),received_qty=flt(r.received_qty)*flt(r.conversion_factor),
             draft_qty=held.get(r.name,0),remaining_qty=max(0,flt(r.stock_qty)-flt(r.received_qty)*flt(r.conversion_factor)-held.get(r.name,0)),
@@ -257,20 +259,56 @@ def purchase_order(name):
 
 
 @frappe.whitelist(methods=['POST'])
-def receive_order(name,posting_date,quantities,client_event_id,additional_costs=None,post=0):
-    """post=1 records the goods in one step: the receipt is created and posted to stock together.
-    Without permission to post, the receipt stays a draft for the storekeeper."""
+def receive_order(name,posting_date,quantities,client_event_id,additional_costs=None,post=0,files=None,
+                  deliverer_name=None,deliverer_signature=None,delivery_proof=None,notes=None):
+    """Nhận hàng theo đơn, một đường cho điện thoại và máy tính (spec 003, FR-041..FR-046).
+
+    post=1 records the goods in one step: the receipt is created with its photos and the deliverer's
+    signature, posted to stock, and that confirmation is the storekeeper's signature (the signed PDF is kept).
+    Without permission to post, the receipt stays a draft for the storekeeper.
+    When someone else has just received against the same order the whole step is undone and the answer says
+    how much can still be received."""
+    from erpnext.controllers.status_updater import OverAllowanceError
+    from lotus_farm.warehouse import _number
+    selected=frappe.parse_json(quantities)
+    if not isinstance(selected,dict) or not selected or len(selected)>100:frappe.throw('Chọn từ 1 đến 100 dòng nhận hàng.')
+    selected={line:_number(qty,'Số thực nhận') for line,qty in selected.items()}
+    for attempt in (1,2):
+        try:
+            return _receive_order(name,posting_date,selected,client_event_id,additional_costs,post,files,
+                                  deliverer_name,deliverer_signature,delivery_proof,notes)
+        except (frappe.QueryDeadlockError,frappe.QueryTimeoutError,frappe.TimestampMismatchError,OverAllowanceError):
+            # Another receipt of this order was committed meanwhile: forget this attempt and read the books again.
+            frappe.db.rollback()
+            short=_short_lines(name,selected)
+            if short or attempt==2:
+                frappe.throw('Người khác vừa nhận hàng của đơn này. '+('; '.join(short)+'.' if short else 'Mở lại đơn để nhận phần còn lại.'))
+
+
+def _left_text(row):
+    from lotus_farm import print_kit as pk
+    text='%s: còn nhận được %s %s'%(row['item_name'] or row['item'],pk.number(row['remaining_qty']),pk.unit(row['uom']))
+    return text+(' (đang giữ %s trên phiếu nháp)'%pk.number(row['draft_qty']) if flt(row['draft_qty'])>0.000001 else '')
+
+
+def _short_lines(name,selected):
+    """Requested lines that no longer fit what the order still waits for, as 'Còn nhận được N' texts."""
+    available={r['line']:r for r in purchase_order(name)['items']}
+    return [_left_text(available[line]) for line,qty in selected.items() if line in available and qty>available[line]['remaining_qty']+0.000001]
+
+
+def _receive_order(name,posting_date,selected,client_event_id,additional_costs,post,files,deliverer_name,deliverer_signature,delivery_proof,notes):
     from lotus_farm.controls import lock
-    from lotus_farm.warehouse import _number,_text,_warehouse
+    from lotus_farm.warehouse import _text,_warehouse
     from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
     original=_purchase_doc('Purchase Order',name)
     if getdate(posting_date)<getdate(original.transaction_date):frappe.throw('Ngày nhận không được trước ngày đơn mua.')
     if not frappe.has_permission('Purchase Receipt','create'):frappe.throw('Chưa có quyền lập phiếu nhận hàng.',frappe.PermissionError)
-    selected=frappe.parse_json(quantities)
-    if not isinstance(selected,dict) or not selected or len(selected)>100:frappe.throw('Chọn từ 1 đến 100 dòng nhận hàng.')
-    selected={line:_number(qty,'Số thực nhận') for line,qty in selected.items()}
     extra_costs=frappe.parse_json(additional_costs) if additional_costs else []
     if not isinstance(extra_costs,list):frappe.throw('Chi phí nhập hàng phải là danh sách.')
+    attachments=frappe.parse_json(files) if files else []
+    if not isinstance(attachments,list) or len(attachments)>20 or not all(isinstance(u,str) for u in attachments):
+        frappe.throw('Tệp đính kèm không hợp lệ (tối đa 20 tệp).')
     event=_text(client_event_id,'Mã yêu cầu')
     key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
     digest=hashlib.sha256(json.dumps(dict(order=name,date=str(posting_date),quantities=selected,additional_costs=extra_costs),sort_keys=True).encode()).hexdigest()
@@ -279,11 +317,13 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
     if existing:
         _purchase_doc('Purchase Receipt',existing.name)
         if existing.lotus_payload_hash!=digest:frappe.throw('Yêu cầu này đã tạo phiếu '+existing.name+'. Mở lại để kiểm tra.')
-        return dict(name=existing.name,docstatus=frappe.db.get_value('Purchase Receipt',existing.name,'docstatus'))
+        return _received(frappe.get_doc('Purchase Receipt',existing.name))
     info=purchase_order(name)
     available={r['line']:r for r in info['items']}
-    for line,qty in selected.items():
-        if line not in available or qty>available[line]['remaining_qty']+0.000001:frappe.throw('Lượng nhận vượt phần còn nhận hoặc đang giữ trên phiếu nháp.')
+    if any(line not in available for line in selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
+    short=[_left_text(available[line]) for line,qty in selected.items() if qty>available[line]['remaining_qty']+0.000001]
+    if short:frappe.throw('Lượng nhận vượt phần còn chờ. '+'; '.join(short)+'.')
+    for line in selected:
         row=available[line]
         item=frappe.get_doc('Item',row['item'])
         if item.is_stock_item:_warehouse(row['warehouse'],original.company)
@@ -305,12 +345,14 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
                 frappe.throw('Tài sản nhận theo từng chiếc, quy đổi bằng 1.')
             for _ in range(round(flt(row.qty))):
                 piece=frappe._dict(row.as_dict())
-                piece.pop('name',None)
+                piece.pop('name',None);piece.pop('idx',None)
                 piece.update(qty=1,received_qty=1,stock_qty=1,lotus_line_freight=flt(row.lotus_line_freight)/flt(row.qty))
                 kept.append(piece)
         else:kept.append(row)
     if {r.get('purchase_order_item') for r in kept}!=set(selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
-    doc.set('items',kept);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
+    from lotus_farm.procurement import renumber
+    doc.set('items',kept);renumber(doc);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
+    if notes:doc.remarks=str(notes).strip()[:500]
     from lotus_farm.procurement import apply_line_taxes
     apply_line_taxes(doc)
     if extra_costs:
@@ -326,11 +368,48 @@ def receive_order(name,posting_date,quantities,client_event_id,additional_costs=
 
     doc.lotus_client_key=key;doc.lotus_payload_hash=digest
     doc.insert()
+    # Photos, the delivery note and the deliverer's signature join the receipt in the same transaction (FR-041, FR-042).
+    from lotus_farm import stock_attachments
+    for url in attachments:stock_attachments.attach_uploaded(doc,url)
+    store_evidence(doc,deliverer_name,deliverer_signature,delivery_proof)
     if cint(post) and doc.has_permission('submit'):
         doc.reload()
         receipt_action(doc.name,str(doc.modified),'submit')  # same checks as posting a draft later
-        return dict(name=doc.name,docstatus=1)
-    return dict(name=doc.name,docstatus=0)
+        doc.reload()
+    return _received(doc)
+
+
+def _received(doc):
+    """Answer of receive_order: the receipt, its state, the signed copy when posted, and what the order still waits for."""
+    from lotus_farm import purchase_status,signing
+    orders=sorted({r.purchase_order for r in doc.items if r.purchase_order})
+    remaining=[dict(order=order,line=r['line'],item_name=r['item_name'],remaining_qty=r['remaining_qty'],uom=r['uom'])
+               for order in orders for r in purchase_order(order)['items'] if r['remaining_qty']>0.000001] if doc.docstatus<2 else []
+    return dict(name=doc.name,docstatus=doc.docstatus,modified=str(doc.modified),state=purchase_status.receipt_state(doc.docstatus),
+                signed_copy=signing.copy_info(doc) if doc.docstatus==1 else None,remaining=remaining)
+
+
+def store_evidence(doc,deliverer_name=None,deliverer_signature=None,delivery_proof=None):
+    """Người giao hàng on a draft receipt: the name with the signature drawn on screen (a PNG data URL, stored as a
+    private file of the receipt), and/or the photo of the signed delivery note (a private file just uploaded)."""
+    values={}
+    if not frappe.get_meta('Purchase Receipt').has_field('lotus_deliverer_name'):
+        return values
+    if deliverer_name is not None and str(deliverer_name).strip():
+        values['lotus_deliverer_name']=str(deliverer_name).strip()[:140]
+    if deliverer_signature:
+        from lotus_farm import signing
+        from lotus_farm.digital_signature import _normalize_image
+        file=signing._private_copy(doc,'nguoi-giao-ky.png',_normalize_image(deliverer_signature))
+        values['lotus_deliverer_signature']=frappe.db.get_value('File',file,'file_url')
+    if delivery_proof:
+        from lotus_farm import stock_attachments
+        stock_attachments.attach_uploaded(doc,delivery_proof)
+        values['lotus_delivery_proof']=delivery_proof
+    if values:
+        if doc.docstatus!=0:frappe.throw('Chỉ ghi người giao hàng trên phiếu nháp.')
+        doc.db_set(values)
+    return values
 
 
 def receipt_totals(doc):
@@ -342,18 +421,50 @@ def receipt_totals(doc):
     return dict(goods_total=goods_total,added_costs=added_costs,valuation_charges=valuation_charges,incoming_total=goods_total+valuation_charges)
 
 
+def _may_delete(doc):
+    """A draft receipt is removed by its preparer, the receiving roles, or anyone holding the ERPNext delete right."""
+    return (doc.owner==frappe.session.user or frappe.session.user=='Administrator'
+            or bool({'Lotus Warehouse Receiver','Lotus Warehouse Manager'} & set(frappe.get_roles())) or doc.has_permission('delete'))
+
+
+def receipt_extras(doc):
+    """What every receipt detail shows beside its lines, in Kho and in Mua hàng (spec 003, FR-042..FR-045)."""
+    from urllib.parse import urlencode
+    from lotus_farm import purchase_flow,purchase_status,signing,stock_attachments
+    invoices=[]
+    if doc.docstatus==1 and frappe.has_permission('Purchase Invoice','read'):
+        invoices=frappe.get_all('Purchase Invoice Item',filters={'purchase_receipt':doc.name,'docstatus':1},pluck='parent',distinct=True,limit_page_length=0)
+    # Who signed: on the one-step chain the storekeeper who confirmed; older receipts keep their three-step panel.
+    signed=signing.status(doc)
+    keeper=next((s for s in signed['steps'] if s['state']=='Đã ký'),None) if signed['chain']=='purchase_receipt' and signed['round'] else None
+    return dict(state=purchase_status.receipt_state(doc.docstatus),signing_chain=signed['chain'],
+        signed_by=keeper['name'] if keeper else '',signed_at=keeper['signed_at'] if keeper else '',
+        billing=purchase_status.billing_state(doc.get('per_billed'),per_returned=doc.get('per_returned')) if doc.docstatus==1 and not doc.is_return else '',
+        deliverer_name=doc.get('lotus_deliverer_name') or '',deliverer_signed=bool(doc.get('lotus_deliverer_signature')),
+        delivery_proof=doc.get('lotus_delivery_proof') or '',needs_evidence=purchase_flow.receipt_needs_evidence(doc),
+        has_evidence=purchase_flow.receipt_has_evidence(doc),cancel_reason=doc.get('lotus_cancel_reason') or '',
+        notes=frappe.utils.strip_html(doc.get('remarks') or '').strip(),is_return=cint(doc.is_return),return_against=doc.get('return_against') or '',
+        files=stock_attachments._rows(doc.doctype,doc.name),invoices=sorted(invoices),
+        print_url='/lotus/in-phieu?'+urlencode({'doctype':doc.doctype,'name':doc.name}),
+        signed_copy=signing.copy_info(doc) if doc.docstatus==1 else None,
+        can_submit=doc.docstatus==0 and doc.has_permission('submit'),can_cancel=doc.docstatus==1 and doc.has_permission('cancel'),
+        can_delete=doc.docstatus==0 and _may_delete(doc),
+        can_return=doc.docstatus==1 and not doc.is_return and frappe.has_permission('Purchase Receipt','create'))
+
+
 @frappe.whitelist()
 def purchase_receipt(name):
     doc=_purchase_doc('Purchase Receipt',name)
     return dict(name=doc.name,doctype=doc.doctype,company=doc.company,supplier=doc.supplier,currency=frappe.get_cached_value('Company',doc.company,'default_currency'),docstatus=doc.docstatus,
-        modified=str(doc.modified),can_submit=doc.docstatus==0 and doc.has_permission('submit'),can_delete=doc.docstatus==0 and doc.has_permission('delete'),
-        **receipt_totals(doc),
+        modified=str(doc.modified),**receipt_totals(doc),**receipt_extras(doc),
         items=[dict(item=r.item_code,item_name=r.item_name,qty=r.stock_qty,uom=r.stock_uom,warehouse=r.warehouse,
             purchase_order=r.purchase_order,rate=r.valuation_rate,amount=flt(r.stock_qty)*flt(r.valuation_rate),date=str(doc.posting_date)) for r in doc.items])
 
 
 @frappe.whitelist(methods=['POST'])
-def receipt_action(name,modified,action):
+def receipt_action(name,modified,action,reason=None,deliverer_name=None,deliverer_signature=None,delivery_proof=None):
+    """submit: post a draft (the deliverer's signature or delivery note may come with it); cancel: with a reason,
+    for people who may cancel receipts; delete: a draft, by its preparer or the receiving roles."""
     from lotus_farm.controls import lock
     doc=_purchase_doc('Purchase Receipt',name)
     lock('Company',doc.company)
@@ -365,7 +476,12 @@ def receipt_action(name,modified,action):
         if doc.docstatus!=1:
             frappe.throw('Chỉ được hủy phiếu đã ghi sổ.')
         doc.check_permission('cancel')
+        note=str(reason or '').strip()
+        if not 3<=len(note)<=500:frappe.throw('Ghi lý do hủy phiếu nhập (3–500 ký tự).')
         doc.cancel()  # ERPNext reverses Stock Ledger and recalculates PO received_qty
+        if frappe.get_meta('Purchase Receipt').has_field('lotus_cancel_reason'):
+            frappe.db.set_value('Purchase Receipt',doc.name,'lotus_cancel_reason',note)
+        doc.add_comment('Comment','Hủy phiếu nhập: '+note)
         return dict(name=name,action='cancel')
     if doc.docstatus!=0:
         frappe.throw('Phiếu nhận không còn là bản nháp.')
@@ -374,6 +490,7 @@ def receipt_action(name,modified,action):
         if doc.is_return:
             doc.submit()  # Native return validation and ledger reversal; no second stock document.
             return dict(name=name,action=action)
+        if store_evidence(doc,deliverer_name,deliverer_signature,delivery_proof):doc.reload()
         from lotus_farm.warehouse import _warehouse
         for row in doc.items:
             if frappe.get_cached_value('Item',row.item_code,'is_stock_item'):_warehouse(row.warehouse,doc.company)
@@ -386,9 +503,14 @@ def receipt_action(name,modified,action):
             source=_purchase_doc('Purchase Order',order)
             if source.docstatus!=1 or source.status in ('Closed','Cancelled','Stopped'):frappe.throw('Đơn mua đã dừng hoặc đóng.')
             original=next((r for r in source.items if r.name==line),None)
-            if not original or qty>flt(original.stock_qty)-flt(original.received_qty)*flt(original.conversion_factor)+0.000001:
-                frappe.throw('Lượng nhận vượt phần còn lại của đơn mua.')
-        doc.submit()
-    elif action=='delete':doc.check_permission('delete');frappe.delete_doc(doc.doctype,doc.name)
+            left=flt(original.stock_qty)-flt(original.received_qty)*flt(original.conversion_factor) if original else 0
+            if not original or qty>left+0.000001:
+                from lotus_farm import print_kit as pk
+                frappe.throw('Lượng nhận vượt phần còn lại của đơn mua. %s: còn nhận được %s %s.'%(
+                    (original.item_name if original else line),pk.number(max(0,left)),pk.unit(original.stock_uom) if original else ''))
+        doc.submit()  # purchase_flow.receipt_evidence (before_submit) and receipt_signed (on_submit) apply here
+    elif action=='delete':
+        if not _may_delete(doc):doc.check_permission('delete')
+        frappe.delete_doc(doc.doctype,doc.name,ignore_permissions=True)
     else:frappe.throw('Thao tác không hợp lệ.')
     return dict(name=name,action=action)

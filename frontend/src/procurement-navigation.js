@@ -9,6 +9,7 @@ export const procurementNavigation=[
  {id:'orders',label:'Đơn mua & nhận hàng',icon:'cart',tab:'Đơn mua'},
  {id:'receipts',label:'Phiếu nhận hàng',icon:'receive',group:'orders'},
  {id:'invoices',label:'Hóa đơn & công nợ',icon:'document',finance:true,invoice:true,tab:'Hóa đơn'},
+ {id:'invoice-queue',label:'Hóa đơn chờ nhập',icon:'document',finance:true,invoice:true,group:'invoices'},
  {id:'payments',label:'Thanh toán',icon:'wallet',finance:true,group:'invoices'},
  {id:'payables',label:'Công nợ',icon:'wallet',finance:true,group:'invoices'},
  {id:'reports',label:'Báo cáo',icon:'chart',finance:true,group:'invoices'},

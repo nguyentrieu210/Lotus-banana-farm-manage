@@ -1,19 +1,14 @@
-// Display only: do not change ERPNext document states.
+// Display only: the server computes the status (lotus_farm.purchase_status.order_state, spec 003 FR-003);
+// names stored or cached by older releases are mapped to the one vocabulary.
+import {purchaseState,stateTone} from './purchase-status.js'
 export function purchaseOrderStatus(order={}){
  if(order.docstatus===2)return 'Đã hủy'
- if(order.status==='Đã đóng'||order.status==='Closed')return 'Đã đóng'
- if(order.status==='Đã nhận đủ'||order.status==='Completed')return 'Đã nhận đủ'
- if(order.status==='Quá hẹn')return 'Quá hẹn'
- if(order.status==='Về một phần')return 'Về một phần'
- if(order.docstatus===0)return order.approval_status||'Nháp'
- if(order.status==='Chờ hàng')return 'Chờ giao'
- return order.approval_status||order.status||'Nháp'
+ if(order.status==='Closed')return 'Đã đóng'
+ if(order.status==='Completed')return 'Đã nhận đủ'
+ return purchaseState('order',order.status||order.approval_status)||'Nháp'
 }
-export function purchaseStatusTone(order){
- const status=purchaseOrderStatus(order)
- return ({
-  'Nháp':'draft','Chờ duyệt':'pending','Từ chối':'rejected',
-  'Đã duyệt':'approved','Chờ giao':'approved','Đã nhận đủ':'done',
-  'Về một phần':'partial','Quá hẹn':'late','Đã đóng':'closed','Đã hủy':'cancelled'
- })[status]||'draft'
+// Late delivery is a flag beside the status: the chip turns red, the text stays the status.
+export function purchaseStatusTone(order={}){
+ return order.overdue?'late':stateTone(purchaseOrderStatus(order))
 }
+export const purchaseOrderLate=order=>!!order?.overdue||order?.status==='Quá hẹn'

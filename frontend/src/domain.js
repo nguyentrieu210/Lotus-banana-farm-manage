@@ -1,9 +1,9 @@
 export const pages=[['nguoi-dung','Người dùng & phân quyền'],['tai-chinh','Tài chính – Kế toán'],['nhan-su','Hồ sơ nhân sự'],['cham-cong','Chấm công'],['kho','Quản lý kho'],['cong-viec','Công việc ngoài vườn'],['farms','Vườn & lô'],['forecast','Dự thu'],['mau-day','Danh mục màu dây'],['map','Bản đồ chăm sóc'],['reports','Tổng quan'],['admin/masters','Danh mục']]
-pages.push(['mua-hang','Mua hàng'])
+pages.push(['cho-ky','Chờ tôi ký'],['mua-hang','Mua hàng'])
 export const titles=Object.fromEntries(pages)
 // Sidebar grouping of `pages`: [path, LotusIcon name, optional shorter sidebar label]. Every page belongs to exactly one group.
 export const navGroups=[
- {label:'Tổng quan',icon:'chart',items:[['reports','chart','Tổng quan']]},
+ {label:'Tổng quan',icon:'chart',items:[['reports','chart','Tổng quan'],['cho-ky','edit','Chờ tôi ký']]},
  {label:'Việc hằng ngày',icon:'clipboard',kind:'field',items:[['cong-viec','clipboard','Việc hằng ngày'],['forecast','trending','Dự thu'],['mau-day','calendar','Màu dây cắt bắp']]},
  {label:'Vườn & lô',icon:'sprout',items:[['farms','sprout','Danh mục lô'],['map','map','Bản đồ lô']]},
  {label:'Kho',icon:'warehouse',kind:'stock',items:[['kho','warehouse','Quản lý kho']]},

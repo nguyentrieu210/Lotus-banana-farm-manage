@@ -17,6 +17,48 @@ WAITING = ('Chờ phụ trách bộ phận', 'Chờ kế toán / mua hàng', 'Ch
 STATES = (DRAFT, *WAITING, APPROVED, RETURNED)
 
 
+# Stages of the proposal board (spec 003, FR-026/FR-030), computed, never stored. "Chờ tôi ký" is a filter.
+STAGE_DRAFT, STAGE_SIGNING, STAGE_RETURNED = 'Nháp', 'Đang ký', 'Bị trả lại'
+STAGE_TO_BUY, STAGE_BUYING, STAGE_RECEIVED, STAGE_DONE, STAGE_CANCELLED = 'Chờ mua', 'Đang mua', 'Đã nhận đủ', 'Đã xong', 'Đã hủy'
+STAGES = (STAGE_DRAFT, STAGE_SIGNING, STAGE_RETURNED, STAGE_TO_BUY, STAGE_BUYING, STAGE_RECEIVED, STAGE_DONE, STAGE_CANCELLED)
+_EPS = 1e-6
+
+
+def _qty(row, key):
+    try:
+        value = float(row.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    return value if value == value else 0.0
+
+
+def stage(docstatus, state, lines):
+    """Board stage of one proposal.
+
+    docstatus: 0 draft, 1 signed (submitted), 2 cancelled. state: lotus_proposal_state of a draft.
+    lines: one dict per proposal line in stock units, independent of who is looking:
+      qty, ordered (every order line, drafts included), received, returned, billed,
+      closed (unreceived part of closed orders + unordered part once the proposal is stopped).
+    A line is settled when received - returned + closed covers qty. All settled: Đã nhận đủ, and
+    Đã xong once every received quantity is invoiced. Otherwise Đang mua as soon as any order exists."""
+    if docstatus == 2:
+        return STAGE_CANCELLED
+    if docstatus != 1:
+        if state == RETURNED:
+            return STAGE_RETURNED
+        if state in WAITING:
+            return STAGE_SIGNING
+        return STAGE_DRAFT
+    lines = list(lines or [])
+    net = [(_qty(r, 'received') - _qty(r, 'returned'), r) for r in lines]
+    if lines and all(got + _qty(r, 'closed') >= _qty(r, 'qty') - _EPS for got, r in net):
+        billed = all(_qty(r, 'billed') >= got - _EPS for got, r in net)
+        return STAGE_DONE if billed else STAGE_RECEIVED
+    if any(_qty(r, 'ordered') > _EPS for r in lines):
+        return STAGE_BUYING
+    return STAGE_TO_BUY
+
+
 def current_step(state):
     """Index of the signature the proposal is waiting for, or None when approved."""
     if state in (None, '', DRAFT, RETURNED):

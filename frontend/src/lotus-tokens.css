@@ -27,6 +27,7 @@
   --lotus-warning:var(--lotus-warning-600);--lotus-warning-soft:var(--lotus-warning-50);
   --lotus-danger:#b42318;--lotus-danger-soft:#fef1ef;
   --lotus-info:var(--lotus-info-600);--lotus-info-soft:var(--lotus-info-50);
+  --lotus-signature-ink:var(--lotus-info-800);
   /* Chart series in fixed order (validated: dataviz validate_palette, light surface). Charts use at most 3 series;
      slot 4 only with legend + table view (contrast 2.99:1). */
   --lotus-chart-1:var(--lotus-primary-600);--lotus-chart-2:var(--lotus-info-600);--lotus-chart-3:var(--lotus-success-600);--lotus-chart-4:var(--lotus-warning-500);--lotus-chart-5:#7a4fa3;--lotus-chart-other:var(--lotus-neutral-400);

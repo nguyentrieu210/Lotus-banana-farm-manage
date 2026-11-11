@@ -4,9 +4,12 @@ import {call,upload} from '../../api'
 import {Button as UiButton} from '../ui/button'
 import LotusIcon from '../LotusIcon.vue'
 import {FilePickerButton} from '../ui/file-input'
+import LotusMobileButton from '../LotusMobileButton.vue'
 // Chứng từ / ảnh bằng chứng của phiếu kho. With a saved document (name) files upload and attach at once;
 // while the document is still being written they wait in `pending` and the form calls flush(doctype, name) after saving.
-const props=defineProps({doctype:String,name:String,disabled:Boolean,title:{type:String,default:'Chứng từ, ảnh bằng chứng'}})
+// mobile: phone buttons (the document detail inside a PWA); readonly: look only (people who may read but not add).
+const props=defineProps({doctype:String,name:String,disabled:Boolean,mobile:Boolean,readonly:Boolean,title:{type:String,default:'Chứng từ, ảnh bằng chứng'}})
+const picker=computed(()=>props.mobile?LotusMobileButton:undefined)
 const pending=defineModel('pending',{type:Array,default:()=>[]})
 const rows=ref([]),busy=ref(false),error=ref('')
 const saved=computed(()=>Boolean(props.doctype&&props.name))
@@ -33,15 +36,15 @@ defineExpose({flush,reload:load})
 <template>
  <section class="stock-evidence" :aria-label="title">
   <header><h4>{{title}}</h4><span class="lotus-form-note">Ảnh chụp hàng, phiếu giao hàng, hóa đơn… (ảnh hoặc PDF, tối đa 20 tệp)</span></header>
-  <div class="stock-evidence__actions">
-   <FilePickerButton accept="image/*" capture="environment" label="Chụp ảnh bằng chứng" size="sm" :disabled="disabled||busy" @files="add"><LotusIcon name="switch-camera"/>Chụp ảnh</FilePickerButton>
-   <FilePickerButton accept="image/*,application/pdf" multiple label="Chọn tệp chứng từ" size="sm" :disabled="disabled||busy" @files="add"><LotusIcon name="upload"/>{{busy?'Đang tải lên…':'Chọn tệp'}}</FilePickerButton>
+  <div v-if="!readonly" class="stock-evidence__actions">
+   <FilePickerButton :as="picker" accept="image/*" capture="environment" label="Chụp ảnh bằng chứng" size="sm" :disabled="disabled||busy" @files="add"><LotusIcon name="switch-camera"/>Chụp ảnh</FilePickerButton>
+   <FilePickerButton :as="picker" accept="image/*,application/pdf" multiple label="Chọn tệp chứng từ" size="sm" :disabled="disabled||busy" @files="add"><LotusIcon name="upload"/>{{busy?'Đang tải lên…':'Chọn tệp'}}</FilePickerButton>
   </div>
   <p v-if="error" class="stock-evidence__error" role="alert">{{error}}</p>
   <ul v-if="rows.length||pending.length" class="stock-evidence__list">
    <li v-for="row in rows" :key="row.name">
     <a :href="row.file_url" target="_blank" rel="noopener"><img v-if="row.is_image" :src="row.file_url" alt=""><LotusIcon v-else name="document"/><span>{{row.file_name}}</span></a>
-    <UiButton v-if="row.mine&&!disabled" type="button" variant="ghost" size="sm" :aria-label="'Xóa '+row.file_name" :disabled="busy" @click="remove(row)"><LotusIcon name="x"/></UiButton>
+    <UiButton v-if="row.mine&&!disabled&&!readonly" type="button" variant="ghost" size="sm" :aria-label="'Xóa '+row.file_name" :disabled="busy" @click="remove(row)"><LotusIcon name="x"/></UiButton>
    </li>
    <li v-for="(file,index) in pending" :key="'p'+index+fileName(file)" class="is-pending">
     <span class="stock-evidence__file"><img v-if="preview(file)" :src="preview(file)" alt=""><LotusIcon v-else name="document"/><span>{{fileName(file)}} · gắn vào phiếu khi lưu</span></span>

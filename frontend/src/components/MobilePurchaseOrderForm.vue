@@ -35,7 +35,7 @@ function chooseItem(index,code){const item=props.items.find(r=>r.name===code);li
  </section>
  <form v-else class="lotus-purchase-form" @submit.prevent="emit('submit')">
   <fieldset class="mobile-form-fields" :disabled="saving">
-   <MobileLinkField v-if="requests.length&&!order.name" label="Lấy hàng từ đề nghị mua" :model-value="selectedRequest" :options="requestOptions" placeholder="Chọn đề nghị mua nếu có" @update:modelValue="emit('update:selectedRequest',$event)"/>
+   <MobileLinkField v-if="requests.length&&!order.name" label="Lấy hàng từ đề xuất mua" :model-value="selectedRequest" :options="requestOptions" placeholder="Chọn đề xuất mua nếu có" @update:modelValue="emit('update:selectedRequest',$event)"/>
    <MobileLinkField label="Nhà cung cấp" :model-value="order.supplier" :options="supplierOptions" :searchable="true" placeholder="Gõ tìm nhà cung cấp…" required @update:modelValue="patch({supplier:$event})"/>
    <LotusMobileButton v-if="canCreateSupplier" class="lotus-purchase-add-supplier" :disabled="saving||!online" @click="emit('add-supplier')">+ Thêm nhà cung cấp</LotusMobileButton>
    <LotusMobileSelect label="Cách mua" :model-value="order.mode" :options="PURCHASE_MODES" @update:modelValue="patch({mode:$event})"/>
@@ -53,7 +53,7 @@ function chooseItem(index,code){const item=props.items.find(r=>r.name===code);li
     <LotusMobileSelect label="VAT" :model-value="line.vat_code||'KCT'" :options="['KCT','0','5','8','10'].map(v=>({value:v,label:v==='KCT'?'Không chịu thuế':v+'%'}))" @update:modelValue="linePatch(index,{vat_code:$event})"/>
     <LotusMobileInput label="Vận chuyển dòng này" :model-value="line.freight||0" type="money" @update:modelValue="linePatch(index,{freight:$event})"/>
     <MobileLinkField v-if="farms.length" label="Vườn sử dụng" :model-value="line.lotus_farm||''" :options="farms.map(f=>({value:f.name,label:f.farm_name||f.name}))" @update:modelValue="linePatch(index,{lotus_farm:$event})"/>
-    <small v-if="line.material_request" class="mobile-subtle">Theo đề nghị {{line.material_request}}</small>
+    <small v-if="line.material_request" class="mobile-subtle">Theo đề xuất {{line.material_request}}</small>
    </section>
    <LotusMobileButton class="mobile-add" @click="patch({items:[...order.items,newPurchaseLine()]})">+ Thêm mặt hàng</LotusMobileButton>
    <div class="lotus-purchase-total"><span>Tổng tiền tạm tính</span><strong>{{total}}</strong></div>

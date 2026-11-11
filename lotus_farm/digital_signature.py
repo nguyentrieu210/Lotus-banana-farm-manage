@@ -100,6 +100,14 @@ def signature_image_bytes(user):
     return file.get_content(encodings=[]) if file else None
 
 
+def initials_image_bytes(user):
+    """Private bytes of the user's ký nháy image, None when it is not set up."""
+    if not user or not frappe.get_meta("User").has_field(INITIAL_FIELD):
+        return None
+    file = _current_file(user, INITIAL_FIELD)
+    return file.get_content(encodings=[]) if file else None
+
+
 @frappe.whitelist()
 def my_signature_profile():
     user = _user()
@@ -256,9 +264,10 @@ def _display_date(timestamp, user):
     return dt.strftime("%d/%m/%Y")
 
 
-def _event(doc, action, actor, when, signature_type="", pdf_hash="", revision="", details=""):
+def _event(doc, action, actor, when, signature_type="", pdf_hash="", revision="", details="", extra=None):
     # One audit record per actual action; do not let client supply actor or clock.
-    frappe.get_doc({
+    # extra: typed audit columns (ip, user_agent, roles, designation, round, step_key, content_hash, image_sha256).
+    return frappe.get_doc({
         "doctype": "Lotus Signature Event",
         "document_type": doc.doctype, "document_name": doc.name,
         "action": action, "actor": actor, "signed_at": when,
@@ -267,7 +276,8 @@ def _event(doc, action, actor, when, signature_type="", pdf_hash="", revision=""
         "pdf_sha256": pdf_hash,
         "signature_revision": str(revision or ""),
         "details": str(details or "")[:800],
-    }).insert(ignore_permissions=True)
+        **(extra or {}),
+    }).insert(ignore_permissions=True).name
 
 
 def _qr_png(url):
@@ -323,141 +333,27 @@ def verify_document(token):
     }
 
 
-@frappe.whitelist(methods=["POST"])
-def initial_purchase_order(name, modified):
-    from lotus_farm.purchasing import PENDING, _approver
-    from lotus_farm.controls import lock
-    actor = _user()
-    lock("Purchase Order", name)
-    doc = frappe.get_doc("Purchase Order", name)
-    doc.check_permission("read")
-    if (str(doc.modified) != str(modified) or doc.docstatus != 0
-        or doc.get("lotus_approval_status") != PENDING
-        or not (_approver() or "Lotus Purchase Reviewer" in frappe.get_roles(actor))):
-        frappe.throw("Bạn không có quyền ký nháy hoặc đơn đã thay đổi.", frappe.PermissionError)
-    image = _current_file(actor, INITIAL_FIELD)
-    if not image:
-        frappe.throw("Hãy thiết lập mẫu ký nháy trong mục Tôi trước.")
-    bytes_data = image.get_content(encodings=[])
-    previous = doc.get("lotus_initials_snapshot")
-    snapshot = save_file("lotus-initial-" + doc.name.replace("/", "-") + ".png",
-                         bytes_data, "Purchase Order", doc.name,
-                         df="lotus_initials_snapshot", is_private=1)
-    when = frappe.utils.now_datetime()
-    frappe.db.set_value("Purchase Order", doc.name, {
-        "lotus_initials_by": actor, "lotus_initials_at": when,
-        "lotus_initials_snapshot": snapshot.file_url,
-    })
-    _event(doc, "INITIAL", actor, when, signature_type="INITIALS",
-           revision=frappe.db.get_value("User", actor, INITIAL_UPDATED_FIELD))
-    # Keep the private snapshot for audit, including earlier snapshots if reinitialed.
-    return {"name": doc.name, "status": "Đã ký nháy", "by": actor, "signed_at": str(when)}
-
-
-def _assert_signer_qr(token, name, modified):
-    if not token:
-        return None
-    token_hash = hashlib.sha256(str(token).encode("ascii", "ignore")).hexdigest()
-    record_name = frappe.db.get_value("Lotus Signing Challenge",
-                                      {"token_hash": token_hash}, "name")
-    if not record_name:
-        frappe.throw("QR xác nhận không hợp lệ.")
-    record = frappe.get_doc("Lotus Signing Challenge", record_name)
-    if (record.user != frappe.session.user or record.document_name != name
-        or record.document_type != "Purchase Order"
-        or record.document_version != str(modified)
-        or record.used_at or frappe.utils.now_datetime() >= frappe.utils.get_datetime(record.expires_at)):
-        frappe.throw("Mã QR đã hết hạn hoặc không thuộc phiên duyệt này.")
-    return record
-
-
-@frappe.whitelist(methods=["POST"])
-def create_signing_challenge(name, modified):
-    from lotus_farm.purchasing import _po, can_approve
-    actor = _user()
-    doc = _po(name)
-    if str(doc.modified) != str(modified) or not can_approve(doc):
-        frappe.throw("Bạn không có quyền duyệt đơn này.", frappe.PermissionError)
-    token = secrets.token_urlsafe(32)
-    expiry = frappe.utils.now_datetime() + timedelta(seconds=120)
-    frappe.get_doc({
-        "doctype": "Lotus Signing Challenge",
-        "token_hash": hashlib.sha256(token.encode()).hexdigest(),
-        "document_type": "Purchase Order",
-        "document_name": name, "document_version": str(modified),
-        "user": actor, "expires_at": expiry,
-    }).insert(ignore_permissions=True)
-    from frappe.utils import get_url
-    url = get_url("/buying?sign_token=" + token)
-    return {"qr_image": "data:image/png;base64,"+base64.b64encode(_qr_png(url)).decode("ascii"),
-            "expires_at": str(expiry), "url": url}
-
-
-@frappe.whitelist()
-def signing_challenge_details(token):
-    actor = _user()
-    token_hash = hashlib.sha256(str(token or "").encode("ascii", "ignore")).hexdigest()
-    name = frappe.db.get_value("Lotus Signing Challenge", {"token_hash": token_hash}, "name")
-    if not name:
-        frappe.throw("Không tìm thấy phiên ký QR.")
-    record = frappe.get_doc("Lotus Signing Challenge", name)
-    if (record.user != actor or record.used_at or frappe.utils.now_datetime() >= frappe.utils.get_datetime(record.expires_at)):
-        frappe.throw("Mã QR không thuộc tài khoản hoặc đã hết hạn.", frappe.PermissionError)
-    doc = frappe.get_doc("Purchase Order", record.document_name)
-    from lotus_farm.purchasing import can_approve
-    if str(doc.modified) != record.document_version or not can_approve(doc):
-        frappe.throw("Đơn đã thay đổi hoặc không còn quyền duyệt.")
-    return {"name": doc.name, "modified": str(doc.modified),
-            "expires_at": str(record.expires_at), "needs_confirmation": True}
-
-
-def archive_approved_purchase_pdf(doc):
-    """Snapshot the approval evidence into a private immutable PDF in the submit transaction."""
-    actor = _user()
-    signature = signature_image_bytes(actor)
-    if not signature:
-        _event(doc, "APPROVE", actor, doc.get("lotus_approved_at") or frappe.utils.now_datetime(),
-               signature_type="NO_IMAGE", details="Duyệt trên hệ thống, chưa cấu hình ảnh chữ ký")
-        return None  # Keep the existing approval workflow for users without an image.
-    required = ("lotus_signed_purchase_pdf", "lotus_signature_verify_hash", "lotus_signature_pdf_sha256")
-    if any(not frappe.get_meta("Purchase Order").has_field(field) for field in required):
-        frappe.throw("Cần chạy migrate để bật lưu PDF chữ ký và QR xác minh.")
-    when = doc.get("lotus_approved_at") or frappe.utils.now_datetime()
-    verify_token = secrets.token_urlsafe(32)
-    verify_url = _verification_url(verify_token)
-    from lotus_farm import print_kit
-    from lotus_farm.www import lotus_purchase_order_print as printer
-    # Vietnamese Lotus Print with the approver's image and the archive QR (checks this PDF's SHA-256).
-    html = printer.html(doc, approver=actor, approver_image="data:image/png;base64," + base64.b64encode(signature).decode("ascii"),
-                        approved_at=when, verify=dict(url=verify_url, qr="data:image/png;base64," + base64.b64encode(_qr_png(verify_url)).decode("ascii")))
-    pdf = print_kit.pdf(str(html))
-    if not pdf or not pdf.startswith(b"%PDF"):
-        frappe.throw("Không tạo được PDF có chữ ký. Đơn vẫn chưa được duyệt.")
-    digest = hashlib.sha256(pdf).hexdigest()
-    stamp = save_file("LOTUS-approved-" + doc.name.replace("/", "-") + ".pdf",
-                      pdf, "Purchase Order", doc.name,
-                      df="lotus_signed_purchase_pdf", is_private=1)
-    frappe.db.set_value("Purchase Order", doc.name, {
-        "lotus_signed_purchase_pdf": stamp.file_url,
-        "lotus_signature_verify_hash": hashlib.sha256(verify_token.encode("ascii")).hexdigest(),
-        "lotus_signature_pdf_sha256": digest,
-    }, update_modified=False)
-    _event(doc, "APPROVE", actor, when, signature_type="IMAGE",
-           pdf_hash=digest, revision=frappe.db.get_value("User", actor, DATE_FIELD),
-           details="PDF có QR xác minh và thời điểm duyệt máy chủ")
-    return stamp.file_url
+# QR signing on another device, the order initials button and the approval-only PDF were removed in spec 003:
+# QR codes only verify, ký nháy is printed from the checking step, and lotus_farm.signed_copy keeps every signed PDF.
 
 
 @frappe.whitelist()
 def download_purchase_pdf(name):
-    """Always enforce native print permission, including for archived PDFs."""
+    """The signed copy once the director signed (spec 003); orders approved before keep their archived PDF;
+    otherwise the live print. Print permission, or being named in the signing round, is required."""
     user = _user()
     doc = frappe.get_doc("Purchase Order", name)
-    doc.check_permission("read")
-    doc.check_permission("print")
+    from lotus_farm import signed_copy, signing
+    if frappe.has_permission("Purchase Order", "read", doc=doc):
+        doc.check_permission("print")
+    elif not signing.can_view(doc=doc):
+        frappe.throw("Không có quyền xem đơn mua này.", frappe.PermissionError)
     attachment = doc.get("lotus_signed_purchase_pdf") if frappe.get_meta("Purchase Order").has_field("lotus_signed_purchase_pdf") else None
+    copy = signed_copy.current(doc)
     content = None
-    if attachment:
+    if copy:
+        content = signed_copy.pdf_bytes(copy)
+    elif attachment:
         rows = frappe.get_all(
             "File",
             filters={"attached_to_doctype": "Purchase Order",

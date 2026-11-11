@@ -18,3 +18,5 @@
 </tbody></table>
 <p class="lp-words">Số tiền bằng chữ: <b>{{ f.words(p.grand_total) }}</b></p>
 {% endif %}
+{% if p.delivery_proof %}<div class="lp-proof"><small>Phiếu giao hàng có chữ ký của người giao (ảnh chụp khi nhận hàng)</small><img src="{{ p.delivery_proof }}" alt="Ảnh phiếu giao hàng"></div>
+{% elif p.delivery_proof_name %}<p class="lp-proof__file">Phiếu giao hàng có chữ ký của người giao: tệp đính kèm {{ p.delivery_proof_name }}</p>{% endif %}

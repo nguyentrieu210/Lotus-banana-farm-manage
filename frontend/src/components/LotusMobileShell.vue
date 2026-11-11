@@ -4,6 +4,7 @@ import {ConfigProvider,PullRefresh} from 'vant'
 import LotusMobileHeader from './LotusMobileHeader.vue'
 import LotusMobileBottomNav from './LotusMobileBottomNav.vue'
 import LotusMobileNotifications from './LotusMobileNotifications.vue'
+import LotusMobileSignInbox from './LotusMobileSignInbox.vue'
 import LotusMobileOnboarding from './LotusMobileOnboarding.vue'
 import LotusMobileAiChat from './LotusMobileAiChat.vue'
 import {mobileTheme} from '../mobile-ui-theme'
@@ -21,7 +22,7 @@ onUnmounted(()=>scheme?.removeEventListener?.('change',applyScheme))
 </script>
 <template>
  <ConfigProvider class="lotus-pwa-shell" :class="{'lotus-pwa-keyboard':keyboardOpen}" :theme="dark?'dark':'light'" :theme-vars="mobileTheme" theme-vars-scope="global">
-  <LotusMobileHeader :title="title" :back="back" :disabled="disabled" @back="emit('back')"><template #right><LotusMobileNotifications v-if="notifications" :app="app"/><slot name="header-right"/></template></LotusMobileHeader>
+  <LotusMobileHeader :title="title" :back="back" :disabled="disabled" @back="emit('back')"><template #right><LotusMobileSignInbox v-if="notifications"/><LotusMobileNotifications v-if="notifications" :app="app"/><slot name="header-right"/></template></LotusMobileHeader>
   <PullRefresh v-model="pulling" class="lotus-pwa-pull" :disabled="!refresh||!refreshable||keyboardOpen||disabled" pulling-text="Kéo xuống để tải lại" loosing-text="Thả ra để tải lại" loading-text="Đang tải lại…" success-text="Đã cập nhật" :success-duration="700" @refresh="pull"><slot/></PullRefresh>
   <LotusMobileOnboarding v-if="onboarding" :app="app" :title="title"/>
   <LotusMobileBottomNav :items="tabs" :active="activeTab" :hidden="keyboardOpen" :disabled="disabled" @navigate="emit('navigate',$event)"/>

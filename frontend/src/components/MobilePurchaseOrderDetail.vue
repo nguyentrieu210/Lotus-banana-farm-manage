@@ -3,12 +3,14 @@ import {computed} from 'vue'
 import {Cell,CellGroup} from 'vant'
 import LotusMobileFeedback from './LotusMobileFeedback.vue'
 import {unitLabel} from '../units'
+import {purchaseOrderStatus} from '../buying-order-status'
 const props=defineProps({order:{type:Object,required:true},currency:{type:String,default:'VND'},warehouses:{type:Array,default:()=>[]}})
 const number=value=>Number(value||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 const money=value=>Number(value||0).toLocaleString('vi-VN',{maximumFractionDigits:0})+' '+props.currency
 const warehouse=name=>props.warehouses.find(r=>r.name===name)?.warehouse_name||name||'—'
 const total=computed(()=>props.order.amount??props.order.items?.reduce((sum,line)=>sum+Number(line.qty||0)*Number(line.rate||0),0)??0)
-const displayStatus=computed(()=>props.order.docstatus===2?'Đã hủy':['Đã đóng','Đã nhận đủ','Quá hẹn','Về một phần'].includes(props.order.status)?props.order.status:props.order.approval_status||props.order.status||'Nháp')
+// One status vocabulary (spec 003): the server's status; late delivery is shown beside it.
+const displayStatus=computed(()=>purchaseOrderStatus(props.order)+(props.order.overdue?' · quá hẹn':''))
 </script>
 <template>
  <section class="lotus-purchase-detail">

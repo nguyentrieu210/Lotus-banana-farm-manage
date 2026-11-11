@@ -1,0 +1,12 @@
+{#- Biên bản đối chiếu công nợ nhà cung cấp — data from lotus_farm.procurement_queries.supplier_statement. -#}
+{% set f = p.fmt %}
+<table class="lp-table">
+ <colgroup><col style="width:5%"><col style="width:12%"><col style="width:21%"><col style="width:17%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
+ <thead><tr><th class="stt">STT</th><th class="center">Ngày</th><th>Chứng từ</th><th>Loại</th><th class="num">Giảm nợ (trả, điều chỉnh)</th><th class="num">Tăng nợ (hóa đơn)</th><th class="num">Còn phải trả</th></tr></thead>
+ <tbody><tr class="lp-total"><td></td><td colspan="5">Số đầu kỳ</td><td class="num">{{ f.number(p.opening, 0) }}</td></tr>
+ {% for r in p.rows %}<tr><td class="stt">{{ loop.index }}</td><td class="center nowrap">{{ f.date(r.date) }}</td><td>{{ r.name }}{% if r.bill_no %}<small>HĐ {{ r.bill_no }}</small>{% endif %}</td><td>{{ r.kind_label }}</td>
+  <td class="num">{{ f.number(r.debit, 0) if r.debit else '' }}</td><td class="num">{{ f.number(r.credit, 0) if r.credit else '' }}</td><td class="num">{{ f.number(r.balance, 0) }}</td></tr>{% endfor %}
+ <tr class="lp-total"><td></td><td colspan="3">Cộng phát sinh · Số cuối kỳ</td><td class="num">{{ f.number(p.debit, 0) }}</td><td class="num">{{ f.number(p.credit, 0) }}</td><td class="num">{{ f.number(p.closing, 0) }}</td></tr></tbody>
+</table>
+<p class="lp-words">{% if p.closing >= 0 %}Bên mua còn phải trả nhà cung cấp{% else %}Nhà cung cấp đang giữ tiền tạm ứng của bên mua{% endif %}: <b>{{ f.words(p.closing|abs, p.currency) }}</b></p>
+<p class="lp-proof__file">Hai bên xác nhận số liệu trên là đúng. Biên bản lập thành hai bản, mỗi bên giữ một bản.</p>

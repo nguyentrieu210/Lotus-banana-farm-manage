@@ -8,7 +8,8 @@
 <p class="{{ 'valid' if result.ok else 'warn' }}"><strong>{{ result.status | e }}</strong></p>
 <dl><dt>Loại chứng từ</dt><dd>{{ result.document_type | e }}</dd>
 <dt>Số chứng từ</dt><dd>{{ result.document_no | e }}</dd>
-{% if result.date %}<dt>Ngày / kỳ</dt><dd>{{ result.date | e }}</dd>{% endif %}</dl>
+{% if result.date %}<dt>Ngày / kỳ</dt><dd>{{ result.date | e }}</dd>{% endif %}
+{% if result.archive %}<dt>Bản PDF đã ký</dt><dd>{{ 'Khớp bản lưu' if result.archive_match else 'Không khớp bản lưu — báo người lập chứng từ' }}</dd>{% endif %}</dl>
 <h2 style="font-size:17px;margin-top:22px">Các chữ ký</h2>
 <ol>{% for s in result.steps %}<li><b>{{ s.title | e }}</b> — {{ s.state | e }}{% if s.signed_at %} <span>· {{ s.signed_at | e }}</span>{% endif %}</li>{% endfor %}</ol>
 <p><small>{{ result.notice | e }} QR này không phải chữ ký số có chứng thư.</small></p>

@@ -539,7 +539,7 @@ def approval_action(doctype, name, modified, operation, client_key, values=None)
         from lotus_farm import signing
         if doctype == 'Purchase Order':
             from lotus_farm import purchasing
-            methods = {'request_approval': ('approver',), 'approve_order': ('sign_token',), 'reject_order': ('reason',), 'mark_order_sent': (), 'confirm_supplier_order': (), 'reschedule_order': ('expected_date', 'reason'), 'close_order': ('reason',), 'cancel_order': ('reason',)}
+            methods = {'request_approval': ('approver',), 'approve_order': (), 'reject_order': ('reason',), 'mark_order_sent': (), 'confirm_supplier_order': (), 'reschedule_order': ('expected_date', 'reason'), 'close_order': ('reason',), 'cancel_order': ('reason',)}
             if operation not in methods:
                 frappe.throw('Thao tác đơn mua không hợp lệ.')
             getattr(purchasing, operation)(name=name, modified=modified, **{k: values.get(k) for k in methods[operation]})

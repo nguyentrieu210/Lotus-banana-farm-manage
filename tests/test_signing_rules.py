@@ -64,21 +64,48 @@ class SigningRules(unittest.TestCase):
         self.assertIn('hủy', sr.verdict([sr.SIGNED], True, cancelled=True))
 
     def test_alert_goes_to_a_phone_app_the_signer_uses(self):
+        # Chain app with a phone there, or no phone at all: stays in the chain's app (the bell keeps it).
         self.assertEqual(sr.notify_app('buying', ['buying', 'work']), 'buying')
         self.assertEqual(sr.notify_app('buying', []), 'buying')
+        # Phone only in another app: the push goes where it can reach them (most recently used first).
         self.assertEqual(sr.notify_app('buying', ['work', 'warehouse']), 'work')
-        # Payment vouchers belong to the desktop Finance app: announced in Mua hàng, never 'finance' (bug B1).
+        # Payment vouchers belong to the desktop Finance app: announced in Mua hàng, never 'finance'.
         self.assertEqual(sr.notify_app('finance', []), 'buying')
         self.assertEqual(sr.notify_app('finance', ['buying']), 'buying')
         self.assertEqual(sr.notify_app('finance', ['warehouse']), 'warehouse')
+        self.assertEqual(sr.notify_app('hr', ['work']), 'work')
+        self.assertEqual(sr.notify_app('finance', ['finance', 'desk']), 'buying')
         for chain in sr.CHAINS.values():
             self.assertIn(sr.notify_app(chain['app'], []), sr.PHONE_APPS)
+
+    def test_initials_come_from_the_checking_step(self):
+        # Proposal: accounting / purchasing (step 3); order: its preparer; voucher: the chief accountant.
+        self.assertEqual(sr.chain('purchase_proposal')['steps'][sr.checker_step('purchase_proposal')]['key'], 'PURCHASING')
+        self.assertEqual(sr.chain('purchase_order')['steps'][sr.checker_step('purchase_order')]['key'], 'PREPARE')
+        self.assertEqual(sr.chain('payment_voucher')['steps'][sr.checker_step('payment_voucher')]['key'], 'CHIEF')
+        for key in ('purchase_proposal_small', 'stock_document', 'timekeeping_period', 'issue_proposal', 'unknown'):
+            self.assertIsNone(sr.checker_step(key))
+
+    def test_receipt_against_an_order_is_signed_by_the_storekeeper_alone(self):
+        chain = sr.chain('purchase_receipt')
+        self.assertEqual([s['key'] for s in chain['steps']], ['STOREKEEPER'])
+        self.assertTrue(chain['gate'], 'no separate signing step after the goods are in')
+        self.assertEqual(sr.validate_assignment('purchase_receipt', {}, lambda user: [], 'kho@lotus'), [])
+        rows = [dict(state=sr.WAITING, assignee='kho@lotus')]
+        self.assertEqual(sr.after_sign(rows, 0), ([sr.SIGNED], True), 'the one signature completes the round')
+        self.assertIsNone(sr.checker_step('purchase_receipt'))
+        self.assertEqual(sr.notify_app(chain['app'], []), 'warehouse')
 
     def test_push_link_stays_inside_the_app_that_shows_it(self):
         self.assertEqual(sr.push_link('buying', '/buying?doc=PUR-ORD-1', 'Purchase Order', 'PUR-ORD-1'), '/buying?doc=PUR-ORD-1')
         self.assertEqual(sr.push_link('buying', '/lotus/tai-chinh?tab=cash&doc=ACC-PAY-1', 'Payment Entry', 'ACC-PAY-1'),
                          '/buying?sign_dt=Payment+Entry&sign_dn=ACC-PAY-1')
-        self.assertEqual(sr.push_link('hr', '/lotus/in-luong?month=2026-11', 'Lotus Timekeeping Period', 'P-1'), '/lotus/in-luong?month=2026-11')
+        self.assertEqual(sr.push_link('work', '/warehouse?doc=MAT-1&doctype=Stock+Entry', 'Stock Entry', 'MAT-1'),
+                         '/work?sign_dt=Stock+Entry&sign_dn=MAT-1')
+        self.assertEqual(sr.push_link('hr', '/lotus/in-luong?month=2026-11', 'Lotus Timekeeping Period', 'P-1'),
+                         '/hr-mobile?sign_dt=Lotus+Timekeeping+Period&sign_dn=P-1')
+        self.assertEqual(sr.sign_link('warehouse', 'Purchase Receipt', 'MAT-PRE/1&x'),
+                         '/warehouse?sign_dt=Purchase+Receipt&sign_dn=MAT-PRE%2F1%26x')
 
 
 if __name__ == '__main__':

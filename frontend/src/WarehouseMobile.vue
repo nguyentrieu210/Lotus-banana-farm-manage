@@ -7,9 +7,14 @@ import {Icon} from 'vant'
 import LotusMobileFeedback from './components/LotusMobileFeedback.vue'
 import {useMobileConfirm} from './use-mobile-confirm'
 import MobilePurchaseOrderForm from './components/MobilePurchaseOrderForm.vue'
+import MobilePurchaseProposal from './components/MobilePurchaseProposal.vue'
+import OrderDetail from './components/procurement/OrderDetail.vue'
+import ReceiptDetail from './components/procurement/ReceiptDetail.vue'
+import DeliveryEvidence from './components/procurement/DeliveryEvidence.vue'
+import PurchaseReceiptCosts from './components/PurchaseReceiptCosts.vue'
 import MobileSupplierForm from './components/MobileSupplierForm.vue'
 import StockReceiptReason from './components/StockReceiptReason.vue'
-import {newPurchaseDraft,purchaseFromRequest,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
+import {newPurchaseDraft,purchaseFromRequest,purchaseDraftFromOrder,savePurchaseDraft,retryPurchaseQuote,purchaseLeaveMessage} from './mobile-purchase'
 import LotusMobileCheck from './components/LotusMobileCheck.vue'
 import LotusMobileFile from './components/LotusMobileFile.vue'
 import LotusMobileDialog from './components/LotusMobileDialog.vue'
@@ -48,7 +53,9 @@ const requestForm=ref(null),supplierForm=ref(null),savedPurchase=ref(null),purch
 let supplierInitial=''
 const pending=ref([]),pendingQuery=ref(''),pendingStart=ref(0),pendingMore=ref(false)
 const selectedOrder=ref(null),receiveQty=ref({}),receiveDate=ref(''),receiveKey=ref('')
-const postedReceipt=ref(null),confirmed=ref(false),createdDoc=ref(null),createdDocDetails=ref(null),lastPostedDocument=ref(null)
+const confirmed=ref(false),createdDoc=ref(null),createdDocDetails=ref(null),lastPostedDocument=ref(null)
+// Nhận hàng theo đơn một bước (spec 003, US4): chi phí, ảnh, người giao hàng ký; xác nhận là chữ ký của thủ kho.
+const receiveCosts=ref([]),receiveAccounts=ref([]),receiveDefaultAccount=ref(''),receiveNotes=ref(''),receiveEvidence=ref(null),receiveEvidenceReady=ref(true)
 const failedQuote=ref(false),updateReady=ref(false),loadingPending=ref(false),loadingHistory=ref(false),loadingInventory=ref(false)
 const historyRows=ref([]),historySearch=ref(''),historyWarehouse=ref(''),historyMode=ref('stock'),historyStart=ref(0),historyMore=ref(false),historyDetail=ref(null)
 const inventoryMode=ref('stock'),inventorySearch=ref(''),inventoryWarehouse=ref(''),inventoryStart=ref(0)
@@ -63,9 +70,9 @@ const mobileTabs=[
 ]
 const mobileTitle=computed(()=>({home:'Kho Lotus',history:'Lịch sử',inventory:'Xuất nhập tồn',profile:'Tôi',
  'stock-form':titles[kind.value], 'stock-review':'Kiểm tra phiếu',
- 'request-form':'Đề xuất mua','buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
+ 'request-form':proposalTitle.value,'buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
  'choose-order':'Chọn đơn chờ hàng','receive-form':'Nhận hàng',
- 'receive-review':'Kiểm tra hàng nhận','history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
+ 'history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
 
 const activeTab=computed(()=>screen.value==='history-detail'?'history':baseTabs.includes(screen.value)?screen.value:'home')
 const storeOptions=computed(()=>warehouses.value.map(w=>({value:w.name,label:w.warehouse_name})))
@@ -112,6 +119,10 @@ const allowed=type=>!!session.value?.permissions?.[type]
 const selectedLines=computed(()=>selectedOrder.value?.items?.filter(r=>Number(r.remaining_qty)>0)||[])
 const receiptCheck=computed(()=>validateReceiptInputs(selectedLines.value,receiveQty.value))
 const receivedQuantities=computed(()=>receiptCheck.value.quantities)
+// Without the right to post, the receipt is saved as a draft for the storekeeper; the deliverer is asked only when posting.
+const receivePosts=computed(()=>selectedOrder.value?.can_post!==false)
+const receiveNeedsEvidence=computed(()=>!!selectedOrder.value?.needs_evidence&&receivePosts.value)
+const receiveBase=computed(()=>selectedLines.value.reduce((sum,r)=>sum+Number(receiveQty.value[r.line]||0)*Number(r.rate||0),0))
 const blank=()=>({_key:key(),item:'',query:'',uom:'',qty:1,rate:'',area:''})
 function clear(){error.value='';message.value=''}
 function safeError(e){
@@ -131,11 +142,26 @@ function dirtyForm(){
  if(screen.value==='stock-form')return JSON.stringify(form.value)!==initialFormValue
  if(screen.value==='supplier-form')return !!supplierForm.value&&JSON.stringify(supplierForm.value)!==supplierInitial
  if(screen.value==='buy-form')return order.value?.name?failedQuote.value:JSON.stringify(order.value)!==initialFormValue||!!quote.value
- if(screen.value==='request-form')return JSON.stringify(requestForm.value)!==initialFormValue
- if(screen.value==='receive-form')return Object.values(receiveQty.value).some(v=>String(v).trim()!=='')||receiveDate.value!==today()
+ if(screen.value==='request-form')return !!proposalView.value?.hasChanges()
+ if(screen.value==='receive-form')return Object.values(receiveQty.value).some(v=>String(v).trim()!=='')||receiveDate.value!==today()||receiveCosts.value.length>0||!!receiveNotes.value.trim()||!!receiveEvidence.value?.dirty?.()
  return false
 }
 const {dialog:leaveDialog,message:leaveMessage,pending:leavePending,ask:askLeave,finish:finishLeave}=useMobileConfirm()
+const {dialog:confirmDialog,message:confirmMessage,ask:askConfirm,finish:finishConfirm}=useMobileConfirm()
+// Đơn mua trong Kho dùng chung chi tiết với Mua hàng (spec 003, FR-035): sửa nháp, gửi duyệt, nhận hàng.
+const orderInfo=ref(null),orderChain=ref(null),editingOrder=ref(false),receiptInfo=ref(null)
+function receiptDeleted(){historyDetail.value=null;receiptInfo.value=null;screen.value='history';loadHistory(true)}
+async function loadOrderInfo(name){
+ orderInfo.value=null;orderChain.value=null
+ try{orderInfo.value=await call('lotus_farm.purchasing.detail',{name});orderChain.value=await call('lotus_farm.procurement.chain',{name})}catch{orderInfo.value=null}
+}
+function orderChanged(detail,related){orderInfo.value=detail;orderChain.value=related;if(historyDetail.value?.name===detail.name)historyDetail.value={...historyDetail.value,status:detail.status,docstatus:detail.docstatus}}
+function orderDeleted(){historyDetail.value=null;orderInfo.value=null;screen.value='history';loadHistory(true)}
+function editSavedOrder(){
+ clear();order.value=purchaseDraftFromOrder(orderInfo.value,warehouse.value)
+ quote.value=null;failedQuote.value=false;savedPurchase.value=null;selectedPurchaseRequest.value='';purchaseRequests.value=[];editingOrder.value=true
+ rememberForm(order.value);screen.value='buy-form'
+}
 async function confirmLeave(target=''){
  const parentDirty=screen.value==='supplier-form'&&target!=='buy-form'&&!!order.value&&(order.value.name?failedQuote.value:JSON.stringify(order.value)!==initialFormValue||!!quote.value)
  if(!formScreens.has(screen.value)||!dirtyForm()&&!parentDirty)return true
@@ -154,6 +180,8 @@ function appBack(){
  if(saving.value)return
  if(dismissPicker())return
  if(screen.value==='home')return
+ // The proposal screen walks back through its own form / detail / list first.
+ if(screen.value==='request-form'&&proposalView.value?.back())return
  window.history.back()
 }
 // Pull-to-refresh reloads the list of the tab on screen.
@@ -168,14 +196,14 @@ function dismissPicker(){
 }
 async function onSystemBack(event){
  if(leavePending.value){finishLeave(false);window.history.pushState({lotusWarehouse:true,screen:screen.value},'',window.location.href);return}
- if(saving.value||dismissPicker()){
+ if(saving.value||dismissPicker()||screen.value==='request-form'&&proposalView.value?.back()){
   window.history.pushState({lotusWarehouse:true,screen:screen.value},'',window.location.href)
   return
  }
  const desired=event.state?.lotusWarehouse?event.state.screen:'home'
  // A saved draft must not reopen the original form with the same request ID:
  // changing the form and submitting again could display a receipt unlike the server draft.
- if((screen.value==='stock-review'&&desired==='stock-form')||(screen.value==='receive-review'&&desired==='receive-form')){
+ if(screen.value==='stock-review'&&desired==='stock-form'){
   restoreFromBrowser=true
   screen.value='history'
   window.history.replaceState({lotusWarehouse:true,screen:'history'},'',window.location.href)
@@ -189,7 +217,7 @@ async function onSystemBack(event){
   return
  }
  restoreFromBrowser=true
- const available=desired==='supplier-form'?!!supplierForm.value:desired==='stock-form'?!!form.value:desired==='buy-form'?!!order.value&&!order.value.name:desired==='request-form'?!!requestForm.value:desired==='receive-form'?!!selectedOrder.value:desired==='stock-review'?!!createdDocDetails.value:desired==='receive-review'?!!postedReceipt.value:desired==='history-detail'?!!historyDetail.value:true
+ const available=desired==='supplier-form'?!!supplierForm.value:desired==='stock-form'?!!form.value:desired==='buy-form'?!!order.value&&!order.value.name:desired==='request-form'?!!requestForm.value:desired==='receive-form'?!!selectedOrder.value:desired==='stock-review'?!!createdDocDetails.value:desired==='history-detail'?!!historyDetail.value:true
  screen.value=screen.value==='done'?'home':available?desired:'home'
  clear()
  // Root guard: back gestures never leave the PWA for the previous browser page.
@@ -258,29 +286,19 @@ function start(kindName){
  rememberForm(form.value)
  screen.value='stock-form'
 }
+// Đề xuất mua uses the same screen as the Mua hàng app (spec 003, FR-025): full form, signing, progress.
+const proposalView=ref(null),proposalTitle=ref('Đề xuất mua')
 function startRequest(){
   lastPostedDocument.value=null
  clear();form.value=null;order.value=null;selectedOrder.value=null
- requestForm.value={warehouse:warehouse.value,expected_date:today(),notes:'',items:[blank()]}
+ requestForm.value={open:true}
  rememberForm(requestForm.value)
  screen.value='request-form'
-}
-async function saveRequest(){
- if(!online.value||saving.value||!requestForm.value)return
- const f=requestForm.value
- if(!f.warehouse||!f.expected_date||!validLines(f.items)){error.value='Chọn kho, ngày cần hàng, tên hàng và số lượng hợp lệ.';return}
- saving.value=true;clear()
- try{
-  const result=await call('lotus_farm.purchasing.create_request',{company:company.value,warehouse:f.warehouse,
-   expected_date:f.expected_date,notes:f.notes,items:f.items.map(r=>({item:r.item,qty:Number(r.qty),uom:r.uom}))},true)
-  lastPostedDocument.value={doctype:'Material Request',name:result.name}
-  requestForm.value=null;if(result.docstatus===0){location.assign('/buying?proposal='+encodeURIComponent(result.name));return}screen.value='done';message.value='Đã gửi đề xuất mua '+result.name+'. Có thể in phiếu theo mẫu mới ngay bên dưới.'
- }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function startBuying(){
  clear();lastPostedDocument.value=null;form.value=null;selectedOrder.value=null
  order.value=newPurchaseDraft(warehouse.value,today())
- quote.value=null;failedQuote.value=false;savedPurchase.value=null;selectedPurchaseRequest.value='';purchaseRequests.value=[]
+ quote.value=null;failedQuote.value=false;savedPurchase.value=null;selectedPurchaseRequest.value='';purchaseRequests.value=[];editingOrder.value=false
  rememberForm(order.value);screen.value='buy-form'
  const requestedCompany=company.value,requestedDraft=order.value
  try{const rows=await call('lotus_farm.purchasing.requests',{company:requestedCompany});if(company.value===requestedCompany&&order.value===requestedDraft)purchaseRequests.value=rows}
@@ -373,13 +391,14 @@ async function addSupplier(){
  }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function saveBuying(){
- if(!online.value||saving.value||!order.value||order.value.name||savedPurchase.value)return
+ // A saved draft is not sent twice from the same form; editing an existing draft (editSavedOrder) saves once more.
+ if(!online.value||saving.value||!order.value||order.value.name&&!editingOrder.value||savedPurchase.value)return
  saving.value=true;error.value=''
  try{
   const result=await savePurchaseDraft({company:company.value,draft:order.value,catalog:setup.value,quote:quote.value,
    save:args=>buyingAPI('save_order',args,true),upload,
    onSaved:result=>{order.value.name=result.name;savedPurchase.value={...result,quoteError:''}}})
-  savedPurchase.value=result;failedQuote.value=!!result.quoteError
+  savedPurchase.value=result;failedQuote.value=!!result.quoteError;editingOrder.value=false
  }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 async function retryQuote(){
@@ -415,8 +434,10 @@ async function showOrder(name){
   if(request!==detailRequest||screen.value!==origin||company.value!==scope)return
   selectedOrder.value=detail
   receiveQty.value={};receiveDate.value=today();receiveKey.value=key()
-  postedReceipt.value=null;confirmed.value=false
+  receiveCosts.value=[];receiveNotes.value='';receiveEvidenceReady.value=true
   screen.value='receive-form'
+  // Expense accounts for extra receiving costs; receiving works without them.
+  call('lotus_farm.warehouse.receipt_accounts',{company:scope}).then(a=>{receiveAccounts.value=a.accounts||[];receiveDefaultAccount.value=a.default_account||''}).catch(()=>{receiveAccounts.value=[]})
  }catch(e){if(screen.value===origin&&company.value===scope)error.value=e.message}finally{if(request===detailRequest)busy.value=false}
 }
 async function createReceipt(){
@@ -424,25 +445,28 @@ async function createReceipt(){
  if(!receiveDate.value){error.value='Chọn ngày hàng về.';return}
  if(!receiptCheck.value.valid){error.value=receiptCheck.value.reason;return}
  if(!Object.keys(receivedQuantities.value).length){error.value='Nhập số thực nhận của ít nhất một mặt hàng.';return}
+ if(receiveNeedsEvidence.value&&!receiveEvidenceReady.value){error.value='Cần chữ ký kèm họ tên của người giao hàng, hoặc ảnh phiếu giao hàng có chữ ký.';return}
+ const name=selectedOrder.value.name
+ if(receivePosts.value&&!await askConfirm('Xác nhận nhập kho theo đơn '+name+'? Xác nhận này là chữ ký của bạn trên phiếu nhập; tồn kho được cập nhật ngay.'))return
  saving.value=true;error.value=''
  try{
+  const got=receiveEvidence.value?await receiveEvidence.value.collect():{files:[]}
   const result=await receivingAPI('receive_order',{
-   name:selectedOrder.value.name,posting_date:receiveDate.value,
-   quantities:receivedQuantities.value,client_event_id:receiveKey.value
+   name,posting_date:receiveDate.value,quantities:receivedQuantities.value,client_event_id:receiveKey.value,
+   additional_costs:receiveCosts.value,post:1,files:got.files,deliverer_name:got.deliverer_name||'',
+   deliverer_signature:got.deliverer_signature||'',delivery_proof:got.delivery_proof||'',notes:receiveNotes.value.trim()
   },true)
-  postedReceipt.value=await receivingAPI('purchase_receipt',{name:result.name})
-  confirmed.value=false;screen.value='receive-review'
- }catch(e){error.value=safeError(e)}
+  lastPostedDocument.value={doctype:'Purchase Receipt',name:result.name}
+  const left=(result.remaining||[]).map(r=>r.item_name+' '+fmt(r.remaining_qty)+' '+unitLabel(r.uom)).join('; ')
+  screen.value='done'
+  message.value=result.docstatus===1?'Đã nhập kho '+result.name+'. Chữ ký của bạn đã ghi trên phiếu.'+(left?' Đơn còn chờ: '+left+'.':' Đơn đã nhận đủ.')
+   :'Đã lưu phiếu nháp '+result.name+'. Chờ thủ kho xác nhận nhập kho.'
+ }catch(e){
+  error.value=safeError(e)
+  // Someone else received meanwhile: show what the order still waits for, keep what was typed.
+  if(/còn nhận được/i.test(error.value)){try{selectedOrder.value=await buyingAPI('order_detail',{name})}catch{/* the refusal already says it */}}
+ }
  finally{saving.value=false}
-}
-async function postReceipt(){
- if(!confirmed.value||!postedReceipt.value||!online.value||saving.value)return
- saving.value=true;error.value=''
- try{
-  await receivingAPI('receipt_action',{name:postedReceipt.value.name,modified:postedReceipt.value.modified,action:'submit'},true)
-  lastPostedDocument.value={doctype:'Purchase Receipt',name:postedReceipt.value.name}
-   screen.value='done';message.value='Đã nhập kho '+postedReceipt.value.name+'. Số còn chờ được cập nhật.'
- }catch(e){error.value=safeError(e)}finally{saving.value=false}
 }
 function again(){
  clear()
@@ -482,6 +506,8 @@ async function inspectHistory(row){
   if(request!==detailRequest||screen.value!==origin||company.value!==scope)return
   historyDetail.value=detail
   historyDetail.value.doctype=row.doctype
+  if(row.doctype==='Purchase Order')await loadOrderInfo(row.name);else orderInfo.value=null
+  receiptInfo.value=null
   screen.value='history-detail'
  }catch(e){if(screen.value===origin&&company.value===scope)error.value=e.message||'Chưa xem được phiếu.'}
  finally{if(request===detailRequest)busy.value=false}
@@ -624,31 +650,16 @@ onUnmounted(()=>{
     <LotusMobileInput label="Ngày hàng về" v-model="receiveDate" type="date" :disabled="saving" required/>
     <div v-for="r in selectedLines" :key="r.line" class="mobile-line"><strong>{{r.item_name}}</strong><small>Chưa nhận: {{fmt(r.remaining_qty)}} {{unitLabel(r.uom)}}</small><LotusMobileInput :label="'Số lượng thực nhận ('+(unitLabel(r.uom))+')'" v-model="receiveQty[r.line]" :disabled="saving" type="number" inputmode="decimal" min="0" :max="r.remaining_qty" step="any" placeholder="0"/></div>
     <p v-if="!receiptCheck.valid" class="mobile-message danger" role="alert">{{receiptCheck.reason}}</p>
-    <LotusMobileButton type="button" class="mobile-submit" :disabled="!online||saving||!receiptCheck.valid||!Object.keys(receivedQuantities).length" @click="createReceipt">{{saving?'Đang lưu…':'Lưu hàng đã nhận →'}}</LotusMobileButton>
+    <PurchaseReceiptCosts v-model="receiveCosts" mobile :accounts="receiveAccounts" :default-account="receiveDefaultAccount" :base-total="receiveBase" :currency="setup?.currency||'VND'" :disabled="saving"/>
+    <DeliveryEvidence ref="receiveEvidence" mobile :required="receiveNeedsEvidence" :disabled="saving" @update:valid="receiveEvidenceReady=$event"/>
+    <LotusMobileInput label="Ghi chú nhận hàng" v-model="receiveNotes" type="textarea" :disabled="saving" maxlength="500" placeholder="Tình trạng hàng, xe giao…"/>
+    <p class="mobile-subtle">{{receivePosts?'Bấm Xác nhận nhập kho là bạn ký phiếu nhập với tư cách thủ kho; tồn kho tăng ngay.':'Bạn chưa có quyền ghi sổ nhập kho: phiếu được lưu nháp, thủ kho xác nhận sau.'}}</p>
+    <LotusMobileButton type="button" class="mobile-submit" :disabled="!online||saving||!receiptCheck.valid||!Object.keys(receivedQuantities).length||receiveNeedsEvidence&&!receiveEvidenceReady" @click="createReceipt">{{saving?'Đang lưu…':receivePosts?'Xác nhận nhập kho':'Lưu phiếu nháp'}}</LotusMobileButton>
    </template>
 
-   <template v-if="screen==='receive-review'&&postedReceipt">
-    
-    <div class="mobile-summary"><span>Phiếu <b>{{postedReceipt.name}}</b></span><span>Đơn mua <b>{{selectedOrder?.name}}</b></span></div>
-    <div class="mobile-list-card" v-for="r in selectedLines.filter(r=>Number(receiveQty[r.line])>0)" :key="r.line"><strong>{{r.item_name}}</strong><div class="mobile-inline"><span>Thực nhận</span><b>{{fmt(receiveQty[r.line])}} {{unitLabel(r.uom)}}</b></div></div>
-    <div class="mobile-confirm"><p>Phiếu đang là nháp, tồn kho chưa tăng.</p><LotusMobileCheck v-model="confirmed" :disabled="saving">Đã kiểm tra số thực nhận</LotusMobileCheck><LotusMobileButton type="button" class="mobile-submit" :disabled="saving||!online||!confirmed" @click="postReceipt">Ghi sổ nhập kho</LotusMobileButton></div>
-   </template>
 
-   <template v-if="screen==='request-form'&&requestForm">
-    <form @submit.prevent="saveRequest"><fieldset class="mobile-form-fields" :disabled="saving">
-     <MobileLinkField label="Kho cần hàng" v-model="requestForm.warehouse" :options="storeOptions" :searchable="false" required/>
-     <LotusMobileInput label="Ngày cần hàng" type="date" v-model="requestForm.expected_date" required/>
-     <div v-for="(r,i) in requestForm.items" :key="r._key" class="mobile-line">
-      <div class="mobile-line-title"><strong>Hàng {{i+1}}</strong><LotusMobileButton v-if="requestForm.items.length>1" type="button" @click="requestForm.items.splice(i,1)">Xóa</LotusMobileButton></div>
-      <MobileLinkField label="Tên hàng" :model-value="r.item" :options="itemOptions" placeholder="Gõ tên hàng…" required @update:modelValue="v=>chooseByCode(r,v)"/>
-      <div class="mobile-qty-grid"><LotusMobileInput label="Số lượng" v-model="r.qty" type="number" inputmode="decimal" min="0.000001" step="any" required/>
-       <LotusMobileSelect label="Đơn vị" v-model="r.uom"><option v-for="u in unitsFor(r.item)" :key="u" :value="u">{{unitLabel(u)}}</option></LotusMobileSelect></div>
-     </div>
-     <LotusMobileButton class="mobile-add" type="button" @click="requestForm.items.push(blank())">+ Thêm hàng</LotusMobileButton>
-     <LotusMobileInput label="Ghi chú" type="textarea" v-model="requestForm.notes" rows="2" placeholder="Lý do cần mua, thời gian cần…"/>
-     <LotusMobileButton type="submit" class="mobile-submit" :disabled="saving||!online">Gửi đề xuất mua</LotusMobileButton>
-    </fieldset></form>
-   </template>
+   <MobilePurchaseProposal v-if="screen==='request-form'&&requestForm" ref="proposalView" :company="company" :online="online" :today="today()" start-new
+    @notice="value=>{message=value;error=''}" @error="value=>{error=value;message=''}" @title="value=>proposalTitle=value"/>
 
    <template v-if="screen==='buy-form'&&order">
     <MobilePurchaseOrderForm v-model="order" v-model:quote="quote" :saved="savedPurchase" :items="items" :conversions="setup?.conversions||[]"
@@ -678,6 +689,10 @@ onUnmounted(()=>{
    <template v-if="screen==='history-detail'&&historyDetail">
     
     <MobilePurchaseOrderDetail v-if="historyDetail.doctype==='Purchase Order'" :order="historyDetail" :currency="setup?.currency||'VND'" :warehouses="warehouses"/>
+    <ReceiptDetail v-else-if="historyDetail.doctype==='Purchase Receipt'" :name="historyDetail.name" mobile :today="today()" :ask="askConfirm"
+     @loaded="receiptInfo=$event" @deleted="receiptDeleted" @changed="loadHistory(true)"
+     @open="(row,type)=>type==='receipts'?inspectHistory({name:row.name,doctype:'Purchase Receipt'}):type==='orders'?inspectHistory({name:row.name,doctype:'Purchase Order'}):null"
+     @notice="value=>{message=value;error=''}" @error="value=>{if(value){error=value;message=''}}"/>
     <template v-else>
     <div class="mobile-summary">
      <span>Số phiếu <b>{{historyDetail.name}}</b></span>
@@ -690,10 +705,14 @@ onUnmounted(()=>{
      <small v-if="historyDetail.doctype==='Purchase Order'">Còn chờ: {{fmt(line.remaining_qty)}} {{unitLabel(line.uom)}}</small>
     </div>
     </template>
-    <SigningPanel v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" :doctype="historyDetail.doctype" :name="historyDetail.name" :company="company" :online="online" @notice="message=$event" @error="error=$event"/>
-    <a v-if="['Stock Entry','Stock Reconciliation','Purchase Receipt'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" class="lotus-pwa-print-link" :href="stockPrintURL(historyDetail.doctype,historyDetail.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
-     <LotusMobileButton v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.can_receive&&historyDetail.items?.some(r=>Number(r.remaining_qty)>0)" type="button" class="mobile-submit" @click="showOrder(historyDetail.name)">Nhận hàng theo đơn →</LotusMobileButton>
-    <p v-if="historyDetail.doctype==='Purchase Order'&&historyDetail.docstatus===0" class="mobile-subtle">Đơn đang là nháp. Cần xác nhận đơn trước khi nhận hàng.</p>
+    <SigningPanel v-if="(['Stock Entry','Stock Reconciliation'].includes(historyDetail.doctype)||historyDetail.doctype==='Purchase Receipt'&&receiptInfo?.signing_chain==='stock_document')&&historyDetail.docstatus===1" :doctype="historyDetail.doctype" :name="historyDetail.name" :company="company" :online="online" @notice="message=$event" @error="error=$event"/>
+    <a v-if="['Stock Entry','Stock Reconciliation'].includes(historyDetail.doctype)&&historyDetail.docstatus===1" class="lotus-pwa-print-link" :href="stockPrintURL(historyDetail.doctype,historyDetail.name)" target="_blank" rel="noopener noreferrer" aria-label="In phiếu kho">In phiếu / Lưu PDF <Icon name="share-o" class="lotus-pwa-inline-icon" aria-hidden="true"/></a>
+     <LotusMobileButton v-if="historyDetail.doctype==='Purchase Order'&&!orderInfo&&historyDetail.can_receive&&historyDetail.items?.some(r=>Number(r.remaining_qty)>0)" type="button" class="mobile-submit" @click="showOrder(historyDetail.name)">Nhận hàng theo đơn →</LotusMobileButton>
+    <OrderDetail v-if="historyDetail.doctype==='Purchase Order'&&orderInfo" :detail="orderInfo" :chain="orderChain" mobile :company="company" :saving="saving" :ask="askConfirm"
+     @changed="orderChanged" @deleted="orderDeleted" @edit="editSavedOrder" @receive="showOrder(historyDetail.name)"
+     @open="(row,type)=>type==='receipts'?inspectHistory({name:row.name,doctype:'Purchase Receipt'}):type==='orders'?inspectHistory({name:row.name,doctype:'Purchase Order'}):null"
+     @notice="value=>{message=value;error=''}" @error="value=>{if(value){error=value;message=''}}"/>
+    <p v-else-if="historyDetail.doctype==='Purchase Order'&&historyDetail.docstatus===0" class="mobile-subtle">Đơn đang là nháp. Cần gửi duyệt và được duyệt trước khi nhận hàng.</p>
     <LotusMobileButton class="mobile-add" type="button" @click="appBack">← Về lịch sử</LotusMobileButton>
    </template>
 
@@ -758,6 +777,11 @@ onUnmounted(()=>{
     </div>
    </template>
   </main>
+  <LotusMobileDialog ref="confirmDialog" class="mobile-leave-dialog" @cancel.prevent="finishConfirm(false)">
+   <div class="mobile-leave-content"><h2>Xác nhận</h2><p>{{confirmMessage}}</p>
+    <LotusMobileButton type="button" @click="finishConfirm(false)">Quay lại</LotusMobileButton>
+    <LotusMobileButton type="button" class="mobile-submit" @click="finishConfirm(true)">Đồng ý</LotusMobileButton></div>
+  </LotusMobileDialog>
   <LotusMobileDialog ref="leaveDialog" class="mobile-leave-dialog" aria-labelledby="leave-title" @cancel.prevent="finishLeave(false)">
    <div class="mobile-leave-content"><h2 id="leave-title">{{leaveMessage.startsWith('Đăng xuất')?'Đăng xuất':'Rời màn hình?'}}</h2><p>{{leaveMessage}}</p><div><LotusMobileButton type="button" autofocus @click="finishLeave(false)">Ở lại</LotusMobileButton><LotusMobileButton type="button" class="danger" @click="finishLeave(true)">{{leaveMessage.startsWith('Đăng xuất')?'Đăng xuất':'Rời đi'}}</LotusMobileButton></div></div>
   </LotusMobileDialog>

@@ -1,6 +1,8 @@
 <script setup>
 import {tablePage} from '../table-pagination'
-import {computed,onMounted,onUnmounted,ref,watch} from 'vue'
+import {computed,inject,onMounted,onUnmounted,ref,watch} from 'vue'
+import {routerKey} from 'vue-router'
+import {internalWorkspaceTarget} from '../workspace-routes'
 import {unitLabel} from '../units'
 import {formatDate} from '../format'
 import {updateColumnFilter,shiftISODate} from '../stock-filter-state'
@@ -44,7 +46,10 @@ const orderColumns=[{field:'name',headerName:'Đơn mua',minWidth:210},{field:'s
 const requestColumns=[{field:'name',headerName:'Đề xuất mua',minWidth:210},{field:'item_name',headerName:'Vật tư',minWidth:210},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},numeric('qty','Chưa mua'),{field:'uom',headerName:'Đơn vị',minWidth:80,valueFormatter:p=>unit(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)},{field:'status',headerName:'Trạng thái',minWidth:110}]
 const purchaseItems=[{field:'item_name',headerName:'Vật tư',minWidth:220},numeric('qty','Số lượng'),{field:'uom',headerName:'Đơn vị',valueFormatter:p=>unit(p.value)},{field:'warehouse',headerName:'Kho nhận',minWidth:145,valueFormatter:p=>warehouseLabel(p.value)},{field:'date',headerName:'Ngày cần',minWidth:110,valueFormatter:p=>formatDate(p.value)}]
 function show(row){detail.value=row;detailOpen.value=true}
-async function openRequest(name){try{request.value=await api('purchase_request',{name});if(request.value.proposal_url){location.assign(request.value.proposal_url);return}confirmAction.value='';requestOpen.value=true}catch(e){error.value=e.message}}
+// The proposal opens in Mua hàng with the shared form and signing (spec 003, FR-025), inside the same desktop app.
+const router=inject(routerKey,null)
+function openProposal(url){const target=router&&internalWorkspaceTarget(url,location.origin);if(target)router.push(target);else location.assign(url)}
+async function openRequest(name){try{request.value=await api('purchase_request',{name});if(request.value.proposal_url){openProposal(request.value.proposal_url);return}confirmAction.value='';requestOpen.value=true}catch(e){error.value=e.message}}
 async function buy(row){if(saving.value)return;saving.value=true;error.value='';try{const result=await api('create_purchase_request',{company:props.company,warehouse:row.warehouse,from_date:from.value,to_date:to.value,items:[row.item]},true);notice.value=result.name?'Đã tạo đề xuất mua nháp '+result.name:result.note;detailOpen.value=false;await load();if(result.name)await openRequest(result.name)}catch(e){error.value=e.message}finally{saving.value=false}}
 async function act(action){if(saving.value)return;saving.value=true;error.value='';try{await api('purchase_action',{name:request.value.name,modified:request.value.modified,action},true);requestOpen.value=false;notice.value=action==='submit'?'Đã duyệt đề xuất mua. Chưa tính là hàng chờ nhập cho tới khi có đơn mua đã duyệt.':'Đã xóa đề xuất mua nháp.';await load()}catch(e){error.value=e.message}finally{saving.value=false}}
 const printURL=(doctype,name)=>'/lotus/in-phieu?'+new URLSearchParams({doctype,name})
@@ -75,7 +80,7 @@ defineExpose({refresh:()=>load(true),openReceipt})
 
   <ModalForm v-model="detailOpen" :title="(detail?.item_name||'')+' · '+warehouseLabel(detail?.warehouse)" :busy="saving" :error="error" readonly width="1080px">
    <DataTable :rows="detail?.sources||[]" :columns="sourceColumns"/>
-   <dl class="lotus-form-totals planning-quantity-summary"><div><dt>Tồn thực tế</dt><dd>{{fmt(detail?.actual_qty)}}</dd></div><div><dt>Giữ chỗ ERP</dt><dd>{{fmt(detail?.native_reserved_qty)}}</dd></div><div><dt>Phiếu nháp của nhu cầu khác</dt><dd>{{fmt(detail?.other_hold_qty)}}</dd></div><div><dt>Phiếu nháp của nhu cầu này</dt><dd>{{fmt(detail?.own_draft_qty)}}</dd></div><div><dt>Đã đề xuất mua</dt><dd>{{fmt(detail?.requested_qty)}}</dd></div><div><dt>Chưa đề nghị</dt><dd>{{fmt(detail?.to_request_qty)}}</dd></div><div><dt>Hàng hẹn sau kỳ</dt><dd>{{fmt(detail?.later_incoming_qty)}}</dd></div></dl>
+   <dl class="lotus-form-totals planning-quantity-summary"><div><dt>Tồn thực tế</dt><dd>{{fmt(detail?.actual_qty)}}</dd></div><div><dt>Giữ chỗ ERP</dt><dd>{{fmt(detail?.native_reserved_qty)}}</dd></div><div><dt>Phiếu nháp của nhu cầu khác</dt><dd>{{fmt(detail?.other_hold_qty)}}</dd></div><div><dt>Phiếu nháp của nhu cầu này</dt><dd>{{fmt(detail?.own_draft_qty)}}</dd></div><div><dt>Đã đề xuất mua</dt><dd>{{fmt(detail?.requested_qty)}}</dd></div><div><dt>Chưa đề xuất</dt><dd>{{fmt(detail?.to_request_qty)}}</dd></div><div><dt>Hàng hẹn sau kỳ</dt><dd>{{fmt(detail?.later_incoming_qty)}}</dd></div></dl>
    <template #actions><UiButton v-if="data?.can_request&&detail?.to_request_qty>0" type="button" :disabled="saving" @click="buy(detail)">Lập đề xuất mua {{fmt(detail?.to_request_qty)}} {{unit(detail?.uom)}}</UiButton></template>
   </ModalForm>
 

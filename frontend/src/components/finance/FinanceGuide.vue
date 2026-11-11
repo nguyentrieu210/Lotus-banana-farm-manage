@@ -9,7 +9,7 @@ const SECTIONS=[['roles','Ai làm gì'],['start','Bắt đầu (một lần)'],[
  ['entries','Định khoản từng nghiệp vụ'],['reports','Báo cáo và sổ sách'],['fix','Sửa sai'],['faq','Câu hỏi thường gặp']]
 const ROLES=[
  ['Thủ kho / nhân viên kho','Lập phiếu nhập (chọn đúng lý do nhập), phiếu xuất (ghi mã lô ở ô "Khu vực / lô sử dụng"), kiểm kê. Không cần vào màn kế toán.'],
- ['Mua hàng','Đề xuất mua → đơn mua → nhận hàng. Hàng mua không qua đơn mua thì kho nhập với lý do "Mua ngoài" và chọn nhà cung cấp.'],
+ ['Mua hàng','Đề xuất mua → đơn mua → nhận hàng. Hàng mua không qua đơn mua thì kho nhập với lý do "Mua nhanh" và chọn nhà cung cấp.'],
  ['Nhân sự','Chấm công, khai số người phụ thuộc và cam kết 08 trong hồ sơ nhân viên, chốt và gửi ký bảng công & bảng lương. Khi bảng lương ký đủ, kế toán ghi sổ ở Chờ hạch toán (không dùng phiếu lương HRMS).'],
  ['Kế toán (Lotus Accountant)','Hóa đơn mua (có thuế GTGT), hóa đơn dịch vụ, hóa đơn bán, phiếu thu, phiếu chi / ủy nhiệm chi, tạm ứng lương, nộp bảo hiểm và thuế, ghi sổ lương; xem mọi báo cáo.'],
  ['Kế toán trưởng (Lotus Chief Accountant)','Ký phiếu chi bước 2, đảo bút toán, bút toán điều chỉnh, kết chuyển chi phí, giá thành, kết chuyển 911, khóa / mở kỳ, cấu hình tài khoản và tham số.'],
@@ -27,7 +27,7 @@ const START=[
  'Bật "Ghi sổ kế toán từ Lotus". Từ đó phiếu xuất kho bắt buộc có lô, phiếu nhập bắt buộc có lý do.',
 ]
 const DAILY=[
- ['Kho','Phiếu nhập: chọn lý do — Mua ngoài (chọn nhà cung cấp), Thu hồi vật tư (ghi mã lô thu về), Thừa kiểm kê. Phiếu xuất: gõ mã lô đầu ô lô (VD "A-1"), danh sách gợi ý có sẵn. Kiểm kê thừa và thiếu lập hai phiếu riêng.'],
+ ['Kho','Phiếu nhập: chọn lý do — Mua nhanh (chọn nhà cung cấp), Thu hồi vật tư (ghi mã lô thu về), Thừa kiểm kê. Phiếu xuất: gõ mã lô đầu ô lô (VD "A-1"), danh sách gợi ý có sẵn. Kiểm kê thừa và thiếu lập hai phiếu riêng.'],
  ['Xưởng / kế toán — chuối thành phẩm','Ca đóng gói đã đóng hiện ở Chờ hạch toán › Ca đóng gói đã đóng, chưa nhập kho → Lập phiếu nhập kho (cũng lập được ở màn Xưởng). Phiếu là bản nháp theo giá thành tạm tính: kế toán kiểm, Kho duyệt. Ca vẫn nằm trong danh sách (cột Phiếu nhập kho ghi phiếu nháp, nút Mở phiếu nháp) cho đến khi phiếu được duyệt. Không lập phiếu nhập chuối bằng tay trong Desk. Bao bì đóng gói xuất với mục đích "Xuất bao bì đóng gói".'],
  ['Kế toán — mua hàng','Chờ hạch toán: chọn các phiếu nhận hàng cùng nhà cung cấp → Lập hóa đơn (số, ngày hóa đơn, thuế suất GTGT). Xem "Xuất kho chưa gắn lô" và nhắc kho sửa.'],
  ['Kế toán — bán hàng','Bán hàng – Phải thu › Lập hóa đơn bán: chọn khách hàng, hàng trong kho thành phẩm, số lượng, đơn giá, thuế suất (chuối của vườn: Không chịu thuế), ký hiệu và số hóa đơn điện tử. Hóa đơn xuất kho luôn.'],

@@ -212,7 +212,7 @@ def change_stock_uom(item, uom):
             frappe.throw('Vật tư đã nhập / xuất kho theo đơn vị {0} nên không đổi được đơn vị gốc. Thêm đơn vị quy đổi (ví dụ 1 {1} = … {0}) '
                          'để nhập theo {1}, hoặc tạo mã mới và ngừng dùng mã này.'.format(_unit(item.stock_uom), _unit(uom)))
         if frappe.db.sql("""select 1 from `tabBin` where item_code=%s and (reserved_qty>0 or ordered_qty>0 or indented_qty>0 or planned_qty>0) limit 1""", item.name):
-            frappe.throw('Vật tư đang có đề nghị / đơn mua chưa hoàn tất theo đơn vị {0}. Hoàn tất hoặc hủy các chứng từ đó rồi mới đổi đơn vị gốc.'.format(_unit(item.stock_uom)))
+            frappe.throw('Vật tư đang có đề xuất / đơn mua chưa hoàn tất theo đơn vị {0}. Hoàn tất hoặc hủy các chứng từ đó rồi mới đổi đơn vị gốc.'.format(_unit(item.stock_uom)))
     item.stock_uom = uom
     return True
 

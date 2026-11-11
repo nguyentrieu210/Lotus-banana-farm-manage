@@ -34,6 +34,8 @@ def install():
     ])
     fields['Lotus Finance Settings'] = [dict(fieldname='acct_'+key, label=label, fieldtype='Link', options='Account')
                                        for key, (label, _) in FUNDING_KEYS.items()]
+    for dt, extra in spec003_fields().items():
+        fields.setdefault(dt, []).extend(extra)
     create_custom_fields(fields, update=True)
     # A minimal site may not have completed ERPNext's address setup yet.
     # Use Frappe's own template only when no default exists; preserve custom templates.
@@ -45,6 +47,23 @@ def install():
     # every row tied to its original PO/receipt line. Quantities remain guarded below.
     if not frappe.db.get_single_value('Buying Settings','allow_multiple_items'):
         frappe.db.set_single_value('Buying Settings','allow_multiple_items',1)
+    # Spec 003 (FR-051): an invoice may carry another price than the order when the accountant writes why, and the cost
+    # of the goods then follows the invoice. ERPNext's own switches would refuse the price before Lotus' rule is asked
+    # (same rate through the cycle, cap on billing above the order).
+    from frappe.utils import flt as _flt
+    if _flt(frappe.db.get_single_value('Accounts Settings','over_billing_allowance'))<100:
+        frappe.db.set_single_value('Accounts Settings','over_billing_allowance',100)
+    if frappe.db.get_single_value('Buying Settings','maintain_same_rate'):
+        frappe.db.set_single_value('Buying Settings','maintain_same_rate',0)
+    # R16 (bản sao site thật, 10/11/2026): ERPNext's revaluation at the invoice rate spreads the difference over all the
+    # received quantity (returned goods included) and leaves a household business' VAT difference on 33881. Lotus posts
+    # the difference itself, per invoice (finance.invoice_cost); ERPNext's own revaluation stays off or it counts twice.
+    if frappe.db.get_single_value('Buying Settings','set_landed_cost_based_on_purchase_invoice_rate'):
+        frappe.db.set_single_value('Buying Settings','set_landed_cost_based_on_purchase_invoice_rate',0)
+    # Lotus never records rejected quantities. With this switch on, ERPNext invoices goods already returned to the
+    # supplier and skips its over-billing check on invoices (seen on the live-site copy: 5 kg returned, billed again).
+    if frappe.db.get_single_value('Buying Settings','bill_for_rejected_quantity_in_purchase_invoice'):
+        frappe.db.set_single_value('Buying Settings','bill_for_rejected_quantity_in_purchase_invoice',0)
     # Standard permissions remain the boundary for every ERPNext document.
     from frappe.permissions import add_permission, update_permission_property
     for role in ('Lotus Purchasing Buyer','Lotus Purchase Requester','Lotus Purchase Approver','Lotus Warehouse Receiver','Lotus Warehouse Manager'):
@@ -59,6 +78,11 @@ def install():
             add_permission(dt, role)
             for permission in ('read', 'create', 'write', 'submit'):
                 update_permission_property(dt, role, 0, permission, 1)
+    # The purchase approver reads the quotes behind the orders they sign (spec 003, US3).
+    for role in ('Lotus Purchase Approver',):
+        if frappe.db.exists('Role', role):
+            add_permission('Supplier Quotation', role)
+            update_permission_property('Supplier Quotation', role, 0, 'read', 1)
     for role in ('Lotus Accountant','Lotus Chief Accountant','Accounts User','Accounts Manager'):
         for dt in ('Purchase Order','Material Request','Supplier Quotation'):
             add_permission(dt,role)
@@ -82,6 +106,48 @@ def install():
             add_permission('Bank Account', role)
             for permission in ('read', 'create', 'write'):
                 update_permission_property('Bank Account', role, 0, permission, 1)
+
+
+def spec003_fields():
+    """Additive fields of spec 003 (mua hàng hoàn thiện + ký điện tử). Reasons and closing marks may be set on
+    signed documents (allow_on_submit); none of them is part of the signed content fingerprint."""
+    reason = lambda name, label, after=None: dict(fieldname=name, label=label, fieldtype='Small Text', allow_on_submit=1,
+                                                   no_copy=1, read_only=1, **({'insert_after': after} if after else {}))
+    return {
+        'Material Request': [
+            reason('lotus_close_reason', 'Lý do đóng phần chưa mua'),
+            dict(fieldname='lotus_closed_by', label='Người đóng phần chưa mua', fieldtype='Link', options='User',
+                 allow_on_submit=1, no_copy=1, read_only=1),
+            dict(fieldname='lotus_closed_at', label='Đóng phần chưa mua lúc', fieldtype='Datetime',
+                 allow_on_submit=1, no_copy=1, read_only=1),
+            reason('lotus_cancel_reason', 'Lý do hủy đề xuất'),
+        ],
+        'Material Request Item': [
+            dict(fieldname='lotus_selected_quote', label='Báo giá đã chọn', fieldtype='Link', options='Supplier Quotation',
+                 allow_on_submit=1, no_copy=1, read_only=1),
+            dict(fieldname='lotus_selected_quote_item', label='Dòng báo giá đã chọn', fieldtype='Data',
+                 allow_on_submit=1, no_copy=1, read_only=1, hidden=1),
+            reason('lotus_selection_reason', 'Lý do chọn báo giá'),
+        ],
+        'Purchase Order': [reason('lotus_cancel_reason', 'Lý do hủy đơn')],
+        'Purchase Receipt': [
+            dict(fieldname='lotus_deliverer_name', label='Người giao hàng', fieldtype='Data', no_copy=1),
+            dict(fieldname='lotus_deliverer_signature', label='Chữ ký người giao hàng', fieldtype='Attach Image', no_copy=1),
+            dict(fieldname='lotus_delivery_proof', label='Ảnh phiếu giao có chữ ký', fieldtype='Attach', no_copy=1),
+            reason('lotus_cancel_reason', 'Lý do hủy phiếu nhận'),
+        ],
+        'Purchase Invoice': [reason('lotus_cancel_reason', 'Lý do hủy hóa đơn')],
+        # finance.invoice_cost: the invoice whose price or VAT difference this voucher or entry moved into the cost of the
+        # goods, or the receipt whose differences a voucher re-split with its returns. Both move only with their source.
+        'Landed Cost Voucher': [dict(fieldname='lotus_purchase_invoice', label='Hóa đơn NCC', fieldtype='Link', options='Purchase Invoice',
+                                     read_only=1, no_copy=1, insert_after='posting_date'),
+                                dict(fieldname='lotus_cost_receipt', label='Chia lại chênh lệch của phiếu nhận', fieldtype='Link',
+                                     options='Purchase Receipt', read_only=1, no_copy=1, insert_after='lotus_purchase_invoice')],
+        'Journal Entry': [dict(fieldname='lotus_purchase_invoice', label='Hóa đơn NCC (chênh lệch giá, thuế)', fieldtype='Link',
+                               options='Purchase Invoice', read_only=1, no_copy=1)],
+        'Purchase Invoice Item': [dict(fieldname='lotus_variance_reason', label='Lý do lệch so với đơn / phiếu nhận',
+                                       fieldtype='Small Text', no_copy=1)],
+    }
 
 
 def funding_accounts(cfg=None):
