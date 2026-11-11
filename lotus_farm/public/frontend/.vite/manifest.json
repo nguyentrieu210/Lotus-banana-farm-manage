@@ -1,16 +1,16 @@
 {
-  "_ErpSection-B0Cqz0sx.js": {
-    "file": "assets/ErpSection-B0Cqz0sx.js",
+  "_ErpSection-B-BAAQb8.js": {
+    "file": "assets/ErpSection-B-BAAQb8.js",
     "name": "ErpSection",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_LineItemsEditor-9kHE38PJ.js",
-      "_ListPage-C3nB617o.js"
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
+      "_ListPage--_hvfply.js"
     ],
     "css": [
       "assets/ErpSection-BwqqGrTz.css"
@@ -48,16 +48,16 @@
     "file": "assets/FormSection-wyw5tFQT.css",
     "src": "_FormSection-wyw5tFQT.css"
   },
-  "_InvoiceForm-BhZNrRl0.js": {
-    "file": "assets/InvoiceForm-BhZNrRl0.js",
+  "_InvoiceForm-D0PiVXjp.js": {
+    "file": "assets/InvoiceForm-D0PiVXjp.js",
     "name": "InvoiceForm",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_use-procurement-hz7EsxN4.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_use-procurement-CJ6A8syu.js",
       "_FormSection-BlP1L1uS.js",
       "_FormGrid-BAK5GcHQ.js"
     ],
@@ -69,13 +69,13 @@
     "file": "assets/InvoiceForm-qGUl8asi.css",
     "src": "_InvoiceForm-qGUl8asi.css"
   },
-  "_LineItemsEditor-9kHE38PJ.js": {
-    "file": "assets/LineItemsEditor-9kHE38PJ.js",
+  "_LineItemsEditor-Cp_JPMzq.js": {
+    "file": "assets/LineItemsEditor-Cp_JPMzq.js",
     "name": "LineItemsEditor",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_LotusField-5Q2L6prg.js"
+      "_LotusField-_JElWq_D.js"
     ],
     "css": [
       "assets/LineItemsEditor-CrKi8IwM.css"
@@ -85,53 +85,53 @@
     "file": "assets/LineItemsEditor-CrKi8IwM.css",
     "src": "_LineItemsEditor-CrKi8IwM.css"
   },
-  "_ListPage-95xkxdwD.css": {
-    "file": "assets/ListPage-95xkxdwD.css",
-    "src": "_ListPage-95xkxdwD.css"
-  },
-  "_ListPage-C3nB617o.js": {
-    "file": "assets/ListPage-C3nB617o.js",
+  "_ListPage--_hvfply.js": {
+    "file": "assets/ListPage--_hvfply.js",
     "name": "ListPage",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_combobox-sMkzv82W.js",
-      "_WorkspaceListToolbar-D9ZmXik0.js"
+      "_combobox-DQKmsL-i.js",
+      "_WorkspaceListToolbar-D8KGY239.js"
     ],
     "css": [
       "assets/ListPage-95xkxdwD.css"
     ]
   },
-  "_LotusField-5Q2L6prg.js": {
-    "file": "assets/LotusField-5Q2L6prg.js",
-    "name": "LotusField",
-    "imports": [
-      "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusMobileSelect-CLlPQmXK.js"
-    ],
-    "css": [
-      "assets/LotusField-Bej-tP7p.css"
-    ]
+  "_ListPage-95xkxdwD.css": {
+    "file": "assets/ListPage-95xkxdwD.css",
+    "src": "_ListPage-95xkxdwD.css"
   },
   "_LotusField-Bej-tP7p.css": {
     "file": "assets/LotusField-Bej-tP7p.css",
     "src": "_LotusField-Bej-tP7p.css"
   },
-  "_LotusMobileAction-0_zCEghv.js": {
-    "file": "assets/LotusMobileAction-0_zCEghv.js",
+  "_LotusField-_JElWq_D.js": {
+    "file": "assets/LotusField-_JElWq_D.js",
+    "name": "LotusField",
+    "imports": [
+      "_vue.runtime.esm-bundler-Dx9eLHme.js",
+      "_shadcn-DF7FZNoF.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusMobileSelect-axoIZV_E.js"
+    ],
+    "css": [
+      "assets/LotusField-Bej-tP7p.css"
+    ]
+  },
+  "_LotusMobileAction-BDOH-DnY.js": {
+    "file": "assets/LotusMobileAction-BDOH-DnY.js",
     "name": "LotusMobileAction",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_LotusField-5Q2L6prg.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_MobileSupplierForm-e3jOLR0m.js",
-      "_SignerPicker-BEhtERRO.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js"
+      "_shadcn-DF7FZNoF.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_LotusField-_JElWq_D.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_MobileSupplierForm-BgHDHybV.js",
+      "_SignerPicker-C6l9xd6z.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js"
     ],
     "css": [
       "assets/LotusMobileAction-C-IQtZql.css"
@@ -141,37 +141,37 @@
     "file": "assets/LotusMobileAction-C-IQtZql.css",
     "src": "_LotusMobileAction-C-IQtZql.css"
   },
-  "_LotusMobileSelect-CLlPQmXK.js": {
-    "file": "assets/LotusMobileSelect-CLlPQmXK.js",
+  "_LotusMobileSelect-axoIZV_E.js": {
+    "file": "assets/LotusMobileSelect-axoIZV_E.js",
     "name": "LotusMobileSelect",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ]
   },
-  "_LotusSignatureDraw-Bu2j4wa3.css": {
-    "file": "assets/LotusSignatureDraw-Bu2j4wa3.css",
-    "src": "_LotusSignatureDraw-Bu2j4wa3.css"
-  },
-  "_LotusSignatureDraw-C-eiThLz.js": {
-    "file": "assets/LotusSignatureDraw-C-eiThLz.js",
+  "_LotusSignatureDraw-BSAKUlFJ.js": {
+    "file": "assets/LotusSignatureDraw-BSAKUlFJ.js",
     "name": "LotusSignatureDraw",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
+      "_shadcn-DF7FZNoF.js",
+      "_LotusMobileSelect-axoIZV_E.js",
       "_SignaturePad-D-lidc2b.js"
     ],
     "css": [
       "assets/LotusSignatureDraw-Bu2j4wa3.css"
     ]
   },
-  "_LotusSignatureTimeline-C6ZH8bWS.js": {
-    "file": "assets/LotusSignatureTimeline-C6ZH8bWS.js",
+  "_LotusSignatureDraw-Bu2j4wa3.css": {
+    "file": "assets/LotusSignatureDraw-Bu2j4wa3.css",
+    "src": "_LotusSignatureDraw-Bu2j4wa3.css"
+  },
+  "_LotusSignatureTimeline-CSI9xYI1.js": {
+    "file": "assets/LotusSignatureTimeline-CSI9xYI1.js",
     "name": "LotusSignatureTimeline",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ],
     "css": [
       "assets/LotusSignatureTimeline-HLiTVLn6.css"
@@ -185,51 +185,55 @@
     "file": "assets/MobileSupplierForm-Bezjg8Dx.css",
     "src": "_MobileSupplierForm-Bezjg8Dx.css"
   },
-  "_MobileSupplierForm-e3jOLR0m.js": {
-    "file": "assets/MobileSupplierForm-e3jOLR0m.js",
+  "_MobileSupplierForm-BgHDHybV.js": {
+    "file": "assets/MobileSupplierForm-BgHDHybV.js",
     "name": "MobileSupplierForm",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_LotusField-5Q2L6prg.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_use-procurement-hz7EsxN4.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js"
+      "_combobox-DQKmsL-i.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_LotusField-_JElWq_D.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_use-procurement-CJ6A8syu.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js"
     ],
     "css": [
       "assets/MobileSupplierForm-Bezjg8Dx.css"
     ]
   },
-  "_ProcurementWorkspace-CPIJj1Xt.js": {
-    "file": "assets/ProcurementWorkspace-CPIJj1Xt.js",
+  "_ProcurementWorkspace-ClzhK82G.css": {
+    "file": "assets/ProcurementWorkspace-ClzhK82G.css",
+    "src": "_ProcurementWorkspace-ClzhK82G.css"
+  },
+  "_ProcurementWorkspace-DBAGphjt.js": {
+    "file": "assets/ProcurementWorkspace-DBAGphjt.js",
     "name": "ProcurementWorkspace",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
+      "_use-toast-BCU4VxrF.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusField-5Q2L6prg.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_SigningPanel-Bn2osuiE.js",
-      "_MobileSupplierForm-e3jOLR0m.js",
-      "_use-procurement-hz7EsxN4.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusField-_JElWq_D.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_SigningPanel-DaRZt6pB.js",
+      "_MobileSupplierForm-BgHDHybV.js",
+      "_use-procurement-CJ6A8syu.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_ListPage-C3nB617o.js",
-      "_StockDocumentDetail-CZsvR7k1.js",
+      "_ListPage--_hvfply.js",
+      "_StockDocumentDetail-BeG9bp0b.js",
       "_grid-columns-CfLgrUZi.js",
-      "_InvoiceForm-BhZNrRl0.js",
-      "_ErpSection-B0Cqz0sx.js",
-      "_work-farm-IzyM-aQF.js"
+      "_InvoiceForm-D0PiVXjp.js",
+      "_ErpSection-B-BAAQb8.js",
+      "_work-farm-CIU8Mm7I.js"
     ],
     "dynamicImports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js"
@@ -237,10 +241,6 @@
     "css": [
       "assets/ProcurementWorkspace-ClzhK82G.css"
     ]
-  },
-  "_ProcurementWorkspace-ClzhK82G.css": {
-    "file": "assets/ProcurementWorkspace-ClzhK82G.css",
-    "src": "_ProcurementWorkspace-ClzhK82G.css"
   },
   "_SignaturePad-BVE2_6NF.css": {
     "file": "assets/SignaturePad-BVE2_6NF.css",
@@ -256,12 +256,12 @@
       "assets/SignaturePad-BVE2_6NF.css"
     ]
   },
-  "_SignerPicker-BEhtERRO.js": {
-    "file": "assets/SignerPicker-BEhtERRO.js",
+  "_SignerPicker-C6l9xd6z.js": {
+    "file": "assets/SignerPicker-C6l9xd6z.js",
     "name": "SignerPicker",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_LotusField-5Q2L6prg.js"
+      "_LotusField-_JElWq_D.js"
     ],
     "css": [
       "assets/SignerPicker-D4hKvs9g.css"
@@ -271,46 +271,46 @@
     "file": "assets/SignerPicker-D4hKvs9g.css",
     "src": "_SignerPicker-D4hKvs9g.css"
   },
-  "_SigningPanel-Bn2osuiE.js": {
-    "file": "assets/SigningPanel-Bn2osuiE.js",
+  "_SigningPanel-DNoescGV.css": {
+    "file": "assets/SigningPanel-DNoescGV.css",
+    "src": "_SigningPanel-DNoescGV.css"
+  },
+  "_SigningPanel-DaRZt6pB.js": {
+    "file": "assets/SigningPanel-DaRZt6pB.js",
     "name": "SigningPanel",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusField-5Q2L6prg.js",
-      "_use-procurement-hz7EsxN4.js",
-      "_SignerPicker-BEhtERRO.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusField-_JElWq_D.js",
+      "_use-procurement-CJ6A8syu.js",
+      "_SignerPicker-C6l9xd6z.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js",
       "_SignaturePad-D-lidc2b.js",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js"
     ],
     "css": [
       "assets/SigningPanel-DNoescGV.css"
     ]
   },
-  "_SigningPanel-DNoescGV.css": {
-    "file": "assets/SigningPanel-DNoescGV.css",
-    "src": "_SigningPanel-DNoescGV.css"
-  },
-  "_StockDocumentDetail-CZsvR7k1.js": {
-    "file": "assets/StockDocumentDetail-CZsvR7k1.js",
+  "_StockDocumentDetail-BeG9bp0b.js": {
+    "file": "assets/StockDocumentDetail-BeG9bp0b.js",
     "name": "StockDocumentDetail",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusField-5Q2L6prg.js",
-      "_SigningPanel-Bn2osuiE.js",
-      "_use-procurement-hz7EsxN4.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusField-_JElWq_D.js",
+      "_SigningPanel-DaRZt6pB.js",
+      "_use-procurement-CJ6A8syu.js",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js",
       "_ui-status-CGTp0qrA.js",
       "_grid-columns-CfLgrUZi.js"
@@ -323,25 +323,25 @@
     "file": "assets/StockDocumentDetail-DdaBZkEz.css",
     "src": "_StockDocumentDetail-DdaBZkEz.css"
   },
-  "_WorkInspect-C2IQNfEg.js": {
-    "file": "assets/WorkInspect-C2IQNfEg.js",
+  "_WorkInspect-BgXZTrTo.js": {
+    "file": "assets/WorkInspect-BgXZTrTo.js",
     "name": "WorkInspect",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_stat-tile-CXu_iZfj.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_stat-tile-DLSpMTl9.js",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js",
       "_issue-request-model-5bCMbHQT.js",
-      "_use-reason-dialog-4czFjPzp.js",
+      "_use-reason-dialog-lA4ZM35o.js",
       "_ui-status-CGTp0qrA.js",
       "_ribbon-colors-B9Vm079b.js",
       "_lot-entry-model-DTjAbEsz.js",
-      "_ListPage-C3nB617o.js"
+      "_ListPage--_hvfply.js"
     ],
     "css": [
       "assets/WorkInspect-yKTl1-cj.css"
@@ -351,12 +351,12 @@
     "file": "assets/WorkInspect-yKTl1-cj.css",
     "src": "_WorkInspect-yKTl1-cj.css"
   },
-  "_WorkspaceListToolbar-D9ZmXik0.js": {
-    "file": "assets/WorkspaceListToolbar-D9ZmXik0.js",
+  "_WorkspaceListToolbar-D8KGY239.js": {
+    "file": "assets/WorkspaceListToolbar-D8KGY239.js",
     "name": "WorkspaceListToolbar",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js"
     ]
   },
@@ -364,12 +364,12 @@
     "file": "assets/attendance-presence-BOhL7z3y.js",
     "name": "attendance-presence"
   },
-  "_cccd-issuer-C9Ol_fk4.js": {
-    "file": "assets/cccd-issuer-C9Ol_fk4.js",
+  "_cccd-issuer-BpXSkYs0.js": {
+    "file": "assets/cccd-issuer-BpXSkYs0.js",
     "name": "cccd-issuer",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js"
     ],
     "dynamicImports": [
@@ -387,13 +387,13 @@
     "file": "assets/combobox-CPwraJVT.css",
     "src": "_combobox-CPwraJVT.css"
   },
-  "_combobox-sMkzv82W.js": {
-    "file": "assets/combobox-sMkzv82W.js",
+  "_combobox-DQKmsL-i.js": {
+    "file": "assets/combobox-DQKmsL-i.js",
     "name": "combobox",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js"
     ],
     "css": [
@@ -450,17 +450,17 @@
     "file": "assets/mobile-ui-BxTmzgiW.css",
     "src": "_mobile-ui-BxTmzgiW.css"
   },
-  "_mobile-ui-CmGK68JZ.js": {
-    "file": "assets/mobile-ui-CmGK68JZ.js",
+  "_mobile-ui-C9TFeW0j.js": {
+    "file": "assets/mobile-ui-C9TFeW0j.js",
     "name": "mobile-ui",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js",
       "_signature-background-oS-FLSAN.js"
     ],
     "css": [
@@ -479,8 +479,8 @@
     "file": "assets/rolldown-runtime-hePW80VL.js",
     "name": "rolldown-runtime"
   },
-  "_shadcn-C8hYXOO1.js": {
-    "file": "assets/shadcn-C8hYXOO1.js",
+  "_shadcn-DF7FZNoF.js": {
+    "file": "assets/shadcn-DF7FZNoF.js",
     "name": "shadcn",
     "imports": [
       "_rolldown-runtime-hePW80VL.js",
@@ -488,7 +488,7 @@
       "_use-confirm-core-CTd2rGwS.js"
     ],
     "dynamicImports": [
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ],
     "css": [
       "assets/shadcn-DlqLl9bV.css"
@@ -506,13 +506,13 @@
     "file": "assets/stat-tile-B6cD0vZj.css",
     "src": "_stat-tile-B6cD0vZj.css"
   },
-  "_stat-tile-CXu_iZfj.js": {
-    "file": "assets/stat-tile-CXu_iZfj.js",
+  "_stat-tile-DLSpMTl9.js": {
+    "file": "assets/stat-tile-DLSpMTl9.js",
     "name": "stat-tile",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js"
+      "_combobox-DQKmsL-i.js"
     ],
     "css": [
       "assets/stat-tile-B6cD0vZj.css"
@@ -529,48 +529,48 @@
       "_vue.runtime.esm-bundler-Dx9eLHme.js"
     ]
   },
-  "_use-desktop-workspace-DqzRXRg-.js": {
-    "file": "assets/use-desktop-workspace-DqzRXRg-.js",
+  "_use-desktop-workspace-BO0CYapF.js": {
+    "file": "assets/use-desktop-workspace-BO0CYapF.js",
     "name": "use-desktop-workspace",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ]
   },
-  "_use-mobile-confirm-CseHZ5qm.js": {
-    "file": "assets/use-mobile-confirm-CseHZ5qm.js",
+  "_use-mobile-confirm-D6QfsGQJ.js": {
+    "file": "assets/use-mobile-confirm-D6QfsGQJ.js",
     "name": "use-mobile-confirm",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_LotusSignatureDraw-C-eiThLz.js"
+      "_LotusSignatureDraw-BSAKUlFJ.js"
     ]
   },
-  "_use-procurement-hz7EsxN4.js": {
-    "file": "assets/use-procurement-hz7EsxN4.js",
+  "_use-procurement-CJ6A8syu.js": {
+    "file": "assets/use-procurement-CJ6A8syu.js",
     "name": "use-procurement",
     "imports": [
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ]
   },
-  "_use-reason-dialog-4czFjPzp.js": {
-    "file": "assets/use-reason-dialog-4czFjPzp.js",
+  "_use-reason-dialog-lA4ZM35o.js": {
+    "file": "assets/use-reason-dialog-lA4ZM35o.js",
     "name": "use-reason-dialog",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js"
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js"
     ]
   },
-  "_use-toast-B1wXST5x.js": {
-    "file": "assets/use-toast-B1wXST5x.js",
+  "_use-toast-BCU4VxrF.js": {
+    "file": "assets/use-toast-BCU4VxrF.js",
     "name": "use-toast",
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ]
   },
   "_vue.runtime.esm-bundler-Dx9eLHme.js": {
@@ -580,52 +580,52 @@
       "_rolldown-runtime-hePW80VL.js"
     ]
   },
-  "_work-farm-IzyM-aQF.js": {
-    "file": "assets/work-farm-IzyM-aQF.js",
+  "_work-farm-CIU8Mm7I.js": {
+    "file": "assets/work-farm-CIU8Mm7I.js",
     "name": "work-farm",
     "imports": [
-      "_use-toast-B1wXST5x.js"
+      "_use-toast-BCU4VxrF.js"
     ]
   },
   "buying.html": {
-    "file": "assets/buying-BCzO_-rd.js",
+    "file": "assets/buying-Sc8ESyPc.js",
     "name": "buying",
     "src": "buying.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-CQquvLvw.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_LotusField-5Q2L6prg.js",
-      "_mobile-ui-CmGK68JZ.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_MobileSupplierForm-e3jOLR0m.js",
-      "_SignerPicker-BEhtERRO.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js",
-      "_LotusMobileAction-0_zCEghv.js",
-      "_ProcurementWorkspace-CPIJj1Xt.js"
+      "_shadcn-DF7FZNoF.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_LotusField-_JElWq_D.js",
+      "_mobile-ui-C9TFeW0j.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_MobileSupplierForm-BgHDHybV.js",
+      "_SignerPicker-C6l9xd6z.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js",
+      "_LotusMobileAction-BDOH-DnY.js",
+      "_ProcurementWorkspace-DBAGphjt.js"
     ],
     "css": [
       "assets/buying-D021JRiZ.css"
     ]
   },
   "hr-mobile.html": {
-    "file": "assets/hr-mobile-B6BxOjnv.js",
+    "file": "assets/hr-mobile-DD6oUNQn.js",
     "name": "hr-mobile",
     "src": "hr-mobile.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-CQquvLvw.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_mobile-ui-CmGK68JZ.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_cccd-issuer-C9Ol_fk4.js",
+      "_shadcn-DF7FZNoF.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_mobile-ui-C9TFeW0j.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_cccd-issuer-BpXSkYs0.js",
       "_attendance-presence-BOhL7z3y.js"
     ],
     "css": [
@@ -633,7 +633,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-ppRWYLIG.js",
+    "file": "assets/index-bW5R8STw.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -641,19 +641,19 @@
       "_rolldown-runtime-hePW80VL.js",
       "_lotus-tokens-CQquvLvw.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
+      "_use-toast-BCU4VxrF.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_stat-tile-CXu_iZfj.js",
+      "_combobox-DQKmsL-i.js",
+      "_stat-tile-DLSpMTl9.js",
       "_form-drafts-zo_jIr4U.js"
     ],
     "dynamicImports": [
       "src/components/signing/SignatureSettings.vue",
       "src/components/OpsList.vue",
-      "_combobox-sMkzv82W.js",
-      "_ProcurementWorkspace-CPIJj1Xt.js",
+      "_combobox-DQKmsL-i.js",
+      "_ProcurementWorkspace-DBAGphjt.js",
       "src/components/signing/SigningInboxPage.vue",
       "src/UserAdminApp.vue",
       "src/HrApp.vue",
@@ -691,16 +691,16 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-B1eANhWd.js",
+    "file": "assets/BlockForecastApp-Bayi7heM.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html"
     ],
     "css": [
@@ -709,33 +709,33 @@
     ]
   },
   "src/ColorTagCatalogApp.vue": {
-    "file": "assets/ColorTagCatalogApp-Cmcjg0b7.js",
+    "file": "assets/ColorTagCatalogApp-C3lPJ_cH.js",
     "name": "ColorTagCatalogApp",
     "src": "src/ColorTagCatalogApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js"
+      "_combobox-DQKmsL-i.js"
     ],
     "css": [
       "assets/ColorTagCatalogApp-0R80hcHh.css"
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-DfT_tz8i.js",
+    "file": "assets/FarmLandApp-BNtTdq89.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
       "_lot-entry-model-DTjAbEsz.js"
@@ -748,53 +748,53 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-BkiUCSCS.js",
+    "file": "assets/FieldReportApp-CMcTwGGw.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_stat-tile-CXu_iZfj.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_stat-tile-DLSpMTl9.js",
       "index.html",
       "_FormSection-BlP1L1uS.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_WorkInspect-C2IQNfEg.js",
+      "_WorkInspect-BgXZTrTo.js",
       "_lot-entry-model-DTjAbEsz.js",
-      "_ListPage-C3nB617o.js",
-      "_use-desktop-workspace-DqzRXRg-.js"
+      "_ListPage--_hvfply.js",
+      "_use-desktop-workspace-BO0CYapF.js"
     ],
     "css": [
       "assets/FieldReportApp-o8VoJ21j.css"
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-fV0OXFr3.js",
+    "file": "assets/FinanceApp-BPczrJxO.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
+      "_use-toast-BCU4VxrF.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html",
-      "_SignerPicker-BEhtERRO.js",
+      "_SignerPicker-C6l9xd6z.js",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_use-reason-dialog-4czFjPzp.js",
-      "_ListPage-C3nB617o.js",
+      "_use-reason-dialog-lA4ZM35o.js",
+      "_ListPage--_hvfply.js",
       "_grid-columns-CfLgrUZi.js",
-      "_InvoiceForm-BhZNrRl0.js",
-      "_ErpSection-B0Cqz0sx.js"
+      "_InvoiceForm-D0PiVXjp.js",
+      "_ErpSection-B-BAAQb8.js"
     ],
     "css": [
       "assets/FinanceApp-Md3c32II.css",
@@ -802,77 +802,77 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-BJPgtoO9.js",
+    "file": "assets/HrApp-B9lSDvYj.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
+      "_use-toast-BCU4VxrF.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html",
-      "_SignerPicker-BEhtERRO.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js",
+      "_SignerPicker-C6l9xd6z.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js",
       "_FormGrid-BAK5GcHQ.js",
-      "_WorkspaceListToolbar-D9ZmXik0.js",
-      "_ListPage-C3nB617o.js",
+      "_WorkspaceListToolbar-D8KGY239.js",
+      "_ListPage--_hvfply.js",
       "_grid-columns-CfLgrUZi.js",
-      "_ErpSection-B0Cqz0sx.js",
-      "_work-farm-IzyM-aQF.js",
-      "_cccd-issuer-C9Ol_fk4.js"
+      "_ErpSection-B-BAAQb8.js",
+      "_work-farm-CIU8Mm7I.js",
+      "_cccd-issuer-BpXSkYs0.js"
     ],
     "css": [
       "assets/HrApp-Cp8evMpj.css"
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-D6cNfDut.js",
+    "file": "assets/StockApp-WAkXHRTk.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
+      "_use-toast-BCU4VxrF.js",
       "_procurement-navigation-l-aBY36t.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html",
       "_FormSection-BlP1L1uS.js",
-      "_LineItemsEditor-9kHE38PJ.js",
+      "_LineItemsEditor-Cp_JPMzq.js",
       "_FormGrid-BAK5GcHQ.js",
       "_issue-request-model-5bCMbHQT.js",
-      "_WorkspaceListToolbar-D9ZmXik0.js",
-      "_ListPage-C3nB617o.js",
-      "_StockDocumentDetail-CZsvR7k1.js",
-      "_ErpSection-B0Cqz0sx.js",
-      "_use-desktop-workspace-DqzRXRg-.js"
+      "_WorkspaceListToolbar-D8KGY239.js",
+      "_ListPage--_hvfply.js",
+      "_StockDocumentDetail-BeG9bp0b.js",
+      "_ErpSection-B-BAAQb8.js",
+      "_use-desktop-workspace-BO0CYapF.js"
     ],
     "css": [
       "assets/StockApp-BzkfI0km.css"
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-dSNATbaK.js",
+    "file": "assets/TimekeepingApp-BZjswLq5.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "index.html",
       "_FormGrid-BAK5GcHQ.js",
-      "_WorkspaceListToolbar-D9ZmXik0.js",
-      "_work-farm-IzyM-aQF.js",
+      "_WorkspaceListToolbar-D8KGY239.js",
+      "_work-farm-CIU8Mm7I.js",
       "_attendance-presence-BOhL7z3y.js"
     ],
     "css": [
@@ -880,89 +880,89 @@
     ]
   },
   "src/UserAdminApp.vue": {
-    "file": "assets/UserAdminApp-BOk5XlZM.js",
+    "file": "assets/UserAdminApp-Deoh-G8s.js",
     "name": "UserAdminApp",
     "src": "src/UserAdminApp.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_WorkspaceListToolbar-D9ZmXik0.js"
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_WorkspaceListToolbar-D8KGY239.js"
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-CcVhUEpc.js",
+    "file": "assets/OpsList-JGZ2LhAf.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_combobox-sMkzv82W.js",
+      "_combobox-DQKmsL-i.js",
       "index.html",
       "_grid-columns-CfLgrUZi.js"
     ]
   },
   "src/components/signing/SignatureSettings.vue": {
-    "file": "assets/SignatureSettings-CDdFZ2HP.js",
+    "file": "assets/SignatureSettings-VvhQn-Ha.js",
     "name": "SignatureSettings",
     "src": "src/components/signing/SignatureSettings.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
       "_SignaturePad-D-lidc2b.js",
       "_signature-background-oS-FLSAN.js"
     ],
     "dynamicImports": [
-      "_shadcn-C8hYXOO1.js"
+      "_shadcn-DF7FZNoF.js"
     ],
     "css": [
       "assets/SignatureSettings-D9Rj5ITl.css"
     ]
   },
   "src/components/signing/SigningInboxPage.vue": {
-    "file": "assets/SigningInboxPage-BVyK1NkS.js",
+    "file": "assets/SigningInboxPage-f_J1m2NQ.js",
     "name": "SigningInboxPage",
     "src": "src/components/signing/SigningInboxPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_use-toast-B1wXST5x.js",
-      "_shadcn-C8hYXOO1.js",
+      "_use-toast-BCU4VxrF.js",
+      "_shadcn-DF7FZNoF.js",
       "_use-confirm-core-CTd2rGwS.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusField-5Q2L6prg.js",
-      "_LotusSignatureTimeline-C6ZH8bWS.js"
+      "_combobox-DQKmsL-i.js",
+      "_LotusField-_JElWq_D.js",
+      "_LotusSignatureTimeline-CSI9xYI1.js"
     ],
     "css": [
       "assets/SigningInboxPage-D2_ssYff.css"
     ]
   },
   "warehouse.html": {
-    "file": "assets/warehouse-CSfU1yzV.js",
+    "file": "assets/warehouse-DQpwFnz6.js",
     "name": "warehouse",
     "src": "warehouse.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-CQquvLvw.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusMobileSelect-CLlPQmXK.js",
-      "_LotusField-5Q2L6prg.js",
-      "_mobile-ui-CmGK68JZ.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_SigningPanel-Bn2osuiE.js",
-      "_MobileSupplierForm-e3jOLR0m.js",
-      "_LotusMobileAction-0_zCEghv.js",
+      "_shadcn-DF7FZNoF.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusMobileSelect-axoIZV_E.js",
+      "_LotusField-_JElWq_D.js",
+      "_mobile-ui-C9TFeW0j.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_SigningPanel-DaRZt6pB.js",
+      "_MobileSupplierForm-BgHDHybV.js",
+      "_LotusMobileAction-BDOH-DnY.js",
       "_issue-request-model-5bCMbHQT.js"
     ],
     "css": [
@@ -970,21 +970,21 @@
     ]
   },
   "work-mobile.html": {
-    "file": "assets/work-mobile-BOnDjOJv.js",
+    "file": "assets/work-mobile-JCl2QmEL.js",
     "name": "work-mobile",
     "src": "work-mobile.html",
     "isEntry": true,
     "imports": [
       "_lotus-tokens-CQquvLvw.js",
       "_vue.runtime.esm-bundler-Dx9eLHme.js",
-      "_shadcn-C8hYXOO1.js",
-      "_combobox-sMkzv82W.js",
-      "_LotusSignatureDraw-C-eiThLz.js",
-      "_LotusField-5Q2L6prg.js",
-      "_mobile-ui-CmGK68JZ.js",
-      "_use-mobile-confirm-CseHZ5qm.js",
-      "_stat-tile-CXu_iZfj.js",
-      "_WorkInspect-C2IQNfEg.js",
+      "_shadcn-DF7FZNoF.js",
+      "_combobox-DQKmsL-i.js",
+      "_LotusSignatureDraw-BSAKUlFJ.js",
+      "_LotusField-_JElWq_D.js",
+      "_mobile-ui-C9TFeW0j.js",
+      "_use-mobile-confirm-D6QfsGQJ.js",
+      "_stat-tile-DLSpMTl9.js",
+      "_WorkInspect-BgXZTrTo.js",
       "_lot-entry-model-DTjAbEsz.js"
     ],
     "css": [

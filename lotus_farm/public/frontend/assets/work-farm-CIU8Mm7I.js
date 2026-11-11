@@ -1,0 +1,1 @@
+import{s as e}from"./use-toast-BCU4VxrF.js";function t(){try{return e().farm||``}catch{return``}}export{t};
