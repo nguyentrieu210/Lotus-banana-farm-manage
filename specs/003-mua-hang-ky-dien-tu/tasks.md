@@ -577,7 +577,7 @@ Bốn người rà soát đọc phần mã viết trong và sau vòng 2. Có 25 
 - [x] T147 Ca kiểm các loại khóa sổ còn thiếu (test_51) và sổ sách ở test_29.
 - [x] T149 Chuẩn bị gộp `main` (737f686) để đưa lên. Chi tiết ở `merge-plan.md`:
   - chạy thử gộp: 13 tệp xung đột, mỗi tệp có cách giải và đã được kiểm lại;
-  - `tools/merge-003-main/resolve.cjs` tái tạo đúng cây đã kiểm;
+  - `tools/merge-003-main/resolve.cjs` tái tạo đúng cây đã kiểm (dùng cho commit gộp 4948efc rồi gỡ khỏi cây; bản ở 7c81fdf);
   - gộp trên bản clone tạm, kiểm toàn bộ trên VPS (bộ của spec 003, bộ của `main`, giao diện, kịch bản trình duyệt): tất cả qua;
   - tìm và sửa lỗi đường link thẳng của `main` (đang có trên site thật);
   - phiếu nghiệm thu cho người dùng thật: `checklists/acceptance.md`.

@@ -14,7 +14,7 @@
 
 1. Commit phần chưa commit của spec 003 trên nhánh `003-mua-hang-ky-dien-tu`.
 2. `git merge main`.
-3. Giải 13 xung đột theo các mục dưới. Cách nhanh: chạy `node tools/merge-003-main/resolve.cjs --release-id=<ngày đưa lên, ví dụ 2026-11-12>`.
+3. Giải 13 xung đột theo các mục dưới. Cách nhanh: chạy `node tools/merge-003-main/resolve.cjs --release-id=<ngày đưa lên, ví dụ 2026-11-12>`. Đã dùng ngày 11/11/2026 cho commit gộp 4948efc (id `2026-11-11b`). Script đã gỡ khỏi cây sau đó, vì nó nhắc đường dẫn tệp của bảng đời cũ mà `tests/test_no_legacy_names.py` cấm. Lấy lại bằng `git show 7c81fdf:tools/merge-003-main/resolve.cjs`.
    - Script làm đúng các cách giải dưới đây, kể cả `git rm` tệp `material_requirement.js`, cùng ba sửa ở mục "Ngoài xung đột".
    - Nó dừng nếu một xung đột khác với lúc chuẩn bị.
    - Đã thử trên bản clone tạm: kết quả trùng từng byte với cây đã kiểm trên VPS (tree `7b9c420`).
