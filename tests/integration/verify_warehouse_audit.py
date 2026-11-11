@@ -2,6 +2,7 @@ import frappe,uuid,json
 from frappe.utils import nowdate
 frappe.init(site=__import__('os').environ.get('SITE','frontend'),sites_path='/home/frappe/frappe-bench/sites');frappe.connect();frappe.set_user('Administrator')
 from lotus_farm import warehouse as w,warehouse_planning as p
+from lotus_farm.issue_request import _approve as approve_issue_request  # spec 005: a Material Issue request is submitted only by its approval (issue_request_fixture.approve_native)
 if '__install__' in __import__('sys').argv:
  p.install_fields();frappe.db.commit();print('Planning schema installed');frappe.destroy();raise SystemExit
 make=lambda dt,**v:frappe.get_doc(dict(doctype=dt,**v)).insert()
@@ -24,7 +25,7 @@ try:
  def request(qty):
   # Demand of the warehouse: an approved request to issue material to the lot.
   doc=make('Material Request',company=company,material_request_type='Material Issue',transaction_date=today,schedule_date=today,items=[dict(item_code=item,qty=qty,uom='Kg',stock_uom='Kg',conversion_factor=1,warehouse=store,schedule_date=today,lotus_usage_area=lot)])
-  doc.submit();return doc
+  approve_issue_request(doc,'Administrator');return doc
  def coverage():
   result=p.snapshot(company,warehouse=store,from_date=today,to_date=today)
   assert not result['warnings'],result['warnings']

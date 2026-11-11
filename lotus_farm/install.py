@@ -81,6 +81,8 @@ def setup():
     install_assets()
     from lotus_farm.procurement_setup import install as install_procurement
     install_procurement()
+    from lotus_farm.issue_request import install_fields as install_issue_request_fields
+    install_issue_request_fields()
     for doctype, fields in (
         ("Farm Block", ["farm", "block_code"]),
         ("Work Team", ["farm", "team_code"]),

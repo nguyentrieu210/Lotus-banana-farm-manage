@@ -1,6 +1,7 @@
 import frappe,uuid,json,time
 from frappe.utils import nowdate,add_days
 from lotus_farm import warehouse as w,warehouse_planning as p
+from lotus_farm.issue_request import _approve as approve_issue_request  # spec 005: a Material Issue request is submitted only by its approval (issue_request_fixture.approve_native)
 frappe.init(site=__import__('os').environ.get('SITE','frontend'),sites_path='/home/frappe/frappe-bench/sites');frappe.connect();frappe.set_user('Administrator')
 make=lambda dt,**values:frappe.get_doc(dict(doctype=dt,**values)).insert()
 result={}
@@ -33,7 +34,7 @@ try:
  result['stale_submit']=dict(reviewed_qty=seen['items'][0]['qty'],posted_qty=changed_doc.items[0].qty,docstatus=changed_doc.docstatus)
  # Historical period excludes the new purchase request's today schedule date.
  yesterday=add_days(today,-1)
- need=make('Material Request',company=company,material_request_type='Material Issue',transaction_date=yesterday,schedule_date=yesterday,items=[dict(item_code=item,qty=50,uom='Kg',conversion_factor=1,warehouse=store,schedule_date=yesterday)]);need.submit()
+ need=make('Material Request',company=company,material_request_type='Material Issue',transaction_date=yesterday,schedule_date=yesterday,items=[dict(item_code=item,qty=50,uom='Kg',conversion_factor=1,warehouse=store,schedule_date=yesterday)]);approve_issue_request(need,'Administrator')
  # A finished demand period cannot raise a purchase request (so a retry cannot duplicate one either).
  try:p.create_purchase_request(company,store,yesterday,yesterday,[item]);raise AssertionError('past period raised a purchase request')
  except frappe.ValidationError as e:assert 'Kỳ nhu cầu đã kết thúc' in str(e),str(e)

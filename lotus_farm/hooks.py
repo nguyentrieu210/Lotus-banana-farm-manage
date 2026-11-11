@@ -78,6 +78,21 @@ for _dt in ('Purchase Order', 'Material Request', 'Purchase Receipt', 'Stock Ent
             _value = [_value]
         doc_events[_dt][_event] = [*_value, 'lotus_farm.push_notifications.document_hook']
 
+# Spec 005: yêu cầu cấp vật tư (Material Request loại Material Issue) is approved, cancelled, stopped and reopened only
+# through lotus_farm.issue_request; Kho's issues against it tell the requester and the approver.
+for _dt, _event, _handler in (('Material Request', 'validate', 'lotus_farm.issue_request.validate'),
+                              ('Material Request', 'before_submit', 'lotus_farm.issue_request.before_submit'),
+                              ('Material Request', 'before_cancel', 'lotus_farm.issue_request.before_cancel'),
+                              ('Material Request', 'before_update_after_submit', 'lotus_farm.issue_request.before_update_after_submit'),
+                              ('Material Request', 'on_trash', 'lotus_farm.issue_request.on_trash'),
+                              ('Material Request', 'on_change', 'lotus_farm.issue_request.on_change'),
+                              ('Stock Entry', 'on_submit', 'lotus_farm.issue_request.issue_posted'),
+                              ('Stock Entry', 'on_cancel', 'lotus_farm.issue_request.issue_posted')):
+    _old = doc_events.setdefault(_dt, {}).get(_event, [])
+    if isinstance(_old, str):
+        _old = [_old]
+    doc_events[_dt][_event] = [*_old, _handler]
+
 doc_events['Employee'] = {**doc_events.get('Employee', {}),
                           'validate': 'lotus_farm.hr_workspace.employee_identity_guard',
                           'on_update': 'lotus_farm.push_notifications.document_hook'}

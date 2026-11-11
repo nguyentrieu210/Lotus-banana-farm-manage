@@ -17,6 +17,13 @@ def issue_lines(company, mode, name):
     return lines(company, mode, name)
 
 
+@frappe.whitelist()
+def issue_queue(company, warehouse=None):
+    """Spec 005: Kho › Xuất kho › Cấp theo yêu cầu (N)."""
+    from lotus_farm.warehouse_issue import queue
+    return queue(company, warehouse)
+
+
 def _access():
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập.', frappe.AuthenticationError)

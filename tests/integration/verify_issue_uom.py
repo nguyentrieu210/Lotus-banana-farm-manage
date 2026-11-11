@@ -86,7 +86,8 @@ try:
     request=frappe.get_doc(dict(doctype='Material Request',company=company,material_request_type='Material Issue',
         transaction_date=nowdate(),schedule_date=nowdate(),items=[dict(item_code=code,qty=50,uom='Kg',stock_uom='Kg',conversion_factor=1,
         warehouse=store,schedule_date=nowdate(),lotus_usage_area=area)])).insert()
-    request.submit()
+    from lotus_farm.issue_request import _approve as approve_issue_request  # spec 005: issue_request_fixture.approve_native
+    approve_issue_request(request,'Administrator')
     available=warehouse.issue_lines(company,'Request',request.name)['rows'][0]
     close(available['remaining_qty'],50)
     assert available['stock_uom']=='Kg' and any(u['uom']=='Bao' for u in available['uoms'])

@@ -232,7 +232,8 @@ class PurchaseFlow(unittest.TestCase):
             transaction_date=base.DAY, schedule_date=base.DAY,
             items=[dict(item_code=item.name, qty=2, uom='Nos', stock_uom='Nos', conversion_factor=1, warehouse=base.WH,
                         schedule_date=base.DAY, lotus_usage_area=block.block_code)])
-        demand.submit()
+        from lotus_farm.issue_request import _approve  # spec 005: issue_request_fixture.approve_native
+        _approve(demand, 'Administrator')
         line = demand.items[0].name
         d = base.receiving.create_purchase_request(base.C, base.WH, base.DAY, base.DAY, [item.name])
         self.assertEqual(d['docstatus'], 0)

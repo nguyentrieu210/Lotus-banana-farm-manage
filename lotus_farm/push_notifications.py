@@ -264,6 +264,8 @@ def _recipients(doc, event):
         elif event in ("approved", "rejected"):
             users.update((doc.owner, doc.get("lotus_requested_by")))
     elif doc.doctype == "Material Request":
+        if doc.get("material_request_type") != "Purchase":
+            return []  # yêu cầu cấp vật tư: lotus_farm.issue_request notifies its own people (spec 005, FR-036)
         users.update(frappe.get_all("Has Role", filters={"role": "Lotus Purchase Approver"},
                                     pluck="parent", limit_page_length=1000))
     elif doc.doctype == "Purchase Receipt":
