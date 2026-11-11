@@ -23,6 +23,14 @@ def install():
                 update_permission_property('Material Request', role, 0, action, 1)
 
 
+def keep_proposal_prices(doc, method=None):
+    """validate of Material Request: a purchase proposal carries the price its people typed (giá dự kiến), which is
+    signed. ERPNext 16 fills in the default buying price list and then overwrites every line rate from it after
+    saving (MaterialRequest.update_item_rates); a proposal must not take part in price lists."""
+    if doc.material_request_type == 'Purchase' and doc.get('buying_price_list'):
+        doc.buying_price_list = None
+
+
 def validate(doc, method=None):
     if doc.material_request_type != 'Purchase' or not enabled(doc.company):
         return

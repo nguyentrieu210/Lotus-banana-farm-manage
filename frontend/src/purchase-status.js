@@ -3,7 +3,7 @@
 export const PROPOSAL_STAGES=['Nháp','Đang ký','Bị trả lại','Chờ mua','Đang mua','Đã nhận đủ','Đã xong','Đã hủy']
 export const ORDER_STATES=['Nháp','Chờ duyệt','Bị trả lại','Đã duyệt','Đã gửi NCC','NCC đã xác nhận','Đang nhận','Đã nhận đủ','Đã đóng','Đã hủy']
 export const RECEIPT_STATES=['Nháp','Đã nhập kho','Đã hủy']
-export const BILLING_STATES=['Chưa có hóa đơn','Có hóa đơn một phần','Đã có hóa đơn']
+export const BILLING_STATES=['Chưa có hóa đơn','Có hóa đơn một phần','Đã có hóa đơn','Đã trả hết hàng']
 export const INVOICE_STATES=['Chưa trả','Trả một phần','Đã trả','Quá hạn','Đã hủy']
 export const VOUCHER_STATES=['Nháp','Đang ký','Bị trả lại','Đã chi','Đã đảo']
 export const QUOTE_STATES=['Nháp','Đã xác nhận','Đã chọn','Đã hủy']
@@ -28,6 +28,6 @@ const TONES={
  'Đang mua':'partial','Đang nhận':'partial','Trả một phần':'partial','Có hóa đơn một phần':'partial',
  'Đã nhận đủ':'done','Đã xong':'done','Đã nhập kho':'done','Đã trả':'done','Đã chi':'done','Đã có hóa đơn':'done',
  'Chưa trả':'pending','Chưa có hóa đơn':'pending','Quá hạn':'late','Quá hẹn':'late',
- 'Đã đóng':'closed','Đã đảo':'closed','Đã hủy':'cancelled',
+ 'Đã đóng':'closed','Đã đảo':'closed','Đã trả hết hàng':'closed','Đã hủy':'cancelled',
 }
 export function stateTone(label){return TONES[String(label??'').trim()]||'draft'}

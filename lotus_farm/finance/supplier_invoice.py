@@ -11,7 +11,7 @@ import frappe
 from frappe.utils import cint, flt, getdate, nowdate
 
 from lotus_farm import procurement_rules as rules
-from lotus_farm.finance import posting, setup
+from lotus_farm.finance import invoice_cost, posting, setup
 from lotus_farm.finance import rules as finance_rules
 
 PI = 'Purchase Invoice'
@@ -20,7 +20,15 @@ SE = 'Stock Entry'
 
 
 def _list(value):
-    value = frappe.parse_json(value) if isinstance(value, str) else value
+    """A list sent as JSON, or as 'A,B' when a client puts it in the URL of a read."""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        if text[:1] in '[{"':
+            value = frappe.parse_json(text)
+        else:
+            return [v.strip() for v in text.split(',') if v.strip()]
     return list(value or [])
 
 
@@ -58,7 +66,13 @@ def _files(doctype, names):
         row.creation = str(row.creation)
         # Lotus' own stored copies (signatures, signed PDFs) are not supplier evidence.
         row.own = str(row.file_name or '').startswith(('ky-', 'da-ky-', 'nguoi-giao-ky'))
-    return [r for r in rows if not r.own]
+    seen, out = set(), []
+    for r in rows:
+        if r.own or (r.attached_to_name, r.file_url) in seen:
+            continue
+        seen.add((r.attached_to_name, r.file_url))
+        out.append(r)
+    return out
 
 
 @frappe.whitelist()
@@ -120,17 +134,22 @@ def source(receipts):
             lines.append(dict(source_doctype=SE, source_name=doc.name, source_item=row.name, item=row.item_code, item_name=row.item_name,
                               qty=flt(row.transfer_qty), received_qty=flt(row.transfer_qty), uom=row.stock_uom,
                               rate=amount / (flt(row.transfer_qty) or 1), order_rate=None, vat_code='KCT', freight=0, order='', fixed=True))
+    # Rates with an end date and the rate that follows (8 % until 31/12/2026, then 10 %): the form moves a line to the
+    # rate in force on the invoice date it is given, as _receipt_invoice does (third review, 11/11/2026).
+    vat_ends = {r['code']: dict(to=str(r['to']), then=str(r['then'])) for r in finance_rules.load_vat()['rates'] if r.get('to') and r.get('then')}
     return dict(supplier=supplier, supplier_name=frappe.get_cached_value('Supplier', supplier, 'supplier_name') or supplier, lines=lines,
-                vat_in_cost=bool(setup.vat_in_cost()), mua_nhanh=bool(entries),
+                vat_in_cost=bool(setup.vat_in_cost()), mua_nhanh=bool(entries), vat_ends=vat_ends,
                 files=_files(PR, [d.name for d in prs]) + _files(SE, [d.name for d in entries]))
 
 
 def _service_taxes(pi, on_date):
     """VAT of an invoice made only of service lines. Household business: the VAT joins each line's own expense account
-    (never 1331), still shown as tax rows; otherwise input VAT. Several rates in one invoice are kept apart."""
+    (never 1331) with the line's farm/lô, still shown as tax rows; otherwise input VAT. Several rates in one invoice are
+    kept apart."""
     in_cost = setup.vat_in_cost()
     account = setup.mapping().get('input_vat')
     cost_center = frappe.get_cached_value('Company', pi.company, 'cost_center')
+    dims = [f for f in finance_rules.DIM_FIELDS if frappe.get_meta('Purchase Taxes and Charges').has_field(f)] if in_cost else []
     pi.set('taxes', [])
     pi.taxes_and_charges = None
     groups = {}
@@ -142,13 +161,15 @@ def _service_taxes(pi, on_date):
             frappe.throw(str(exc))
         if not rate:
             continue
-        key = (code, row.expense_account if in_cost else account)
+        key = (code, row.expense_account if in_cost else account) + tuple(row.get(f) or None for f in dims)
         groups[key] = groups.get(key, 0) + flt(row.qty) * flt(row.rate) * rate
-    for (code, head), amount in groups.items():
+    for key, amount in groups.items():
+        code, head = key[:2]
         if not head:
             frappe.throw('Thiết lập tài khoản VAT đầu vào tại Tài chính – Kế toán.')
         pi.append('taxes', dict(charge_type='Actual', account_head=head, tax_amount=flt(amount, 0), category='Total', add_deduct_tax='Add',
-                                cost_center=cost_center, description='Thuế GTGT %s%%%s' % (code, ' (tính vào chi phí)' if in_cost else '')))
+                                cost_center=cost_center, description='Thuế GTGT %s%%%s' % (code, ' (tính vào chi phí)' if in_cost else ''),
+                                **{f: v for f, v in zip(dims, key[2:]) if v}))
     codes = {str(r.get('lotus_line_vat') or 'KCT') for r in pi.items}
     if pi.meta.has_field('lotus_vat_code'):
         pi.lotus_vat_code = codes.pop() if len(codes) == 1 else None
@@ -192,6 +213,14 @@ def _receipt_invoice(prs, picked, vat_code, bill_date):
     original = {r.name: r for doc in prs for r in doc.items}
     header_code = str(vat_code or '').strip()
     receipt_codes = {str(r.get('lotus_line_vat') or 'KCT') for r in original.values()}
+    due_codes = set()
+    if header_code and header_code != 'KCT':
+        # One rate for the whole invoice: compared with the receipts' rates as they stand on the invoice date (8 % gave way
+        # to 10 % on 1/1/2027).
+        try:
+            due_codes = {finance_rules.vat_code_on(c, bill_date) for c in receipt_codes}
+        except ValueError as exc:
+            frappe.throw(str(exc))
     kept, seen = [], set()
     for row in pi.items:
         src = original.get(row.pr_detail)
@@ -210,6 +239,10 @@ def _receipt_invoice(prs, picked, vat_code, bill_date):
             rate = flt(want.get('rate'))
             if rate <= 0:
                 frappe.throw('%s: đơn giá hóa đơn phải lớn hơn 0.' % (src.item_name or src.item_code))
+            if rate > 2 * flt(src.rate) + 0.005:
+                # Accounts Settings over_billing_allowance = 100 %: ERPNext would refuse it later, in English.
+                frappe.throw('%s: đơn giá hóa đơn %s cao hơn 2 lần giá phiếu nhận %s. Kiểm tra lại đơn giá; nếu đúng, lập đơn mua bổ sung.' % (
+                    src.item_name or src.item_code, _vnd(rate), _vnd(src.rate)))
             if abs(rate - flt(src.rate)) > 0.005:
                 reason = str(want.get('variance_reason') or '').strip()
                 if len(reason) < 3:
@@ -222,13 +255,39 @@ def _receipt_invoice(prs, picked, vat_code, bill_date):
         if code:
             row.lotus_line_vat = code
         elif header_code and header_code != 'KCT':
-            # A single rate given for the whole invoice (Tài chính › Chờ hạch toán): it must agree with the receipts.
-            if receipt_codes not in ({'KCT'}, {header_code}):
+            # A single rate given for the whole invoice (Tài chính › Chờ hạch toán): it must agree with the receipts. A
+            # receipt without VAT invoiced with VAT is fine: the VAT goes into the cost (finance.invoice_cost, test_25).
+            if due_codes not in ({'KCT'}, {header_code}):
                 frappe.throw('Thuế GTGT lấy theo từng dòng phiếu nhận. Phiếu nhận đang ghi thuế %s; hóa đơn khác thì nhập thuế từng dòng.'
-                             % ', '.join(sorted(receipt_codes)))
-            if setup.vat_in_cost() and receipt_codes == {'KCT'}:
-                frappe.throw('Hộ kinh doanh: thuế GTGT đã tính vào giá vốn ở phiếu nhận. Phiếu nhận ghi không thuế; sửa thuế trên phiếu nhận trước khi lập hóa đơn có thuế.')
+                             % ', '.join(sorted(due_codes)))
             row.lotus_line_vat = header_code
+        src_code, line_code = str(src.get('lotus_line_vat') or 'KCT'), str(row.get('lotus_line_vat') or 'KCT')
+        try:
+            in_force = finance_rules.vat_code_on(src_code, bill_date)
+        except ValueError as exc:
+            frappe.throw('%s: %s' % (src.item_name or src.item_code, exc))
+        if line_code == src_code != in_force:
+            # The receipt's rate ended before the invoice date (8 % until 31/12/2026): the invoice is at the rate that
+            # followed. The form fills each line with the receipt's code; the printed total the person types still has to
+            # match (_printed), so a wrong invoice date shows up there.
+            row.lotus_line_vat = line_code = in_force
+        allowed = {src_code, in_force}
+        ordered = str(frappe.db.get_value('Purchase Order Item', src.purchase_order_item, 'lotus_line_vat') or '') if src.get('purchase_order_item') else ''
+        if ordered and ordered != src_code:
+            # Ordered at 8 %, invoiced in 2026 at 8 %, received in 2027 at 10 %: the invoice keeps the rate of its own date.
+            try:
+                received_on = frappe.db.get_value('Purchase Receipt', src.parent, 'posting_date')
+                if finance_rules.vat_code_on(ordered, bill_date) == ordered and finance_rules.vat_code_on(ordered, received_on) == src_code:
+                    allowed.add(ordered)
+            except ValueError:
+                pass
+        if frappe.get_cached_value('Item', row.item_code, 'is_fixed_asset') and (
+                abs(flt(row.rate) - flt(src.rate)) > 0.005
+                or setup.vat_in_cost() and line_code not in allowed):
+            # The asset's value is taken at receipt. A rate that ended in between is the one exception: its VAT difference
+            # becomes a cost of the period (finance.invoice_cost). Any other difference would stay on 3388/33881.
+            frappe.throw('%s là tài sản cố định: hóa đơn khác giá hoặc thuế suất với phiếu nhận chưa ghi tự động được. Ghi hóa đơn theo '
+                         'giá và thuế của phiếu nhận, rồi điều chỉnh nguyên giá ở Tài chính › Tài sản cố định.' % (src.item_name or src.item_code))
         row.lotus_line_freight = flt(src.get('lotus_line_freight')) * qty / (flt(src.qty) or 1)
         if item_kind(frappe.get_cached_doc('Item', row.item_code), src.get('lotus_purchase_kind')) == 'Service':
             row.expense_account = mapping['overhead_service'] if row.get('lotus_farm') else mapping['admin_expense']
@@ -331,9 +390,11 @@ def create(receipts=None, lines=None, service_lines=None, supplier=None, bill_no
     else:
         m = setup.mapping()
         if prs:
+            from lotus_farm.procurement import renumber
             pi = _receipt_invoice(prs, picked, vat_code, bill_date)
             for item in _service_items(service_lines, company):
                 pi.append('items', item)
+            renumber(pi)
         else:
             pi = frappe.get_doc(dict(doctype=PI, company=company, supplier=supplier, update_stock=0, conversion_rate=1,
                                      currency=frappe.get_cached_value('Company', company, 'default_currency'),
@@ -344,7 +405,7 @@ def create(receipts=None, lines=None, service_lines=None, supplier=None, bill_no
                        due_date=payments._due(bill_date, due_date), credit_to=m['payable_supplier'], update_stock=0,
                        lotus_procurement_key=token, lotus_procurement_hash=fingerprint, allocate_advances_automatically=1))
         if prs:
-            apply_line_taxes(pi)  # household: 33881 "Valuation and Total", never 1331
+            apply_line_taxes(pi)  # household: goods on 33881 "Valuation and Total", services into their own cost, never 1331
         else:
             _service_taxes(pi, bill_date)
         pi.set_missing_values()
@@ -519,7 +580,7 @@ def detail(name):
                 rounding_adjustment=sum(t['amount'] for t in taxes if t['rounding']),
                 status=purchase_status.invoice_state(doc.docstatus, doc.grand_total, doc.outstanding_amount, doc.due_date, nowdate()),
                 cancel_reason=doc.get('lotus_cancel_reason') or '', taxes=taxes, settlements=settlements,
-                receipts=receipts, quick_receipts=quick,
+                receipts=receipts, quick_receipts=quick, cost_adjustments=invoice_cost.adjustments_of(doc.name),
                 files=_files(PI, [doc.name]) + _files(PR, receipts) + _files(SE, quick),
                 print_url='/lotus/in-hoa-don?' + urlencode({'name': doc.name}),
                 can_cancel=doc.docstatus == 1 and can_post and not settlements, can_pay=doc.docstatus == 1 and can_post and not doc.is_return and flt(doc.outstanding_amount) > 0.5,

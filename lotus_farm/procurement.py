@@ -34,6 +34,16 @@ def item_kind(item, selected=None):
         frappe.throw(str(exc))
 
 
+def vat_now(code, day=None):
+    """The VAT code that applies today to a price quoted earlier: a rate that ended gives way to the rate that followed
+    (8 % until 31/12/2026, then 10 %), so quotes are compared and ordered at the VAT that will be invoiced."""
+    from lotus_farm.finance import rules as finance_rules
+    try:
+        return finance_rules.vat_code_on(code or 'KCT', day or nowdate())
+    except ValueError:
+        return str(code or 'KCT')
+
+
 def line_fields(item, row):
     vat = str(row.get('vat_code') or row.get('lotus_line_vat') or 'KCT')
     try:
@@ -47,55 +57,156 @@ def line_fields(item, row):
                 lotus_quote_reason=str(row.get('reason') or row.get('lotus_quote_reason') or '')[:500])
 
 
-def apply_line_taxes(doc):
-    """Native item tax overrides allow mixed VAT. Freight is an explicit native charge."""
+def line_tax_template(company, account, rate, suffix=''):
+    """The Item Tax Template of one VAT rate on one account (ERPNext 16 rebuilds every line's tax map from its template
+    at each calculation, so the template is the only durable per-line input)."""
+    title='Lotus purchase VAT '+str(int(rate))+'%'+suffix
+    template=frappe.db.get_value('Item Tax Template',{'company':company,'title':title},'name')
+    if not template:
+        template=frappe.get_doc(dict(doctype='Item Tax Template',title=title,company=company,
+            taxes=[dict(tax_type=account,tax_rate=rate)])).insert(ignore_permissions=True).name
+    tax=frappe.get_doc('Item Tax Template',template)
+    if len(tax.taxes)!=1 or tax.taxes[0].tax_type!=account or flt(tax.taxes[0].tax_rate)!=rate:
+        frappe.throw('Mẫu thuế '+template+' đã thay đổi. Kế toán kiểm tra lại cấu hình VAT đầu vào.')
+    return template
+
+
+def renumber(doc, field='items'):
+    """Rows kept, split or added by Lotus keep the idx they came with. ERPNext 16 spreads valuation charges by idx (last
+    row takes the remainder; capitalised charges are keyed by idx), so duplicate or missing numbers over-capitalise VAT and
+    freight: number the rows 1..n again."""
+    for index, row in enumerate(doc.get(field) or [], start=1):
+        row.idx = index
+
+
+def _tax_date(doc):
+    """The date whose VAT rates a document uses. A return or credit note keeps the rates of what it reverses: code 8 %
+    ends on 31/12/2026, and a 2026 purchase returned in 2027 still carries it."""
+    if doc.get('is_return') and doc.get('return_against') and doc.doctype in ('Purchase Receipt', 'Purchase Invoice'):
+        fields = ['bill_date', 'posting_date'] if doc.doctype == 'Purchase Invoice' else ['posting_date']
+        original = frappe.db.get_value(doc.doctype, doc.return_against, fields, as_dict=True)
+        if original:
+            return original.get('bill_date') or original.get('posting_date')
+    return doc.get('bill_date') or doc.get('posting_date') or doc.get('transaction_date')
+
+
+def _capital(row):
+    """A line whose cost goes into stock or an asset."""
+    if not row.get('item_code'):
+        return False
+    item = frappe.get_cached_value('Item', row.item_code, ['is_stock_item', 'is_fixed_asset'], as_dict=True)
+    return bool(item and (item.is_stock_item or item.is_fixed_asset))
+
+
+def _line_costs(doc, lines, cost_center):
+    """VAT and freight that are a cost of the line itself (household business, lines without stock value): one 'Total'
+    row per kind, rate, expense account and farm/lô, so they reach the same cost as the line (costing by lô reads those
+    dimensions). lines = [(row, 'vat' | 'freight', amount)]."""
     from lotus_farm.finance import setup, rules as finance_rules
     mapping = setup.mapping()
-    account = mapping.get('input_vat')
-    # Household business (Cài đặt Tài chính): VAT and freight are part of what the goods cost — taxes "Valuation and Total"
-    # on the valuation clearing account instead of 1331 / 6277. A document without stock items has no stock value to carry
-    # them: its VAT then joins the service expense.
+    dims = [f for f in finance_rules.DIM_FIELDS if frappe.get_meta('Purchase Taxes and Charges').has_field(f)]
+    groups = {}
+    for row, kind, amount in lines:
+        if not flt(amount):
+            continue
+        account = row.get('expense_account') or (mapping.get('overhead_service') if row.get('lotus_farm') else mapping.get('admin_expense'))
+        if not account:
+            frappe.throw('Thiết lập tài khoản chi phí dịch vụ tại Tài chính – Kế toán.')
+        key = (kind, str(row.get('lotus_line_vat') or 'KCT') if kind == 'vat' else '', account) + tuple(row.get(f) or None for f in dims)
+        groups[key] = groups.get(key, 0) + flt(amount)
+    for key, amount in groups.items():
+        kind, code, account = key[:3]
+        extra = {f: v for f, v in zip(dims, key[3:]) if v}
+        doc.append('taxes', dict(charge_type='Actual', account_head=account, tax_amount=flt(amount, 0), category='Total', add_deduct_tax='Add',
+                                 cost_center=cost_center, **extra,
+                                 description='Thuế GTGT %s%% (tính vào chi phí)' % code if kind == 'vat' else 'Vận chuyển (tính vào chi phí)'))
+
+
+def apply_line_taxes(doc):
+    """Native item tax overrides allow mixed VAT. Freight is an explicit native charge.
+
+    Household business (Cài đặt Tài chính): VAT and freight are part of what is bought, line by line, the same way on
+    the order, the receipt, its returns, the invoice and its credit notes (whatever other lines a document has):
+    - Goods and assets carry their VAT on the valuation clearing account 33881 ("Valuation and Total", per-line
+      templates) and their freight on 3388, cleared with the goods and wholly into stock.
+    - Lines without stock value (services) carry no 33881 template: a receipt credits 33881 and 3388 only for what it
+      capitalises, so their VAT and freight are a cost of the line itself (_line_costs).
+    - Not on one account: ERPNext 16 rebuilds each line's tax map per account, and a freight row sharing 33881 with the
+      per-line VAT row fails "Item Wise Tax Details do not match" as soon as one line is 0 % (VPS test site, 10/11/2026).
+    Deductible VAT goes to 1331 per line, freight to 6277."""
+    from lotus_farm.finance import setup, rules as finance_rules
+    mapping = setup.mapping()
+    on_date = _tax_date(doc)
+    try:
+        if doc.doctype in ('Purchase Receipt', 'Purchase Order') and not doc.get('is_return'):
+            # Goods received after a rate ended (8 % until 31/12/2026) carry the rate in force on the receipt date: the
+            # receiver has no VAT field, and the signed order cannot change. The invoice brings the actual rate anyway.
+            # An order saved after the end (from a 2026 quote, or a December draft) is placed at the rate that followed.
+            for row in doc.items:
+                row.lotus_line_vat = finance_rules.vat_code_on(row.get('lotus_line_vat') or 'KCT', on_date)
+        rates = [finance_rules.vat_rate(r.get('lotus_line_vat') or 'KCT', on_date) * 100 for r in doc.items]
+    except ValueError as exc:
+        frappe.throw(str(exc))
     in_cost = setup.vat_in_cost() and doc.doctype in ('Purchase Order', 'Purchase Receipt', 'Purchase Invoice')
-    has_stock = any(frappe.get_cached_value('Item', r.item_code, 'is_stock_item') for r in doc.items if r.item_code)
-    category = 'Total'
-    if in_cost:
-        if has_stock:
-            account = setup.valuation_tax_account(doc.company)
-            category = 'Valuation and Total'
-        else:
-            account = mapping.get('overhead_service')
+    capital = [_capital(r) for r in doc.items]
     shipping = sum(flt(r.get('lotus_line_freight')) for r in doc.items)
-    rates = [finance_rules.vat_rate(r.get('lotus_line_vat') or 'KCT', doc.get('bill_date') or doc.get('posting_date') or doc.get('transaction_date')) * 100 for r in doc.items]
-    if any(rates) and not account:
-        frappe.throw('Thiết lập tài khoản VAT đầu vào tại Tài chính – Kế toán.')
-    for row, rate in zip(doc.items, rates):
-        # item_tax_rate is an ERPNext output and gets rebuilt during validation.
-        # A native Item Tax Template is the durable, per-line input.
-        if any(rates):
-            title='Lotus purchase VAT '+str(int(rate))+'%'+(' (giá vốn)' if category!='Total' else ' (chi phí)' if in_cost else '')
-            template=frappe.db.get_value('Item Tax Template',{'company':doc.company,'title':title},'name')
-            if not template:
-                template=frappe.get_doc(dict(doctype='Item Tax Template',title=title,company=doc.company,
-                    taxes=[dict(tax_type=account,tax_rate=rate)])).insert(ignore_permissions=True).name
-            tax=frappe.get_doc('Item Tax Template',template)
-            if len(tax.taxes)!=1 or tax.taxes[0].tax_type!=account or flt(tax.taxes[0].tax_rate)!=rate:
-                frappe.throw('Mẫu thuế '+template+' đã thay đổi. Kế toán kiểm tra lại cấu hình VAT đầu vào.')
-            row.item_tax_template=template
-        else:
-            row.item_tax_template=None
-        row.item_tax_rate = json.dumps({account: rate}) if account else '{}'
+    cc = frappe.get_cached_value('Company', doc.company, 'cost_center')
     doc.taxes_and_charges = None
     doc.set('taxes', [])
-    cc = frappe.get_cached_value('Company', doc.company, 'cost_center')
-    if any(rates):
-        doc.append('taxes', dict(charge_type='On Net Total', account_head=account, rate=0,
-                                description='Thuế GTGT theo dòng'+(' (tính vào giá vốn)' if in_cost else ''), category=category, add_deduct_tax='Add', cost_center=cc))
+    if in_cost and any(capital):
+        account = setup.valuation_tax_account(doc.company)
+        goods = any(rate for rate, cap in zip(rates, capital) if cap)
+        if goods and not account:
+            frappe.throw('Thiết lập tài khoản VAT đầu vào tại Tài chính – Kế toán.')
+        for row, rate, cap in zip(doc.items, rates, capital):
+            # item_tax_rate is an ERPNext output and gets rebuilt during validation.
+            # A native Item Tax Template is the durable, per-line input.
+            row.item_tax_template = line_tax_template(doc.company, account, rate, ' (giá vốn)') if cap and goods else None
+            row.item_tax_rate = json.dumps({account: rate if cap else 0}) if account else '{}'
+        if goods:
+            doc.append('taxes', dict(charge_type='On Net Total', account_head=account, rate=0, description='Thuế GTGT theo dòng (tính vào giá vốn)',
+                                     category='Valuation and Total', add_deduct_tax='Add', cost_center=cc))
+        goods_freight = sum(flt(row.get('lotus_line_freight')) for row, cap in zip(doc.items, capital) if cap)
+        if goods_freight:
+            freight_account = mapping.get('received_not_billed')
+            if not freight_account:
+                frappe.throw('Thiết lập tài khoản hàng đã nhận chưa có hóa đơn (3388) tại Tài chính – Kế toán.')
+            doc.append('taxes', dict(charge_type='Actual', account_head=freight_account, tax_amount=goods_freight, description='Vận chuyển',
+                                     category='Valuation and Total', add_deduct_tax='Add', cost_center=cc, allocate_full_amount_to_stock_items=1))
+        _line_costs(doc, [(row, 'vat', flt(row.qty) * flt(row.rate) * rate / 100) for row, rate, cap in zip(doc.items, rates, capital) if not cap]
+                    + [(row, 'freight', row.get('lotus_line_freight')) for row, cap in zip(doc.items, capital) if not cap], cc)
+        return
+    if in_cost:
+        for row in doc.items:
+            row.item_tax_template = None
+            row.item_tax_rate = '{}'
+        _line_costs(doc, [(row, 'vat', flt(row.qty) * flt(row.rate) * rate / 100) for row, rate in zip(doc.items, rates)]
+                    + [(row, 'freight', row.get('lotus_line_freight')) for row in doc.items], cc)
+        return
+    else:
+        account = mapping.get('input_vat')
+        if any(rates) and not account:
+            frappe.throw('Thiết lập tài khoản VAT đầu vào tại Tài chính – Kế toán.')
+        for row, rate in zip(doc.items, rates):
+            row.item_tax_template = line_tax_template(doc.company, account, rate) if any(rates) else None
+            row.item_tax_rate = json.dumps({account: rate}) if account else '{}'
+        if any(rates):
+            doc.append('taxes', dict(charge_type='On Net Total', account_head=account, rate=0, description='Thuế GTGT theo dòng',
+                                     category='Total', add_deduct_tax='Add', cost_center=cc))
     if shipping:
-        freight_account = account if category != 'Total' else mapping.get('overhead_service')
+        freight_account = mapping.get('overhead_service')
         if not freight_account:
             frappe.throw('Thiết lập tài khoản dịch vụ vận chuyển tại Tài chính – Kế toán.')
         doc.append('taxes', dict(charge_type='Actual', account_head=freight_account, tax_amount=shipping,
-                                description='Vận chuyển', category=category, add_deduct_tax='Add', cost_center=cc))
+                                description='Vận chuyển', category='Total', add_deduct_tax='Add', cost_center=cc))
+
+
+def _line_rates(row):
+    try:
+        rates = json.loads(row.get('item_tax_rate') or '{}')
+    except ValueError:
+        return {}
+    return rates if isinstance(rates, dict) else {}
 
 
 def _match_invoice_total(pi, invoice_total):
@@ -111,10 +222,12 @@ def _match_invoice_total(pi, invoice_total):
     if abs(diff) > max(5, len(pi.items)):
         vnd = lambda n: '{:,.0f}'.format(n).replace(',', '.')
         frappe.throw('Tổng hóa đơn tính ra {} đ khác tổng cộng in trên hóa đơn {} đ. Kiểm tra số lượng, đơn giá và thuế suất.'.format(vnd(flt(pi.grand_total)), vnd(target)))
-    vat = next((t for t in pi.taxes if t.charge_type == 'On Net Total'), None) or (pi.taxes[0] if pi.taxes else None)
-    # Deductible VAT: the đồng of rounding is VAT too. VAT carried into cost (household): the goods are already valued at
-    # receipt, so the rounding is a small cost on the company's round-off account rather than a stray balance on 33881.
-    if vat and vat.category == 'Total':
+    vat = next((t for t in pi.taxes if t.charge_type == 'On Net Total'), None)
+    # Deductible VAT: the đồng of rounding is VAT too, when every line is taxed. A line at 0 % (KCT) on the same account
+    # makes ERPNext 16 refuse the invoice ("Item Wise Tax Details do not match") once an Actual row shares that account,
+    # so the rounding then goes to the round-off account. VAT carried into cost (household): the goods are already valued
+    # at receipt, so the rounding is a small cost on the round-off account rather than a stray balance on 33881.
+    if vat and vat.category == 'Total' and all(flt(_line_rates(row).get(vat.account_head)) for row in pi.items):
         account, cost_center = vat.account_head, vat.cost_center
     else:
         account = frappe.get_cached_value('Company', pi.company, 'round_off_account')
@@ -231,7 +344,7 @@ def quotations(company, request=None):
         for x in d.items:
             if request and x.material_request != request:
                 continue
-            values = rules.quote_total(x.qty, x.rate, x.conversion_factor or 1, x.get('lotus_line_vat') or 'KCT', x.get('lotus_line_freight') or 0)
+            values = rules.quote_total(x.qty, x.rate, x.conversion_factor or 1, vat_now(x.get('lotus_line_vat')), x.get('lotus_line_freight') or 0)
             result.append(dict(name=x.name, quotation=d.name, modified=str(d.modified), supplier=d.supplier, docstatus=d.docstatus,
                                item=x.item_code, item_name=x.item_name, qty=flt(x.qty), uom=x.uom, stock_uom=x.stock_uom,
                                rate=flt(x.rate) or None, factor=flt(x.conversion_factor), warehouse=x.warehouse,
@@ -353,7 +466,7 @@ def choose_quote(company, request, request_item, quotation=None, quotation_item=
         frappe.throw('Báo giá đã hủy hoặc hết hiệu lực. So sánh lại.')
     if not row or row.item_code != line.item_code or (row.material_request_item and row.material_request_item != line.name) or flt(row.rate) <= 0:
         frappe.throw('Dòng báo giá không khớp dòng đề xuất hoặc chưa có đơn giá.')
-    cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, row.get('lotus_line_vat') or 'KCT', row.get('lotus_line_freight') or 0)['unit_cost']
+    cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, vat_now(row.get('lotus_line_vat')), row.get('lotus_line_freight') or 0)['unit_cost']
     offers = _live_offers(company).get(_offer_key(dict(request_line=line.name, item=line.item_code)), [])
     reason = str(reason or '').strip()
     if rules.needs_reason(cost, offers + [cost]) and len(reason) < 3:
@@ -461,7 +574,7 @@ def select_quotes(company, selections, client_key, approver=None):
             frappe.throw('Dòng báo giá được chọn phải có đơn giá.')
         if row.material_request and frappe.db.get_value('Material Request', row.material_request, 'docstatus') != 1:
             frappe.throw('Đề xuất ' + row.material_request + ' chưa duyệt xong, chưa tạo đơn được.')
-        cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, row.get('lotus_line_vat') or 'KCT', row.get('lotus_line_freight') or 0)['unit_cost']
+        cost = rules.quote_total(row.qty, row.rate, row.conversion_factor or 1, vat_now(row.get('lotus_line_vat')), row.get('lotus_line_freight') or 0)['unit_cost']
         key = _offer_key(dict(request_line=row.material_request_item, item=row.item_code))
         best = not rules.needs_reason(cost, offers.get(key, []) + [cost])
         reason = str(chosen.get('reason') or '').strip()
@@ -478,7 +591,7 @@ def select_quotes(company, selections, client_key, approver=None):
             warehouse=row.warehouse, expected_date=str(quote.get('lotus_delivery_date') or nowdate()),
             material_request=row.material_request, material_request_item=row.material_request_item,
             supplier_quotation=quote.name, supplier_quotation_item=row.name, kind=row.get('lotus_purchase_kind'),
-            vat_code=row.get('lotus_line_vat'), freight=flt(row.get('lotus_line_freight'))*qty/flt(row.qty),
+            vat_code=vat_now(row.get('lotus_line_vat')), freight=flt(row.get('lotus_line_freight'))*qty/flt(row.qty),
             reason=reason or 'Giá thấp nhất trong các báo giá'))
     # Choosing a draft quote confirms it: the person creating the order vouches for the quoted price.
     for quote in drafts.values():
@@ -627,6 +740,7 @@ def return_receipt(name, posting_date, quantities, client_key, post=0, reason=No
     if {r.purchase_receipt_item for r in kept} != set(quantities):
         frappe.throw('Dòng trả hàng không còn hợp lệ.')
     d.set('items', kept)
+    renumber(d)
     apply_line_taxes(d)
     d.posting_date = posting_date
     if str(reason or '').strip():
@@ -653,7 +767,10 @@ def native_guard(doc, method=None):
         if row.get('lotus_purchase_kind'):
             item_kind(frappe.get_cached_doc('Item', row.item_code), row.lotus_purchase_kind)
         if doc.doctype == 'Purchase Order' and row.get('supplier_quotation'):
-            q = document('Supplier Quotation',row.supplier_quotation,doc.company)
+            # An integrity check, run for whoever saves or approves the order (the director need not open quotes).
+            q = frappe.get_doc('Supplier Quotation', row.supplier_quotation)
+            if q.company != doc.company:
+                frappe.throw('Báo giá nguồn không thuộc công ty của đơn mua.')
             source = next((r for r in q.items if r.name==row.supplier_quotation_item),None)
             if q.docstatus!=1 or q.supplier!=doc.supplier or not source or source.item_code!=row.item_code:
                 frappe.throw('Dòng báo giá nguồn không khớp mặt hàng / nhà cung cấp / công ty.')
@@ -692,18 +809,21 @@ def receipts(company):
         return []
     from lotus_farm import purchase_status
     rows = frappe.get_list('Purchase Receipt', filters={'company':company},
-        fields=['name','supplier','supplier_name','posting_date','base_grand_total','docstatus','modified','is_return','per_billed','return_against'],
+        fields=['name','supplier','supplier_name','posting_date','base_grand_total','docstatus','modified','is_return','per_billed','per_returned','return_against'],
         limit_page_length=0, order_by='posting_date desc, name desc')
     return [dict(name=d.name, supplier=d.supplier, supplier_name=d.supplier_name or d.supplier, date=str(d.posting_date), amount=flt(d.base_grand_total),
         docstatus=d.docstatus, status=purchase_status.receipt_state(d.docstatus), modified=str(d.modified), is_return=d.is_return,
         kind='Trả hàng' if d.is_return else 'Nhập theo đơn', return_against=d.return_against or '',
-        billing=purchase_status.billing_state(d.per_billed) if d.docstatus == 1 and not d.is_return else '') for d in rows]
+        billing=purchase_status.billing_state(d.per_billed, per_returned=d.per_returned) if d.docstatus == 1 and not d.is_return else '') for d in rows]
 
 
 @frappe.whitelist()
 def receipt(name):
     d = document('Purchase Receipt', name)
     from lotus_farm.warehouse_planning import receipt_totals, receipt_extras
+    from lotus_farm.finance.invoice_cost import returned_qty_map
+    # Summed over every submitted return, in the line's own unit (ERPNext 16 leaves returned_qty at 0 for them).
+    returned = returned_qty_map(d.name) if d.docstatus == 1 and not d.is_return else {}
     return dict(name=d.name, doctype=d.doctype, company=d.company, supplier=d.supplier,
         supplier_name=d.supplier_name or d.supplier, date=str(d.posting_date), docstatus=d.docstatus,
         currency=frappe.get_cached_value('Company', d.company, 'default_currency'),
@@ -712,7 +832,7 @@ def receipt(name):
             rate=flt(r.rate),amount=flt(r.amount),kind=r.get('lotus_purchase_kind'),warehouse=r.warehouse,
             vat_code=r.get('lotus_line_vat'),freight=flt(r.get('lotus_line_freight')),valuation_rate=flt(r.valuation_rate),
             # Already sent back to the supplier, in the line's own unit: what a new return may still take.
-            returned_qty=flt(r.get('returned_qty'))/(flt(r.conversion_factor) or 1),
+            returned_qty=flt(returned.get(r.name)),
             order=r.purchase_order) for r in d.items])
 
 

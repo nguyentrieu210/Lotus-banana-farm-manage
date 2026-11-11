@@ -19,7 +19,9 @@ const BUCKETS=['current','d1_30','d31_60','d61_90','d90_plus','no_due']
 const aging=computed(()=>BUCKETS.map(key=>({key,label:data.value?.aging_labels?.[key]||key,amount:data.value?.aging?.[key]||0})).filter(b=>b.amount>0.5))
 const overdue=computed(()=>['d1_30','d31_60','d61_90','d90_plus'].reduce((sum,key)=>sum+(data.value?.aging?.[key]||0),0))
 const cards=computed(()=>data.value?[{label:'Phải trả',value:data.value.owed},{label:'Trong đó quá hạn',value:overdue.value},{label:'Đến hạn trong 7 ngày',value:data.value.due_7d},
- {label:'Tạm ứng cho NCC',value:data.value.advance},{label:'Hàng đã nhận, chưa có hóa đơn',value:data.value.unbilled}]:[])
+ {label:'Tạm ứng cho NCC',value:data.value.advance},{label:'Hàng đã nhận, chưa có hóa đơn',value:data.value.unbilled_waiting??data.value.unbilled},
+ // Goods sent back after their invoice: the supplier owes them until the credit note (kept apart from goods waiting).
+ ...(data.value.unbilled_claims>0.5?[{label:'Hàng trả sau hóa đơn, chờ hóa đơn điều chỉnh',value:data.value.unbilled_claims}]:[])]:[])
 const late=s=>['d1_30','d31_60','d61_90','d90_plus'].reduce((sum,key)=>sum+(s.aging?.[key]||0),0)
 const dueRows=computed(()=>(data.value?.rows||[]).filter(r=>r.due_soon).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))))
 async function load(){
@@ -44,7 +46,7 @@ defineExpose({reload:load,pay})
   <p v-if="busy&&!data" class="lotus-form-note" role="status">Đang tải…</p>
   <template v-if="data">
    <dl class="payables-view__cards"><div v-for="card in cards" :key="card.label"><dt>{{card.label}}</dt><dd>{{money(card.value)}}</dd></div></dl>
-   <p class="lotus-form-note" role="status">Số tại ngày {{shortDate(data.as_of)}} · {{data.ledger_matches?'khớp sổ cái tài khoản phải trả':'lệch sổ cái tài khoản phải trả ('+money(data.ledger_balance)+')'}}<template v-if="data.unbilled_matches!=null"> · hàng chưa có hóa đơn {{data.unbilled_matches?'khớp':'lệch'}} sổ cái 3388 ({{money(data.unbilled_ledger)}})</template>.</p>
+   <p class="lotus-form-note" role="status">Số tại ngày {{shortDate(data.as_of)}} · {{data.ledger_matches?'khớp sổ cái tài khoản phải trả':'lệch sổ cái tài khoản phải trả ('+money(data.ledger_balance)+')'}}<template v-if="data.unbilled_matches!=null"> · hàng chưa có hóa đơn {{data.unbilled_matches?'khớp':'lệch'}} sổ cái 3388 + 33881 ({{money(data.unbilled_ledger)}})</template>.</p>
    <section v-if="aging.length" aria-label="Tuổi nợ">
     <h3>Tuổi nợ theo hạn trả</h3>
     <ul class="payables-view__aging"><li v-for="b in aging" :key="b.key" :class="'is-'+b.key"><span>{{b.label}}</span><b>{{money(b.amount)}}</b></li></ul>
@@ -59,7 +61,7 @@ defineExpose({reload:load,pay})
     <ul class="payables-view__list">
      <li v-for="s in data.suppliers||[]" :key="s.supplier">
       <div><strong>{{s.supplier_name}}</strong>
-       <small>Phải trả {{money(s.invoiced)}}<template v-if="late(s)>0.5"> · quá hạn {{money(late(s))}}</template><template v-if="s.due_7d>0.5"> · đến hạn 7 ngày {{money(s.due_7d)}}</template><template v-if="s.advance>0.5"> · tạm ứng {{money(s.advance)}}</template><template v-if="s.unbilled>0.5"> · hàng chưa có hóa đơn {{money(s.unbilled)}}</template></small></div>
+       <small>Phải trả {{money(s.invoiced)}}<template v-if="late(s)>0.5"> · quá hạn {{money(late(s))}}</template><template v-if="s.due_7d>0.5"> · đến hạn 7 ngày {{money(s.due_7d)}}</template><template v-if="s.advance>0.5"> · tạm ứng {{money(s.advance)}}</template><template v-if="s.unbilled>0.5"> · hàng chưa có hóa đơn {{money(s.unbilled)}}</template><template v-if="s.claim>0.5"> · hàng trả sau hóa đơn, chờ hóa đơn điều chỉnh {{money(s.claim)}}</template></small></div>
       <b>{{money(s.net)}}</b>
       <span class="payables-view__actions"><component :is="button" type="button" variant="outline" size="sm" @click="openStatement(s)">Sổ chi tiết</component>
        <component :is="button" v-if="canPay" type="button" size="sm" @click="pay(s)">Trả tiền</component></span>

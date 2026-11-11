@@ -103,22 +103,41 @@ def receipts_to_bill(supplier=None):
         filters['supplier'] = supplier
     rows = frappe.get_all('Purchase Receipt', filters=filters, fields=['name', 'supplier', 'supplier_name', 'posting_date', 'grand_total', 'per_billed'],
                           order_by='posting_date, name', limit_page_length=500)
+    from erpnext.stock.doctype.purchase_receipt.purchase_receipt import get_invoiced_qty_map
+    from lotus_farm.finance.invoice_cost import returned_qty_map
+    rejected_billable = frappe.db.get_single_value('Buying Settings', 'bill_for_rejected_quantity_in_purchase_invoice')
     for r in rows:
-        r['to_bill'] = round(flt(r.grand_total) * (100 - flt(r.per_billed)) / 100)
         r['posting_date'] = str(r.posting_date)
         r['doctype'] = 'Purchase Receipt'
         r['source_type'] = 'Nhận theo đơn mua'
-        from erpnext.stock.doctype.purchase_receipt.purchase_receipt import get_invoiced_qty_map, get_returned_qty_map
-        invoiced, returned = get_invoiced_qty_map(r.name), get_returned_qty_map(r.name)
-        rejected_billable = frappe.db.get_single_value('Buying Settings', 'bill_for_rejected_quantity_in_purchase_invoice')
+        invoiced, returned = get_invoiced_qty_map(r.name), returned_qty_map(r.name)
         receipt = frappe.get_doc('Purchase Receipt', r.name)
         r['unbilled_items'] = []
+        # The amount still to invoice is the receipt total for the quantities waiting (received − returned − invoiced):
+        # goods returned are not invoiced (the receipt total still includes them). Each line weighs what it brings to the
+        # total, its own VAT and freight included, so a waiting line does not carry other lines' VAT (third review).
+        conversion = flt(receipt.conversion_rate) or 1
+
+        def own(line):
+            try:
+                rate = rules.vat_rate(line.get('lotus_line_vat') or 'KCT', receipt.posting_date)
+            except ValueError:
+                rate = 0.0
+            return abs(flt(line.base_net_amount)) * (1 + rate) + abs(flt(line.get('lotus_line_freight'))) * conversion
+
+        weights = {l.name: own(l) for l in receipt.items}
+        weight_total = sum(weights.values())
+        qty_total = sum(flt(l.qty) for l in receipt.items)
+        to_bill = 0.0
         for line in receipt.items:
             quantity = flt(line.received_qty if rejected_billable else line.qty) - flt(invoiced.get(line.name))
             if not rejected_billable:
                 quantity -= max(0, flt(returned.get(line.name)) - flt(line.rejected_qty))
             if quantity > .000001:
                 r['unbilled_items'].append(dict(item_name=line.item_name, qty=quantity, uom=line.uom))
+                share = weights[line.name] / weight_total if weight_total else (flt(line.qty) / qty_total if qty_total else 0)
+                to_bill += flt(r.grand_total) * share * quantity / flt(line.qty) if flt(line.qty) else 0
+        r['to_bill'] = round(to_bill)
     if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
         se_filters = {'docstatus': 1, 'company': setup.company(), 'stock_entry_type': 'Material Receipt', 'lotus_receipt_reason': 'Purchase',
                       'lotus_purchase_invoice': ['in', ['', None]]}

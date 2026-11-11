@@ -349,9 +349,18 @@ def document_hook(doc, method=None):
         event = "submitted"
     else:
         return
-    frappe.enqueue("lotus_farm.push_notifications.dispatch_document",
-                   queue="short", enqueue_after_commit=True,
-                   doctype=doc.doctype, name=doc.name, push_event=event)
+    # A notification is a courtesy: a full queue or a stopped Redis must never undo the submit or the signature that
+    # triggered it (same class as bug B1). Seen 11/11/2026 on the test stack, whose queue had filled up: Frappe's queue
+    # size check raised a bare PermissionError for anyone but a System Manager, and the director could not sign.
+    messages = len(getattr(frappe.local, "message_log", None) or [])
+    try:
+        frappe.enqueue("lotus_farm.push_notifications.dispatch_document",
+                       queue="short", enqueue_after_commit=True,
+                       doctype=doc.doctype, name=doc.name, push_event=event)
+    except Exception:
+        if getattr(frappe.local, "message_log", None):
+            del frappe.local.message_log[messages:]
+        frappe.log_error(frappe.get_traceback(), "Lotus: thông báo chứng từ")
 
 def allow_hr_notifications():
     """One-time idempotent metadata update; preserves all existing push devices and alerts."""

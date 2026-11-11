@@ -187,8 +187,9 @@ def _chosen_quote(line,company,remaining):
     factor=flt(chosen.conversion_factor) or 1
     qty=min(remaining/factor,flt(chosen.qty))
     freight=flt(chosen.get('lotus_line_freight'))*qty/flt(chosen.qty) if flt(chosen.qty) else 0
+    from lotus_farm.procurement import vat_now  # a 2026 quote at 8 % is ordered at 10 % from 1/1/2027
     return dict(supplier=quote.supplier,supplier_name=frappe.get_cached_value('Supplier',quote.supplier,'supplier_name') or quote.supplier,
-                rate=flt(chosen.rate),uom=chosen.uom,qty=qty,vat_code=chosen.get('lotus_line_vat') or 'KCT',freight=freight,
+                rate=flt(chosen.rate),uom=chosen.uom,qty=qty,vat_code=vat_now(chosen.get('lotus_line_vat')),freight=freight,
                 reason=line.get('lotus_selection_reason') or '',expected_date=str(quote.get('lotus_delivery_date') or ''),
                 # A draft quote is confirmed when the order is created from the comparison; an order line may only cite a confirmed one.
                 **(dict(supplier_quotation=quote.name,supplier_quotation_item=chosen.name) if quote.docstatus==1 else {}))

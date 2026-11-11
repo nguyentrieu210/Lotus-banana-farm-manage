@@ -56,7 +56,9 @@ def overview(on_date=None):
     tiles = dict(cash=_balance(company, [m['cash']], on_date), bank=_balance(company, [m['bank']], on_date),
                  payable_supplier=-_balance(company, [m['payable_supplier']], on_date), payable_employee=-_balance(company, [m['payable_employee']], on_date),
                  insurance=-_balance(company, [m['social_insurance'], m['health_insurance'], m['unemployment_insurance']], on_date),
-                 received_not_billed=-_balance(company, [m['received_not_billed']], on_date), month_cost=flt(cost),
+                 # Household VAT of goods waiting for their invoice sits on 33881 next to 3388 (spec 003, R16).
+                 received_not_billed=-_balance(company, [a for a in (m['received_not_billed'], setup.valuation_tax_account(company)) if a], on_date),
+                 month_cost=flt(cost),
                  receivable=_balance(company, [m.get('receivable_customer')], on_date))
     waiting = pending()
     return dict(company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'), on_date=str(on_date),
@@ -286,11 +288,11 @@ def reconciliation(on_date=None):
         by_account[s.account or default_stock] = by_account.get(s.account or default_stock, 0) + flt(s.value)
     for account, value in sorted(by_account.items()):
         checks.append(dict(label='Giá trị kho (sổ kho) so với tài khoản ' + str(account), ledger=_balance(company, [account], on_date), source=value))
-    from lotus_farm.finance.payments import receipts_to_bill
-    # Historical reconciliation must exclude receipts after the selected date.
-    # An invoice linked to a receipt but not posted as of that date does not
-    # clear the underlying 3388 outstanding balance.
-    receipt_value = sum(flt(r['to_bill']) for r in receipts_to_bill() if str(r['posting_date'])[:10] <= str(on_date))
+    from lotus_farm import procurement_queries
+    # Goods received and not invoiced on the date, the same model as Mua hàng › Công nợ (spec 003, T082): what receipts,
+    # returns, invoices and Lotus's cost adjustments leave on 3388 + 33881 (household VAT waits on 33881). Mua nhanh
+    # entries whose invoice is missing, a draft, cancelled or dated later are counted there too.
+    waiting = procurement_queries.unbilled(company, on_date)
     linked_without_posting = []
     if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
         linked_without_posting = frappe.db.sql("""select se.name, se.total_incoming_value, se.lotus_purchase_invoice,
@@ -301,9 +303,8 @@ def reconciliation(on_date=None):
                 and ifnull(se.lotus_purchase_invoice,'')!=''
                 and (pi.name is null or pi.docstatus!=1 or pi.posting_date>%s)""",
                 (company, on_date, on_date), as_dict=True)
-    receipt_value += sum(flt(r.total_incoming_value) for r in linked_without_posting)
-    checks.append(dict(label='Hàng về chưa có hóa đơn so với phiếu nhận chưa lập hóa đơn',
-                       ledger=-_balance(company, [m['received_not_billed']], on_date), source=receipt_value))
+    checks.append(dict(label='Hàng về chưa có hóa đơn (3388 + 33881) so với phiếu nhận chưa lập hóa đơn',
+                       ledger=flt(waiting['ledger']), source=flt(waiting['total'])))
     for r in linked_without_posting:
         # Future posted invoices are normal in a historical report.
         # Missing, draft or cancelled links need explicit accountant review.

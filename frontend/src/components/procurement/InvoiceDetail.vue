@@ -17,6 +17,16 @@ const d=ref(null),working=ref(false),cancelling=ref(false),reason=ref('')
 const button=computed(()=>props.mobile?LotusMobileButton:Button)
 const link=computed(()=>props.mobile?'a':Button)
 const fmt=value=>Number(value||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
+const receiptFiles=computed(()=>(d.value?.files||[]).filter(f=>f.attached_to_name!==d.value.name))
+// What the invoice's price and VAT differences did (finance.invoice_cost.adjustments_of): into the cost of the goods,
+// VAT moved between 3388 and 33881 (the cost does not change), or a cost of the period when the receipt's books were
+// closed (or the line is an asset).
+function adjustment(row){
+ const amount=Number(row.amount)||0,value=money(Math.abs(amount),d.value?.currency),way=amount<0?'giảm ':'tăng '
+ if(row.kind==='vat')return (amount<0?'Thuế GTGT chênh chuyển từ 33881 về 3388':'Thuế GTGT chênh chuyển từ 3388 sang 33881')+' (giá vốn không đổi): '+value
+ if(row.kind==='expense')return 'Chênh lệch ghi vào chi phí kỳ này (kỳ của phiếu nhận đã khóa, hoặc tài sản cố định): '+way+value
+ return 'Chênh lệch vào giá vốn hàng nhập: '+way+value
+}
 const facts=computed(()=>d.value?[d.value.is_return?'Hóa đơn điều chỉnh trả hàng':'Hóa đơn nhà cung cấp',d.value.status,d.value.supplier_name,
  [d.value.series,d.value.bill_no].filter(Boolean).join(' · '),d.value.bill_date?'ngày '+shortDate(d.value.bill_date):'',d.value.due_date?'hạn trả '+shortDate(d.value.due_date):''].filter(Boolean).join(' · '):'')
 async function load(){
@@ -53,7 +63,9 @@ defineExpose({reload:load})
   <p v-if="d.rounding_adjustment" class="lotus-form-note" role="status">Ghi theo tổng in; phần làm tròn {{money(d.rounding_adjustment,d.currency)}} đã tính vào chi phí.</p>
   <p v-for="row in d.settlements" :key="row.doctype+row.name" class="lotus-form-note">{{row.kind}} <component :is="button" type="button" variant="link" @click="emit('open',row,row.doctype==='Purchase Invoice'?'invoices':'payments')">{{row.name}}</component> · {{money(row.amount,d.currency)}}</p>
   <StockEvidence doctype="Purchase Invoice" :name="d.name" :mobile="mobile" :readonly="d.docstatus===2" title="File gốc của hóa đơn"/>
-  <p v-if="d.files.some(f=>f.attached_to_name!==d.name)" class="lotus-form-note">File ở phiếu nhận: <a v-for="file in d.files.filter(f=>f.attached_to_name!==d.name)" :key="file.name" :href="file.file_url" target="_blank" rel="noopener">{{file.file_name}} </a></p>
+  <p v-for="row in d.cost_adjustments||[]" :key="row.name" class="lotus-form-note">{{adjustment(row)}} ({{row.name}})<template v-if="row.description"> · {{row.description}}</template></p>
+  <!-- A trailing space inside the link is dropped by the template compiler: the separator is its own text. -->
+  <p v-if="receiptFiles.length" class="lotus-form-note">File ở phiếu nhận: <template v-for="(file,index) in receiptFiles" :key="file.name">{{index?' · ':''}}<a :href="file.file_url" target="_blank" rel="noopener">{{file.file_name}}</a></template></p>
 
   <div v-if="cancelling" class="invoice-detail__form">
    <LotusField v-model="reason" :mobile="mobile" label="Lý do hủy hóa đơn" type="textarea"/>

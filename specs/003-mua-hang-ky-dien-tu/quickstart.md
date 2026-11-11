@@ -145,10 +145,22 @@ Dùng 6 tài khoản thử, có ảnh chữ ký và ký nháy:
   - bật thiết lập giá vốn theo hóa đơn.
 
   Ghi lại số đơn bị trả về.
+- Trên site thật, ngay trước khi nâng cấp, tìm phiếu nhận do bản cũ ghi phí vận chuyển của hộ kinh doanh vào 33881 (research.md R16). Danh sách rỗng thì không cần làm gì thêm. Nếu có phiếu, lập hóa đơn cho các phiếu đó trước khi nâng cấp.
+
+  ```sql
+  select pr.name, pr.posting_date, pr.per_billed from `tabPurchase Receipt` pr
+    join `tabPurchase Taxes and Charges` t on t.parent=pr.name and t.parenttype='Purchase Receipt'
+   where pr.docstatus=1 and t.charge_type='Actual' and t.category in ('Valuation','Valuation and Total')
+     and t.account_head like '33881%';
+  ```
+
+  Bản sao ngày 10/11/2026 không có phiếu nào như vậy.
+- Gộp `main` mới nhất trước khi đưa lên, theo `merge-plan.md`. `main` (737f686) đã xóa 79 bảng đời cũ. Chạy thử gộp có 13 tệp xung đột; cách giải từng tệp đã chuẩn bị và kiểm lại.
+- Build lại giao diện (`npm run build` trong `frontend/`, chạy trên VPS) sau khi gộp, rồi commit: bản dựng trong `lotus_farm/public/frontend` đang là của `main`.
 - Thêm mục mới ở đầu `frontend/src/release-notes.js`.
 - Chỉ commit, đẩy và triển khai khi chủ vườn yêu cầu, theo quy trình phát hành trong bộ nhớ dự án (sao lưu, build từ ảnh đang chạy, migrate, smoke test).
 
-## 5. Kết quả chạy (T106, 10/11/2026)
+## 5. Kết quả chạy (T106, T116: 10/11/2026; T140: 11/11/2026)
 
 Nơi chạy: VPS, bộ thử riêng `lotus-003-proc` (CSDL riêng), image `lotus-release:40f8330` đang chạy thật, code nhánh 003 đã gộp `main`. Bản sao site thật `mua.test` dựng từ bản sao lưu `20261110_203110` của site `frontend`, đã bỏ khóa gửi thông báo đẩy, tắt email và lịch chạy. Không đụng site thật.
 
@@ -156,16 +168,18 @@ Nơi chạy: VPS, bộ thử riêng `lotus-003-proc` (CSDL riêng), image `lotus
 
 | Bộ | Site | Kết quả |
 |---|---|---|
-| Test giao diện | — | 643/643 trên bản gộp |
-| `verify_signing.py` | bản sao site thật | qua |
+| Test giao diện | — | 650/650. Các ca thêm vào:<br>• lớp và kiểu chữ của hộp thoại điện thoại;<br>• hộp thoại mang theo luật điện thoại của màn mua hàng;<br>• các loại lỗi tải tệp;<br>• danh sách phiếu nhận gửi dạng JSON;<br>• nhãn từng loại điều chỉnh của hóa đơn;<br>• thuế suất theo ngày hóa đơn;<br>• công nợ tách khoản NCC phải hoàn. |
+| `verify_signing.py` | bản sao site thật | qua (đơn mẫu chép không mang theo liên kết đề xuất đã đặt hết) |
 | `verify_purchase_proposal.py` | bản sao site thật | qua |
 | `verify_vat_in_cost.py` | bản sao site thật | 24/24 |
 | `verify_sign_notify.py` (lỗi B1) | bản sao site thật | qua |
-| `verify_procurement.py` | procurement.test | 23/23 |
-| `verify_procurement_complete.py` | procurement.test | 34/34 |
-| `verify_purchase_flow.py` | procurement.test | 22/22 |
+| `verify_procurement.py` | procurement.test | 51/51. test_24–test_32 (giá vốn theo hóa đơn, R16): hộ kinh doanh, hàng trả trước và sau hóa đơn, khác giá, khác thuế suất, phiếu nhận không thuế, dịch vụ trên đơn kèm phí vận chuyển, kỳ đã khóa, "đã có hóa đơn" theo giá trị, tài sản, khớp sổ ở mọi ngày chốt, chặn hủy riêng. test_33–test_42 (rà soát lần 2): tài sản tách chiếc, phí vận chuyển theo dòng, trả hết sau hóa đơn, hóa đơn điều chỉnh theo hóa đơn gốc, Period Closing Voucher, tạm ứng theo đơn, thuế 8% hết hạn, làm tròn hóa đơn khấu trừ, Buying Settings, hóa đơn điều chỉnh khi kỳ đã khóa. test_43–test_51 (rà soát lần 3): đơn đã đóng, tạm ứng của tháng đã kết chuyển, khoản NCC phải hoàn khi kỳ đã khóa, hủy hóa đơn không chênh lệch, làm tròn "đã có hóa đơn", bổ sung giá Mua nhanh và đối chiếu Tài chính, tạm ứng theo dòng, tài sản hóa đơn trước khi thuế 8% hết hạn, các loại khóa sổ |
+| `verify_procurement_complete.py` | procurement.test | 62/62 (11 ca riêng, cộng 51 ca của `verify_procurement` mà nó nạp lại) |
+| `verify_sales.py` (chép, đổi site sang bản sao, tạm đặt thuế khấu trừ trong giao dịch) | bản sao site thật | Qua phần bán hàng, thu tiền, hóa đơn dịch vụ thuế 10% (Nợ 1331), bảng kê mua vào theo thuế suất dòng, xuất Excel, đối chiếu phải thu. Phép đối chiếu bảng kê với TK 1331 lệch vì tháng 11 của bản sao đã có hóa đơn hộ kinh doanh (từ 04/11). Đó là do đổi chế độ thuế giữa tháng, không phải lỗi; ở chế độ hộ kinh doanh, phép này nay hiện dòng thông tin. |
+| `verify_finance.py` | bản sao site thật | Dừng ở bước 1 (xem trước sơ đồ tài khoản TT133 → TT99). Công cụ không có tài khoản để chuyển số dư 33881 (thuế chờ hóa đơn của các phiếu thử). Bước này dùng một lần khi chuyển sơ đồ tài khoản, ngoài phạm vi spec 003. Phép đối chiếu "hàng về chưa có hóa đơn" được kiểm ở test_48. |
+| `verify_purchase_flow.py` | procurement.test | 23/23 (thêm test_23: đề xuất giữ giá đã gõ) |
 | `verify_procurement_concurrency.py` | procurement.test | 4/4 |
-| Test đơn vị Python | — | 339, lỗi 3 ca cũ ở `test_warehouse_guards` (có từ trước spec 003) |
+| Test đơn vị Python | — | 340, lỗi 3 ca cũ ở `test_warehouse_guards` (có từ trước spec 003) |
 | Trình duyệt thật (Chromium) 1440, 844, 390, 320 px | bản sao site thật | 32 lượt mở, không tràn ngang, không lỗi trang (xem `checklists/ui-audit.md`) |
 
 ### Kịch bản mục 3 và ca kiểm tương ứng
@@ -184,11 +198,93 @@ Nơi chạy: VPS, bộ thử riêng `lotus-003-proc` (CSDL riêng), image `lotus
 | US5.1–5 hóa đơn chờ nhập, thuế 5% và 8%, lệch giá có lý do, chặn trùng giữa các đường, chặn hủy khi đã chi | `verify_procurement` 20–23, `verify_vat_in_cost` | qua |
 | US6.1–3 tuổi nợ, hàng chưa có hóa đơn, phiếu chi nhiều hóa đơn và tạm ứng, sổ chi tiết, biên bản đối chiếu, đảo phiếu | `verify_procurement_complete` 30 | qua |
 
+### Kịch bản mục 3 thao tác thật trên trình duyệt (T116)
+
+Các bước ở mục 3 được làm lại bằng Chromium trên VPS, với bản sao site thật `mua.test` (`tools/test_site_copy_live.sh`). Mỗi vai trò đăng nhập bằng tài khoản riêng:
+- tổ trưởng, trưởng bộ phận, mua hàng, kế toán, kế toán trưởng, giám đốc, thủ kho;
+- tài khoản do `tools/uat-003/uat_setup.py` tạo, chỉ trên bản sao.
+
+Thao tác trên điện thoại chạy ở 390×844, có chế độ chạm; thao tác trên máy tính ở 1440 px. Ảnh chụp từng bước nằm ở `/opt/lotus-003-test/browser/uat/` trên VPS.
+
+| Kịch bản | Bước | Kết quả cuối |
+|---|---|---|
+| `tools/uat-003/uat-1-signing.cjs`: US1, US2 | 16 | 16/16 |
+| `uat-3-orders.cjs`: US3 | 11 | 11/11 |
+| `uat-4-receiving.cjs`: US4 (gồm mạng rớt lúc xác nhận, hai người nhận cùng lúc, trả hàng trong app) | 7 | 7/7 |
+| `uat-5-invoices.cjs`: US5, US6 (hóa đơn hai phiếu nhận khác giá và thuế suất, 3388 và 33881 về 0, chặn trùng, hủy, công nợ, phiếu chi ký 3 bước, đối chiếu) | 11 | 11/11 |
+
+Bảng trên khớp cả ba lần chạy:
+- T127, sau T107–T128;
+- T140 (11/11/2026), sau vòng rà soát 2;
+- T148 (11/11/2026), sau vòng rà soát 3.
+
+Mỗi lần đều dựng lại giao diện và khởi động lại máy chủ thử trước khi chạy. uat-5 kiểm 33881 và 3388 về 0, tính cả bút toán chuyển thuế của hóa đơn. Tệp `.uat` (mật khẩu tài khoản thử) đã xóa sau lần chạy cuối; muốn chạy lại thì chạy `uat_setup.py` để tạo lại.
+
+Lần chạy đầu tìm ra các lỗi sau, đã sửa và chạy lại (chi tiết ở tasks.md T107–T115):
+- đề xuất mất giá đã gõ;
+- trên điện thoại không ký được vì hộp xác nhận bị che;
+- giám đốc không duyệt được đơn lập từ báo giá;
+- lập đơn trên điện thoại không mang NCC và giá đã chọn;
+- "In đơn mua" không mở bản PDF đã ký;
+- lỗi tải tệp hiện tên lỗi kỹ thuật;
+- biểu mẫu hóa đơn báo JSONDecodeError;
+- hóa đơn tính cả hàng đã trả;
+- 33881 còn tiền khi hóa đơn khác giá hoặc thuế suất;
+- tên file ở phiếu nhận dính liền nhau.
+
+Lần chạy lại T127 tìm thêm lỗi B6: khi hàng đợi nền đầy, giám đốc không ký được đề xuất. Lỗi đã sửa (T128).
+
+Hai vòng rà soát độc lập trên mã (11/11/2026) tìm thêm các lỗi ghi sổ. Mỗi vòng có năm người đọc, mỗi người một góc nhìn, và mỗi phát hiện có người tìm cách bác bỏ bằng mã ERPNext 16.
+
+Vòng 1 (sửa ở T117–T125):
+- hàng trả lại dồn chênh lệch vào 632;
+- hai phiếu bù trừ nhau làm mất bút toán;
+- phiếu nhận không thuế nhưng hóa đơn có thuế;
+- kỳ đã khóa;
+- dòng dịch vụ;
+- "đã có hóa đơn" theo giá trị;
+- khớp sổ ở mọi ngày chốt.
+
+Vòng 2 (36 phát hiện: 21 xác nhận, 1 có thể, 14 bác bỏ; sửa ở T129–T139):
+- tài sản tách chiếc bị tính thuế và phí hai lần;
+- thuế 8% hết hạn chặn nhập kho và chặn hóa đơn tài sản;
+- phí vận chuyển của dịch vụ vào hàng kho; phí chia theo giá trị thay vì theo dòng;
+- trả hết hoặc trả sau hóa đơn;
+- hóa đơn điều chỉnh không theo hóa đơn gốc;
+- Period Closing Voucher;
+- số chờ hóa đơn bỏ phần âm;
+- tạm ứng theo đơn trừ hai lần và chỉ kiểm ở một màn;
+- nhãn điều chỉnh, làm tròn hóa đơn khấu trừ;
+- hủy hóa đơn điều chỉnh;
+- thứ tự ghi phiếu chia.
+
+Vòng 3 (25 phát hiện, 24 xác nhận; sửa ở T141–T147):
+- hóa đơn trên phiếu nhận của đơn đã đóng;
+- tạm ứng của tháng đã kết chuyển;
+- đo đúng khoản NCC phải hoàn;
+- làm tròn "đã có hóa đơn" và "đã trả hết hàng";
+- đối chiếu Tài chính theo 3388 + 33881 (T082);
+- công nợ tách khoản NCC phải hoàn;
+- bổ sung giá Mua nhanh;
+- tạm ứng và "còn phải lập hóa đơn" theo dòng;
+- thuế 8% trên biểu mẫu, báo giá, đơn và tài sản;
+- bảng kê thuế GTGT.
+
+Phần lẻ đồng, phiếu nhận cũ ghi phí vào 33881 và chi phí nhận hàng của hàng trả lại được ghi ở research.md R16.
+
+Chạy lại: chép `tools/uat-003` vào `/opt/lotus-003-test/browser`. Chạy `uat_setup.py` và `uat_perm.py` trong container thử, ghi dòng JSON cuối vào `.uat` (quyền 600). Sau đó chạy `node uat-1-signing.cjs`, rồi lần lượt uat-3, uat-4, uat-5 theo đúng thứ tự, vì kịch bản sau dùng chứng từ của kịch bản trước. Xong việc thì xóa `.uat`.
+
 ### Mục 4 trên bản sao dữ liệu thật
 
 - Patch `return_unsigned_pending_orders`: đã chạy; site thật hiện không có đơn mua nào, nên không đơn nào bị trả về Nháp.
 - Patch `drop_signing_challenge`: đã chạy; DocType và bảng `Lotus Signing Challenge` không còn.
-- Thiết lập ERPNext sau migrate: `over_billing_allowance` = 100, `maintain_same_rate` = 0, giá vốn theo giá hóa đơn = 1.
+- Thiết lập ERPNext sau migrate:
+  - `over_billing_allowance` = 100;
+  - `maintain_same_rate` = 0;
+  - định giá lại theo giá hóa đơn của ERPNext = 0, vì Lotus tự ghi phần chênh theo từng hóa đơn (R16);
+  - tính hóa đơn cho hàng bị loại = 0.
+
+  Lần chạy đầu ở bước này để định giá lại = 1. Buổi thử kịch bản trên trình duyệt cho thấy cách đó không đủ (research.md R16).
 - Đối chiếu công nợ trên dữ liệu thật: sổ cái 331 khớp. "Hàng đã nhận chưa có hóa đơn" là 2.094.234.400 đ, sổ cái 3388 là 2.107.054.400 đ. Mọi phiếu nhập còn chờ hóa đơn khớp sổ cái từng đồng; phần lệch 12.820.000 đ gồm:
   - 4 bút toán ghi tay vào 3388 (ACC-JV-2026-00007, -00018, -00020, -00022; ghi chú SQ222-0xx), cộng 4.660.000 đ;
   - hóa đơn Mua nhanh ACC-PINV-2026-00018 (lập trước spec 003) xóa 3388 ít hơn phiếu nhập MAT-STE-2026-00029 là 8.160.000 đ.
@@ -197,4 +293,15 @@ Nơi chạy: VPS, bộ thử riêng `lotus-003-proc` (CSDL riêng), image `lotus
 
 ### Còn lại cho người dùng thật
 
-Những bước sau cần người cầm máy, máy không làm thay được: nhận thông báo đẩy trên điện thoại thật và bấm mở; quét QR trên bản in; mở email "Đến lượt bạn ký"; ngắt mạng giữa chừng trên điện thoại; và vòng nghiệm thu của 6 vai trò (SC-011).
+Kịch bản trên trình duyệt đã làm thay được một phần:
+- mở link trong email "Đến lượt bạn ký" trên máy tính và điện thoại;
+- mở trang `/verify/lotus` theo đường QR in trên phiếu;
+- mạng rớt đúng lúc xác nhận nhập kho.
+
+Những bước sau vẫn cần người cầm máy thật:
+- nhận thông báo đẩy trên điện thoại thật và bấm mở;
+- quét QR bằng camera trên bản in giấy A4, và xem bản in bằng mắt;
+- mất sóng thật trên điện thoại ngoài vườn;
+- vòng nghiệm thu của 6 vai trò thật (SC-011).
+
+Các bước này đã gom thành một phiếu theo từng vai trò, có ô đánh dấu, ở `checklists/acceptance.md`. Làm sau khi đưa lên site thật, với một lần mua nhỏ có thật.

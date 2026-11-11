@@ -127,7 +127,7 @@ defineExpose({reload:load})
 
   <div class="procurement-actions receipt-detail__actions">
    <component :is="button" v-if="d.can_submit" type="button" :disabled="working||waitsEvidence&&!evidenceReady" @click="confirm">{{d.is_return?'Xác nhận trả hàng':'Xác nhận nhập kho'}}</component>
-   <component :is="button" v-if="canInvoice&&d.docstatus===1&&!d.is_return&&d.billing!=='Đã có hóa đơn'" type="button" :disabled="working" @click="emit('invoice',d)">Lập hóa đơn</component>
+   <component :is="button" v-if="canInvoice&&d.docstatus===1&&!d.is_return&&!['Đã có hóa đơn','Đã trả hết hàng'].includes(d.billing)" type="button" :disabled="working" @click="emit('invoice',d)">Lập hóa đơn</component>
    <component :is="button" v-if="d.can_return" type="button" variant="outline" :disabled="working" @click="startReturn">Trả hàng</component>
    <component :is="button" v-if="d.can_cancel" type="button" variant="outline" :disabled="working" @click="toggle('cancel')">Hủy phiếu</component>
    <component :is="button" v-if="d.can_delete" type="button" variant="outline" :disabled="working" @click="remove">Xóa nháp</component>

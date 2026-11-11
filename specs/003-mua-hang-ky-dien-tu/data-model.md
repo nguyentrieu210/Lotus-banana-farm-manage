@@ -90,7 +90,29 @@ Các trường đang có và vẫn dùng:
 - Stock Entry Mua nhanh: `lotus_receipt_reason`, `lotus_supplier`, `lotus_purchase_invoice`, `lotus_einvoice_*`, `lotus_vat_in_cost`.
 - Trường ký nháy cũ trên Purchase Order: giữ dữ liệu, thôi dùng.
 
-Thiết lập ERPNext: Buying Settings `set_landed_cost_based_on_purchase_invoice_rate = 1`. Bật bằng patch, sau khi đã thử trên site test (R16).
+Thiết lập ERPNext (đặt trong `procurement_setup.install`, R16 sau buổi thử trên bản sao site thật 10/11/2026):
+- Buying Settings `set_landed_cost_based_on_purchase_invoice_rate = 0`;
+- `bill_for_rejected_quantity_in_purchase_invoice = 0`;
+- `maintain_same_rate = 0`;
+- Accounts Settings `over_billing_allowance = 100`.
+
+Thêm trường (chỉ đọc, không chép khi sao chứng từ):
+- Landed Cost Voucher và Journal Entry `lotus_purchase_invoice` (Link Purchase Invoice): hóa đơn mà phần chênh giá hoặc thuế được `finance/invoice_cost.py` đưa vào giá vốn (phiếu), chuyển từ 3388 sang 33881, hoặc ghi vào chi phí khi kỳ phiếu nhận đã khóa (bút toán).
+- Landed Cost Voucher `lotus_cost_receipt` (Link Purchase Receipt): phiếu chia của phiếu nhận. Phiếu chia làm hai việc: mỗi dòng hàng mang đúng phí vận chuyển của nó, và phần chênh được chia giữa hàng còn lại và hàng đã trả, theo số đã có hóa đơn.
+
+Phiếu và bút toán có các trường này chỉ đi cùng hóa đơn hoặc phiếu nhận nguồn (hook chặn hủy, sửa riêng). Buying Settings giữ tắt `set_landed_cost_based_on_purchase_invoice_rate` và `bill_for_rejected_quantity_in_purchase_invoice` (hook validate).
+
+Hộ kinh doanh:
+- phí vận chuyển của hàng kho và tài sản trên phiếu nhận và hóa đơn ghi vào 3388 ("Valuation and Total", `allocate_full_amount_to_stock_items`), không ghi 33881;
+- dòng dịch vụ không mang mẫu thuế 33881; thuế và phí vận chuyển của nó vào chi phí của dòng, giữ vườn/lô.
+
+Phiếu nhận:
+- `per_billed`: phần đã có hóa đơn trên phần còn giữ (nhận − trả), mỗi dòng theo giá trị. Bằng 100 chỉ khi mọi dòng có giá trị đã có hóa đơn đủ, nếu không thì tối đa 99,98;
+- `per_returned`: Lotus tự tính từ các phiếu trả, vì ERPNext 16 để bằng 0. Bằng 100 chỉ khi không còn giữ dòng nào, khi đó tình trạng là "Đã trả hết hàng".
+
+Đơn mua: `per_billed` tính theo số lượng đã đặt, mỗi dòng theo giá trị, cùng quy tắc 100 / 99,98.
+
+Dòng chứng từ được đánh số lại 1..n khi Lotus tách, bỏ hoặc thêm dòng (`procurement.renumber`).
 
 ## 3. Chuỗi ký
 
@@ -157,7 +179,7 @@ Quá hẹn giao là cờ riêng, không phải trạng thái.
 ### Phiếu nhận hàng
 
 - Trạng thái phiếu: Nháp → Đã nhập kho → Đã hủy.
-- Tình trạng hóa đơn, tính từ `per_billed` hoặc `lotus_purchase_invoice`: Chưa có hóa đơn, Có hóa đơn một phần, Đã có hóa đơn.
+- Tình trạng hóa đơn, tính từ `per_billed`, `per_returned` hoặc `lotus_purchase_invoice`: Chưa có hóa đơn, Có hóa đơn một phần, Đã có hóa đơn, Đã trả hết hàng.
 - Phiếu theo đơn chỉ submit được khi có `lotus_deliverer_name` + `lotus_deliverer_signature`, hoặc có `lotus_delivery_proof`.
 - Phiếu Mua nhanh luôn mang nhãn "Mua nhanh".
 

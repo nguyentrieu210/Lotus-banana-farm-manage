@@ -50,6 +50,11 @@ const problem=computed(()=>{
  return ''
 })
 const title=computed(()=>serviceOnly.value?'Hóa đơn dịch vụ':'Nhập hóa đơn · '+(source.value?.supplier_name||''))
+// A receipt line at a rate that ended before the invoice date takes the rate that followed (8 % → 10 % from 1/1/2027),
+// as the server does; a rate the accountant picked by hand is kept.
+const inForce=(code,day)=>{let c=String(code||'KCT');for(let i=0;i<5;i++){const end=source.value?.vat_ends?.[c];if(!end||!day||String(day)<=end.to)break;c=String(end.then)}return c}
+function followDate(){for(const row of lines.value){const next=inForce(row.receipt_vat,head.value.bill_date);if(row.vat_code===row.auto_vat)row.vat_code=next;row.auto_vat=next}}
+watch(()=>head.value.bill_date,followDate)
 const isImage=file=>/\.(jpe?g|png|webp)$/i.test(file?.file_url||'')
 const isPdf=file=>/\.pdf$/i.test(file?.file_url||'')
 
@@ -59,9 +64,11 @@ async function start(){
  if(serviceOnly.value){services.value=[{description:'',amount:'',vat_code:'KCT',cost:'admin'}];return}
  busy.value=true
  try{
-  source.value=await method('source',{receipts:props.receipts})
+  // A read goes as URL parameters: send the list as JSON, not as "A,B" (found on the live-site copy, 10/11/2026).
+  source.value=await method('source',{receipts:JSON.stringify(props.receipts)})
   head.value.supplier=source.value.supplier
-  lines.value=source.value.lines.map(r=>({...r,max_qty:r.qty,receipt_rate:r.rate,variance_reason:''}))
+  lines.value=source.value.lines.map(r=>({...r,max_qty:r.qty,receipt_rate:r.rate,variance_reason:'',receipt_vat:r.vat_code,auto_vat:r.vat_code}))
+  followDate()
   files.value=source.value.files||[];shown.value=files.value[0]||null
  }catch(e){error.value=e.message||String(e)}finally{busy.value=false}
 }

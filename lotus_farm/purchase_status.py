@@ -19,7 +19,8 @@ APPROVAL_PENDING, APPROVAL_RETURNED = 'Chờ duyệt', ('Từ chối', 'Bị tr�
 RECEIPT_DRAFT, RECEIPT_POSTED, RECEIPT_CANCELLED = 'Nháp', 'Đã nhập kho', 'Đã hủy'
 RECEIPT_STATES = (RECEIPT_DRAFT, RECEIPT_POSTED, RECEIPT_CANCELLED)
 BILL_NONE, BILL_PART, BILL_FULL = 'Chưa có hóa đơn', 'Có hóa đơn một phần', 'Đã có hóa đơn'
-BILLING_STATES = (BILL_NONE, BILL_PART, BILL_FULL)
+BILL_RETURNED = 'Đã trả hết hàng'  # nothing kept: no invoice to wait for (an invoice made before needs a credit note)
+BILLING_STATES = (BILL_NONE, BILL_PART, BILL_FULL, BILL_RETURNED)
 QUICK_PURCHASE = 'Mua nhanh'
 
 # Purchase Invoice
@@ -82,8 +83,11 @@ def receipt_state(docstatus):
     return {0: RECEIPT_DRAFT, 1: RECEIPT_POSTED, 2: RECEIPT_CANCELLED}.get(docstatus, RECEIPT_DRAFT)
 
 
-def billing_state(per_billed=0, invoiced=False):
-    """per_billed: ERPNext percentage on Purchase Receipt; invoiced: a Mua nhanh receipt linked to an invoice."""
+def billing_state(per_billed=0, invoiced=False, per_returned=0):
+    """per_billed: share of what the receipt keeps that is invoiced (finance.invoice_cost._receipt_billing); invoiced: a
+    Mua nhanh receipt linked to an invoice; per_returned: ERPNext percentage returned (100 = everything went back)."""
+    if _num(per_returned) >= 99.99:
+        return BILL_RETURNED
     if invoiced or _num(per_billed) >= 99.99:
         return BILL_FULL
     if _num(per_billed) > EPS:

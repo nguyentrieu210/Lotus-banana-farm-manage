@@ -476,6 +476,115 @@ description: "Task list: hoàn thiện mua hàng và ký điện tử (spec 003)
 - [x] T105 [P] Thêm mục mới ở đầu `frontend/src/release-notes.js`
 - [x] T106 Chạy toàn bộ quickstart.md trên `mua.test` và ghi kết quả
 
+### Sửa sau buổi chạy kịch bản trên trình duyệt với bản sao site thật (10/11/2026)
+
+Kịch bản mục 3 của quickstart.md được chạy bằng Chromium trên VPS (`mua.test`, từng vai trò một tài khoản; điện thoại 390 px). Các lỗi tìm ra và cách sửa:
+
+- [x] T107 [US2] Đề xuất giữ đơn giá người lập đã gõ khi ERPNext 16 có bảng giá mua mặc định. Trước đây giá 120.000 đ bị thay bằng 14.500 đ. Sửa: `purchase_flow.keep_proposal_prices`; kiểm: `verify_purchase_flow.py` test_23.
+- [x] T108 [US1] Trên điện thoại, hộp xác nhận ký nằm dưới tấm ký, nên không ký được. Sửa: `LotusMobileDialog` dùng `teleport="body"`; kiểm: `frontend/tests/mobile-dialog-layer.test.js`.
+- [x] T109 [US3] Giám đốc không duyệt được đơn lập từ báo giá. Sửa: vai trò duyệt mua được đọc Supplier Quotation; kiểm toàn vẹn báo giá không đi qua quyền người dùng. Kiểm: `verify_purchase_flow.py` test_15.
+- [x] T110 [US3] Trên điện thoại, "Lập đơn mua từ đề xuất" mang theo NCC và giá của báo giá đã chọn (`purchasing.requests`; test_13).
+- [x] T111 [US3] `/lotus/in-don-mua` mở bản PDF đã ký khi đơn đã duyệt, đúng như contract.
+- [x] T112 [P] Tệp tải lên bị hỏng thì báo lỗi bằng tiếng Việt, không còn hiện "PdfReadError" (`api.uploadFailure`; `frontend/tests/upload-failure.test.js`).
+- [x] T113 [US5] Biểu mẫu nhập hóa đơn báo "JSONDecodeError". Nguyên nhân: danh sách phiếu nhận gửi theo URL dạng "A,B". Sửa: gửi dạng JSON; máy chủ nhận cả hai dạng. Kiểm: `invoices-payables.mount.test.js`, `verify_procurement.py` test_20.
+- [x] T114 [US5] R16 (xem research.md):
+  - hóa đơn không tính lại hàng đã trả;
+  - phần chênh giá và thuế của từng hóa đơn vào giá vốn bằng Landed Cost Voucher (`finance/invoice_cost.py`);
+  - tắt hai thiết lập ERPNext;
+  - hộ kinh doanh: phí vận chuyển ghi 3388; thuế dòng dịch vụ vào chi phí của dòng;
+  - "đã có hóa đơn" tính theo số lượng; "hàng chưa có hóa đơn" tính theo đơn giá phiếu nhận.
+
+  Kiểm: `verify_procurement.py` test_24.
+- [x] T115 [US5] Chi tiết hóa đơn: tách rõ tên các file ở phiếu nhận (trước đây dính liền nhau) và hiện các phiếu điều chỉnh giá vốn.
+- [x] T116 Chạy lại kịch bản trình duyệt uat-1, 3, 4, 5 trên `mua.test` sau các sửa trên (16/16, 11/11, 7/7, 11/11), và ghi kết quả vào quickstart.md mục 5. Kịch bản nằm ở `tools/uat-003/`.
+
+### Sửa sau rà soát độc lập (11/11/2026)
+
+Năm người rà soát đọc phần thay đổi T107–T116, mỗi người một góc nhìn: số liệu phiếu điều chỉnh, vòng đời và cài đặt, thuế hộ kinh doanh, truy vấn và giao diện, độ đủ của test. Mỗi phát hiện được một hoặc hai người khác tìm cách bác bỏ bằng mã ERPNext 16 thật. Có 39 phát hiện được xác nhận, gộp lại thành các việc sau:
+
+- [x] T117 [US5] Hàng trả lại mang một phần chênh giá ra khỏi kho và dồn vào 632. Sửa: chia lại phần chênh giữa dòng nhận và dòng trả (`invoice_cost.rebalance`, hook trả hàng và hủy trả).
+- [x] T118 [US5] Hai phiếu điều chỉnh bù trừ nhau trên 3388 và 33881 làm ERPNext bỏ qua cả hai bút toán. Sửa: phiếu chỉ ghi trên 3388; phần thuế chuyển sang 33881 bằng bút toán ngày hóa đơn.
+- [x] T119 [US5] Phiếu nhận không thuế nhưng hóa đơn có thuế: ERPNext tự ghi thuế vào 3388. Sửa: bỏ qua bước chuyển thuế cho những dòng này.
+- [x] T120 [US5] Kỳ phiếu nhận đã khóa:
+  - phần chênh ghi vào chi phí kỳ hóa đơn bằng bút toán, không sửa sổ kỳ cũ;
+  - hủy hóa đơn mà phiếu điều chỉnh rơi vào kỳ đã khóa thì bị chặn, kèm hướng dẫn lập hóa đơn điều chỉnh.
+- [x] T121 [US5] Hộ kinh doanh, dòng dịch vụ trên đơn, phiếu nhận, hóa đơn và hóa đơn điều chỉnh:
+  - thuế vào chi phí của dòng, giữ vườn/lô;
+  - phí vận chuyển tính trọn vào hàng kho (đổi ở T131: phí của dịch vụ vào chi phí dịch vụ);
+  - không còn lỗi "Item Wise Tax Details" khi có tài sản hoặc dịch vụ.
+- [x] T122 [US5] "Đã có hóa đơn" của phiếu nhận và đơn mua tính theo giá trị từng dòng, tính lại khi trả hoặc hủy trả. Tạm ứng theo đơn không vượt phần chưa có hóa đơn.
+- [x] T123 [US6] "Hàng đã nhận, chưa có hóa đơn":
+  - chỉ tính phần phiếu nhận đã ghi vào 3388/33881;
+  - khớp sổ ở mọi ngày chốt, kể cả khi hóa đơn đến sau ngày chốt.
+- [x] T124 [US5] Các trường hợp riêng:
+  - dòng tài sản khác giá hoặc thuế: bị chặn, kèm hướng dẫn;
+  - hóa đơn và phiếu trả lại: dùng thuế suất của ngày chứng từ gốc;
+  - cùng giá nhưng khác tỷ giá: để ERPNext ghi;
+  - phiếu điều chỉnh Lotus lập: không hủy hay sửa riêng được.
+- [x] T125 [P] Giao diện:
+  - hộp thoại điện thoại đưa ra ngoài shell vẫn giữ luật biểu mẫu (ô nhập 16px, không bị iPhone phóng to);
+  - lỗi tải tệp phân biệt tệp hỏng, hết phiên đăng nhập và lỗi máy chủ.
+- [x] T126 Ca kiểm `verify_procurement.py` test_24–test_32 cho từng việc trên; chạy lại toàn bộ bộ kiểm trên VPS.
+- [x] T127 Chạy lại kịch bản trình duyệt uat-1, 3, 4, 5 trên `mua.test` sau T117–T125 và T128, và ghi kết quả: 16/16, 11/11, 7/7, 11/11. Ở uat-5, 33881 và 3388 về 0.
+- [x] T128 [US1] Lỗi B6 (research.md): hàng đợi nền đầy làm giám đốc không ký được đề xuất. Sửa: `push_notifications.document_hook` không bao giờ làm hỏng submit, lỗi xếp hàng chỉ ghi nhật ký. Kiểm: `verify_sign_notify.py`. Kịch bản thử: ngày tính theo giờ Việt Nam; uat-5 đọc sổ có cả bút toán chuyển thuế.
+
+### Sửa sau rà soát độc lập lần 2 (11/11/2026)
+
+Năm người rà soát mới đọc phần thay đổi T117–T128, theo năm góc nhìn như lần 1. Có 36 phát hiện, mỗi phát hiện được người khác kiểm lại bằng mã ERPNext 16. Phần lớn là thật, gộp lại thành các việc sau (chi tiết ở research.md R16):
+
+- [x] T129 [US4] Dòng tài sản tách thành từng chiếc giữ số thứ tự cũ, nên ERPNext tính thuế và phí vận chuyển hai lần. Sửa: đánh số lại 1..n (`procurement.renumber`) ở phiếu nhận, phiếu trả, hóa đơn điều chỉnh và hóa đơn có dòng dịch vụ. Kiểm: test_33.
+- [x] T130 [US4] Mã thuế 8% hết hạn 31/12/2026:
+  - hàng đặt 8% nhận sau ngày đó bị chặn nhập kho; nay ghi 10% (`rules.vat_code_on`, `then` trong `vat_vn.json`);
+  - hóa đơn sau ngày đó cho dòng tài sản 8% không lập được; nay lấy 10%, phần thuế chênh ghi chi phí.
+
+  Kiểm: test_39, `tests/test_vat_rules.py`.
+- [x] T131 [US5] Phí vận chuyển của hộ kinh doanh theo từng dòng:
+  - phí của dòng dịch vụ vào chi phí dịch vụ, không vào hàng kho;
+  - mỗi dòng hàng mang đúng phí của nó, dù ERPNext chia theo giá trị (phiếu chia).
+
+  Kiểm: test_26, test_34.
+- [x] T132 [US5] Chia lại phần chênh theo số đã có hóa đơn, kể cả trả hết hoặc trả sau hóa đơn. Phiếu chia của phiếu nhận ghi trước phiếu trả. Kiểm: test_27, test_35.
+- [x] T133 [US5] Hóa đơn điều chỉnh đi theo cách hóa đơn gốc đã ghi. Kỳ khóa gồm cả Period Closing Voucher và Stock Closing Entry; trước đây hóa đơn không ghi sổ được. Kiểm: test_36, test_37.
+- [x] T134 [US5] "Đã có hóa đơn" đo trên phần còn giữ. Lotus tự cộng các lần trả: ERPNext 16 để `returned_qty`/`per_returned` bằng 0 và `get_returned_qty_map` chỉ giữ một lần trả. Phiếu trả hết ghi "Đã trả hết hàng" và không còn nút lập hóa đơn. "Còn phải lập hóa đơn" không tính hàng đã trả. Chi tiết phiếu nhận hiện đúng số đã trả.
+- [x] T135 [US6] "Hàng đã nhận, chưa có hóa đơn" có thể âm: hàng trả sau hóa đơn là khoản NCC phải hoàn, khớp 3388. Màn Công nợ ghi "chờ hóa đơn điều chỉnh". Kiểm: test_27, test_35.
+- [x] T136 [US6] Tạm ứng theo đơn mua:
+  - không trừ hai lần phần tạm ứng đã trừ vào hóa đơn;
+  - đơn đã có hóa đơn đủ thì không tạm ứng thêm, trên mọi đường chi;
+  - kiểm lại khi ký cuối (`order_advance_guard`);
+  - danh sách nguồn chi không còn hỏng khi có đơn đã đóng.
+
+  Kiểm: test_38.
+- [x] T137 [P] Chi tiết hóa đơn ghi rõ từng loại điều chỉnh: vào giá vốn, chuyển thuế giữa 3388 và 33881, hay ghi chi phí kỳ này, kèm chiều tăng/giảm. Thông báo chặn hủy riêng phiếu chia khác với phiếu của hóa đơn. Buying Settings không bật lại được hai thiết lập đã tắt. Kiểm: test_41, `invoices-payables.mount.test.js`.
+- [x] T138 [US5] Hóa đơn khấu trừ có dòng 0%: phần làm tròn ghi vào tài khoản làm tròn, vì trên 1331 thì ERPNext từ chối hóa đơn. Kiểm: test_40.
+- [x] T139 [US5] Kết luận cuối của rà soát lần 2 (phát hiện còn lại sau T129–T138):
+  - hủy hóa đơn hoặc hóa đơn điều chỉnh: phép chia không còn tính chứng từ đang hủy; mọi phiếu nhận của hóa đơn được chia lại, kể cả khi hóa đơn không có chênh lệch;
+  - phiếu chia ghi lần lượt từng chứng từ, phiếu nhận trước, chứng từ không đổi thì để yên. Phiếu trả vì thế được tính lại theo đơn giá cuối của phiếu nhận, không chờ job định giá lại hằng giờ;
+  - hóa đơn điều chỉnh cho hàng trả sau hóa đơn, khi kỳ của phiếu nhận đã khóa: Lotus từ chối và hướng dẫn mở lại kỳ. Trước đây Lotus ghi một khoản lãi giả và để treo 3388.
+
+  Kiểm: test_27 (hủy hóa đơn điều chỉnh), test_42.
+- [x] T140 Chạy lại toàn bộ bộ kiểm trên VPS và kịch bản trình duyệt uat-1, 3, 4, 5 trên `mua.test`. Kết quả 16/16, 11/11, 7/7, 11/11, ghi ở quickstart.md mục 5.
+
+### Sửa sau rà soát độc lập lần 3 (11/11/2026)
+
+Bốn người rà soát đọc phần mã viết trong và sau vòng 2. Có 25 phát hiện, 24 được xác nhận bằng mã ERPNext 16 (chi tiết ở research.md R16):
+
+- [x] T141 [US5] Hóa đơn, hóa đơn điều chỉnh và việc hủy trên phiếu nhận của đơn đã đóng (`_orders_open`). Kiểm: test_43.
+- [x] T142 [US6] Hóa đơn dùng tạm ứng trả trong tháng đã kết chuyển (`native_guards.guard`). Kiểm: test_44.
+- [x] T143 [US5] Khoản NCC phải hoàn đo đúng. Hóa đơn điều chỉnh và việc hủy trong kỳ đã khóa được kiểm trên mọi dòng. Hủy hóa đơn không có chênh lệch thì chia lại. Kiểm: test_45, test_46.
+- [x] T144 [US5] "Đã có hóa đơn" / "Đã trả hết hàng" không làm tròn lên. Kiểm: test_47.
+- [x] T145 [US6] Đối chiếu Tài chính dùng 3388 + 33881 như Công nợ (hoàn tất T082). Công nợ tách khoản NCC phải hoàn. Phiếu bổ sung giá Mua nhanh được tính. "Còn phải lập hóa đơn" và phần còn tạm ứng tính theo dòng. Kiểm: test_48, test_49, `invoices-payables.mount.test.js`.
+- [x] T146 [US3][US5] Thuế 8% hết hạn trên biểu mẫu hóa đơn, báo giá, đơn mua, tài sản. Đường nhập một thuế suất cho cả hóa đơn. Bảng kê thuế GTGT theo dòng. Kiểm: test_50, `invoices-payables.mount.test.js`.
+- [x] T147 Ca kiểm các loại khóa sổ còn thiếu (test_51) và sổ sách ở test_29.
+- [x] T149 Chuẩn bị gộp `main` (737f686) để đưa lên. Chi tiết ở `merge-plan.md`:
+  - chạy thử gộp: 13 tệp xung đột, mỗi tệp có cách giải và đã được kiểm lại;
+  - `tools/merge-003-main/resolve.cjs` tái tạo đúng cây đã kiểm;
+  - gộp trên bản clone tạm, kiểm toàn bộ trên VPS (bộ của spec 003, bộ của `main`, giao diện, kịch bản trình duyệt): tất cả qua;
+  - tìm và sửa lỗi đường link thẳng của `main` (đang có trên site thật);
+  - phiếu nghiệm thu cho người dùng thật: `checklists/acceptance.md`.
+
+  Còn lại, chờ chủ vườn: commit, gộp thật, đưa lên, và vòng nghiệm thu SC-011.
+- [x] T148 Chạy lại toàn bộ bộ kiểm trên VPS: procurement 51/51, complete 62/62, flow 23/23, concurrency 4/4, vat_in_cost 24/24, signing, proposal và sign_notify qua, giao diện 650/650. `verify_sales` và `verify_finance` chạy trên bản sao site thật, kết quả ghi ở quickstart §5. Kịch bản trình duyệt 16/16, 11/11, 7/7, 11/11.
+
 ---
 
 ## Dependencies & Execution Order

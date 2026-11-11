@@ -143,8 +143,12 @@ class ProcurementIntegration(unittest.TestCase):
         frappe.db.rollback(save_point='purchase_case')
         self.notify.stop()
 
-    def order(self, kind='Material', qty=10, rate=100000, vat='KCT', freight=0):
-        data=dict(supplier=getattr(self,'supplier','PCT Supplier'),warehouse=WH,expected_date=DAY,mode='Kho tự mua',items=[dict(item={'Material':'PCT-M','Tool':'PCT-T','Asset':'PCT-A','Service':'PCT-S'}[kind],qty=qty,rate=rate,uom='Nos',kind=kind,vat_code=vat,freight=freight)])
+    def order(self, kind='Material', qty=10, rate=100000, vat='KCT', freight=0, lines=None):
+        """lines: several order lines, each dict(kind, qty, rate, vat, freight)."""
+        lines=lines or [dict(kind=kind,qty=qty,rate=rate,vat=vat,freight=freight)]
+        data=dict(supplier=getattr(self,'supplier','PCT Supplier'),warehouse=WH,expected_date=DAY,mode='Kho tự mua',
+            items=[dict(item={'Material':'PCT-M','Tool':'PCT-T','Asset':'PCT-A','Service':'PCT-S'}[l['kind']],qty=l['qty'],rate=l['rate'],uom='Nos',
+                        kind=l['kind'],vat_code=l.get('vat','KCT'),freight=l.get('freight',0)) for l in lines])
         result=as_user(BUYER,buying.save_order,C,data)
         d=frappe.get_doc('Purchase Order',result['name'])
         as_user(BUYER,purchasing.request_approval,d.name,str(d.modified),DIR)
@@ -152,8 +156,15 @@ class ProcurementIntegration(unittest.TestCase):
         as_user(DIR,purchasing.approve_order,d.name,str(d.modified))
         return frappe.get_doc('Purchase Order',d.name)
 
-    def receive(self, order, qty):
-        result=as_user('Administrator',receiving.receive_order,order.name,DAY,json.dumps({order.items[0].name:qty}),self.tag+str(qty))
+    def receive(self, order, qty, day=DAY):
+        # test_01 repeats the request with the key tag + qty: a receipt of today keeps exactly that key.
+        result=as_user('Administrator',receiving.receive_order,order.name,day,json.dumps({order.items[0].name:qty}),self.tag+str(qty)+('' if day==DAY else str(day)))
+        d=frappe.get_doc('Purchase Receipt',result['name'])
+        receiving.receipt_action(d.name,str(d.modified),'submit')
+        return frappe.get_doc('Purchase Receipt',d.name)
+
+    def receive_all(self, order, day=DAY):
+        result=as_user('Administrator',receiving.receive_order,order.name,day,json.dumps({r.name:flt(r.qty) for r in order.items}),self.tag+'all'+str(day))
         d=frappe.get_doc('Purchase Receipt',result['name'])
         receiving.receipt_action(d.name,str(d.modified),'submit')
         return frappe.get_doc('Purchase Receipt',d.name)
@@ -449,9 +460,29 @@ class ProcurementIntegration(unittest.TestCase):
         switch(1)
         self.addCleanup(switch, 0)
 
-    def ledger(self, account, vouchers):
-        return flt(frappe.db.sql('select sum(debit-credit) from `tabGL Entry` where account=%s and voucher_no in %s and is_cancelled=0',
-                                 (account, tuple(vouchers)))[0][0])
+    def ledger(self, account, vouchers, as_of=None):
+        return flt(frappe.db.sql('select sum(debit-credit) from `tabGL Entry` where account=%s and voucher_no in %s and is_cancelled=0'
+                                 + (' and posting_date<=%s' if as_of else ''), (account, tuple(vouchers), *([as_of] if as_of else [])))[0][0])
+
+    def clearing(self, vouchers, as_of=None):
+        """What 3388 + 33881 hold for these vouchers (credit as a positive number)."""
+        return -(self.ledger(MAP['received_not_billed'], vouchers, as_of) + self.ledger(setup.valuation_tax_account(C), vouchers, as_of))
+
+    def frozen(self, day):
+        frappe.db.set_value('Company', C, 'accounts_frozen_till_date', day)
+        frappe.clear_document_cache('Company', C)
+        frappe.clear_cache(doctype='Company')
+        self.addCleanup(lambda: (frappe.clear_document_cache('Company', C), frappe.clear_cache(doctype='Company')))
+
+    def repost(self):
+        """Run ERPNext's queued valuation reposts (the scheduler does it on a live site) without committing this case."""
+        from erpnext.stock.doctype.repost_item_valuation.repost_item_valuation import repost_entries
+        previous = (frappe.flags.in_test, getattr(frappe, 'in_test', False))
+        frappe.flags.in_test = frappe.in_test = True
+        try:
+            repost_entries()
+        finally:
+            frappe.flags.in_test, frappe.in_test = previous
 
     def refused(self, fn, *args, **kwargs):
         frappe.db.savepoint('refused_call')
@@ -470,6 +501,9 @@ class ProcurementIntegration(unittest.TestCase):
         src = as_user(ACC, si.source, [a.name, b.name])
         self.assertEqual([(l['qty'], l['vat_code'], l['fixed']) for l in src['lines']], [(10, '5', False), (4, '8', False)])
         self.assertTrue(src['vat_in_cost'])
+        # A read carries its arguments in the URL: the list comes as JSON text or as "A,B" (live-site copy, 10/11/2026).
+        for sent in (frappe.as_json([a.name, b.name]), a.name + ',' + b.name):
+            self.assertEqual(len(as_user(ACC, si.source, sent)['lines']), 2, sent)
         waiting = {r['name']: r for r in as_user(ACC, si.queue, self.supplier)['rows']}
         self.assertEqual((waiting[a.name]['mua_nhanh'], waiting[a.name]['source_type']), (False, 'Nhận theo đơn'))
         args = dict(receipts=[a.name, b.name], bill_no='HD-' + first, series='1C26TAA', tax_code='CQT-1', bill_date=DAY, printed_total=1208000)
@@ -570,6 +604,671 @@ class ProcurementIntegration(unittest.TestCase):
             self.assertEqual(frappe.db.count('GL Entry', {'voucher_no': invoice, 'account': MAP['input_vat'], 'is_cancelled': 0}), 0, invoice)
         self.assertAlmostEqual(self.ledger(MAP['admin_expense'], [service['invoice']]), 550000, delta=1, msg='service VAT joins its own expense')
         self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), [receipt.name, goods['invoice']]), 0, delta=1)
+
+    def test_24_cost_follows_each_invoice_and_both_clearing_accounts_return_to_zero(self):
+        """FR-051, R16 (bản sao site thật 10/11/2026). Hộ kinh doanh; 2 trên 10 đã trả trước khi có hóa đơn; hóa đơn tăng giá
+        một dòng, giảm giá và đổi thuế suất dòng kia, kèm dòng dịch vụ. Hóa đơn không tính lại hàng đã trả; phần chênh của
+        đúng số lượng trên hóa đơn vào giá vốn; 3388 và 33881 về 0; phiếu nhận có hóa đơn đủ theo số lượng; hủy hóa đơn
+        thì sổ trở lại như trước."""
+        from lotus_farm import procurement_queries as queries
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        a = self.receive(self.order(qty=10, rate=100000, vat='5', freight=50000), 10)
+        first = self.tag
+        self.tag = uuid.uuid4().hex[:8]
+        b = self.receive(self.order(qty=4, rate=25000, vat='8'), 4)
+        back = p.return_receipt(a.name, DAY, {a.items[0].name: 2}, first + 'ret', 1, 'Hàng móp')
+        self.assertEqual(back['docstatus'], 1)
+        self.assertEqual([l['qty'] for l in as_user(ACC, si.source, [a.name, b.name])['lines']], [8, 4],
+                         'goods returned before the invoice are not invoiced again')
+        clearing, grni = setup.valuation_tax_account(C), MAP['received_not_billed']
+        vouchers = [a.name, b.name, back['name']]
+        books = lambda: -(self.ledger(grni, vouchers) + self.ledger(clearing, vouchers))
+        waiting = lambda: queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        self.assertAlmostEqual(waiting(), 8 * 110000 + 4 * 27000, delta=1, msg='net + VAT + freight of what waits for an invoice')
+        self.assertAlmostEqual(books(), waiting(), delta=1, msg='3388 + 33881 hold what waits for an invoice')
+        lines = [dict(source_item=a.items[0].name, qty=8, rate=110000, vat_code='5', variance_reason='NCC tăng giá theo thông báo'),
+                 dict(source_item=b.items[0].name, qty=4, rate=24000, vat_code='10', variance_reason='Chiết khấu cuối tháng')]
+        result = as_user(ACC, si.create, receipts=[a.name, b.name], lines=lines, bill_no='CL-' + first, bill_date=DAY, client_key=first + 'cl',
+                         service_lines=[dict(description='Bốc xếp', amount=200000, vat_code='8', cost='admin')])
+        invoice = result['invoice']
+        self.assertEqual(result['amount'], 880000 + 44000 + 40000 + 96000 + 9600 + 200000 + 16000)
+        # The vouchers post on the receipts; the VAT transfer is its own journal entry, dated with the invoice.
+        vouchers += [invoice] + [r['name'] for r in as_user(ACC, si.detail, invoice)['cost_adjustments'] if r['doctype'] == 'Journal Entry']
+        self.repost()
+        self.assertAlmostEqual(self.ledger(grni, vouchers), 0, delta=1, msg='3388')
+        self.assertAlmostEqual(self.ledger(clearing, vouchers), 0, delta=1, msg='33881')
+        self.assertEqual(frappe.db.count('GL Entry', {'voucher_no': invoice, 'account': MAP['input_vat'], 'is_cancelled': 0}), 0, 'never 1331')
+        self.assertAlmostEqual(self.ledger(MAP['admin_expense'], [invoice]), 216000, delta=1, msg='service VAT joins its own expense')
+        self.assertAlmostEqual(waiting(), 0, delta=1)
+        # The kept 8 carry what the invoice says: 110.000 + 5 % VAT + 5.000 freight each. The 2 returned leave at what they
+        # cost, so nothing lands on an expense account (the review of 11/11/2026 found 16.800 there).
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', a.items[0].name, 'valuation_rate')), 120500, delta=1)
+        kept = flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                 ((a.name, back['name']),))[0][0])
+        self.assertAlmostEqual(kept, 8 * 120500, delta=2)
+        for account in {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}:
+            self.assertAlmostEqual(self.ledger(account, [back['name']]), 0, delta=1, msg='return booked to ' + account)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', b.items[0].name, 'valuation_rate')), 26400, delta=1, msg='24.000 + 10 %')
+        made = as_user(ACC, si.detail, invoice)['cost_adjustments']
+        self.assertEqual(sorted((r['doctype'], r['kind'], r['amount']) for r in made),
+                         [('Journal Entry', 'vat', 5600), ('Landed Cost Voucher', 'cost', -2400), ('Landed Cost Voucher', 'cost', 84000)],
+                         'price and VAT into cost on 3388, the VAT part then moved to 33881')
+        self.assertEqual({r.name: flt(r.per_billed) for r in frappe.get_all('Purchase Receipt', filters={'name': ['in', [a.name, b.name]]}, fields=['name', 'per_billed'])},
+                         {a.name: 100, b.name: 100}, 'billed in full by quantity, the cheaper invoice included')
+        self.assertFalse({a.name, b.name} & {r['name'] for r in as_user(ACC, si.queue, self.supplier)['rows']})
+        # Cancelling the invoice takes its adjustments with it.
+        as_user(ACC, si.cancel, invoice, 'Nhập sai đơn giá')
+        self.repost()
+        self.assertEqual(frappe.db.count('Landed Cost Voucher', {'lotus_purchase_invoice': invoice, 'docstatus': 1}), 0)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', a.items[0].name, 'valuation_rate')), 110000, delta=1)
+        self.assertAlmostEqual(books(), waiting(), delta=1)
+        self.assertAlmostEqual(waiting(), 8 * 110000 + 4 * 27000, delta=1)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt', a.name, 'per_billed')), 0, delta=0.01,
+                               msg='measured over the 8 kept, none of them invoiced (the 2 returned need no invoice)')
+        self.assertEqual(frappe.db.count('Landed Cost Voucher', {'lotus_cost_receipt': a.name, 'docstatus': 1}), 0, 'the split went with the invoice')
+
+    def test_25_household_receipt_without_vat_invoiced_with_vat(self):
+        """A receipt with no VAT has no ledger line on 33881, so ERPNext books the invoice VAT on 3388 itself. The VAT still
+        goes into cost and both accounts return to zero (review of 11/11/2026)."""
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        receipt = self.receive(self.order(qty=10, rate=100000, vat='KCT'), 10)
+        result = as_user(ACC, si.create, receipts=[receipt.name], bill_no='VAT-' + self.tag, bill_date=DAY, client_key=self.tag + 'vat',
+                         lines=[dict(source_item=receipt.items[0].name, qty=10, vat_code='10')])
+        self.repost()
+        vouchers = [receipt.name, result['invoice']]
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], vouchers), 0, delta=1, msg='3388')
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), vouchers), 0, delta=1, msg='33881')
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', receipt.items[0].name, 'valuation_rate')), 110000, delta=1)
+        made = as_user(ACC, si.detail, result['invoice'])['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['amount']) for r in made], [('Landed Cost Voucher', 100000)], 'no transfer: ERPNext already moved it')
+
+    def test_26_household_service_line_received_with_goods_and_freight(self):
+        """A Service line on the order and the receipt (household): the receipt credits 33881 only for the goods' VAT and
+        3388 only for the goods' own freight; the service's VAT and freight are part of the service cost, on the invoice
+        (second review, 11/11/2026: its freight used to go into the stock of the goods); 3388 and 33881 return to zero."""
+        from lotus_farm import procurement_queries as queries
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        order = self.order(lines=[dict(kind='Material', qty=10, rate=100000, vat='5', freight=50000),
+                                  dict(kind='Service', qty=1, rate=2000000, vat='8', freight=20000)])
+        receipt = self.receive_all(order)
+        vouchers = [receipt.name]
+        waiting = lambda: queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        self.assertAlmostEqual(-self.ledger(setup.valuation_tax_account(C), vouchers), 50000, delta=1, msg='33881: the goods VAT only')
+        self.assertAlmostEqual(self.clearing(vouchers), 1000000 + 50000 + 50000, delta=1, msg='goods, their VAT and their own freight')
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', receipt.items[0].name, 'valuation_rate')), 110000, delta=1,
+                               msg='100.000 + 5 % + 5.000 freight: none of the service freight')
+        self.assertAlmostEqual(waiting(), self.clearing(vouchers), delta=1)
+        result = as_user(ACC, si.create, receipts=[receipt.name], bill_no='DVN-' + self.tag, bill_date=DAY, client_key=self.tag + 'dvn')
+        self.assertEqual(result['amount'], 1000000 + 50000 + 50000 + 2000000 + 160000 + 20000)
+        vouchers.append(result['invoice'])
+        self.repost()
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], vouchers), 0, delta=1, msg='3388')
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), vouchers), 0, delta=1, msg='33881')
+        self.assertAlmostEqual(self.ledger(MAP['admin_expense'], [result['invoice']]), 2180000, delta=1, msg='the service VAT and freight are part of its cost')
+        self.assertAlmostEqual(waiting(), 0, delta=1)
+
+    def test_27_return_after_the_invoice_then_an_adjustment_invoice(self):
+        """Goods returned after an invoice at another price, then the supplier's adjustment invoice: the returned goods leave
+        at what they cost (nothing to expense), the kept goods carry the invoice price, 3388 returns to zero."""
+        from lotus_farm import procurement_adjustments as adjustments
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='RA-' + self.tag, bill_date=DAY, client_key=self.tag + 'ra',
+                          lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        back = p.return_receipt(receipt.name, DAY, {line: 2}, self.tag + 'ret', 1, 'Hàng móp')
+        self.assertTrue(back['needs_credit_note'])
+        # Before the adjustment invoice: 10 invoiced, 8 kept. The 2 returned leave at the invoice price and the supplier owes
+        # them back: 'chưa có hóa đơn' is negative and equals 3388 (second review, 11/11/2026: it was left out).
+        from lotus_farm import procurement_queries as queries
+        self.repost()
+        claim = queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        self.assertAlmostEqual(claim, -220000, delta=1)
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], invoice]), claim, delta=1)
+        for account in {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}:
+            self.assertAlmostEqual(self.ledger(account, [back['name']]), 0, delta=1, msg='return booked to ' + account)
+        pi_line = frappe.get_doc('Purchase Invoice', invoice).items[0].name
+        note = as_user(ACC, adjustments.credit_note, C, invoice, DAY, json.dumps({pi_line: 2}), self.tag + 'cn')['invoice']
+        self.repost()
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [receipt.name, back['name'], invoice, note]), 0, delta=1)
+        for account in {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}:
+            self.assertAlmostEqual(self.ledger(account, [back['name']]), 0, delta=1, msg='return booked to ' + account)
+        kept = flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                 ((receipt.name, back['name']),))[0][0])
+        self.assertAlmostEqual(kept, 8 * 110000, delta=2, msg='the kept goods carry the invoice price')
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt', receipt.name, 'per_billed')), 100, delta=0.01)
+        # Cancelling the adjustment invoice brings the claim back. The split leaves out the credit note being cancelled
+        # (second review, 11/11/2026: it counted it, and the kept goods took 20.000 too much).
+        as_user(ACC, si.cancel, note, 'Nhập nhầm')
+        self.repost()
+        kept = flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                 ((receipt.name, back['name']),))[0][0])
+        self.assertAlmostEqual(kept, 8 * 110000, delta=2)
+        self.assertAlmostEqual(queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0), -220000, delta=1)
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], invoice, note]), -220000, delta=1)
+
+    def close_receipts(self, day):
+        """An accounting period closed for Purchase Receipt on one day, as the chief accountant would close it."""
+        name = getattr(self, 'period', None)  # ERPNext names the period "title - company abbr"
+        if not name:
+            name = self.period = frappe.get_doc(dict(doctype='Accounting Period', period_name='PCT ' + self.tag + ' ' + str(day), company=C,
+                                                     start_date=day, end_date=day, closed_documents=[dict(document_type='Purchase Receipt', closed=1)])
+                                                ).insert(ignore_permissions=True).name
+            self.addCleanup(lambda: setattr(self, 'period', None))
+        frappe.db.sql("update `tabClosed Document` set closed=1 where parent=%s and document_type='Purchase Receipt'", name)
+        return name
+
+    def test_28_receipt_in_a_closed_period(self):
+        """The receipt's books are closed: the difference is a cost of the invoice's period, the closed books do not move.
+        An invoice whose adjustment rewrote a receipt that has since been closed is not cancelled (review of 11/11/2026)."""
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        period = self.close_receipts(DAY)
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='KS-' + self.tag, bill_date=DAY, client_key=self.tag + 'ks',
+                          lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        made = as_user(ACC, si.detail, invoice)['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', 100000)])
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [receipt.name, invoice, made[0]['name']]), 0, delta=1)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate')), 100000, delta=1, msg='closed books untouched')
+        as_user(ACC, si.cancel, invoice, 'Nhập lại đúng giá')
+        self.assertEqual(frappe.db.get_value('Journal Entry', made[0]['name'], 'docstatus'), 2)
+        frappe.db.sql("update `tabClosed Document` set closed=0 where parent=%s", period)
+        again = as_user(ACC, si.create, receipts=[receipt.name], bill_no='KS2-' + self.tag, bill_date=DAY, client_key=self.tag + 'ks2',
+                        lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        self.assertEqual([r['doctype'] for r in as_user(ACC, si.detail, again)['cost_adjustments']], ['Landed Cost Voucher'])
+        self.close_receipts(DAY)
+        self.assertIn('hóa đơn điều chỉnh', self.refused(as_user, ACC, si.cancel, again, 'Thử hủy khi kỳ đã khóa'))
+
+    def test_29_billing_counts_each_line_by_value_and_follows_returns(self):
+        """per_billed by quantity, each line weighted by its value; a return or its cancellation after the invoice moves it."""
+        from lotus_farm.finance import supplier_invoice as si
+        order = self.order(lines=[dict(kind='Material', qty=10, rate=600000), dict(kind='Tool', qty=500, rate=2000)])
+        receipt = self.receive_all(order)
+        a = next(r.name for r in receipt.items if r.item_code == 'PCT-M')
+        b = next(r.name for r in receipt.items if r.item_code == 'PCT-T')
+        billed = lambda: flt(frappe.db.get_value('Purchase Receipt', receipt.name, 'per_billed'))
+        v1 = as_user(ACC, si.create, receipts=[receipt.name], bill_no='V1-' + self.tag, bill_date=DAY, client_key=self.tag + 'v1', lines=[dict(source_item=a, qty=10)])['invoice']
+        self.assertAlmostEqual(billed(), 600 / 7, delta=0.01, msg='6.000.000 of 7.000.000, not 10 of 510 units')
+        waiting = {r['name']: r for r in as_user(ACC, si.queue, self.supplier)['rows']}
+        self.assertAlmostEqual(waiting[receipt.name]['amount'], 1000000, delta=1)
+        v2 = as_user(ACC, si.create, receipts=[receipt.name], bill_no='V2-' + self.tag, bill_date=DAY, client_key=self.tag + 'v2',
+                     lines=[dict(source_item=b, qty=490, rate=1900, variance_reason='Chiết khấu')])['invoice']
+        part = 100 * (6000000 + 980000) / 7000000
+        self.assertAlmostEqual(billed(), part, delta=0.01)
+        back = p.return_receipt(receipt.name, DAY, {b: 10}, self.tag + 'ret', 1, 'Hỏng')
+        self.assertAlmostEqual(billed(), 100, delta=0.01, msg='the rest went back')
+        self.assertNotIn(receipt.name, [r['name'] for r in as_user(ACC, si.queue, self.supplier)['rows']])
+        # Third review: the books too. The cheaper invoice (-49.000) stays with the 490 kept; the 10 returned leave at
+        # 1.900 each; 3388 is clear; nothing goes to expense.
+        from lotus_farm import procurement_queries as queries
+        self.repost()
+        stock = lambda: flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                          ((receipt.name, back['name']),))[0][0])
+        self.assertAlmostEqual(stock(), 6000000 + 490 * 1900, delta=2)
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], v1, v2]), 0, delta=1)
+        for account in {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}:
+            self.assertAlmostEqual(self.ledger(account, [back['name']]), 0, delta=1, msg='return booked to ' + account)
+        ret = frappe.get_doc('Purchase Receipt', back['name'])
+        receiving.receipt_action(ret.name, str(ret.modified), 'cancel', 'Trả nhầm')
+        self.assertAlmostEqual(billed(), part, delta=0.01, msg='the cancelled return is waiting for an invoice again')
+        self.assertEqual(frappe.db.count('Landed Cost Voucher', {'lotus_cost_receipt': receipt.name, 'docstatus': 1}), 0)
+        self.repost()
+        self.assertAlmostEqual(stock(), 6000000 + 1000000 - 49000, delta=2)
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], v1, v2]), 20000, delta=1)
+        self.assertAlmostEqual(queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0), 20000, delta=1)
+
+    def test_30_asset_line_at_another_price_is_refused(self):
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(kind='Asset', qty=1, rate=50000000), 1)
+        message = self.refused(as_user, CHIEF, si.create, receipts=[receipt.name], bill_no='TS-' + self.tag, bill_date=DAY,
+                               client_key=self.tag + 'ts', lines=[dict(source_item=receipt.items[0].name, qty=1, rate=48000000, variance_reason='Giảm giá')])
+        self.assertIn('tài sản cố định', message)
+
+    def test_31_waiting_goods_match_the_books_on_any_closing_date(self):
+        """The difference is posted at the receipt's date: on a closing date between the receipt and a later invoice,
+        'hàng đã nhận, chưa có hóa đơn' still equals 3388 + 33881."""
+        from lotus_farm import procurement_queries as queries
+        from lotus_farm.finance import supplier_invoice as si
+        earlier = add_days(DAY, -2)
+        order = self.order(qty=10, rate=100000)
+        frappe.db.set_value('Purchase Order', order.name, 'transaction_date', earlier)
+        receipt = self.receive(order, 10, day=earlier)
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='AO-' + self.tag, bill_date=DAY, client_key=self.tag + 'ao',
+                          lines=[dict(source_item=receipt.items[0].name, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        self.repost()
+        for day, expected in ((add_days(DAY, -1), 1100000), (DAY, 0)):
+            self.assertAlmostEqual(self.clearing([receipt.name, invoice], day), expected, delta=1, msg='books on %s' % day)
+            self.assertAlmostEqual(queries.unbilled(C, day, self.supplier)['by_supplier'].get(self.supplier, 0), expected, delta=1, msg='waiting on %s' % day)
+
+    def test_32_lotus_adjustments_move_with_their_invoice_only(self):
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        receipt = self.receive(self.order(qty=10, rate=100000, vat='5'), 10)
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='GD-' + self.tag, bill_date=DAY, client_key=self.tag + 'gd',
+                          lines=[dict(source_item=receipt.items[0].name, qty=10, rate=110000, vat_code='8', variance_reason='NCC tăng giá')])['invoice']
+        made = as_user(ACC, si.detail, invoice)['cost_adjustments']
+        self.assertEqual(sorted(r['doctype'] for r in made), ['Journal Entry', 'Landed Cost Voucher'])
+        for row in made:
+            frappe.db.savepoint('own_cancel')
+            with self.assertRaises(frappe.PermissionError):
+                frappe.get_doc(row['doctype'], row['name']).cancel()
+            frappe.db.rollback(save_point='own_cancel')
+        as_user(ACC, si.cancel, invoice, 'Nhập sai')
+        for row in made:
+            self.assertEqual(frappe.db.get_value(row['doctype'], row['name'], 'docstatus'), 2)
+
+    # ---- Second independent review (11/11/2026) ----
+    def test_33_asset_pieces_are_numbered_once(self):
+        """An asset line of 2 is received as 2 rows of 1. ERPNext 16 spreads VAT and freight by row number, so the rows are
+        numbered 1..n again and each piece carries its VAT and freight once (they used to share number 1)."""
+        self.household()
+        receipt = self.receive(self.order(kind='Asset', qty=2, rate=10000000, vat='10', freight=200000), 2)
+        self.assertEqual([r.idx for r in receipt.items], [1, 2])
+        self.assertAlmostEqual(sum(flt(r.item_tax_amount) for r in receipt.items), 2000000 + 200000, delta=2)
+        self.assertAlmostEqual(-self.ledger(setup.valuation_tax_account(C), [receipt.name]), 2000000, delta=1)
+
+    def test_34_each_goods_line_carries_its_own_freight(self):
+        """Household: ERPNext spreads the freight row over the goods by value; Lotus moves it back so each line carries its
+        own freight. A line returned in full then leaves at what it cost, and the invoice clears 3388."""
+        from lotus_farm import procurement_queries as queries
+        from lotus_farm.finance import supplier_invoice as si
+        self.household()
+        receipt = self.receive_all(self.order(lines=[dict(kind='Material', qty=10, rate=100000, freight=0),
+                                                     dict(kind='Tool', qty=10, rate=100000, freight=200000)]))
+        self.repost()
+        a = next(r.name for r in receipt.items if r.item_code == 'PCT-M')
+        b = next(r.name for r in receipt.items if r.item_code == 'PCT-T')
+        rate = lambda line: flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate'))
+        self.assertEqual((round(rate(a)), round(rate(b))), (100000, 120000))
+        back = p.return_receipt(receipt.name, DAY, {a: 10}, self.tag + 'ret', 1, 'Sai quy cách')
+        self.repost()
+        for account in {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}:
+            self.assertAlmostEqual(self.ledger(account, [back['name']]), 0, delta=1, msg='return booked to ' + account)
+        waiting = lambda: queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        vouchers = [receipt.name, back['name']]
+        self.assertAlmostEqual(waiting(), 1000000 + 200000, delta=1)
+        self.assertAlmostEqual(self.clearing(vouchers), waiting(), delta=1)
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='VC-' + self.tag, bill_date=DAY, client_key=self.tag + 'vc')['invoice']
+        self.repost()
+        self.assertAlmostEqual(self.clearing(vouchers + [invoice]), 0, delta=1)
+        self.assertAlmostEqual(waiting(), 0, delta=1)
+        self.assertAlmostEqual(rate(b), 120000, delta=1)
+
+    def test_35_everything_returned_after_the_invoice(self):
+        """Goods invoiced at a higher price, then all sent back: they leave at what they cost (nothing to expense), 3388
+        holds the claim on the supplier at the invoice price, the receipt says it went back; the credit note follows its
+        invoice into stock and everything returns to zero."""
+        from lotus_farm import procurement_adjustments as adjustments, procurement_queries as queries
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='TH-' + self.tag, bill_date=DAY, client_key=self.tag + 'th',
+                          lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        # Two returns of one line (ERPNext's own returned-quantity map keeps only one of them).
+        returns = [p.return_receipt(receipt.name, DAY, {line: qty}, self.tag + 'ret' + str(qty), 1, 'Trả hàng')['name'] for qty in (4, 6)]
+        self.repost()
+        stock = lambda: flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                          ((receipt.name, *returns),))[0][0])
+        expense = {MAP['admin_expense'], frappe.get_cached_value('Company', C, 'default_expense_account')}
+        for account in expense:
+            self.assertAlmostEqual(self.ledger(account, returns), 0, delta=1, msg='returns booked to ' + account)
+        self.assertAlmostEqual(stock(), 0, delta=2)
+        claim = queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        self.assertAlmostEqual(claim, -1100000, delta=1, msg='the supplier owes the 10 at the invoice price')
+        self.assertAlmostEqual(self.clearing([receipt.name, *returns, invoice]), claim, delta=1)
+        self.assertEqual({r['name']: r for r in p.receipts(C)}[receipt.name]['billing'], 'Đã trả hết hàng')
+        self.assertEqual(p.receipt(receipt.name)['items'][0]['returned_qty'], 10)
+        pi_line = frappe.get_doc('Purchase Invoice', invoice).items[0].name
+        note = as_user(ACC, adjustments.credit_note, C, invoice, DAY, json.dumps({pi_line: 10}), self.tag + 'cn')['invoice']
+        self.repost()
+        made = as_user(ACC, si.detail, note)['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Landed Cost Voucher', 'cost', -100000)])
+        self.assertAlmostEqual(self.clearing([receipt.name, *returns, invoice, note]), 0, delta=1)
+        self.assertAlmostEqual(stock(), 0, delta=2)
+        for account in expense:
+            self.assertAlmostEqual(self.ledger(account, [*returns, note]), 0, delta=1, msg='booked to ' + account)
+        self.assertEqual(frappe.db.count('Landed Cost Voucher', {'lotus_cost_receipt': receipt.name, 'docstatus': 1}), 0)
+
+    def test_36_credit_note_follows_how_its_invoice_was_booked(self):
+        """An invoice booked as a cost because the receipt's books were closed. Once they reopen, its credit note is a
+        cost too, not a voucher on the receipt; 3388 returns to zero."""
+        from lotus_farm import procurement_adjustments as adjustments
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        period = self.close_receipts(DAY)
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='CP-' + self.tag, bill_date=DAY, client_key=self.tag + 'cp',
+                          lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        first = as_user(ACC, si.detail, invoice)['cost_adjustments']
+        self.assertEqual([(r['kind'], r['amount']) for r in first], [('expense', 100000)])
+        frappe.db.sql("update `tabClosed Document` set closed=0 where parent=%s", period)
+        back = p.return_receipt(receipt.name, DAY, {line: 2}, self.tag + 'ret', 1, 'Hàng móp')
+        pi_line = frappe.get_doc('Purchase Invoice', invoice).items[0].name
+        note = as_user(ACC, adjustments.credit_note, C, invoice, DAY, json.dumps({pi_line: 2}), self.tag + 'cn')['invoice']
+        made = as_user(ACC, si.detail, note)['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', -20000)])
+        self.repost()
+        vouchers = [receipt.name, back['name'], invoice, note] + [r['name'] for r in first + made]
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], vouchers), 0, delta=1)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate')), 100000, delta=1)
+        self.assertEqual(frappe.db.count('Landed Cost Voucher', {'lotus_cost_receipt': receipt.name, 'docstatus': 1}), 0)
+
+    def test_37_period_closing_voucher_counts_as_closed_books(self):
+        """A receipt on or before the last Period Closing Voucher: ERPNext refuses to repost it, so the invoice difference
+        is a cost of the invoice's period (the invoice used to fail to submit)."""
+        from lotus_farm.finance import invoice_cost, supplier_invoice as si
+        earlier = add_days(DAY, -2)
+        order = self.order(qty=10, rate=100000)
+        frappe.db.set_value('Purchase Order', order.name, 'transaction_date', earlier)
+        receipt = self.receive(order, 10, day=earlier)
+        closing = frappe.get_doc(dict(doctype='Period Closing Voucher', company=C, fiscal_year='2026', transaction_date=earlier,
+                                      posting_date=earlier, period_start_date='2026-01-01', period_end_date=earlier, remarks='Kiểm thử',
+                                      closing_account_head=frappe.db.get_value('Account', {'company': C, 'root_type': 'Equity', 'is_group': 0}, 'name')))
+        closing.name = 'PCT-PCV-' + self.tag
+        closing.docstatus = 1
+        closing.db_insert()  # the closing itself is ERPNext's; only its date matters here
+        self.assertIn('kết chuyển', invoice_cost._closed(C, earlier) or '')
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='PCV-' + self.tag, bill_date=DAY, client_key=self.tag + 'pcv',
+                          lines=[dict(source_item=receipt.items[0].name, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        made = as_user(ACC, si.detail, invoice)['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', 100000)])
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', receipt.items[0].name, 'valuation_rate')), 100000, delta=1)
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [receipt.name, invoice, made[0]['name']]), 0, delta=1)
+
+    def test_38_advance_on_an_order_after_part_of_it_is_invoiced(self):
+        """The advance an invoice already used is not counted again (ERPNext 16 keeps it in advance_paid); an order
+        invoiced in full takes no further advance, on any payment path."""
+        from lotus_farm.finance import supplier_invoice as si, supplier_payment as sp
+        order = self.order(qty=10, rate=1000000)
+        signed(as_user(ACC, p.supplier_payment, C, 'Purchase Order', order.name, 4000000, 'cash', DAY, {'CHIEF': CHIEF, 'APPROVE': DIR}, self.tag + 'adv'))
+        first = self.receive(order, 5)
+        made = as_user(ACC, si.create, receipts=[first.name], bill_no='AD1-' + self.tag, bill_date=DAY, client_key=self.tag + 'ad1')
+        self.assertEqual(flt(frappe.db.get_value('Purchase Invoice', made['invoice'], 'outstanding_amount')), 1000000, 'the advance paid the invoice')
+        self.assertAlmostEqual(funding._remaining_source('Purchase Order', order.name, lock_rows=False), 5000000, delta=1)
+        listed = {i['name']: i for i in as_user(ACC, sp.open_items, self.supplier)['items']}
+        self.assertAlmostEqual(listed[order.name]['payable'], 5000000, delta=1)
+        # A 5.000.000 advance is prepared; 3 more units are invoiced before the director signs: only 2.000.000 is left.
+        waiting = as_user(ACC, p.supplier_payment, C, 'Purchase Order', order.name, 5000000, 'cash', DAY, {'CHIEF': CHIEF, 'APPROVE': DIR}, self.tag + 'adv5')
+        more = self.receive(order, 3)
+        as_user(ACC, si.create, receipts=[more.name], bill_no='AD2-' + self.tag, bill_date=DAY, client_key=self.tag + 'ad2')
+        self.assertIn('chỉ còn tạm ứng được 2.000.000', self.refused(signed, waiting))
+        last = self.receive(order, 2)
+        as_user(ACC, si.create, receipts=[last.name], bill_no='AD3-' + self.tag, bill_date=DAY, client_key=self.tag + 'ad3')
+        self.assertNotIn(order.name, [i['name'] for i in as_user(ACC, sp.open_items, self.supplier)['items']])
+        self.assertNotIn(order.name, [s['name'] for s in funding.options(C)['sources']['Purchase Order']])
+        self.assertIn('không tạm ứng thêm', self.refused(as_user, ACC, p.supplier_payment, C, 'Purchase Order', order.name, 100000, 'cash', DAY,
+                                                         {'CHIEF': CHIEF, 'APPROVE': DIR}, self.tag + 'adv2'))
+
+    def test_39_goods_received_after_a_vat_rate_ended(self):
+        """Code 8 % ends on 31/12/2026 and gives way to 10 % (vat_vn.json, here moved to yesterday). Goods ordered at 8 %
+        and received later carry 10 %. An asset received at 8 % and invoiced after the end keeps its value; the VAT
+        difference is a cost of the period and 33881 returns to zero (household)."""
+        from lotus_farm.finance import rules as finance_rules, supplier_invoice as si
+        self.household()
+        earlier, yesterday = add_days(DAY, -2), add_days(DAY, -1)
+        goods = self.order(qty=10, rate=100000, vat='8')
+        asset = self.order(kind='Asset', qty=1, rate=10000000, vat='8')
+        for order in (goods, asset):
+            frappe.db.set_value('Purchase Order', order.name, 'transaction_date', earlier)
+        data = finance_rules.load_vat()
+        next(r for r in data['rates'] if r['code'] == '8')['to'] = yesterday
+        with patch.object(finance_rules, 'load_vat', return_value=data):
+            piece = self.receive(asset, 1, day=yesterday)
+            self.assertEqual(piece.items[0].lotus_line_vat, '8', 'still in force on the receipt date')
+            received = self.receive(goods, 10)
+            self.assertEqual(received.items[0].lotus_line_vat, '10')
+            self.assertAlmostEqual(-self.ledger(setup.valuation_tax_account(C), [received.name]), 100000, delta=1)
+            result = as_user(CHIEF, si.create, receipts=[piece.name], bill_no='TS8-' + self.tag, bill_date=DAY, client_key=self.tag + 'ts8')
+            made = as_user(ACC, si.detail, result['invoice'])['cost_adjustments']
+        self.assertEqual(frappe.db.get_value('Purchase Invoice Item', {'parent': result['invoice']}, 'lotus_line_vat'), '10')
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', 200000)])
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), [piece.name, result['invoice'], made[0]['name']]), 0, delta=1, msg='33881')
+
+    def test_40_rounding_on_a_deductible_invoice_with_an_untaxed_line(self):
+        """Deductible VAT, one line at 10 % and one without VAT: the đồng of rounding go to the round-off account. On the
+        VAT account ERPNext 16 refuses the invoice (Item Wise Tax Details do not match)."""
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive_all(self.order(lines=[dict(kind='Material', qty=3, rate=33333, vat='10'),
+                                                     dict(kind='Tool', qty=1, rate=100000, vat='KCT')]))
+        result = as_user(ACC, si.create, receipts=[receipt.name], bill_no='LT-' + self.tag, bill_date=DAY, client_key=self.tag + 'lt',
+                         printed_total=210000)
+        self.assertEqual(result['amount'], 210000)
+        self.assertTrue(0 < result['rounding_adjustment'] <= 2, result['rounding_adjustment'])
+        round_off = frappe.get_cached_value('Company', C, 'round_off_account')
+        self.assertAlmostEqual(self.ledger(round_off, [result['invoice']]), result['rounding_adjustment'], delta=0.01)
+        self.assertAlmostEqual(self.ledger(MAP['input_vat'], [result['invoice']]), 10000, delta=1, msg='1331 keeps the VAT of the taxed line only')
+
+    def test_42_credit_note_for_goods_returned_after_the_invoice_once_the_books_closed(self):
+        """Goods returned after the invoice while the books were open: their difference waits on 3388 as the claim. If
+        the receipt's books close before the credit note, Lotus cannot book it right by itself and says so (it used to
+        leave the claim on 3388 and show a gain); once the period is open again the credit note posts and 3388 clears."""
+        from lotus_farm import procurement_adjustments as adjustments
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='KN-' + self.tag, bill_date=DAY, client_key=self.tag + 'kn',
+                          lines=[dict(source_item=line, qty=10, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        back = p.return_receipt(receipt.name, DAY, {line: 2}, self.tag + 'ret', 1, 'Hàng móp')
+        period = self.close_receipts(DAY)
+        pi_line = frappe.get_doc('Purchase Invoice', invoice).items[0].name
+        message = self.refused(as_user, ACC, adjustments.credit_note, C, invoice, DAY, json.dumps({pi_line: 2}), self.tag + 'cn')
+        self.assertIn('Mở lại kỳ đó', message)
+        frappe.db.sql("update `tabClosed Document` set closed=0 where parent=%s", period)
+        note = as_user(ACC, adjustments.credit_note, C, invoice, DAY, json.dumps({pi_line: 2}), self.tag + 'cn2')['invoice']
+        self.repost()
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], invoice, note]), 0, delta=1)
+
+    # ---- Third independent review (11/11/2026) ----
+    def test_43_invoice_on_a_receipt_of_a_closed_order(self):
+        """The rest of an order closed with Đóng đơn: ERPNext refuses to repost a receipt of a closed order, which every
+        Landed Cost Voucher does. The invoice at another price still goes into the cost and can be cancelled; the order
+        stays closed and its ordered quantity stays out of the stock plan."""
+        from lotus_farm.finance import supplier_invoice as si
+        order = self.order(qty=10, rate=100000)
+        receipt = self.receive(order, 6)
+        order.reload()
+        as_user(DIR, purchasing.close_order, order.name, str(order.modified), 'NCC hết hàng')
+        self.assertEqual(frappe.db.get_value('Purchase Order', order.name, 'status'), 'Closed')
+        ordered = lambda: flt(frappe.db.get_value('Bin', {'item_code': 'PCT-M', 'warehouse': WH}, 'ordered_qty'))
+        before = ordered()
+        line = receipt.items[0].name
+        invoice = as_user(ACC, si.create, receipts=[receipt.name], bill_no='DD-' + self.tag, bill_date=DAY, client_key=self.tag + 'dd',
+                          lines=[dict(source_item=line, qty=6, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        self.repost()
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate')), 110000, delta=1)
+        self.assertEqual(frappe.db.get_value('Purchase Order', order.name, 'status'), 'Closed')
+        self.assertAlmostEqual(ordered(), before, delta=0.001)
+        self.assertAlmostEqual(self.ledger(MAP['received_not_billed'], [receipt.name, invoice]), 0, delta=1)
+        as_user(ACC, si.cancel, invoice, 'Nhập sai đơn giá')
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', line, 'valuation_rate')), 100000, delta=1)
+        self.assertEqual(frappe.db.get_value('Purchase Order', order.name, 'status'), 'Closed')
+        self.assertAlmostEqual(ordered(), before, delta=0.001)
+
+    def test_44_invoice_that_uses_an_advance_from_a_closed_month(self):
+        """An advance paid on an order in a month whose result is already closed: ERPNext links it to the new invoice by
+        saving the old Payment Entry again. That save changes no ledger line, so the closed month lets it through (the
+        whole invoice used to be refused)."""
+        from lotus_farm.finance import posting, supplier_invoice as si
+        last_month = add_days(DAY[:8] + '01', -1)
+        order = self.order(qty=10, rate=100000)
+        frappe.db.set_value('Purchase Order', order.name, 'transaction_date', last_month)
+        signed(as_user(ACC, p.supplier_payment, C, 'Purchase Order', order.name, 300000, 'cash', last_month, {'CHIEF': CHIEF, 'APPROVE': DIR}, self.tag + 'adv'))
+        closing = frappe.get_doc(dict(doctype=posting.POSTING, company=C, source_doctype=setup.SETTINGS, source_name=setup.SETTINGS, purpose='Result Closing',
+                                      voucher_type='Journal Entry', voucher_name='PCT-RC-' + self.tag, posting_date=last_month, state='Posted',
+                                      active_key=posting.active_key(setup.SETTINGS, setup.SETTINGS, 'Result Closing', str(last_month)[:7])))
+        closing.name = 'PCT-RC-' + self.tag
+        closing.db_insert()
+        receipt = self.receive(order, 10)
+        made = as_user(ACC, si.create, receipts=[receipt.name], bill_no='AV-' + self.tag, bill_date=DAY, client_key=self.tag + 'av')
+        self.assertEqual(flt(frappe.db.get_value('Purchase Invoice', made['invoice'], 'outstanding_amount')), 700000, 'the advance paid part of it')
+
+    def test_45_credit_notes_in_closed_books_follow_the_claim_actually_held(self):
+        """Closed books, two receipts. (1) More invoiced than kept: 24.000 of the difference waits on 3388 as the claim, so a
+        credit note at the receipt price, or cancelling that invoice, would change the claim: refused with the way out.
+        (2) Invoiced no more than kept: the split balances and nothing is held, so a later credit note simply goes to
+        expense (it used to be refused because a split voucher existed)."""
+        from lotus_farm import procurement_adjustments as adjustments
+        from lotus_farm.finance import invoice_cost, supplier_invoice as si
+        earlier = add_days(DAY, -2)
+
+        def received():
+            order = self.order(qty=10, rate=100000)
+            frappe.db.set_value('Purchase Order', order.name, 'transaction_date', earlier)
+            self.tag = uuid.uuid4().hex[:8]
+            return self.receive(order, 10, day=earlier)
+
+        def bill(receipt, qty, rate, key, day):
+            extra = dict(variance_reason='NCC tăng giá') if rate != 100000 else {}
+            return as_user(ACC, si.create, receipts=[receipt.name], bill_no='CB-' + key + self.tag, bill_date=day, client_key=self.tag + key,
+                           lines=[dict(source_item=receipt.items[0].name, qty=qty, rate=rate, **extra)])['invoice']
+
+        held = lambda r: invoice_cost._parked_claim(frappe._dict(name=r.items[0].name, parent=r.name))
+        one = received()
+        bill(one, 6, 110000, 'a1', earlier)
+        i2 = bill(one, 4, 100000, 'a2', earlier)
+        p.return_receipt(one.name, earlier, {one.items[0].name: 4}, self.tag + 'x1', 1, 'Hỏng')
+        self.assertAlmostEqual(held(one), -24000, delta=1)
+        two = received()
+        bill(two, 6, 110000, 'b1', earlier)
+        p.return_receipt(two.name, earlier, {two.items[0].name: 2}, self.tag + 'y1', 1, 'Hỏng')
+        self.assertAlmostEqual(held(two), 0, delta=1)
+        self.close_receipts(earlier)
+        line = frappe.get_doc('Purchase Invoice', i2).items[0].name
+        self.assertIn('Mở lại kỳ đó', self.refused(as_user, ACC, adjustments.credit_note, C, i2, DAY, json.dumps({line: 4}), self.tag + 'cn1'))
+        self.assertIn('Mở lại kỳ đó', self.refused(as_user, ACC, si.cancel, i2, 'Thử hủy khi kỳ đã khóa'))
+        j2 = bill(two, 2, 110000, 'b2', DAY)
+        p.return_receipt(two.name, DAY, {two.items[0].name: 2}, self.tag + 'y2', 1, 'Hỏng')
+        pi_line = frappe.get_doc('Purchase Invoice', j2).items[0].name
+        note = as_user(ACC, adjustments.credit_note, C, j2, DAY, json.dumps({pi_line: 2}), self.tag + 'cn2')['invoice']
+        made = as_user(ACC, si.detail, note)['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', -20000)])
+
+    def test_46_cancelling_an_invoice_without_a_difference_resplits_the_returns(self):
+        """10 received; 5 invoiced at 110.000 and 5 at the receipt price; 2 returned: more invoiced than kept, 10.000 waits
+        on 3388. Cancelling the invoice at the receipt price (no voucher of its own) splits again: the 8 kept carry the
+        whole 50.000 and 3388 equals what waits for an invoice."""
+        from lotus_farm import procurement_queries as queries
+        from lotus_farm.finance import invoice_cost, supplier_invoice as si
+        receipt = self.receive(self.order(qty=10, rate=100000), 10)
+        line = receipt.items[0].name
+        first = as_user(ACC, si.create, receipts=[receipt.name], bill_no='NA-' + self.tag, bill_date=DAY, client_key=self.tag + 'na',
+                        lines=[dict(source_item=line, qty=5, rate=110000, variance_reason='NCC tăng giá')])['invoice']
+        second = as_user(ACC, si.create, receipts=[receipt.name], bill_no='NB-' + self.tag, bill_date=DAY, client_key=self.tag + 'nb',
+                         lines=[dict(source_item=line, qty=5)])['invoice']
+        back = p.return_receipt(receipt.name, DAY, {line: 2}, self.tag + 'ret', 1, 'Hỏng')
+        self.assertAlmostEqual(invoice_cost._parked_claim(frappe._dict(name=line, parent=receipt.name)), -10000, delta=1)
+        as_user(ACC, si.cancel, second, 'Nhập trùng')
+        self.repost()
+        self.assertAlmostEqual(invoice_cost._parked_claim(frappe._dict(name=line, parent=receipt.name)), 0, delta=1)
+        kept = flt(frappe.db.sql("select sum(stock_value_difference) from `tabStock Ledger Entry` where voucher_no in %s and is_cancelled=0",
+                                 ((receipt.name, back['name']),))[0][0])
+        self.assertAlmostEqual(kept, 800000 + 50000, delta=2)
+        waiting = queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0)
+        self.assertAlmostEqual(waiting, 300000, delta=1)
+        self.assertAlmostEqual(self.clearing([receipt.name, back['name'], first, second]), waiting, delta=1)
+
+    def test_47_billing_and_returned_labels_never_round_up(self):
+        """A small line still waiting keeps the receipt in 'chờ hóa đơn' (99.99 % used to count as done), and everything of
+        one line sent back is not 'Đã trả hết hàng' while another line is kept (quantities of different units)."""
+        from lotus_farm.finance import supplier_invoice as si
+        receipt = self.receive_all(self.order(lines=[dict(kind='Material', qty=20, rate=30000000), dict(kind='Tool', qty=1, rate=50000)]))
+        big = next(r.name for r in receipt.items if r.item_code == 'PCT-M')
+        as_user(ACC, si.create, receipts=[receipt.name], bill_no='BG-' + self.tag, bill_date=DAY, client_key=self.tag + 'bg', lines=[dict(source_item=big, qty=20)])
+        self.assertLess(flt(frappe.db.get_value('Purchase Receipt', receipt.name, 'per_billed')), 99.99)
+        self.assertIn(receipt.name, [r['name'] for r in as_user(ACC, si.queue, self.supplier)['rows']], 'the small line still waits')
+        self.tag = uuid.uuid4().hex[:8]
+        other = self.receive_all(self.order(lines=[dict(kind='Material', qty=20000, rate=1000), dict(kind='Tool', qty=2, rate=1000000)]))
+        many = next(r.name for r in other.items if r.item_code == 'PCT-M')
+        p.return_receipt(other.name, DAY, {many: 20000}, self.tag + 'ret', 1, 'Sai quy cách')
+        self.assertNotEqual({r['name']: r for r in p.receipts(C)}[other.name]['billing'], 'Đã trả hết hàng')
+        self.assertIn(other.name, [r['name'] for r in as_user(ACC, si.queue, self.supplier)['rows']], 'the 2 kept still wait for an invoice')
+
+    def test_48_waiting_goods_include_mua_nhanh_price_corrections_and_match_finance(self):
+        """A Mua nhanh price correction (Stock Reconciliation on 3388) waits with its entry; Tài chính › Đối chiếu shows the
+        same figures as Mua hàng › Công nợ (3388 + 33881 against goods waiting)."""
+        from lotus_farm import warehouse, procurement_queries as queries
+        from lotus_farm.finance import reports
+        group = frappe.db.get_value('Item', 'PCT-M', 'item_group')
+        code = insert('Item', item_code='PCT-QC-' + self.tag, item_name='PCT QC ' + self.tag, item_group=group, stock_uom='Nos', is_stock_item=1,
+                      is_purchase_item=1, valuation_rate=100000, item_defaults=[dict(company=C, default_warehouse=WH, expense_account=MAP['admin_expense'])]).name
+        quick = warehouse.create_draft(C, 'receipt', DAY, [dict(item=code, qty=2, rate=100000)], target=WH, receipt_reason='Purchase',
+                                       supplier=self.supplier, post=1, client_event_id=self.tag + 'qc')
+        fix = frappe.get_doc(dict(doctype='Stock Reconciliation', company=C, purpose='Stock Reconciliation', posting_date=DAY,
+                                  lotus_client_key='lotus-cost-of-receipt:%s:v1' % quick['name'],
+                                  items=[dict(item_code=code, warehouse=WH, qty=2, valuation_rate=110000)]))
+        fix.insert(ignore_permissions=True)
+        fix.submit()
+        self.assertAlmostEqual(queries.unbilled(C, DAY, self.supplier)['by_supplier'].get(self.supplier, 0), 220000, delta=1)
+        self.assertAlmostEqual(self.clearing([quick['name'], fix.name]), 220000, delta=1)
+        everything = queries.unbilled(C, DAY)
+        check = next(c for c in reports.reconciliation(DAY)['checks'] if c['label'].startswith('Hàng về chưa có hóa đơn'))
+        self.assertEqual((round(check['ledger']), round(check['source'])), (round(everything['ledger']), round(everything['total'])))
+
+    def test_49_advance_room_counts_each_line_with_its_own_vat(self):
+        """Line A 10 × 1.000.000 at 10 %, line B 10 × 1.000.000 without VAT; A invoiced in full. What is left to invoice is
+        B's 10.000.000, not half of the 21.000.000 total."""
+        from lotus_farm.finance import supplier_invoice as si
+        order = self.order(lines=[dict(kind='Material', qty=10, rate=1000000, vat='10'), dict(kind='Tool', qty=10, rate=1000000, vat='KCT')])
+        receipt = self.receive_all(order)
+        a = next(r.name for r in receipt.items if r.item_code == 'PCT-M')
+        as_user(ACC, si.create, receipts=[receipt.name], bill_no='MV-' + self.tag, bill_date=DAY, client_key=self.tag + 'mv', lines=[dict(source_item=a, qty=10)])
+        self.assertAlmostEqual(funding._remaining_source('Purchase Order', order.name, lock_rows=False), 10000000, delta=1)
+
+    def test_50_asset_invoiced_before_its_rate_ended_and_one_rate_for_the_invoice(self):
+        """(1) Ordered at 8 %, invoiced while 8 % was in force, received after it ended (the receipt then carries 10 %): the
+        invoice keeps 8 % and the 2 % the receipt capitalised in excess comes back from expense; 33881 returns to zero.
+        (2) One VAT rate for the whole invoice (Tài chính › Chờ hạch toán) on a household receipt without VAT: accepted,
+        the VAT goes into the cost."""
+        from lotus_farm.finance import rules as finance_rules, supplier_invoice as si
+        self.household()
+        earlier, yesterday = add_days(DAY, -2), add_days(DAY, -1)
+        asset = self.order(kind='Asset', qty=1, rate=10000000, vat='8')
+        frappe.db.set_value('Purchase Order', asset.name, 'transaction_date', earlier)
+        data = finance_rules.load_vat()
+        next(r for r in data['rates'] if r['code'] == '8')['to'] = yesterday
+        with patch.object(finance_rules, 'load_vat', return_value=data):
+            piece = self.receive(asset, 1)
+            self.assertEqual(piece.items[0].lotus_line_vat, '10')
+            result = as_user(CHIEF, si.create, receipts=[piece.name], bill_no='T8-' + self.tag, bill_date=earlier, posting_date=DAY,
+                             client_key=self.tag + 't8', lines=[dict(source_item=piece.items[0].name, qty=1, vat_code='8')])
+            made = as_user(ACC, si.detail, result['invoice'])['cost_adjustments']
+        self.assertEqual([(r['doctype'], r['kind'], r['amount']) for r in made], [('Journal Entry', 'expense', -200000)])
+        self.assertAlmostEqual(self.ledger(setup.valuation_tax_account(C), [piece.name, result['invoice'], made[0]['name']]), 0, delta=1, msg='33881')
+        self.tag = uuid.uuid4().hex[:8]
+        plain = self.receive(self.order(qty=10, rate=100000, vat='KCT'), 10)
+        goods = as_user(ACC, payments.make_goods_invoice, [plain.name], 'HV-' + self.tag, DAY, None, None, '10')
+        self.repost()
+        self.assertAlmostEqual(self.clearing([plain.name, goods['invoice']]), 0, delta=1)
+        self.assertAlmostEqual(flt(frappe.db.get_value('Purchase Receipt Item', plain.items[0].name, 'valuation_rate')), 110000, delta=1)
+
+    def test_51_every_kind_of_closed_books_is_recognised(self):
+        """Stock Closing Entry, Lotus result closing and the Company frozen date each make _closed() answer, so the
+        difference goes to expense instead of a voucher ERPNext would refuse."""
+        from lotus_farm.finance import invoice_cost, posting
+        entry = frappe.get_doc(dict(doctype='Stock Closing Entry', company=C, from_date=add_days(DAY, -30), to_date=DAY, status='Completed'))
+        entry.name = 'PCT-SCE-' + self.tag
+        entry.docstatus = 1
+        entry.db_insert()
+        self.assertIn('kho đã khóa', invoice_cost._closed(C, DAY) or '')
+        frappe.db.delete('Stock Closing Entry', {'name': entry.name})
+        closing = frappe.get_doc(dict(doctype=posting.POSTING, company=C, source_doctype=setup.SETTINGS, source_name=setup.SETTINGS, purpose='Result Closing',
+                                      voucher_type='Journal Entry', voucher_name='PCT-RC2-' + self.tag, posting_date=DAY, state='Posted',
+                                      active_key=posting.active_key(setup.SETTINGS, setup.SETTINGS, 'Result Closing', DAY[:7])))
+        closing.name = 'PCT-RC2-' + self.tag
+        closing.db_insert()
+        self.assertIn('đã kết chuyển', invoice_cost._closed(C, DAY) or '')
+        frappe.db.delete(posting.POSTING, {'name': closing.name})
+        self.frozen(DAY)
+        self.assertIn('sổ đã khóa', invoice_cost._closed(C, DAY) or '')
+
+    def test_41_buying_settings_keep_the_lotus_switches_off(self):
+        settings = frappe.get_single('Buying Settings')
+        settings.set_landed_cost_based_on_purchase_invoice_rate = 1
+        self.assertIn('hai lần', self.refused(settings.save))
 
     def test_16_cancel_unposted_funding_keeps_evidence_and_releases_reservation(self):
         inv=self.invoice(self.receive(self.order(),10))

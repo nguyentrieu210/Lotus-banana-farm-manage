@@ -38,6 +38,9 @@ class PurchaseStatus(unittest.TestCase):
         self.assertEqual(ps.billing_state(100), 'Đã có hóa đơn')
         self.assertEqual(ps.billing_state(None, invoiced=True), 'Đã có hóa đơn')
         self.assertEqual(ps.billing_state('x'), 'Chưa có hóa đơn')
+        # Everything went back: nothing to invoice, whatever per_billed says (Lotus counts it 100 % over what is kept).
+        self.assertEqual(ps.billing_state(100, per_returned=100), 'Đã trả hết hàng')
+        self.assertEqual(ps.billing_state(0, per_returned=40), 'Chưa có hóa đơn')
 
     def test_invoice(self):
         self.assertEqual(ps.invoice_state(1, 1000000, 1000000, '2026-12-01', '2026-11-10'), 'Chưa trả')

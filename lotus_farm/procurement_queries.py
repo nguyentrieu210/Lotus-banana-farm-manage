@@ -163,16 +163,18 @@ def payables(company, as_of=None, supplier=None, search=None, start=0, page_leng
     per={}
     for r in everything:
         s=per.setdefault(r.supplier,dict(supplier=r.supplier,supplier_name=r.supplier_name,invoiced=0.0,advance=0.0,net=0.0,due_7d=0.0,unbilled=0.0,
-                                         aging={k:0.0 for k in procurement_rules.AGING_BUCKETS}))
+                                         claim=0.0,aging={k:0.0 for k in procurement_rules.AGING_BUCKETS}))
         s['net']+=r.balance
         if r.balance>0:
             s['invoiced']+=r.balance;s['aging'][r.bucket]+=r.balance
             if r.due_soon:s['due_7d']+=r.balance
         else:s['advance']-=r.balance
-    for name,amount in waiting['by_supplier'].items():
+    # Goods still waiting for their invoice and claims on the supplier (returned after the invoice) are shown apart.
+    for name in set(waiting['waiting'])|set(waiting['claims']):
         if name not in names:continue
-        per.setdefault(name,dict(supplier=name,supplier_name=names[name],invoiced=0.0,advance=0.0,net=0.0,due_7d=0.0,unbilled=0.0,
-                                 aging={k:0.0 for k in procurement_rules.AGING_BUCKETS}))['unbilled']=amount
+        s=per.setdefault(name,dict(supplier=name,supplier_name=names[name],invoiced=0.0,advance=0.0,net=0.0,due_7d=0.0,unbilled=0.0,
+                                   claim=0.0,aging={k:0.0 for k in procurement_rules.AGING_BUCKETS}))
+        s['unbilled']=waiting['waiting'].get(name,0.0);s['claim']=waiting['claims'].get(name,0.0)
     ledger_balance=-flt(frappe.db.sql('''select sum(debit-credit) from `tabGL Entry` where company=%s and account=%s and is_cancelled=0
         and posting_date<=%s'''+(' and party=%s' if supplier else ''),(company,account,as_of,*([supplier] if supplier else [])))[0][0])
     return dict(rows=rows[start:start+length],total_count=len(rows),has_more=len(rows)>start+length,as_of=str(as_of),
@@ -181,7 +183,8 @@ def payables(company, as_of=None, supplier=None, search=None, start=0, page_leng
                 aging=procurement_rules.age([dict(amount=r.balance,due_date=r.due_date or None) for r in owed],as_of),
                 aging_labels=procurement_rules.AGING_LABELS,due_7d=sum(r.balance for r in owed if r.due_soon),
                 suppliers=sorted(per.values(),key=lambda s:(-s['net']-s['unbilled'],s['supplier_name'])),
-                unbilled=waiting['total'],unbilled_ledger=waiting['ledger'],unbilled_matches=abs(waiting['total']-waiting['ledger'])<1 if not supplier else None,
+                unbilled=waiting['total'],unbilled_waiting=sum(waiting['waiting'].values()),unbilled_claims=sum(waiting['claims'].values()),
+                unbilled_ledger=waiting['ledger'],unbilled_matches=abs(waiting['total']-waiting['ledger'])<1 if not supplier else None,
                 ledger_balance=ledger_balance,ledger_matches=abs(ledger_balance-sum(r.balance for r in everything))<1)
 
 
@@ -200,16 +203,37 @@ def supplier_history(company, supplier):
 
 
 def unbilled(company, as_of, supplier=None):
-    """Hàng đã nhận, chưa có hóa đơn trên ngày chốt (spec 003, FR-057): receipts of orders — (nhận − trả − đã có hóa
-    đơn) × đơn giá nhập kho — and Mua nhanh receipts without an invoice by that date. `ledger` is what the books hold on
-    3388 + 33881 for the same date; the two agree when nothing was posted there by hand."""
-    from lotus_farm.finance import setup
+    """Hàng đã nhận, chưa có hóa đơn trên ngày chốt (spec 003, FR-057): receipts of orders and Mua nhanh receipts without
+    an invoice by that date. `ledger` is what the books hold on 3388 + 33881 for the same date; the two agree when nothing
+    was posted there by hand.
+
+    A receipt line counts with what the receipt itself credited for the quantity still waiting (nhận − trả − đã có hóa
+    đơn): the net amount of goods and assets, plus for a household business their VAT (33881) and their own freight
+    (3388). A service line posts nothing there: its VAT and freight are a cost of the line (procurement._line_costs).
+    The quantity waiting is negative when more was invoiced than kept (goods returned after the invoice): that is the
+    claim on the supplier until the credit note, and it counts negative.
+    Invoice differences are posted by finance.invoice_cost at the receipt's own date: those of invoices dated after the
+    closing date, and the receipt's split vouchers (freight per line, differences carried by returns), are added, so the
+    two agree on any date."""
+    from lotus_farm.finance import rules as finance_rules, setup
     as_of = getdate(as_of)
+    household = setup.vat_in_cost()
     extra = ' and pr.supplier=%(supplier)s' if supplier else ''
     args = dict(company=company, day=as_of, supplier=supplier)
-    lines = frappe.db.sql('''select pr.name receipt, pr.supplier, pri.name line, pri.qty, pri.conversion_factor factor, pri.valuation_rate rate
-        from `tabPurchase Receipt Item` pri join `tabPurchase Receipt` pr on pr.name=pri.parent
+    lines = frappe.db.sql('''select pr.name receipt, pr.supplier, pr.posting_date day, pr.conversion_rate, pri.name line, pri.qty,
+            pri.base_net_amount net, pri.lotus_line_vat vat_code, pri.lotus_line_freight freight,
+            (ifnull(it.is_stock_item, 0)=1 or ifnull(pri.is_fixed_asset, 0)=1) capital
+        from `tabPurchase Receipt Item` pri join `tabPurchase Receipt` pr on pr.name=pri.parent left join `tabItem` it on it.name=pri.item_code
         where pr.docstatus=1 and pr.is_return=0 and pr.company=%(company)s and pr.posting_date<=%(day)s''' + extra, args, as_dict=True)
+    for l in lines:
+        credited = flt(l.net) if l.capital else 0.0
+        if household and l.capital:
+            try:
+                credited += flt(l.net) * finance_rules.vat_rate(l.vat_code or 'KCT', l.day)
+            except ValueError:
+                pass
+            credited += flt(l.freight) * (flt(l.conversion_rate) or 1)
+        l.unit = credited / flt(l.qty) if flt(l.qty) else 0.0
     names = [l.line for l in lines]
     billed, returned = {}, {}
     if names:
@@ -224,11 +248,26 @@ def unbilled(company, as_of, supplier=None):
     by_supplier, rows = {}, []
     for l in lines:
         left = flt(l.qty) - returned.get(l.line, 0) - billed.get(l.line, 0)
-        if left <= 0.000001:
+        if abs(left) <= 0.000001:
             continue
-        amount = left * (flt(l.factor) or 1) * flt(l.rate)
+        amount = left * flt(l.unit)
+        if abs(amount) < 0.5:
+            continue
         by_supplier[l.supplier] = by_supplier.get(l.supplier, 0) + amount
         rows.append(dict(doctype='Purchase Receipt', name=l.receipt, supplier=l.supplier, amount=amount, mua_nhanh=False))
+    meta = frappe.get_meta('Landed Cost Voucher') if frappe.db.exists('DocType', 'Landed Cost Voucher') else None
+    if meta and meta.has_field('lotus_purchase_invoice') and meta.has_field('lotus_cost_receipt'):
+        for row in frappe.db.sql('''select pr.supplier, if(ifnull(pr.return_against, '')='', pr.name, pr.return_against) receipt,
+                    sum(i.applicable_charges) amount
+                from `tabLanded Cost Item` i join `tabLanded Cost Voucher` v on v.name=i.parent
+                join `tabPurchase Receipt` pr on pr.name=i.receipt_document
+                where v.docstatus=1 and v.company=%(company)s and pr.posting_date<=%(day)s
+                  and (ifnull(v.lotus_cost_receipt, '')!='' or (ifnull(v.lotus_purchase_invoice, '')!='' and v.posting_date>%(day)s))''' + extra + '''
+                group by pr.supplier, if(ifnull(pr.return_against, '')='', pr.name, pr.return_against)''', args, as_dict=True):
+            if abs(flt(row.amount)) < 0.5:
+                continue
+            by_supplier[row.supplier] = by_supplier.get(row.supplier, 0) + flt(row.amount)
+            rows.append(dict(doctype='Purchase Receipt', name=row.receipt, supplier=row.supplier, amount=flt(row.amount), mua_nhanh=False))
     if frappe.get_meta('Stock Entry').has_field('lotus_purchase_invoice'):
         quick = frappe.db.sql('''select se.name, se.lotus_supplier supplier, se.total_incoming_value value, se.total_additional_costs costs,
                 se.lotus_purchase_invoice invoice from `tabStock Entry` se
@@ -236,10 +275,21 @@ def unbilled(company, as_of, supplier=None):
             and se.posting_date<=%(day)s''' + (' and se.lotus_supplier=%(supplier)s' if supplier else ''), args, as_dict=True)
         invoiced = {r.name: getdate(r.posting_date) for r in frappe.get_all('Purchase Invoice', filters={'name': ['in', [q.invoice for q in quick if q.invoice] or ['']], 'docstatus': 1},
                                                                            fields=['name', 'posting_date'])}
+        # A Mua nhanh price correction (finance.stock, Stock Reconciliation on 3388) waits with its entry until the
+        # invoice, which clears both (third review, 11/11/2026).
+        corrections = {}
+        if quick and frappe.get_meta('Stock Reconciliation').has_field('lotus_client_key'):
+            from lotus_farm.finance.payments import _CORRECTION_KEY
+            for c in frappe.get_all('Stock Reconciliation', filters={'company': company, 'docstatus': 1, 'purpose': 'Stock Reconciliation',
+                                                                      'lotus_client_key': ['like', _CORRECTION_KEY + '%'], 'posting_date': ['<=', as_of],
+                                                                      'expense_account': setup.mapping().get('received_not_billed')},
+                                    fields=['lotus_client_key', 'difference_amount'], limit_page_length=0):
+                origin = c.lotus_client_key[len(_CORRECTION_KEY):].split(':v', 1)[0]
+                corrections[origin] = corrections.get(origin, 0.0) + flt(c.difference_amount)
         for q in quick:
             if q.invoice and q.invoice in invoiced and invoiced[q.invoice] <= as_of:
                 continue
-            amount = flt(q.value) - flt(q.costs)
+            amount = flt(q.value) - flt(q.costs) + corrections.get(q.name, 0.0)
             by_supplier[q.supplier] = by_supplier.get(q.supplier, 0) + amount
             rows.append(dict(doctype='Stock Entry', name=q.name, supplier=q.supplier, amount=amount, mua_nhanh=True))
     accounts = [a for a in (setup.mapping().get('received_not_billed'), setup.valuation_tax_account(company)) if a]
@@ -251,8 +301,17 @@ def unbilled(company, as_of, supplier=None):
         if key in merged:
             merged[key]['amount'] += r['amount']
         else:
-            merged[key] = r
-    return dict(total=sum(by_supplier.values()), by_supplier=by_supplier, rows=list(merged.values()), ledger=ledger)
+            merged[key] = dict(r)
+    # Per supplier, goods still waiting and claims (goods sent back after their invoice, owed back until the credit note)
+    # are told apart: netted together, a claim hides behind other goods waiting (third review, 11/11/2026).
+    waits, claims = {}, {}
+    for r in merged.values():
+        if r['amount'] > 0.5:
+            waits[r['supplier']] = waits.get(r['supplier'], 0) + r['amount']
+        elif r['amount'] < -0.5:
+            claims[r['supplier']] = claims.get(r['supplier'], 0) - r['amount']
+    return dict(total=sum(by_supplier.values()), by_supplier=by_supplier, waiting=waits, claims=claims, rows=list(merged.values()),
+                ledger=ledger)
 
 
 @frappe.whitelist()

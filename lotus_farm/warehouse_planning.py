@@ -424,12 +424,13 @@ def _receive_order(name,posting_date,selected,client_event_id,additional_costs,p
                 frappe.throw('Tài sản nhận theo từng chiếc, quy đổi bằng 1.')
             for _ in range(round(flt(row.qty))):
                 piece=frappe._dict(row.as_dict())
-                piece.pop('name',None)
+                piece.pop('name',None);piece.pop('idx',None)
                 piece.update(qty=1,received_qty=1,stock_qty=1,lotus_line_freight=flt(row.lotus_line_freight)/flt(row.qty))
                 kept.append(piece)
         else:kept.append(row)
     if {r.get('purchase_order_item') for r in kept}!=set(selected):frappe.throw('Dòng đơn mua không còn hợp lệ. Mở lại đơn mua.')
-    doc.set('items',kept);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
+    from lotus_farm.procurement import renumber
+    doc.set('items',kept);renumber(doc);doc.posting_date=getdate(posting_date);doc.set_posting_time=1
     if notes:doc.remarks=str(notes).strip()[:500]
     from lotus_farm.procurement import apply_line_taxes
     apply_line_taxes(doc)
@@ -517,7 +518,7 @@ def receipt_extras(doc):
     keeper=next((s for s in signed['steps'] if s['state']=='Đã ký'),None) if signed['chain']=='purchase_receipt' and signed['round'] else None
     return dict(state=purchase_status.receipt_state(doc.docstatus),signing_chain=signed['chain'],
         signed_by=keeper['name'] if keeper else '',signed_at=keeper['signed_at'] if keeper else '',
-        billing=purchase_status.billing_state(doc.get('per_billed')) if doc.docstatus==1 and not doc.is_return else '',
+        billing=purchase_status.billing_state(doc.get('per_billed'),per_returned=doc.get('per_returned')) if doc.docstatus==1 and not doc.is_return else '',
         deliverer_name=doc.get('lotus_deliverer_name') or '',deliverer_signed=bool(doc.get('lotus_deliverer_signature')),
         delivery_proof=doc.get('lotus_delivery_proof') or '',needs_evidence=purchase_flow.receipt_needs_evidence(doc),
         has_evidence=purchase_flow.receipt_has_evidence(doc),cancel_reason=doc.get('lotus_cancel_reason') or '',

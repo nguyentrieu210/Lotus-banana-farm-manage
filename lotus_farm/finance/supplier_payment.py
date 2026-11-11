@@ -109,6 +109,21 @@ def prepare(supplier=None, allocations=None, advance_amount=0, mode='bank', refe
     return payments.start_signing(pe, signers)
 
 
+def order_advance_guard(doc, method=None):
+    """before_submit of a supplier Payment Entry: an advance on an order must still fit when the voucher is signed. An
+    invoice entered after the voucher was prepared takes its share of the order (second review, 11/11/2026)."""
+    if doc.get('payment_type') != 'Pay' or doc.get('party_type') != 'Supplier':
+        return
+    from lotus_farm.purchase_funding import _remaining_source
+    for ref in doc.get('references') or []:
+        if ref.reference_doctype != PO or flt(ref.allocated_amount) <= 0:
+            continue
+        left = _remaining_source(PO, ref.reference_name, exclude=doc.name)
+        if flt(ref.allocated_amount) > left + .5:
+            frappe.throw('Đơn mua %s chỉ còn tạm ứng được %s đ: đã có hóa đơn cho một phần đơn sau khi lập phiếu chi này. Hủy phiếu và '
+                         'lập lại, phần đã có hóa đơn trả theo hóa đơn.' % (ref.reference_name, _vnd(left)))
+
+
 @frappe.whitelist()
 def open_items(supplier):
     """What can be paid to one supplier now: open invoices and approved orders (for an advance), each with the amount
@@ -124,7 +139,9 @@ def open_items(supplier):
                           total=flt(r.grand_total), outstanding=flt(r.outstanding_amount), payable=left, waiting=max(0, flt(r.outstanding_amount) - left)))
     for r in frappe.get_all(PO, filters={'company': company, 'supplier': supplier, 'docstatus': 1, 'status': ['not in', ['Closed', 'Completed', 'Stopped']],
                                          'per_billed': ['<', 99.99]},
-                            fields=['name', 'transaction_date', 'grand_total', 'advance_paid'], order_by='transaction_date'):
+                            fields=['name', 'transaction_date', 'grand_total', 'advance_paid', 'per_billed'], order_by='transaction_date'):
+        # What is already invoiced is paid through its invoice, not as an advance on the order: the cap is in
+        # purchase_funding.order_advance_room, which every payment path checks.
         left = _remaining_source(PO, r.name, lock_rows=False)
         if left > 0.5:
             items.append(dict(doctype=PO, name=r.name, label='Tạm ứng theo đơn ' + r.name, date=str(r.transaction_date), due_date='',

@@ -141,11 +141,19 @@ try:
                                      currency=frappe.get_cached_value('Company', company, 'default_currency'),
                                      items=[dict(item_code=goods.name, qty=2, rate=100000, uom=goods.stock_uom, conversion_factor=1,
                                                  warehouse=store, schedule_date=frappe.utils.add_days(frappe.utils.nowdate(), 5))]))
+    def unlinked(order):
+        # A copy keeps no proposal or quote line of its template: those quantities are ordered already, and the purchase
+        # flow rightly refuses to order them twice (seen once the browser walk-through left orders on the site copy).
+        for row in order.items:
+            row.schedule_date = order.schedule_date
+            for field in ('material_request', 'material_request_item', 'supplier_quotation', 'supplier_quotation_item'):
+                if row.meta.has_field(field):
+                    row.set(field, None)
+        return order
+
     po = frappe.copy_doc(source)
     po.update(dict(docstatus=0, lotus_approval_status='Nháp', lotus_approved_by=None, lotus_approved_at=None, schedule_date=frappe.utils.add_days(frappe.utils.nowdate(), 5)))
-    for row in po.items:
-        row.schedule_date = po.schedule_date
-    po.insert()
+    unlinked(po).insert()
     other = person('Other', ['Lotus Purchase Approver', 'Purchase User', 'Purchase Manager', 'Stock User'])
     purchasing.request_approval(po.name, str(po.modified), approver)
     po.reload()
@@ -163,9 +171,7 @@ try:
     # Spec 003, FR-019: a submit that does not come from the named approver's signature is refused.
     po2 = frappe.copy_doc(source)
     po2.update(dict(docstatus=0, lotus_approval_status='Nháp', lotus_approved_by=None, lotus_approved_at=None, schedule_date=po.schedule_date))
-    for row in po2.items:
-        row.schedule_date = po.schedule_date
-    po2.insert()
+    unlinked(po2).insert()
     purchasing.request_approval(po2.name, str(po2.modified), approver)
     po2.reload()
     assert denied(as_user, other, po2.submit), 'another approver cannot submit through the generic API'

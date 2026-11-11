@@ -447,7 +447,7 @@ Xem công nợ của NCC này trên cả điện thoại và máy tính. Lập 1
 - **Đơn mua**: cam kết mua với một NCC, có người duyệt được chỉ định. Trạng thái: Nháp · Chờ duyệt · Bị trả lại · Đã duyệt · Đã gửi NCC · NCC đã xác nhận · Đang nhận · Đã nhận đủ · Đã đóng · Đã hủy.
 - **Phiếu nhận hàng (nhập kho)**: số thực nhận theo đơn, hoặc nhập Mua nhanh, kèm chi phí và ảnh. Phiếu theo đơn có thêm xác nhận của người giao hàng (chữ ký tay kèm họ tên, hoặc ảnh phiếu giao có chữ ký) và chữ ký thủ kho lúc xác nhận.
   - Trạng thái phiếu: Nháp · Đã nhập kho · Đã hủy.
-  - Tình trạng hóa đơn: Chưa có hóa đơn · Có hóa đơn một phần · Đã có hóa đơn.
+  - Tình trạng hóa đơn: Chưa có hóa đơn · Có hóa đơn một phần · Đã có hóa đơn · Đã trả hết hàng (không cần hóa đơn).
 - **Phiếu trả hàng**: phần hàng trả lại NCC, gắn với phiếu nhận gốc.
 - **Hóa đơn NCC**: hóa đơn của NCC đã ghi sổ, gồm ký hiệu, số, ngày, hạn trả, các dòng, thuế, tổng in, file gốc và liên kết tới phiếu nhận hoặc đơn mua. Trạng thái: Chưa trả · Trả một phần · Đã trả · Quá hạn · Đã hủy. Hóa đơn điều chỉnh gắn với hóa đơn gốc.
 - **Hóa đơn chờ nhập**: file hoặc ảnh hóa đơn đã đính kèm, hoặc phiếu nhập chưa có hóa đơn, đang chờ kế toán ghi.

@@ -13,8 +13,9 @@ Mỗi mục ghi Quyết định, Lý do và Phương án đã loại.
 | B3 | Phiếu chi trong tiến độ mở nhầm loại | Dòng tiến độ thiếu doctype (`purchase_flow.py:140-141`, `procurement.py:456`); giao diện mặc định Journal Entry (`ProcurementWorkspace.vue:232`) | Bấm phiếu chi báo không tìm thấy |
 | B4 | Hóa đơn ở Tài chính đưa thuế vào 1331 | `finance/payments.py:176` (`make_goods_invoice`), `:292` (`make_service_invoice`) gọi `apply_vat(..., m['input_vat'])` | Trái quy tắc hộ kinh doanh (thuế vào giá vốn); xảy ra khi kế toán chọn thuế suất khác KCT |
 | B5 | Đơn mua xác nhận chỉ cần quyền | `purchasing.check_submission` (`purchasing.py:58-67`) chỉ xét vai trò; đơn không có trường Lotus bỏ qua hẳn | Người có vai trò duyệt mua xác nhận đơn qua Desk/REST mà không cần chữ ký người được chỉ định |
+| B6 (tìm thấy 11/11/2026) | Hàng đợi nền đầy làm hỏng việc submit | `push_notifications.document_hook` gọi `frappe.enqueue` không bắt lỗi. Khi hàng đợi "short" vượt giới hạn, Frappe kiểm kích thước hàng đợi rồi gọi `has_permission("System Health Report")`, và hàm này ném PermissionError không nội dung với người không phải System Manager | Mọi submit có gửi thông báo đều hỏng (đề xuất, đơn mua, phiếu nhận, phiếu kho, báo cáo ngày), kể cả chữ ký cuối của giám đốc. Trên bộ thử lỗi hiện ra vì không chạy worker; trên site thật sẽ hiện khi worker dừng hoặc nghẽn |
 
-B1, B2 và B3 sửa nhỏ, có thể tách thành bản vá riêng trước các phase khác nếu chủ vườn đồng ý. B4 và B5 nằm trong R16 và R7.
+B1, B2 và B3 sửa nhỏ, có thể tách thành bản vá riêng trước các phase khác nếu chủ vườn đồng ý. B4 và B5 nằm trong R16 và R7. B6 đã sửa: việc xếp thông báo vào hàng đợi chỉ là cố gắng, lỗi thì ghi Error Log "Lotus: thông báo chứng từ" (T128).
 
 ## R1. Điểm chốt khi ký đủ và bản PDF lưu
 
@@ -291,7 +292,7 @@ Dựng PDF lỗi thì toàn bộ rollback (FR-014). PDF được lưu thành Fil
   6. submit, gắn file, ghi link vào các phiếu Mua nhanh.
 - `procurement.invoice_receipt`, `payments.make_goods_invoice` và `make_service_invoice` thành lớp bọc mỏng gọi lõi này. Việc gộp này sửa luôn B4.
 - Giá vốn theo giá hóa đơn (FR-051):
-  - Phiếu nhận: bật Buying Settings `set_landed_cost_based_on_purchase_invoice_rate` bằng migration.
+  - Phiếu nhận: lúc đầu định bật Buying Settings `set_landed_cost_based_on_purchase_invoice_rate` bằng migration. Sau buổi thử trên bản sao site thật, đã đổi sang Lotus tự ghi Landed Cost Voucher theo từng hóa đơn (xem cuối mục này).
   - Mua nhanh: dùng mẫu điều chỉnh giá đã có (`finance/stock.py:155-189`).
 - `stock_attachments` cho phép đính kèm file vào Purchase Invoice và Payment Entry.
 
@@ -306,6 +307,101 @@ Dựng PDF lỗi thì toàn bộ rollback (FR-014). PDF được lưu thành Fil
 - Mua nhanh: hóa đơn ghi Nợ 3388 theo tiền hàng (`basic_amount`), 3388 về 0 (ca test_22).
 
 **Giới hạn còn lại:** một hóa đơn chưa gồm được cả phiếu nhận theo đơn và phiếu Mua nhanh (hai cách tính thuế khác nhau); hệ thống báo rõ và yêu cầu chọn riêng từng loại.
+
+**Thử trên bản sao site thật và đổi cách làm (10/11/2026).** Thử kịch bản US5 trên trình duyệt với `mua.test` cho thấy cách "bật thiết lập ERPNext" không đủ. Theo đúng điều kiện đã ghi ở plan.md (Complexity Tracking), phần này chuyển sang cách Lotus tự ghi điều chỉnh:
+- Thiết lập `bill_for_rejected_quantity_in_purchase_invoice` của ERPNext đang bật (mặc định). Khi bật, hóa đơn lập từ phiếu nhận tính cả hàng đã trả lại. Ca thử: nhận 60 kg, trả 5 kg, hóa đơn vẫn ghi 60 kg, 3388 lệch 600.000 đ. Lotus không ghi hàng bị loại, nên thiết lập này nay tắt. Khi tắt, ERPNext trừ hàng đã trả và lại kiểm hóa đơn vượt giá trị đơn mua.
+- Cơ chế `set_landed_cost_based_on_purchase_invoice_rate` có ba chỗ hụt:
+  - trải phần chênh giá lên toàn bộ số đã nhận, kể cả hàng đã trả và phần chưa có hóa đơn;
+  - bỏ qua phần thuế chênh của hộ kinh doanh, nên 33881 còn 189.000 đ khi hóa đơn khác giá và khác thuế suất;
+  - tính "đã có hóa đơn" theo tiền, nên hóa đơn rẻ hơn phiếu nhận để phiếu nhận "chưa đủ hóa đơn" mãi.
+
+  Thiết lập này nay tắt. `finance/invoice_cost.py` ghi theo từng hóa đơn, cho đúng số lượng trên hóa đơn (bản cuối, sau rà soát độc lập 11/11/2026):
+  - **Kỳ của phiếu nhận còn mở.** Phần chênh của từng dòng (giá, cộng thuế với hộ kinh doanh) vào giá vốn bằng Landed Cost Voucher, ghi Có 3388. Mỗi chiều tăng hoặc giảm là một phiếu.
+    - Chỉ dùng một tài khoản vì ERPNext bỏ qua bút toán của mọi phiếu khi tổng phiếu trên một dòng bằng 0. Hai phiếu bù trừ nhau trên 3388 và 33881 từng làm cả hai tài khoản lệch.
+    - Phần thuế chênh chuyển từ 3388 sang 33881 bằng một bút toán ngày hóa đơn.
+    - Bỏ qua bước chuyển này khi phiếu nhận không có bút toán nào trên các tài khoản thuế tính vào giá vốn của hóa đơn. Khi đó ERPNext đã tự ghi thuế hóa đơn vào 3388 (`purchase_invoice.make_item_gl_entries`, nhánh "negative expense").
+  - **Hàng trả lại.** Sau mỗi hóa đơn, mỗi lần trả và mỗi lần hủy trả, phần chênh C của dòng được chia lại theo số đã có hóa đơn (`rebalance`, phiếu chia gắn `lotus_cost_receipt`). Ký hiệu: Q nhận, r mỗi lần trả, K còn giữ, b đã có hóa đơn (trừ hóa đơn điều chỉnh).
+    - Hàng giữ lại mang C·min(b, K)/b: dòng nhận được C·min(b, K)/b·Q/K − C, mỗi dòng trả −r·C·min(b, K)/(b·K). Khi b ≤ K, đây là cách chia cũ: dòng nhận C·Q/K, dòng trả −C·r/K.
+    - Hóa đơn tính cả hàng sau đó trả lại (b > K): phần chênh của hàng đó nằm trên 3388 cùng tiền hàng, thành khoản NCC phải hoàn, đến khi có hóa đơn điều chỉnh.
+    - Trả hết (K = 0): phần chênh đi theo các dòng trả, dòng trả cuối nhận phần lẻ.
+    - Hàng trả ra khỏi kho đúng giá vốn của nó, không ghi khoản "divisional loss" vào 632.
+    - Phiếu chia ghi lần lượt từng chứng từ, phiếu nhận trước, phiếu trả sau. ERPNext tính lại phiếu trả theo đơn giá của phiếu nhận ngay lúc phiếu của nó được ghi; phần còn lại chỉ được xếp vào job định giá lại hằng giờ. Chứng từ có phép chia không đổi thì để yên.
+    - Mọi hóa đơn và hóa đơn điều chỉnh, kể cả không có chênh lệch, đều chia lại các phiếu nhận của nó, vì số đã có hóa đơn đổi. Khi hủy, chứng từ đang hủy không còn được tính, dù trong `before_cancel` nó vẫn ở trạng thái đã ghi sổ.
+  - **Phí vận chuyển theo từng dòng (hộ kinh doanh).** ERPNext chia dòng phí vận chuyển cho hàng kho theo giá trị dòng (`_spread_charge_over_items`). Hóa đơn và phiếu trả lại tính phí theo từng dòng. Phiếu chia chuyển phần chênh để mỗi dòng mang đúng phí của nó, trên phiếu nhận và cả phiếu trả (`_freight_shares`). Tổng phiếu chia trên 3388 bằng 0. Chứng từ có dòng tài sản giữ cách chia của ERPNext, vì tài sản chưa ghi sổ chưa nhận được Landed Cost Voucher.
+  - **Kỳ của phiếu nhận đã khóa.** Gồm: ngày khóa sổ của công ty, Accounting Period khóa Purchase Receipt, kết chuyển kết quả của Lotus, Period Closing Voucher, Stock Closing Entry đã xong. Với Period Closing Voucher, ERPNext không cho ghi lại phiếu nhận, nên trước đây hóa đơn không ghi sổ được.
+    - Sổ kỳ đó không đổi. Phần chênh thành chi phí kỳ hóa đơn trên tài khoản chi phí của dòng (giữ vườn/lô), bằng bút toán ngày hóa đơn.
+    - Hủy hóa đơn mà phiếu điều chỉnh của nó rơi vào kỳ nay đã khóa thì bị chặn, kèm hướng dẫn lập hóa đơn điều chỉnh.
+  - **Hóa đơn điều chỉnh** đi theo cách hóa đơn gốc đã ghi:
+    - gốc đưa dòng đó vào giá vốn → điều chỉnh vào giá vốn;
+    - gốc ghi chi phí → điều chỉnh ghi chi phí, kể cả khi kỳ đã mở lại;
+    - kỳ của phiếu nhận nay đã khóa → ghi chi phí;
+    - ngoại lệ: hàng đã trả sau hóa đơn, lúc kỳ còn mở, nên phần chênh của nó đang chờ trên 3388 như khoản NCC phải hoàn, và nay kỳ đã khóa. Ghi chi phí lúc này sẽ để treo khoản đó và tạo một khoản lãi giả. Ghi đúng thì phải theo dõi riêng phần đã hoàn của từng dòng, nên Lotus từ chối và hướng dẫn mở lại kỳ, ghi hóa đơn điều chỉnh, rồi khóa lại (test_42).
+  - **Liên kết và chặn.** Phiếu và bút toán gắn với hóa đơn qua `lotus_purchase_invoice` và hủy trước khi hóa đơn hủy. Không hủy, sửa hay "Hủy tất cả" riêng chúng được (`guard`), và mỗi loại có thông báo riêng. Buying Settings không bật lại được hai thiết lập ERPNext đã tắt (`settings_guard`).
+  - **Trường hợp riêng.**
+    - Cùng giá nhưng khác tỷ giá: để ERPNext tự ghi chênh tỷ giá.
+    - Dòng tài sản cố định khác giá: bị chặn, hướng dẫn điều chỉnh nguyên giá. Thuế suất chỉ đổi được sang mã thay mã đã hết hạn (8% → 10% sau 31/12/2026); phần thuế chênh ghi chi phí, nguyên giá giữ như lúc nhận.
+    - Thuế suất của hóa đơn trả lại lấy theo ngày hóa đơn gốc.
+    - Mã hết hạn được thay theo `then` trong `vat_vn.json` (`rules.vat_code_on`): hàng đặt 8% nhận sau 31/12/2026 ghi 10%, và hóa đơn sau ngày đó lấy 10% cho dòng phiếu nhận 8%.
+- Phần trăm "đã có hóa đơn":
+  - phiếu nhận: đo trên phần còn giữ (nhận − trả). Mỗi dòng tính phần đã có hóa đơn trên phần giữ, theo giá trị dòng. Phiếu trả hết tính là xong.
+  - ERPNext 16 để `returned_qty` và `per_returned` của phiếu nhận bằng 0 với các lần trả này. `get_returned_qty_map` cũng chỉ giữ một lần trả cho mỗi dòng. Lotus tự cộng các lần trả (`returned_qty_map`) và giữ `per_returned`. Trạng thái "Đã trả hết hàng" thì không còn nút lập hóa đơn.
+  - đơn mua: tính theo số đã đặt;
+  - tạm ứng theo đơn mua (`purchase_funding.order_advance_room`): tối đa bằng phần chưa có hóa đơn trừ phần tạm ứng chưa trừ vào hóa đơn. ERPNext 16 vẫn cộng phần tạm ứng đã trừ vào hóa đơn trong `advance_paid`.
+    - Đơn đã có hóa đơn đủ hoặc đã đóng thì không tạm ứng thêm.
+    - Mọi đường chi đều kiểm (`_remaining_source`), kiểm lại lúc ký cuối (`order_advance_guard`).
+- Hộ kinh doanh, dòng không có giá trị kho (dịch vụ):
+  - trên mọi chứng từ (đơn mua, phiếu nhận, hóa đơn, hóa đơn điều chỉnh), không mang mẫu thuế 33881;
+  - thuế và phí vận chuyển vào chi phí của chính dòng đó, giữ vườn/lô (`_line_costs`).
+
+  Lý do: phiếu nhận chỉ ghi Có 33881 và 3388 phần nó tính vào giá vốn.
+- Hộ kinh doanh, phí vận chuyển của hàng kho và tài sản:
+  - ghi vào 3388 (không ghi 33881), với `allocate_full_amount_to_stock_items`;
+  - mỗi dòng mang phí của chính nó (xem trên). Phí của dòng dịch vụ không còn vào hàng kho (rà soát lần 2).
+
+  Lý do không ghi 33881: ERPNext 16 dựng lại thuế suất từng dòng theo tài khoản. Phí vận chuyển chung tài khoản với thuế theo dòng thì báo "Item Wise Tax Details do not match" ngay khi có dòng 0% hoặc dòng dịch vụ. Cũng vì lẽ đó, phần làm tròn của hóa đơn khấu trừ có dòng 0% ghi vào tài khoản làm tròn, không ghi 1331.
+- Số thứ tự dòng: phiếu nhận tách dòng tài sản thành từng chiếc, phiếu trả, hóa đơn điều chỉnh và hóa đơn có dòng dịch vụ được đánh số lại 1..n (`procurement.renumber`). ERPNext chia thuế và phí theo số thứ tự dòng, nên số trùng làm một dòng nhận phí hai lần.
+- "Hàng đã nhận, chưa có hóa đơn" (FR-057) tính theo đúng phần phiếu nhận đã ghi vào 3388/33881:
+  - tiền hàng của dòng hàng kho và tài sản;
+  - với hộ kinh doanh, thuế và phí vận chuyển của chính các dòng đó;
+  - cộng phiếu chia của phiếu nhận và phần chênh của các hóa đơn ghi sau ngày chốt.
+
+  Số chờ âm khi hóa đơn tính cả hàng sau đó trả lại: đó là khoản NCC phải hoàn, chờ hóa đơn điều chỉnh. Màn Công nợ ghi rõ. Không tính dòng dịch vụ và chi phí nhận hàng. Hai số khớp nhau ở mọi ngày chốt.
+- Ca kiểm (`verify_procurement.py`):
+  - test_24: trả trước hóa đơn, tăng giá, giảm giá, đổi thuế suất, dòng dịch vụ, hủy;
+  - test_25: phiếu nhận không thuế, hóa đơn có thuế;
+  - test_26: dịch vụ trên đơn kèm phí vận chuyển (phí của dịch vụ vào chi phí dịch vụ);
+  - test_27: trả sau hóa đơn (số chờ âm bằng 3388), rồi hóa đơn điều chỉnh;
+  - test_28: kỳ đã khóa;
+  - test_29: "đã có hóa đơn" theo giá trị và theo trả hàng;
+  - test_30: tài sản khác giá;
+  - test_31: khớp sổ ở mọi ngày chốt;
+  - test_32: chặn hủy riêng;
+  - test_33: tài sản tách chiếc, số dòng 1..n;
+  - test_34: phí vận chuyển theo từng dòng, trả hết một dòng;
+  - test_35: trả hết sau hóa đơn qua hai lần trả, khoản NCC phải hoàn, hóa đơn điều chỉnh;
+  - test_36: hóa đơn điều chỉnh đi theo hóa đơn gốc ghi chi phí;
+  - test_37: Period Closing Voucher;
+  - test_38: tạm ứng theo đơn sau khi một phần có hóa đơn, kiểm lại lúc ký;
+  - test_39: mã 8% hết hạn (phiếu nhận, tài sản);
+  - test_40: làm tròn hóa đơn khấu trừ có dòng 0%;
+  - test_41: Buying Settings;
+  - test_42: hóa đơn điều chỉnh cho hàng trả sau hóa đơn khi kỳ đã khóa.
+
+  Mỗi ca kiểm 3388 và 33881 về 0 (hoặc bằng khoản NCC phải hoàn), giá trị hàng giữ lại, và không có khoản nào vào chi phí khi trả hàng.
+- **Rà soát lần 3 (11/11/2026, 25 phát hiện: 24 xác nhận, 1 bác bỏ), đã sửa:**
+  - Đơn mua đã đóng phần còn lại (Đóng đơn): ERPNext không cho ghi lại phiếu nhận của đơn đã đóng, mà Landed Cost Voucher nào cũng ghi lại phiếu nhận. Trước đây hóa đơn khác giá, hóa đơn điều chỉnh và việc hủy đều bị chặn. Nay Lotus coi đơn là mở trong lúc ghi hoặc hủy phiếu (`_orders_open`), đóng lại ngay, rồi tính lại số đặt mua của kho.
+  - Tạm ứng trả trong tháng đã kết chuyển: ERPNext gắn tạm ứng vào hóa đơn mới bằng cách lưu lại phiếu chi cũ, và bước kiểm tháng đã kết chuyển chặn cả hóa đơn. Lần lưu đó không đổi bút toán nào, nên nay được cho qua (cờ `ignore_reposting_on_reconciliation` của ERPNext).
+  - Khoản NCC phải hoàn trên 3388 được đo đúng: tổng phiếu chia của dòng và các dòng trả, trừ phần phí vận chuyển (`_parked_claim`). Lotus kiểm mọi dòng của hóa đơn điều chỉnh và của hóa đơn bị hủy, kể cả dòng không có chênh lệch.
+  - "Đã có hóa đơn" chỉ thành 100 khi mọi dòng có giá trị đã có hóa đơn đủ (trước đây 99,99% bị coi là xong). "Đã trả hết hàng" chỉ khi không còn giữ dòng nào. Cả hai áp dụng cho đơn mua.
+  - Tài chính › Đối chiếu và ô "Hàng về chưa có hóa đơn" dùng 3388 + 33881 và cùng cách tính với Công nợ (`procurement_queries.unbilled`). T082 trước đây đánh dấu xong nhưng chưa làm.
+  - Công nợ tách khoản NCC phải hoàn khỏi hàng chưa có hóa đơn. Hàng chưa có hóa đơn tính cả phiếu bổ sung giá Mua nhanh.
+  - "Còn phải lập hóa đơn" của phiếu nhận và phần còn tạm ứng được của đơn tính theo từng dòng, gồm thuế và phí vận chuyển của chính dòng.
+  - Thuế 8% hết hạn: biểu mẫu hóa đơn tự chuyển dòng sang 10% theo ngày hóa đơn. Báo giá được so sánh và đặt hàng theo thuế suất đang áp dụng. Tài sản có hóa đơn 8% trước ngày hết hạn được giữ 8%. Đường nhập một thuế suất cho cả hóa đơn so theo thuế suất tại ngày hóa đơn.
+  - Bảng kê thuế GTGT mua vào: tách theo thuế suất từng dòng và chỉ lấy dòng thuế. Hộ kinh doanh không đối chiếu với TK 1331.
+  - Ca kiểm test_43–test_51 và sổ sách ở test_29.
+- **Chi phí nhận hàng của hàng trả lại:** chi phí bốc xếp và các chi phí nhận hàng khác (dòng Actual 'Valuation') được phân bổ vào giá vốn khi nhận. Khi trả hàng, ERPNext ghi phần chi phí của số hàng trả vào chi phí (divisional loss). Chi phí này đã phát sinh và NCC không hoàn lại, nên Lotus giữ cách ghi đó (rà soát lần 3, phát hiện mức thấp).
+- **Giới hạn còn lại: phần lẻ đồng.** Thuế chênh được tính và làm tròn theo từng dòng của từng hóa đơn. Phí vận chuyển và tiền hàng của hóa đơn từng phần chia theo số lượng (ví dụ phí 50.000 đ của 3 đơn vị, lập 3 hóa đơn thì mỗi hóa đơn 16.667 đ). Vì vậy, với số lượng lẻ, mỗi dòng có thể còn ±1 đồng trên 3388/33881 sau khi có hóa đơn đủ (rà soát lần 2). Màn Công nợ khi đó báo lệch vài đồng so với sổ cái. Kế toán xử lý bằng một bút toán làm tròn. Nếu sau này lệch nhiều, thêm bước "khi dòng có hóa đơn đủ thì lần cuối lấy phần còn lại".
+- **Trước khi đưa lên site thật:** phiếu nhận do bản cũ ghi (phí vận chuyển của hộ kinh doanh trên 33881, dòng Actual không có `allocate_full_amount_to_stock_items`) sẽ lệch số chờ. Bản sao site thật ngày 10/11/2026 không có phiếu nào như vậy (17 phiếu nhận). Chạy lại truy vấn ở quickstart §5 trên site thật ngay trước khi nâng cấp.
 
 ## R17. Hủy hóa đơn
 

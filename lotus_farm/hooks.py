@@ -176,6 +176,8 @@ doc_events['Material Requirement']={'validate':'lotus_farm.warehouse_planning.va
 doc_events['Material Request']={'validate':'lotus_farm.warehouse_planning.validate_request_lineage','before_submit':'lotus_farm.warehouse_planning.validate_request_lineage'}
 for _proposal_event in ('validate', 'before_submit'):
     doc_events['Material Request'][_proposal_event] = [doc_events['Material Request'][_proposal_event], 'lotus_farm.purchase_flow.validate']
+# Runs after ERPNext's own validate (which sets the default buying price list): a proposal keeps its typed prices.
+doc_events['Material Request']['validate'].append('lotus_farm.purchase_flow.keep_proposal_prices')
 doc_events['Purchase Order']={'before_submit':'lotus_farm.purchasing.check_submission'}
 doc_events['Purchase Order']['before_submit'] = [doc_events['Purchase Order']['before_submit'], 'lotus_farm.purchase_flow.order_guard']
 
@@ -341,3 +343,23 @@ _old = doc_events.setdefault('Purchase Invoice', {}).get('before_cancel', [])
 if isinstance(_old, str):
     _old = [_old]
 doc_events['Purchase Invoice']['before_cancel'] = [*_old, 'lotus_farm.finance.supplier_invoice.guard_cancel']
+
+# Spec 003 (FR-051, R16): the cost of the goods follows the supplier invoice, per invoice and for the quantity it bills;
+# returns re-split it; receipt and order billing is measured in quantities (lotus_farm.finance.invoice_cost). The
+# vouchers and entries Lotus makes for it move with the invoice only. Runs after the guards above.
+for _dt, _event, _handler in (('Purchase Invoice', 'on_submit', 'lotus_farm.finance.invoice_cost.follow'),
+                              ('Purchase Invoice', 'before_cancel', 'lotus_farm.finance.invoice_cost.release'),
+                              ('Purchase Invoice', 'on_cancel', 'lotus_farm.finance.invoice_cost.billed_by_qty'),
+                              ('Purchase Receipt', 'on_submit', 'lotus_farm.finance.invoice_cost.receipt_posted'),
+                              ('Purchase Receipt', 'before_cancel', 'lotus_farm.finance.invoice_cost.return_cancelling'),
+                              ('Purchase Receipt', 'on_cancel', 'lotus_farm.finance.invoice_cost.receipt_posted'),
+                              ('Landed Cost Voucher', 'before_submit', 'lotus_farm.finance.invoice_cost.guard'),
+                              ('Landed Cost Voucher', 'before_cancel', 'lotus_farm.finance.invoice_cost.guard'),
+                              ('Journal Entry', 'before_submit', 'lotus_farm.finance.invoice_cost.guard'),
+                              ('Journal Entry', 'before_cancel', 'lotus_farm.finance.invoice_cost.guard'),
+                              ('Buying Settings', 'validate', 'lotus_farm.finance.invoice_cost.settings_guard'),
+                              ('Payment Entry', 'before_submit', 'lotus_farm.finance.supplier_payment.order_advance_guard')):
+    _old = doc_events.setdefault(_dt, {}).get(_event, [])
+    if isinstance(_old, str):
+        _old = [_old]
+    doc_events[_dt][_event] = [*_old, _handler]

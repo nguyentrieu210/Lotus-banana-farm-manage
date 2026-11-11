@@ -60,7 +60,15 @@ def get_context(context, name=None):
         frappe.throw('Vui lòng đăng nhập để in đơn mua.', frappe.PermissionError)
     if not name or not frappe.db.exists('Purchase Order', name):
         frappe.throw('Không tìm thấy đơn mua.', frappe.DoesNotExistError)
-    p = build(frappe.get_doc('Purchase Order', name))
+    doc = frappe.get_doc('Purchase Order', name)
+    # Spec 003 (contracts/api.md): an order the approver has signed opens as the PDF stored at that signature,
+    # so what is printed or sent to the supplier is exactly what was approved.
+    from lotus_farm import signing
+    info = signing.copy_info(doc) if signing.can_view(doc=doc) else None
+    if info:
+        frappe.local.flags.redirect_location = info['url']
+        raise frappe.Redirect
+    p = build(doc)
     p.toolbar = True
     context.html = pk.render('purchase_order.html', p)
     context.no_cache = 1

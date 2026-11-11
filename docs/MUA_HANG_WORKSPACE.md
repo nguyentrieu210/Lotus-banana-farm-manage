@@ -20,7 +20,27 @@ Tên trạng thái dùng chung nằm ở `lotus_farm/purchase_status.py` và `fr
 
 Trang in mới: `/lotus/in-don-mua`, `/lotus/in-hoa-don`, `/lotus/in-phieu-chi`, `/lotus/in-doi-chieu`; phiếu nhập in tại `/lotus/in-phieu` có chữ ký người giao.
 
-Thiết lập ERPNext do `procurement_setup.install` đặt: cho phép hóa đơn khác giá đơn mua (Lotus bắt buộc ghi lý do), giá vốn theo giá hóa đơn.
+Thiết lập ERPNext do `procurement_setup.install` đặt: cho phép hóa đơn khác giá đơn mua (Lotus bắt buộc ghi lý do, tối đa gấp 2 giá phiếu nhận). Tắt cơ chế định giá lại theo giá hóa đơn của ERPNext và tắt "tính hóa đơn cho hàng bị loại".
+
+Giá vốn theo hóa đơn (`finance/invoice_cost.py`): hóa đơn khác giá hoặc thuế suất với phiếu nhận thì phần chênh, tính cho đúng số lượng trên hóa đơn, vào giá vốn.
+- Kỳ phiếu nhận còn mở:
+  - Landed Cost Voucher ghi Có 3388;
+  - phần thuế của hộ kinh doanh chuyển sang 33881 bằng bút toán ngày hóa đơn;
+  - khi có hàng trả, phần chênh được chia lại theo số đã có hóa đơn, để hàng trả ra khỏi kho đúng giá vốn. Hàng trả sau khi đã có hóa đơn là khoản NCC phải hoàn trên 3388, đến khi có hóa đơn điều chỉnh.
+- Kỳ phiếu nhận đã khóa: phần chênh ghi vào chi phí kỳ hóa đơn. "Đã khóa" gồm cả khi đã kết chuyển cuối kỳ (Period Closing Voucher) hoặc đã khóa kho (Stock Closing Entry).
+- Hóa đơn điều chỉnh đi theo cách hóa đơn gốc đã ghi.
+
+Các chứng từ này gắn với hóa đơn, hủy cùng hóa đơn, và không hủy riêng được.
+
+Phiếu nhận "đã có hóa đơn" đo trên phần còn giữ, mỗi dòng theo giá trị. Phiếu trả hết ghi "Đã trả hết hàng". Đơn mua "đã có hóa đơn" tính theo số đã đặt. Tạm ứng theo đơn chỉ tới phần chưa có hóa đơn, kiểm lại khi ký cuối.
+
+Hộ kinh doanh:
+- phí vận chuyển của hàng kho và tài sản ghi 3388; mỗi dòng mang đúng phí của nó;
+- thuế và phí vận chuyển của dòng dịch vụ vào chính chi phí của dòng.
+
+Thuế suất hết hạn (8% đến 31/12/2026) tự chuyển sang mã thay thế (10%) khi nhận hàng hoặc lập hóa đơn sau ngày đó.
+
+Lý do từng điểm: research.md R16 của spec 003.
 
 Giới hạn hiện tại: một hóa đơn chưa gồm được cả phiếu nhận theo đơn và phiếu Mua nhanh; nhập thành hai lần với hai phiếu khác loại sẽ bị chặn trùng số hóa đơn.
 

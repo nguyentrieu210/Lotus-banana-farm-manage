@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 import frappe
+from frappe.utils import flt
 from PIL import Image, ImageDraw
 import verify_procurement as base
 from lotus_farm import purchase_proposal as pp, purchasing, purchase_flow, signing
@@ -309,6 +310,10 @@ class PurchaseFlow(unittest.TestCase):
                          'choosing a quote does not touch what was signed')
         detail = base.as_user(base.BUYER, base.buying.request_detail, proposal['name'], base.C)
         got = detail['items'][0]
+        # The phone app lists proposals through purchasing.requests: the same choice must come along there.
+        phone = next(r for r in base.as_user(base.BUYER, purchasing.requests, base.C) if r['name'] == proposal['name'])
+        self.assertEqual((phone['supplier'], phone['items'][0]['supplier'], phone['items'][0]['rate'], phone['items'][0]['supplier_quotation']),
+                         (other, other, 120000, dear.name))
         self.assertEqual(detail['supplier'], other)
         self.assertEqual((got['supplier'], got['rate'], got['vat_code'], got['freight'], got['supplier_quotation'], got['supplier_quotation_item']),
                          (other, 120000, '10', 50000, dear.name, dear.items[0].name))
@@ -372,6 +377,11 @@ class PurchaseFlow(unittest.TestCase):
         self.assertEqual((order.docstatus, order.lotus_approval_status), (0, 'Chờ duyệt'))
         info = base.as_user(base.DIR, purchasing.detail, order.name)
         self.assertEqual((info['status'], info['can_approve']), ('Chờ duyệt', True))
+        approver_only = base.user('approver' + self.tag, ['Lotus Purchase Approver'])
+        frappe.db.savepoint('approver_only')
+        base.as_user(base.DIR, purchasing.approve_order, order.name, info['modified'])
+        self.assertEqual(frappe.db.get_value('Purchase Order', order.name, 'docstatus'), 1, 'the named approver approves an order made from a quote')
+        self.assertTrue(base.as_user(approver_only, frappe.has_permission, 'Supplier Quotation', 'read'), 'approvers read the quotes behind orders')
 
     def test_16_only_the_named_approver_signature_submits_an_order(self):
         proposal = self.proposal(qty=3)
@@ -471,6 +481,16 @@ class PurchaseFlow(unittest.TestCase):
         states.append(row()['status'])
         self.assertEqual(states, ['Nháp', 'Chờ duyệt', 'Đã duyệt', 'Đã gửi NCC', 'NCC đã xác nhận', 'Đang nhận', 'Đã nhận đủ'])
         self.assertTrue(set(states) <= set(purchase_status.ORDER_STATES))
+
+    def test_23_proposal_keeps_the_typed_price_when_a_buying_price_list_exists(self):
+        list_name = frappe.db.get_value('Price List', {'buying': 1, 'enabled': 1}, 'name') or base.insert('Price List', price_list_name='UAT Buying', buying=1, currency='VND').name
+        frappe.db.set_default('buying_price_list', list_name)
+        if not frappe.db.exists('Item Price', {'item_code': 'PCT-M', 'price_list': list_name}):
+            base.insert('Item Price', item_code='PCT-M', price_list=list_name, price_list_rate=14500)
+        d = self.proposal(qty=3, rate=120000, approve=False)
+        d = base.as_user(base.BUYER, pp.sign, d['name'], d['modified'], dict(DEPARTMENT=base.LEADER, PURCHASING=base.ACC, APPROVE=base.DIR))
+        doc = frappe.get_doc('Material Request', d['name'])
+        self.assertEqual((flt(doc.items[0].rate), doc.get('buying_price_list')), (120000, None), 'the price the proposer typed is what is signed')
 
     # ---- Spec 003 · US4: one-step receiving, the deliverer's confirmation, the storekeeper signs by confirming ----
     def refused(self, fn, *args, error=frappe.ValidationError, **kwargs):

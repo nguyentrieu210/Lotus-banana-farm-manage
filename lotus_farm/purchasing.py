@@ -128,15 +128,23 @@ def requests(company):
         doc = frappe.get_doc("Material Request", x.name)
         doc.check_permission("read")
         waiting = []
+        from lotus_farm.warehouse_buying_lite import _chosen_quote
         for row in doc.items:
             remaining = max(0, flt(row.stock_qty) - flt(row.ordered_qty))
             if remaining > 0.000001 and row.warehouse:
-                waiting.append(dict(item=row.item_code, item_name=row.item_name, warehouse=row.warehouse,
-                                    qty=remaining / (flt(row.conversion_factor) or 1),
-                                    uom=row.uom, material_request=doc.name, material_request_item=row.name))
+                line = dict(item=row.item_code, item_name=row.item_name, warehouse=row.warehouse,
+                            qty=remaining / (flt(row.conversion_factor) or 1), rate=flt(row.get("rate")),
+                            uom=row.uom, material_request=doc.name, material_request_item=row.name,
+                            kind=row.get("lotus_purchase_kind") or "")
+                # Spec 003, FR-032: the quote chosen for this line brings its supplier, price, VAT, freight and link;
+                # without a choice the line keeps the price expected in the proposal.
+                line.update(_chosen_quote(row, company, remaining))
+                waiting.append(line)
         if waiting:
+            suppliers = sorted({r["supplier"] for r in waiting if r.get("supplier")})
             result.append(dict(name=doc.name, date=str(doc.transaction_date),
-                               expected_date=str(doc.schedule_date), owner=doc.owner, items=waiting))
+                               expected_date=str(doc.schedule_date), owner=doc.owner, items=waiting,
+                               supplier=suppliers[0] if len(suppliers) == 1 else "", suppliers=suppliers))
     return result
 
 
