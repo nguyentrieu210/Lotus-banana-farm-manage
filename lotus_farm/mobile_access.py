@@ -1,31 +1,9 @@
-"""Role and work-team scope for Lotus mobile. No implicit team access.
+"""Role and work-team scope. No implicit team access.
 
 A role answers which actions are allowed; User Permission for Farm/Work Team
-answers where. Full plan documents can contain multiple teams and must never
-be served to a team-scoped account through the mobile APIs.
+answers where.
 """
-import math
-
 import frappe
-from frappe.utils import flt, getdate
-from contextvars import ContextVar
-from contextlib import contextmanager
-
-_CAPTURE = ContextVar("lotus_mobile_scoped_capture", default=None)
-
-
-@contextmanager
-def scoped_result_capture(plan, line):
-    token = _CAPTURE.set((frappe.session.user, plan, line))
-    try:
-        yield
-    finally:
-        _CAPTURE.reset(token)
-
-
-def can_skip_plan_read(doc):
-    return doc.doctype == "Daily Work Result" and _CAPTURE.get() == (
-        frappe.session.user, doc.work_plan, doc.work_plan_line)
 
 LEADER = "Lotus Team Leader"
 SUPERVISOR = "Lotus Field Supervisor"
@@ -42,21 +20,6 @@ def roles(user=None):
 def is_manager(user=None):
     user = user or frappe.session.user
     return user == "Administrator" or MANAGER in roles(user)
-
-
-def is_field_user(user=None):
-    user = user or frappe.session.user
-    return user != "Guest" and bool({LEADER, SUPERVISOR, MANAGER, AUDITOR, PRICE} & roles(user) or user == "Administrator")
-
-
-def can_assign(user=None):
-    user = user or frappe.session.user
-    return user == "Administrator" or bool({MANAGER, SUPERVISOR} & roles(user))
-
-
-def can_capture(user=None):
-    user = user or frappe.session.user
-    return user == "Administrator" or bool({MANAGER, SUPERVISOR, LEADER} & roles(user))
 
 
 def can_review_all(user=None):
@@ -82,54 +45,3 @@ def allowed_teams(farm, user=None):
     if not grants:
         return set()
     return set(frappe.get_all("Work Team", filters={"farm": farm, "active": 1, "name": ["in", grants]}, pluck="name"))
-
-
-def require_team(farm, team, user=None):
-    if not team or team not in allowed_teams(farm, user):
-        frappe.throw("Bạn không được phân công tổ này.", frappe.PermissionError)
-
-
-def abilities(user=None):
-    user = user or frappe.session.user
-    return {
-        "work.task.read": is_field_user(user),
-        "work.assign": can_assign(user),
-        "work.prepare": is_manager(user),
-        "work.result.capture": can_capture(user),
-        "work.result.verify": user == "Administrator" or bool({MANAGER, SUPERVISOR} & roles(user)),
-        "work.result.approve": user == "Administrator" or MANAGER in roles(user),
-        "work.rate.approve": user == "Administrator" or PRICE in roles(user),
-        "work.summary.all": can_review_all(user),
-    }
-
-
-def validate_capture(farm, values):
-    """Reject spoofed scope/fields before creating a team leader's result."""
-    if not isinstance(values, dict):
-        frappe.throw("Dữ liệu báo cáo không hợp lệ.")
-    required = {"work_plan", "work_plan_line", "posting_date", "farm_block", "completed_qty", "actual_workdays"}
-    allowed = required | {"farm_plot", "crop_cycle", "sucker_selection_batch", "unfinished_reason"}
-    if not required.issubset(values) or set(values) - allowed:
-        frappe.throw("Báo cáo có trường ngoài phạm vi cho phép.", frappe.PermissionError)
-    plan = frappe.get_doc("Daily Work Plan", values["work_plan"])
-    if plan.docstatus != 1 or plan.farm != farm:
-        frappe.throw("Kế hoạch không thuộc vườn hoặc chưa giao.")
-    line = next((line for line in plan.lines if line.name == values["work_plan_line"]), None)
-    if not line:
-        frappe.throw("Công việc không thuộc kế hoạch.")
-    require_team(farm, line.work_team)
-    if getdate(values["posting_date"]) != getdate(plan.posting_date):
-        frappe.throw("Ngày báo cáo khác ngày kế hoạch.")
-    for field in ("farm_block", "farm_plot", "crop_cycle", "sucker_selection_batch"):
-        if (values.get(field) or "") != (line.get(field) or ""):
-            frappe.throw("Lô và phạm vi báo cáo không khớp công việc.", frappe.PermissionError)
-    completed = flt(values["completed_qty"])
-    days = flt(values["actual_workdays"])
-    # JSON accepts NaN/Infinity and NaN fails every comparison below.
-    if not (math.isfinite(completed) and math.isfinite(days)):
-        frappe.throw("Số lượng hoặc số công không hợp lệ.")
-    if completed < 0 or completed > flt(line.planned_qty) + 0.000001 or days < 0:
-        frappe.throw("Số lượng hoặc số công không hợp lệ.")
-    if completed < flt(line.planned_qty) and not str(values.get("unfinished_reason") or "").strip():
-        frappe.throw("Chưa đạt kế hoạch phải ghi lý do.")
-    return plan, line

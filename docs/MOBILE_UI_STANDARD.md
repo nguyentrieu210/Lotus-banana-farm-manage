@@ -10,7 +10,7 @@ Vant 4 (hiện pin 4.10.2), Vue 3. Áp dụng cho `/warehouse`, `/buying`, `/wor
 - `LotusMobileButton`: type là HTML button/submit; variant là loại Vant. Giữ nút lưu và nút điều hướng tách biệt để tránh submit ngoài ý muốn.
 - `LotusMobileInput`, `LotusMobileSelect`: Vant Field, giữ input/select native bên trong để không mất required/min/max/step, bàn phím số, chọn ngày và lựa chọn hệ điều hành.
 - `MobileLinkField`, `MobileLiveSearch`: Vant Field, CellGroup và Button với gợi ý trực tiếp. Tìm không dấu; IME Enter không chọn sớm; gõ tìm không xóa liên kết đã chọn; popup tôn trọng viewport/header/bottom, kéo để cuộn không chọn nhầm.
-- `LotusMobileDialog`: Vant Dialog với showModal/close, dùng cho mọi xác nhận (rời form, bỏ hàng chờ, xác nhận nghiệp vụ). Tự gắn tên hộp thoại theo tiêu đề h2 đầu tiên. Không dùng `window.alert/confirm`.
+- `LotusMobileDialog`: Vant Dialog với showModal/close, dùng cho mọi xác nhận (rời form, bỏ thay đổi, xác nhận nghiệp vụ). Tự gắn tên hộp thoại theo tiêu đề h2 đầu tiên. Không dùng `window.alert/confirm`.
 - Trạng thái trống dùng `<p class="mobile-empty">`, đang tải dùng `LotusMobileFeedback kind="loading"` ở cả bốn PWA.
 - Trường có nhãn rời (`<label>` bên cạnh) phải truyền `aria-label` cùng nội dung cho component; vùng chạm tối thiểu `var(--lotus-touch)` (44px).
 

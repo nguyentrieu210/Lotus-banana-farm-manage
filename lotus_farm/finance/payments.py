@@ -243,7 +243,7 @@ def _invoice_stock_entries(names, bill_no, bill_date, due_date=None, posting_dat
 
 @frappe.whitelist(methods=['POST'])
 def make_service_invoice(supplier, bill_no, bill_date, lines, due_date=None, posting_date=None, vat_code='KCT'):
-    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_crop_cycle, lotus_work_type}].
+    """lines: [{description, amount, cost: 'production' | 'admin', lotus_farm, lotus_farm_block, lotus_work_type}].
     Lớp bọc của finance.supplier_invoice.create: hộ kinh doanh cộng thuế vào chính khoản chi phí, không ghi 1331."""
     from lotus_farm.finance import supplier_invoice
     result = supplier_invoice.create(supplier=supplier, service_lines=_json(lines), bill_no=bill_no, bill_date=bill_date, due_date=due_date,

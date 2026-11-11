@@ -19,19 +19,18 @@ class ReportCharts(unittest.TestCase):
             dict(lotus_estimated_flowering_date=date(2026,11,1),lotus_tree_count=7),dict(lotus_estimated_flowering_date=None,lotus_tree_count=9)])
         self.assertEqual(rows,[dict(month='2026-11',blocks=1,trees=7),dict(month='2026-12',blocks=1,trees=5)])
 
-    def test_work_completion_never_sums_units_and_keeps_empty_days(self):
-        tasks=[dict(planned_qty=100,completed_qty=50,required_workdays=4,actual_workdays=3,work_name='Bao buồng'),
-               dict(planned_qty=10,completed_qty=10,required_workdays=1,actual_workdays=1,work_name='Cắt bắp')]
-        days=rc.work_by_day([(date(2026,10,18),tasks),(date(2026,10,19),[])])
-        self.assertEqual(days[0]['completion_percent'],75.0,'per-task average, not 60/110')
-        self.assertEqual(days[0]['required_workdays'],5);self.assertEqual(days[0]['actual_workdays'],4)
-        self.assertEqual(days[1],dict(date='2026-10-19',tasks=0,completion_percent=None,required_workdays=0,actual_workdays=0))
+    def test_work_days_sum_workdays_and_keep_empty_days(self):
+        lines=[dict(posting_date='2026-10-18',work_name='Bao buồng',workdays=3),dict(posting_date=date(2026,10,18),work_name='Cắt bắp',workdays=1.5),
+               dict(posting_date='2026-10-25',work_name='Ngoài kỳ',workdays=9),dict(posting_date=None,work_name='Thiếu ngày',workdays=9)]
+        days=rc.work_by_day(lines,date(2026,10,18),date(2026,10,19))
+        self.assertEqual(days,[dict(date='2026-10-18',lines=2,workdays=4.5),dict(date='2026-10-19',lines=0,workdays=0.0)])
 
     def test_work_types_fold_tail_into_other(self):
-        tasks=[dict(work_name='W%d'%i,required_workdays=20-i,actual_workdays=1) for i in range(12)]
-        rows=rc.work_by_type(tasks,limit=4)
+        lines=[dict(work_name='W%d'%i,workdays=20-i) for i in range(12)]+[dict(work_name='W0',workdays=1)]
+        rows=rc.work_by_type(lines,limit=4)
         self.assertEqual([r['work'] for r in rows],['W0','W1','W2',rc.OTHER])
-        self.assertEqual(rows[-1]['tasks'],9);self.assertEqual(rows[-1]['actual_workdays'],9)
+        self.assertEqual((rows[0]['lines'],rows[0]['workdays']),(2,21))
+        self.assertEqual(rows[-1]['lines'],9);self.assertEqual(rows[-1]['workdays'],sum(20-i for i in range(3,12)))
 
     def test_weekly_includes_empty_weeks_and_ignores_outside_or_bad_values(self):
         rows=[dict(d='2026-10-14',kg=10),dict(d='2026-10-15',kg='5'),dict(d='2026-09-01',kg=99),dict(d='2026-10-21',kg=float('nan'))]

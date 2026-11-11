@@ -90,7 +90,7 @@ try:
     ok('xuất hủy không vào 621', not hd.items[0].expense_account.startswith('621'), hd.items[0].expense_account)
     ok('chi tiết + danh sách thấy mục đích', w.document('Stock Entry', h['name'])['issue_purpose'] == 'Disposal' and any(r.name == h['name'] and r.purpose.startswith('Xuất hủy') for r in w.documents(company, kind='issues', warehouse=A)['rows']))
     blocked('xuất sản xuất vẫn bắt chọn lô', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, receiver_employee=emp, notes='x'), 'Khu vực')
-    blocked('mục đích khác chỉ xuất thủ công', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, issue_purpose='Sale', issue_mode='Plan', notes='x'), 'kế hoạch')
+    blocked('mục đích khác chỉ xuất thủ công', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, issue_purpose='Sale', issue_mode='Request', notes='x'), 'yêu cầu')
     # Chuyển kho + chống gửi trùng
     ev = 'e2e-' + tag
     t1 = w.create_draft(company, 'transfer', today, [dict(item=X, qty=5)], source=A, target=B, client_event_id=ev)
@@ -143,7 +143,7 @@ try:
 
     # Cột nghiệp vụ của từng danh sách phiếu
     rec = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r1['name'])
-    ok('phiếu nhập: lý do + NCC', rec.reason == 'Mua ngoài' and rec.supplier == supplier, (rec.reason, rec.supplier))
+    ok('phiếu nhập: lý do + NCC', rec.reason == 'Mua nhanh' and rec.supplier == supplier, (rec.reason, rec.supplier))
     rec4 = next(r for r in w.documents(company, kind='receipts', warehouse=A)['rows'] if r.name == r4['name'])
     ok('phiếu thu hồi: lý do', rec4.reason == 'Thu hồi từ lô', rec4.reason)
     iss = next(r for r in w.documents(company, kind='issues', warehouse=A)['rows'] if r.name == i1['name'])

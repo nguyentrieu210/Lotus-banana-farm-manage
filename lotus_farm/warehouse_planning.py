@@ -1,4 +1,4 @@
-"""One permission-scoped material coverage view for warehouse and farm screens."""
+"""One permission-scoped material coverage view for the warehouse screens."""
 from collections import defaultdict
 import hashlib
 import json
@@ -12,97 +12,36 @@ def install_fields():
     create_custom_fields({
         'Company':[dict(fieldname='lotus_print_farm',label='Nông trường trên phiếu in',fieldtype='Data'),
                    dict(fieldname='lotus_print_project',label='Vườn chuối trên phiếu in',fieldtype='Data')],
-        'Material Requirement':[dict(fieldname='lotus_warehouse',label='Kho cấp vật tư',fieldtype='Link',options='Warehouse',allow_on_submit=1)],
-        'Material Request Item':[
-            dict(fieldname='lotus_requirement',label='Nhu cầu kế hoạch gốc',fieldtype='Link',options='Material Requirement'),
-            dict(fieldname='lotus_requirement_line',label='Dòng nhu cầu gốc',fieldtype='Data')],
         **{dt:[dict(fieldname='lotus_client_key',label='Lotus request key',fieldtype='Data',hidden=1,read_only=1,no_copy=1,unique=1),
                dict(fieldname='lotus_payload_hash',label='Lotus request content',fieldtype='Data',hidden=1,read_only=1,no_copy=1)]
            for dt in ('Stock Entry','Stock Reconciliation','Purchase Receipt')}
     },update=True,ignore_validate=True)
 
 
-def stock_quantity(item,uom,qty):
-    if not uom or uom==item.stock_uom:return flt(qty)
-    from erpnext.stock.get_item_details import get_conversion_factor
-    factor=flt(get_conversion_factor(item.name,uom).get('conversion_factor'))
-    if factor<=0:frappe.throw('Chưa có quy đổi đơn vị cho '+item.name)
-    return flt(qty)*factor
-
-
-def validate_requirement_warehouse(doc,method=None):
-    store=doc.get('lotus_warehouse')
-    if not store:return
-    from lotus_farm.warehouse import _warehouse
-    _warehouse(store,doc.company)
-    before=doc.get_doc_before_save()
-    if before and before.docstatus==1 and before.get('lotus_warehouse')!=store:
-        if any(sum(source_allocations('Material Requirement',doc.name,r.name).values()) for r in doc.lines):
-            frappe.throw('Xử lý phiếu cấp trước khi đổi kho của nhu cầu đã duyệt.')
-
-
-def validate_request_lineage(doc,method=None):
-    from lotus_farm.warehouse_issue import source_line
-    for row in doc.items:
-        if not row.get('lotus_requirement') and not row.get('lotus_requirement_line'):continue
-        if doc.material_request_type!='Material Issue' or not row.get('lotus_requirement') or not row.get('lotus_requirement_line'):
-            frappe.throw('Nguồn kế hoạch chỉ gắn trên dòng yêu cầu cấp có đủ nhu cầu và dòng gốc.')
-        info=source_line('Material Requirement',row.lotus_requirement,row.lotus_requirement_line,doc.company)
-        if info['item']!=row.item_code:frappe.throw('Vật tư không khớp nhu cầu kế hoạch gốc.')
-        if info.get('warehouse') and info['warehouse']!=row.warehouse:frappe.throw('Kho không khớp nhu cầu gốc.')
-
-
-def source_allocations(kind,name,line):
+def source_allocations(name,line):
     from lotus_farm.warehouse_issue import allocation_totals
-    return allocation_totals(kind,name,line)
+    return allocation_totals(name,line)
 
 
-def _sources(company,from_date,to_date,farm=None):
-    sources=[];warnings=[]
-    for dt in ('Material Requirement','Material Request'):
-        if not frappe.has_permission(dt,'read'):
-            warnings.append('Chưa có quyền đọc '+dt+'. Nhu cầu chưa đầy đủ.');continue
-        filters={'company':company,'docstatus':1}
-        if dt=='Material Requirement':
-            filters['posting_date']=['between',[from_date,to_date]]
-            if farm:filters['farm']=farm
-        else:
-            filters.update(material_request_type='Material Issue',status=['not in',['Stopped','Closed','Cancelled']])
-        for name in frappe.get_list(dt,filters=filters,pluck='name',limit_page_length=0):
-            doc=frappe.get_doc(dt,name);doc.check_permission('read')
-            if dt=='Material Requirement':
-                plan=frappe.get_doc('Daily Work Plan',doc.work_plan);plan.check_permission('read')
-                if plan.docstatus!=1:continue
-                mapping=[]
-                if not doc.get('lotus_warehouse') and frappe.has_permission('Warehouse Mapping','read'):
-                    mapping=frappe.get_list('Warehouse Mapping',filters={'farm':doc.farm,'enabled':1,'warehouse_role':'Field Store'},pluck='warehouse',limit_page_length=0)
-                assigned=doc.get('lotus_warehouse') or (mapping[0] if len(set(mapping))==1 else '')
-            for row in doc.lines if dt=='Material Requirement' else doc.items:
-                if dt=='Material Request' and row.get('lotus_requirement'):
-                    # Linked release requests are another view of the canonical plan demand.
-                    continue
-                date=doc.posting_date if dt=='Material Requirement' else row.schedule_date or doc.schedule_date or doc.transaction_date
-                if not from_date<=getdate(date)<=to_date:continue
-                if farm and dt=='Material Request':continue # No farm provenance: do not assign it to a farm by guessing.
-                code=row.item if dt=='Material Requirement' else row.item_code
-                item=frappe.get_doc('Item',code);item.check_permission('read')
-                required=stock_quantity(item,row.uom,row.required_qty) if dt=='Material Requirement' else flt(row.stock_qty)
-                amounts=source_allocations(dt,doc.name,row.name)
-                sources.append(dict(doctype=dt,name=doc.name,line=row.name,item=code,item_name=item.item_name,uom=item.stock_uom,
-                    warehouse=assigned if dt=='Material Requirement' else row.warehouse or '',date=str(date),
-                    farm=doc.get('farm') or '',area=' / '.join(filter(None,[doc.get('farm_block'),doc.get('farm_plot')])) if dt=='Material Requirement' else row.get('lotus_usage_area') or '',
-                    work_plan=doc.get('work_plan') or '',required_qty=required,issued_qty=amounts['posted'],draft_qty=amounts['draft'],
-                    remaining_qty=max(0,required-amounts['posted']),can_assign=dt=='Material Requirement' and doc.has_permission('write')))
-    if frappe.has_permission('Daily Work Plan','read') and frappe.has_permission('Material Requirement','read'):
-        filters={'company':company,'docstatus':1,'posting_date':['between',[from_date,to_date]]}
-        if farm:filters['farm']=farm
-        approved_requirements=frappe.get_list('Material Requirement',filters={'company':company,'docstatus':1,'posting_date':['between',[from_date,to_date]]},fields=['work_plan_line'],limit_page_length=0)
-        approved_plan_lines={r.work_plan_line for r in approved_requirements}
-        for name in frappe.get_list('Daily Work Plan',filters=filters,pluck='name',limit_page_length=0):
-            plan=frappe.get_doc('Daily Work Plan',name)
-            if any(r.norm_profile and r.name not in approved_plan_lines for r in plan.lines):
-                warnings.append('Kế hoạch '+name+' còn dòng chưa có nhu cầu vật tư đã duyệt.')
-    return sources,warnings
+def _sources(company,from_date,to_date):
+    """Approved material issue requests still open, one row per line needed inside the period."""
+    if not frappe.has_permission('Material Request','read'):
+        return [],['Chưa có quyền đọc Material Request. Nhu cầu chưa đầy đủ.']
+    sources=[]
+    filters={'company':company,'docstatus':1,'material_request_type':'Material Issue','status':['not in',['Stopped','Closed','Cancelled']]}
+    for name in frappe.get_list('Material Request',filters=filters,pluck='name',limit_page_length=0):
+        doc=frappe.get_doc('Material Request',name);doc.check_permission('read')
+        for row in doc.items:
+            date=row.schedule_date or doc.schedule_date or doc.transaction_date
+            if not from_date<=getdate(date)<=to_date:continue
+            item=frappe.get_doc('Item',row.item_code);item.check_permission('read')
+            required=flt(row.stock_qty)
+            amounts=source_allocations(doc.name,row.name)
+            sources.append(dict(doctype='Material Request',name=doc.name,line=row.name,item=row.item_code,item_name=item.item_name,uom=item.stock_uom,
+                warehouse=row.warehouse or '',date=str(date),area=row.get('lotus_usage_area') or '',
+                required_qty=required,issued_qty=amounts['posted'],draft_qty=amounts['draft'],
+                remaining_qty=max(0,required-amounts['posted'])))
+    return sources,[]
 
 
 def _draft_holds(company,warehouses):
@@ -164,7 +103,7 @@ def _supply(company,warehouses,to_date):
     return incoming,requested,late,warnings,orders,requests
 
 
-def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None,include_stock=False):
+def snapshot(company,warehouse=None,from_date=None,to_date=None,include_stock=False):
     from lotus_farm.warehouse import _access,_company,_warehouse
     _access();_company(company)
     begin=getdate(from_date or nowdate());end=getdate(to_date or begin)
@@ -172,10 +111,7 @@ def snapshot(company,warehouse=None,from_date=None,to_date=None,farm=None,includ
     stores=frappe.get_list('Warehouse',filters={'company':company,'is_group':0,'disabled':0},fields=['name','warehouse_name'],limit_page_length=0)
     names={r.name for r in stores}
     if warehouse:_warehouse(warehouse,company);names &= {warehouse}
-    if farm:
-        doc=frappe.get_doc('Farm',farm);doc.check_permission('read')
-        if doc.company!=company:frappe.throw('Nông trường không thuộc công ty.')
-    sources,warnings=_sources(company,begin,end,farm)
+    sources,warnings=_sources(company,begin,end)
     unmapped=[r for r in sources if not r['warehouse']]
     # A warehouse restriction never exposes demand assigned to another/inaccessible warehouse.
     sources=[r for r in sources if r['warehouse'] in names]
@@ -221,21 +157,6 @@ def overview(company,warehouse=None,from_date=None,to_date=None,search=None,star
     start=max(0,cint(start));result.update(rows=rows[start:start+length],total_count=len(rows),has_more=len(rows)>start+length)
     result['can_request']=frappe.has_permission('Material Request','create') and not result['warnings']
     return result
-
-
-@frappe.whitelist(methods=['POST'])
-def assign_warehouse(company,requirement,warehouse):
-    from lotus_farm.warehouse import _access,_company,_warehouse
-    from lotus_farm.controls import lock
-    from lotus_farm.daily_operations import day_guard
-    _access();_company(company);_warehouse(warehouse,company)
-    lock('Material Requirement',requirement)
-    doc=frappe.get_doc('Material Requirement',requirement);doc.check_permission('write');day_guard(doc)
-    if doc.company!=company or doc.docstatus!=1:frappe.throw('Chọn nhu cầu đã duyệt thuộc công ty.')
-    if any(sum(source_allocations('Material Requirement',doc.name,r.name).values()) for r in doc.lines):
-        frappe.throw('Nhu cầu đã lập phiếu cấp. Xử lý phiếu cấp trước khi đổi kho.')
-    doc.lotus_warehouse=warehouse;doc.save()
-    return dict(name=doc.name,warehouse=warehouse)
 
 
 @frappe.whitelist(methods=['POST'])

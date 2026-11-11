@@ -1,7 +1,7 @@
 <script setup>
 import LotusField from './components/form/LotusField.vue'
 import {FormField} from './components/ui/form-field'
-// /lotus/farms — Vườn & lô: every lot of the permitted farms with area, plots, trees, density and data gaps,
+// /lotus/farms — Vườn & lô: every lot of the permitted farms with area, trees, density and data gaps,
 // the zones of a farm, a map coloured by zone / variety / density / flowering month, the Excel round-trip,
 // and one lot's page (?block=). Data: lotus_farm.farm_land; map: lotus_farm.field.map_block_data.
 import {computed,defineAsyncComponent,onMounted,ref,watch} from 'vue'
@@ -23,7 +23,7 @@ import {useSession} from './store'
 import './land.css'
 
 defineProps({embedded:Boolean,navigationKey:String})
-const PlotMap=defineAsyncComponent(()=>import('./components/CareMap.vue'))
+const CareMap=defineAsyncComponent(()=>import('./components/CareMap.vue'))
 const route=useRoute(),router=useRouter(),session=useSession()
 const data=ref(null),busy=ref(false),error=ref(''),notice=ref(''),view=ref('list'),mapData=ref(null),colorBy=ref('zone')
 const search=ref(''),zone=ref(''),variety=ref(''),gap=ref(''),sort=ref(['block_code',1]),picked=ref(new Set()),gridVisible=ref(null)
@@ -32,7 +32,7 @@ const farm=computed(()=>String(route.query.farm||''))
 const block=computed(()=>String(route.query.block||''))
 const num=(v,d=0)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d})
 const vnDate=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):''
-const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['plots','Thửa'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['lotus_current_cycle_no','Vụ'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi vụ sau']]
+const columns=[['block_code','Lô'],['farm_zone','Khu'],['area_ha','Diện tích (ha)'],['variety_label','Giống'],['lotus_tree_count','Số cây'],['lotus_current_cycle_no','Vụ'],['density','Cây/ha'],['planting','Ngày trồng'],['lotus_estimated_flowering_date','Trổ dự kiến'],['lotus_estimated_sucker_selection_date','Chọn chồi vụ sau']]
 const zones=computed(()=>[...new Set((data.value?.blocks||[]).map(b=>b.farm_zone).filter(Boolean))].sort())
 const rows=computed(()=>{
  const needle=search.value.trim().toLowerCase(),[key,dir]=sort.value
@@ -71,7 +71,7 @@ const gridColumns=computed(()=>[
   valueFormatter:p=>{
    const b=p.data||{},v=p.value
    if(['area_ha'].includes(field))return num(v,2)
-   if(['lotus_tree_count','density','plots'].includes(field))return num(v)
+   if(['lotus_tree_count','density'].includes(field))return num(v)
    if(field==='planting')return v?vnDate(v):'—'
    if(field==='lotus_estimated_flowering_date'||field==='lotus_estimated_sucker_selection_date')return vnDate(v)||'—'
    if(field==='block_code')return (v||'—')+(!farm.value&&b.farm?' · '+b.farm:'')
@@ -140,7 +140,7 @@ useNoticeToast(notice)
   <p v-if="error" class="stock-error" role="alert">{{error}}</p>
 
   <div v-if="s" class="land-stats">
-   <div><span>Diện tích</span><strong>{{num(s.area_ha,2)}} ha</strong><small>{{s.blocks}} lô · {{s.plots}} thửa</small></div>
+   <div><span>Diện tích</span><strong>{{num(s.area_ha,2)}} ha</strong><small>{{s.blocks}} lô</small></div>
    <div><span>Số cây gốc đã chốt</span><strong>{{num(s.trees)}}</strong><small>có số cây {{s.counted_blocks}}/{{s.blocks}} lô · {{num(s.counted_area_ha,2)}} ha</small></div>
    <div><span>Mật độ bình quân</span><strong>{{s.trees_per_ha?num(s.trees_per_ha)+' cây/ha':'—'}}</strong><small>trên lô có số cây gốc đã chốt</small></div>
    <button type="button" class="land-gaps" @click="gap=gap?'':'trees'"><span>Lô thiếu dữ liệu</span><strong>{{s.gaps.trees}}</strong><small>chưa có số cây · {{s.gaps.variety}} chưa có giống · {{s.gaps.planting}} chưa có ngày trồng · {{s.gaps.map}} chưa có ranh</small></button>
@@ -176,9 +176,9 @@ useNoticeToast(notice)
 
   <section v-else class="land-map">
    <p v-if="!farm" class="land-empty">Chọn một vườn ở trên để xem bản đồ lô.</p>
-   <PlotMap v-else :collection="mapData" :farm="farm" :user="session.user" :color-by="colorBy" :varieties="data?.varieties||[]" @open="openBlock" @reset="loadMap">
+   <CareMap v-else :collection="mapData" :farm="farm" :user="session.user" :color-by="colorBy" :varieties="data?.varieties||[]" @open="openBlock" @reset="loadMap">
     <template #filters><UiSelect v-model="colorBy" aria-label="Tô màu lô" class="land-colorby"><option v-for="[value,label] in COLOR_MODES" :key="value" :value="value">{{label}}</option></UiSelect></template>
-   </PlotMap>
+   </CareMap>
   </section>
  </template>
 

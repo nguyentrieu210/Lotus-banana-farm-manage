@@ -7,10 +7,10 @@ import LotusChart from './LotusChart.vue'
 import OverviewBoard from './OverviewBoard.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
 import {formatDate,formatMonthShort} from '../format'
-// /lotus/reports: charts per operating area from lotus_farm.reporting.charts; the forecast tab keeps the legacy tables (slot).
+// /lotus/reports: charts per operating area from lotus_farm.reporting.charts.
 const props=defineProps({charts:{type:Object,default:null},busy:Boolean,filters:{type:Object,default:()=>({})}})
 const emit=defineEmits(['filters','tab'])
-const tabs=[{id:'overview',label:'Toàn bộ nghiệp vụ'},{id:'land',label:'Vườn & cây'},{id:'work',label:'Công việc'},{id:'harvest',label:'Thu hoạch & đóng gói'},{id:'stock',label:'Kho'},{id:'people',label:'Nhân sự & lương'},{id:'commerce',label:'Mua & bán'},{id:'forecast',label:'Dự thu & hiệu chuẩn'}]
+const tabs=[{id:'overview',label:'Toàn bộ nghiệp vụ'},{id:'land',label:'Vườn & cây'},{id:'work',label:'Công việc'},{id:'harvest',label:'Thu hoạch & đóng gói'},{id:'stock',label:'Kho'},{id:'people',label:'Nhân sự & lương'},{id:'commerce',label:'Mua & bán'},{id:'forecast',label:'Dự thu'}]
 const tab=ref('overview')
 watch(tab,value=>emit('tab',value))
 const filterFields=computed(()=>{
@@ -32,14 +32,18 @@ const counted=computed(()=>zones.value.filter(z=>z.counted_blocks))
 const work=computed(()=>c.value.work||{})
 const days=computed(()=>work.value.days||[])
 const types=computed(()=>work.value.types||[])
-const workDone=computed(()=>{const v=days.value.map(d=>d.completion_percent).filter(v=>v!=null);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null})
 
 const harvest=computed(()=>c.value.harvest||{})
-const weeks=key=>(harvest.value[key]||[])
+const harvestWeeks=computed(()=>harvest.value.weeks||[])
+const packout=computed(()=>c.value.packout||{})
+const packWeeks=computed(()=>packout.value.weeks||[])
 const losses=computed(()=>c.value.losses||{})
+const forecast=computed(()=>c.value.forecast||{})
+const months=computed(()=>forecast.value.months||[])
 const stock=computed(()=>c.value.stock||{})
-const sectionOf={land,work,harvest,stock}
-const denied=computed(()=>sectionOf[tab.value]&&props.charts&&sectionOf[tab.value].value.allowed===false)
+// The harvest tab shows three sections; it is refused only when the reader may see none of them.
+const sectionsOf={land:[land],work:[work],harvest:[harvest,packout,losses],stock:[stock],forecast:[forecast]}
+const denied=computed(()=>!!sectionsOf[tab.value]&&!!props.charts&&sectionsOf[tab.value].every(s=>s.value.allowed===false))
 </script>
 <template>
 <section class="lotus-reports">
@@ -75,32 +79,28 @@ const denied=computed(()=>sectionOf[tab.value]&&props.charts&&sectionOf[tab.valu
   <p v-if="work.note" class="notice">{{work.note}}</p>
   <template v-else>
    <div class="lotus-stat-row">
-    <div class="lotus-stat"><span>Hoàn thành bình quân</span><strong>{{n(workDone,1)}}</strong><small>% mỗi công việc</small></div>
-    <div class="lotus-stat"><span>Công cần</span><strong>{{n(sum(days,'required_workdays'),1)}}</strong><small>công theo kế hoạch</small></div>
-    <div class="lotus-stat"><span>Công thực tế</span><strong>{{n(sum(days,'actual_workdays'),1)}}</strong><small>công đã báo</small></div>
-    <div class="lotus-stat"><span>Công việc</span><strong>{{n(sum(days,'tasks'))}}</strong><small>dòng kế hoạch trong kỳ</small></div>
+    <div class="lotus-stat"><span>Công thực tế</span><strong>{{n(sum(days,'workdays'),1)}}</strong><small>công đã xác nhận</small></div>
+    <div class="lotus-stat"><span>Dòng việc</span><strong>{{n(sum(days,'lines'))}}</strong><small>dòng sổ lô đã xác nhận</small></div>
    </div>
    <div class="lotus-chart-grid">
-    <LotusChart kind="line" title="Tỷ lệ hoàn thành theo ngày" :categories="days.map(d=>shortDay(d.date))" :series="[{name:'Hoàn thành',data:days.map(d=>d.completion_percent)}]" unit="%" :decimals="1" empty="Chưa có kế hoạch công việc đã giao trong kỳ."/>
-    <LotusChart title="Công cần và công thực tế theo ngày" :categories="days.map(d=>shortDay(d.date))" :series="[{name:'Công cần',data:days.map(d=>d.required_workdays)},{name:'Công thực tế',data:days.map(d=>d.actual_workdays)}]" unit="công" :decimals="1" empty="Chưa có công trong kỳ."/>
-    <LotusChart kind="hbar" title="Công theo loại việc" :categories="types.map(t=>t.work)" :series="[{name:'Công cần',data:types.map(t=>t.required_workdays)},{name:'Công thực tế',data:types.map(t=>t.actual_workdays)}]" unit="công" :decimals="1" :height="Math.max(220,types.length*44)" empty="Chưa có công việc trong kỳ."/>
+    <LotusChart title="Công thực tế theo ngày" :categories="days.map(d=>shortDay(d.date))" :series="[{name:'Công thực tế',data:days.map(d=>d.workdays)}]" unit="công" :decimals="1" empty="Chưa có dòng sổ lô đã xác nhận trong kỳ."/>
+    <LotusChart kind="hbar" title="Công theo loại việc" :categories="types.map(t=>t.work)" :series="[{name:'Công thực tế',data:types.map(t=>t.workdays)}]" unit="công" :decimals="1" :height="Math.max(220,types.length*44)" empty="Chưa có công việc trong kỳ."/>
    </div>
   </template>
  </template>
 
  <template v-else-if="tab==='harvest'&&charts">
-  <p v-if="harvest.note" class="notice">{{harvest.note}}</p>
+  <p v-if="packout.note" class="notice">{{packout.note}}</p>
   <div class="lotus-stat-row">
-   <div class="lotus-stat"><span>Thu hoạch</span><strong>{{n(sum(weeks('harvest'),'gross_weight_kg'))}}</strong><small>kg buồng</small></div>
-   <div class="lotus-stat"><span>QC đạt</span><strong>{{n(pct(sum(weeks('qc'),'accepted_kg'),sum(weeks('qc'),'received_kg')),1)}}</strong><small>% khối lượng nhận</small></div>
-   <div class="lotus-stat"><span>Tỷ lệ đóng gói</span><strong>{{n(pct(sum(weeks('packout'),'finished_kg'),sum(weeks('packout'),'input_kg')),1)}}</strong><small>% thành phẩm / đầu vào</small></div>
-   <div class="lotus-stat"><span>Buồng hủy</span><strong>{{n(losses.total)}}</strong><small>buồng</small></div>
+   <div v-if="harvest.allowed" class="lotus-stat"><span>Thu hoạch</span><strong>{{n(sum(harvestWeeks,'weight_kg'))}}</strong><small>kg · {{n(sum(harvestWeeks,'qty'))}} buồng</small></div>
+   <div v-if="packout.weeks" class="lotus-stat"><span>Thành phẩm</span><strong>{{n(sum(packWeeks,'finished_kg'))}}</strong><small>kg · {{n(sum(packWeeks,'cartons'))}} thùng</small></div>
+   <div v-if="packout.weeks" class="lotus-stat"><span>Tỷ lệ đóng gói</span><strong>{{n(pct(sum(packWeeks,'finished_kg'),sum(packWeeks,'input_kg')),1)}}</strong><small>% thành phẩm / đầu vào</small></div>
+   <div v-if="losses.allowed" class="lotus-stat"><span>Buồng hủy</span><strong>{{n(losses.total)}}</strong><small>buồng</small></div>
   </div>
   <div class="lotus-chart-grid">
-   <LotusChart title="Sản lượng thu hoạch theo tuần" :categories="weeks('harvest').map(w=>shortDay(w.week))" :series="[{name:'Khối lượng buồng',data:weeks('harvest').map(w=>w.gross_weight_kg)},{name:'Bán được',data:weeks('harvest').map(w=>w.saleable_weight_kg)}]" unit="kg" empty="Chưa có phiếu thu hoạch đã duyệt trong kỳ."/>
-   <LotusChart v-if="harvest.qc" title="QC đầu vào theo tuần" :categories="weeks('qc').map(w=>shortDay(w.week))" :series="[{name:'Nhận',data:weeks('qc').map(w=>w.received_kg)},{name:'Đạt',data:weeks('qc').map(w=>w.accepted_kg)}]" unit="kg" empty="Chưa có phiếu QC đầu vào trong kỳ."/>
-   <LotusChart v-if="harvest.packout" title="Đóng gói theo tuần" :categories="weeks('packout').map(w=>shortDay(w.week))" :series="[{name:'Đầu vào',data:weeks('packout').map(w=>w.input_kg)},{name:'Thành phẩm',data:weeks('packout').map(w=>w.finished_kg)}]" unit="kg" empty="Chưa có lượt đóng gói trong kỳ."/>
-   <LotusChart v-if="losses.allowed!==false" kind="hbar" title="Lý do hủy buồng" :categories="(losses.reasons||[]).map(r=>r.label)" :series="[{name:'Buồng hủy',data:(losses.reasons||[]).map(r=>r.value)}]" unit="buồng" :height="Math.max(200,(losses.reasons||[]).length*36)" empty="Không có buồng hủy trong kỳ."/>
+   <LotusChart v-if="harvest.allowed" title="Sản lượng thu hoạch theo tuần" :categories="harvestWeeks.map(w=>shortDay(w.week))" :series="[{name:'Khối lượng buồng',data:harvestWeeks.map(w=>w.weight_kg)}]" unit="kg" empty="Chưa có dòng thu hoạch đã xác nhận trong kỳ."/>
+   <LotusChart v-if="packout.weeks" title="Đóng gói theo tuần" :categories="packWeeks.map(w=>shortDay(w.week))" :series="[{name:'Đầu vào',data:packWeeks.map(w=>w.input_kg)},{name:'Thành phẩm',data:packWeeks.map(w=>w.finished_kg)}]" unit="kg" empty="Chưa có ca đóng gói đã đóng trong kỳ."/>
+   <LotusChart v-if="losses.allowed" kind="hbar" title="Lý do hủy buồng" :categories="(losses.reasons||[]).map(r=>r.label)" :series="[{name:'Buồng hủy',data:(losses.reasons||[]).map(r=>r.value)}]" unit="buồng" :height="Math.max(200,(losses.reasons||[]).length*36)" empty="Không có buồng hủy trong kỳ."/>
   </div>
  </template>
 
@@ -111,6 +111,15 @@ const denied=computed(()=>sectionOf[tab.value]&&props.charts&&sectionOf[tab.valu
   </div>
  </template>
 
- <div v-show="tab==='forecast'"><slot name="forecast"/></div>
+ <template v-else-if="tab==='forecast'&&charts">
+  <div class="lotus-stat-row">
+   <div class="lotus-stat"><span>Dự thu {{forecast.horizon_weeks||13}} tuần tới</span><strong>{{n(forecast.bunches)}}</strong><small>buồng</small></div>
+   <div class="lotus-stat"><span>Khối lượng</span><strong>{{n(forecast.kg)}}</strong><small>kg</small></div>
+   <div class="lotus-stat"><span>Thùng</span><strong>{{n(forecast.cartons)}}</strong><small>thùng</small></div>
+  </div>
+  <div class="lotus-chart-grid lotus-chart-grid--single">
+   <LotusChart title="Dự thu theo tháng" :categories="months.map(m=>formatMonthShort(m.month))" :series="[{name:'Dự thu',data:months.map(m=>m.bunches)}]" unit="buồng" empty="Chưa có số dự thu."/>
+  </div>
+ </template>
 </section>
 </template>

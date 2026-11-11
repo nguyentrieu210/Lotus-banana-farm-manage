@@ -48,8 +48,7 @@ test('proposals cannot claim a completed stock issue or approval without recorde
  assert.match(macros,/id="footer-html"/)
 })
 test('old material request print route and mobile apps open the new print layout',()=>{
- assert.ok(stock.includes("PROPOSALS = ('Material Request', 'Material Requirement')"))
- assert.equal((stock.match(/if doctype in PROPOSALS:/g)||[]).length,2,'page and PDF both hand proposals to the proposal print')
+ assert.equal((stock.match(/if doctype == 'Material Request':/g)||[]).length,2,'page and PDF both hand proposals to the proposal print')
  assert.equal(stockHtml.trim(),'{{ html }}','stock documents render through Lotus Print')
  assert.match(stock,/signing\.print_signatures\(doc\)/,'named signers on the stock print')
  assert.match(stock,/signing\.print_verification\(doc\)/,'QR to compare the paper copy')
@@ -57,13 +56,4 @@ test('old material request print route and mobile apps open the new print layout
  assert.match(proposal,/print_url/)
  // Kho opens the shared proposal screen, which carries the print link of each proposal.
  assert.match(warehouse,/<MobilePurchaseProposal /)
-})
-test('actual Lotus plan-based material requirements print the issue request, not a stock entry',()=>{
- const schema=JSON.parse(read('lotus_farm/lotus_farm/doctype/material_requirement/material_requirement.json'))
- assert.ok(schema.fields.some(f=>f.fieldname==='lines'))
- assert.match(py,/def _requirement\(name\)/)
- assert.match(py,/frappe\.get_doc\('Material Requirement', name\)/)
- assert.match(py,/qty=flt\(line\.required_qty\)/)
- assert.match(py,/norm=flt\(line\.norm_qty\)/)
- assert.match(py,/stock=None/)
 })

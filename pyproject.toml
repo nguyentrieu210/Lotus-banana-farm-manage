@@ -1,7 +1,7 @@
 [project]
 name = "lotus_farm"
 authors = [{ name = "Nguyen Trieu" }]
-description = "Lotus banana farm operations and harvest availability on Frappe/ERPNext"
+description = "Lotus banana farm operations (lots, field work, lot harvest forecast, stock, purchasing, HR, finance) on Frappe/ERPNext"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]

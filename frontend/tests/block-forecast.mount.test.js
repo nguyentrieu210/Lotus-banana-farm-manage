@@ -9,14 +9,14 @@ const M='lotus_farm.block_forecast.'
 const board={
  farms:[{name:'LOTUS-222',farm_name:'Vườn 222'}],farm:'LOTUS-222',
  zone_list:['A','B','C'],blocks:[{name:'A1',block_code:'A1',farm_zone:'A'}],
- source_count:1,can_create:0,
+ source_count:1,
  params:{waves:[17,40,25,18],sucker_to_flower_months:6},
  months:[{month:'2027-07',bunches:120,packed_kg:2400}],
- rows:[{key:'A1-1',farm_block:'A1',zone:'A',crop_cycle:'C2',
-   cohort:'Selection-2026',wave:1,qty_basis:'Selected Suckers',tree_qty:170,
+ rows:[{key:'A1-1',farm_block:'A1',zone:'A',cycle_no:2,generation:1,
+   wave:1,tree_qty:170,count_status:'Planning Baseline',
    flower_window_start:'2027-05-01',inject_date:'2027-05-06',
    cut_bud_date:'2027-05-22',harvest_date:'2027-07-26',
-   bunches_harvest:145,kg_pack:2900,source:'Plan Cohort đã duyệt'}],
+   bunches_harvest:145,kg_pack:2900,source:'Chồi kế tiếp từ trổ'}],
  warnings:[],rule:'Chỉ dự phóng'
 }
 let replies={}
@@ -37,7 +37,7 @@ async function open(){
  for(let i=0;i<5;i++)await tick()
  return {el,app,router,close(){app.unmount();el.remove()}}
 }
-test('forecast page uses block/cohort API and never opens a cut journal',async()=>{
+test('forecast page reads the lot forecast API and never opens a cut journal',async()=>{
  calls.length=0;replies={[M+'board']:board}
  const ui=await open()
  try{
@@ -45,6 +45,7 @@ test('forecast page uses block/cohort API and never opens a cut journal',async()
   ;[...ui.el.querySelectorAll('button')].find(x=>x.textContent.includes('Dự thu 36 tháng')).click();await tick()
   assert.match(ui.el.textContent,/01\/05\/2027/)
   assert.match(ui.el.textContent,/26\/07\/2027/)
-  assert.doesNotMatch(ui.el.textContent,/Nhật ký chặt mẹ|Nhập nhật ký|NHẬT KÝ GỐC/)
+  assert.match(ui.el.textContent,/Số cây gốc đã chốt/)
+  assert.doesNotMatch(ui.el.textContent,/Nhật ký chặt mẹ|Nhập nhật ký|NHẬT KÝ GỐC|đã ghi nhận thực tế/)
  }finally{ui.close()}
 })

@@ -14,7 +14,7 @@ import {formatDateTime} from '../../format'
 const props=defineProps({warehouses:{type:Array,default:()=>[]},session:Object})
 const emit=defineEmits(['changed','edit'])
 const api=(name,args={},write=false)=>call('lotus_farm.warehouse.'+name,args,write)
-const issueModes={Manual:'Thủ công',Plan:'Theo kế hoạch đã duyệt',Request:'Theo yêu cầu đã duyệt'}
+const issueModes={Manual:'Thủ công',Request:'Theo yêu cầu đã duyệt'}
 const issuePurposes={Disposal:'Xuất hủy / hư hỏng / hết hạn',Packing:'Xuất bao bì / vật liệu đóng gói',Sale:'Xuất bán / phụ phẩm',Shortage:'Thiếu khi kiểm kê (chờ xử lý)'}
 const open=ref(false),detail=ref(null),busy=ref(false),error=ref(''),confirmPost=ref(false),deleting=ref(false),cancelling=ref(false),cancelReason=ref('')
 const warehouseLabel=id=>props.warehouses.find(w=>w.name===id)?.warehouse_name||id||'—'

@@ -12,7 +12,6 @@ import './attio.css'
 import './stock-attio.css'
 window.addEventListener('lotus-csrf',event=>setCSRF(event.detail))
 import './compact.css'
-import './farm-work.css'
 import './timekeeping.css'
 import './hr.css'
 import './hr-workspace.css'

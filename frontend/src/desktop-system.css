@@ -13,50 +13,50 @@
   .lotus-ui :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {border-radius:8px;min-height:var(--lotus-control-height);border-color:var(--lotus-border);background:var(--lotus-surface);color:var(--lotus-text)}
   .lotus-ui :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]):focus {border-color:var(--lotus-accent);box-shadow:0 0 0 2px var(--lotus-accent-soft)}
   .lotus-ui :is(button,[role="button"]):disabled {opacity:.5;cursor:not-allowed}
-  .lotus-ui :is(.panel,.stock-panel,.calendar-panel,.assignment-panel,.attendance-month,.hr-editor) {
+  .lotus-ui :is(.panel,.stock-panel,.assignment-panel,.attendance-month,.hr-editor) {
     background:var(--lotus-surface);border:1px solid var(--lotus-border);
     border-radius:var(--lotus-radius);box-shadow:0 1px 3px #29252108;
     color:var(--lotus-text);
   }
-  .lotus-ui :is(.panel,.stock-panel,.calendar-panel,.assignment-panel) > :is(h2,h3):first-child {letter-spacing:-.015em}
-  .lotus-ui :is(.section-title,.stock-panel-head,.stock-list-heading,.calendar-panel-title) {
+  .lotus-ui :is(.panel,.stock-panel,.assignment-panel) > :is(h2,h3):first-child {letter-spacing:-.015em}
+  .lotus-ui :is(.section-title,.stock-panel-head,.stock-list-heading) {
     border-color:var(--lotus-border);gap:12px;
   }
-  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.forecast-filterbar,.stock-planning-toolbar,.attendance-toolbar) {
+  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.stock-planning-toolbar,.attendance-toolbar) {
     display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;
     border-color:var(--lotus-border);min-width:0;
   }
-  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.forecast-filterbar,.stock-planning-toolbar,.attendance-toolbar) label{
+  .lotus-ui :is(.scope-picker,.stock-scope,.view-controls,.stock-planning-toolbar,.attendance-toolbar) label{
     color:var(--lotus-muted);font-size:12px;font-weight:550;
   }
-  .lotus-ui :is(.tabs,.forecast-tabs,.calendar-years,.stock-issue-tabs) button.active,
-  .lotus-ui :is(.tabs,.forecast-tabs,.calendar-years,.stock-issue-tabs) button[aria-selected="true"] {
+  .lotus-ui :is(.tabs,.stock-issue-tabs) button.active,
+  .lotus-ui :is(.tabs,.stock-issue-tabs) button[aria-selected="true"] {
     background:var(--lotus-accent-soft);border-color:var(--lotus-accent);
     color:var(--lotus-accent);font-weight:650;
   }
-  .lotus-ui :is(.kpi,.kpi-grid>*,.stock-metrics>*,.calendar-kpis>*,.hr-kpi) {
+  .lotus-ui :is(.stock-metrics>*,.hr-kpi) {
     background:var(--lotus-surface);border:1px solid var(--lotus-border);border-radius:10px;
     box-shadow:0 1px 3px #29252106;color:var(--lotus-text);
   }
-  .lotus-ui :is(.kpi,.stock-metrics>*,.calendar-kpis>*) :is(small,span) {color:var(--lotus-muted)}
-  .lotus-ui :is(.calendar-board,.forecast-workspace,.assignment-workspace,.farm-work-shell,.hr-shell,.attendance-shell){min-width:0}
-  .lotus-ui :is(.calendar-board,.forecast-workspace,.warehouse-planning) :is(input,select){font-size:13px}
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog){
+  .lotus-ui .stock-metrics>* :is(small,span) {color:var(--lotus-muted)}
+  .lotus-ui :is(.assignment-workspace,.hr-shell,.attendance-shell){min-width:0}
+  .lotus-ui .warehouse-planning :is(input,select){font-size:13px}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog){
     background:var(--lotus-surface);border:1px solid var(--lotus-border);color:var(--lotus-text);
     border-radius:14px;box-shadow:0 24px 80px #11182733;
   }
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(header,footer) {
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) :is(header,footer) {
     background:var(--lotus-surface);border-color:var(--lotus-border);
   }
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
-  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.farm-editor,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) label {font-size:12px;color:var(--lotus-muted);font-weight:550}
+  .lotus-ui :is(.document-dialog,.small-dialog,.stock-dialog,.assignment-dialog) :is(h2,h3) {color:var(--lotus-text);letter-spacing:-.018em}
   .lotus-ui :is(.lotus-ag-grid,.ag-root-wrapper,.lotus-data-table) {border-color:var(--lotus-border);border-radius:9px}
-  .lotus-ui :is(.lotus-ag-grid,.calendar-table,.stock-table,.attendance-roster,.hr-table) :is(th,.ag-header-cell) {
+  .lotus-ui :is(.lotus-ag-grid,.stock-table,.attendance-roster,.hr-table) :is(th,.ag-header-cell) {
     color:var(--lotus-table-heading);background:var(--lotus-table-header);
     border-color:var(--lotus-border);font-weight:650;
   }
-  .lotus-ui :is(.calendar-table,.stock-table,.attendance-roster,.hr-table) td {border-color:var(--lotus-border)}
-  .lotus-ui :is(.calendar-table,.stock-table,.attendance-roster,.hr-table) tbody tr:hover {background:var(--lotus-soft)}
+  .lotus-ui :is(.stock-table,.attendance-roster,.hr-table) td {border-color:var(--lotus-border)}
+  .lotus-ui :is(.stock-table,.attendance-roster,.hr-table) tbody tr:hover {background:var(--lotus-soft)}
   /* Match the Kho desktop shell without changing the Vant-based mobile PWAs. */
   .lotus-ui.app-shell{background:var(--lotus-page)}
   .lotus-ui.app-shell .sidebar{
@@ -88,10 +88,6 @@
   .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main{margin-left:224px;width:calc(100% - 224px)}
   .lotus-ui.assignment-workspace .shell {max-width:none}
   .lotus-ui :is(.notice,.stock-error,.stock-success) {border-radius:9px}
-}
-@media (max-width:900px){
-  /* The mobile layout and Vant 4 theme intentionally keep their existing behavior. */
-  .lotus-ui :is(.calendar-board,.forecast-workspace){min-width:0}
 }
 @media (prefers-reduced-motion:reduce){
   .lotus-ui :is(button,a,input,select,textarea){transition:none!important}

@@ -319,7 +319,7 @@ try:
     a6_after = sum(m["bunches"] for m in board_a6["months"])
     check("the tree layer gave way: bunches moved, not added", abs(a6_after - a6_before) <= 2, (a6_before, a6_after))
     all_months = block_forecast.board(FARM)["bunch"]["months"]
-    old, _, _, _ = block_forecast._projection(FARM)
+    old, _, _ = block_forecast._projection(FARM)
     window = {m["month"] for m in all_months}
     old_total = sum(int(m["bunches"]) for m in old["monthly"] if m["month"] in window)
     new_total = sum(m["bunches"] for m in all_months)

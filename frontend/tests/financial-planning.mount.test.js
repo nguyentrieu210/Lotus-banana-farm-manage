@@ -92,15 +92,33 @@ test('invalid quantities stay in the row editor and never reach the server',asyn
 })
 
 test('source import shows the proposed sources and sends their fingerprint',async t=>{
- setup();const source={name:'HF-1',month:'2026-01',farm:'F1',gross_kg:1000,sales_kg:800}
- handlers[API+'forecast_preview']={sources:[source],rows:[],warnings:['Phiếu qua nhiều tháng'],fingerprint:'FP1'}
- handlers[API+'apply_forecast']=()=>doc({source_snapshot:{sources:[source]}})
+ setup();const source={name:'2026-11|F1|cut',month:'2026-11',farm:'F1',layer:'cut',layer_label:'Buồng đã cắt bắp',bunches:50,gross_kg:1000,sales_kg:980}
+ const packed={name:'2026-11|F1|packed',month:'2026-11',farm:'F1',layer:'packed',layer_label:'Ca đóng gói đã đóng từ đầu tháng',bunches:40,gross_kg:900,sales_kg:760}
+ handlers[API+'forecast_preview']={sources:[packed,source],rows:[],warnings:['Một số lô đang dùng thông số dự thu mặc định'],fingerprint:'FP1',current:'2026-11',from_month:'2026-11',kept:['2026-10']}
+ handlers[API+'apply_forecast']=()=>doc({source_snapshot:{sources:[packed,source],from_month:'2026-11',imported_at:'2026-11-10 09:00:00',imported_by:'acc@lotus'}})
  const view=await mount();button(view.root,'Lấy sản lượng dự thu').click();await settle()
  t.after(view.unmount)
- assert.match(modal().textContent,/HF-1/)
- assert.match(modal().textContent,/Tháng không có nguồn về 0/)
+ const said=modal().textContent.replace(/\s+/g,' ')
+ assert.match(said,/Buồng đã cắt bắp/)
+ assert.match(said,/Ca đóng gói đã đóng từ đầu tháng/)
+ assert.match(said,/thông số dự thu mặc định/)
+ assert.match(said,/Thay sản lượng các tháng từ 11\/2026 đến hết kế hoạch/)
+ assert.match(said,/Tháng 11\/2026 lấy kg các ca đóng gói đã đóng từ đầu tháng/)
+ assert.match(said,/Các tháng đã qua \(10\/2026\) giữ nguyên sản lượng đang có/)
+ assert.match(said,/Tháng không có nguồn về 0/)
  button(modal(),'Thay sản lượng các tháng').click();await settle()
  assert.deepEqual(calls.find(c=>c.method===API+'apply_forecast').args,{name:'LFP-2026-00001',modified:'2026-10-23 10:00:00',fingerprint:'FP1'})
+ button(view.root,'Nguồn dự thu').click();await settle()
+ assert.match(text(view.root),/thay sản lượng từ tháng 11\/2026, các tháng trước giữ nguyên/)
+ view.unmount()
+})
+
+test('a plan whose months are all past has nothing to take from the forecast',async t=>{
+ setup();handlers[API+'forecast_preview']={sources:[],rows:[],warnings:[],fingerprint:'FP0',current:'2028-01',from_month:null,kept:['2026-10','2026-11']}
+ const view=await mount();button(view.root,'Lấy sản lượng dự thu').click();await settle()
+ t.after(view.unmount)
+ assert.match(modal().textContent,/Các tháng của kế hoạch đã qua/)
+ assert.ok(button(modal(),'Thay sản lượng các tháng').disabled)
  view.unmount()
 })
 

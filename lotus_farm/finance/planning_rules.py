@@ -4,10 +4,11 @@ All selling quantities are kg of finished product. Production budgets are expens
 in their planned month; this model does not value inventory or work in progress.
 Cash timing uses explicit whole-month collection/payment delays.
 """
-import calendar
 import re
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+from lotus_farm.block_forecast_engine import weight_kg
 
 
 ROW_FIELDS = (
@@ -160,47 +161,68 @@ def calculate(values, *, base=False):
     return dict(rows=result, totals=totals, warnings=warnings)
 
 
-def forecast_quantities(start, count, forecasts):
-    """Count each released document once in its starting month; never prorate it.
+FORECAST_LAYERS = (('cut', 'Buồng đã cắt bắp'), ('inject', 'Buồng đã chích bắp'), ('sucker', 'Theo chồi đã chọn'), ('tree', 'Theo số cây'))
+PACKED = ('packed', 'Ca đóng gói đã đóng từ đầu tháng')
 
-    Documents partly outside the planning horizon are excluded. Cross-month
-    documents are visible as warnings so a planner can split them upstream.
+
+def forecast_quantities(start, count, cohorts, today, packed=()):
+    """Monthly kg of the plan from the shared forecast (Dự thu), from today's month to the end of the plan.
+
+    The forecast starts today, so it says nothing of the days already past: months before today's keep what the plan
+    holds (they are not in rows and the caller leaves them alone). Today's month is what its closed packhouse shifts
+    brought in so far plus the forecast for its remaining days; later months are the forecast alone.
+    cohorts: the forecast's groups of bunches, each with farm, layer, cycle, profile, config (kg of finished fruit per
+    bunch by cycle, pack_rate = bunches packed / bunches harvested) and days [(day, bunches harvested)].
+    Thành phẩm = bunches × pack_rate × kg per bunch, the kg the Dự thu screen shows. The forecast has no gross weight:
+    thu hoạch is every harvested bunch at the same kg per bunch, so it differs from thành phẩm by the bunches not packed.
+    packed: by farm, the closed shifts of today's month (bunches, gross_kg = kg taken into the shifts, sales_kg = their
+    finished kg). Days outside the plan are left out. One source row per month, farm and layer says where a month's kg
+    come from and how firm they are.
     """
     window = months(start, count)
-    end_month = month_date(window[-1])
-    end = date(end_month.year, end_month.month, calendar.monthrange(end_month.year, end_month.month)[1])
-    first = month_date(start)
-    rows = {m: dict(month=m, gross_kg=0, sales_kg=0) for m in window}
-    sources, warnings, seen = [], [], set()
-    for source in forecasts:
-        if source.get('supply_state') != 'Released':
-            continue
-        name = source['name']
-        if name in seen:
-            raise ValueError('Trùng phiếu dự thu ' + name + '.')
-        seen.add(name)
-        a = date.fromisoformat(str(source['period_start_date'])[:10])
-        b = date.fromisoformat(str(source['period_end_date'])[:10])
-        if b < first or a > end:
-            continue
-        if a < first or b > end or b < a:
-            warnings.append(name + ': vượt khoảng kế hoạch, chưa lấy sản lượng.')
-            continue
-        key = a.strftime('%Y-%m')
-        if key != b.strftime('%Y-%m'):
-            warnings.append(name + ': trải nhiều tháng; toàn bộ sản lượng xếp vào ' + key + '.')
-        gross = number(source.get('gross_forecast_kg'), name)
-        sales = number(source.get('packed_forecast_kg'), name)
+    current = str(today)[:7]
+    rows = {m: dict(month=m, gross_kg=0.0, sales_kg=0.0) for m in window if m >= current}
+    labels, order = dict((PACKED, *FORECAST_LAYERS)), [layer for layer, _ in (PACKED, *FORECAST_LAYERS)]
+    sources, defaults = {}, False
+    for shift in packed:
+        farm = shift.get('farm') or ''
+        gross = float(number(shift.get('gross_kg'), 'Kg đưa vào ca ' + farm))
+        sales = float(number(shift.get('sales_kg'), 'Kg thành phẩm ca ' + farm))
         if sales > gross:
-            raise ValueError(name + ': sản lượng thành phẩm vượt sản lượng thu hoạch.')
-        rows[key]['gross_kg'] += gross
-        rows[key]['sales_kg'] += sales
-        sources.append(dict(
-            name=name, month=key, farm=source.get('farm'), farm_block=source.get('farm_block'),
-            from_date=str(a), to_date=str(b), modified=str(source.get('modified') or ''),
-            gross_kg=float(gross), sales_kg=float(sales),
-        ))
-    for row in rows.values():
+            raise ValueError('Ca đóng gói của vườn ' + farm + ': kg thành phẩm vượt kg đưa vào ca.')
+        if current not in rows or not gross:
+            continue
+        rows[current]['gross_kg'] += gross
+        rows[current]['sales_kg'] += sales
+        source = sources.setdefault((current, farm, PACKED[0]), dict(name='|'.join((current, farm, PACKED[0])), month=current, farm=farm, layer=PACKED[0],
+                                                                    layer_label=PACKED[1], bunches=0, gross_kg=0.0, sales_kg=0.0))
+        source['bunches'] += int(shift.get('bunches') or 0)
+        source['gross_kg'] += gross
+        source['sales_kg'] += sales
+    for cohort in cohorts:
+        layer, config, farm = cohort['layer'], cohort['config'], cohort.get('farm') or ''
+        if layer not in dict(FORECAST_LAYERS):
+            raise ValueError('Lớp dự thu không hợp lệ: ' + str(layer) + '.')
+        weight, rate = float(weight_kg(cohort.get('cycle'), config)), float(config['pack_rate'])
+        if weight < 0 or not 0 <= rate <= 1:
+            raise ValueError('Thông số dự thu không hợp lệ: kg mỗi buồng và tỷ lệ thành phẩm.')
+        for day, bunches in cohort['days']:
+            key = str(day)[:7]
+            if key not in rows or not bunches:
+                continue
+            gross = bunches * weight
+            rows[key]['gross_kg'] += gross
+            rows[key]['sales_kg'] += gross * rate
+            source = sources.setdefault((key, farm, layer), dict(name='|'.join((key, farm, layer)), month=key, farm=farm, layer=layer,
+                                                                 layer_label=labels[layer], bunches=0, gross_kg=0.0, sales_kg=0.0))
+            source['bunches'] += bunches
+            source['gross_kg'] += gross
+            source['sales_kg'] += gross * rate
+            defaults = defaults or not cohort.get('profile')
+    for row in [*rows.values(), *sources.values()]:
         row['gross_kg'] = quantity(Decimal(str(row['gross_kg'])))
         row['sales_kg'] = quantity(Decimal(str(row['sales_kg'])))
-    return dict(rows=list(rows.values()), sources=sources, warnings=warnings)
+    listed = sorted(sources.values(), key=lambda s: (s['month'], s['farm'], order.index(s['layer'])))
+    warnings = ['Một số lô đang dùng thông số dự thu mặc định, chưa có bộ thông số được duyệt.'] if defaults else []
+    return dict(rows=list(rows.values()), sources=listed, warnings=warnings, current=current, from_month=min(rows, default=None),
+                kept=[m for m in window if m < current])

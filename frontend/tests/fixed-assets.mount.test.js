@@ -20,7 +20,7 @@ globalThis.fetch=async(url,options={})=>{
 const Component=await load('components/finance/FinanceAssets.vue')
 const base=(overrides={})=>({enabled:true,permissions:{write:true,approve:false},assets:[],operations:[],runs:[],...overrides})
 const catalog={categories:[],locations:[],accounts:[]}
-const lookups={categories:[],locations:[],accounts:[],cost_centers:[],employees:[],farms:[],blocks:[],suppliers:[],customers:[],cycles:[],work_types:[]}
+const lookups={categories:[],locations:[],accounts:[],cost_centers:[],employees:[],farms:[],blocks:[],suppliers:[],customers:[],work_types:[]}
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const button=(root,label)=>[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===label)
 async function open(data=base(),extra={},props={}){

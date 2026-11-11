@@ -13,13 +13,13 @@ Phạm vi: mã nguồn Lotus, đối chiếu các luồng kho với ERPNext đan
 | Vừa | Lưu phiếu mới chưa có khóa chống gửi lặp sau mất phản hồi | Khóa yêu cầu theo người dùng, so nội dung; thử lại trả cùng phiếu |
 | Vừa | Nguồn chưa xác định kho và thiếu quyền dữ liệu có thể bị hiểu là đủ hàng | Hiển thị rõ chưa xác định kho/chưa đủ quyền, không trả số đủ hàng giả |
 
-Nền tảng đã có: danh mục, nhập/xuất/chuyển/kiểm kê, chi phí phân bổ vào giá nhập, lịch sử sổ kho, hạn mức nguồn xuất có khóa, tiêu hao/thu hồi liên kết phiếu, kiểm quyền và kiểm tra liên kết khi xóa.
+Nền tảng đã có: danh mục, nhập/xuất/chuyển/kiểm kê, chi phí phân bổ vào giá nhập, lịch sử sổ kho, hạn mức nguồn xuất có khóa, kiểm quyền và kiểm tra liên kết khi xóa.
 
 Lô/serial, quy trình mua hàng/kế toán nâng cao vẫn dùng nghiệp vụ ERPNext chuẩn; audit này không tự thay đổi chính sách kế toán hoặc tự ghi sổ/duyệt phiếu kinh doanh.
 
 ## Kết quả sửa
 
-Đã xử lý các phát hiện trong bảng trên. Màn `Nhu cầu & mua vật tư` tổng hợp nhu cầu được duyệt theo vật tư/kho/khoảng ngày, trừ lượng cấp ròng sau thu hồi, tách giữ chỗ của nhu cầu đang xem với nhu cầu khác. Yêu cầu cấp liên kết kế hoạch không được cộng thêm một lần. Nguồn chưa có kho, kế hoạch chưa duyệt nhu cầu hoặc thiếu quyền được báo rõ, không gán trạng thái đủ hàng.
+Đã xử lý các phát hiện trong bảng trên. Màn `Nhu cầu & mua vật tư` tổng hợp yêu cầu cấp vật tư (Material Request loại Material Issue) đã duyệt theo vật tư/kho/khoảng ngày, trừ phần đã cấp bằng phiếu xuất nháp và đã ghi sổ, tách giữ chỗ của nhu cầu đang xem với nhu cầu khác. Nguồn chưa có kho hoặc thiếu quyền được báo rõ, không gán trạng thái đủ hàng. (Nhu cầu theo kế hoạch ngày, tiêu hao và thu hồi gắn kế hoạch đã gỡ cùng các bảng đời cũ ở spec 002, US7.)
 
 Đề nghị mua nháp/đã duyệt không tính là hàng chờ nhận. Đơn mua đã duyệt chỉ góp phần chờ nhập theo số chưa nhận và ngày hẹn trong kỳ; đơn hẹn sau kỳ và quá hẹn được hiển thị riêng. Kho lập phiếu nhận nháp theo đơn mua, nhập lượng thực nhận theo đơn vị tồn, dùng quy đổi và giá/tax chuẩn của đơn mua. Ghi sổ riêng có xác nhận và cập nhật số đã nhận/chờ nhập. Không tự tạo công nợ nhà cung cấp từ một phiếu nhập kho thủ công.
 
@@ -27,7 +27,7 @@ Danh sách phiếu lấy đủ tài liệu trước lọc/phân trang, theo kho/
 
 Kho Stores chưa có Bin, phiếu hoặc sổ kho; đã gỡ mặc định khỏi 47 Item Default và Stock Settings rồi xóa bằng API chuẩn. Giữ nguyên 47 vật tư, 2 Stock Entry và 1 Stock Ledger Entry tại thời điểm xử lý. Form xóa kho có xác nhận gỡ mặc định, kiểm quyền từng Item/Stock Settings và hoàn tác toàn bộ nếu còn liên kết khác. Không xóa cưỡng bức.
 
-Kiểm chứng: 80 unit test Python, 21 test frontend; build Vite. Script `tests/integration/verify_warehouse_audit.py` chạy trong bench local site `frontend`, company `Lotus Agritech`, dùng dữ liệu riêng và rollback toàn bộ giao dịch thử. Kiểm tra đủ: nguồn chưa xác định, giữ phiếu nháp, cấp một phần, tiêu hao, thu hồi, nguồn cấp trùng kế hoạch, đơn mua, chống đề nghị mua trùng, nhận một phần và chống nhận quá đơn, gửi lại cùng yêu cầu, giữ giá vốn kiểm kê, lọc kho, tồn đầu/cuối và render bản in có kiểm quyền; đã tạo PDF hợp lệ từ phiếu thực tế (23.802 byte).
+Kiểm chứng lúc audit (14/10/2026): 80 unit test Python, 21 test frontend; build Vite; một script tích hợp chạy trong bench local site `frontend`, company `Lotus Agritech`, dùng dữ liệu riêng và rollback toàn bộ giao dịch thử; đã tạo PDF hợp lệ từ phiếu thực tế (23.802 byte). Script đó (`verify_warehouse_audit.py`) đã gỡ cùng luồng xuất theo kế hoạch ở spec 002, US7.
 
 Công ty đã đổi tên bằng frappe.rename_doc thành Lotus Agritech; giữ mã LT, toàn bộ liên kết và số tồn/giá trị tồn. Đầu bản in và PDF dùng tên công ty, dưới là Farm 222 Thuận Phú (Company.lotus_print_farm). Chạy lại toàn bộ integration sau đổi tên: đạt, PDF hợp lệ, rollback dữ liệu thử.
 

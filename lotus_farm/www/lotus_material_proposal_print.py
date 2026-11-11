@@ -49,28 +49,6 @@ def _place_date(company, value):
     return (place + ', ' if place else '') + 'ngày %02d tháng %02d năm %d' % (day.day, day.month, day.year)
 
 
-def _requirement(name):
-    """Lotus planning requirement: proposed issue quantities, never proof of stock issue."""
-    doc = frappe.get_doc('Material Requirement', name)
-    doc.check_permission('read')
-    doc.check_permission('print')
-    frappe.get_doc('Farm', doc.farm).check_permission('read')
-    plan = frappe.db.get_value('Daily Work Plan Line', doc.work_plan_line, ['work_type', 'planned_qty', 'uom'], as_dict=True) if doc.work_plan_line else None
-    work = frappe.db.get_value('Work Type', plan.work_type, 'work_name') if plan and plan.work_type else ''
-    block = frappe.db.get_value('Farm Block', doc.farm_block, 'block_code') if doc.farm_block else ''
-    when = getdate(doc.get('posting_date') or doc.creation)
-    rows = []
-    for line in doc.lines:
-        item = frappe.get_doc('Item', line.item)
-        item.check_permission('read')
-        rows.append(frappe._dict(item_name=item.item_name or line.item, specification=strip_html(item.get('description') or '').strip(),
-                                 item_code=line.item, uom=pk.unit(line.uom), stock=None, qty=flt(line.required_qty), norm=flt(line.norm_qty),
-                                 issued_qty=None, needed_date=pk.vn_date(when), area=block,
-                                 scale=(pk.number(plan.planned_qty) + ' ' + (plan.uom or '')) if plan else '', purpose=work, notes=''))
-    reason = ('Vật tư cho công việc: ' + work) if work else 'Vật tư theo kế hoạch sản xuất'
-    return doc, rows, reason, 'Chưa xác định kho cấp trên phiếu nhu cầu', when
-
-
 def _request_rows(doc):
     rows, total, priced = [], 0, True
     for line in doc.items:
@@ -97,37 +75,28 @@ def _request_rows(doc):
     return rows, total, bool(rows) and priced
 
 
-def build(name, doctype='Material Request'):
+def build(name):
     if frappe.session.user == 'Guest':
         frappe.throw('Vui lòng đăng nhập để in phiếu đề xuất vật tư.', frappe.PermissionError)
     if not name:
         frappe.throw('Cần chọn số phiếu đề xuất vật tư.')
-    if doctype == 'Material Request':
-        # People named in the signing round see what they sign even without rights on proposals (spec 003, FR-027).
-        from lotus_farm.signed_copy import as_reader
-        return as_reader(frappe.get_doc('Material Request', name), lambda: _build(name, doctype))
-    return _build(name, doctype)
+    # People named in the signing round see what they sign even without rights on proposals (spec 003, FR-027).
+    from lotus_farm.signed_copy import as_reader
+    return as_reader(frappe.get_doc('Material Request', name), lambda: _build(name))
 
 
-def _build(name, doctype):
-    if doctype == 'Material Requirement':
-        doc, rows, reason, warehouse, when = _requirement(name)
-        purchase, total, priced = False, 0, False
-        state = 'Đã lập nhu cầu' if doc.docstatus == 1 else 'Nháp'
-    elif doctype == 'Material Request':
-        doc = frappe.get_doc('Material Request', name)
-        doc.check_permission('read')
-        doc.check_permission('print')
-        if doc.material_request_type not in ('Purchase', 'Material Issue'):
-            frappe.throw('Chỉ in phiếu đề xuất mua hoặc cấp vật tư.', frappe.PermissionError)
-        purchase = doc.material_request_type == 'Purchase'
-        when = getdate(doc.get('transaction_date') or doc.creation)
-        reason = strip_html(doc.get('lotus_request_note') or doc.get('remarks') or '').strip()
-        warehouse = ', '.join(sorted({r.warehouse for r in doc.items if r.warehouse}))
-        rows, total, priced = _request_rows(doc)
-        state = 'Đã duyệt' if doc.docstatus == 1 else (doc.get('lotus_proposal_state') or pk.status_label(doc.docstatus))
-    else:
-        frappe.throw('Chỉ hỗ trợ phiếu đề xuất vật tư.', frappe.PermissionError)
+def _build(name):
+    doc = frappe.get_doc('Material Request', name)
+    doc.check_permission('read')
+    doc.check_permission('print')
+    if doc.material_request_type not in ('Purchase', 'Material Issue'):
+        frappe.throw('Chỉ in phiếu đề xuất mua hoặc cấp vật tư.', frappe.PermissionError)
+    purchase = doc.material_request_type == 'Purchase'
+    when = getdate(doc.get('transaction_date') or doc.creation)
+    reason = strip_html(doc.get('lotus_request_note') or doc.get('remarks') or '').strip()
+    warehouse = ', '.join(sorted({r.warehouse for r in doc.items if r.warehouse}))
+    rows, total, priced = _request_rows(doc)
+    state = 'Đã duyệt' if doc.docstatus == 1 else (doc.get('lotus_proposal_state') or pk.status_label(doc.docstatus))
 
     proposer = _user_name(doc.owner)
     department = doc.get('lotus_department') or frappe.db.get_value('Employee', {'user_id': doc.owner, 'status': 'Active'}, 'department') or ''
@@ -137,9 +106,9 @@ def _build(name, doctype):
                       dict(label='3. Lý do đề xuất mua' if purchase else '3. Kho đề xuất cấp', value=reason if purchase else warehouse),
                       dict(label='Kho nhận' if purchase else 'Lý do', value=warehouse if purchase else reason)])
     p.status = state
-    p.watermark = None if state in ('Đã duyệt', 'Đã lập nhu cầu') else ('ĐÃ HỦY' if doc.docstatus == 2 else 'CHƯA DUYỆT')
+    p.watermark = None if state == 'Đã duyệt' else ('ĐÃ HỦY' if doc.docstatus == 2 else 'CHƯA DUYỆT')
     from lotus_farm import signing
-    named = signing.print_signatures(doc) if doctype == 'Material Request' else []
+    named = signing.print_signatures(doc)
     if named:
         p.signatures = named
         p.initials = signing.print_initials(doc)
@@ -150,14 +119,13 @@ def _build(name, doctype):
         approval = _approval(doc) if doc.docstatus == 1 else None
         if approval:
             p.signatures[-1] = pk.signature(titles[-1], approval['name'], approval['image'] or None, approval['signed_at'])
-    query = {'name': doc.name} if doctype == 'Material Request' else {'doctype': doctype, 'name': doc.name}
-    p.pdf_url = '/api/method/lotus_farm.www.lotus_material_proposal_print.download_pdf?' + urlencode(query)
+    p.pdf_url = '/api/method/lotus_farm.www.lotus_material_proposal_print.download_pdf?' + urlencode({'name': doc.name})
     p.back_url, p.back_label = ('/buying', 'Về Mua hàng') if purchase else ('/warehouse', 'Về Kho')
     return p
 
 
-def get_context(context, name=None, doctype=None):
-    p = build(name or frappe.form_dict.get('name'), doctype or frappe.form_dict.get('doctype') or 'Material Request')
+def get_context(context, name=None):
+    p = build(name or frappe.form_dict.get('name'))
     p.toolbar = True
     context.html = pk.render('proposal.html', p)
     context.purchase = p.purchase
@@ -165,13 +133,13 @@ def get_context(context, name=None, doctype=None):
 
 
 @frappe.whitelist()
-def download_pdf(name, doctype=None):
-    if (doctype or 'Material Request') == 'Material Request' and frappe.db.exists('Material Request', name):
+def download_pdf(name):
+    if frappe.db.exists('Material Request', name):
         # Once signed in full, the download is the stored signed copy (spec 003, FR-014), not a new render.
         from lotus_farm import signed_copy, signing
         doc = frappe.get_doc('Material Request', name)
         copy = signed_copy.current(doc)
         if copy and signing.can_view(doc=doc):
             return signed_copy.respond(copy, 'de-xuat-mua-' + name)
-    p = build(name, doctype or 'Material Request')
+    p = build(name)
     pk.send_pdf(pk.render('proposal.html', p), ('de-xuat-mua-' if p.purchase else 'de-xuat-cap-') + name, landscape=True)

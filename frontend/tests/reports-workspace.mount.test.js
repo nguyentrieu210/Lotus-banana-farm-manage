@@ -9,8 +9,10 @@ const charts={from_date:'2026-09-20',to_date:'2026-10-19',farms:['LOTUS-222'],
  land:{allowed:true,blocks:3,area_ha:10,trees:15000,counted_blocks:2,
   zones:[{zone:'A',blocks:2,area_ha:6,trees:15000,counted_blocks:2,counted_area_ha:6,trees_per_ha:2500},{zone:'B',blocks:1,area_ha:4,trees:0,counted_blocks:0,counted_area_ha:0,trees_per_ha:null}],
   flowering:[{month:'2026-11',blocks:2,trees:15000}]},
- work:{allowed:true,days:[{date:'2026-10-19',tasks:0,completion_percent:null,required_workdays:0,actual_workdays:0}],types:[]},
- harvest:{allowed:false},losses:{allowed:true,reasons:[],total:0},stock:{allowed:true,months:[]}}
+ work:{allowed:true,days:[{date:'2026-10-19',lines:0,workdays:0}],types:[]},
+ harvest:{allowed:false},packout:{allowed:false},losses:{allowed:false},
+ forecast:{allowed:true,horizon_weeks:13,bunches:1200,kg:21600,cartons:1600,months:[{month:'2026-11',bunches:400,kg:7200,cartons:533},{month:'2026-12',bunches:800,kg:14400,cartons:1067}]},
+ stock:{allowed:true,months:[]}}
 const text=root=>root.textContent.replace(/\s+/g,' ')
 const tab=(root,label)=>[...root.querySelectorAll('[role=tab]')].find(b=>b.textContent===label)
 
@@ -27,11 +29,36 @@ test('land tab shows census figures and only counted zones in density',async()=>
 test('tabs without data explain why, and denied sections show no numbers',async()=>{
  const view=mount(ReportsWorkspace,{charts});await tick()
  tab(view.root,'Công việc').click();await tick()
- assert.match(text(view.root),/Chưa có kế hoạch công việc đã giao trong kỳ\./)
+ assert.match(text(view.root),/Chưa có dòng sổ lô đã xác nhận trong kỳ\./)
  assert.equal(view.root.querySelectorAll('.lotus-chart-canvas').length,0,'no empty canvas is drawn')
  tab(view.root,'Thu hoạch & đóng gói').click();await tick()
  assert.match(text(view.root),/Bạn không có quyền xem phần báo cáo này\./)
  assert.equal(view.root.querySelectorAll('.lotus-stat').length,0)
+ view.unmount()
+})
+
+test('harvest tab shows what the reader may see: packout without the sổ lô, at farm level only under a khu',async()=>{
+ const packout={allowed:true,weeks:[{week:'2026-10-19',input_kg:1000,finished_kg:850,cartons:63}]}
+ const view=mount(ReportsWorkspace,{charts:{...charts,packout}});await tick()
+ tab(view.root,'Thu hoạch & đóng gói').click();await tick()
+ assert.doesNotMatch(text(view.root),/Bạn không có quyền xem phần báo cáo này\./)
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-stat span')].map(n=>n.textContent),['Thành phẩm','Tỷ lệ đóng gói'])
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-stat strong')].map(n=>n.textContent),['850','85'])
+ view.unmount()
+ const scoped=mount(ReportsWorkspace,{charts:{...charts,harvest:{allowed:true,weeks:[{week:'2026-10-19',qty:40,weight_kg:900}]},packout:{allowed:true,weeks:null,note:'Đóng gói chỉ xem theo vườn, không chia theo khu/lô.'}}});await tick()
+ tab(scoped.root,'Thu hoạch & đóng gói').click();await tick()
+ assert.match(text(scoped.root),/Đóng gói chỉ xem theo vườn/)
+ assert.deepEqual([...scoped.root.querySelectorAll('.lotus-stat strong')].map(n=>n.textContent),['900'])
+ assert.match(text(scoped.root),/kg · 40 buồng/)
+ scoped.unmount()
+})
+
+test('forecast tab shows the shared forecast: the coming weeks and every month',async()=>{
+ const view=mount(ReportsWorkspace,{charts});await tick()
+ tab(view.root,'Dự thu').click();await tick()
+ assert.match(text(view.root),/Dự thu 13 tuần tới/)
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-stat strong')].map(n=>n.textContent),['1.200','21.600','1.600'])
+ assert.deepEqual([...view.root.querySelectorAll('.lotus-chart-head h3')].map(n=>n.textContent),['Dự thu theo tháng'])
  view.unmount()
 })
 

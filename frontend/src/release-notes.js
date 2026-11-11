@@ -1,7 +1,7 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
- {id:'2026-11-10b',title:'Mua hàng và ký điện tử (cập nhật 10/11/2026)',items:[
+ {id:'2026-11-11b',title:'Mua hàng và ký điện tử (cập nhật 11/11/2026)',items:[
   {title:'Chờ tôi ký',text:'Một danh sách các chứng từ đang chờ bạn ký, có trên điện thoại và máy tính. Mỗi lần ký đều hỏi lại số chứng từ và số tiền.'},
   {title:'Bản PDF đã ký',text:'Ký đủ thì hệ thống lưu một bản PDF cố định kèm chữ ký và mã QR. Tải lại lúc nào cũng ra đúng bản đó.'},
   {title:'Đề xuất mua',text:'Một tên giai đoạn cho mọi màn: Nháp, Đang ký, Chờ mua, Đang mua, Đã nhận đủ, Đã xong. Đóng phần chưa mua và hủy đề xuất đều ghi lý do.'},
@@ -18,6 +18,11 @@ export const RELEASE_NOTES=[
   {title:'Công nợ nhà cung cấp',text:'Xem theo ngày chốt: tuổi nợ, khoản đến hạn trong 7 ngày, hàng đã nhận chưa có hóa đơn, sổ chi tiết và biên bản đối chiếu từng nhà cung cấp.'},
   {title:'Phiếu chi',text:'Một phiếu chi trả được nhiều hóa đơn; phần trả thêm ghi rõ là tạm ứng. Tạm ứng theo đơn chỉ tới phần chưa có hóa đơn, kiểm lại khi giám đốc ký. In được phiếu chi và giấy đề nghị chi.'},
   {title:'Mua nhanh',text:'Hàng mua lẻ không qua đơn gọi thống nhất là Mua nhanh ở Kho, Mua hàng và Tài chính.'},
+ ]},
+ {id:'2026-11-11',title:'Cập nhật ngày 11/11/2026: dọn hẳn các màn hình cũ',items:[
+  {title:'Bỏ các màn cũ không còn dùng',text:'Các màn ghi chép, kế hoạch, dự thu và nhập liệu đời cũ (thửa, vụ, kế hoạch ngày, lô thu hoạch, nhập OneDrive…), trang Cảnh báo và trang Cấu hình đã được gỡ. Việc ngoài vườn, màu dây, thu hoạch, xưởng, dự thu và báo cáo nằm ở Công việc ngoài vườn; dữ liệu cũ được lưu trữ trước khi xóa.'},
+  {title:'Kho',text:'Phiếu xuất dùng còn hai cách: Thủ công và Theo yêu cầu đã duyệt.'},
+  {title:'Tài chính',text:'Bỏ chiều "Vụ" trong báo cáo chi phí. Danh sách chờ hạch toán liệt kê ca đóng gói đã đóng mà chưa có phiếu nhập kho đã duyệt; giá thành tháng chờ các phiếu này.'},
  ]},
  {id:'2026-11-10',title:'Cập nhật ngày 10/11/2026: báo cáo ngày theo lô',items:[
   {title:'Hôm nay: nhập theo lô',text:'Mỗi lô của tổ là một thẻ. Bấm vào lô để nhập mọi việc của lô trong ngày: việc vườn, phun bón, kiểm tra sâu bệnh, cắt bắp, bao buồng, thu hoạch. Tổ trưởng gửi một lần cho cả ngày, đội trưởng xác nhận.'},
