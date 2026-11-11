@@ -192,11 +192,7 @@ async function deleteSelected(){
   if(props.selectedRowKeys===null)selectedLocal.value=new Set([...selectedLocal.value].filter(id=>!props.rows.some(row=>getSelectionId(row)===id&&gone.has(props.deleteItem(row)?.name))))
   emit('deleted',result)
   const failed=result.failed||[]
-  await deleteConfirm.tell((gone.size?'Đã xóa '+gone.size+' phiếu.':'Không xóa được phiếu nào.')+(failed.length?'
-
-Không xóa:
-'+failed.map(f=>f.name+': '+f.message).join('
-'):''),'Kết quả xóa')
+  await deleteConfirm.tell((gone.size?'Đã xóa '+gone.size+' phiếu.':'Không xóa được phiếu nào.')+(failed.length?' Không xóa: '+failed.map(f=>f.name+' ('+f.message+')').join('; ')+'.':''),'Kết quả xóa')
  }catch(e){await deleteConfirm.tell('Không xóa được: '+(e.message||e),'Kết quả xóa')}
  finally{deleting.value=false;nextTick(refreshSelection)}
 }
