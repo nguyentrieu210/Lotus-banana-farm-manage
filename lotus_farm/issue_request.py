@@ -60,6 +60,28 @@ def install_fields():
         ITEM_DT: [dict(fieldname="lotus_work_assignment", label="Lotus · Phiếu giao việc", fieldtype="Link",
                        options="Lotus Work Assignment", read_only=1, no_copy=1, insert_after="lotus_usage_area")],
     }, update=True)
+    _reference_read()
+
+
+# ERPNext reads the item (and its unit and warehouse) with the user's own rights while it fills a request line, so the
+# people who make requests need read on them. Read only; nothing else is granted.
+REQUESTERS = ("Lotus Field Supervisor", MANAGER)
+REFERENCE = ("Item", "UOM", "Warehouse", "Item Group")
+
+
+def _reference_read():
+    from frappe.permissions import add_permission, update_permission_property
+    for doctype in REFERENCE:
+        for role in REQUESTERS:
+            if not frappe.db.exists("Role", role):
+                continue
+            current = frappe.db.get_value("Custom DocPerm", {"parent": doctype, "role": role, "permlevel": 0}, ["read", "select"], as_dict=True)
+            if current is None:
+                add_permission(doctype, role)
+                current = frappe.db.get_value("Custom DocPerm", {"parent": doctype, "role": role, "permlevel": 0}, ["read", "select"], as_dict=True) or {}
+            for operation in ("read", "select"):
+                if not int(current.get(operation) or 0):
+                    update_permission_property(doctype, role, 0, operation, 1)
 
 
 # ---------------------------------------------------------------- document hooks (Material Request, Stock Entry)
