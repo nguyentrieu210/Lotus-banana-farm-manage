@@ -1,5 +1,6 @@
 <script setup>
 import {computed,ref} from 'vue'
+import '../../lotus-kit-chart.css'
 import {isoWeek,sameWeek,weekRange,formatNumber,formatDelta} from '../../agri-format.js'
 import {niceScale,linePath,bandPath} from '../../chart-scale.js'
 // Weekly harvest (FR-035): actual bunches as bars, the forecast as a dashed line with its range as a band, this week

@@ -43,6 +43,7 @@ import {procurementTabs,purchaseKinds,money,newKey,quoteChoices,docUrl,purchaseR
 import {toast} from '../use-toast'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import {useMobileConfirm} from '../use-mobile-confirm'
+import {statusCol} from '../grid-columns.js'
 
 const props=defineProps({company:String,warehouse:String,today:String,mobile:Boolean,embedded:Boolean,buyingView:String,navigationKey:String,initialSupplier:String})
 const api=(method,args={},write=false)=>purchaseRequest(call,'lotus_farm.procurement.'+method,args,write)
@@ -98,7 +99,7 @@ const columns=computed(()=>tab.value==='quick'?quickColumns:tab.value==='invoice
  {field:'supplier',headerName:'Nhà cung cấp'},{field:'item_name',headerName:'Mặt hàng',minWidth:180},
  {field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)}]:[
  {field:'name',headerName:'Số chứng từ',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',valueGetter:p=>p.data.supplier_name||p.data.supplier||''},
- {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{field:'status',headerName:'Trạng thái',valueFormatter:p=>stateLabel(p.value)},
+ {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{...statusCol('status','Trạng thái',{labelOf:v=>stateLabel(v)}),minWidth:130},
  {field:'amount',headerName:'Giá trị',valueFormatter:p=>money(p.value)}])
 const lineColumns=[{field:'item_name',headerName:'Mặt hàng',minWidth:180},{field:'qty',headerName:'Số lượng'},{field:'uom',headerName:'ĐVT',valueFormatter:p=>unitLabel(p.value)},{field:'rate',headerName:'Đơn giá',valueFormatter:p=>money(p.value)},{field:'vat_code',headerName:'VAT'},{field:'freight',headerName:'Vận chuyển',valueFormatter:p=>money(p.value)},{field:'order',headerName:'Đơn mua'},{field:'receipt',headerName:'Phiếu nhận'}]
 const sourceOptions=computed(()=>form.value==='refund'?[{value:source.value,label:source.value}]:(finance.value?.sources?.[sourceType.value]||[]).map(r=>({value:r.name,label:r.name+' · '+r.supplier+' · còn '+money(r.amount)})))

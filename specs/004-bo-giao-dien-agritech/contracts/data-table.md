@@ -28,6 +28,11 @@ Chi tiết hiện trạng ở [audit/04-bang-du-lieu.md](../audit/04-bang-du-lie
 | Chế độ tối | Nền trắng ghi cứng ở thẻ điện thoại, vỏ lưới, popup lọc, ô nhập trong ô | Theo `--lotus-surface` |
 | Chip bộ lọc đang bật | Lớp `.lotus-chip` riêng, không scoped | Chip chung `lotus-chip lotus-chip--primary lotus-chip--filter` |
 | Kiểu cột | Mỗi màn tự viết `valueFormatter` (231 chỗ ở 43 tệp) | `grid-columns.js`; chuyển dần màn cũ sang. |
+| Cột trạng thái (đợt 2) | Chữ đậm xanh (`lotus-grid-status`), chữ tô màu (`fin-cell-ok/warn`, `lotus-coverage-state`), viên riêng (`tk-pill`) | Chip chung qua `statusCol` hoặc `chipNode`: `OpsList` (`docstatus`, `status`, `approval_state`), Nhân sự (Tiếp nhận, Trạng thái, nghiệp vụ), Mua hàng (trạng thái đơn), Tài chính (đối chiếu ngân hàng, Khớp/Lệch, tuổi nợ, trạng thái ký), Kho (trạng thái phiếu, Cảnh báo tồn, Tình trạng nhu cầu). Chữ giữ nguyên từ máy chủ, tông theo nghĩa. `tk-pill` ở Chấm công giữ tên lớp, kiểu viết lại bằng token tông của chip. Đã xóa `lotus-grid-status`, `fin-cell-warn`, `lotus-coverage-state`. |
+
+## Có chủ đích chưa chuyển
+
+Tài chính (`FinanceApp.vue`, 35 bảng) và Kho (`stock-columns.js`) giữ hàm tiền, số lượng, ngày riêng. Sổ kế toán để trống số 0 và không gắn "đ" sau mỗi số; `moneyCol` chung hiện "0 đ". Chuyển sang thì phải thêm tùy chọn cho `moneyCol` (`unit:''`, để trống số 0) và cho kế toán xem lại cách đọc sổ, nên để một đợt riêng.
 
 ## Chưa làm trong đợt này
 

@@ -5,11 +5,23 @@ import assert from 'node:assert/strict'
 import {loadRules,modeMap,resolveToken,contrast,toRgba} from './support/css-tokens.mjs'
 
 const rules=loadRules(new URL('../src/lotus-tokens.css',import.meta.url))
+// Dark and outdoor sit inside @media screen; print keeps the light values.
+const onScreen=at=>at.every(a=>a==='@media screen')
 const MODES={
- light:modeMap(rules,[':root']),
- dark:modeMap(rules,[':root',':root.dark']),
- outdoor:modeMap(rules,[':root',':root.lotus-outdoor']),
+ light:modeMap(rules,[':root'],onScreen),
+ dark:modeMap(rules,[':root',':root.dark'],onScreen),
+ outdoor:modeMap(rules,[':root',':root.lotus-outdoor'],onScreen),
 }
+
+test('dark and outdoor are screen modes: paper prints the light tokens on a white page',()=>{
+ const modeRules=rules.filter(r=>[':root.dark','.lotus-dark-preview',':root.lotus-outdoor','.lotus-outdoor-preview'].includes(r.selector))
+ assert.equal(modeRules.length,4)
+ for(const r of modeRules)assert.deepEqual(r.at,['@media screen'],r.selector+' must apply on screen only')
+ assert.ok(MODES.dark.get('--lotus-surface')!==MODES.light.get('--lotus-surface'),'the dark block is still read for the screen checks')
+ const paper=modeMap(rules,[':root'],at=>at.length===0||at.includes('@media print'))
+ assert.equal(paper.get('--lotus-page'),'#fff')
+ assert.match(paper.get('color-scheme')||'',/^light/)
+})
 const TONES=['neutral','primary','success','warning','danger','info']
 const LOT_STATES=['empty','entered','sent','confirmed','ok','due','overdue','quarantine']
 
@@ -21,6 +33,7 @@ const TEXT=[
  ['--lotus-primary-text','--lotus-surface'],['--lotus-primary-text','--lotus-primary-subtle'],['--lotus-primary','--lotus-surface'],
  ['--lotus-link','--lotus-surface'],
  ['--lotus-on-primary-solid','--lotus-primary-solid'],['--lotus-on-topbar','--lotus-topbar'],['--lotus-on-topbar','--lotus-topbar-end'],
+ ['--lotus-on-topbar-muted','--lotus-topbar'],['--lotus-on-topbar-muted','--lotus-topbar-end'],
  ['--lotus-table-heading','--lotus-table-header'],
  ['--lotus-text','--lotus-table-zebra'],['--lotus-text','--lotus-table-hover'],['--lotus-text','--lotus-table-selected'],['--lotus-text','--lotus-table-total'],
  ['--lotus-success','--lotus-success-soft'],['--lotus-warning','--lotus-warning-soft'],['--lotus-danger','--lotus-danger-soft'],['--lotus-info','--lotus-info-soft'],
@@ -77,7 +90,8 @@ test('modes and densities override only tokens that exist in the light base',()=
  const base=MODES.light,extra=[]
  for(const rule of rules){
   if(rule.selector===':root'&&!rule.at.length)continue
-  for(const name of rule.decls.keys())if(!base.has(name))extra.push(`${rule.selector} ${name}`)
+  // Custom properties only: the print block also sets the plain property color-scheme.
+  for(const name of rule.decls.keys())if(name.startsWith('--')&&!base.has(name))extra.push(`${rule.selector} ${name}`)
  }
  assert.deepEqual(extra,[])
 })

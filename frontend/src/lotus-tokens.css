@@ -52,6 +52,11 @@
   --lotus-sidebar:var(--lotus-neutral-25);--lotus-soft:var(--lotus-neutral-25);--lotus-hover:var(--lotus-neutral-100);
   --lotus-active:var(--lotus-neutral-200);--lotus-selected:var(--lotus-primary-50);
   --lotus-topbar:var(--lotus-primary-600);--lotus-topbar-end:var(--lotus-primary-700);--lotus-on-topbar:#fff;
+  /* Inside the red top bar: secondary text, translucent chips and lines, the farm picker well, the search field. */
+  --lotus-on-topbar-muted:var(--lotus-primary-50);--lotus-topbar-soft:#ffffff24;--lotus-topbar-line:#ffffff55;
+  --lotus-topbar-sunken:#00000029;--lotus-topbar-sunken-hover:#0000003d;
+  --lotus-topbar-field:#fff;--lotus-topbar-field-hover:var(--lotus-neutral-25);--lotus-topbar-field-text:var(--lotus-neutral-600);--lotus-topbar-field-line:#fff;
+  --lotus-topbar-kbd:var(--lotus-neutral-100);--lotus-topbar-kbd-line:var(--lotus-neutral-200);
   /* Text */
   --lotus-text:var(--lotus-neutral-800);--lotus-text-strong:var(--lotus-neutral-900);--lotus-text-secondary:var(--lotus-neutral-700);
   --lotus-muted:var(--lotus-neutral-600);--lotus-subtle:var(--lotus-neutral-500);--lotus-disabled:var(--lotus-neutral-400);
@@ -144,11 +149,15 @@
   --lotus-row:44px;--lotus-table-row:44px;--lotus-table-header-height:40px;--lotus-table-font:14px;--lotus-table-header-font:12px;--lotus-table-cell-x:12px;
   --lotus-chip-height:24px;--lotus-card-padding:16px;
 }
+/* Dark and outdoor are screen modes: on paper every token keeps its light value (see @media print below). */
+@media screen{
 .lotus-dark-preview,:root.dark{
   --lotus-primary:#ff8f80;--lotus-primary-hover:#ffa699;--lotus-primary-active:#ffbcb2;--lotus-primary-subtle:#3d2321;--lotus-primary-text:#ffa699;--lotus-on-primary:#1d1b18;
   --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-raised:#25221e;--lotus-sunken:#100f0d;
   --lotus-sidebar:#191714;--lotus-soft:#25221e;--lotus-hover:#2d2a25;--lotus-active:#36332d;--lotus-selected:#3d2321;
   --lotus-topbar:#a3291d;--lotus-topbar-end:#7f2218;
+  --lotus-on-topbar-muted:#fbc9c0;--lotus-topbar-field:#00000040;--lotus-topbar-field-hover:#00000059;--lotus-topbar-field-text:#fde4df;
+  --lotus-topbar-field-line:#ffffff33;--lotus-topbar-kbd:#ffffff1f;--lotus-topbar-kbd-line:#ffffff2e;
   --lotus-text:#efebe4;--lotus-text-strong:#f8f6f2;--lotus-text-secondary:#d3cdc2;--lotus-muted:#bab4a8;--lotus-subtle:#9b9588;--lotus-disabled:#6b665c;
   --lotus-link:#8fb8ea;
   --lotus-border-subtle:#2a2723;--lotus-border:#36332d;--lotus-border-strong:#4a463e;--lotus-border-control:#7a7468;
@@ -212,4 +221,7 @@
   --lotus-focus:0 0 0 3px var(--lotus-surface),0 0 0 6px var(--lotus-focus-ring);
   --foreground:30 9% 5%;--muted-foreground:36 9% 20%;--border:40 8% 53%;--input:36 11% 21%;--ring:213 59% 25%;
 }
+}
+/* Paper: white page, black ink, light form controls, whatever mode the screen was in (ui-mode.js sets colorScheme inline). */
+@media print{:root{color-scheme:light!important;--lotus-page:#fff}}
 @media (prefers-reduced-motion:reduce){:root{--lotus-motion-fast:0ms;--lotus-motion:0ms;--lotus-motion-slow:0ms}}

@@ -37,6 +37,7 @@ import {useNoticeToast} from './use-toast'
 import {call} from './api'
 import {unitLabel} from './units'
 import {useSession} from './store'
+import {statusCol} from './grid-columns.js'
 import './land.css'
 import './finance.css'
 
@@ -67,6 +68,10 @@ const range=ref({from:today.slice(0,8)+'01',to:today})
 const num=(v,d=0)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d})
 const vnd=v=>v==null?'—':num(Math.round(Number(v))||0)+' đ'
 const vnDate=v=>v?String(v).slice(8,10)+'/'+String(v).slice(5,7)+'/'+String(v).slice(0,4):'—'
+// States are kit status chips (spec 004): a debt within its term or overdue, a voucher on its way through the signatures.
+// The cell keeps the server's Vietnamese wording; the chip's tone and icon come from the kind.
+const SIGN_KIND={'Nháp':'draft','Chờ ký':'to_sign','Đang ký':'to_sign','Đã ký':'done','Bị trả lại':'returned','Trả lại':'returned','Đã hủy':'cancelled'}
+const agingCol=()=>({...statusCol('aging','Tuổi nợ',{labelOf:(v,row)=>row?.aging}),minWidth:150,valueGetter:p=>!p.data?.aging?'':p.data.aging==='Trong hạn'?'active':'overdue'})
 const dimLabel=(field,value)=>{if(!value)return '';if(field==='lotus_farm_block'){const b=(lookups.value?.blocks||[]).find(x=>x.name===value);return b?b.block_code:value}return value}
 function go(next){router.push({path:'/tai-chinh',query:{...route.query,tab:next}})}
 async function run(fn){busy.value=true;error.value='';try{return await fn()}catch(e){error.value=e.message}finally{busy.value=false}}
@@ -172,7 +177,7 @@ const bankRows=computed(()=>(tab.value!=='bank'&&report.value!=='bank')||!report
  ...reportData.value.statement_only.map((x,i)=>({__key:'s'+i,state:'Chỉ có trên sao kê',date:x.date,amount:x.amount,reference:x.reference,description:x.description,voucher:''})),
  ...reportData.value.ledger_only.map((x,i)=>({__key:'l'+i,state:'Chỉ có trên sổ',date:x.date,amount:x.amount,reference:x.reference,description:x.remarks,voucher:x.voucher}))])
 const bankFilteredRows=computed(()=>bankFilter.value==='all'?bankRows.value:bankRows.value.filter(row=>row.state===bankFilter.value))
-const bankColumns=computed(()=>[{field:'state',headerName:'Kết quả',minWidth:150,cellClass:p=>p.value==='Khớp'?'fin-cell-ok':'fin-cell-warn'},dateCol('date','Ngày'),moneyCol('amount','Số tiền (+ vào / − ra)',{valueFormatter:p=>num(p.value)}),
+const bankColumns=computed(()=>[{...statusCol('state','Kết quả',{labelOf:(v,row)=>row?.state}),minWidth:150,valueGetter:p=>!p.data?.state?'':p.data.state==='Khớp'?'done':'warning'},dateCol('date','Ngày'),moneyCol('amount','Số tiền (+ vào / − ra)',{valueFormatter:p=>num(p.value)}),
  {field:'reference',headerName:'Tham chiếu',minWidth:130},{field:'description',headerName:'Nội dung',minWidth:220,flex:2},{field:'voucher',headerName:'Chứng từ trên sổ',minWidth:170}])
 
 // Pending: supplier invoice from receipts, payroll preview/post
@@ -335,7 +340,7 @@ const customerColumns=computed(()=>[{field:'customer_name',headerName:'Khách h�
  ...(overview.value?.can_post?[{field:'__edit',headerName:'',minWidth:80,sortable:false},{field:'__receive',headerName:'',minWidth:110,sortable:false}]:[])])
 const receivableColumns=[{field:'customer_name',headerName:'Khách hàng',minWidth:200},{field:'lotus_einvoice_no',headerName:'Số HĐ điện tử',minWidth:130,valueGetter:p=>[p.data.lotus_einvoice_series,p.data.lotus_einvoice_no].filter(Boolean).join(' ')||p.data.name},
  dateCol('posting_date','Ngày'),dateCol('due_date','Hạn thu'),moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn phải thu'),
- {field:'aging',headerName:'Tuổi nợ',minWidth:150,cellClass:p=>p.value&&p.value!=='Trong hạn'?'fin-cell-bad':''}]
+ agingCol()]
 const salesInvoiceColumns=[{field:'name',headerName:'Hóa đơn',minWidth:170},{field:'customer_name',headerName:'Khách hàng',minWidth:200},dateCol('posting_date','Ngày'),
  {field:'lotus_vat_code',headerName:'Thuế suất',minWidth:110,valueFormatter:p=>p.value&&p.value!=='KCT'?p.value+'%':'KCT'},moneyCol('net_total','Chưa thuế'),moneyCol('total_taxes_and_charges','Thuế GTGT'),moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn phải thu')]
 const vatPurchaseColumns=[{field:'bill_no',headerName:'Số hóa đơn',minWidth:130},dateCol('bill_date','Ngày HĐ'),{field:'supplier_name',headerName:'Người bán',minWidth:200,flex:2},{field:'tax_id',headerName:'MST',minWidth:120},
@@ -344,7 +349,7 @@ const vatSalesColumns=[{field:'einvoice_no',headerName:'Số hóa đơn',minWidt
  {field:'customer_name',headerName:'Người mua',minWidth:200,flex:2},{field:'tax_id',headerName:'MST',minWidth:120},moneyCol('net','Doanh thu chưa thuế'),
  {field:'code',headerName:'Thuế suất',minWidth:100,valueFormatter:p=>p.value&&p.value!=='KCT'?p.value+'%':'KCT'},moneyCol('tax','Thuế GTGT')]
 const vatCheckColumns=[{field:'label',headerName:'Đối chiếu',minWidth:320,flex:3},moneyCol('listing','Bảng kê',{valueFormatter:p=>num(p.value)}),moneyCol('ledger','Sổ kế toán',{valueFormatter:p=>num(p.value)}),
- {field:'ok',headerName:'Kết quả',minWidth:100,valueFormatter:p=>p.value?'Khớp':'Lệch',cellClass:p=>p.value?'fin-cell-ok':'fin-cell-bad'}]
+ {...statusCol('ok','Kết quả',{labelOf:v=>v==='done'?'Khớp':'Lệch'}),minWidth:100,valueGetter:p=>p.data?.ok==null?'':p.data.ok?'done':'critical'}]
 const issueColumns=[{field:'name',headerName:'Phiếu xuất',minWidth:170},dateCol('posting_date','Ngày'),{field:'reason',headerName:'Lý do',minWidth:320,flex:3},moneyCol('amount','Giá trị')]
 const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:2,valueGetter:p=>p.data.account_label||p.data.account},moneyCol('debit','Nợ'),moneyCol('credit','Có'),{field:'party',headerName:'Đối tượng',minWidth:120},
  {field:'lotus_farm_block',headerName:'Vườn / lô',minWidth:130,valueGetter:p=>[p.data.lotus_farm,dimLabel('lotus_farm_block',p.data.lotus_farm_block)].filter(Boolean).join(' / ')},
@@ -352,13 +357,13 @@ const lineColumns=[{field:'account',headerName:'Tài khoản',minWidth:260,flex:
 const supplierColumns=computed(()=>[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:220,flex:2},moneyCol('invoiced','Đã nhận hóa đơn'),moneyCol('paid','Đã trả'),moneyCol('owed','Còn nợ'),moneyCol('overdue','Quá hạn'),
  {field:'open_invoices',headerName:'Hóa đơn còn nợ',minWidth:110},...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:140,sortable:false}]:[])])
 const invoiceColumns=[{field:'supplier_name',headerName:'Nhà cung cấp',minWidth:200},{field:'bill_no',headerName:'Số hóa đơn',minWidth:130,valueGetter:p=>p.data.bill_no||p.data.name},dateCol('bill_date','Ngày'),dateCol('due_date','Hạn trả'),
- moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn nợ'),moneyCol('paying','Đang chờ chi'),{field:'aging',headerName:'Tuổi nợ',minWidth:150,cellClass:p=>p.value&&p.value!=='Trong hạn'?'fin-cell-bad':''}]
+ moneyCol('grand_total','Tổng tiền'),moneyCol('outstanding_amount','Còn nợ'),moneyCol('paying','Đang chờ chi'),agingCol()]
 const salaryReadyColumns=computed(()=>[{field:'month',headerName:'Tháng',minWidth:100,valueFormatter:p=>p.value?p.value.slice(5)+'/'+p.value.slice(0,4):''},moneyCol('net','Thực lĩnh'),
  moneyCol('advance','Đã tạm ứng'),moneyCol('to_pay','Còn phải chi'),{field:'payroll_voucher',headerName:'Bút toán lương',minWidth:170},
  {field:'__list',headerName:'',minWidth:190,sortable:false},
  ...(overview.value?.can_post?[{field:'__pay',headerName:'',minWidth:170,sortable:false}]:[])])
 const voucherColumns=computed(()=>[{field:'name',headerName:'Phiếu',minWidth:170},{field:'kind',headerName:'Loại',minWidth:140},{field:'party_name',headerName:'Đối tượng',minWidth:180},dateCol('posting_date','Ngày'),moneyCol('amount','Số tiền'),
- {field:'state',headerName:'Trạng thái',minWidth:110,cellClass:p=>p.value==='Chờ ký'?'fin-cell-warn':''},
+ {...statusCol('state','Trạng thái',{labelOf:(v,row)=>row?.state}),minWidth:110,valueGetter:p=>p.data?.state?SIGN_KIND[p.data.state]||p.data.state:''},
  {field:'signers',headerName:'Người ký',minWidth:260,flex:2,valueGetter:p=>(p.data.signing?.steps||[]).map(x=>x.title+': '+(x.name||'—')+' ('+(x.state||'—')+')').join(' · ')},
  {field:'__drop',headerName:'',minWidth:90,sortable:false},{field:'__reverse',headerName:'',minWidth:90,sortable:false}])
 const tbColumns=[{field:'number',headerName:'Số TK',minWidth:90},{field:'name',headerName:'Tên tài khoản',minWidth:240,flex:2},moneyCol('opening_debit','Dư Nợ đầu kỳ'),moneyCol('opening_credit','Dư Có đầu kỳ'),

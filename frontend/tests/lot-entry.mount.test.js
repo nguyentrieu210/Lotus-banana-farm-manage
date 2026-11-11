@@ -124,6 +124,28 @@ test('thu hoạch shows the buồng left of its colour and more than that is sto
  view.unmount()
 })
 
+test('on the phone, buồng are counted with a large stepper and the colour is picked from ribbon buttons',async()=>{
+ const bagging=lot(A5,'A5',{colours:[{tag:'tag-o',label:'Cam',week:46,code:'CAM',left:12,bag_left:12},{tag:'tag-w',label:'Trắng',week:45,code:'TRANG',left:6,bag_left:6}]})
+ replies={today:()=>today({lots:[bagging]}),save_lot:()=>({saved:1,removed:0,errors:[],lines:[],modified:'m2'})}
+ const view=open({mobile:true});await settle()
+ view.root.querySelector('.lot-card__main').click();await settle()
+ button(dialog(),'+ Bao buồng').click();await settle()
+ const picks=[...dialog().querySelectorAll('.lotus-ribbon-pick__item')]
+ assert.deepEqual(picks.map(p=>[p.querySelector('strong').textContent,p.querySelector('small').textContent]),[['Cam','Tuần 46 · còn 12'],['Trắng','Tuần 45 · còn 6']],
+  'colour, week and what is left, no list to open')
+ picks[1].click();await settle()
+ assert.equal(dialog().querySelectorAll('.lotus-ribbon-pick__item')[1].getAttribute('aria-checked'),'true')
+ assert.ok(dialog().querySelector('.lotus-stepper--lg'),'the count is a large stepper')
+ const plus=[...dialog().querySelectorAll('.lotus-stepper__btn')].find(b=>/^Thêm/.test(b.getAttribute('aria-label')))
+ plus.click();await settle();plus.click();await settle()
+ assert.equal(dialog().querySelector('.lotus-stepper__input').value,'2')
+ assert.match(dialog().textContent,/Còn 6 buồng chưa bao, lưu xong còn 4/)
+ dialog().querySelector('button[type=submit]').click();await settle()
+ const save=calls.find(c=>c.method==='save_lot')
+ assert.deepEqual(save.body.lines.map(l=>[l.work_type,l.qty,l.bunch_tag]),[['BB',2,'tag-w']])
+ view.unmount()
+})
+
 test('a lô read from a photo is saved as checked even without a change',async()=>{
  const read=lot(A5,'A5',{assignments:[{kind:'Round',work_type:'CL'}],lines:[{name:'m1',state:'Draft',work_type:'CB',stage:'Cut Bud',qty:12,bunch_tag:'tag-o',
   machine_read:1,review_flags:'Máy đọc, chưa kiểm',people:[{employee:'E1',morning:1,afternoon:0}],materials:[]}]})

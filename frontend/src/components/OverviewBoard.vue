@@ -1,12 +1,12 @@
 <script setup>
 import {computed} from 'vue'
 import LotusChart from './LotusChart.vue'
+import {StatTile} from './ui/stat-tile'
 import {stateLabel} from '../labels'
 import {formatMonthShort} from '../format'
 const props=defineProps({charts:Object})
 const c=computed(()=>props.charts||{})
 const sum=(rows,key)=>(rows||[]).reduce((t,r)=>t+Number(r[key]||0),0)
-const n=v=>v==null?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:1})
 const cards=computed(()=>[
  ['Diện tích chăm sóc',c.value.land?.area_ha,'ha'],['Số cây',c.value.land?.trees,'cây'],
  ['Công thực tế',c.value.work?.days?sum(c.value.work.days,'workdays'):null,'công'],
@@ -17,7 +17,7 @@ const cards=computed(()=>[
 ])
 </script>
 <template><div class="overview-board">
- <div class="lotus-stat-row"><div v-for="[label,value,unit] in cards" :key="label" class="lotus-stat"><span>{{label}}</span><strong>{{n(value)}}</strong><small>{{unit}}</small></div></div>
+ <div class="lotus-stat-row"><StatTile v-for="[label,value,unit] in cards" :key="label" :label="label" :value="value" :unit="unit" :digits="1"/></div>
  <div class="lotus-chart-grid">
   <LotusChart v-if="c.land?.allowed" title="Diện tích và phân khu" :categories="(c.land.zones||[]).map(z=>'Khu '+z.zone)" :series="[{name:'Diện tích',data:(c.land.zones||[]).map(z=>z.area_ha)}]" unit="ha" :decimals="1"/>
   <LotusChart v-if="c.land?.allowed" title="Số cây theo khu" :categories="(c.land.zones||[]).map(z=>'Khu '+z.zone)" :series="[{name:'Số cây',data:(c.land.zones||[]).map(z=>z.trees)}]" unit="cây"/>

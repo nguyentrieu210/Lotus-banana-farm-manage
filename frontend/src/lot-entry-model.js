@@ -86,7 +86,9 @@ export function colourRoom(lot){
 export function colourChoices(lot,stage,current,room=colourRoom(lot)){
  const field=stage==='Bag'?'bag':'left'
  const rows=(lot?.colours||[]).filter(c=>c.tag===current||(room[c.tag]?.[field]||0)>0)
- return rows.map(c=>({value:c.tag,label:c.label+' · tuần '+c.week+' · còn '+(room[c.tag]?.[field]||0)}))
+ // value/label feed a select; code, name, week and left feed the ribbon picker on the phone (spec 004).
+ // lần (when the server gives it) tells two batches of one colour and week apart.
+ return rows.map(c=>({value:c.tag,label:c.label+' · tuần '+c.week+(c.lan?' lần '+c.lan:'')+' · còn '+(room[c.tag]?.[field]||0),code:c.code||c.label,name:c.label,week:c.week,lan:c.lan||null,left:room[c.tag]?.[field]||0}))
 }
 
 // The chosen colour of a bao, thu or hủy sau cắt line against what is left of it, all lines of the dialog on that colour

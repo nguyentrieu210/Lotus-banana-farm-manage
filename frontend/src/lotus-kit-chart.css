@@ -1,0 +1,28 @@
+/* Lotus kit: inline SVG charts (spec 004). Loaded by ForecastWeekChart.vue and AgeHistogram.vue only. */
+.lotus-chart{position:relative;display:grid;gap:8px;min-width:0}
+.lotus-chart__plot{position:relative;min-width:0}
+.lotus-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.lotus-chart__legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0;padding:0;list-style:none;color:var(--lotus-text-secondary);font-size:var(--lotus-text-sm)}
+.lotus-chart__key{display:inline-flex;align-items:center;gap:6px}
+.lotus-chart__key i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--key)}
+.lotus-chart__key i.is-line{width:16px;height:0;border-top:2.5px dashed var(--key);border-radius:0;background:none}
+.lotus-chart__key i.is-band{background:var(--key);border:1px solid var(--lotus-info-200)}
+.lotus-chart__axis{fill:var(--lotus-chart-axis);font-family:var(--lotus-font);font-size:11px;font-variant-numeric:tabular-nums}
+.lotus-chart__axis--strong{fill:var(--lotus-text-strong);font-weight:700}
+.lotus-chart__grid{stroke:var(--lotus-chart-grid);stroke-width:1;shape-rendering:crispEdges}
+.lotus-chart__base{stroke:var(--lotus-border-strong);stroke-width:1;shape-rendering:crispEdges}
+.lotus-chart__bar{fill:var(--lotus-chart-actual);transition:opacity var(--lotus-motion-fast)}
+.lotus-chart__bar--muted{fill:var(--lotus-seq-3)}
+.lotus-chart__bar--ripe{fill:var(--lotus-warning-400)}
+.lotus-chart__band{fill:var(--lotus-chart-forecast-band)}
+.lotus-chart__line{fill:none;stroke:var(--lotus-chart-forecast);stroke-width:2;stroke-dasharray:6 4;stroke-linejoin:round}
+.lotus-chart__point{fill:var(--lotus-surface);stroke:var(--lotus-chart-forecast);stroke-width:2}
+.lotus-chart__now{stroke:var(--lotus-primary);stroke-width:1.5;stroke-dasharray:3 3}
+.lotus-chart__now-label{fill:var(--lotus-primary-text);font-family:var(--lotus-font);font-size:10.5px;font-weight:700}
+.lotus-chart__hit{fill:transparent;cursor:default}
+.lotus-chart__hit:focus{outline:none}
+.lotus-chart__hit:hover~.lotus-chart__bar,.lotus-chart__col:hover .lotus-chart__bar{opacity:.85}
+.lotus-chart__col:focus-within .lotus-chart__hit,.lotus-chart__col:hover .lotus-chart__hit{fill:var(--lotus-hover);opacity:.5}
+.lotus-chart__tip{position:absolute;z-index:var(--lotus-z-popover);display:grid;gap:3px;min-width:150px;padding:8px 10px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-raised);box-shadow:var(--lotus-shadow-lg);color:var(--lotus-text);font-size:var(--lotus-text-sm);pointer-events:none;transform:translate(-50%,-100%)}
+.lotus-chart__tip strong{color:var(--lotus-text-strong)}
+.lotus-chart__tip span{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}

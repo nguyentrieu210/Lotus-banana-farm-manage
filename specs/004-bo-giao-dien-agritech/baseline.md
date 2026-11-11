@@ -71,3 +71,21 @@ Trang mẫu được dựng trên máy chủ thử, phục vụ nội bộ ở c
   | Nhân sự | 69.411 | 78.481 | 13,1% | đạt |
 
 - Tương phản: 60 cặp ở ba chế độ đều đạt ngưỡng (`design-tokens-contrast.test.js`). Ba cặp cũ không đạt (chữ gợi ý 3,70; đạt 4,40; cảnh báo 4,16) nay đạt (5,14; 6,05; 6,62).
+
+## Kết quả sau đợt 2 (11/11/2026)
+
+- Đã gộp `main` 737f686 (bản phát hành 2 của spec 002). `main` xóa nhiều CSS cũ nên **mốc mới** lấy từ bản dựng đã commit trên `main` (b71a0b5).
+- Toàn bộ test frontend trên `/opt/lotus-004-test`: **602 kiểm tra, 602 đạt, 0 lỗi** (599 sau khi gộp, thêm 3 test mới).
+- Test Python liên quan đến thay đổi phía máy chủ (`lần` của màu dây) trên site thử `ui.test`: `test_lot_paper_form` 6, `test_care_stage_rules` 5, `test_ribbon_board` 4, đều đạt.
+- Kiểu sau nén so với mốc mới (ngưỡng SC-008 là 15%):
+
+  | Ứng dụng | Mốc main (byte) | 004 (byte) | Tăng |
+  |---|---|---|---|
+  | Máy tính | 55.274 | 60.242 | 9,0% |
+  | Kho | 76.895 | 81.541 | 6,0% |
+  | Mua hàng | 80.450 | 85.151 | 5,8% |
+  | Công việc | 80.566 | 87.774 | 8,9% |
+  | Nhân sự | 69.412 | 74.070 | 6,7% |
+
+  Trước khi tách `lotus-kit.css` (R13), máy tính là +15,6% so với mốc mới.
+- Ảnh chụp ứng dụng thật (bộ thử `lotus-004-test`, R14): khung máy tính sáng/tối ở 1440, 1024, 800px; Tổng quan; Kho; Màu dây và thu hoạch; Báo cáo; bốn ứng dụng điện thoại ở 390px, Công việc và Kho ở 320px, ngoài trời, tối; hộp nhập lô trên điện thoại.

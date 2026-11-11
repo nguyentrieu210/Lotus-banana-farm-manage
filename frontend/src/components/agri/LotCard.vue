@@ -28,3 +28,28 @@ const chipTone={empty:'neutral',entered:'info',sent:'info',confirmed:'success',o
   <slot/>
  </component>
 </template>
+
+<style>
+/* Kit classes (spec 004): unscoped on purpose, the class names are the kit contract. */
+.lotus-lotcard{--lot-accent:var(--lotus-border-strong);position:relative;display:grid;gap:8px;width:100%;min-width:0;padding:12px 14px 12px 16px;border:1px solid var(--lotus-border);border-radius:var(--lotus-card-radius);background:var(--lotus-surface);box-shadow:var(--lotus-shadow-xs);color:var(--lotus-text);font:inherit;text-align:left;overflow:hidden;transition:box-shadow var(--lotus-motion) var(--lotus-ease),border-color var(--lotus-motion) var(--lotus-ease)}
+.lotus-lotcard::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--lot-accent)}
+button.lotus-lotcard{cursor:pointer}
+button.lotus-lotcard:hover{border-color:var(--lotus-border-strong);box-shadow:var(--lotus-shadow-md)}
+button.lotus-lotcard:focus-visible{outline:none;box-shadow:var(--lotus-focus)}
+.lotus-lotcard__head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}
+.lotus-lotcard__name{display:flex;align-items:baseline;gap:6px;min-width:0}
+.lotus-lotcard__code{color:var(--lotus-text-strong);font-size:var(--lotus-text-lg);font-weight:var(--lotus-weight-bold);letter-spacing:-.01em;white-space:nowrap}
+.lotus-lotcard__zone{color:var(--lotus-muted);font-size:var(--lotus-text-sm);white-space:nowrap}
+.lotus-lotcard__line{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0;color:var(--lotus-text-secondary);font-size:var(--lotus-text-md);line-height:var(--lotus-leading-snug)}
+.lotus-lotcard__line .lotus-icon{width:15px;height:15px;color:var(--lotus-muted)}
+.lotus-lotcard__todo{color:var(--lotus-primary-text);font-weight:var(--lotus-weight-semibold)}
+.lotus-lotcard__ribbons{display:flex;flex-wrap:wrap;gap:4px}
+.lotus-lotcard__facts{display:flex;flex-wrap:wrap;gap:2px 12px;color:var(--lotus-muted);font-size:var(--lotus-text-sm);font-variant-numeric:tabular-nums}
+.lotus-lotcard[data-state="entered"]{--lot-accent:var(--lotus-info-300)}
+.lotus-lotcard[data-state="sent"]{--lot-accent:var(--lotus-lot-sent)}
+.lotus-lotcard[data-state="confirmed"]{--lot-accent:var(--lotus-lot-confirmed)}
+.lotus-lotcard[data-state="due"]{--lot-accent:var(--lotus-warning-400)}
+.lotus-lotcard[data-state="overdue"],.lotus-lotcard[data-state="quarantine"]{--lot-accent:var(--lotus-tone-danger-solid)}
+.lotus-lotcard[data-state="empty"]{--lot-accent:var(--lotus-border-strong)}
+.lotus-lotcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-items:start}
+</style>

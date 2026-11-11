@@ -31,3 +31,20 @@ function describe(w){return ['Tuần '+w.week+'/'+w.year,weekRange(w),w.offset==
   </li>
  </ol>
 </template>
+
+<style>
+/* Kit classes (spec 004): unscoped on purpose, the class names are the kit contract. */
+.lotus-weekstrip{display:flex;gap:4px;margin:0;padding:2px;overflow-x:auto;list-style:none;scrollbar-width:thin}
+.lotus-weekstrip li{flex:1 0 50px;display:flex}
+.lotus-weekstrip__cell{position:relative;display:grid;flex:1;gap:3px;justify-items:center;min-width:50px;min-height:58px;padding:7px 4px 6px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);color:var(--lotus-text);font:inherit;cursor:pointer}
+.lotus-weekstrip__cell:hover{border-color:var(--lotus-border-strong)}
+.lotus-weekstrip__cell:focus-visible{outline:none;box-shadow:var(--lotus-focus)}
+.lotus-weekstrip__num{font-size:var(--lotus-text-md);font-weight:var(--lotus-weight-bold);font-variant-numeric:tabular-nums}
+.lotus-weekstrip__sub{color:var(--lotus-muted);font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lotus-weekstrip__cell--harvest{border-color:var(--lotus-tone-success-border);background:var(--lotus-tone-success-soft)}
+.lotus-weekstrip__cell--harvest::after{content:"";position:absolute;inset:auto 6px 3px;height:3px;border-radius:2px;background:var(--lotus-tone-success-solid)}
+.lotus-weekstrip__cell--current{border-color:var(--lotus-primary);box-shadow:inset 0 0 0 1px var(--lotus-primary)}
+.lotus-weekstrip__cell--current .lotus-weekstrip__num{color:var(--lotus-primary-text)}
+.lotus-weekstrip__cell[aria-pressed="true"]{background:var(--lotus-tone-primary-soft);border-color:var(--lotus-primary)}
+.lotus-weekstrip__cell--past{opacity:.6}
+</style>

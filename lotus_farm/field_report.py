@@ -240,7 +240,7 @@ def _ribbon_tags(farm, day):
     """Cắt bắp colours of the last weeks: what bao buồng / tỉa / chống đổ on a day can belong to."""
     return frappe.get_all("Bunch Tag", filters={"farm": farm, "enabled": 1, "period_basis": "Cut Bud", "valid_from": ["<=", day],
                                                 "valid_to": [">=", add_days(day, -7 * RIBBON_WEEKS)]},
-                          fields=["name", "color_label", "display_name", "color_code", "week_number", "week_year"],
+                          fields=["name", "color_label", "display_name", "color_code", "week_number", "week_year", "week_half"],
                           order_by="valid_from desc", limit_page_length=0)
 
 

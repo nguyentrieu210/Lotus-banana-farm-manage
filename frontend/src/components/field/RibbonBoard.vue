@@ -8,7 +8,8 @@ import {Button as UiButton} from '../ui/button'
 import {formatDate} from '../../format'
 import {amountText} from '../../lot-entry-model.js'
 import {StatTile} from '../ui/stat-tile'
-import {RibbonDot,RibbonBatchCard} from '../agri'
+import RibbonDot from '../agri/RibbonDot.vue'
+import RibbonBatchCard from '../agri/RibbonBatchCard.vue'
 // Bảng màu dây (lotus_farm.ribbon_board): bunches on the plants per ribbon colour of a week, from confirmed numbers.
 // The lô and colours to harvest now come first; a colour card opens its lô in a dialog.
 const props=defineProps({farm:{type:String,required:true},zones:{type:Array,default:()=>[]},mobile:Boolean,compact:Boolean})

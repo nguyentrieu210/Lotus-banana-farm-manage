@@ -108,7 +108,9 @@ def _colours(rows, tags):
         t = tags.get(tag)
         if not t:
             continue
+        # lần (week_half) tells two batches of one colour and week apart, e.g. Tím tuần 45 lần 1 and lần 2.
         result.setdefault(block, []).append({"tag": tag, "label": t.color_label or t.display_name, "code": t.color_code, "week": t.week_number,
+                                             "lan": cint(t.get("week_half")) or None,
                                              "cut": b["cut"], "bag": b["bag"], "used": b["used"], "left": b["left"],
                                              "bag_left": max(b["cut"] - b["bag"], 0)})
     for colours in result.values():

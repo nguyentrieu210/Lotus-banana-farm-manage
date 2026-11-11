@@ -1,7 +1,7 @@
 <script setup>
 import {computed,ref} from 'vue'
 import LotusField from '../form/LotusField.vue'
-import {LotCard} from '../agri'
+import LotCard from '../agri/LotCard.vue'
 import {formatDate} from '../../format'
 import {lotSummary,stateLabels} from '../../lot-entry-model.js'
 // The lô of a tổ for a day, one card each: what was entered, what is given to the tổ, the colours still on the plants and

@@ -13,3 +13,13 @@ const shown=computed(()=>props.valueText??Math.round(pct.value)+'%')
   <span class="lotus-ring__text" aria-hidden="true">{{shown}}</span>
  </span>
 </template>
+
+<style>
+/* Kit classes (spec 004): unscoped on purpose, the class names are the kit contract. */
+.lotus-ring{--p-fill:var(--lotus-tone-primary-solid);position:relative;display:inline-grid;place-items:center;flex:none}
+.lotus-ring svg{display:block;transform:rotate(-90deg)}
+.lotus-ring__track{fill:none;stroke:var(--lotus-sunken)}
+.lotus-ring__bar{fill:none;stroke:var(--p-fill);stroke-linecap:round;transition:stroke-dashoffset var(--lotus-motion-slow) var(--lotus-ease)}
+.lotus-ring__text{position:absolute;color:var(--lotus-text-strong);font-size:var(--lotus-text-sm);font-weight:var(--lotus-weight-bold);font-variant-numeric:tabular-nums}
+.lotus-ring--success{--p-fill:var(--lotus-tone-success-solid)}.lotus-ring--warning{--p-fill:var(--lotus-warning-400)}.lotus-ring--danger{--p-fill:var(--lotus-tone-danger-solid)}.lotus-ring--info{--p-fill:var(--lotus-tone-info-solid)}
+</style>

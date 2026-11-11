@@ -66,7 +66,6 @@ input::placeholder{color:var(--lotus-neutral-400)}
 .lotus-ag-grid{width:100%;height:auto;font-size:12px}
 .lotus-ag-grid-shell--scroll .lotus-ag-grid{height:100%}
 .lotus-grid-cell{cursor:pointer}
-.lotus-grid-status{font-weight:600;color:var(--lotus-info-500)}
 
 
 

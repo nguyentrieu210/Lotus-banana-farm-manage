@@ -56,7 +56,7 @@ test('NumberStepper: − and +, clamped to min/max, empty stays empty, comma dec
  const [minus,plus]=view.root.querySelectorAll('button'),field=view.root.querySelector('input')
  assert.equal(field.value,'','nothing entered is not 0')
  assert.equal(field.getAttribute('aria-label'),'Số buồng (buồng)')
- click(plus);await tick();assert.equal(value.value,0)
+ click(plus);await tick();assert.equal(value.value,1,'the first + from empty is one buồng, not 0')
  for(let i=0;i<4;i++){click(plus);await tick()}
  assert.equal(value.value,3,'never above max')
  assert.ok(plus.disabled)

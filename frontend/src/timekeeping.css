@@ -81,14 +81,13 @@
 .dark .tk-flag.is-warn{color:var(--lotus-warning-200)}
 
 /* Pills */
-.tk-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:var(--lotus-text-xs);font-weight:600;background:var(--lotus-soft);color:var(--lotus-text-secondary);white-space:nowrap}
+/* Timekeeping states read as the kit status chip (spec 004): same height, border and tone tokens, dark mode included. */
+.tk-pill{display:inline-flex;align-items:center;gap:4px;height:var(--lotus-chip-height);padding:0 9px;border:1px solid var(--lotus-tone-neutral-border);border-radius:var(--lotus-radius-full);font-size:var(--lotus-chip-font);font-weight:var(--lotus-weight-semibold);line-height:1;background:var(--lotus-tone-neutral-soft);color:var(--lotus-tone-neutral-text);white-space:nowrap}
 .tk-pill svg{width:12px;height:12px}
-.tk-pill.is-approved,.tk-pill.is-ok{background:var(--lotus-success-soft);color:var(--lotus-success-700)}
-.tk-pill.is-draft,.tk-pill.is-warn{background:var(--lotus-warning-soft);color:var(--lotus-warning-800)}
-.tk-pill.is-review{background:var(--lotus-warning-soft);color:var(--lotus-warning-800);box-shadow:inset 0 0 0 1px var(--lotus-warning-300)}
-.tk-pill.is-empty,.tk-pill.is-muted{background:var(--lotus-soft);color:var(--lotus-muted)}
-.dark .tk-pill.is-approved,.dark .tk-pill.is-ok{color:var(--lotus-success-200)}
-.dark .tk-pill.is-draft,.dark .tk-pill.is-warn,.dark .tk-pill.is-review{color:var(--lotus-warning-200)}
+.tk-pill.is-approved,.tk-pill.is-ok,.tk-pill.is-matching{border-color:var(--lotus-tone-success-border);background:var(--lotus-tone-success-soft);color:var(--lotus-tone-success-text)}
+.tk-pill.is-draft,.tk-pill.is-warn,.tk-pill.is-review{border-color:var(--lotus-tone-warning-border);background:var(--lotus-tone-warning-soft);color:var(--lotus-tone-warning-text)}
+.tk-pill.is-review{border-style:dashed}
+.tk-pill.is-empty,.tk-pill.is-muted{border-color:var(--lotus-border);background:var(--lotus-soft);color:var(--lotus-muted)}
 
 .tk-empty{margin:0;padding:24px;text-align:center;color:var(--lotus-muted);font-size:var(--lotus-text-md)}
 
@@ -250,4 +249,3 @@
 .tk-punch{font-variant-numeric:tabular-nums;white-space:nowrap}
 .tk-synced{flex:0 1 auto}
 .tk-views .is-matching strong{background:var(--lotus-success-soft);color:var(--lotus-success-700)}
-.tk-pill.is-matching{background:var(--lotus-success-soft);color:var(--lotus-success-700);border-color:var(--lotus-success-200)}

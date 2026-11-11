@@ -26,3 +26,26 @@ const n=v=>v===null||v===undefined?'—':formatNumber(v)
   <Progress :value="batch.harvested||0" :max="batch.cut||0" label="Đã thu" :value-text="n(batch.harvested)+' / '+n(batch.cut)" :tone="batch.status==='overdue'?'danger':ripe?'warning':'success'"/>
  </component>
 </template>
+
+<style>
+/* Kit classes (spec 004): unscoped on purpose, the class names are the kit contract. */
+.lotus-batch{position:relative;display:grid;gap:12px;width:100%;min-width:0;padding:var(--lotus-card-padding);border:1px solid var(--lotus-border);border-radius:var(--lotus-card-radius);background:var(--lotus-surface);box-shadow:var(--lotus-shadow-xs);color:var(--lotus-text);font:inherit;text-align:left}
+button.lotus-batch{cursor:pointer;transition:box-shadow var(--lotus-motion) var(--lotus-ease),border-color var(--lotus-motion) var(--lotus-ease)}
+button.lotus-batch:hover{border-color:var(--lotus-border-strong);box-shadow:var(--lotus-shadow-md)}
+button.lotus-batch:focus-visible{outline:none;box-shadow:var(--lotus-focus)}
+.lotus-batch[data-ripe="true"]{border-color:var(--lotus-tone-warning-border);background:linear-gradient(180deg,var(--lotus-tone-warning-soft),var(--lotus-surface) 60%)}
+.lotus-batch__head{display:flex;align-items:center;gap:10px;min-width:0}
+.lotus-batch__ripe{position:absolute;top:10px;right:10px}
+.lotus-batch[data-flag="true"] .lotus-batch__head{padding-right:112px}
+.lotus-batch[data-status="overdue"]{border-color:var(--lotus-tone-danger-border);background:linear-gradient(180deg,var(--lotus-tone-danger-soft),var(--lotus-surface) 60%)}
+.lotus-batch[data-status="done"]{opacity:.8}
+.lotus-batch__title{display:grid;gap:2px;min-width:0}
+.lotus-batch__title strong{overflow:hidden;color:var(--lotus-text-strong);font-size:var(--lotus-text-base);text-overflow:ellipsis;white-space:nowrap}
+.lotus-batch__title span{display:flex;align-items:center;gap:6px;color:var(--lotus-muted);font-size:var(--lotus-text-sm);white-space:nowrap}
+.lotus-batch__figures{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:6px;margin:0}
+.lotus-batch__figures>div{display:grid;gap:1px}
+.lotus-batch__figures dt{color:var(--lotus-muted);font-size:var(--lotus-text-xs)}
+.lotus-batch__figures dd{margin:0;color:var(--lotus-text);font-size:var(--lotus-text-base);font-weight:var(--lotus-weight-semibold);font-variant-numeric:tabular-nums}
+.lotus-batch__left dd{color:var(--lotus-text-strong);font-weight:var(--lotus-weight-bold)}
+.lotus-batches{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+</style>

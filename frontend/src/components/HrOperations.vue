@@ -16,6 +16,7 @@ import LotusGridEditCell from './LotusGridEditCell.vue'
 import WorkspaceConfirm from './WorkspaceConfirm.vue'
 import HrDevicePanel from './hr/HrDevicePanel.vue'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
+import {statusCol} from '../grid-columns.js'
 
 const punchActions={
  canSelect:p=>props.manager&&!['Synced','Ignored'].includes(p.state),
@@ -35,7 +36,7 @@ const punchColumns=[
  {field:'device_user_id',headerName:'Mã trên máy',minWidth:150},
  {field:'employee',headerName:'Nhân viên',minWidth:170,valueGetter:p=>p.data.employee?(employeeName(p.data.employee)):'Chưa ghép',tooltip:p=>p.data?.employee||''},
  {field:'log_type',headerName:'Vào / Ra',valueGetter:p=>stateLabel(p.data.log_type||'Unknown'),minWidth:115},
- {field:'state',headerName:'Trạng thái',valueGetter:p=>stateLabel(p.data.state),minWidth:125}
+ {...statusCol('state','Trạng thái',{labelOf:v=>stateLabel(v)}),minWidth:125}
 ]
 const assignmentColumns=[
  {field:'employee',headerName:'Nhân viên',valueGetter:p=>employeeName(p.data.employee)},

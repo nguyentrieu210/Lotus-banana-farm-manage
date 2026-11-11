@@ -1,5 +1,6 @@
 <script setup>
 import {computed,ref} from 'vue'
+import '../../lotus-kit-chart.css'
 import {formatNumber} from '../../agri-format.js'
 import {niceScale} from '../../chart-scale.js'
 import RibbonDot from './RibbonDot.vue'
