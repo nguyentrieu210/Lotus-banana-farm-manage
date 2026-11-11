@@ -606,7 +606,7 @@ def requests(farm, crew=None, team=None, view="open", assignment=None, from_date
 
 def _issues(name):
     rows = frappe.db.sql("""select p.name, p.posting_date, p.docstatus, p.lotus_receiver, p.owner,
-            sum(d.qty * d.conversion_factor) as qty, count(d.name) as lines
+            sum(d.qty * d.conversion_factor) as qty, count(d.name) as `lines`
         from `tabStock Entry` p join `tabStock Entry Detail` d on d.parent = p.name
         where d.material_request = %s and p.docstatus < 2 and p.stock_entry_type = 'Material Issue'
         group by p.name order by p.posting_date, p.name""", (name,), as_dict=True)
