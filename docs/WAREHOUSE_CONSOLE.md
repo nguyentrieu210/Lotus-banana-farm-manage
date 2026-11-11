@@ -31,7 +31,7 @@ Kiểm tra: `python -m unittest discover -s tests -p test_warehouse_guards.py`; 
 Phiếu xuất chọn **Mục đích xuất** (cho sản xuất vào lô, hủy, bao bì đóng gói, xuất bán…). Xuất cho sản xuất có hai hình thức:
 
 - Thủ công: nhập vật tư, số lượng, người nhận, lý do và khu vực/lô trên từng dòng. Cùng vật tư dùng cho nhiều lô thì tách dòng.
-- Theo yêu cầu đã duyệt: Material Request loại Material Issue đã nộp, không đóng/dừng/hủy. Không lấy đề nghị mua hay chuyển kho.
+- Theo yêu cầu đã duyệt: Material Request loại Material Issue đã nộp, không đóng/dừng/hủy. Không lấy đề nghị mua hay chuyển kho. Yêu cầu được lập và duyệt ở **Công việc › Giao việc › Yêu cầu cấp vật tư**; nút **Cấp theo yêu cầu (N)** trên danh sách phiếu xuất (điện thoại: màn Kho) mở hàng chờ xếp theo ngày cần, "Lập phiếu xuất" điền sẵn kho, người nhận và phần còn lại. Lô và việc của dòng phiếu lấy từ dòng yêu cầu, không sửa được.
 
 Số lượng nguồn được đổi sang đơn vị tồn kho; phần còn cấp trừ các dòng Stock Entry nháp và đã nộp, bỏ phiếu đã hủy. Lưu nháp giữ phần cấp, ghi sổ mới trừ tồn. Máy chủ khóa nguồn và kiểm lại item, công ty, trạng thái, dòng nguồn, khu vực và giới hạn khi lưu/ghi sổ. Chỉ phần có qty>0 trong form được đưa vào phiếu.
 

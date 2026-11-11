@@ -21,6 +21,8 @@ Danh sách người ký gồm nhân sự **đang làm việc**, thuộc **công 
 | Giám đốc duyệt kỳ công / đề xuất cấp vật tư | Lotus Purchase Approver, Lotus Farm Manager |
 | Người giao / nhận phiếu kho | Nhân sự có tài khoản hoạt động trong cùng công ty |
 
+Yêu cầu cấp vật tư (Material Request loại Material Issue) không đi qua chuỗi ký `issue_proposal`: đội trưởng (Lotus Field Supervisor, phạm vi đội) lập và duyệt yêu cầu của đội mình, quản lý vườn (Lotus Farm Manager) lập và duyệt mọi yêu cầu; duyệt là nộp chứng từ trong Lotus, có ghi Lotus Signature Event.
+
 Cấp trên trực tiếp (`Employee.reports_to`) được gợi ý ở bước Phụ trách bộ phận **khi đủ role**. Người lập có thể chọn người khác trong danh sách hợp lệ. Lựa chọn hợp lệ đã dùng trước được ưu tiên giữ lại; cấu hình không tự chọn người ngoài quyền.
 
 Máy chủ kiểm tra lại nhân sự, công ty, trạng thái tài khoản và role khi gửi, chuyển người ký hoặc ký. Chỉ người được chỉ định và đang đến lượt mới ký. Không tự tạo nhân sự, tự gán role hoặc gửi thông báo khi chỉ mở/cấu hình màn phân quyền.

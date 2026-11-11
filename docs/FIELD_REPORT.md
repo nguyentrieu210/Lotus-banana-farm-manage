@@ -69,6 +69,14 @@ Tổ không dùng điện thoại thì in phiếu:
 - Công nhật: theo máy chấm công; buổi làm khoán không tính công nhật.
 - **Báo cáo › Tháng** có tiền khoán theo lô; **Tiền khoán theo người** mở từ đó. Số này vào bảng lương.
 
+## Yêu cầu cấp vật tư
+
+- **Giao việc › Yêu cầu cấp vật tư** (điện thoại: tab Giao việc của `/work`). Đội trưởng lập cho đội mình, quản lý vườn lập cho mọi đội; tổ trưởng không lập (chủ vườn quyết định 11/11/2026).
+- Mỗi dòng là vật tư × lô (chọn cả khu thì chia theo diện tích, đơn vị nguyên làm tròn giữ tổng), kèm việc, ngày cần và kho xuất. Mở từ phiếu giao thì điền sẵn lô và việc.
+- Đội trưởng duyệt yêu cầu của đội mình, kể cả yêu cầu tự lập ("Lưu và duyệt" một lần); quản lý vườn duyệt mọi yêu cầu. Người duyệt chỉ giảm hoặc bỏ dòng, có lý do; muốn tăng thì trả lại kèm lý do.
+- Duyệt xong yêu cầu vào hàng chờ của Kho (**Kho › Phiếu xuất › Cấp theo yêu cầu**). Người lập nhận thông báo khi Kho lập phiếu, cấp, hoặc hủy phiếu cấp; xem phần còn lại theo lô trong chi tiết. Đóng phần chưa cấp, mở lại, hủy đều ghi lý do.
+- Duyệt chỉ làm được trong Lotus: nộp, hủy, dừng Material Request loại Material Issue từ Desk hay REST bị chặn.
+
 ## Cho người bảo trì
 
 - Sổ lô: `Lotus Work Entry` (trạng thái Nháp → Đã gửi → Đã xác nhận / Đã hủy, `source_key` duy nhất), `Lotus Daily Report` (tổ-ngày), `Lotus Work Session` (buổi có trọng số).
@@ -76,3 +84,4 @@ Tổ không dùng điện thoại thì in phiếu:
 - Quy tắc thuần có test: `lot_ledger_rules.py`, `care_cycle_rules.py`, `lot_paper_form_rules.py`, `field_report_rules.py`.
 - Màn: `frontend/src/components/field/` (LotToday, LotCards, LotEntryModal, PaperPhotoReview, CareDueList, CareCycleSettings, WorkAssign, WorkTicket, WorkInspect).
 - Kiểm thử tích hợp: `tests/integration/verify_lot_ledger.py`, `verify_bunch_forecast.py`, `verify_care_cycle.py`, `verify_paper_form.py`.
+- Yêu cầu cấp vật tư: API `lotus_farm/issue_request.py` (ghi qua `client_event_id` chống bấm hai lần), quy tắc thuần `issue_request_rules.py`, màn `MaterialRequests`, `MaterialRequestForm`, `MaterialRequestDetail`, kiểm thử `tests/integration/verify_issue_request.py`.
