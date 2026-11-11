@@ -2,6 +2,7 @@
 // No network, no Vue: unit-tested in tests/erp-meta.test.js.
 import {systemLabel} from './system-translations.js'
 import {formatDate,formatDateTime} from './format.js'
+import {catalogName} from './hr-catalog-labels.js'
 
 // Desk-only widgets the Lotus form does not render (buttons run client scripts, HTML is server markup).
 const SKIP=new Set(['HTML','Button','Image','Heading','Fold','Signature','Geolocation','HTML Editor','Barcode','Password','Icon','Autocomplete'])
@@ -120,7 +121,8 @@ export function display(value,f={},currency){
   case 'Currency':return money(value,currency)
   case 'Int':case 'Float':case 'Percent':return number(value)+(f.fieldtype==='Percent'?' %':'')
   case 'Select':return tr(String(value))
-  default:return typeof value==='string'?tr(value):String(value)
+  // ERPNext default masters (All Supplier Groups, Raw Material…) keep their English record names: show them in Vietnamese.
+  default:return typeof value==='string'?(catalogName(value)??tr(value)):String(value)
  }
 }
 export const docstatusLabel=s=>['Nháp','Đã ghi sổ','Đã hủy'][Number(s)]??''

@@ -84,4 +84,6 @@ Object.assign(names,{
   "Fixed-term": "Hợp đồng xác định hạn",
   "Seasonal": "Thời vụ"
 })
-export const hrCatalogLabel=value=>{if(!value)return value;const parts=value.match(/^(.*) - ([^-]+)$/);return names[value]||(parts&&names[parts[1]]?names[parts[1]]+' - '+parts[2]:systemLabel(value))}
+// The Vietnamese name of an ERPNext default master ("All Supplier Groups", "Raw Material - LT"), or null when it is not one.
+export const catalogName=value=>{if(typeof value!=='string'||!value)return null;const parts=value.match(/^(.*) - ([^-]+)$/);return names[value]||(parts&&names[parts[1]]?names[parts[1]]+' - '+parts[2]:null)}
+export const hrCatalogLabel=value=>{if(!value)return value;return catalogName(value)||systemLabel(value)}
