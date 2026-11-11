@@ -31,7 +31,8 @@ test('one card per shift with what went in, what came out and where its stock st
  const view=show();await settle()
  const cards=[...view.root.querySelectorAll('.packhouse__card')]
  assert.equal(cards.length,2)
- assert.match(cards[0].textContent,/Ca S1 · 20\/12\/2026.*3\.000 kg vào · 2\.400 kg thành phẩm \(80%\) · 181 thùng.*140 buồng từ 2 lô · Chưa nhập kho/)
+ // Spec 004: the kit shift card — status chip, then bunches in, kg packed and cartons, then kg in, lô and packout rate.
+ assert.match(cards[0].textContent,/Ca S1 · 20\/12.*Chưa nhập kho.*Buồng vào\s*140.*Thành phẩm \(kg\)\s*2\.400.*Thùng\s*181.*3\.000 kg vào từ 2 lô · tỷ lệ đóng gói 80%/)
  assert.match(cards[1].textContent,/Đang mở/)
  view.unmount()
 })

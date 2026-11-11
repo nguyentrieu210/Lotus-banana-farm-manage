@@ -1,13 +1,15 @@
-/* Common desktop navigation: Kho-inspired terracotta header and calm sidebar. */
+/* Common desktop navigation: the Lotus red top bar (deepening to the right, as on the phones) and a calm sidebar.
+   Every colour comes from the top-bar tokens in lotus-tokens.css, so dark mode deepens the bar and the search field. */
 @media(min-width:901px){
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar,
  .lotus-ui.assignment-workspace>.workspace-bar{
-  --lotus-text:#fff;--lotus-muted:var(--lotus-primary-50);--lotus-soft:#ffffff24;--lotus-border:#ffffff55;
-  background:var(--lotus-primary-600);
-  color:white;border:none;border-bottom:1px solid var(--lotus-primary-600);
+  /* Text, lines and chips inside the bar read on red: the shared names point at the top-bar tokens here. */
+  --lotus-text:var(--lotus-on-topbar);--lotus-muted:var(--lotus-on-topbar-muted);--lotus-soft:var(--lotus-topbar-soft);--lotus-border:var(--lotus-topbar-line);
+  background:linear-gradient(90deg,var(--lotus-topbar),var(--lotus-topbar-end));
+  color:var(--lotus-on-topbar);border:none;border-bottom:1px solid var(--lotus-topbar-end);
   min-height:60px;padding:10px 22px;z-index:40;
-  box-shadow:0 2px 10px color-mix(in srgb,var(--lotus-primary-700) 8%,transparent);
+  box-shadow:var(--lotus-shadow-sm);
  }
  .lotus-ui.app-shell main>.workspace-bar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar{
@@ -17,30 +19,21 @@
  .lotus-ui.app-shell main>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button),
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button),
  .lotus-ui.assignment-workspace>.workspace-bar :is(.workspace-nav-trigger,.workspace-home,.workspace-user-trigger,.workspace-right button,.workspace-left button){
-  color:#fff;
+  color:var(--lotus-on-topbar);
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-search,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-search{
-  background:#fff;border:1px solid #fff;color:var(--lotus-neutral-600);min-height:36px;border-radius:9px;
+  background:var(--lotus-topbar-field);border:1px solid var(--lotus-topbar-field-line);color:var(--lotus-topbar-field-text);min-height:36px;border-radius:9px;
  }
  .lotus-ui.app-shell main>.workspace-bar .workspace-search kbd,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-search kbd,
  .lotus-ui.assignment-workspace>.workspace-bar .workspace-search kbd {
-  background:var(--lotus-neutral-100);color:var(--lotus-neutral-600);border:1px solid var(--lotus-neutral-200);
+  background:var(--lotus-topbar-kbd);color:var(--lotus-topbar-field-text);border:1px solid var(--lotus-topbar-kbd-line);
  }
- .lotus-ui.app-shell main>.workspace-bar .workspace-menu,
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu,
- .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu {
-  --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-border:var(--lotus-neutral-200);
-  color:var(--lotus-neutral-800);background:#fff;border:1px solid var(--lotus-neutral-200);box-shadow:0 12px 32px #29252122;
- }
- .lotus-ui.app-shell main>.workspace-bar .workspace-menu button,
- .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-menu button,
- .lotus-ui.assignment-workspace>.workspace-bar .workspace-menu button{color:var(--lotus-neutral-800)}
  .lotus-ui.app-shell main>.workspace-bar .workspace-avatar,
  .lotus-ui.stock-shell:not(.warehouse-pwa):not(.lotus-desktop) .stock-main>.workspace-bar .workspace-avatar,
- .lotus-ui.assignment-workspace>.workspace-bar .workspace-avatar{background:#ffffff24;color:white;border:1px solid #ffffff3b}
+ .lotus-ui.assignment-workspace>.workspace-bar .workspace-avatar{background:var(--lotus-topbar-soft);color:var(--lotus-on-topbar);border:1px solid var(--lotus-topbar-line)}
  .lotus-ui.app-shell .sidebar .field-link {color:var(--lotus-muted);font-size:11px;line-height:1.5;white-space:normal}
  .lotus-ui.app-shell .sidebar .field-link:hover {color:var(--lotus-accent)}
  .lotus-ui.app-shell .sidebar>small {font-size:11px;color:var(--lotus-muted);overflow-wrap:anywhere}
@@ -49,7 +42,7 @@
  .lotus-ui :is(.stock-panel,.panel) :is(table) {font-variant-numeric:tabular-nums}
  .lotus-ui :is(.section-title,.stock-panel-head) :is(h2,h3){color:var(--lotus-text)}
  .lotus-ui :is(.stock-button,.stock-scope button,.stock-setup-toolbar button) {border-radius:8px}
- .lotus-ui .workspace-search:focus-visible{outline:2px solid #fff;outline-offset:3px}
+ .lotus-ui .workspace-search:focus-visible{outline:2px solid var(--lotus-on-topbar);outline-offset:3px}
 }
 @media(min-width:901px) and (max-width:1160px){
  .lotus-ui.app-shell main>.workspace-bar,

@@ -1,0 +1,107 @@
+/* Lotus kit (spec 004, "Đất và lá"): the classes shared by many screens and drawn by grid-columns.js.
+   Built only on lotus-tokens.css. A class used by one component lives in that component's <style>
+   (unscoped: the class name is the kit contract), so a screen loads only the styles it shows (SC-008). */
+
+/* ── Numbers and labels ───────────────────────────────────────────────────── */
+.lotus-num{font-variant-numeric:tabular-nums;letter-spacing:0}
+.lotus-unit{margin-left:.28em;color:var(--lotus-muted);font-size:.72em;font-weight:var(--lotus-weight-medium);letter-spacing:0}
+.lotus-caps{color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:var(--lotus-weight-semibold);letter-spacing:var(--lotus-tracking-caps);text-transform:uppercase;line-height:var(--lotus-leading-snug)}
+.lotus-missing{color:var(--lotus-subtle);font-weight:var(--lotus-weight-regular)}
+.lotus-sample{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border:1px dashed var(--lotus-border-strong);border-radius:var(--lotus-radius-full);color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-weight:var(--lotus-weight-medium);white-space:nowrap}
+.lotus-sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.lotus-card{min-width:0;border:1px solid var(--lotus-border);border-radius:var(--lotus-card-radius);background:var(--lotus-surface);box-shadow:var(--lotus-shadow-xs);color:var(--lotus-text)}
+.lotus-card__head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:10px var(--lotus-card-padding);border-bottom:1px solid var(--lotus-border-subtle)}
+.lotus-card__title{margin:0;color:var(--lotus-text-strong);font-size:var(--lotus-text-base);font-weight:var(--lotus-weight-semibold);line-height:var(--lotus-leading-snug)}
+.lotus-card__body{padding:var(--lotus-card-padding)}
+.lotus-card--flat{box-shadow:none}
+
+/* ── Status chip ──────────────────────────────────────────────────────────── */
+.lotus-chip{--chip-bg:var(--lotus-tone-neutral-soft);--chip-fg:var(--lotus-tone-neutral-text);--chip-bd:var(--lotus-tone-neutral-border);
+ display:inline-flex;align-items:center;gap:4px;max-width:100%;height:var(--lotus-chip-height);padding:0 9px 0 6px;
+ border:1px solid var(--chip-bd);border-radius:var(--lotus-radius-full);background:var(--chip-bg);color:var(--chip-fg);
+ font-size:var(--lotus-chip-font);font-weight:var(--lotus-weight-semibold);line-height:1;white-space:nowrap;vertical-align:middle}
+.lotus-chip .lotus-icon{flex:none;width:14px;height:14px;stroke-width:2.1}
+.lotus-chip__text{overflow:hidden;text-overflow:ellipsis}
+.lotus-chip--bare{padding-left:9px}
+.lotus-chip--sm{height:20px;padding:0 7px 0 5px;font-size:var(--lotus-text-xs)}
+.lotus-chip--sm .lotus-icon{width:12px;height:12px}
+.lotus-chip--lg{height:28px;padding:0 11px 0 8px;font-size:var(--lotus-text-md)}
+.lotus-chip--primary{--chip-bg:var(--lotus-tone-primary-soft);--chip-fg:var(--lotus-tone-primary-text);--chip-bd:var(--lotus-tone-primary-border)}
+.lotus-chip--success{--chip-bg:var(--lotus-tone-success-soft);--chip-fg:var(--lotus-tone-success-text);--chip-bd:var(--lotus-tone-success-border)}
+.lotus-chip--warning{--chip-bg:var(--lotus-tone-warning-soft);--chip-fg:var(--lotus-tone-warning-text);--chip-bd:var(--lotus-tone-warning-border)}
+.lotus-chip--danger{--chip-bg:var(--lotus-tone-danger-soft);--chip-fg:var(--lotus-tone-danger-text);--chip-bd:var(--lotus-tone-danger-border)}
+.lotus-chip--info{--chip-bg:var(--lotus-tone-info-soft);--chip-fg:var(--lotus-tone-info-text);--chip-bd:var(--lotus-tone-info-border)}
+.lotus-chip--solid.lotus-chip--neutral{--chip-bg:var(--lotus-tone-neutral-solid);--chip-fg:var(--lotus-tone-neutral-on);--chip-bd:transparent}
+.lotus-chip--solid.lotus-chip--primary{--chip-bg:var(--lotus-tone-primary-solid);--chip-fg:var(--lotus-tone-primary-on);--chip-bd:transparent}
+.lotus-chip--solid.lotus-chip--success{--chip-bg:var(--lotus-tone-success-solid);--chip-fg:var(--lotus-tone-success-on);--chip-bd:transparent}
+.lotus-chip--solid.lotus-chip--warning{--chip-bg:var(--lotus-tone-warning-solid);--chip-fg:var(--lotus-tone-warning-on);--chip-bd:transparent}
+.lotus-chip--solid.lotus-chip--danger{--chip-bg:var(--lotus-tone-danger-solid);--chip-fg:var(--lotus-tone-danger-on);--chip-bd:transparent}
+.lotus-chip--solid.lotus-chip--info{--chip-bg:var(--lotus-tone-info-solid);--chip-fg:var(--lotus-tone-info-on);--chip-bd:transparent}
+/* A cancelled document reads as struck out, not only grey. */
+.lotus-chip[data-kind="cancelled"] .lotus-chip__text{text-decoration:line-through;text-decoration-thickness:1px}
+
+/* ── Change against a reference (stat tiles and table cells) ───────────────── */
+.lotus-stat__delta{display:inline-flex;align-items:center;gap:2px;font-weight:var(--lotus-weight-semibold);font-variant-numeric:tabular-nums}
+.lotus-stat__delta .lotus-icon{width:14px;height:14px;stroke-width:2.2}
+.lotus-stat__delta--good{color:var(--lotus-tone-success-text)}
+.lotus-stat__delta--bad{color:var(--lotus-tone-danger-text)}
+.lotus-stat__delta--flat{color:var(--lotus-muted)}
+
+/* ── Progress ─────────────────────────────────────────────────────────────── */
+.lotus-progress{--p-fill:var(--lotus-tone-primary-solid);display:grid;gap:4px;min-width:0}
+.lotus-progress__meta{display:flex;justify-content:space-between;gap:8px;color:var(--lotus-muted);font-size:var(--lotus-text-xs);font-variant-numeric:tabular-nums}
+.lotus-progress__meta strong{color:var(--lotus-text);font-weight:var(--lotus-weight-semibold)}
+.lotus-progress__track{height:6px;overflow:hidden;border-radius:var(--lotus-radius-full);background:var(--lotus-sunken)}
+.lotus-progress__bar{height:100%;border-radius:inherit;background:var(--p-fill);transition:width var(--lotus-motion-slow) var(--lotus-ease)}
+.lotus-progress--success{--p-fill:var(--lotus-tone-success-solid)}
+.lotus-progress--warning{--p-fill:var(--lotus-warning-400)}
+.lotus-progress--danger{--p-fill:var(--lotus-tone-danger-solid)}
+.lotus-progress--info{--p-fill:var(--lotus-tone-info-solid)}
+.lotus-progress--inline{grid-template-columns:minmax(40px,1fr) auto;align-items:center;gap:8px}
+.lotus-progress--inline .lotus-progress__meta{order:2}
+
+/* ── Avatar and crew chip ─────────────────────────────────────────────────── */
+.lotus-avatar{--av-bg:var(--lotus-tone-info-soft);--av-fg:var(--lotus-tone-info-text);display:inline-grid;place-items:center;flex:none;width:28px;height:28px;border-radius:50%;background:var(--av-bg);color:var(--av-fg);font-size:11px;font-weight:var(--lotus-weight-bold);letter-spacing:.02em;line-height:1;box-shadow:inset 0 0 0 1px var(--lotus-border)}
+.lotus-avatar--sm{width:22px;height:22px;font-size:9.5px}
+.lotus-avatar--lg{width:36px;height:36px;font-size:13px}
+.lotus-avatar[data-hue="1"]{--av-bg:var(--lotus-tone-success-soft);--av-fg:var(--lotus-tone-success-text)}
+.lotus-avatar[data-hue="2"]{--av-bg:var(--lotus-tone-warning-soft);--av-fg:var(--lotus-tone-warning-text)}
+.lotus-avatar[data-hue="3"]{--av-bg:var(--lotus-earth-100);--av-fg:var(--lotus-earth-700)}
+.lotus-avatar[data-hue="4"]{--av-bg:var(--lotus-tone-primary-soft);--av-fg:var(--lotus-tone-primary-text)}
+.lotus-avatar[data-hue="5"]{--av-bg:var(--lotus-tone-neutral-soft);--av-fg:var(--lotus-tone-neutral-text)}
+.dark .lotus-avatar[data-hue="3"]{--av-bg:var(--lotus-earth-800);--av-fg:var(--lotus-earth-100)}
+.lotus-crew{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+.lotus-crew__text{display:grid;min-width:0;line-height:var(--lotus-leading-tight)}
+.lotus-crew__name{overflow:hidden;color:var(--lotus-text);font-weight:var(--lotus-weight-medium);text-overflow:ellipsis;white-space:nowrap}
+.lotus-crew__team{overflow:hidden;color:var(--lotus-muted);font-size:var(--lotus-text-xs);text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Ribbon (màu dây) ─────────────────────────────────────────────────────── */
+.lotus-ribbon{display:inline-block;flex:none;width:12px;height:12px;border-radius:50%;background:var(--ribbon,transparent);box-shadow:inset 0 0 0 1.5px var(--lotus-ribbon-outline);vertical-align:middle}
+.lotus-ribbon--md{width:16px;height:16px}
+.lotus-ribbon--lg{width:22px;height:22px;box-shadow:inset 0 0 0 2px var(--lotus-ribbon-outline)}
+/* A tied ribbon: a short band with a knot, for headers of ribbon batches. */
+.lotus-ribbon--band{width:30px;height:10px;border-radius:3px}
+.lotus-ribbon-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:var(--lotus-chip-height);padding:0 9px 0 6px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-full);background:var(--lotus-surface);color:var(--lotus-text);font-size:var(--lotus-chip-font);font-weight:var(--lotus-weight-medium);white-space:nowrap}
+.lotus-ribbon-chip__label{overflow:hidden;text-overflow:ellipsis}
+.lotus-ribbon-chip__week{color:var(--lotus-muted);font-variant-numeric:tabular-nums}
+.lotus-ribbon-chip__count{color:var(--lotus-text-strong);font-weight:var(--lotus-weight-bold);font-variant-numeric:tabular-nums}
+
+/* Ribbon marks under a week (week strip, age histogram). */
+.lotus-weekstrip__mark{display:flex;gap:2px;height:6px;align-items:center}
+.lotus-weekstrip__mark .lotus-ribbon{width:8px;height:8px;box-shadow:inset 0 0 0 1px var(--lotus-ribbon-outline)}
+
+/* ── Table cells drawn by grid-columns.js ─────────────────────────────────── */
+.lotus-grid-due,.lotus-grid-ribbon{display:inline-flex;align-items:center;gap:6px;max-width:100%;vertical-align:middle}
+.lotus-ag-grid .lotus-chip,.lotus-ag-grid .lotus-crew{vertical-align:middle}
+.lotus-ag-grid .lotus-progress--inline{min-height:100%;align-content:center}
+.lotus-ag-grid .lotus-stat__delta{font-size:inherit}
+/* In a grid row the person and team sit on one line, so a compact 36 px row never clips them. */
+.lotus-ag-grid .lotus-crew__text{display:flex;align-items:baseline;gap:6px}
+
+/* Never print the dark or outdoor surfaces: paper is white with black ink. */
+@media print{
+ .lotus-card,.lotus-stat,.lotus-lotcard,.lotus-shift{box-shadow:none;break-inside:avoid}
+ .lotus-netbar,.lotus-chart__tip{display:none}
+}

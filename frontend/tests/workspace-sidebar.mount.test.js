@@ -11,7 +11,8 @@ setActivePinia(createPinia())
 const WorkspaceSidebar=await load('components/WorkspaceSidebar.vue')
 const {useSession}=await loadModule('store.js')
 const {sidebarCollapsed}=await loadModule('workspace.js')
-const iconSource=readFileSync(new URL('../src/components/LotusIcon.vue',import.meta.url),'utf8')
+// Icon paths live in icon-paths.js since spec 004 (shared by LotusIcon and the table cells).
+const iconSource=readFileSync(new URL('../src/icon-paths.js',import.meta.url),'utf8')
 
 test('every page sits in exactly one sidebar group with a real icon',()=>{
  const grouped=navGroups.flatMap(group=>group.items.map(([path])=>path))

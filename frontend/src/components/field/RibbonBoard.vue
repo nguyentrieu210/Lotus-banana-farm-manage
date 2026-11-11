@@ -6,7 +6,10 @@ import ModalForm from '../form/ModalForm.vue'
 import DataTable from '../DataTable.vue'
 import {Button as UiButton} from '../ui/button'
 import {formatDate} from '../../format'
-import {swatch,amountText} from '../../lot-entry-model.js'
+import {amountText} from '../../lot-entry-model.js'
+import {StatTile} from '../ui/stat-tile'
+import RibbonDot from '../agri/RibbonDot.vue'
+import RibbonBatchCard from '../agri/RibbonBatchCard.vue'
 // Bảng màu dây (lotus_farm.ribbon_board): bunches on the plants per ribbon colour of a week, from confirmed numbers.
 // The lô and colours to harvest now come first; a colour card opens its lô in a dialog.
 const props=defineProps({farm:{type:String,required:true},zones:{type:Array,default:()=>[]},mobile:Boolean,compact:Boolean})
@@ -28,6 +31,8 @@ const statusLabels={waiting:'Đang nuôi',due:'Đến tuổi thu',overdue:'Quá 
 const zoneOptions=computed(()=>[{value:'',label:'Tất cả khu'},...(data.value?.zones||[]).filter(z=>!props.zones.length||props.zones.includes(z)).map(z=>({value:z,label:'Khu '+z}))])
 const cards=computed(()=>(data.value?.cards||[]).filter(c=>showDone.value||c.status!=='done').slice().reverse())
 const due=computed(()=>data.value?.due_rows||[])
+// A ribbon-board card as a kit batch card (spec 004): colour, week, age, lots, counts and harvest progress.
+const batchOf=c=>({code:c.code,label:c.colour+' tuần '+c.week+(c.lan?' lần '+c.lan:''),week:c.week,year:c.year,age:c.age_weeks,lots:c.lots.length,cut:c.cut,bagged:c.bag,harvested:c.harvested,left:c.left,status:c.status,statusLabel:statusLabels[c.status]})
 // Sổ cắt bắp in the layout of the farm's Excel book, ten weeks to a sheet.
 const bookUrl=computed(()=>'/api/method/lotus_farm.ribbon_board.export_cut_book?'+new URLSearchParams({farm:props.farm,...(zone.value?{zone:zone.value}:{})}))
 const lotColumns=[
@@ -54,15 +59,15 @@ const lotColumns=[
   <p v-if="error" class="lotus-list-page__error" role="alert">{{error}}</p>
   <template v-if="data">
    <div class="ribbon-board__totals">
-    <div><span>Còn trên cây</span><strong>{{amountText(data.left)}}</strong></div>
-    <div class="is-due"><span>Đến tuổi thu</span><strong>{{amountText(data.due)}}</strong></div>
-    <div class="is-late"><span>Quá tuổi thu</span><strong>{{amountText(data.overdue)}}</strong></div>
+    <StatTile label="Còn trên cây" :value="data.left" unit="buồng" icon="leaf" tone="primary"/>
+    <StatTile class="is-due" label="Đến tuổi thu" :value="data.due" unit="buồng" icon="bunch" tone="warning"/>
+    <StatTile class="is-late" label="Quá tuổi thu" :value="data.overdue" unit="buồng" icon="alert" tone="danger"/>
    </div>
    <h3 class="ribbon-board__title">Cần thu {{week?'tuần từ '+formatDate(data.day):'tuần này'}}</h3>
    <p v-if="!due.length" class="lotus-form-note">Chưa có màu nào đến tuổi thu.</p>
    <div class="ribbon-board__due">
     <article v-for="r in due" :key="r.tag+r.block" class="ribbon-due" :class="{'is-held':r.quarantine_until,'is-late':r.status==='overdue'}">
-     <b class="ribbon-swatch" :style="{background:swatch(r.code_colour)}" aria-hidden="true"></b>
+     <RibbonDot :code="r.code_colour" size="lg" decorative/>
      <div><strong>Lô {{r.code}} · {{r.colour}} tuần {{r.week}}<template v-if="r.lan"> lần {{r.lan}}</template></strong>
       <span>Còn {{amountText(r.left)}} buồng · thu {{formatDate(r.start)}} – {{formatDate(r.end)}}</span>
       <em v-if="r.quarantine_until">Đang cách ly đến {{formatDate(r.quarantine_until)}}: chưa được thu</em></div>
@@ -72,12 +77,7 @@ const lotColumns=[
    <h3 v-if="expanded" class="ribbon-board__title">Theo màu dây</h3>
    <p v-if="expanded&&!cards.length" class="lotus-form-note">Chưa có buồng đã cắt bắp trong sổ lô.</p>
    <div v-if="expanded" class="ribbon-board__cards">
-    <button v-for="c in cards" :key="c.tag" type="button" class="ribbon-card" :class="'is-'+c.status" @click="opened=c">
-     <span class="ribbon-card__head"><b class="ribbon-swatch" :style="{background:swatch(c.code)}" aria-hidden="true"></b><strong>{{c.colour}} tuần {{c.week}}<template v-if="c.lan"> lần {{c.lan}}</template></strong></span>
-     <span>{{statusLabels[c.status]}} · {{c.age_weeks}} tuần tuổi · {{c.lots.length}} lô</span>
-     <span>Cắt {{amountText(c.cut)}} · bao {{amountText(c.bag)}} · thu {{amountText(c.harvested)}}</span>
-     <strong class="ribbon-card__left">Còn {{amountText(c.left)}}</strong>
-    </button>
+    <RibbonBatchCard v-for="c in cards" :key="c.tag" class="ribbon-card" :class="'is-'+c.status" interactive :batch="batchOf(c)" @open="opened=c"/>
    </div>
   </template>
   <ModalForm :model-value="!!opened" :title="opened?opened.colour+' tuần '+opened.week+(opened.lan?' lần '+opened.lan:''):''" width="860px" readonly
@@ -96,28 +96,16 @@ const lotColumns=[
 .ribbon-board__tools{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
 .ribbon-board__tools>*{min-width:180px}
 .ribbon-board__tools .ribbon-board__book{min-width:0;align-self:center;font-size:var(--lotus-text-sm)}
-.ribbon-board__totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.ribbon-board__totals>div{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--lotus-border);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
-.ribbon-board__totals span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
-.ribbon-board__totals strong{font-size:var(--lotus-text-lg);color:var(--lotus-text-strong)}
-.ribbon-board__totals .is-due strong{color:var(--lotus-warning)}
-.ribbon-board__totals .is-late strong{color:var(--lotus-danger)}
-.ribbon-board__title{margin:4px 0 0;font-size:var(--lotus-text-sm);font-weight:600;color:var(--lotus-muted)}
-.ribbon-board__due,.ribbon-board__cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
-.ribbon-board--mobile .ribbon-board__due,.ribbon-board--mobile .ribbon-board__cards{grid-template-columns:1fr}
-.ribbon-due{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--lotus-border);border-left:4px solid var(--lotus-warning);border-radius:var(--lotus-radius-md);background:var(--lotus-surface)}
-.ribbon-due.is-late{border-left-color:var(--lotus-danger)}
-.ribbon-due.is-held{opacity:.85}
-.ribbon-due div{display:grid;gap:2px}
-.ribbon-due span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
-.ribbon-due em{font-size:var(--lotus-text-sm);font-style:normal;color:var(--lotus-danger)}
-.ribbon-card{display:grid;gap:3px;padding:10px 12px;text-align:left;font:inherit;color:inherit;border:1px solid var(--lotus-border);border-left-width:4px;border-radius:var(--lotus-radius-md);background:var(--lotus-surface);cursor:pointer}
-.ribbon-card.is-due{border-left-color:var(--lotus-warning)}
-.ribbon-card.is-overdue{border-left-color:var(--lotus-danger)}
-.ribbon-card.is-waiting{border-left-color:var(--lotus-info)}
-.ribbon-card.is-done{border-left-color:var(--lotus-success);opacity:.8}
-.ribbon-card span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
-.ribbon-card__head{display:flex;align-items:center;gap:6px;color:var(--lotus-text-strong)!important;font-size:var(--lotus-text-md)!important}
-.ribbon-card__left{color:var(--lotus-text-strong)}
-.ribbon-swatch{display:inline-block;flex:none;width:14px;height:14px;border-radius:50%;border:1px solid var(--lotus-border)}
+.ribbon-board__totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ribbon-board__title{margin:4px 0 0;font-size:var(--lotus-text-sm);font-weight:var(--lotus-weight-semibold);color:var(--lotus-muted)}
+.ribbon-board__due{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.ribbon-board__cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ribbon-board--mobile .ribbon-board__due,.ribbon-board--mobile .ribbon-board__cards,.ribbon-board--mobile .ribbon-board__totals{grid-template-columns:1fr}
+.ribbon-due{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--lotus-border);border-left:4px solid var(--lotus-warning-400);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);box-shadow:var(--lotus-shadow-xs)}
+.ribbon-due.is-late{border-left-color:var(--lotus-tone-danger-solid)}
+.ribbon-due.is-held{background-image:repeating-linear-gradient(135deg,var(--lotus-lot-quarantine) 0 6px,transparent 6px 14px)}
+.ribbon-due div{display:grid;gap:2px;min-width:0}
+.ribbon-due strong{color:var(--lotus-text-strong)}
+.ribbon-due span{font-size:var(--lotus-text-sm);color:var(--lotus-muted);font-variant-numeric:tabular-nums}
+.ribbon-due em{font-size:var(--lotus-text-sm);font-style:normal;font-weight:var(--lotus-weight-semibold);color:var(--lotus-tone-danger-text)}
 </style>

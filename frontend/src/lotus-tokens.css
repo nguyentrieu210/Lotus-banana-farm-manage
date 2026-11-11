@@ -1,73 +1,229 @@
-/* Lotus design tokens — the only place colours, type, spacing, radius and shadows are defined.
-   Desktop (/lotus) and phone PWAs both load this file first. Other stylesheets only reference these variables.
-   Ramps (--lotus-<family>-<step>) are fixed values and never change with the theme;
-   semantic tokens (--lotus-primary, --lotus-text, ...) switch between light and .dark. */
+/* Lotus design tokens, "Đất và lá" (spec 004) — the only place colours, type, spacing, radius, elevation,
+   motion, layers and sizes are defined. Desktop (/lotus) and every phone PWA load this file first; other
+   stylesheets only reference these variables. Every colour is plain hex so old Android WebViews render it.
+
+   Three tiers:
+   1. Ramps (--lotus-<family>-<step>, ribbons, map zones): fixed values, the same in every mode.
+   2. Semantic tokens (surfaces, text, borders, tones, lot states, charts): switch with the mode.
+   3. Component tokens (controls, tables, chips, top bar): built on the semantic tier; switch with density.
+
+   Modes (set on <html> by ui-mode.js): light (default), .dark, .lotus-outdoor (high-contrast light for phones
+   in the sun). Density: [data-density="compact"] (default) or "comfortable". */
 :root{
-  /* Brand: Đỏ Lotus #c43224 (= primary-600) */
+  /* ── 1. Ramps ─────────────────────────────────────────────────────────────── */
+  /* Brand: Đỏ Lotus #c43224 (= primary-600), the one action colour. */
   --lotus-primary-50:#fef3f1;--lotus-primary-100:#fde4df;--lotus-primary-200:#fbc9c0;--lotus-primary-300:#f5a293;--lotus-primary-400:#ec6e5c;
   --lotus-primary-500:#dc4836;--lotus-primary-600:#c43224;--lotus-primary-700:#a3291d;--lotus-primary-800:#7f2218;--lotus-primary-900:#561913;
-  --lotus-neutral-0:#ffffff;--lotus-neutral-25:#fcfbfa;--lotus-neutral-50:#f7f7f8;--lotus-neutral-100:#f1f0ef;--lotus-neutral-200:#e8e5e1;
-  --lotus-neutral-300:#d6d3cf;--lotus-neutral-400:#a7abb2;--lotus-neutral-500:#7b808a;--lotus-neutral-600:#656b76;--lotus-neutral-700:#4b5059;
-  --lotus-neutral-800:#2c3036;--lotus-neutral-900:#20262f;--lotus-neutral-950:#171b22;
-  --lotus-success-50:#effaf4;--lotus-success-100:#dcf3e6;--lotus-success-200:#b7e4ca;--lotus-success-300:#86cfa6;--lotus-success-400:#4fb07c;
-  --lotus-success-500:#2a9862;--lotus-success-600:#21835b;--lotus-success-700:#1b6a49;--lotus-success-800:#165238;--lotus-success-900:#113b29;
-  --lotus-warning-50:#fff8eb;--lotus-warning-100:#feefcc;--lotus-warning-200:#fbdc94;--lotus-warning-300:#f4c25a;--lotus-warning-400:#e3a233;
-  --lotus-warning-500:#c98515;--lotus-warning-600:#a86b0d;--lotus-warning-700:#87550c;--lotus-warning-800:#66400c;--lotus-warning-900:#452c0a;
-  --lotus-info-50:#f0f5fc;--lotus-info-100:#dfe9f8;--lotus-info-200:#bdd2f0;--lotus-info-300:#8fb2e3;--lotus-info-400:#5d8dd0;
-  --lotus-info-500:#3a6fbb;--lotus-info-600:#2f5c9f;--lotus-info-700:#284b80;--lotus-info-800:#213b63;--lotus-info-900:#182a45;
-
-  /* Semantic — light */
-  --lotus-primary:var(--lotus-primary-600);--lotus-primary-hover:var(--lotus-primary-700);--lotus-primary-active:var(--lotus-primary-800);
-  --lotus-primary-subtle:var(--lotus-primary-50);--lotus-primary-text:var(--lotus-primary-700);--lotus-on-primary:#fff;
-  --lotus-page:var(--lotus-neutral-50);--lotus-surface:#fff;--lotus-sidebar:#fff;--lotus-soft:var(--lotus-neutral-25);--lotus-hover:var(--lotus-neutral-100);
-  --lotus-text:var(--lotus-neutral-800);--lotus-muted:var(--lotus-neutral-600);--lotus-text-strong:var(--lotus-neutral-900);--lotus-text-secondary:var(--lotus-neutral-700);--lotus-subtle:var(--lotus-neutral-500);--lotus-border:var(--lotus-neutral-200);--lotus-border-strong:var(--lotus-neutral-300);
-  --lotus-accent:var(--lotus-primary);--lotus-accent-soft:var(--lotus-primary-subtle);
-  --lotus-table-header:var(--lotus-neutral-25);--lotus-table-heading:var(--lotus-neutral-600);
-  --lotus-success:var(--lotus-success-600);--lotus-success-soft:var(--lotus-success-50);
-  --lotus-warning:var(--lotus-warning-600);--lotus-warning-soft:var(--lotus-warning-50);
-  --lotus-danger:#b42318;--lotus-danger-soft:#fef1ef;
-  --lotus-info:var(--lotus-info-600);--lotus-info-soft:var(--lotus-info-50);
+  /* Warm stone neutrals: the soil under the leaves, in harmony with the terracotta brand. */
+  --lotus-neutral-0:#ffffff;--lotus-neutral-25:#fcfbf8;--lotus-neutral-50:#f6f5f1;--lotus-neutral-100:#efede7;--lotus-neutral-200:#e4e1d9;
+  --lotus-neutral-300:#d4d0c6;--lotus-neutral-400:#aaa498;--lotus-neutral-500:#736d61;--lotus-neutral-600:#625d52;--lotus-neutral-700:#4c4840;
+  --lotus-neutral-800:#2a2722;--lotus-neutral-900:#1d1b18;--lotus-neutral-950:#141311;
+  /* Leaf green (the "Agritech" of the logo): good, done, healthy. */
+  --lotus-success-50:#ecf7ef;--lotus-success-100:#d3eedb;--lotus-success-200:#a9dcb6;--lotus-success-300:#74c38b;--lotus-success-400:#45a564;
+  --lotus-success-500:#2b8a4b;--lotus-success-600:#1f7a3c;--lotus-success-700:#1b6a34;--lotus-success-800:#15522a;--lotus-success-900:#0f3b1e;
+  /* Banana amber: due, waiting, attention. */
+  --lotus-warning-50:#fff6e0;--lotus-warning-100:#ffeab8;--lotus-warning-200:#fdd57a;--lotus-warning-300:#f8bd3f;--lotus-warning-400:#eaa21a;
+  --lotus-warning-500:#cc840a;--lotus-warning-600:#9a6400;--lotus-warning-700:#7a4f00;--lotus-warning-800:#5c3b02;--lotus-warning-900:#3f2903;
+  /* Crimson: danger, overdue, quarantine. Shifted towards rose so it never reads as the brand red. */
+  --lotus-danger-50:#fdeef1;--lotus-danger-100:#fbd9e0;--lotus-danger-200:#f6b3c1;--lotus-danger-300:#ee8199;--lotus-danger-400:#df5172;
+  --lotus-danger-500:#c9304f;--lotus-danger-600:#b3243f;--lotus-danger-700:#961d34;--lotus-danger-800:#75172a;--lotus-danger-900:#521220;
+  /* Water blue: information, sent, forecast. */
+  --lotus-info-50:#edf3fb;--lotus-info-100:#d7e5f6;--lotus-info-200:#b0cbed;--lotus-info-300:#80a9de;--lotus-info-400:#5487cb;
+  --lotus-info-500:#3a6fb5;--lotus-info-600:#285a9e;--lotus-info-700:#1f4a82;--lotus-info-800:#1a3c68;--lotus-info-900:#142c4c;
+  /* Soil brown: data only (packhouse, earthworks, secondary series). */
+  --lotus-earth-50:#f7f1ea;--lotus-earth-100:#ecdfcf;--lotus-earth-200:#d9c1a3;--lotus-earth-300:#c19e76;--lotus-earth-400:#a57d52;
+  --lotus-earth-500:#8a6239;--lotus-earth-600:#714e2c;--lotus-earth-700:#5a3e24;--lotus-earth-800:#43301d;--lotus-earth-900:#2e2115;
+  /* Ribbon (màu dây) colours: physical ribbons, so the same in every mode. The outline keeps Trắng and Đen visible. */
+  --lotus-ribbon-do:#d32f2f;--lotus-ribbon-trang:#ffffff;--lotus-ribbon-tim:#7b1fa2;--lotus-ribbon-cam:#f57c00;
+  --lotus-ribbon-den:#212121;--lotus-ribbon-xanh-duong:#1976d2;--lotus-ribbon-xanh-la:#2e7d32;
+  --lotus-ribbon-outline:#8f897d;
+  /* Distinct geographic categories, fixed across farms, zoom levels and themes (tuned for satellite imagery). */
+  /* Ink of drawn signatures (spec 003). */
   --lotus-signature-ink:var(--lotus-info-800);
-  /* Chart series in fixed order (validated: dataviz validate_palette, light surface). Charts use at most 3 series;
-     slot 4 only with legend + table view (contrast 2.99:1). */
-  --lotus-chart-1:var(--lotus-primary-600);--lotus-chart-2:var(--lotus-info-600);--lotus-chart-3:var(--lotus-success-600);--lotus-chart-4:var(--lotus-warning-500);--lotus-chart-5:#7a4fa3;--lotus-chart-other:var(--lotus-neutral-400);
-  /* Distinct geographic categories, fixed across farms, zoom levels and themes. */
   --lotus-map-zone-a:#f46963;--lotus-map-zone-b:#43d99a;--lotus-map-zone-c:#ffd166;
   --lotus-map-zone-d:#65baff;--lotus-map-zone-e:#c89cff;--lotus-map-zone-f:#ff9d57;
-  --lotus-focus:0 0 0 3px color-mix(in srgb,var(--lotus-primary) 28%,transparent);
 
-  /* Type */
+  /* ── 2. Semantic — light ──────────────────────────────────────────────────── */
+  --lotus-primary:var(--lotus-primary-600);--lotus-primary-hover:var(--lotus-primary-700);--lotus-primary-active:var(--lotus-primary-800);
+  --lotus-primary-subtle:var(--lotus-primary-50);--lotus-primary-text:var(--lotus-primary-700);--lotus-on-primary:#fff;
+  /* Filled primary buttons (Vant and custom): red in light and dark, deeper red outdoors for 7:1 labels. */
+  --lotus-primary-solid:var(--lotus-primary-600);--lotus-primary-solid-hover:var(--lotus-primary-700);--lotus-on-primary-solid:#fff;
+
+  /* Surfaces */
+  --lotus-page:var(--lotus-neutral-50);--lotus-surface:#fff;--lotus-raised:#fff;--lotus-sunken:var(--lotus-neutral-100);
+  --lotus-sidebar:var(--lotus-neutral-25);--lotus-soft:var(--lotus-neutral-25);--lotus-hover:var(--lotus-neutral-100);
+  --lotus-active:var(--lotus-neutral-200);--lotus-selected:var(--lotus-primary-50);
+  --lotus-topbar:var(--lotus-primary-600);--lotus-topbar-end:var(--lotus-primary-700);--lotus-on-topbar:#fff;
+  /* Inside the red top bar: secondary text, translucent chips and lines, the farm picker well, the search field. */
+  --lotus-on-topbar-muted:var(--lotus-primary-50);--lotus-topbar-soft:#ffffff24;--lotus-topbar-line:#ffffff55;
+  --lotus-topbar-sunken:#00000029;--lotus-topbar-sunken-hover:#0000003d;
+  --lotus-topbar-field:#fff;--lotus-topbar-field-hover:var(--lotus-neutral-25);--lotus-topbar-field-text:var(--lotus-neutral-600);--lotus-topbar-field-line:#fff;
+  --lotus-topbar-kbd:var(--lotus-neutral-100);--lotus-topbar-kbd-line:var(--lotus-neutral-200);
+  /* Text */
+  --lotus-text:var(--lotus-neutral-800);--lotus-text-strong:var(--lotus-neutral-900);--lotus-text-secondary:var(--lotus-neutral-700);
+  --lotus-muted:var(--lotus-neutral-600);--lotus-subtle:var(--lotus-neutral-500);--lotus-disabled:var(--lotus-neutral-400);
+  --lotus-link:var(--lotus-info-600);
+  /* Borders: subtle/default separate content; control borders reach 3:1 against the surface (WCAG 1.4.11). */
+  --lotus-border-subtle:var(--lotus-neutral-100);--lotus-border:var(--lotus-neutral-200);--lotus-border-strong:var(--lotus-neutral-300);
+  --lotus-border-control:#8f897d;
+  --lotus-accent:var(--lotus-primary);--lotus-accent-soft:var(--lotus-primary-subtle);
+  --lotus-focus-ring:var(--lotus-info-500);
+  --lotus-focus:0 0 0 2px var(--lotus-surface),0 0 0 4px var(--lotus-focus-ring);
+
+  /* Tones: solid fill + text on it, soft fill + text on it, border. Text on soft passes 4.5:1. */
+  --lotus-success:var(--lotus-success-600);--lotus-success-soft:var(--lotus-success-50);
+  --lotus-warning:var(--lotus-warning-600);--lotus-warning-soft:var(--lotus-warning-50);
+  --lotus-danger:var(--lotus-danger-600);--lotus-danger-soft:var(--lotus-danger-50);
+  --lotus-info:var(--lotus-info-600);--lotus-info-soft:var(--lotus-info-50);
+  --lotus-tone-neutral-solid:var(--lotus-neutral-600);--lotus-tone-neutral-on:#fff;--lotus-tone-neutral-soft:var(--lotus-neutral-100);--lotus-tone-neutral-text:var(--lotus-neutral-700);--lotus-tone-neutral-border:var(--lotus-neutral-300);
+  --lotus-tone-primary-solid:var(--lotus-primary-600);--lotus-tone-primary-on:#fff;--lotus-tone-primary-soft:var(--lotus-primary-50);--lotus-tone-primary-text:var(--lotus-primary-700);--lotus-tone-primary-border:var(--lotus-primary-200);
+  --lotus-tone-success-solid:var(--lotus-success-600);--lotus-tone-success-on:#fff;--lotus-tone-success-soft:var(--lotus-success-50);--lotus-tone-success-text:var(--lotus-success-700);--lotus-tone-success-border:var(--lotus-success-200);
+  --lotus-tone-warning-solid:var(--lotus-warning-300);--lotus-tone-warning-on:var(--lotus-warning-900);--lotus-tone-warning-soft:var(--lotus-warning-50);--lotus-tone-warning-text:var(--lotus-warning-700);--lotus-tone-warning-border:var(--lotus-warning-200);
+  --lotus-tone-danger-solid:var(--lotus-danger-600);--lotus-tone-danger-on:#fff;--lotus-tone-danger-soft:var(--lotus-danger-50);--lotus-tone-danger-text:var(--lotus-danger-700);--lotus-tone-danger-border:var(--lotus-danger-200);
+  --lotus-tone-info-solid:var(--lotus-info-600);--lotus-tone-info-on:#fff;--lotus-tone-info-soft:var(--lotus-info-50);--lotus-tone-info-text:var(--lotus-info-700);--lotus-tone-info-border:var(--lotus-info-200);
+
+  /* Lot states (thẻ lô, lưới lô): fill + text on the fill. Lightness steps apart so they read without hue. */
+  --lotus-lot-empty:var(--lotus-neutral-100);--lotus-lot-empty-on:var(--lotus-neutral-700);
+  --lotus-lot-entered:var(--lotus-info-100);--lotus-lot-entered-on:var(--lotus-info-800);
+  --lotus-lot-sent:var(--lotus-info-500);--lotus-lot-sent-on:#fff;
+  --lotus-lot-confirmed:var(--lotus-success-600);--lotus-lot-confirmed-on:#fff;
+  --lotus-lot-ok:var(--lotus-success-100);--lotus-lot-ok-on:var(--lotus-success-800);
+  --lotus-lot-due:var(--lotus-warning-300);--lotus-lot-due-on:var(--lotus-warning-900);
+  --lotus-lot-overdue:var(--lotus-danger-600);--lotus-lot-overdue-on:#fff;
+  --lotus-lot-quarantine:var(--lotus-danger-50);--lotus-lot-quarantine-on:var(--lotus-danger-800);--lotus-lot-quarantine-stripe:var(--lotus-danger-200);
+
+  /* Charts: 8 categorical colours in a fixed order (colour-blind-safe neighbours: blue, amber, teal, red, purple,
+     soil, sky, olive), plus forecast/actual roles, a 7-step sequential (leaf) and a 7-step diverging scale
+     (below plan ← stone → above plan). Every series colour reaches 3:1 on the surface. */
+  --lotus-chart-1:var(--lotus-info-600);--lotus-chart-2:#b8740a;--lotus-chart-3:#1f8a70;--lotus-chart-4:var(--lotus-primary-600);
+  --lotus-chart-5:#7a4fa3;--lotus-chart-6:var(--lotus-earth-500);--lotus-chart-7:#3b8fc4;--lotus-chart-8:#6f7a1f;
+  --lotus-chart-other:var(--lotus-neutral-400);
+  --lotus-chart-forecast:var(--lotus-info-600);--lotus-chart-forecast-band:var(--lotus-info-100);--lotus-chart-actual:var(--lotus-success-600);
+  --lotus-chart-grid:var(--lotus-neutral-200);--lotus-chart-axis:var(--lotus-neutral-600);
+  --lotus-seq-1:#ecf7ef;--lotus-seq-2:#c6e7cf;--lotus-seq-3:#94cfa6;--lotus-seq-4:#5fb27b;--lotus-seq-5:#35925a;--lotus-seq-6:#1f7a3c;--lotus-seq-7:#0f4f25;
+  --lotus-div-1:#961d34;--lotus-div-2:#d4566f;--lotus-div-3:#f1b9c4;--lotus-div-4:#f1efe9;--lotus-div-5:#b7cdea;--lotus-div-6:#5f8ccb;--lotus-div-7:#1f4a82;
+
+  /* ── Type ─────────────────────────────────────────────────────────────────── */
   --lotus-font:InterVar,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --lotus-font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --lotus-text-xs:11px;--lotus-text-sm:12px;--lotus-text-md:13px;--lotus-text-base:14px;--lotus-text-lg:16px;--lotus-text-xl:20px;--lotus-text-2xl:24px;
+  --lotus-text-3xl:30px;--lotus-text-4xl:36px;
+  /* Vietnamese stacks diacritics: never go below 1.25 on text that can wrap. */
+  --lotus-leading-tight:1.25;--lotus-leading-snug:1.35;--lotus-leading:1.5;
+  --lotus-weight-regular:400;--lotus-weight-medium:500;--lotus-weight-semibold:600;--lotus-weight-bold:700;
+  --lotus-tracking-tight:-.015em;--lotus-tracking-caps:.06em;
 
-  /* Space, radius, elevation, size */
-  --lotus-space-1:4px;--lotus-space-2:8px;--lotus-space-3:12px;--lotus-space-4:16px;--lotus-space-6:24px;--lotus-space-8:32px;--lotus-space:12px;
-  --lotus-radius-sm:6px;--lotus-radius-md:8px;--lotus-radius:10px;--lotus-radius-lg:12px;--lotus-radius-xl:16px;
-  --lotus-shadow-sm:0 1px 2px rgb(23 27 34/.06);--lotus-shadow-md:0 4px 12px rgb(23 27 34/.08);--lotus-shadow-lg:0 16px 40px rgb(23 27 34/.16);
-  --lotus-control-height:36px;--lotus-control:36px;--lotus-row:36px;--lotus-touch:44px;
-  --lotus-motion:160ms;--lotus-ease:cubic-bezier(.2,.7,.2,1);
+  /* ── Space, radius, elevation, motion, layers ─────────────────────────────── */
+  --lotus-space-half:2px;--lotus-space-1:4px;--lotus-space-2:8px;--lotus-space-3:12px;--lotus-space-4:16px;--lotus-space-5:20px;
+  --lotus-space-6:24px;--lotus-space-8:32px;--lotus-space-10:40px;--lotus-space-12:48px;--lotus-space:12px;
+  --lotus-radius-xs:4px;--lotus-radius-sm:6px;--lotus-radius-md:8px;--lotus-radius:10px;--lotus-radius-lg:12px;--lotus-radius-xl:16px;--lotus-radius-2xl:20px;--lotus-radius-full:999px;
+  --lotus-shadow-xs:0 1px 1px rgb(42 39 34/.05);
+  --lotus-shadow-sm:0 1px 2px rgb(42 39 34/.06),0 1px 3px rgb(42 39 34/.04);
+  --lotus-shadow-md:0 4px 12px rgb(42 39 34/.08),0 1px 3px rgb(42 39 34/.05);
+  --lotus-shadow-lg:0 16px 40px rgb(42 39 34/.16),0 2px 6px rgb(42 39 34/.06);
+  --lotus-shadow-xl:0 24px 64px rgb(42 39 34/.22);
+  --lotus-motion-fast:120ms;--lotus-motion:160ms;--lotus-motion-slow:240ms;
+  --lotus-ease:cubic-bezier(.2,.7,.2,1);--lotus-ease-out:cubic-bezier(0,0,.2,1);
   --lotus-backdrop:color-mix(in srgb,var(--lotus-neutral-950) 45%,transparent);
+  --lotus-overlay:rgb(20 19 17/.45);
+  --lotus-z-sticky:10;--lotus-z-topbar:40;--lotus-z-dropdown:1000;--lotus-z-overlay:1100;--lotus-z-modal:1200;--lotus-z-popover:1300;--lotus-z-toast:1400;--lotus-z-tooltip:1500;
+
+  /* ── 3. Component tokens (compact density = default) ──────────────────────── */
+  --lotus-control-height:36px;--lotus-control:36px;--lotus-control-sm:30px;--lotus-control-lg:42px;
+  --lotus-row:36px;--lotus-touch:44px;--lotus-touch-lg:52px;
+  --lotus-table-row:36px;--lotus-table-header-height:36px;--lotus-table-font:13px;--lotus-table-header-font:12px;--lotus-table-cell-x:10px;
+  /* Header, zebra, hover, selected and total are five distinct backgrounds (the old ones were one colour). */
+  --lotus-table-header:#f3f1ec;--lotus-table-heading:var(--lotus-neutral-600);
+  --lotus-table-border:var(--lotus-neutral-200);--lotus-table-zebra:var(--lotus-neutral-25);--lotus-table-hover:var(--lotus-neutral-100);
+  --lotus-table-selected:var(--lotus-primary-50);--lotus-table-selected-border:var(--lotus-primary-300);--lotus-table-total:#ebe8e1;
+  --lotus-chip-height:22px;--lotus-chip-font:12px;
+  --lotus-card-padding:14px;--lotus-card-radius:var(--lotus-radius-lg);
+  --lotus-sidebar-width:248px;--lotus-topbar-height:56px;
 
   /* shadcn-vue (HSL channels) mapped to the same palette */
-  --background:0 0% 100%;--foreground:216 10% 19%;--card:0 0% 100%;--card-foreground:216 10% 19%;--popover:0 0% 100%;--popover-foreground:216 10% 19%;
-  --primary:5 69% 45%;--primary-foreground:0 0% 100%;--secondary:30 14% 95%;--secondary-foreground:216 10% 19%;
-  --muted:30 14% 95%;--muted-foreground:219 8% 43%;--accent:9 81% 96%;--accent-foreground:5 70% 38%;
-  --destructive:4 77% 40%;--destructive-foreground:0 0% 100%;--border:34 13% 90%;--input:34 9% 83%;--ring:5 69% 45%;--radius:.625rem;
+  --background:0 0% 100%;--foreground:38 11% 15%;--card:0 0% 100%;--card-foreground:38 11% 15%;--popover:0 0% 100%;--popover-foreground:38 11% 15%;
+  --primary:5 69% 45%;--primary-foreground:0 0% 100%;--secondary:45 20% 92%;--secondary-foreground:38 11% 15%;
+  --muted:45 20% 92%;--muted-foreground:41 9% 35%;--accent:9 81% 96%;--accent-foreground:5 70% 38%;
+  --destructive:349 67% 42%;--destructive-foreground:0 0% 100%;--border:44 17% 87%;--input:40 8% 53%;--ring:214 52% 47%;--radius:.625rem;
 }
-:root.dark{
-  --lotus-primary:#ff8f80;--lotus-primary-hover:#ffa699;--lotus-primary-active:#ffbcb2;--lotus-primary-subtle:#3d2523;--lotus-primary-text:#ffa699;--lotus-on-primary:#1b1f26;
-  --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-sidebar:#1c222b;--lotus-soft:#262c35;--lotus-hover:#2c333d;
-  --lotus-text:#eceef2;--lotus-muted:#b0b6c0;--lotus-text-strong:#f5f6f8;--lotus-text-secondary:#c7cbd3;--lotus-subtle:#8f97a3;--lotus-border:#3b414b;--lotus-border-strong:#4b525d;
-  --lotus-table-header:#292e36;--lotus-table-heading:#c7cbd3;
-  --lotus-success:#6fd19e;--lotus-success-soft:#173527;--lotus-warning:#f4c25a;--lotus-warning-soft:#3a2d12;
-  --lotus-danger:#ff9b8f;--lotus-danger-soft:#3f2121;--lotus-info:#8fb2e3;--lotus-info-soft:#1c2a3d;
-  /* Dark chart steps chosen separately and validated against the dark surface, not flipped from light. */
-  --lotus-chart-1:var(--lotus-primary-500);--lotus-chart-2:var(--lotus-info-400);--lotus-chart-3:var(--lotus-success-500);--lotus-chart-4:var(--lotus-warning-600);--lotus-chart-5:#9f7cd0;--lotus-chart-other:var(--lotus-neutral-500);
-  --lotus-shadow-sm:0 1px 2px rgb(0 0 0/.3);--lotus-shadow-md:0 4px 12px rgb(0 0 0/.35);--lotus-shadow-lg:0 16px 40px rgb(0 0 0/.5);
-  --background:216 19% 15%;--foreground:220 19% 94%;--card:216 19% 15%;--card-foreground:220 19% 94%;--popover:216 19% 15%;--popover-foreground:220 19% 94%;
-  --primary:7 100% 75%;--primary-foreground:216 19% 13%;--secondary:216 13% 21%;--secondary-foreground:220 19% 94%;
-  --muted:216 13% 21%;--muted-foreground:218 11% 72%;--accent:4 25% 19%;--accent-foreground:7 100% 80%;
-  --destructive:6 100% 78%;--destructive-foreground:216 19% 13%;--border:218 12% 26%;--input:218 12% 30%;--ring:7 100% 75%;
+:root[data-density="comfortable"]{
+  --lotus-control-height:40px;--lotus-control:40px;--lotus-control-sm:32px;--lotus-control-lg:46px;
+  --lotus-row:44px;--lotus-table-row:44px;--lotus-table-header-height:40px;--lotus-table-font:14px;--lotus-table-header-font:12px;--lotus-table-cell-x:12px;
+  --lotus-chip-height:24px;--lotus-card-padding:16px;
 }
-@media (prefers-reduced-motion:reduce){:root{--lotus-motion:0ms}}
+/* Dark and outdoor are screen modes: on paper every token keeps its light value (see @media print below). */
+@media screen{
+.lotus-dark-preview,:root.dark{
+  --lotus-primary:#ff8f80;--lotus-primary-hover:#ffa699;--lotus-primary-active:#ffbcb2;--lotus-primary-subtle:#3d2321;--lotus-primary-text:#ffa699;--lotus-on-primary:#1d1b18;
+  --lotus-page:var(--lotus-neutral-950);--lotus-surface:var(--lotus-neutral-900);--lotus-raised:#25221e;--lotus-sunken:#100f0d;
+  --lotus-sidebar:#191714;--lotus-soft:#25221e;--lotus-hover:#2d2a25;--lotus-active:#36332d;--lotus-selected:#3d2321;
+  --lotus-topbar:#a3291d;--lotus-topbar-end:#7f2218;
+  --lotus-on-topbar-muted:#fbc9c0;--lotus-topbar-field:#00000040;--lotus-topbar-field-hover:#00000059;--lotus-topbar-field-text:#fde4df;
+  --lotus-topbar-field-line:#ffffff33;--lotus-topbar-kbd:#ffffff1f;--lotus-topbar-kbd-line:#ffffff2e;
+  --lotus-text:#efebe4;--lotus-text-strong:#f8f6f2;--lotus-text-secondary:#d3cdc2;--lotus-muted:#bab4a8;--lotus-subtle:#9b9588;--lotus-disabled:#6b665c;
+  --lotus-link:#8fb8ea;
+  --lotus-border-subtle:#2a2723;--lotus-border:#36332d;--lotus-border-strong:#4a463e;--lotus-border-control:#7a7468;
+  --lotus-focus-ring:#8fb8ea;
+  --lotus-success:#6fd19e;--lotus-success-soft:#15301f;--lotus-warning:#f4c25a;--lotus-warning-soft:#3a2c10;
+  --lotus-danger:#ff9eae;--lotus-danger-soft:#3d1b23;--lotus-info:#8fb8ea;--lotus-info-soft:#182a40;
+  --lotus-tone-neutral-solid:#6b665c;--lotus-tone-neutral-on:#fff;--lotus-tone-neutral-soft:#2d2a25;--lotus-tone-neutral-text:#d3cdc2;--lotus-tone-neutral-border:#4a463e;
+  --lotus-tone-primary-solid:var(--lotus-primary-600);--lotus-tone-primary-on:#fff;--lotus-tone-primary-soft:#3d2321;--lotus-tone-primary-text:#ffa699;--lotus-tone-primary-border:#6a332c;
+  --lotus-tone-success-solid:#1f7a3c;--lotus-tone-success-on:#fff;--lotus-tone-success-soft:#15301f;--lotus-tone-success-text:#6fd19e;--lotus-tone-success-border:#245a37;
+  --lotus-tone-warning-solid:#f4c25a;--lotus-tone-warning-on:#2a1c02;--lotus-tone-warning-soft:#3a2c10;--lotus-tone-warning-text:#f4c25a;--lotus-tone-warning-border:#6a5020;
+  --lotus-tone-danger-solid:#c9304f;--lotus-tone-danger-on:#fff;--lotus-tone-danger-soft:#3d1b23;--lotus-tone-danger-text:#ff9eae;--lotus-tone-danger-border:#6e2c3b;
+  --lotus-tone-info-solid:#3a6fb5;--lotus-tone-info-on:#fff;--lotus-tone-info-soft:#182a40;--lotus-tone-info-text:#8fb8ea;--lotus-tone-info-border:#2c4a72;
+  --lotus-lot-empty:#2d2a25;--lotus-lot-empty-on:#d3cdc2;
+  --lotus-lot-entered:#182a40;--lotus-lot-entered-on:#b0cbed;
+  --lotus-lot-sent:#3a6fb5;--lotus-lot-sent-on:#fff;
+  --lotus-lot-confirmed:#1f7a3c;--lotus-lot-confirmed-on:#fff;
+  --lotus-lot-ok:#15301f;--lotus-lot-ok-on:#a9dcb6;
+  --lotus-lot-due:#f4c25a;--lotus-lot-due-on:#2a1c02;
+  --lotus-lot-overdue:#c9304f;--lotus-lot-overdue-on:#fff;
+  --lotus-lot-quarantine:#3d1b23;--lotus-lot-quarantine-on:#ffc7d1;--lotus-lot-quarantine-stripe:#6e2c3b;
+  --lotus-ribbon-outline:#b9b2a5;
+  /* Dark chart steps chosen separately and checked against the dark surface, not flipped from light. */
+  --lotus-chart-1:#7fa8e0;--lotus-chart-2:#e9a83a;--lotus-chart-3:#4cc2a0;--lotus-chart-4:#ff7a68;--lotus-chart-5:#b693dd;--lotus-chart-6:#c9a27a;--lotus-chart-7:#6cc0ef;--lotus-chart-8:#b9c35a;
+  --lotus-chart-other:#7a7468;--lotus-chart-forecast:#7fa8e0;--lotus-chart-forecast-band:#1c2e47;--lotus-chart-actual:#6fd19e;
+  --lotus-chart-grid:#36332d;--lotus-chart-axis:#bab4a8;
+  --lotus-seq-1:#15301f;--lotus-seq-2:#1d4a2e;--lotus-seq-3:#25663d;--lotus-seq-4:#2f844e;--lotus-seq-5:#4ea86b;--lotus-seq-6:#79c793;--lotus-seq-7:#b3e3c1;
+  --lotus-div-1:#ff8fa3;--lotus-div-2:#c9566c;--lotus-div-3:#5a2a35;--lotus-div-4:#2d2a25;--lotus-div-5:#24395a;--lotus-div-6:#4f7fc0;--lotus-div-7:#a7c6ee;
+  --lotus-table-header:#25221e;--lotus-table-heading:#d3cdc2;--lotus-table-border:#36332d;--lotus-table-zebra:#201e1b;--lotus-table-hover:#2d2a25;
+  --lotus-table-selected:#3d2321;--lotus-table-selected-border:#8a3b31;--lotus-table-total:#25221e;
+  --lotus-shadow-xs:0 1px 1px rgb(0 0 0/.3);--lotus-shadow-sm:0 1px 2px rgb(0 0 0/.3);--lotus-shadow-md:0 4px 12px rgb(0 0 0/.35);--lotus-shadow-lg:0 16px 40px rgb(0 0 0/.5);--lotus-shadow-xl:0 24px 64px rgb(0 0 0/.6);
+  --background:36 9% 10%;--foreground:38 26% 92%;--card:36 9% 10%;--card-foreground:38 26% 92%;--popover:34 10% 14%;--popover-foreground:38 26% 92%;
+  --primary:7 100% 75%;--primary-foreground:36 9% 10%;--secondary:34 10% 14%;--secondary-foreground:38 26% 92%;
+  --muted:34 10% 14%;--muted-foreground:40 12% 69%;--accent:4 25% 19%;--accent-foreground:7 100% 80%;
+  --destructive:350 100% 81%;--destructive-foreground:36 9% 10%;--border:36 9% 21%;--input:40 8% 44%;--ring:213 66% 74%;
+}
+/* Outdoor: a high-contrast light mode for phones in direct sun. Body text ≥7:1, bolder type, borders that read
+   at arm's length, 48px touch targets. Never combined with .dark (ui-mode.js keeps them exclusive). */
+.lotus-outdoor-preview,:root.lotus-outdoor{
+  --lotus-primary:var(--lotus-primary-800);--lotus-primary-hover:var(--lotus-primary-900);--lotus-primary-text:var(--lotus-primary-800);
+  --lotus-primary-solid:var(--lotus-primary-700);--lotus-primary-solid-hover:var(--lotus-primary-800);
+  --lotus-page:#fff;--lotus-surface:#fff;--lotus-raised:#fff;--lotus-sunken:#f1efea;--lotus-sidebar:#fff;--lotus-soft:#f4f2ee;--lotus-hover:#e9e6df;--lotus-active:#dcd8cf;
+  --lotus-topbar:var(--lotus-primary-700);--lotus-topbar-end:var(--lotus-primary-800);
+  --lotus-text:#0f0e0c;--lotus-text-strong:#000;--lotus-text-secondary:#2a2722;--lotus-muted:#38342d;--lotus-subtle:#4c4840;--lotus-disabled:#8f897d;
+  --lotus-link:var(--lotus-info-800);
+  --lotus-border-subtle:#d4d0c6;--lotus-border:#8f897d;--lotus-border-strong:#4c4840;--lotus-border-control:#3a362f;
+  --lotus-focus-ring:var(--lotus-info-800);
+  --lotus-success:#14602c;--lotus-success-soft:#dff1e4;--lotus-warning:#6a4200;--lotus-warning-soft:#ffefc7;
+  --lotus-danger:#8a1a30;--lotus-danger-soft:#fbe1e7;--lotus-info:#14325a;--lotus-info-soft:#dce8f7;
+  --lotus-tone-neutral-text:#2a2722;--lotus-tone-neutral-soft:#ebe8e1;--lotus-tone-neutral-border:#625d52;
+  --lotus-tone-primary-text:#7f1f15;--lotus-tone-primary-soft:#fde4df;--lotus-tone-primary-border:#a3291d;--lotus-tone-primary-solid:var(--lotus-primary-700);
+  --lotus-tone-success-text:#0f4a22;--lotus-tone-success-soft:#dff1e4;--lotus-tone-success-border:#1b6a34;--lotus-tone-success-solid:var(--lotus-success-700);
+  --lotus-tone-warning-text:#5a3800;--lotus-tone-warning-soft:#ffefc7;--lotus-tone-warning-border:#9a6400;
+  --lotus-tone-danger-text:#7a1529;--lotus-tone-danger-soft:#fbe1e7;--lotus-tone-danger-border:#961d34;--lotus-tone-danger-solid:var(--lotus-danger-700);
+  --lotus-tone-info-text:#14325a;--lotus-tone-info-soft:#dce8f7;--lotus-tone-info-border:#1f4a82;--lotus-tone-info-solid:var(--lotus-info-700);
+  --lotus-lot-sent:var(--lotus-info-700);--lotus-lot-confirmed:var(--lotus-success-700);--lotus-lot-overdue:var(--lotus-danger-700);
+  --lotus-ribbon-outline:#2a2722;
+  --lotus-table-border:#8f897d;--lotus-table-heading:#2a2722;--lotus-table-header:#efede7;
+  --lotus-text-xs:12px;--lotus-text-sm:14px;--lotus-text-md:15px;--lotus-text-base:16px;--lotus-text-lg:18px;--lotus-text-xl:22px;--lotus-text-2xl:26px;--lotus-text-3xl:32px;
+  --lotus-weight-regular:500;--lotus-weight-medium:600;--lotus-weight-semibold:700;
+  --lotus-touch:48px;--lotus-touch-lg:56px;--lotus-control-height:48px;--lotus-control:48px;--lotus-chip-height:28px;--lotus-chip-font:14px;
+  --lotus-focus:0 0 0 3px var(--lotus-surface),0 0 0 6px var(--lotus-focus-ring);
+  --foreground:30 9% 5%;--muted-foreground:36 9% 20%;--border:40 8% 53%;--input:36 11% 21%;--ring:213 59% 25%;
+}
+}
+/* Paper: white page, black ink, light form controls, whatever mode the screen was in (ui-mode.js sets colorScheme inline). */
+@media print{:root{color-scheme:light!important;--lotus-page:#fff}}
+@media (prefers-reduced-motion:reduce){:root{--lotus-motion-fast:0ms;--lotus-motion:0ms;--lotus-motion-slow:0ms}}

@@ -20,7 +20,7 @@ const opts=computed(()=>props.params)
 </template>
 <style scoped>
 .lotus-grid-edit-cell{display:flex;align-items:center;min-height:32px;height:100%;gap:6px}
-.lotus-grid-edit-cell select{min-width:0;width:100%;padding:5px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:#fff;color:inherit}
+.lotus-grid-edit-cell select{min-width:0;width:100%;padding:5px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:var(--lotus-surface);color:inherit}
 .lotus-grid-edit-cell button{cursor:pointer;padding:5px 12px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:var(--lotus-accent);color:white}
 .lotus-grid-edit-cell button:disabled{opacity:.5;cursor:not-allowed}
 </style>

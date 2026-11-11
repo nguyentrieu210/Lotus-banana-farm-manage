@@ -30,6 +30,7 @@ import {call,setCSRF} from './api'
 import {DEFAULT_CCCD_ISSUER} from './cccd-issuer'
 import {sidebarCollapsed} from './workspace'
 import {stateLabel} from './labels'
+import {statusCol} from './grid-columns.js'
 import {hrCatalogLabel} from './hr-catalog-labels'
 import {formatDate} from './format'
 const {open:confirmOpen,title:confirmTitle,message:confirmMessage,alertOnly:confirmAlert,ask:askConfirm,tell,finish:finishConfirm}=useWorkspaceConfirm()
@@ -96,9 +97,10 @@ const employeeColumns=computed(()=>[
  {field:'lotus_worker_category',headerName:'Loại lao động',minWidth:170,valueGetter:p=>cats[p.data.lotus_worker_category]||contractTypeNames[p.data.employment_type]||p.data.employment_type||'—'},
  {field:'lotus_payment_basis',headerName:'Cơ chế lương',minWidth:150,valueGetter:p=>bases[p.data.lotus_payment_basis]||'Chưa cấu hình'},
  {field:'date_of_joining',headerName:'Ngày vào làm',minWidth:120,valueFormatter:p=>p.value?formatDate(p.value):'—'},
- {field:'lotus_onboarding_state',headerName:'Tiếp nhận',minWidth:165,cellClass:'lotus-grid-status',valueGetter:p=>p.data.lotus_onboarding_state==='Ready'?'Đã tiếp nhận':'Chờ tiếp nhận'},
+ // Kit status chips (spec 004): onboarding is done or pending; the employee status keeps its ERPNext code for the tone.
+ {...statusCol('lotus_onboarding_state','Tiếp nhận',{labelOf:v=>v==='done'?'Đã tiếp nhận':'Chờ tiếp nhận'}),minWidth:165,valueGetter:p=>p.data.lotus_onboarding_state==='Ready'?'done':'pending'},
  // Contract end has its own column: folding it into Trạng thái gave the status filter one choice per date.
- {field:'status',headerName:'Trạng thái',minWidth:130,valueGetter:p=>stateLabel(p.data.status)},
+ {...statusCol('status','Trạng thái',{labelOf:v=>stateLabel(v)}),minWidth:130},
  {field:'contract_end_date',headerName:'Hết hạn HĐ',minWidth:125,valueFormatter:p=>p.value?formatDate(p.value):'—',cellClass:p=>p.data&&contractDue(p.data)?'lotus-grid-warn':'',tooltip:p=>p.data&&contractDue(p.data)?'Hợp đồng đã đến hạn':''},
 ])
 function clear(obj){for(const k of Object.keys(obj))delete obj[k]}

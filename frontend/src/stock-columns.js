@@ -1,7 +1,13 @@
 import {hrCatalogLabel} from './hr-catalog-labels'
 import {formatDate} from './format'
 import {unitLabel} from './units'
+import {chipNode} from './grid-columns.js'
+import {statusMeta} from './ui-status.js'
 // Column definitions for every Kho list. Kho shows quantities only: valuation and stock value stay in Kế toán.
+// States are kit status chips (spec 004): the server's Vietnamese wording, the tone from what it means.
+const STOCK_KIND={'Có tồn':'active','Dưới tối thiểu':'warning','Tồn âm':'critical'}
+const COVER_KIND={'Đủ hàng':'done','Chờ nhập':'waiting','Cần mua':'critical'}
+const chip=(kinds,label=v=>v)=>p=>p.value==null||p.value===''?'':chipNode(statusMeta(kinds?kinds[p.value]??null:p.value,label(p.value)))
 export const fmt=n=>Number(n||0).toLocaleString('vi-VN',{maximumFractionDigits:3})
 export const statusLabel=s=>['Nháp','Đã ghi sổ','Đã hủy'][s]??s
 export const entryTypeLabel=t=>({'Material Receipt':'Nhập kho','Material Issue':'Xuất dùng','Material Transfer':'Chuyển kho','Repack':'Đóng gói','Opening Stock':'Tồn đầu kỳ','Stock Reconciliation':'Kiểm kê'})[t]||t
@@ -17,13 +23,13 @@ export const stockColumns=[
  {field:'pack_actual_qty',headerName:'Tồn quy đổi',minWidth:132,sum:false,tooltip:p=>p.data?.pack_uom&&p.data?.pack_factor?'1 '+unitLabel(p.data.pack_uom)+' = '+fmt(p.data.pack_factor)+' '+unitLabel(p.data.stock_uom):'Chưa có đơn vị quy đổi',valueFormatter:p=>p.data?.pack_uom&&p.value!=null?fmt(p.value)+' '+unitLabel(p.data.pack_uom):'—'},
  number('minimum_stock','Tối thiểu chung',135),
  number('shortage_qty','Thiếu tối thiểu',125),
- {field:'stock_status',headerName:'Cảnh báo tồn',minWidth:125},
+ {field:'stock_status',headerName:'Cảnh báo tồn',minWidth:140,cellRenderer:chip(STOCK_KIND)},
  number('demand_qty','Cần dùng',100),
  number('available_qty','Có thể dùng',115),
  number('demand_shortage_qty','Thiếu theo nhu cầu',145),
  number('incoming_qty','Sắp về',95),
  number('to_buy_qty','Cần mua',100),
- {field:'coverage_status',headerName:'Tình trạng nhu cầu',minWidth:150,cellClass:p=>'lotus-coverage-state '+({'Đủ hàng':'is-covered','Chờ nhập':'is-incoming','Cần mua':'is-short'}[p.value]||'')}
+ {field:'coverage_status',headerName:'Tình trạng nhu cầu',minWidth:150,cellRenderer:chip(COVER_KIND)}
 ]
 
 // One column set per document list: what the storekeeper looks for without opening the document.
@@ -40,7 +46,7 @@ export function documentColumns(warehouseLabel,kind){
   areas:{field:'areas',headerName:'Khu / lô sử dụng',minWidth:150},
   notes:{field:'notes',headerName:'Ghi chú',minWidth:200,flex:1.4,tooltip:p=>p.data?.notes||''},
   createdBy:{field:'created_by',headerName:'Người tạo',minWidth:150},
-  status:{field:'docstatus',headerName:'Trạng thái',minWidth:115,valueFormatter:p=>statusLabel(p.value)}
+  status:{field:'docstatus',headerName:'Trạng thái',minWidth:120,valueFormatter:p=>statusLabel(p.value),cellRenderer:chip(null,statusLabel)}
  }
  return {
   receipts:[col.date,col.name,col.kind,col.reason,col.supplier,col.warehouses('Kho nhận'),col.notes,col.createdBy,col.status],

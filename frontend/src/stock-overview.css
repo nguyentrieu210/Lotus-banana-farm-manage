@@ -34,7 +34,7 @@
 .stock-shell .lotus-ag-grid .excel-trigger{
   display:inline-flex;justify-content:center;align-items:center;
   color:var(--lotus-neutral-700);border:1px solid var(--lotus-neutral-300);border-radius:4px;
-  background:#fff;min-width:22px;min-height:25px;font-size:13px;
+  background:var(--lotus-surface);min-width:22px;min-height:25px;font-size:13px;
 }
 .stock-shell .lotus-ag-grid .excel-trigger.active{
   background:var(--lotus-accent-soft,var(--lotus-primary-100));border-color:var(--lotus-accent,var(--lotus-primary-600));
