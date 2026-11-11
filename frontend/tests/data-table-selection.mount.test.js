@@ -13,7 +13,7 @@ test('real grid headers and cells refresh after selecting rows, pages and cleari
  console.error=(...args)=>{errors.push(args.join(' '));originalError(...args)}
  let view
  try{
-  view=mount(DataTable,{rows,columns:[{field:'name',headerName:'Mã'}],rowKey:'name',pageSize:2})
+  view=mount(DataTable,{selectionEnabled:true,rows,columns:[{field:'name',headerName:'Mã'}],rowKey:'name',pageSize:2})
   await settle()
   assert.ok(header(view.root),'selection header implements the AG Grid component lifecycle')
   assert.equal(header(view.root).getAttribute('aria-pressed'),'false')
@@ -42,7 +42,7 @@ test('real grid headers and cells refresh after selecting rows, pages and cleari
 })
 
 test('business selection columns render one native header and retain their row renderer',async()=>{
- const view=mount(DataTable,{rows:[rows[0]],rowKey:'name',columns:[
+ const view=mount(DataTable,{selectionEnabled:true,rows:[rows[0]],rowKey:'name',columns:[
   {field:'choice',headerName:'Chọn',cellRenderer:()=>{const input=document.createElement('input');input.type='checkbox';input.setAttribute('aria-label','Chọn báo giá');return input}},
   {field:'name',headerName:'Mã'},
  ]})

@@ -287,7 +287,7 @@ useNoticeToast(notice)
     </DropdownMenu>
    </div>
    <section class="stock-panel attendance-roster tk-roster tk-daily-roster" aria-label="Bảng chấm công trong ngày">
-    <DataTable :fill="24" :rows="shown" :columns="attendanceColumns" :loading="busy" row-key="row_key" storage-key="timekeeping-daily-simple-v1" :row-class="attendanceRowClass" :columns-menu="false" :exportable="false" :tools-target="attendanceTools" interactive @open="openDetails"
+    <DataTable selection-enabled :fill="24" :rows="shown" :columns="attendanceColumns" :loading="busy" row-key="row_key" storage-key="timekeeping-daily-simple-v1" :row-class="attendanceRowClass" :columns-menu="false" :exportable="false" :tools-target="attendanceTools" interactive @open="openDetails"
       :selected-row-keys="selected.map(rowKey)" @row-selection-change="selectAttendanceRow" @page-selection-change="selectAttendancePage" @selection-clear="clearAttendanceSelection" />
     <div v-if="!shown.length&&!busy" class="tk-empty">
      <template v-if="staff.length">Không có nhân viên ở trạng thái này.</template>

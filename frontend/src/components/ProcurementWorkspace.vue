@@ -153,6 +153,9 @@ async function quickSaved(result){
 function success(text){notice.value=text;if(!props.mobile){toast.success(text);notice.value=''}}
 async function run(fn){if(saving.value)return;saving.value=true;error.value='';try{return await fn()}catch(e){error.value=e.message}finally{saving.value=false}}
 let loadVersion=0
+// Ticked drafts of these lists can be deleted together; the server applies each screen's own delete rules.
+const DRAFT_DOCTYPES={needs:'Material Request',orders:'Purchase Order',receipts:'Purchase Receipt'}
+const draftDeleteItem=computed(()=>DRAFT_DOCTYPES[tab.value]?row=>row?.name&&(row.docstatus==null||Number(row.docstatus)===0)?{doctype:DRAFT_DOCTYPES[tab.value],name:row.name}:null:null)
 async function load(){
  if(!company.value||erpSection('buying',tab.value))return
  const version=++loadVersion,view=tab.value,selectedCompany=company.value
@@ -379,7 +382,7 @@ watch(()=>props.company,async value=>{if(value&&value!==company.value){company.v
 
  <ListPage v-else-if="!mobile" :title="tabLabel" :rows="shownRows" :columns="columns" :loading="busy" :error="form||current?'':error" v-model:search="search" :search-placeholder="isPaged?'Tìm số chứng từ, hóa đơn…':'Tìm trong danh sách…'" :summary="summary"
    :paged="isPaged" :start="queryStart" :page-size="queryPageSize" @update:page-size="value=>{queryPageSize=value;queryReset()}" :total="queryTotal" :has-more="queryMore" @update:start="value=>{queryStart=value;load()}" @refresh="load"
-   :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
+   :storage-key="'procurement-'+tab" show-empty-headers :interactive="tab!=='reports'" :delete-item="draftDeleteItem" @deleted="load" :empty="busy?'Đang tải…':'Chưa có chứng từ phù hợp.'" @open="open">
   <template #filters><LotusField v-if="tab==='needs'" v-model="proposalStage" aria-label="Tiến độ đề xuất" :options="proposalStageOptions" empty-option="Mọi giai đoạn" :searchable="false"/>
    <LotusField v-if="companyOptions.length>1" v-model="company" aria-label="Công ty" :options="companyOptions" :searchable="false" :empty-option="null" @update:model-value="companyChanged"/>
    <template v-if="isPaged">

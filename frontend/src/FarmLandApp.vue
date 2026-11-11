@@ -168,7 +168,7 @@ useNoticeToast(notice)
     </div>
    </div>
    <div class="land-table" :aria-busy="busy">
-    <DataTable :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :column-layout="normalizedLandLayout" :selected-row-keys="[...picked]" @row-selection-change="({id,selected})=>setLandSelected(id,selected)" @page-selection-change="({rows,selected})=>setLandPageSelected(rows,selected)" @selection-clear="picked=new Set()" row-key="name" storage-key="lotus-farm-land" :loading="busy"
+    <DataTable selection-enabled :rows="gridRows" :columns="gridColumns" :exportable="false" :columns-menu="false" :column-layout="normalizedLandLayout" :selected-row-keys="[...picked]" @row-selection-change="({id,selected})=>setLandSelected(id,selected)" @page-selection-change="({rows,selected})=>setLandPageSelected(rows,selected)" @selection-clear="picked=new Set()" row-key="name" storage-key="lotus-farm-land" :loading="busy"
       interactive empty="Không có lô phù hợp bộ lọc." @open="row=>openBlock(row.name)"
       @visible-rows="list=>gridVisible=list"/>
    </div>

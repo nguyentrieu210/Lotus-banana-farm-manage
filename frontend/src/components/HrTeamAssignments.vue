@@ -108,7 +108,7 @@ async function save(){
     <b>Đã chọn {{selected.length}}</b>
    </div>
    <!-- Shared table: sort, column filters, export and the pager like every list; ticks persist across pages. -->
-   <DataTable :rows="rows" :columns="peopleColumns" row-key="name" storage-key="hr-team-assign" :row-detail="false" :totals="false"
+   <DataTable selection-enabled :rows="rows" :columns="peopleColumns" row-key="name" storage-key="hr-team-assign" :row-detail="false" :totals="false"
      empty="Không có nhân viên phù hợp bộ lọc." :selected-row-keys="checked"
      @row-selection-change="({id,selected:on})=>pick(id,on)" @page-selection-change="({rows:page,selected:on})=>pickRows(page,on)" @selection-clear="checked=[]"/>
   </div>

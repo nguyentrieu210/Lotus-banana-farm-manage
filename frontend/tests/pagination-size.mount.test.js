@@ -13,7 +13,7 @@ const selectSize=async(root,size)=>{
 
 test('changing local page size resets the offset, grid selection and mobile rows together',async()=>{
  const rows=Array.from({length:135},(_,i)=>({name:'R'+String(i+1).padStart(3,'0'),qty:1}))
- const view=mount(DataTable,{rows,rowKey:'name',columns:[{field:'name',headerName:'Mã'},{field:'qty',headerName:'Số lượng'}]})
+ const view=mount(DataTable,{selectionEnabled:true,rows,rowKey:'name',columns:[{field:'name',headerName:'Mã'},{field:'qty',headerName:'Số lượng'}]})
  try{
   await settle()
   view.root.querySelector('[aria-label="Trang sau"]').click();await settle()

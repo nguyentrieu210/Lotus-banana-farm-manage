@@ -8,12 +8,20 @@ const list=readFileSync(new URL('../src/components/ListPage.vue',import.meta.url
 const farm=readFileSync(new URL('../src/FarmLandApp.vue',import.meta.url),'utf8')
 
 test('Every shared table has fixed tick column first and STT second',()=>{
- assert.match(table,/return \[select,sttDef,\.\.\.body\]/)
+ assert.match(table,/return canSelect\.value\|\|own\?\[select,sttDef,\.\.\.body\]:\[sttDef,\.\.\.body\]/)
  assert.match(table,/:column-defs="gridDefs"/)
  assert.match(table,/const selectDef=\{colId:'__lotus_select'/)
  assert.match(table,/const sttDef=\{colId:'__lotus_stt'/)
  assert.match(table,/pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true/)
- assert.match(table,/state:\[\{colId:nativeSelectId.value\|\|'__lotus_select',pinned:'left',hide:false,width:42\},\{colId:'__lotus_stt',pinned:'left',width:52\}/)
+ assert.match(table,/state:\[\.\.\.\(canSelect\.value\|\|nativeSelectId\.value\?\[\{colId:nativeSelectId.value\|\|'__lotus_select',pinned:'left',hide:false,width:42\}\]:\[\]\),\{colId:'__lotus_stt',pinned:'left',width:52\}/)
+})
+test('A tick column only where ticking does something',()=>{
+ assert.match(table,/selectionEnabled:\{type:Boolean,default:false\},deleteItem:\{type:Function,default:null\}/)
+ assert.match(table,/const canSelect=computed\(\(\)=>props\.selectionEnabled\|\|!!props\.deleteItem\)/)
+ for(const name of ['../src/FarmLandApp.vue','../src/TimekeepingApp.vue','../src/components/HrTeamAssignments.vue','../src/components/signing/SigningInboxPage.vue'])
+  assert.match(readFileSync(new URL(name,import.meta.url),'utf8'),/<DataTable selection-enabled /,name+' keeps its ticks')
+ assert.match(readFileSync(new URL('../src/components/stock/StockDocumentList.vue',import.meta.url),'utf8'),/:delete-item=/)
+ assert.match(readFileSync(new URL('../src/components/ProcurementWorkspace.vue',import.meta.url),'utf8'),/:delete-item="draftDeleteItem"/)
 })
 test('Selection is keyed by row identity and does not trigger opening the document',()=>{
  assert.match(table,/const getSelectionId=row=>gridRowId\(row,props.rowKey\)/)

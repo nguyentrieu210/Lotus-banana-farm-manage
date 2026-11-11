@@ -19,6 +19,9 @@ import {gridRowId} from '../grid-row-id'
 import ModalForm from './form/ModalForm.vue'
 import {summableColumn,totalsRow} from '../grid-totals'
 import {GRID_APP_KEYS} from '../grid-app-keys'
+import WorkspaceConfirm from './WorkspaceConfirm.vue'
+import {useWorkspaceConfirm} from '../use-workspace-confirm'
+import {call} from '../api'
 import {numberFormatter,emptyColumn} from '../grid-format'
 import {sortExcelChoices} from '../excel-filter-state'
 import {buildXlsx,exportExcelFile} from '../excel-export'
@@ -28,8 +31,8 @@ const desktopDensity=inject('lotusDesktopDensity',null)
 const tableVariant=inject('lotusTableVariant','default')
 // One density for every table, chosen in the account menu (spec 004, FR-013); Kho keeps its accepted look (FR-013a).
 const theme=computed(()=>lotusGridTheme(desktopDensity?.value||uiDensity.value,tableVariant?.value??tableVariant))
-const props=defineProps({keepHeight:Boolean,rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String,exportable:{type:Boolean,default:true},columnsMenu:{type:Boolean,default:true},hiddenColumns:{type:Array,default:null},selectionEnabled:{type:Boolean,default:true},selectedRowKeys:{type:Array,default:null},rowIndexOffset:{type:Number,default:0},columnLayout:{type:Object,default:null},columnPresets:{type:Array,default:()=>[]},toolsTarget:{type:null,default:null},autoHideEmpty:Boolean})
-const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open','update:hiddenColumns','update:columnLayout','row-selection-change','page-selection-change','selection-clear'])
+const props=defineProps({keepHeight:Boolean,rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String,exportable:{type:Boolean,default:true},columnsMenu:{type:Boolean,default:true},hiddenColumns:{type:Array,default:null},selectionEnabled:{type:Boolean,default:false},deleteItem:{type:Function,default:null},selectedRowKeys:{type:Array,default:null},rowIndexOffset:{type:Number,default:0},columnLayout:{type:Object,default:null},columnPresets:{type:Array,default:()=>[]},toolsTarget:{type:null,default:null},autoHideEmpty:Boolean})
+const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open','update:hiddenColumns','update:columnLayout','row-selection-change','page-selection-change','selection-clear','deleted'])
 // AG Grid's Vue adapter clones row data. Editable slots must update the source record by its stable ID.
 const sourceRows=computed(()=>new Map(props.rows.map(row=>[gridRowId(row,props.rowKey),row])))
 const slots=useSlots(),slotRenderers=new Map()
@@ -140,7 +143,7 @@ const activeColumns=computed(()=>activeDisplayColumns.value.filter(c=>columnId(c
 function applyColumnLayout(api=currentApi()){
  if(!liveApi(api))return
  const cols=orderedColumns(props.columns,viewLayout.value).filter(c=>columnId(c)!==nativeSelectId.value)
- api.applyColumnState({state:[{colId:nativeSelectId.value||'__lotus_select',pinned:'left',hide:false,width:42},{colId:'__lotus_stt',pinned:'left',width:52},...cols.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col))),pinned:effectiveLayout.value.pinned.includes(columnId(col))?'left':null}))],applyOrder:true})
+ api.applyColumnState({state:[...(canSelect.value||nativeSelectId.value?[{colId:nativeSelectId.value||'__lotus_select',pinned:'left',hide:false,width:42}]:[]),{colId:'__lotus_stt',pinned:'left',width:52},...cols.map(col=>({colId:columnId(col),hide:Boolean(col.hide||selectedHidden.value.includes(columnId(col))),pinned:effectiveLayout.value.pinned.includes(columnId(col))?'left':null}))],applyOrder:true})
 }
 function setColumnLayout(next){
  const normalized=normalizeColumnLayout(props.columns,next)
@@ -174,6 +177,29 @@ onBeforeUnmount(()=>{gridApi.value=null})
 const selectedLocal=ref(new Set())
 const selectedIds=computed(()=>new Set(props.selectedRowKeys??[...selectedLocal.value]))
 const selectedCount=computed(()=>selectedIds.value.size)
+// A tick column only where ticking does something: the screen handles the selection, or ticked drafts can be deleted.
+const canSelect=computed(()=>props.selectionEnabled||!!props.deleteItem)
+const deletable=computed(()=>props.deleteItem?props.rows.filter(row=>selectedIds.value.has(getSelectionId(row))).map(row=>props.deleteItem(row)).filter(Boolean):[])
+const deleting=ref(false),deleteConfirm=useWorkspaceConfirm()
+async function deleteSelected(){
+ const items=deletable.value
+ if(!items.length||deleting.value)return
+ if(!await deleteConfirm.ask('Xóa '+items.length+' phiếu nháp đã chọn? Không lấy lại được. Phiếu đã ghi sổ, đã ký hoặc không phải của bạn sẽ được giữ lại và báo lý do.','Xóa phiếu nháp'))return
+ deleting.value=true
+ try{
+  const result=await call('lotus_farm.bulk_delete.drafts',{items:JSON.stringify(items)},true)
+  const gone=new Set((result.deleted||[]).map(d=>d.name))
+  if(props.selectedRowKeys===null)selectedLocal.value=new Set([...selectedLocal.value].filter(id=>!props.rows.some(row=>getSelectionId(row)===id&&gone.has(props.deleteItem(row)?.name))))
+  emit('deleted',result)
+  const failed=result.failed||[]
+  await deleteConfirm.tell((gone.size?'Đã xóa '+gone.size+' phiếu.':'Không xóa được phiếu nào.')+(failed.length?'
+
+Không xóa:
+'+failed.map(f=>f.name+': '+f.message).join('
+'):''),'Kết quả xóa')
+ }catch(e){await deleteConfirm.tell('Không xóa được: '+(e.message||e),'Kết quả xóa')}
+ finally{deleting.value=false;nextTick(refreshSelection)}
+}
 const getSelectionId=row=>gridRowId(row,props.rowKey)
 function refreshSelection(){
  currentApi()?.refreshCells?.({force:true,columns:['__lotus_select']})
@@ -289,7 +315,7 @@ const gridDefs=computed(()=>{
  const select=own?{...own,width:42,minWidth:42,maxWidth:42,flex:0,
   pinned:'left',lockPinned:true,lockPosition:'left',suppressMovable:true,
   hide:false,sortable:false,filter:false,headerComponent:nativeSelectionHeader,headerTooltip:'Chọn dòng'}:selectDef
- return [select,sttDef,...body]
+ return canSelect.value||own?[select,sttDef,...body]:[sttDef,...body]
 })
 
 const columnLabels=computed(()=>Object.fromEntries(props.columns.map(c=>[key(c),uiFarmLabel(c.headerName)])))
@@ -329,7 +355,7 @@ async function downloadExcel(){
 <template>
  <div class="lotus-data-table" :aria-busy="loading">
   <Teleport :to="toolsTarget" :disabled="!toolsTarget"><div v-if="columnsMenu||exportable||selectedCount" class="lotus-data-table__export" :class="{'lotus-data-table__export--toolbar':toolsTarget}">
-   <span v-if="selectedCount" class="lotus-data-table__selected">{{selectedCount}} dòng đã chọn <button type="button" @click="clearSelected">Bỏ chọn</button></span>
+   <span v-if="selectedCount" class="lotus-data-table__selected">{{selectedCount}} dòng đã chọn <button type="button" @click="clearSelected">Bỏ chọn</button><UiButton v-if="deleteItem" type="button" variant="destructive" size="sm" class="lotus-data-table__delete" :disabled="deleting||!deletable.length" @click="deleteSelected"><LotusIcon name="trash"/>Xóa {{deletable.length}} phiếu</UiButton></span>
    <ColumnVisibilityMenu v-if="columnsMenu&&columns.length>1" :columns="pickerColumns" :layout="viewLayout" :presets="columnPresets" @toggle="toggleColumn" @reset="resetColumns" @all="showAllColumns" @move="reorderColumn" @pin="togglePin" @preset="applyColumnPreset"/>
    <UiButton v-if="exportable" variant="outline" size="sm" type="button" aria-label="Xuất Excel" :disabled="loading||exporting||(!visibleRows.length&&!exportRows)" :title="exportRows?'Xuất toàn bộ dòng phù hợp bộ lọc':'Xuất các dòng đã tải, theo bộ lọc và thứ tự hiện tại'" @click="downloadExcel"><LotusIcon name="download"/>{{exporting?'Đang xuất…':'Xuất Excel'}}</UiButton>
   </div></Teleport>
@@ -343,8 +369,8 @@ async function downloadExcel(){
    <div ref="shell" class="lotus-ag-grid-shell" :class="{'lotus-ag-grid-shell--scroll':tall,'lotus-ag-grid-shell--detail':rowDetail&&!interactive&&!ownsClick()}" :style="fill>=0&&fitHeight&&tall?{height:fitHeight+'px'}:null"><AgGridVue :key="rowIdentity" class="lotus-ag-grid" :theme="theme" :locale-text="{...AG_GRID_LOCALE_VN,noRowsToShow:empty}" :loading="loading" :row-data="visibleRows" :pinned-bottom-row-data="bottomRows" :get-row-id="getRowId" :column-defs="gridDefs" :dom-layout="tall?'normal':'autoHeight'" :pagination="isPaginated" :pagination-page-size="currentPageSize||visibleRows.length||1" :pagination-page-size-selector="false" :suppress-pagination-panel="true" @pagination-changed="pageChanged" :animate-rows="true" :get-row-class="params=>rowClass?rowClass(params.data):(params.data?.shortage_qty>0?'lotus-shortage-row':'')" :enable-cell-text-selection="true" @grid-ready="restoreWidths" @grid-pre-destroyed="gridPreDestroyed" @column-resized="resized" @sort-changed="sorted" @model-updated="reportVisible" @row-clicked="open" @row-double-clicked="event=>event.data&&!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.())&&emit('row-double-open',event.data)" @cell-clicked="event=>{if(!['__lotus_select','__lotus_stt'].includes(event.column?.getColId?.()))emit('cell-open',event)}" @cell-key-down="event=>{if(event.event?.key==='Enter'){open(event);emit('cell-open',event)}}" /></div>
    <div v-if="rows.length>5||Object.keys(activeFilters).length" class="lotus-mobile-filter"><UiSelect v-model="mobileFilter" aria-label="Lọc theo cột"><option value="">Lọc theo cột…</option><option v-for="col in filterable" :key="key(col)" :value="key(col)">{{uiFarmLabel(col.headerName)}}{{activeFilters[key(col)]?' · đang lọc':''}}</option></UiSelect><ExcelHeader v-if="mobileFilterParams" :key="mobileFilter" :params="mobileFilterParams"/></div>
    <div class="lotus-mobile-records"><div v-if="!visibleRows.length&&loading" class="lotus-table-skeleton" role="status" aria-label="Đang tải dữ liệu"><UiSkeleton v-for="n in 3" :key="n" class="lotus-table-skeleton__row"/></div><p v-else-if="!visibleRows.length" role="status">{{empty}}</p>
-    <div v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record-entry" :class="{'lotus-mobile-record-entry--selectable':selectionEnabled}">
-     <button v-if="selectionEnabled" type="button" class="lotus-grid-select-toggle" :class="{'is-on':selectedIds.has(getSelectionId(row))}" :aria-pressed="selectedIds.has(getSelectionId(row))" :aria-label="selectedIds.has(getSelectionId(row))?'Bỏ chọn dòng':'Chọn dòng'" @click.stop="setRowSelected(row,!selectedIds.has(getSelectionId(row)))"><span aria-hidden="true">{{selectedIds.has(getSelectionId(row))?'✓':''}}</span></button>
+    <div v-for="(row,index) in pageRows" :key="gridRowId(row,rowKey)" class="lotus-mobile-record-entry" :class="{'lotus-mobile-record-entry--selectable':canSelect}">
+     <button v-if="canSelect" type="button" class="lotus-grid-select-toggle" :class="{'is-on':selectedIds.has(getSelectionId(row))}" :aria-pressed="selectedIds.has(getSelectionId(row))" :aria-label="selectedIds.has(getSelectionId(row))?'Bỏ chọn dòng':'Chọn dòng'" @click.stop="setRowSelected(row,!selectedIds.has(getSelectionId(row)))"><span aria-hidden="true">{{selectedIds.has(getSelectionId(row))?'✓':''}}</span></button>
      <component :is="interactive?UiButton:'article'" class="lotus-mobile-record" variant="ghost" @click="interactive?emit('open',row):showDetail(row)">
       <span class="lotus-mobile-record__prefix"><span class="lotus-mobile-record__stt">{{rowIndexOffset+pageStart+index+1}}</span></span>
       <strong>{{value(row,mobileColumns[0]||activeDisplayColumns[0]||columns[0])}}</strong>
@@ -361,7 +387,8 @@ async function downloadExcel(){
      <dd><slot v-if="$slots['cell-'+key(col)]||$slots.cell" :name="$slots['cell-'+key(col)]?'cell-'+key(col):'cell'" :row="detail" :value="raw(detail,col)" :column="col" :params="{data:detail,value:raw(detail,col),colDef:col}"/><template v-else>{{value(detail,col)}}</template></dd></div>
    </dl>
   </ModalForm>
- </div>
+  <WorkspaceConfirm :open="deleteConfirm.open.value" :title="deleteConfirm.title.value" :message="deleteConfirm.message.value" :alert-only="deleteConfirm.alertOnly.value" @answer="deleteConfirm.finish"/>
+</div>
 </template>
 <style>
 .lotus-data-table{min-width:0}

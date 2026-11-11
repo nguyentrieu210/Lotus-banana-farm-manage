@@ -79,7 +79,7 @@ watch(()=>props.navigationKey,async()=>{await load();await openFromLink()})
   <ul v-if="failures.length" class="sign-inbox__failures" aria-label="Chứng từ chưa ký được">
    <li v-for="f in failures" :key="f.doctype+f.name"><strong>{{f.name}}</strong>: {{f.message}}</li>
   </ul>
-  <DataTable :rows="data" :columns="columns" row-key="key" interactive :row-detail="false" :loading="busy" :fill="0"
+  <DataTable selection-enabled :rows="data" :columns="columns" row-key="key" interactive :row-detail="false" :loading="busy" :fill="0"
    empty="Không có chứng từ nào chờ bạn ký." storage-key="lotus-sign-inbox" :selected-row-keys="picked"
    @open="open" @row-selection-change="({id,selected})=>toggle(id,selected)"
    @page-selection-change="({rows:page,selected})=>page.forEach(r=>toggle(key(r),selected))" @selection-clear="picked=[]"/>
