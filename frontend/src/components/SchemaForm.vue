@@ -3,7 +3,7 @@ import {Checkbox} from './ui/checkbox'
 import {unitLabel,unitOptions} from '../units'
 import LinkPicker from './LinkPicker.vue'
 import UiSelect from './ui/select/Select.vue'
-import {computed,reactive} from 'vue'
+import {computed} from 'vue'
 import {Button as UiButton} from './ui/button'
 import {Input as UiInput,MoneyInput} from './ui/input'
 import {Textarea as UiTextarea} from './ui/textarea'
@@ -11,15 +11,12 @@ import {FormField} from './ui/form-field'
 import {DatePicker} from './ui/date-picker'
 import {consoleAPI} from '../api'
 import {label,stateLabel,uiFarmLabel} from '../labels'
-const props=defineProps({schema:Object,model:Object,readonly:Boolean,scope:Object,child:Boolean,linkTitles:Object,linkOptions:Function})
+const props=defineProps({schema:Object,model:Object,readonly:Boolean,scope:Object,child:Boolean})
 
-const fields=computed(()=>props.schema.fields.filter(f=>(f.fieldname!=='farm_plot'||props.schema.doctype==='Crop Cycle')&&!['Section Break','Column Break','Tab Break','HTML','Button','Password'].includes(f.fieldtype)))
-async function options(field,search=''){if(field.options==='UOM'){const rows=await consoleAPI('link_options',{doctype:'UOM',search:'',farm:props.scope?.farm,company:props.scope?.company});return unitOptions(rows,search)}return props.linkOptions?await props.linkOptions(field,search):await consoleAPI('link_options',{doctype:field.options,search,farm:props.model.farm||props.scope?.farm,company:props.scope?.company,
- context_field:field.fieldname,block:props.model.farm_block||null,cycle:props.model.crop_cycle||null,on_date:props.model.operation_date||props.model.harvest_date||props.model.posting_date||null,operation_type:props.model.operation_type||null})}
-function selectLink(field,row){if(field.fieldname!=='source_cut_operation'||!row?.context)return;for(const key of ['farm','farm_block','farm_plot','crop_cycle','sucker_selection_batch'])props.model[key]=row.context[key]||'';props.model[props.schema.doctype==='Bunch Operation'?'bunch_tag':'ribbon_color']=row.context.tag||''}
+const fields=computed(()=>props.schema.fields.filter(f=>!['Section Break','Column Break','Tab Break','HTML','Button','Password'].includes(f.fieldtype)))
+async function options(field,search=''){if(field.options==='UOM'){const rows=await consoleAPI('link_options',{doctype:'UOM',search:'',farm:props.scope?.farm,company:props.scope?.company});return unitOptions(rows,search)}return consoleAPI('link_options',{doctype:field.options,search,farm:props.model.farm||props.scope?.farm,company:props.scope?.company})}
 function add(field){const row={};for(const c of props.schema.tables[field.options])if(c.default!=null)row[c.fieldname]=c.default;(props.model[field.fieldname]??=[]).push(row)}
-const inheritedReportLabels={planted_qty:'Số cây trồng đã ghi nhận',tons_per_ha:'Sản lượng đã ghi nhận (tấn/ha)',actual_workdays:'Công đã ghi nhận'}
-const fieldCaption=f=>uiFarmLabel((props.schema.doctype==='Cycle Closing Report'&&props.model.origin_basis==='Handover'&&inheritedReportLabels[f.fieldname])||f.display_label||label(f.fieldname,f.label))
+const fieldCaption=f=>uiFarmLabel(label(f.fieldname,f.label))
 const fieldValue=f=>f.options==='UOM'?unitLabel(props.model[f.fieldname]):f.fieldtype==='Select'?stateLabel(props.model[f.fieldname]??'—'):f.fieldtype==='Check'?(Number(props.model[f.fieldname])?'Có':'Không'):(props.model[f.fieldname]??'—')
 const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'number',Currency:'number',Percent:'number',Check:'checkbox'})[f.fieldtype]||'text'
 </script>
@@ -30,7 +27,7 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
     <div class="section-title"><h3>{{fieldCaption(field)}}</h3><UiButton type="button" v-if="!readonly&&!field.read_only" @click="add(field)">Thêm dòng</UiButton></div>
     <div v-for="(row,index) in model[field.fieldname]||[]" :key="index" class="child-row">
      <strong>Dòng {{index+1}}</strong>
-     <SchemaForm :schema="{fields:schema.tables[field.options],tables:{}}" :model="row" :scope="scope" :link-titles="linkTitles" :link-options="linkOptions" :readonly="readonly||!!field.read_only" child/>
+     <SchemaForm :schema="{fields:schema.tables[field.options],tables:{}}" :model="row" :scope="scope" :readonly="readonly||!!field.read_only" child/>
      <UiButton type="button" v-if="!readonly&&!field.read_only" @click="model[field.fieldname].splice(index,1)">Xóa dòng</UiButton>
     </div>
     <p v-if="!(model[field.fieldname]||[]).length" class="muted">Chưa có dòng.</p>
@@ -45,7 +42,7 @@ const inputType=f=>({Date:'date',Datetime:'datetime-local',Int:'number',Float:'n
     <Checkbox v-else-if="field.fieldtype==='Check'" v-bind="attrs" :model-value="model[field.fieldname]===true||Number(model[field.fieldname])===1" @update:model-value="value=>model[field.fieldname]=value?1:0"/>
     <MoneyInput v-else-if="field.fieldtype==='Currency'" v-bind="attrs" v-model="model[field.fieldname]"/>
     <UiInput v-else-if="['Int','Float','Percent'].includes(field.fieldtype)" v-bind="attrs" v-model.number="model[field.fieldname]" :type="inputType(field)" :step="field.fieldtype==='Int'?'1':'any'"/>
-    <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):linkTitles?.[field.options]?.[model[field.fieldname]]" :fetch-options="search=>options(field,search)" @select="selectLink(field,$event)"/>
+    <LinkPicker v-else-if="field.fieldtype==='Link'" v-bind="attrs" v-model="model[field.fieldname]" :hide-values="field.options==='UOM'" :display-value="field.options==='UOM'?unitLabel(model[field.fieldname]):undefined" :fetch-options="search=>options(field,search)"/>
     <DatePicker v-else-if="field.fieldtype==='Date'" v-bind="attrs" v-model="model[field.fieldname]" :label="fieldCaption(field)"/>
     <UiInput v-else v-bind="attrs" v-model="model[field.fieldname]" :type="inputType(field)"/>
    </FormField>

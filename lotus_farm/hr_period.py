@@ -1,6 +1,6 @@
 """Timekeeping calendar, month close and the monthly payroll sheet handed to accounting.
 
-Closing a month freezes Attendance, crew sheets and labour allocation for its dates and stores the
+Closing a month freezes Attendance and crew sheets for its dates and stores the
 payroll sheet as a snapshot. Amounts are gross before social insurance and personal income tax;
 contractor crew piecework is listed as a payable to the crew, never as an employee wage.
 """
@@ -16,7 +16,7 @@ from lotus_farm.units import label as unit_label
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
-GUARDED = {'Attendance': 'attendance_date', 'Lotus Crew Attendance': 'posting_date', 'Labor Allocation': 'posting_date'}
+GUARDED = {'Attendance': 'attendance_date', 'Lotus Crew Attendance': 'posting_date'}
 
 
 def _hr_manager():
@@ -66,7 +66,7 @@ def is_closed(company, day):
 
 
 def period_guard(doc, method=None):
-    """doc_events hook: no Attendance, crew sheet or labour allocation changes inside a closed month."""
+    """doc_events hook: no Attendance or crew sheet changes inside a closed month."""
     field = GUARDED.get(doc.doctype)
     if not field or doc.flags.get('lotus_period_reopen'):
         return

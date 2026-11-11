@@ -1,5 +1,8 @@
-from lotus_farm.promax_controls import ReferenceMaster
+from frappe.model.document import Document
+
+from lotus_farm.controls import keep_codes
 
 
-class Disease(ReferenceMaster):
-    pass
+class Disease(Document):
+    def validate(self):
+        keep_codes(self)

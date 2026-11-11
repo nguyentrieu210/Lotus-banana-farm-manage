@@ -6,30 +6,22 @@ const items = [
   {group:'Nhân sự và chấm công',id:'attendance',label:'Chấm công',detail:'Công ngày, đội khoán và bảng công tháng',icon:'clock',href:'/lotus/cham-cong',capability:'attendance'},
   {group:'Công việc ngoài Vườn',id:'farm-work',label:'Việc hôm nay',detail:'Phiếu giao việc theo lô, báo cáo, nghiệm thu',icon:'check',href:'/work',capability:'field_report'},
   {group:'Xưởng và vật tư',id:'stock',label:'Quản lý kho',detail:'Tồn, nhập xuất và kiểm kê',icon:'warehouse',href:'/lotus/kho',capability:'stock'},
-  {group:'Công việc ngoài Vườn',id:'disease',label:'Kiểm tra sâu bệnh',detail:'Ghi nhận tình hình vườn',icon:'leaf',path:'work',module:'work',doctype:'Disease Observation',create:'Disease Observation'},
-  {group:'Công việc ngoài Vườn',id:'fruit',label:'Đo trái',detail:'Theo dõi mẫu đo',icon:'target',path:'measurements',module:'measurements'},
-  {group:'Công việc ngoài Vườn',id:'harvest',label:'Lô thu hoạch',detail:'Lô nhập xưởng để kiểm tra, đóng gói',icon:'receive',path:'harvest',module:'harvest'},
-  {group:'Công việc ngoài Vườn',id:'map',label:'Bản đồ thửa',detail:'Xem vị trí ngoài vườn',icon:'map',path:'map',module:'map'},
-  {group:'Xưởng và vật tư',id:'qc',label:'Kiểm tra chất lượng',detail:'Tiếp nhận và kiểm tra chuối',icon:'check-circle',path:'incoming-qc',module:'incoming-qc'},
-  {group:'Xưởng và vật tư',id:'packhouse',label:'Xưởng đóng gói',detail:'Ca làm và thành phẩm',icon:'boxes',path:'packhouse',module:'packhouse'},
-  {group:'Xưởng và vật tư',id:'materials',label:'Vật tư',detail:'Nhu cầu và sử dụng vật tư',icon:'cart',path:'materials',module:'materials'},
-  {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Lô, thửa và vụ chuối',icon:'home',path:'farms',module:'farms'},
+  {group:'Công việc ngoài Vườn',id:'map',label:'Bản đồ lô',detail:'Xem vị trí ngoài vườn',icon:'map',path:'map',module:'map'},
+  {group:'Xưởng và vật tư',id:'packhouse',label:'Xưởng đóng gói',detail:'Ca làm và thành phẩm',icon:'boxes',href:'/lotus/cong-viec?field_view=packhouse',capability:'packhouse'},
+  {group:'Điều hành và báo cáo',id:'farms',label:'Vườn',detail:'Khu và lô chuối',icon:'home',path:'farms',module:'farms'},
   {group:'Điều hành và báo cáo',id:'forecast',label:'Dự thu',detail:'Sản lượng dự kiến',icon:'chart',path:'forecast',module:'forecast'},
-  {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',icon:'document',path:'reports',capability:'home'},
-  {group:'Điều hành và báo cáo',id:'alerts',label:'Cảnh báo',detail:'Điểm cần xử lý',icon:'alert',path:'alerts',module:'alerts'}
+  {group:'Điều hành và báo cáo',id:'reports',label:'Báo cáo',detail:'Theo dõi và đối chiếu',icon:'document',path:'reports',capability:'home'}
 ]
 
 export function hasMobileAccess(session) {
-  return !!session && (Object.values(session.modules || {}).some(types => Array.isArray(types) && types.length) || !!session.capabilities?.field || !!session.capabilities?.stock || !!session.capabilities?.hr || !!session.capabilities?.attendance || !!session.capabilities?.user_admin)
+  return !!session && (Object.values(session.modules || {}).some(types => Array.isArray(types) && types.length) || !!session.capabilities?.field_report || !!session.capabilities?.packhouse || !!session.capabilities?.stock || !!session.capabilities?.hr || !!session.capabilities?.attendance || !!session.capabilities?.user_admin)
 }
 
 export function mobileActions(session) {
   if (!session) return []
   return items.filter(item =>
     (!item.module || !!session.modules?.[item.module]?.length) &&
-    (!item.capability || !!session.capabilities?.[item.capability]) &&
-    (!item.command || !!session.commands?.[item.command]) &&
-    (!item.create || session.creatable?.[item.create] === true)
+    (!item.capability || !!session.capabilities?.[item.capability])
   )
 }
 
@@ -45,7 +37,7 @@ export function mobileGroups(session) {
 export function mobileTabs(session) {
   const all = mobileActions(session)
   // Every tab must actually open a permitted route. Do not pin empty or unauthorized screens.
-  const order = ['work','qc','packhouse','harvest','farms','materials','map','forecast','alerts','reports']
+  const order = ['farms','map','forecast','reports']
   const tabs = [{id:'mobile',label:'Trang chủ',path:'mobile',icon:'home'}]
   for (const id of order) {
     const action = all.find(row => row.id === id && row.path)

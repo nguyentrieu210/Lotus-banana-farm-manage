@@ -239,8 +239,8 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
   - dựng bản chốt theo mốc 0 giờ thứ Hai, dùng `confirmed_at` và `voided_at`;
   - ghi giới hạn vào `limits`: số cây và ngày trổ lấy giá trị hiện tại.
 - [x] T052 [US4] Gọi `ensure_weeks` khi khởi động phiên trong lotus_farm/console.py; nếu lỗi thì ghi lại và không chặn việc mở ứng dụng
-- [ ] T053 [US4] Cho Tổng quan và kế hoạch tài chính gọi `block_forecast.board` và bỏ đọc Harvest Forecast trong lotus_farm/reporting.py, frontend/src/components/OverviewBoard.vue và lotus_farm/finance/planning.py
-- [ ] T054 [US4] Gỡ các nơi đọc dự thu cũ (danh sách T040 của spec 001) trong lotus_farm/ và frontend/src/:
+- [x] T053 [US4] Cho Tổng quan và kế hoạch tài chính gọi `block_forecast.board` và bỏ đọc Harvest Forecast trong lotus_farm/reporting.py, frontend/src/components/OverviewBoard.vue và lotus_farm/finance/planning.py
+- [x] T054 [US4] Gỡ các nơi đọc dự thu cũ (danh sách T040 của spec 001) trong lotus_farm/ và frontend/src/:
   - sửa: frontend/src/App.vue, lotus_farm/console.py;
   - xóa: lotus_farm/forecast_calendar.py, lotus_farm/vip126_timeline.py, lotus_farm/vip126_trial.py, lotus_farm/vip126_live.py, lotus_farm/vip126_profile.py, lotus_farm/vip126_zone_plan.py, lotus_farm/onedrive_supply.py, frontend/src/components/Vip126RollingForecast.vue, frontend/src/components/OneDriveSupplyDialog.vue và test tương ứng.
 - [x] T055 [US4] Sửa `variance` và `suggest_parameters` đọc thu hoạch thật từ sổ lô (kg/buồng, tỷ lệ thu, số ngày từ cắt bắp đến thu) trong lotus_farm/forecast_snapshot.py
@@ -297,22 +297,22 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
 
 ### Tests for User Story 7
 
-- [ ] T065 [P] [US7] Viết test quét mã trong tests/test_no_legacy_names.py: không còn tên bảng nào ở cleanup.md mục 1 trong lotus_farm/, frontend/src/, tests/, tools/
-- [ ] T066 [P] [US7] Integration test lotus_farm/legacy_purge.py trong tests/integration/verify_legacy_purge.py:
+- [x] T065 [P] [US7] Viết test quét mã trong tests/test_no_legacy_names.py: không còn tên bảng nào ở cleanup.md mục 1 trong lotus_farm/, frontend/src/, tests/, tools/
+- [x] T066 [P] [US7] Integration test lotus_farm/legacy_purge.py trong tests/integration/verify_legacy_purge.py:
   - `preview` không ghi gì;
   - `commit` tạo đủ tệp JSON, số dòng khớp với `preview`, chạy lại không lỗi;
   - `commit` dừng khi có giá trị nằm trên chứng từ đã ghi sổ.
 
 ### Implementation for User Story 7
 
-- [ ] T067 [US7] Sửa giá thành và tài sản trong lotus_farm/finance/:
+- [x] T067 [US7] Sửa giá thành và tài sản trong lotus_farm/finance/:
   - bỏ chiều kế toán "Vụ" (`lotus_crop_cycle`) trong lotus_farm/finance/rules.py;
   - Lotus Costing Row: đổi trường trỏ Crop Cycle thành `cycle_no` (Int);
   - Lotus Asset Allocation Row và lotus_farm/finance/assets.py: bỏ trường vụ;
   - lotus_farm/finance/costing.py: bỏ `receive_harvest`, `lots_to_receive` và phần đọc Harvest Forecast;
   - lotus_farm/finance/setup.py: bỏ trường `lotus_harvest_lot`.
-- [ ] T068 [US7] Sửa lương: bỏ nhánh Daily Work Result, Work Actual Labor, Labor Allocation, Daily Work Plan Line trong lotus_farm/finance/payroll.py; bỏ Labor Allocation khỏi `GUARDED` trong lotus_farm/hr_period.py
-- [ ] T069 [US7] Sửa kho trong lotus_farm/warehouse_issue.py và các file sau:
+- [x] T068 [US7] Sửa lương: bỏ nhánh Daily Work Result, Work Actual Labor, Labor Allocation, Daily Work Plan Line trong lotus_farm/finance/payroll.py; bỏ Labor Allocation khỏi `GUARDED` trong lotus_farm/hr_period.py
+- [x] T069 [US7] Sửa kho trong lotus_farm/warehouse_issue.py và các file sau:
   - lotus_farm/warehouse_issue.py, lotus_farm/warehouse.py: bỏ chế độ xuất theo kế hoạch (Daily Work Plan), Material Requirement, Material Consumption, Material Recovery;
   - lotus_farm/warehouse_planning.py: chỉ còn Material Request, phần nhận hàng giữ nguyên;
   - lotus_farm/stock_bridge.py: bỏ cầu nối Packout Run, Harvest Lot, Forecast Allocation, giữ các kiểm tra khác;
@@ -320,24 +320,26 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
   - lotus_farm/www/lotus_stock_print.py, lotus_farm/www/lotus_material_proposal_print.py;
   - frontend/src/components/stock/StockDocumentForm.vue, StockDocumentDetail.vue: bỏ "Theo kế hoạch đã duyệt";
   - frontend/src/components/WarehousePlanning.vue.
-- [ ] T070 [US7] Bỏ phần Daily Work Plan/Result trong lotus_farm/push_notifications.py và lotus_farm/user_admin.py; xóa lotus_farm/rate_approval.py
-- [ ] T071 [US7] Bỏ Farm Plot, Plot Geometry và các bảng ghi chép cũ khỏi Vườn & lô và bản đồ trong lotus_farm/farm_land.py, lotus_farm/field.py, lotus_farm/scoping.py, lotus_farm/map_import.py, frontend/src/FarmLandApp.vue và frontend/src/components/land/LandBlockDetail.vue. Phần việc và sản lượng của lô đọc sổ lô
-- [ ] T072 [US7] Bỏ các trường trỏ bảng cũ trên bảng giữ trong lotus_farm/lotus_farm/doctype/:
+- [x] T070 [US7] Bỏ phần Daily Work Plan/Result trong lotus_farm/push_notifications.py và lotus_farm/user_admin.py; xóa lotus_farm/rate_approval.py
+- [x] T071 [US7] Bỏ Farm Plot, Plot Geometry và các bảng ghi chép cũ khỏi Vườn & lô và bản đồ trong lotus_farm/farm_land.py, lotus_farm/field.py, lotus_farm/scoping.py, lotus_farm/map_import.py, frontend/src/FarmLandApp.vue và frontend/src/components/land/LandBlockDetail.vue. Phần việc và sản lượng của lô đọc sổ lô
+- [x] T072 [US7] Bỏ các trường trỏ bảng cũ trên bảng giữ trong lotus_farm/lotus_farm/doctype/:
   - Bunch Tag: trường trỏ Bunch Operation, `process_adoption` trong lotus_farm/lotus_farm/doctype/bunch_tag/bunch_tag.json;
   - Work Type: trường trỏ Work Category trong lotus_farm/lotus_farm/doctype/work_type/work_type.json;
   - các file lotus_farm/lotus_weekly_ribbon_2026.py, lotus_farm/bunch_tag_catalog.py.
-- [ ] T073 [US7] Gỡ đăng ký đồ cũ trong khung ứng dụng (lotus_farm/hooks.py và các file sau):
+- [x] T073 [US7] Gỡ đăng ký đồ cũ trong khung ứng dụng (lotus_farm/hooks.py và các file sau):
   - backend: lotus_farm/hooks.py, lotus_farm/install.py, lotus_farm/permissions.py, lotus_farm/console.py, lotus_farm/controls.py, lotus_farm/api.py;
   - frontend: frontend/src/App.vue, frontend/src/router.js, frontend/src/mobile-menu.js (gồm mục "Kiểm tra sâu bệnh" cũ), frontend/src/preload.js.
-- [ ] T074 [US7] Xóa module, màn, tool và test cũ theo cleanup.md mục 4. File có dấu * chỉ xóa sau khi kiểm không còn nơi dùng
-- [ ] T075 [US7] Viết `preview` và `commit(archive_dir)` trong lotus_farm/legacy_purge.py theo contracts/api.md:
+- [x] T074 [US7] Xóa module, màn, tool và test cũ theo cleanup.md mục 4. File có dấu * chỉ xóa sau khi kiểm không còn nơi dùng
+- [x] T075 [US7] Viết `preview` và `commit(archive_dir)` trong lotus_farm/legacy_purge.py theo contracts/api.md:
   - `preview` đếm số dòng từng bảng;
   - `preview` đếm giá trị khác rỗng: `lotus_crop_cycle` trên GL Entry, Journal Entry Account, Stock Entry Detail và chứng từ mua bán; `lotus_work_plan`, `lotus_harvest_lot` trên Stock Entry; trường trỏ Material Requirement trên Material Request Item;
   - `preview` liệt kê kỳ lương đã hạch toán có dùng Labor Allocation;
   - `commit` sao lưu, xuất JSON từng bảng kèm số dòng và mã kiểm, rồi xóa theo thứ tự: dữ liệu → trường tùy chỉnh và chiều kế toán → DocType;
   - `commit` dừng nếu `preview` có danh sách chặn.
-- [ ] T076 [US7] Viết patch lotus_farm/patches/purge_legacy_doctypes.py theo mẫu lotus_farm/patches/remove_work_journal.py, đăng ký trong lotus_farm/patches.txt. Xóa 76 thư mục DocType ở cleanup.md mục 1 khỏi lotus_farm/lotus_farm/doctype/. Kiểm deployment/Dockerfile.release vẫn xóa lotus_farm/lotus_farm trước COPY
-- [ ] T077 [US7] Chạy lại integration của kho, tài chính, lương (tests/integration/verify_costing.py, verify_purchase_flow.py, verify_warehouse_audit.py, verify_timekeeping.py, verify_hr_audit_fixes.py). So sổ cái, tồn kho và bảng lương các tháng đã khóa trước và sau khi dọn (SC-012); ghi kết quả vào specs/002-cham-soc-thu-hoach-du-thu/baseline.md
+- [x] T076 [US7] Viết patch lotus_farm/patches/purge_legacy_doctypes.py theo mẫu lotus_farm/patches/remove_work_journal.py, đăng ký trong lotus_farm/patches.txt. Xóa 76 thư mục DocType ở cleanup.md mục 1 khỏi lotus_farm/lotus_farm/doctype/. Kiểm deployment/Dockerfile.release vẫn xóa lotus_farm/lotus_farm trước COPY
+- [x] T077 [US7] Chạy lại integration của kho, tài chính, lương (tests/integration/verify_costing.py, verify_purchase_flow.py, verify_warehouse_audit.py, verify_timekeeping.py, verify_hr_audit_fixes.py). So sổ cái, tồn kho và bảng lương các tháng đã khóa trước và sau khi dọn (SC-012); ghi kết quả vào specs/002-cham-soc-thu-hoach-du-thu/baseline.md
+
+**Ghi chú khi làm (10/11 tối)**: Làm song song trên năm nhánh (`us7/a` tài chính và lương, `us7/b` kho và in phiếu, `us7/s` khung ứng dụng cũ, `us7/v` vườn & lô, bản đồ, dự thu, `us7/x` đăng ký và xóa module), gộp vào `us7/coord`. `legacy_purge.commit` lưu từng bảng cũ ra JSON (số dòng, mã kiểm, đọc lại để so) cùng các dòng lịch sử, bình luận, thùng rác nhắc tới chúng, rồi gỡ chiều kế toán và trường (kể cả cột), xóa DocType, bảng và các dòng nhắc tên. Giá thành tháng không còn bị chặn khi còn tồn thành phẩm: chênh lệch thực tế so với tạm tính chia theo tỷ lệ kg còn tồn, phần đã bán vào 632, phần còn tồn ở lại 154. Kết quả kiểm ở baseline.md mục "US7".
 
 **Checkpoint**: Mảng vườn còn 25 bảng; không còn tên bảng cũ trong mã, cơ sở dữ liệu và menu; tháng đã khóa không đổi số
 
@@ -416,7 +418,9 @@ description: "Danh sách việc: làm lại chăm sóc vườn, chăm sóc buồ
   - `lot_ledger_migrate.commit`;
   - `legacy_purge.preview` trên bản thật, chủ vườn xem kết quả, rồi `commit`;
   - tạo tài khoản tổ trưởng Đội khu A + B (cần danh sách từ chủ vườn).
-- [ ] T096 Tùy chọn, chỉ khi chủ vườn yêu cầu trước khi bản mới lên: sửa nóng trên main, chặn dòng thu hoạch khi lô đang cách ly trong lotus_farm/bunch_posting.py của bản đang chạy
+- [x] T096 Tùy chọn, chỉ khi chủ vườn yêu cầu trước khi bản mới lên: sửa nóng trên main, chặn dòng thu hoạch khi lô đang cách ly trong lotus_farm/bunch_posting.py của bản đang chạy. **Không cần nữa**: bản mới (có chặn thu hoạch khi cách ly) đã lên ngày 10/11.
+
+**Ghi chú triển khai (10/11)**: lần 1 đã lên bản thật lúc 20:29 (`lotus-release:40f8330`), kết quả ở baseline.md mục "Rà soát độc lập và triển khai lần 1". Còn chờ chủ vườn: danh sách tổ trưởng Đội khu A + B để tạo tài khoản; 10 ảnh phiếu giấy thật cho T083.
 
 ---
 

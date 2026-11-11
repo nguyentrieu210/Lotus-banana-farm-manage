@@ -1,6 +1,6 @@
 """The sổ lô in the database: Lotus Work Entry lines (one job, one lô, one tổ, one day) and their tổ-day header.
 
-Readers that were written for the old bunch ledger (Lotus Bunch Event) get the same row shape from `bunch_rows`:
+Readers that were written for the old bunch ledger get the same row shape from `bunch_rows`:
 event_type is the line's bunch stage and event_date its work day. Only Confirmed lines are official; Draft and Sent
 lines are returned as "Draft" (not yet confirmed) to readers that still speak the old states.
 """
@@ -43,7 +43,7 @@ def _entry_state(value):
 
 
 def bunch_rows(filters=None, fields=None, order_by="posting_date asc, creation asc"):
-    """Bunch-ledger lines (chọn chồi, chích, cắt, hủy, thu) of the sổ lô, in the shape of the old Lotus Bunch Event."""
+    """Bunch-ledger lines (chọn chồi, chích, cắt, hủy, thu) of the sổ lô, in the row shape of the old bunch ledger."""
     wanted = list(fields or ["name", "farm", "farm_block", "work_team", "cycle_no", "event_type", "event_date", "qty",
                              "area_ha", "bunch_tag", "reject_stage", "reason", "weight_kg", "source_type", "source_name",
                              "source_key", "state", "entered_by", "confirmed_by", "confirmed_at", "notes"])

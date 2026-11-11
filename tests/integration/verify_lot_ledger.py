@@ -15,7 +15,7 @@ frappe.connect()
 frappe.set_user("Administrator")
 
 from lotus_farm import field_report as field  # noqa: E402
-from lotus_farm import lot_ledger, lot_ledger_migrate  # noqa: E402
+from lotus_farm import lot_ledger  # noqa: E402
 from lotus_farm import lot_ledger_rules as rules  # noqa: E402
 
 failures = []
@@ -57,9 +57,7 @@ def line(block, work, day, **values):
 
 
 try:
-    # ---------------------------------------------------------------- migration of the bunch ledger
-    summary = lot_ledger_migrate._summary(lot_ledger_migrate._plan())
-    check("migration already done: nothing left to move", summary["to_move"] == 0, summary)
+    # ---------------------------------------------------------------- the opening book in the sổ lô
     opening = frappe.get_all(lot_ledger.ENTRY, filters={"farm": FARM, "source_type": rules.OPENING, "state": rules.CONFIRMED},
                              fields=["qty", "bunch_tag", "stage"])
     colours = {}

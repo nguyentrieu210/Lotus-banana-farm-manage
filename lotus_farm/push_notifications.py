@@ -274,13 +274,6 @@ def _recipients(doc, event):
         users.update(frappe.get_all("Has Role", filters={"role": "Lotus Stock Reviewer"},
                                     pluck="parent", limit_page_length=1000))
         users.discard(doc.owner)
-    elif doc.doctype == "Daily Work Plan":
-        users.update(frappe.get_all("ToDo", filters={"reference_type": doc.doctype,
-                          "reference_name": doc.name, "status": "Open"},
-                          pluck="allocated_to", limit_page_length=300))
-    elif doc.doctype == "Daily Work Result":
-        if doc.get("work_plan"):
-            users.add(frappe.db.get_value("Daily Work Plan", doc.work_plan, "owner"))
     if doc.doctype == "Employee":
         users.update(frappe.get_all(
             "Has Role", filters={"role": "HR Manager"},
@@ -297,8 +290,6 @@ def _event_content(doc, event):
         ("Material Request", "submitted"): ("buying", "Có đề nghị mua mới", "Đề nghị " + doc.name, "/buying?tab=home"),
         ("Purchase Receipt", "submitted"): ("warehouse", "Đã nhận hàng theo đơn", "Phiếu " + doc.name, "/warehouse?doc=" + doc.name + "&doctype=Purchase%20Receipt"),
         ("Stock Entry", "submitted"): ("warehouse", "Có phiếu kho mới", "Phiếu " + doc.name, "/warehouse?doc=" + doc.name + "&doctype=Stock%20Entry"),
-        ("Daily Work Plan", "submitted"): ("work", "Có công việc được giao", "Kế hoạch " + doc.name, "/work?tab=tasks"),
-        ("Daily Work Result", "submitted"): ("work", "Đã báo cáo công việc", "Báo cáo " + doc.name, "/work?tab=history"),
         ("Employee", "pending"): ("hr", "Có hồ sơ chờ tiếp nhận", "Mã nhân viên " + doc.name, "/hr-mobile?tab=onboarding"),
         ("Employee", "ready"): ("hr", "Đã duyệt tiếp nhận", "Mã nhân viên " + doc.name, "/hr-mobile?tab=employees"),
     }

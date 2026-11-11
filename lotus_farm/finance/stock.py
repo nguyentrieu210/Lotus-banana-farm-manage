@@ -1,7 +1,7 @@
-"""Tài chính – Kế toán: a material issue carries farm / lot / crop cycle / work type on each row, so ERPNext's
-own stock posting (Nợ 621 chi phí nguyên liệu, vật liệu trực tiếp / Có kho) lands on the right lot. Planned issues take them from
-the Material Requirement; a manual issue names the lot in "Khu vực / lô sử dụng" (its first part is matched to a
-lot code of the issuing warehouse's farm). Nothing is posted twice: the warehouse stays the only writer.
+"""Tài chính – Kế toán: a material issue carries farm and lot on each row, so ERPNext's own stock posting
+(Nợ 621 chi phí nguyên liệu, vật liệu trực tiếp / Có kho) lands on the right lot. The issue names the lot in
+"Khu vực / lô sử dụng" (its first part is matched to a lot code of the issuing warehouse's farm). Nothing is posted
+twice: the warehouse stays the only writer.
 """
 import re
 
@@ -34,14 +34,6 @@ def block_from_text(text, farm=None):
     return found[0] if len(found) == 1 else None
 
 
-def _requirement_dims(requirement):
-    r = frappe.db.get_value('Material Requirement', requirement, ['farm', 'farm_block', 'crop_cycle', 'work_plan_line'], as_dict=True)
-    if not r:
-        return {}
-    work_type = frappe.db.get_value('Daily Work Plan Line', r.work_plan_line, 'work_type') if r.work_plan_line else None
-    return dict(lotus_farm=r.farm, lotus_farm_block=r.farm_block, lotus_crop_cycle=r.crop_cycle, lotus_work_type=work_type)
-
-
 RECEIPT_REASONS = {
     # reason -> (label, mapping key of the credited account, needs a lot, needs a supplier)
     'Purchase': ('Mua ngoài chưa qua đơn mua (chờ hóa đơn)', 'received_not_billed', False, True),
@@ -65,18 +57,17 @@ def _enforced(doc):
 
 
 def _row_dims(row, warehouse):
-    dims = _requirement_dims(row.lotus_requirement) if row.get('lotus_requirement') else {}
-    if not dims.get('lotus_farm_block') and row.get('lotus_farm_block'):
-        dims['lotus_farm_block'] = row.lotus_farm_block
-    if not dims.get('lotus_farm_block'):
+    """The lot of a row: the one chosen on it, else read from "Khu vực / lô sử dụng"; the farm follows the lot."""
+    block, farm = row.get('lotus_farm_block'), None
+    if not block:
         found = block_from_text(row.get('lotus_usage_area'), row.get('lotus_farm') or _warehouse_farm(warehouse))
         if found:
-            dims.update(lotus_farm_block=found.name, lotus_farm=found.farm)
-    if dims.get('lotus_farm_block') and not dims.get('lotus_farm'):
-        dims['lotus_farm'] = frappe.db.get_value('Farm Block', dims['lotus_farm_block'], 'farm')
-    for field in rules.DIM_FIELDS:
-        if dims.get(field):
-            row.set(field, dims[field])
+            block, farm = found.name, found.farm
+    if block:
+        row.lotus_farm_block = block
+        farm = farm or frappe.db.get_value('Farm Block', block, 'farm')
+    if farm:
+        row.lotus_farm = farm
 
 
 def stock_entry_accounts(doc, method=None):
@@ -93,14 +84,11 @@ def stock_entry_accounts(doc, method=None):
     enforce, m = _enforced(doc)
     cost_center = frappe.get_cached_value('Company', doc.company, 'cost_center')
     if kind == 'Repack':
-        # Packing: any gap between the fruit consumed and the cartons made stays in the farm's production cost.
-        farm = frappe.db.get_value('Packout Run', doc.get('lotus_packout_run'), 'farm') if doc.get('lotus_packout_run') else None
+        # Packing: any gap between the fruit consumed and the cartons made stays in production cost.
         if enforce:
             for row in doc.items:
                 row.expense_account = m['production_cost']
                 row.cost_center = row.cost_center or cost_center
-                if farm and not row.get('lotus_farm'):
-                    row.lotus_farm = farm
         return
     if kind == 'Material Issue':
         purpose = 'Production' if doc.get('lotus_issue_mode') else doc.get('lotus_issue_purpose')
@@ -137,10 +125,6 @@ def stock_entry_accounts(doc, method=None):
             frappe.throw('Dòng %d (%s): ghi mã lô vật tư được thu hồi về để giảm chi phí của lô đó.' % (i, row.item_code))
         row.expense_account = m[key]
         row.cost_center = row.cost_center or cost_center
-
-
-# Kept for the hooks of earlier releases.
-issue_dimensions = stock_entry_accounts
 
 
 def reconciliation_accounts(doc, method=None):

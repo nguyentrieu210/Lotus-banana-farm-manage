@@ -51,7 +51,7 @@ def summary(blocks):
     counted = [b for b in blocks if _num(b.get('lotus_tree_count')) > 0]
     trees = sum(_num(b.get('lotus_tree_count')) for b in counted)
     counted_area = sum(_num(b.get('area_ha')) for b in counted)
-    return dict(blocks=len(blocks), area_ha=round(sum(_num(b.get('area_ha')) for b in blocks), 2), plots=sum(int(b.get('plots') or 0) for b in blocks),
+    return dict(blocks=len(blocks), area_ha=round(sum(_num(b.get('area_ha')) for b in blocks), 2),
                 counted_blocks=len(counted), trees=int(trees), counted_area_ha=round(counted_area, 2),
                 trees_per_ha=round(trees / counted_area) if counted_area else None,
                 gaps={key: sum(key in (b.get('gaps') or []) for b in blocks) for key in GAPS})
@@ -92,11 +92,11 @@ def _same(kind, a, b):
     return str(a or '')[:10 if kind == 'date' else 140].strip() == str(b or '').strip()
 
 
-def diff_row(current, incoming, plots_area=None, known_zones=None):
+def diff_row(current, incoming, known_zones=None):
     """Compare one Excel row with the stored lot -> dict(changes={field: (old, new)}, errors, warnings).
 
     Empty cells keep the stored value (the file never erases data). A changed tree count needs a source;
-    an area far from the sum of its plots, or an unknown zone, is flagged but allowed.
+    an unknown zone is flagged but allowed.
     """
     changes, errors, warnings = {}, [], []
     for field, label, kind in EDITABLE:
@@ -114,9 +114,6 @@ def diff_row(current, incoming, plots_area=None, known_zones=None):
         errors.append('Đang dùng: chỉ nhận 1 hoặc 0')
     if 'lotus_tree_count' in changes and 'lotus_tree_count_source' not in changes:
         errors.append('Đổi số cây cần ghi Nguồn số cây (bảng chốt và thời điểm cập nhật)')
-    area = changes.get('area_ha', (None, current.get('area_ha')))[1]
-    if plots_area and _num(area) > 0 and abs(_num(area) - _num(plots_area)) > max(0.05, 0.03 * _num(plots_area)):
-        warnings.append('Diện tích %.2f ha khác tổng các thửa %.2f ha' % (_num(area), _num(plots_area)))
     zone = changes.get('farm_zone', (None, None))[1]
     if zone and known_zones and zone not in known_zones:
         warnings.append('Khu "%s" chưa có trong vườn' % zone)

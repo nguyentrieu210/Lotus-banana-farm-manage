@@ -18,7 +18,7 @@ CATEGORY_ACCOUNT_TYPES = dict(fixed_asset_account='Fixed Asset', accumulated_dep
 FIELDS = ('name', 'asset_name', 'asset_category', 'lotus_asset_code', 'lotus_serial_no', 'location',
           'custodian', 'department', 'status', 'docstatus', 'purchase_date', 'available_for_use_date',
           'net_purchase_amount', 'total_asset_cost', 'opening_accumulated_depreciation', 'value_after_depreciation',
-          'lotus_farm', 'lotus_farm_block', 'lotus_crop_cycle', 'lotus_work_type', 'lotus_usage_suspended', 'modified')
+          'lotus_farm', 'lotus_farm_block', 'lotus_work_type', 'lotus_usage_suspended', 'modified')
 
 
 def _json(value, default=None):
@@ -122,13 +122,6 @@ def _dimensions(row):
         block = frappe.db.get_value('Farm Block', result['lotus_farm_block'], 'farm')
         if not block or block != farm:
             frappe.throw('Lô không thuộc vườn đã chọn.')
-    if result['lotus_crop_cycle']:
-        meta = frappe.get_meta('Crop Cycle')
-        cycle = frappe.get_doc('Crop Cycle', result['lotus_crop_cycle'])
-        if meta.has_field('farm') and cycle.get('farm') and cycle.farm != farm:
-            frappe.throw('Vụ không thuộc vườn đã chọn.')
-        if meta.has_field('farm_block') and cycle.get('farm_block') and cycle.farm_block != result['lotus_farm_block']:
-            frappe.throw('Vụ không thuộc lô đã chọn.')
     if result['lotus_work_type'] and not frappe.db.exists('Work Type', result['lotus_work_type']):
         frappe.throw('Công việc không tồn tại.')
     return result
@@ -336,7 +329,6 @@ def lookups():
     result['accounts'] = frappe.get_all('Account', filters={'company': company, 'is_group': 0, 'disabled': 0},
                                          fields=['name', 'account_number', 'account_name', 'root_type', 'account_type'], order_by='account_number', limit_page_length=0)
     result['farms'] = frappe.get_all('Farm', filters={'company': company}, fields=['name', 'farm_name'], limit_page_length=0)
-    result['cycles'] = frappe.get_all('Crop Cycle', fields=['name']+(['farm'] if frappe.get_meta('Crop Cycle').has_field('farm') else []), limit_page_length=0)
     for row in result['locations']:
         row['location_name'] = row.lotus_display_name or row.location_name
     return result

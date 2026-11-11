@@ -1,7 +1,7 @@
 """Stock documents in the shared Lotus Print layout, permission-checked (route /lotus/in-phieu).
 
-Stock Entry (nhập / xuất / chuyển / tồn đầu), Stock Reconciliation and Purchase Receipt. Material
-Request and Material Requirement are proposals and print through lotus_material_proposal_print.
+Stock Entry (nhập / xuất / chuyển / tồn đầu), Stock Reconciliation and Purchase Receipt. A Material
+Request is a proposal and prints through lotus_material_proposal_print.
 Signatures come from the named signers of the document (lotus_farm.signing) with the QR to verify.
 """
 from urllib.parse import urlencode
@@ -14,7 +14,6 @@ from lotus_farm import print_kit as pk
 no_cache = 1
 TITLES = {'Material Receipt': 'PHIẾU NHẬP KHO', 'Material Issue': 'PHIẾU XUẤT KHO', 'Material Transfer': 'PHIẾU CHUYỂN KHO',
           'Opening Stock': 'PHIẾU TỒN ĐẦU KỲ'}
-PROPOSALS = ('Material Request', 'Material Requirement')
 
 
 def build(doctype, name):
@@ -60,9 +59,9 @@ def build(doctype, name):
 def get_context(context, doctype=None, name=None):
     doctype = doctype or frappe.form_dict.get('doctype')
     name = name or frappe.form_dict.get('name')
-    if doctype in PROPOSALS:
+    if doctype == 'Material Request':
         from lotus_farm.www.lotus_material_proposal_print import get_context as proposal_context
-        return proposal_context(context, name=name, doctype=doctype)
+        return proposal_context(context, name=name)
     p = build(doctype, name)
     p.toolbar = True
     context.html = pk.render('stock.html', p)
@@ -71,7 +70,7 @@ def get_context(context, doctype=None, name=None):
 
 @frappe.whitelist()
 def download_pdf(doctype, name):
-    if doctype in PROPOSALS:
+    if doctype == 'Material Request':
         from lotus_farm.www.lotus_material_proposal_print import download_pdf as proposal_pdf
-        return proposal_pdf(name, doctype=doctype)
+        return proposal_pdf(name)
     pk.send_pdf(pk.render('stock.html', build(doctype, name)), name)

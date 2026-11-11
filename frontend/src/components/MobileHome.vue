@@ -5,8 +5,8 @@ import {Input as UiInput} from './ui/input'
 import {Card as UiCard} from './ui/card'
 import LotusIcon from './LotusIcon.vue'
 import {mobileGroups} from '../mobile-menu'
-const props=defineProps({session:{type:Object,required:true},farm:{type:String,default:''},online:{type:Boolean,default:true},queued:{type:Number,default:0}})
-const emit=defineEmits(['select','outbox'])
+const props=defineProps({session:{type:Object,required:true},farm:{type:String,default:''}})
+const emit=defineEmits(['select'])
 const groups=computed(()=>mobileGroups(props.session))
 const search=ref('')
 const normalize=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()

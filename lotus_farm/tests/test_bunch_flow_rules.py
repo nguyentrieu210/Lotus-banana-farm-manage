@@ -127,9 +127,6 @@ class TreeLayer(unittest.TestCase):
         self.assertEqual(trees([wave(generation=0, cycle=1)])[0]["cycle"], 2)
         self.assertEqual(trees([wave(generation=1, cycle=2)])[0]["cycle"], 3)
 
-    def test_approved_cohort_keeps_its_own_vu(self):
-        self.assertEqual(trees([dict(wave(cycle=5), source_cohort="X")])[0]["cycle"], 5)
-
     def test_a_running_window_only_uses_days_left_and_keeps_the_total(self):
         c = trees([wave()], today=dt.date(2027, 2, 10))[0]
         self.assertEqual(c["days"][0][0], dt.date(2027, 2, 10))

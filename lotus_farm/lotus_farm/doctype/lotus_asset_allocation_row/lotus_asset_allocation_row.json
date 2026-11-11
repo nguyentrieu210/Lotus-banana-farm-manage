@@ -42,12 +42,6 @@
       "options": "Farm Block"
     },
     {
-      "fieldname": "lotus_crop_cycle",
-      "label": "Vụ",
-      "fieldtype": "Link",
-      "options": "Crop Cycle"
-    },
-    {
       "fieldname": "lotus_work_type",
       "label": "Công việc",
       "fieldtype": "Link",
@@ -60,7 +54,6 @@
     "cost_center",
     "lotus_farm",
     "lotus_farm_block",
-    "lotus_crop_cycle",
     "lotus_work_type"
   ],
   "permissions": []

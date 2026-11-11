@@ -10,7 +10,7 @@ export async function call(method,args={},write=false){
  let response
  try{response=await fetch(url,options)}catch(error){
   if(!write&&cachedMethod(method)){const value=await cachedRead(activeUser(),method,args);if(value!==null){window.dispatchEvent(new Event('lotus-cached-read'));return method==='lotus_farm.console.bootstrap'?{...value,offline:true}:value}}
-  throw new Error(write?'Chưa gửi được. Giữ bản ghi trong hàng chờ rồi thử lại khi có mạng.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
+  throw new Error(write?'Chưa gửi được vì mất mạng; chưa rõ máy chủ đã lưu hay chưa. Kiểm tra kết nối và xem dữ liệu đã lưu chưa trước khi gửi lại.':'Không có dữ liệu đã lưu cho phạm vi này; cần mở phạm vi khi có mạng trước.')
  }
  const data=await response.json()
  if(!response.ok||data.exc_type){if(response.status===401||data.exc_type==='AuthenticationError')setActiveUser('');const error=failure(data);error.status=response.status;error.code=data.exc_type;throw error}
@@ -20,4 +20,4 @@ export async function call(method,args={},write=false){
  return value
 }
 export const consoleAPI=(name,args={},write=false)=>call('lotus_farm.console.'+name,args,write)
-export async function upload(file,doctype,name,expectedUser){const form=new FormData();form.append('file',file);form.append('is_private','1');if(name){form.append('doctype',doctype);form.append('docname',name)}if(expectedUser){form.append('method','lotus_farm.field.save_uploaded_photo');form.append('expected_user',expectedUser)}const response=await fetch('/api/method/upload_file',{method:'POST',credentials:'same-origin',headers:{'X-Frappe-CSRF-Token':csrf},body:form});const result=await response.json();if(!response.ok||result.exc_type)throw failure(result);return result.message}
+export async function upload(file,doctype,name){const form=new FormData();form.append('file',file);form.append('is_private','1');if(name){form.append('doctype',doctype);form.append('docname',name)}const response=await fetch('/api/method/upload_file',{method:'POST',credentials:'same-origin',headers:{'X-Frappe-CSRF-Token':csrf},body:form});const result=await response.json();if(!response.ok||result.exc_type)throw failure(result);return result.message}

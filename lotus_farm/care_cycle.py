@@ -130,7 +130,8 @@ def rule_list(farm):
 
 @frappe.whitelist(methods=["POST"])
 def save_rule(farm, work_type, repeat_days, valid_from, valid_to=None, farm_zone=None, rule_name=None, notes=None):
-    """A new version of a cycle, waiting for approval. The same name and khu continue an existing cycle."""
+    """A new version of a cycle, waiting for approval. The same name and khu continue an existing cycle; Work Schedule Rule
+    refuses a name already used for another việc and a second version waiting for approval."""
     _require_manager(farm)
     zone = rules.zone_of(farm_zone)
     errors = rules.check_rule({"work_type": work_type, "repeat_days": repeat_days, "valid_from": valid_from, "valid_to": valid_to})
@@ -141,17 +142,11 @@ def save_rule(farm, work_type, repeat_days, valid_from, valid_to=None, farm_zone
         rule_name = label + (f" khu {zone}" if zone else "")
     rule_name = str(rule_name).strip()[:140]
     lock("Farm", farm)
-    same = frappe.get_all(RULE, filters={"farm": farm, "rule_name": rule_name}, fields=["name", "work_type", "version", "approval_state"],
-                          limit_page_length=0)
-    if any(s.work_type != work_type for s in same):
-        frappe.throw(f"Tên vòng \"{rule_name}\" đang dùng cho việc khác.")
-    drafts = [s.name for s in same if s.approval_state != rules.APPROVED]
-    if drafts:
-        frappe.throw(f"Vòng \"{rule_name}\" đang có phiên bản chờ duyệt. Duyệt hoặc xóa bản đó trước.")
+    versions = frappe.get_all(RULE, filters={"farm": farm, "rule_name": rule_name}, pluck="version", limit_page_length=0)
     doc = frappe.new_doc(RULE)
     doc.update({"farm": farm, "rule_name": rule_name, "work_type": work_type, "farm_zone": zone or None, "repeat_days": cint(repeat_days),
                 "valid_from": getdate(valid_from), "valid_to": getdate(valid_to) if valid_to else None,
-                "version": max([cint(s.version) for s in same] or [0]) + 1, "approval_state": "Draft", "notes": (notes or "").strip()[:500]})
+                "version": max([cint(v) for v in versions] or [0]) + 1, "approval_state": "Draft", "notes": (notes or "").strip()[:500]})
     doc.insert()
     return doc.as_dict()
 

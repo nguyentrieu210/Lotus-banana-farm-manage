@@ -90,7 +90,7 @@ try:
     ok('xuất hủy không vào 621', not hd.items[0].expense_account.startswith('621'), hd.items[0].expense_account)
     ok('chi tiết + danh sách thấy mục đích', w.document('Stock Entry', h['name'])['issue_purpose'] == 'Disposal' and any(r.name == h['name'] and r.purpose.startswith('Xuất hủy') for r in w.documents(company, kind='issues', warehouse=A)['rows']))
     blocked('xuất sản xuất vẫn bắt chọn lô', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, receiver_employee=emp, notes='x'), 'Khu vực')
-    blocked('mục đích khác chỉ xuất thủ công', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, issue_purpose='Sale', issue_mode='Plan', notes='x'), 'kế hoạch')
+    blocked('mục đích khác chỉ xuất thủ công', lambda: w.create_draft(company, 'issue', today, [dict(item=X, qty=1)], source=A, issue_purpose='Sale', issue_mode='Request', notes='x'), 'yêu cầu')
     # Chuyển kho + chống gửi trùng
     ev = 'e2e-' + tag
     t1 = w.create_draft(company, 'transfer', today, [dict(item=X, qty=5)], source=A, target=B, client_event_id=ev)

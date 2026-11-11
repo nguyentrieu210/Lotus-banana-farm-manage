@@ -10,13 +10,11 @@ const backend=readFileSync(new URL('../../lotus_farm/warehouse.py',import.meta.u
 
 test('Sổ kho shows original movement, running balance and document context',()=>{
  const source=columns.slice(columns.indexOf('export function movementColumns'),columns.indexOf('// Nhập – xuất – tồn'))
- for(const field of ['posting_date','voucher_no','transaction_type','content','item_name','item_code','warehouse','stock_uom','opening_qty','in_qty','out_qty','qty_after_transaction','receiver','usage_area','work_team']){
+ for(const field of ['posting_date','voucher_no','transaction_type','content','item_name','item_code','warehouse','stock_uom','opening_qty','in_qty','out_qty','qty_after_transaction','receiver','usage_area']){
   assert.ok(source.includes("field:'"+field+"'")||['opening_qty','in_qty','out_qty','qty_after_transaction'].some(name=>name===field&&source.includes("number('"+field+"'")),'missing column '+field)
  }
  assert.match(backend,/voucher_detail_no/)
  assert.match(backend,/frappe\.get_all\('Stock Entry Detail'/)
- assert.match(backend,/frappe\.has_permission\('Daily Work Plan', 'read'\)/)
- assert.match(backend,/if len\(teams\) == 1 else ''/)
  assert.match(backend,/row\.receiver =/)
  assert.match(backend,/row\.usage_area =/)
 })

@@ -1,15 +1,13 @@
 """Versioned financial plans. These endpoints never post to accounting books."""
 import hashlib
 import json
-from calendar import monthrange
-from datetime import date
 
 import frappe
-from frappe.utils import now_datetime
+from frappe.utils import get_first_day, now_datetime, nowdate
 
 from lotus_farm.finance import planning_rules as model, setup
 from lotus_farm.reporting import records
-from lotus_farm.scoping import land_filters, land_scope
+from lotus_farm.scoping import land_scope
 
 DOCTYPE = 'Lotus Financial Plan'
 FORMULA_VERSION = 'financial-plan-v1'
@@ -144,7 +142,7 @@ def overview():
     return dict(
         company=company, currency=frappe.get_cached_value('Company', company, 'default_currency'),
         plans=readable, farms=farms, can_write=setup.can_post(), can_approve=setup.is_chief(),
-        can_forecast=frappe.has_permission('Harvest Forecast', 'read'),
+        can_forecast=frappe.has_permission('Farm', 'read'),
     )
 
 
@@ -233,21 +231,32 @@ def duplicate(name, request_key):
     return _write(doc)
 
 
+def _packed(farms, today):
+    """By farm, what the closed packhouse shifts of today's month brought in so far: bunches, kg taken in, finished kg."""
+    if not farms:
+        return []
+    since = get_first_day(today)
+    shifts = frappe.db.sql("""select farm, sum(input_kg) gross_kg, sum(finished_kg) sales_kg from `tabPackhouse Shift`
+        where docstatus=1 and farm in %s and posting_date between %s and %s group by farm order by farm""", (tuple(farms), since, today), as_dict=True)
+    bunches = dict(frappe.db.sql("""select p.farm, sum(s.bunches) from `tabPackhouse Shift Source` s join `tabPackhouse Shift` p on p.name=s.parent
+        where p.docstatus=1 and p.farm in %s and p.posting_date between %s and %s group by p.farm""", (tuple(farms), since, today)))
+    return [dict(r, bunches=bunches.get(r.farm) or 0) for r in shifts]
+
+
 def _forecast(doc):
+    """The shared forecast (Dự thu) of the plan's farm, or of every farm of the company this user may see, as it stands
+    now, with what the month's closed packhouse shifts of those farms brought in so far. The forecast checks the user's
+    right to each farm itself."""
+    from lotus_farm import block_forecast
     values = _normalize(doc.plan_data)
-    first = model.month_date(values['start_month'])
-    last = model.month_date(model.months(values['start_month'], values['month_count'])[-1])
-    end = date(last.year, last.month, monthrange(last.year, last.month)[1])
     scope = _scope(doc.farm)
-    filters = {'supply_state': 'Released', 'period_start_date': ['<=', end], 'period_end_date': ['>=', first]}
-    filters.update(land_filters(frappe.get_meta('Harvest Forecast'), scope))
-    forecasts = records('Harvest Forecast', filters, [
-        'name', 'farm', 'farm_block', 'period_start_date', 'period_end_date',
-        'gross_forecast_kg', 'packed_forecast_kg', 'supply_state', 'modified',
-    ])
-    forecasts.sort(key=lambda r: r.name)
+    farms = [doc.farm] if doc.farm else sorted(f.name for f in records('Farm', {'company': scope['company']}, ['name']))
+    cohorts = []
+    for farm in farms:
+        cohorts += [dict(c, farm=farm) for c in block_forecast.bunch_summary(farm)[1]]
+    today = nowdate()
     try:
-        proposal = model.forecast_quantities(values['start_month'], values['month_count'], forecasts)
+        proposal = model.forecast_quantities(values['start_month'], values['month_count'], cohorts, today, _packed(farms, today))
     except ValueError as exc:
         frappe.throw(str(exc))
     payload = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
@@ -268,12 +277,16 @@ def apply_forecast(name, modified, fingerprint):
     proposal = _forecast(doc)
     if proposal['fingerprint'] != fingerprint:
         frappe.throw('Dự thu đã thay đổi. Xem lại nguồn trước khi lấy sản lượng.')
+    if not proposal['rows']:
+        frappe.throw('Các tháng của kế hoạch đã qua: dự thu chỉ thay tháng này và các tháng sau.')
     if not proposal['sources']:
-        frappe.throw('Không có dự thu đã phát hành trong phạm vi kế hoạch.')
+        frappe.throw('Dự thu không có sản lượng trong các tháng của kế hoạch từ tháng này.')
     values = _normalize(doc.plan_data)
     indexed = {r['month']: r for r in proposal['rows']}
+    # Months before this one keep what the plan holds.
     for row in values['rows']:
-        row.update({f: indexed[row['month']][f] for f in ('gross_kg', 'sales_kg')})
+        if row['month'] in indexed:
+            row.update({f: indexed[row['month']][f] for f in ('gross_kg', 'sales_kg')})
     doc.plan_data = json.dumps(values, ensure_ascii=False)
     doc.source_snapshot = json.dumps(dict(imported_at=str(now_datetime()), imported_by=frappe.session.user, **proposal), ensure_ascii=False)
     return _write(doc)

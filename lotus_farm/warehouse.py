@@ -170,7 +170,7 @@ def _stock_doc(doctype, name):
 
 def _simple_doc(doc):
     if doc.doctype == 'Stock Entry':
-        if doc.stock_entry_type not in ('Material Receipt', 'Material Issue', 'Material Transfer') or doc.get('lotus_packout_run'):
+        if doc.stock_entry_type not in ('Material Receipt', 'Material Issue', 'Material Transfer'):
             return False
     elif doc.purpose not in ('Opening Stock', 'Stock Reconciliation'):
         return False
@@ -199,7 +199,7 @@ def document(doctype, name):
                 issue_purpose=doc.get('lotus_issue_purpose') or ('Production' if doc.get('lotus_issue_mode') else ''),
                 invoice_series=doc.get('lotus_einvoice_series') or '', invoice_no=doc.get('lotus_einvoice_no') or '', invoice_date=doc.get('lotus_invoice_date'),
                 invoice_total=flt(doc.get('lotus_invoice_total')) or None, vat_in_cost=bool(doc.get('lotus_vat_in_cost')),
-                receiver_employee=doc.get('lotus_receiver_employee'), work_plan=doc.get('lotus_work_plan'),
+                receiver_employee=doc.get('lotus_receiver_employee'),
                 created_by=user_names([doc.owner]).get(doc.owner), created_at=str(doc.creation)[:16],
                 basic_total=sum(flt(row.get('basic_amount')) for row in doc.items),
                 additional_total=flt(doc.get('total_additional_costs')),
@@ -218,7 +218,7 @@ def document(doctype, name):
                             uoms=item_uoms(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else [],
                             **(item_pack(frappe.get_doc('Item',row.item_code)) if doc.doctype=='Stock Entry' and doc.stock_entry_type=='Material Receipt' else {}),
                             source=row.get('s_warehouse'), target=row.get('t_warehouse') or row.get('warehouse'),
-                            area=row.get('lotus_usage_area'), requirement=row.get('lotus_requirement'), requirement_line=row.get('lotus_requirement_line'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
+                            area=row.get('lotus_usage_area'), material_request=row.get('material_request'), material_request_item=row.get('material_request_item'),
                             rate=(flt(row.get('lotus_invoice_rate')) if row.get('lotus_line_vat') and row.get('lotus_invoice_rate') else flt(row.get('basic_rate'))*flt(row.get('conversion_factor') or 1) if doc.doctype=='Stock Entry' and doc.stock_entry_type in ('Material Receipt','Material Issue') else row.get('basic_rate') if doc.doctype=='Stock Entry' else row.get('valuation_rate')),
                             basic_amount=row.get('basic_amount'), additional_cost=row.get('additional_cost'),
                             valuation_rate=row.get('valuation_rate'), amount=row.get('amount'),
@@ -480,7 +480,7 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         meta = frappe.get_meta(doctype)
         fields_to_read = ['name'] + [field for field in (
             'remarks', 'purpose', 'stock_entry_type', 'lotus_receiver',
-            'lotus_work_plan', 'lotus_supplier', 'supplier', 'supplier_name')
+            'lotus_supplier', 'supplier', 'supplier_name')
             if meta.has_field(field)]
         for offset in range(0, len(ids), 500):
             docs = frappe.get_list(doctype, filters={'name': ['in', ids[offset:offset+500]]},
@@ -512,25 +512,6 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
                 fields=['name', 'lotus_usage_area'], limit_page_length=0)
             usage_by_detail.update({detail.name: detail.lotus_usage_area or '' for detail in details})
 
-    # Only show a team when exactly one team is recorded against the linked plan.
-    plan_teams = {}
-    plan_names = list({doc.get('lotus_work_plan') for (doctype, name), doc in voucher_info.items()
-                       if doctype == 'Stock Entry' and doc.get('lotus_work_plan')})
-    if plan_names and frappe.has_permission('Daily Work Plan', 'read'):
-        visible_plans = set()
-        for offset in range(0, len(plan_names), 500):
-            visible_plans.update(frappe.get_list('Daily Work Plan',
-                filters={'name': ['in', plan_names[offset:offset+500]]},
-                pluck='name', limit_page_length=0))
-        if visible_plans:
-            for offset in range(0, len(visible_plans), 500):
-                batch = list(visible_plans)[offset:offset+500]
-                for line in frappe.get_all('Daily Work Plan Line',
-                        filters={'parent': ['in', batch]}, fields=['parent', 'work_team'],
-                        limit_page_length=0):
-                    if line.work_team:
-                        plan_teams.setdefault(line.parent, set()).add(line.work_team)
-
     for row in rows:
         voucher = voucher_info.get((row.voucher_type, row.voucher_no))
         purpose = (voucher.get('stock_entry_type') or voucher.get('purpose')) if voucher else None
@@ -541,10 +522,8 @@ def movements(company, warehouse=None, search=None, from_date=None,to_date=None,
         row.receiver = (voucher.get('lotus_receiver') or voucher.get('supplier_name')
                         or voucher.get('supplier') or voucher.get('lotus_supplier') or '') if voucher else ''
         row.usage_area = usage_by_detail.get(row.get('voucher_detail_no'), '')
-        teams = plan_teams.get(voucher.get('lotus_work_plan'), set()) if voucher else set()
-        row.work_team = next(iter(teams)) if len(teams) == 1 else ''
     fields = ['posting_date', 'item_code', 'item_name', 'warehouse', 'voucher_no',
-              'kind', 'transaction_type', 'content', 'receiver', 'usage_area', 'work_team',
+              'kind', 'transaction_type', 'content', 'receiver', 'usage_area',
               'in_qty', 'out_qty', 'opening_qty', 'qty_after_transaction', 'stock_uom']
     selected = selections(column_filters, fields)
     choices = faceted_distinct(rows, fields, selected, labels={'item_code': lambda row: row.item_name + ' · ' + row.item_code})
@@ -746,7 +725,7 @@ def _receipt_costs(company, costs, basic_total):
 
 
 @frappe.whitelist(methods=['POST'])
-def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', work_plan=None, receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0,issue_purpose=None,invoice_series=None,invoice_no=None,invoice_date=None,invoice_total=None):
+def create_draft(company, kind, posting_date, lines, source=None, target=None, notes=None, count_purpose='Stock Reconciliation', issue_mode='Manual', receiver=None, receiver_employee=None, additional_costs=None,existing_name=None,base_modified=None,client_event_id=None,receipt_reason=None,supplier=None,post=0,issue_purpose=None,invoice_series=None,invoice_no=None,invoice_date=None,invoice_total=None):
     """post=1 (Mua nhanh): a new receipt is posted to stock in the same request when the user may submit it;
     otherwise it stays a draft for the storekeeper (docstatus 0 in the result)."""
     _access()
@@ -763,7 +742,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         from lotus_farm.controls import lock
         event=_text(client_event_id,'Mã yêu cầu')
         client_key=hashlib.sha256((frappe.session.user+':'+event).encode()).hexdigest()
-        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,work_plan=work_plan,receiver_employee=receiver_employee,issue_purpose=issue_purpose or 'Production',**(dict(receipt_reason=receipt_reason,supplier=supplier,invoice_series=invoice_series,invoice_no=invoice_no,invoice_date=str(invoice_date or ''),invoice_total=invoice_total) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
+        payload_hash=hashlib.sha256(json.dumps(dict(company=company,kind=kind,posting_date=str(posting_date),lines=frappe.parse_json(lines),source=source,target=target,notes=notes,count_purpose=count_purpose,issue_mode=issue_mode,receiver_employee=receiver_employee,issue_purpose=issue_purpose or 'Production',**(dict(receipt_reason=receipt_reason,supplier=supplier,invoice_series=invoice_series,invoice_no=invoice_no,invoice_date=str(invoice_date or ''),invoice_total=invoice_total) if kind=='receipt' else {}),additional_costs=frappe.parse_json(additional_costs) if additional_costs else []),sort_keys=True,default=str).encode()).hexdigest()
         lock('Company',company)
         existing=frappe.db.get_value(dt,{'lotus_client_key':client_key},['name','lotus_payload_hash'],as_dict=True)
         if existing:
@@ -820,7 +799,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             doc.lotus_receipt_reason = receipt_reason or None
             doc.lotus_supplier = supplier if receipt_reason == 'Purchase' else None
         if kind == 'issue':
-            if issue_mode not in ('Manual', 'Plan', 'Request'):
+            if issue_mode not in ('Manual', 'Request'):
                 frappe.throw('Hình thức xuất kho không hợp lệ.')
             # Mục đích xuất: production goes to the lot's 621 (lotus_issue_mode); the others post by lotus_issue_purpose
             # (finance.stock: hủy 811, bán 632, thiếu kiểm kê 1381, bao bì chi phí đóng gói) and need no lot or receiver.
@@ -831,18 +810,16 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             staff=employee_contact(company,receiver_employee)
             if purpose != 'Production':
                 if issue_mode != 'Manual':
-                    frappe.throw('Xuất theo kế hoạch / yêu cầu chỉ dùng cho xuất sản xuất.')
+                    frappe.throw('Xuất theo yêu cầu chỉ dùng cho xuất sản xuất.')
                 if not str(notes or '').strip():
                     frappe.throw('Ghi lý do xuất (' + ISSUE_PURPOSES[purpose].lower() + ').')
                 doc.lotus_issue_mode = None
-                doc.lotus_work_plan = None
                 if doc.meta.has_field('lotus_issue_purpose'):
                     doc.lotus_issue_purpose = purpose
                 doc.lotus_receiver_employee = staff.name if staff else None
                 doc.lotus_receiver = staff.employee_name if staff else (doc.get('lotus_receiver') if existing_name else None)
             else:
                 doc.lotus_issue_mode = issue_mode
-                doc.lotus_work_plan = work_plan if issue_mode == 'Plan' else None
                 if doc.meta.has_field('lotus_issue_purpose'):
                     doc.lotus_issue_purpose = None
                 if staff:
@@ -866,7 +843,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
         if item.has_batch_no or item.has_serial_no:
             frappe.throw('Form kho đơn giản hiện chưa hỗ trợ vật tư theo lô/serial.')
         key = (item.name, str(row.get('area') or '').strip(),
-               row.get('requirement_line') if issue_mode == 'Plan' else row.get('material_request_item') if issue_mode == 'Request' else None) if kind == 'issue' else item.name
+               row.get('material_request_item') if issue_mode == 'Request' else None) if kind == 'issue' else item.name
         if key in seen:
             frappe.throw('Gộp các dòng cùng vật tư và cùng khu vực sử dụng.')
         seen.add(key)
@@ -931,10 +908,7 @@ def create_draft(company, kind, posting_date, lines, source=None, target=None, n
             if kind == 'issue':
                 # Only production must name the lot; hủy / bán / bao bì may note an area.
                 values['lotus_usage_area'] = _text(row.get('area'), 'Khu vực / lô sử dụng') if doc.get('lotus_issue_mode') else (str(row.get('area') or '').strip()[:140] or None)
-                if issue_mode == 'Plan':
-                    values['lotus_requirement'] = row.get('requirement')
-                    values['lotus_requirement_line'] = row.get('requirement_line')
-                elif issue_mode == 'Request':
+                if issue_mode == 'Request':
                     values['material_request'] = row.get('material_request')
                     values['material_request_item'] = row.get('material_request_item')
         doc.append('items', values)

@@ -6,7 +6,7 @@ const read=p=>readFileSync(new URL(p,root),'utf8')
 // Every desktop module renders inside the single /lotus shell (main.js); module apps are embedded components.
 const entries=[
  ['main.js','App.vue'],['main.js','StockApp.vue'],['main.js','FieldReportApp.vue'],
- ['main.js','FarmWorkApp.vue'],['main.js','HrApp.vue'],['main.js','TimekeepingApp.vue']
+ ['main.js','HrApp.vue'],['main.js','TimekeepingApp.vue']
 ]
 test('mọi ứng dụng máy tính nạp đúng chuẩn Lotus, không tác động mobile Vant',()=>{
  for(const [main,app] of entries){
@@ -27,15 +27,4 @@ test('tokens và giao diện máy tính chỉ áp dụng khi khung nhìn đủ r
  assert.match(css,/\.lotus-ui\.stock-shell/)
  assert.match(css,/prefers-reduced-motion:reduce/)
  assert.match(css,/focus-visible/)
-})
-test('màn dự thu dùng các khối hiển thị chuẩn, biểu đồ được tải trễ',()=>{
- const src=read('frontend/src/components/ForecastPlanner.vue')
- assert.match(src,/DesktopPageHeading/)
- assert.match(src,/DesktopMetricCard/)
- assert.match(src,/DesktopEmptyState/)
- assert.match(src,/defineAsyncComponent\(\(\)=>import\('\.\/DesktopForecastChart\.vue'\)\)/)
- const chart=read('frontend/src/components/DesktopForecastChart.vue')
- assert.match(chart,/echarts\/core/)
- assert.match(chart,/actual_gross_kg/)
- assert.doesNotMatch(chart,/\.insert\(|\.save\(|frappe\.db/)
 })

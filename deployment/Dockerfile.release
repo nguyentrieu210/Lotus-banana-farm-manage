@@ -10,11 +10,19 @@ ARG BASE_IMAGE=lotus-hr-cccd-fullframe:v3-20261019
 FROM ${BASE_IMAGE}
 ARG REVISION=unknown
 USER root
-# Code is replaced, not overlaid: everything in the package except public/ (old hashed assets) is removed first, so
-# DocTypes and modules deleted from the repo do not survive in the image and get re-synced by migrate.
-RUN cd /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm && find . -mindepth 1 -maxdepth 1 ! -name public -exec rm -rf {} +
+# Code is replaced, not overlaid: everything of the app is removed first except the hashed frontend assets of earlier
+# releases (public/frontend/assets, still referenced by cached PWAs), so modules, DocTypes, static pages and scripts,
+# tests and tools deleted from the repo do not survive in the image (a DocType JSON left behind would be re-synced by
+# migrate; a static page left behind would stay online). The editable install lives in site-packages, not in the app.
+RUN cd /home/frappe/frappe-bench/apps/lotus_farm \
+ && find . -mindepth 1 -maxdepth 1 ! -name lotus_farm -exec rm -rf {} + \
+ && cd lotus_farm && find . -mindepth 1 -maxdepth 1 ! -name public -exec rm -rf {} + \
+ && cd public && find . -mindepth 1 -maxdepth 1 ! -name frontend -exec rm -rf {} + \
+ && cd frontend && find . -mindepth 1 -maxdepth 1 ! -name assets -exec rm -rf {} +
 COPY --chown=frappe:root app/ /home/frappe/frappe-bench/apps/lotus_farm/
 COPY --chown=frappe:root downloads/ /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/
+# The scanner APK is not in git and nothing else brings it back after the cleanup: refuse to build without it.
+RUN test -s /home/frappe/frappe-bench/apps/lotus_farm/lotus_farm/public/downloads/Lotus-HR-Scanner.apk
 RUN /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/lotus_farm/deployment/fix-websocket-origin.py
 RUN find /home/frappe/frappe-bench/apps/lotus_farm -name '*.pyc' -delete
 LABEL org.opencontainers.image.revision=${REVISION} \
