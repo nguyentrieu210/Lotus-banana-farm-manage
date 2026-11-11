@@ -68,24 +68,23 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .stock-master-fields{border:0;padding:0;min-width:0}
 .delete-confirm{padding:10px;background:var(--lotus-accent-soft);color:var(--lotus-accent);border:1px solid var(--lotus-accent);border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px}
 .delete-confirm p{width:100%;margin:0}
-.app-shell .sidebar{background:var(--lotus-neutral-900);border-right:1px solid var(--lotus-neutral-700);color:var(--lotus-neutral-300)}
-.app-shell .sidebar .brand{color:#fff;font-weight:750}
-.app-shell .sidebar .brand{padding-bottom:14px;border-bottom:1px solid var(--lotus-neutral-700);width:100%}
-.app-shell .sidebar .brand small,.stock-shell .stock-nav-label{color:var(--lotus-neutral-400)}
-.app-shell .sidebar nav button{color:var(--lotus-neutral-300);font-weight:500}
-.app-shell .sidebar nav button.active{background:var(--lotus-primary-900);color:var(--lotus-primary-200);box-shadow:inset 3px 0 0 var(--lotus-primary-600)}
-.app-shell .sidebar nav button:hover{background:var(--lotus-neutral-800);color:#fff}
-.app-shell .sidebar .field-link{color:var(--lotus-neutral-400)}
+/* Same calm sidebar as at ≥901px (desktop-system.css), from tokens, so it follows dark mode at every width. */
+.app-shell .sidebar{background:var(--lotus-sidebar);border-right:1px solid var(--lotus-border);color:var(--lotus-muted)}
+.app-shell .sidebar .brand{color:var(--lotus-text-strong);font-weight:750}
+.app-shell .sidebar .brand{padding-bottom:14px;border-bottom:1px solid var(--lotus-border);width:100%}
+.app-shell .sidebar .brand small,.stock-shell .stock-nav-label{color:var(--lotus-subtle)}
+.app-shell .sidebar nav button{color:var(--lotus-muted);font-weight:500}
+.app-shell .sidebar nav button.active{background:var(--lotus-accent-soft);color:var(--lotus-accent);box-shadow:inset 3px 0 0 var(--lotus-primary)}
+.app-shell .sidebar nav button:hover{background:var(--lotus-soft);color:var(--lotus-accent)}
+.app-shell .sidebar .field-link{color:var(--lotus-muted)}
 .stock-shell .stock-logo{background:var(--lotus-primary-900);color:var(--lotus-primary-200);border-color:var(--lotus-primary-800)}
 /* Lotus red bar at every width, same as desktop >=901px and the PWA header. */
-.workspace-bar{--lotus-text:#fff;--lotus-muted:var(--lotus-primary-50);--lotus-border:#ffffff55;--lotus-soft:#ffffff24;background:var(--lotus-primary-600);color:#fff;border-radius:0;padding:9px 12px;border-color:var(--lotus-neutral-700)}
-.workspace-bar button{background:transparent;color:#fff}
-.workspace-bar .workspace-search{background:#fff;border-color:#fff;color:var(--lotus-neutral-600);font-size:12px}
-.workspace-bar .workspace-search:hover{background:var(--lotus-neutral-25);border-color:#fff}
-.workspace-bar .workspace-home{color:#fff}
-.workspace-bar .workspace-avatar{background:#ffffff24;color:#fff;border:1px solid #ffffff40}
-.workspace-bar .workspace-menu{background:var(--lotus-neutral-900);color:var(--lotus-neutral-100)}
-.workspace-bar .workspace-menu button:hover{background:var(--lotus-neutral-700)}
+.workspace-bar{--lotus-text:var(--lotus-on-topbar);--lotus-muted:var(--lotus-on-topbar-muted);--lotus-border:var(--lotus-topbar-line);--lotus-soft:var(--lotus-topbar-soft);background:linear-gradient(90deg,var(--lotus-topbar),var(--lotus-topbar-end));color:var(--lotus-on-topbar);border-radius:0;padding:9px 12px;border-color:var(--lotus-topbar-end)}
+.workspace-bar button{background:transparent;color:var(--lotus-on-topbar)}
+.workspace-bar .workspace-search{background:var(--lotus-topbar-field);border-color:var(--lotus-topbar-field-line);color:var(--lotus-topbar-field-text);font-size:12px}
+.workspace-bar .workspace-search:hover{background:var(--lotus-topbar-field-hover);border-color:var(--lotus-topbar-field-line)}
+.workspace-bar .workspace-home{color:var(--lotus-on-topbar)}
+.workspace-bar .workspace-avatar{background:var(--lotus-topbar-soft);color:var(--lotus-on-topbar);border:1px solid var(--lotus-topbar-line)}
 .stock-shell .stock-actions>button:first-child,.stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600);font-weight:650}
 .stock-shell .stock-actions>button:first-child:hover,.stock-shell .stock-button.primary:hover{background:var(--lotus-primary-700);border-color:var(--lotus-primary-700)}
 .dark .stock-shell .stock-actions>button:first-child,.dark .stock-shell .stock-button.primary{background:var(--lotus-primary-600);color:#fff;border-color:var(--lotus-primary-600)}
@@ -110,8 +109,8 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-item-cell .name{font-weight:600}
 .excel-trigger.active{background:var(--lotus-accent-soft);color:var(--lotus-accent)}
 .excel-popup footer button:last-child{background:var(--lotus-primary-600);color:white;border-color:var(--lotus-primary-600)}
-.excel-popup[popover]{margin:0;inset:auto}
-.excel-popup[popover]:not(:popover-open){display:none}
+
+
 .app-shell .scope-picker{gap:8px;padding:0 0 10px;margin-bottom:8px}
 .app-shell .scope-picker label{min-width:115px;font-size:10px;gap:3px}
 .app-shell .scope-picker input,.app-shell .scope-picker select,.stock-shell .stock-scope input,.stock-shell .stock-scope select{height:32px;min-height:32px;padding:5px 8px;font-size:12px}
@@ -252,7 +251,6 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 
 
 .app-shell .sidebar .brand{padding-bottom:9px}
-.lotus-coverage-state{font-weight:750}.lotus-coverage-state.is-covered{color:var(--lotus-success-700)}.lotus-coverage-state.is-incoming{color:var(--lotus-primary-600)}.lotus-coverage-state.is-short{color:var(--lotus-primary-600)}.dark .lotus-coverage-state.is-covered{color:var(--lotus-success-300)}.dark .lotus-coverage-state.is-incoming{color:var(--lotus-warning-300)}.dark .lotus-coverage-state.is-short{color:var(--lotus-primary-300)}
 
 
 /* Excel filter menus live in a body Teleport so the table cannot clip them. */
@@ -278,5 +276,5 @@ kbd{font:10px Inter,system-ui,sans-serif;padding:2px 4px;border:1px solid var(--
 .lotus-excel-popup input[type=checkbox]:focus:not(:focus-visible){outline:none}
 .lotus-excel-popup .excel-filter-count{font-size:11px;color:var(--lotus-muted,var(--lotus-neutral-600))}
 .lotus-excel-popup footer{flex-shrink:0;display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid var(--lotus-neutral-200)}
-.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:#fff;color:var(--lotus-neutral-700);font-size:12px}
+.lotus-excel-popup footer button{padding:7px 12px;min-height:31px;border:1px solid var(--lotus-neutral-300);border-radius:5px;background:var(--lotus-surface);color:var(--lotus-neutral-700);font-size:12px}
 .lotus-excel-popup footer .excel-apply{background:var(--lotus-accent,var(--lotus-primary-600));color:#fff;border-color:var(--lotus-accent,var(--lotus-primary-600))}

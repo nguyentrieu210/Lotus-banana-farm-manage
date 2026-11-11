@@ -29,6 +29,7 @@ import {Button as UiButton} from './components/ui/button'
 // Each view is its own component; the forms (phiếu kho, chi tiết, danh mục, nhận hàng theo đơn) are shared by every view.
 const {desktop,density,gridDensity}=useDesktopWorkspace({embedded:props.embedded})
 provide('lotusDesktopDensity',gridDensity)
+provide('lotusTableVariant','stock')
 const router=inject(routerKey,null),route=inject(routeLocationKey,null)
 const confirm=useWorkspaceConfirm()
 const api=(name,args={})=>call('lotus_farm.warehouse.'+name,args)

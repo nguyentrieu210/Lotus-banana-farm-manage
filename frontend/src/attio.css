@@ -23,12 +23,12 @@ h3{font-size:14px;font-weight:650}
 .scope-picker{padding:0 0 18px;margin:0 0 8px;gap:10px;border-bottom:1px solid var(--lotus-border);align-items:flex-end}
 .scope-picker label{font-size:11px;font-weight:550;color:var(--lotus-neutral-500);gap:5px;min-width:140px}
 label{color:var(--lotus-neutral-600)}
-input,select,textarea{background:#fff;border:1px solid var(--lotus-neutral-200);border-radius:7px;color:var(--lotus-neutral-800);padding:9px 10px;min-height:36px;font-size:13px}
+input,select,textarea{background:var(--lotus-surface);border:1px solid var(--lotus-neutral-200);border-radius:7px;color:var(--lotus-neutral-800);padding:9px 10px;min-height:36px;font-size:13px}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--lotus-info-200);outline-offset:0;border-color:var(--lotus-info-400)}
 input::placeholder{color:var(--lotus-neutral-400)}
 .panel{border:1px solid var(--lotus-border);background:var(--lotus-surface);border-radius:10px;box-shadow:0 1px 2px #1e293b06;padding:18px;margin:16px 0}
 .muted{color:var(--lotus-neutral-500)}
-.child-row{border:1px solid var(--lotus-border);box-shadow:none;border-radius:8px;background:#fff}
+.child-row{border:1px solid var(--lotus-border);box-shadow:none;border-radius:8px;background:var(--lotus-surface)}
 .status-1{background:var(--lotus-neutral-100);color:var(--lotus-success-700)}.status-2{background:var(--lotus-primary-50);color:var(--lotus-primary-600)}
 .notice{background:var(--lotus-neutral-50);border:1px solid var(--lotus-neutral-200);color:var(--lotus-info-600);border-radius:8px}
 .view-controls{padding:14px 0;gap:9px}
@@ -41,9 +41,9 @@ input::placeholder{color:var(--lotus-neutral-400)}
 .document-dialog,.small-dialog{border-radius:13px;box-shadow:0 18px 70px #16213b25}
 .mobile-welcome{background:var(--lotus-neutral-50);border-color:var(--lotus-neutral-200);border-radius:12px}
 .mobile-welcome>p:not(.eyebrow){color:var(--lotus-neutral-600)}
-.mobile-sync{height:auto;background:#fff;border-color:var(--lotus-border);color:var(--lotus-info-600)}
+.mobile-sync{height:auto;background:var(--lotus-surface);border-color:var(--lotus-border);color:var(--lotus-info-600)}
 .mobile-action-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
-.mobile-action{height:auto;min-width:0;white-space:normal;text-align:left;padding:22px 20px;gap:14px;background:#fff;color:var(--lotus-text);border-color:var(--lotus-border);border-radius:10px;min-height:112px}
+.mobile-action{height:auto;min-width:0;white-space:normal;text-align:left;padding:22px 20px;gap:14px;background:var(--lotus-surface);color:var(--lotus-text);border-color:var(--lotus-border);border-radius:10px;min-height:112px}
 .mobile-action-text{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere;gap:6px}
 .mobile-action-text strong{font-size:14px;line-height:1.5}
 .mobile-action-text small{font-size:12px;line-height:1.6;white-space:normal}
@@ -61,23 +61,22 @@ input::placeholder{color:var(--lotus-neutral-400)}
 
 /* AG Grid Community: compact data-first desktop tables and tap-friendly mobile list. */
 .lotus-record-list{width:100%;min-width:0}
-.lotus-ag-grid-shell{min-width:0;width:100%;border:1px solid var(--lotus-border);border-radius:8px;overflow:hidden;background:#fff}
+.lotus-ag-grid-shell{min-width:0;width:100%;border:1px solid var(--lotus-border);border-radius:8px;overflow:hidden;background:var(--lotus-surface)}
 .lotus-ag-grid-shell--scroll{height:520px}
 .lotus-ag-grid{width:100%;height:auto;font-size:12px}
 .lotus-ag-grid-shell--scroll .lotus-ag-grid{height:100%}
 .lotus-grid-cell{cursor:pointer}
-.lotus-grid-status{font-weight:600;color:var(--lotus-info-500)}
-.lotus-ag-grid .ag-header{font-weight:600}
-.lotus-ag-grid .ag-header-cell-text{font-size:11px;letter-spacing:.05px}
-.lotus-ag-grid .ag-row:focus-within{box-shadow:inset 0 0 0 1px var(--lotus-info-300)}
-.lotus-grid-footer{padding:9px 4px 0;color:var(--lotus-neutral-500);font-size:11px}
+
+
+
+
 .lotus-mobile-records,.lotus-mobile-filter{display:none}
 @media(max-width:1000px){
   .sidebar{width:200px;padding:18px 10px}
   main{padding:20px 16px}
 }
 @media(max-width:650px){
-  .sidebar{width:100%;padding:12px 14px;border-right:0;border-bottom:1px solid var(--lotus-border);background:#fff}
+  .sidebar{width:100%;padding:12px 14px;border-right:0;border-bottom:1px solid var(--lotus-border);background:var(--lotus-surface)}
   .sidebar .brand{font-size:19px;padding:0;color:var(--lotus-neutral-900)}
   .app-shell main{padding:14px 12px calc(95px + env(safe-area-inset-bottom))}
   .app-shell main>header{padding:5px 0 12px}
@@ -95,14 +94,14 @@ input::placeholder{color:var(--lotus-neutral-400)}
   .lotus-mobile-filter .excel-header{flex:0 0 auto;width:auto;min-width:0;padding:0}
   .lotus-mobile-filter .excel-sort{display:none}
   .lotus-mobile-filter .excel-trigger{width:40px;height:40px;border:1px solid var(--lotus-border);border-radius:8px;background:var(--lotus-surface)}
-  .lotus-mobile-record{position:relative;width:100%;border:0;border-bottom:1px solid var(--lotus-border);border-radius:0;background:#fff;color:var(--lotus-text);display:grid;gap:6px;text-align:left;padding:14px 30px 14px 12px}
+  .lotus-mobile-record{position:relative;width:100%;border:0;border-bottom:1px solid var(--lotus-border);border-radius:0;background:var(--lotus-surface);color:var(--lotus-text);display:grid;gap:6px;text-align:left;padding:14px 30px 14px 12px}
   .lotus-mobile-record:last-child{border-bottom:0}
   .lotus-mobile-record:focus-visible{outline:2px solid var(--lotus-info-200);outline-offset:-2px}
   .lotus-mobile-record>strong{font-size:13px;overflow-wrap:anywhere}
   .lotus-mobile-record-detail{display:flex;justify-content:space-between;gap:10px;color:var(--lotus-neutral-600);font-size:11px}
   .lotus-mobile-record-detail span:last-child{color:var(--lotus-neutral-700);font-weight:550;text-align:right}
   .lotus-mobile-record-arrow{position:absolute;right:12px;top:15px;color:var(--lotus-neutral-500);width:18px;height:18px}
-  .lotus-grid-footer{font-size:10px}
+  
 }
 /* SchemaForm checks use native controls; text-field and Frappe resets must not hide the tick. */
 .schema-grid input[type=checkbox]{appearance:auto;width:16px;height:16px;min-height:0;padding:0;flex-shrink:0;border-radius:3px;box-shadow:none;background-image:none;accent-color:var(--lotus-accent)}

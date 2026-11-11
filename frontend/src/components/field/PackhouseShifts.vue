@@ -6,6 +6,7 @@ import FormGrid from '../form/FormGrid.vue'
 import ModalForm from '../form/ModalForm.vue'
 import DataTable from '../DataTable.vue'
 import {Button as UiButton} from '../ui/button'
+import ShiftCard from '../agri/ShiftCard.vue'
 import {formatDate} from '../../format'
 import {amountText,swatch} from '../../lot-entry-model.js'
 // Xưởng (lotus_farm.shift): packhouse shifts and the bunches they took in, by lô and ribbon colour from confirmed harvest
@@ -28,7 +29,11 @@ async function load(){
 watch(()=>[props.farm,since.value],load,{immediate:true})
 
 const receiptText=r=>r.docstatus!==1?'Đang mở':r.receipt_state===1?'Đã nhập kho':r.receipt_state===0?'Phiếu nhập kho nháp':'Chưa nhập kho'
+const receiptKind=r=>r.docstatus!==1?'in_progress':r.receipt_state===1?'done':r.receipt_state===0?'draft':'waiting'
 const pct=v=>v==null?'—':amountText(v)+'%'
+// Spec 004: a shift in the list is the kit shift card — bunches in, kg packed, boxes, then kg in, lô and packout rate.
+const cardOf=r=>({name:r.shift_code,date:r.posting_date,status:receiptKind(r),statusLabel:receiptText(r),bunches:r.bunches,kg:r.finished_kg,boxes:r.cartons,
+ lines:[amountText(r.input_kg)+' kg vào từ '+r.lots+' lô · tỷ lệ đóng gói '+pct(r.packout_percent)]})
 const time=v=>String(v||'').slice(11,16)
 function blank(){return {name:'',modified:'',shift_code:'',posting_date:today,start:'07:00',end:'16:00',finished_kg:null,secondary_kg:null,cartons:null,notes:'',sources:{}}}
 async function offer(day,name){offered.value=await api('harvest_sources',{farm:props.farm,date:day,name:name||undefined})}
@@ -120,11 +125,7 @@ const splitColumns=[
   <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
   <p v-if="!busy&&!rows.length" class="lotus-form-note">Chưa có ca đóng gói trong khoảng này.</p>
   <div class="packhouse__cards">
-   <button v-for="r in rows" :key="r.name" type="button" class="packhouse__card" :class="{'is-open':r.docstatus!==1}" @click="open(r)">
-    <strong>Ca {{r.shift_code}} · {{formatDate(r.posting_date)}}</strong>
-    <span>{{amountText(r.input_kg)}} kg vào · {{amountText(r.finished_kg)}} kg thành phẩm ({{pct(r.packout_percent)}}) · {{amountText(r.cartons)}} thùng</span>
-    <span>{{amountText(r.bunches)}} buồng từ {{r.lots}} lô · {{receiptText(r)}}</span>
-   </button>
+   <ShiftCard v-for="r in rows" :key="r.name" class="packhouse__card" :class="{'is-open':r.docstatus!==1}" interactive :shift="cardOf(r)" @open="open(r)"/>
   </div>
 
   <ModalForm :model-value="!!form" :title="form?.name?'Ca '+form.shift_code:'Thêm ca đóng gói'" width="900px" submit-label="Lưu ca" :busy="saving" :error="formError"
@@ -192,10 +193,7 @@ const splitColumns=[
 .packhouse__tools>*:first-child{min-width:180px}
 .packhouse__cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
 .packhouse--mobile .packhouse__cards{grid-template-columns:1fr}
-.packhouse__card{display:grid;gap:3px;padding:10px 12px;text-align:left;font:inherit;color:inherit;border:1px solid var(--lotus-border);border-left:4px solid var(--lotus-success);border-radius:var(--lotus-radius-md);background:var(--lotus-surface);cursor:pointer}
-.packhouse__card.is-open{border-left-color:var(--lotus-warning)}
-.packhouse__card strong{color:var(--lotus-text-strong)}
-.packhouse__card span{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
+.packhouse__card.is-open{border-color:var(--lotus-tone-info-border)}
 .packhouse__title{margin:12px 0 4px;font-size:var(--lotus-text-sm);font-weight:600;color:var(--lotus-muted)}
 .packhouse__times{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .packhouse__sources{list-style:none;margin:0;padding:0;display:grid;gap:6px}

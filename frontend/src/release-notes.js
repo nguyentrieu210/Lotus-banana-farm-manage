@@ -1,12 +1,20 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
- {id:'2026-11-11c',title:'Yêu cầu cấp vật tư',items:[
+ {id:'2026-11-11d',title:'Yêu cầu cấp vật tư',items:[
   {title:'Lập yêu cầu ở Công việc',text:'Đội trưởng bấm "Đề nghị cấp vật tư" ở Giao việc: chọn việc, kho cấp, ngày cần, các lô và vật tư. Nhập số mỗi lô, hoặc nhập tổng để máy chia theo diện tích lô (chai, gói, bao giữ số chẵn).'},
   {title:'Duyệt',text:'Đội trưởng và quản lý vườn lưu và duyệt luôn. Người duyệt được giảm số có ghi lý do hoặc trả lại; đã duyệt thì không sửa, muốn đổi thì đóng phần còn lại rồi lập lại.'},
   {title:'Kho cấp theo yêu cầu',text:'Kho › Xuất kho có nút "Cấp theo yêu cầu (N)". Bấm "Lập phiếu xuất" là phiếu xuất mở sẵn kho, người nhận và phần còn lại; chi phí vào đúng lô và đúng việc của yêu cầu. Trên điện thoại, Kho có thao tác "Cấp theo yêu cầu".'},
   {title:'Theo dõi',text:'Mỗi yêu cầu ghi đã cấp, Kho đang lập phiếu, còn lại theo từng lô, các phiếu xuất và lịch sử. Yêu cầu quá ngày cần mà còn số có nhãn "Quá hạn chưa cấp".'},
   {title:'Từ phiếu giao việc',text:'Trong phiếu giao việc có mục "Vật tư cho phiếu này" để đề nghị cấp với việc, tổ và lô đã điền sẵn.'},
+ ]},
+ {id:'2026-11-11c',title:'Giao diện mới "Đất và lá" (11/11/2026)',items:[
+  {title:'Màu và chữ',text:'Nền màu đất ấm, đỏ Lotus chỉ dùng cho nút chính. Xanh lá là đạt, vàng là đến hạn, đỏ thẫm là quá hạn hoặc cách ly. Chế độ tối dễ nhìn hơn; bản in luôn nền trắng chữ đen.'},
+  {title:'Bảng',text:'Trạng thái hiện thành nhãn màu có biểu tượng ở Kho, Mua hàng, Tài chính, Nhân sự. Dòng đang chọn được tô nền. Muốn bảng thoáng hơn: menu tài khoản, chọn "Bảng thoáng hơn".'},
+  {title:'Ô số liệu',text:'Tổng quan, Báo cáo, Màu dây và thu hoạch dùng chung một kiểu ô số liệu; ô chưa có số ghi "—" kèm lý do, không ghi 0.'},
+  {title:'Xưởng',text:'Mỗi ca là một thẻ: buồng vào, thành phẩm, số thùng và tình trạng nhập kho.'},
+  {title:'Điện thoại',text:'Thanh dưới có chữ dưới biểu tượng. Nút mặt trời trên đầu bật chế độ ngoài trời: chữ to, đậm, dễ đọc dưới nắng. Mất mạng thì có dải báo và số phiếu chờ gửi.'},
+  {title:'Nhập lô trên điện thoại',text:'Số buồng có nút cộng trừ lớn. Màu dây chọn bằng nút có chấm màu, tuần, lần và số buồng còn lại.'},
  ]},
  {id:'2026-11-11b',title:'Mua hàng và ký điện tử (cập nhật 11/11/2026)',items:[
   {title:'Chờ tôi ký',text:'Một danh sách các chứng từ đang chờ bạn ký, có trên điện thoại và máy tính. Mỗi lần ký đều hỏi lại số chứng từ và số tiền.'},

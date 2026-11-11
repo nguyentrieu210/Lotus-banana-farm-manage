@@ -6,6 +6,7 @@ import {stateLabel} from '../labels'
 import LotusChart from './LotusChart.vue'
 import OverviewBoard from './OverviewBoard.vue'
 import WorkspaceTabs from './WorkspaceTabs.vue'
+import {StatTile} from './ui/stat-tile'
 import {formatDate,formatMonthShort} from '../format'
 // /lotus/reports: charts per operating area from lotus_farm.reporting.charts.
 const props=defineProps({charts:{type:Object,default:null},busy:Boolean,filters:{type:Object,default:()=>({})}})
@@ -57,15 +58,15 @@ const denied=computed(()=>!!sectionsOf[tab.value]&&!!props.charts&&sectionsOf[ta
  <template v-else-if="tab==='people'&&charts"><p class="muted">Nhân sự & lương · {{c.people?.scope_label}}</p>
   <p v-if="c.people?.allowed===false" class="notice">Bạn không có quyền xem báo cáo nhân sự và lương.</p>
   <p v-else-if="c.people?.note" class="notice">{{c.people.note}}</p>
-  <template v-else><div class="lotus-stat-row"><div class="lotus-stat"><span>Đang làm</span><strong>{{n(c.people?.active)}}</strong><small>người</small></div><div class="lotus-stat"><span>Chờ tiếp nhận</span><strong>{{n(c.people?.pending)}}</strong><small>hồ sơ</small></div><div class="lotus-stat"><span>Phiếu lương đã duyệt</span><strong>{{n(c.people?.salary_slips)}}</strong><small>phiếu trong kỳ</small></div><div v-for="p in c.people?.payroll||[]" :key="p.currency" class="lotus-stat"><span>Thực lĩnh</span><strong>{{n(p.net)}}</strong><small>{{p.currency}}</small></div></div><LotusChart title="Chấm công" :categories="(c.people?.attendance||[]).map(r=>r.status)" :series="[{name:'Lượt công',data:(c.people?.attendance||[]).map(r=>r.count)}]" unit="lượt"/></template>
+  <template v-else><div class="lotus-stat-row"><StatTile label="Đang làm" :value="c.people?.active" unit="người"/><StatTile label="Chờ tiếp nhận" :value="c.people?.pending" unit="hồ sơ"/><StatTile label="Phiếu lương đã duyệt" :value="c.people?.salary_slips" unit="phiếu" hint="trong kỳ"/><StatTile v-for="p in c.people?.payroll||[]" :key="p.currency" label="Thực lĩnh" :value="p.net" :unit="p.currency"/></div><LotusChart title="Chấm công" :categories="(c.people?.attendance||[]).map(r=>r.status)" :series="[{name:'Lượt công',data:(c.people?.attendance||[]).map(r=>r.count)}]" unit="lượt"/></template>
  </template>
- <template v-else-if="tab==='commerce'&&charts"><section v-for="key in ['buying','sales']" :key="key"><p class="muted">{{key==='buying'?'Đơn mua':'Đơn bán'}} · {{c[key]?.scope_label}}</p><p v-if="c[key]?.allowed===false" class="notice">Bạn không có quyền xem {{key==='buying'?'đơn mua':'đơn bán'}}.</p><p v-else-if="c[key]?.note" class="notice">{{c[key].note}}</p><template v-else><div class="lotus-stat-row"><div class="lotus-stat"><span>{{key==='buying'?'Đơn mua':'Đơn bán'}}</span><strong>{{n(c[key]?.count)}}</strong><small>đơn đã duyệt trong kỳ</small></div><div v-for="r in c[key]?.totals||[]" :key="r.currency" class="lotus-stat"><span>Giá trị đơn</span><strong>{{n(r.value)}}</strong><small>{{r.currency}}</small></div></div><LotusChart :title="key==='buying'?'Tình trạng đơn mua':'Tình trạng đơn bán'" :categories="(c[key]?.statuses||[]).map(r=>r.status)" :series="[{name:'Số đơn',data:(c[key]?.statuses||[]).map(r=>r.count)}]" unit="đơn"/></template></section></template>
+ <template v-else-if="tab==='commerce'&&charts"><section v-for="key in ['buying','sales']" :key="key"><p class="muted">{{key==='buying'?'Đơn mua':'Đơn bán'}} · {{c[key]?.scope_label}}</p><p v-if="c[key]?.allowed===false" class="notice">Bạn không có quyền xem {{key==='buying'?'đơn mua':'đơn bán'}}.</p><p v-else-if="c[key]?.note" class="notice">{{c[key].note}}</p><template v-else><div class="lotus-stat-row"><StatTile :label="key==='buying'?'Đơn mua':'Đơn bán'" :value="c[key]?.count" unit="đơn" hint="đã duyệt trong kỳ"/><StatTile v-for="r in c[key]?.totals||[]" :key="r.currency" label="Giá trị đơn" :value="r.value" :unit="r.currency"/></div><LotusChart :title="key==='buying'?'Tình trạng đơn mua':'Tình trạng đơn bán'" :categories="(c[key]?.statuses||[]).map(r=>r.status)" :series="[{name:'Số đơn',data:(c[key]?.statuses||[]).map(r=>r.count)}]" unit="đơn"/></template></section></template>
  <template v-else-if="tab==='land'&&charts">
   <div class="lotus-stat-row">
-   <div class="lotus-stat"><span>Diện tích</span><strong>{{n(land.area_ha,1)}}</strong><small>ha · {{n(land.blocks)}} lô</small></div>
-   <div class="lotus-stat"><span>Số cây kiểm kê</span><strong>{{n(land.trees)}}</strong><small>{{n(land.counted_blocks)}}/{{n(land.blocks)}} lô có số cây</small></div>
-   <div class="lotus-stat"><span>Mật độ bình quân</span><strong>{{n(sum(counted,'counted_area_ha')?sum(counted,'trees')/sum(counted,'counted_area_ha'):null)}}</strong><small>cây/ha (khu có số cây)</small></div>
-   <div class="lotus-stat"><span>Đợt trổ dự kiến</span><strong>{{n(flowering.length)}}</strong><small>tháng có lô trổ</small></div>
+   <StatTile label="Diện tích" :value="land.area_ha" :digits="1" unit="ha" :hint="n(land.blocks)+' lô'"/>
+   <StatTile label="Số cây kiểm kê" :value="land.trees" unit="cây" :hint="n(land.counted_blocks)+'/'+n(land.blocks)+' lô có số cây'"/>
+   <StatTile label="Mật độ bình quân" :value="sum(counted,'counted_area_ha')?sum(counted,'trees')/sum(counted,'counted_area_ha'):null" unit="cây/ha" hint="khu có số cây" missing="Chưa có khu nào kiểm kê số cây"/>
+   <StatTile label="Đợt trổ dự kiến" :value="flowering.length" unit="tháng" hint="có lô trổ"/>
   </div>
   <div class="lotus-chart-grid">
    <LotusChart title="Số cây theo khu" :categories="zones.map(z=>'Khu '+z.zone)" :series="[{name:'Số cây',data:zones.map(z=>z.trees)}]" unit="cây" empty="Chưa có số cây kiểm kê."/>
@@ -79,8 +80,8 @@ const denied=computed(()=>!!sectionsOf[tab.value]&&!!props.charts&&sectionsOf[ta
   <p v-if="work.note" class="notice">{{work.note}}</p>
   <template v-else>
    <div class="lotus-stat-row">
-    <div class="lotus-stat"><span>Công thực tế</span><strong>{{n(sum(days,'workdays'),1)}}</strong><small>công đã xác nhận</small></div>
-    <div class="lotus-stat"><span>Dòng việc</span><strong>{{n(sum(days,'lines'))}}</strong><small>dòng sổ lô đã xác nhận</small></div>
+    <StatTile label="Công thực tế" :value="sum(days,'workdays')" :digits="1" unit="công" hint="đã xác nhận"/>
+    <StatTile label="Dòng việc" :value="sum(days,'lines')" unit="dòng" hint="sổ lô đã xác nhận"/>
    </div>
    <div class="lotus-chart-grid">
     <LotusChart title="Công thực tế theo ngày" :categories="days.map(d=>shortDay(d.date))" :series="[{name:'Công thực tế',data:days.map(d=>d.workdays)}]" unit="công" :decimals="1" empty="Chưa có dòng sổ lô đã xác nhận trong kỳ."/>
@@ -92,10 +93,10 @@ const denied=computed(()=>!!sectionsOf[tab.value]&&!!props.charts&&sectionsOf[ta
  <template v-else-if="tab==='harvest'&&charts">
   <p v-if="packout.note" class="notice">{{packout.note}}</p>
   <div class="lotus-stat-row">
-   <div v-if="harvest.allowed" class="lotus-stat"><span>Thu hoạch</span><strong>{{n(sum(harvestWeeks,'weight_kg'))}}</strong><small>kg · {{n(sum(harvestWeeks,'qty'))}} buồng</small></div>
-   <div v-if="packout.weeks" class="lotus-stat"><span>Thành phẩm</span><strong>{{n(sum(packWeeks,'finished_kg'))}}</strong><small>kg · {{n(sum(packWeeks,'cartons'))}} thùng</small></div>
-   <div v-if="packout.weeks" class="lotus-stat"><span>Tỷ lệ đóng gói</span><strong>{{n(pct(sum(packWeeks,'finished_kg'),sum(packWeeks,'input_kg')),1)}}</strong><small>% thành phẩm / đầu vào</small></div>
-   <div v-if="losses.allowed" class="lotus-stat"><span>Buồng hủy</span><strong>{{n(losses.total)}}</strong><small>buồng</small></div>
+   <StatTile v-if="harvest.allowed" label="Thu hoạch" :value="sum(harvestWeeks,'weight_kg')" unit="kg" :hint="n(sum(harvestWeeks,'qty'))+' buồng'"/>
+   <StatTile v-if="packout.weeks" label="Thành phẩm" :value="sum(packWeeks,'finished_kg')" unit="kg" :hint="n(sum(packWeeks,'cartons'))+' thùng'"/>
+   <StatTile v-if="packout.weeks" label="Tỷ lệ đóng gói" :value="pct(sum(packWeeks,'finished_kg'),sum(packWeeks,'input_kg'))" :digits="1" unit="%" hint="thành phẩm / đầu vào" missing="Chưa có khối lượng đầu vào"/>
+   <StatTile v-if="losses.allowed" label="Buồng hủy" :value="losses.total" unit="buồng"/>
   </div>
   <div class="lotus-chart-grid">
    <LotusChart v-if="harvest.allowed" title="Sản lượng thu hoạch theo tuần" :categories="harvestWeeks.map(w=>shortDay(w.week))" :series="[{name:'Khối lượng buồng',data:harvestWeeks.map(w=>w.weight_kg)}]" unit="kg" empty="Chưa có dòng thu hoạch đã xác nhận trong kỳ."/>
@@ -113,9 +114,9 @@ const denied=computed(()=>!!sectionsOf[tab.value]&&!!props.charts&&sectionsOf[ta
 
  <template v-else-if="tab==='forecast'&&charts">
   <div class="lotus-stat-row">
-   <div class="lotus-stat"><span>Dự thu {{forecast.horizon_weeks||13}} tuần tới</span><strong>{{n(forecast.bunches)}}</strong><small>buồng</small></div>
-   <div class="lotus-stat"><span>Khối lượng</span><strong>{{n(forecast.kg)}}</strong><small>kg</small></div>
-   <div class="lotus-stat"><span>Thùng</span><strong>{{n(forecast.cartons)}}</strong><small>thùng</small></div>
+   <StatTile :label="'Dự thu '+(forecast.horizon_weeks||13)+' tuần tới'" :value="forecast.bunches" unit="buồng" tone="primary"/>
+   <StatTile label="Khối lượng" :value="forecast.kg" unit="kg"/>
+   <StatTile label="Thùng" :value="forecast.cartons" unit="thùng"/>
   </div>
   <div class="lotus-chart-grid lotus-chart-grid--single">
    <LotusChart title="Dự thu theo tháng" :categories="months.map(m=>formatMonthShort(m.month))" :series="[{name:'Dự thu',data:months.map(m=>m.bunches)}]" unit="buồng" empty="Chưa có số dự thu."/>

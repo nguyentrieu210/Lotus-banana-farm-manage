@@ -5,6 +5,8 @@ import {setCSRF} from './api'
 import App from './App.vue'
 import './lotus-fonts.css'
 import './lotus-tokens.css'
+// Shared kit classes (spec 004): chips, stat tiles, lot cards, charts… built only on the tokens.
+import './lotus-kit.css'
 import './style.css'
 import './stock.css'
 import './shadcn.css'

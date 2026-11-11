@@ -54,6 +54,7 @@ import {procurementTabs,purchaseKinds,money,newKey,quoteChoices} from '../procur
 import {toast} from '../use-toast'
 import {useWorkspaceConfirm} from '../use-workspace-confirm'
 import {useMobileConfirm} from '../use-mobile-confirm'
+import {statusCol} from '../grid-columns.js'
 
 const props=defineProps({company:String,warehouse:String,today:String,mobile:Boolean,embedded:Boolean,buyingView:String,navigationKey:String,initialSupplier:String})
 const api=procurementApi
@@ -111,7 +112,7 @@ const columns=computed(()=>tab.value==='quick'?quickColumns:tab.value==='invoice
  {field:'supplier',headerName:'Nhà cung cấp'},{field:'item_name',headerName:'Mặt hàng',minWidth:180},
  {field:'amount',headerName:'Số tiền',valueFormatter:p=>money(p.value)}]:[
  {field:'name',headerName:'Số chứng từ',minWidth:180},{field:'supplier_name',headerName:'Nhà cung cấp',valueGetter:p=>p.data.supplier_name||p.data.supplier||''},
- {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{field:'status',headerName:'Trạng thái',minWidth:150,valueGetter:p=>stateLabel(p.data.status)+(p.data.overdue?' · quá hẹn':'')},
+ {field:'date',headerName:'Ngày',valueGetter:p=>p.data.date||p.data.expected_date||''},{...statusCol('status','Trạng thái',{labelOf:(v,row)=>stateLabel(v)+(row?.overdue?' · quá hẹn':'')}),minWidth:150},
  ...(tab.value==='orders'?[{field:'billed_percent',headerName:'Đã có hóa đơn',sum:false,valueFormatter:p=>p.data?.docstatus===1?Math.round(Number(p.value||0))+'%':''},
   {field:'paid_percent',headerName:'Đã trả tiền',sum:false,valueFormatter:p=>p.data?.docstatus===1&&p.value!=null?Math.round(Number(p.value))+'%':''},
   {field:'reject_reason',headerName:'Lý do trả lại',minWidth:180,sum:false,defaultHidden:true}]:[]),

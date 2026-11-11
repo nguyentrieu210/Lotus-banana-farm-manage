@@ -1,11 +1,11 @@
 <script setup>
 import {computed,getCurrentInstance,inject,nextTick,onBeforeUnmount,onMounted,reactive,ref,shallowRef,useSlots,watch} from 'vue'
-import {compactGridTheme,desktopGridThemes} from '../grid-theme'
+import {lotusGridTheme} from '../grid-theme'
+import {uiDensity} from '../ui-mode'
 import {AG_GRID_LOCALE_VN} from '@ag-grid-community/locale'
 import ExcelHeader from './ExcelHeader.vue'
 import {uiFarmLabel} from '../labels'
 import {AgGridVue} from 'ag-grid-vue3'
-import {themeQuartz} from 'ag-grid-community'
 import '../grid-modules.js'
 import {Button as UiButton} from './ui/button'
 import {Skeleton as UiSkeleton} from './ui/skeleton'
@@ -25,8 +25,9 @@ import {buildXlsx,exportExcelFile} from '../excel-export'
 import {Pagination} from './ui/pagination'
 import UiSelect from './ui/select/Select.vue'
 const desktopDensity=inject('lotusDesktopDensity',null)
-// Shared lists use compact rows; explicit comfortable mode keeps a little more breathing room.
-const theme=computed(()=>{const comfortable=desktopDensity?.value==='comfortable';return (desktopGridThemes[desktopDensity?.value]||compactGridTheme).withParams({fontSize:comfortable?13:12,rowHeight:comfortable?40:34,headerHeight:comfortable?38:33,spacing:3})})
+const tableVariant=inject('lotusTableVariant','default')
+// One density for every table, chosen in the account menu (spec 004, FR-013); Kho keeps its accepted look (FR-013a).
+const theme=computed(()=>lotusGridTheme(desktopDensity?.value||uiDensity.value,tableVariant?.value??tableVariant))
 const props=defineProps({keepHeight:Boolean,rows:{type:Array,default:()=>[]},columns:{type:Array,required:true},loading:Boolean,empty:{type:String,default:'Chưa có dữ liệu.'},emptyHint:{type:String,default:''},storageKey:String,rowKey:String,pinnedBottomRows:{type:Array,default:()=>[]},mobileLimit:Number,interactive:Boolean,rowClass:Function,serverSort:Boolean,showEmptyHeaders:Boolean,filterValues:Object,serverFilters:{type:Object,default:()=>({})},totals:{type:Boolean,default:true},totalsLabel:{type:String,default:'Tổng'},rowDetail:{type:Boolean,default:true},fill:{type:Number,default:-1},paginate:{type:Boolean,default:true},pageSize:{type:Number,default:50},exportRows:Function,exportTitle:String,exportable:{type:Boolean,default:true},columnsMenu:{type:Boolean,default:true},hiddenColumns:{type:Array,default:null},selectionEnabled:{type:Boolean,default:true},selectedRowKeys:{type:Array,default:null},rowIndexOffset:{type:Number,default:0},columnLayout:{type:Object,default:null},columnPresets:{type:Array,default:()=>[]},toolsTarget:{type:null,default:null},autoHideEmpty:Boolean})
 const emit=defineEmits(['open','cell-open','filter','sort','visible-rows','row-double-open','update:hiddenColumns','update:columnLayout','row-selection-change','page-selection-change','selection-clear'])
 // AG Grid's Vue adapter clones row data. Editable slots must update the source record by its stable ID.
@@ -230,10 +231,22 @@ function utilityButton(pressed,label){
  button.appendChild(mark)
  return button
 }
+// A chosen row is tinted across the pinned and scrolling parts of the grid (spec 004, User Story 2).
+// The selection cell is re-rendered on every change (refreshSelection), so it keeps the row class in step.
+function markRow(params,selected){
+ const id=params.node?.id
+ if(id==null)return
+ queueMicrotask(()=>{
+  const root=params.eGridCell?.closest?.('.ag-root-wrapper')
+  if(!root)return
+  for(const el of root.querySelectorAll('.ag-row[row-id="'+String(id).replace(/["\\]/g,'\\$&')+'"]'))el.classList.toggle('lotus-row-selected',selected)
+ })
+}
 function renderSelectionCell(params){
  if(!params.data||params.node?.rowPinned)return ''
  const row=params.data
  const selected=selectedIds.value.has(getSelectionId(row))
+ markRow(params,selected)
  const button=utilityButton(selected,selected?'Bỏ chọn dòng':'Chọn dòng')
  button.addEventListener('click',event=>{
   event.preventDefault();event.stopPropagation()
@@ -354,11 +367,14 @@ async function downloadExcel(){
 .lotus-data-table{min-width:0}
 
 .lotus-grid-select-cell,.lotus-grid-stt-cell{display:flex!important;align-items:center;justify-content:center!important;padding-left:2px!important;padding-right:2px!important}
-.lotus-data-table .ag-cell:not(.lotus-grid-select-cell):not(.lotus-grid-stt-cell){padding-left:8px!important;padding-right:8px!important;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
-.lotus-data-table .ag-header-cell{padding-left:7px!important;padding-right:7px!important}
+.lotus-data-table .ag-cell:not(.lotus-grid-select-cell):not(.lotus-grid-stt-cell){padding-left:var(--lotus-table-cell-x)!important;padding-right:var(--lotus-table-cell-x)!important;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.lotus-data-table .ag-cell{font-variant-numeric:tabular-nums}
+.lotus-data-table .ag-header-cell{padding-left:var(--lotus-table-cell-x)!important;padding-right:var(--lotus-table-cell-x)!important}
+.lotus-ag-grid .ag-row.lotus-row-selected{background-color:var(--lotus-table-selected)}
+.lotus-ag-grid .ag-pinned-left-cols-container .ag-row.lotus-row-selected{box-shadow:inset 3px 0 0 var(--lotus-primary)}
 .lotus-data-table__export{gap:6px!important;margin-bottom:4px!important}
 .lotus-data-table__export button{min-height:29px}
-.lotus-data-table .ag-pinned-left-header,.lotus-data-table .ag-pinned-left-cols-container{border-right:1px solid var(--lotus-border)}
+.lotus-data-table .ag-pinned-left-header,.lotus-data-table .ag-pinned-left-cols-container{border-right:1px solid var(--lotus-border-strong)}
 .lotus-grid-stt-cell{font-variant-numeric:tabular-nums;color:var(--lotus-muted)}
 .lotus-grid-select-header,.lotus-grid-native-select-header{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .lotus-grid-native-select-header{font-size:11px;font-weight:600;white-space:nowrap}
@@ -391,7 +407,8 @@ async function downloadExcel(){
 /* AG Grid owns the sole vertical scroll area. Its header and pinned total stay visible. */
 .lotus-ag-grid-shell--scroll{overflow:hidden}
 .lotus-ag-grid-shell--detail .ag-row:not(.ag-row-pinned){cursor:pointer}
-.lotus-ag-grid :is(.ag-grid-pinned-bottom-rows,.ag-floating-bottom) .ag-row{font-weight:650;background:var(--lotus-soft)}
+.lotus-ag-grid :is(.ag-grid-pinned-bottom-rows,.ag-floating-bottom) .ag-row{font-weight:650;background:var(--lotus-table-total)}
+.lotus-ag-grid .ag-floating-bottom{border-top:1px solid var(--lotus-border-strong)}
 .lotus-row-detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px 20px;margin:0}
 .lotus-row-detail>div{min-width:0}
 .lotus-row-detail dt{font-size:var(--lotus-text-sm);color:var(--lotus-muted)}

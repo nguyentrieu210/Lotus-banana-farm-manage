@@ -7,6 +7,7 @@ __pycache__/
 .idea/
 node_modules/
 frontend/.vite/
+frontend/dist-showcase/
 .env*
 
 # Local build/test output

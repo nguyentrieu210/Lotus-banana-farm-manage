@@ -49,6 +49,12 @@ test('colours: bao buồng picks unbagged colours, thu hoạch colours still on 
  assert.deepEqual(colourChoices(lot,'Harvest','').map(c=>c.value),['red'])
  assert.deepEqual(colourChoices(lot,'Harvest','white').map(c=>c.value),['red','white'])
 })
+test('colours: two batches of one colour and week are told apart by their lần',()=>{
+ const twice={colours:[{tag:'tim45-1',label:'Tím',code:'TIM',week:45,lan:1,left:21,bag_left:21},{tag:'tim45-2',label:'Tím',code:'TIM',week:45,lan:2,left:31,bag_left:31}],lines:[]}
+ const choices=colourChoices(twice,'Harvest','')
+ assert.deepEqual(choices.map(c=>c.label),['Tím · tuần 45 lần 1 · còn 21','Tím · tuần 45 lần 2 · còn 31'])
+ assert.deepEqual(choices.map(c=>[c.code,c.lan,c.left]),[['TIM',1,21],['TIM',2,31]],'the phone ribbon picker gets the colour, lần and what is left')
+})
 test('buồng left: own drafts come back, every line of the dialog on the colour is taken off, too many is an error',()=>{
  const harvested={...lot,lines:[{name:'d1',state:'Draft',stage:'Harvest',qty:15,bunch_tag:'red'},{name:'s1',state:'Sent',stage:'Harvest',qty:5,bunch_tag:'red'}]}
  const room=colourRoom(harvested)
@@ -82,9 +88,10 @@ test('a draft survives on the phone until it is cleared, and a broken storage is
 })
 
 test('ribbon codes become colours; two-colour ribbons show half each',()=>{
- assert.equal(swatch('CAM'),'#f57c00')
- assert.equal(swatch('DO_XANH_LA'),'linear-gradient(90deg,#d32f2f 50%,#2e7d32 50%)')
- assert.equal(swatch('XANH_LA_XANH_DUONG'),'linear-gradient(90deg,#2e7d32 50%,#1976d2 50%)')
+ // Spec 004: colours are tokens (lotus-tokens.css --lotus-ribbon-*), so dark and outdoor modes follow.
+ assert.equal(swatch('CAM'),'var(--lotus-ribbon-cam)')
+ assert.equal(swatch('DO_XANH_LA'),'linear-gradient(90deg,var(--lotus-ribbon-do) 0% 50%,var(--lotus-ribbon-xanh-la) 50% 100%)')
+ assert.equal(swatch('XANH_LA_XANH_DUONG'),'linear-gradient(90deg,var(--lotus-ribbon-xanh-la) 0% 50%,var(--lotus-ribbon-xanh-duong) 50% 100%)')
  assert.equal(swatch('#123456'),'#123456')
  assert.equal(swatch('LA'),'transparent');assert.equal(swatch(''),'transparent')
 })

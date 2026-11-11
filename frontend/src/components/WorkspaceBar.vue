@@ -14,7 +14,7 @@ import {inboxCount} from '../use-signing'
 const SignatureSettings=defineAsyncComponent(()=>import('./signing/SignatureSettings.vue'))
 const emit=defineEmits(['update:farm','whats-new'])
 const props=defineProps({farms:{type:Array,default:()=>[]},farm:{type:String,default:''},user:{type:String,default:''},title:{type:String,default:'Lotus'},actions:{type:Array,default:()=>[]},sidebar:{type:Boolean,default:true},branded:{type:Boolean,default:false},navigate:Function,recordSearch:Function})
-const {dark,sidebarCollapsed,toggleTheme,toggleSidebar}=useWorkspace()
+const {dark,density,sidebarCollapsed,toggleTheme,setDensity,toggleSidebar}=useWorkspace()
 const palette=ref(null),input=ref(null),query=ref(''),selected=ref(0),loggingOut=ref(false),logoutError=ref('')
 const normalized=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase()
 const directory=ref([])
@@ -73,6 +73,7 @@ onUnmounted(()=>window.removeEventListener('keydown',shortcut))
      <DropdownMenuItem @select="signatureOpen=true"><LotusIcon name="edit"/>Chữ ký của tôi</DropdownMenuItem>
      <DropdownMenuItem @select="open"><LotusIcon name="search"/>Tìm nhanh<kbd class="lotus-menu__kbd">Ctrl K</kbd></DropdownMenuItem>
      <DropdownMenuItem @select="toggleTheme"><LotusIcon :name="dark?'sun':'moon'"/>{{dark?'Giao diện sáng':'Giao diện tối'}}</DropdownMenuItem>
+     <DropdownMenuItem @select="setDensity(density==='compact'?'comfortable':'compact')"><LotusIcon name="layers"/>{{density==='compact'?'Bảng thoáng hơn':'Bảng gọn hơn'}}</DropdownMenuItem>
      <DropdownMenuSeparator/>
      <DropdownMenuItem :disabled="loggingOut" @select="logout"><LotusIcon name="logout"/>{{loggingOut?'Đang đăng xuất…':'Đăng xuất'}}</DropdownMenuItem>
     </DropdownMenuContent>

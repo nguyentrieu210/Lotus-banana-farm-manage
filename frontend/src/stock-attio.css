@@ -37,7 +37,7 @@
 .stock-dialog::backdrop{background:#17233d55;backdrop-filter:blur(2px)}
 .stock-dialog footer{border-color:var(--lotus-border);color:var(--lotus-muted)}
 .stock-issue-picker,.stock-line,.stock-setup-note,.stock-welcome{background:var(--lotus-soft);border-color:var(--lotus-border)}
-.stock-issue-tabs button{height:auto;white-space:normal;color:var(--lotus-neutral-600);border-color:var(--lotus-border);background:#fff}
+.stock-issue-tabs button{height:auto;white-space:normal;color:var(--lotus-neutral-600);border-color:var(--lotus-border);background:var(--lotus-surface)}
 .stock-issue-tabs button.active{background:var(--lotus-primary-50);color:var(--lotus-primary-600);border-color:var(--lotus-primary-300)}
 .stock-line input[readonly]{background:var(--lotus-neutral-100);color:var(--lotus-neutral-600)}
 .stock-text-button{color:var(--lotus-accent);height:auto;padding:0}

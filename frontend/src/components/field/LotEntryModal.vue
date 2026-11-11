@@ -6,6 +6,8 @@ import FormGrid from '../form/FormGrid.vue'
 import ModalForm from '../form/ModalForm.vue'
 import LineItemsEditor from '../form/LineItemsEditor.vue'
 import {Button as UiButton} from '../ui/button'
+import {NumberStepper} from '../ui/number-stepper'
+import RibbonPicker from '../agri/RibbonPicker.vue'
 import {formatDate} from '../../format'
 import {unitLabel} from '../../units'
 import {workSchema,blankLine,linesFromLot,payloadLines,fingerprint,defaultPeople,peopleCount,colourRoom,colourChoices,colourCheck,saveDraft,loadDraft,clearDraft,
@@ -57,6 +59,9 @@ const label=line=>works.value[line.work_type]?.label||'Chọn việc'
 const room=computed(()=>colourRoom(props.lot))
 const stageOf=line=>works.value[line.work_type]?.stage||''
 const colours=(line,stage)=>colourChoices(props.lot,stage,line.bunch_tag,room.value)
+// On the phone (spec 004, User Story 4) the colour is picked from large ribbon buttons and buồng are counted with a
+// large stepper, so a gloved thumb in the sun does not have to open a list or hit a small field.
+const ribbonOptions=(line,stage)=>colours(line,stage).map(o=>({value:o.value,code:o.code,label:o.name,week:o.week,hint:(o.lan?'lần '+o.lan+' · ':'')+'còn '+amountText(o.left)}))
 const check=line=>colourCheck(room.value,lines.value,stageOf,line)
 const over=computed(()=>lines.value.some(l=>check(l).error))
 const unit=line=>unitLabel(works.value[line.work_type]?.uom)||works.value[line.work_type]?.uom||''
@@ -141,17 +146,34 @@ async function save(){
       :hint="lot.area_ha?'Lô '+amountText(lot.area_ha)+' ha · số chồi ước tính theo số cây':''"/>
     </template>
     <template v-else>
-     <LotusField v-model="line.qty" :label="schema(line).qtyLabel+(schema(line).kind==='field'&&unit(line)?' ('+unit(line)+')':'')" type="number"
+     <div v-if="mobile&&schema(line).kind==='bunch'" class="lot-entry__count">
+      <span class="lot-entry__count-label">{{schema(line).qtyLabel}} <b aria-hidden="true">*</b></span>
+      <NumberStepper v-model="line.qty" size="lg" block :label="schema(line).qtyLabel" :disabled="!editable"/>
+     </div>
+     <LotusField v-else v-model="line.qty" :label="schema(line).qtyLabel+(schema(line).kind==='field'&&unit(line)?' ('+unit(line)+')':'')" type="number"
       :inputmode="schema(line).whole?'numeric':'decimal'" :required="schema(line).kind==='bunch'" :mobile="mobile" :disabled="!editable"/>
      <div v-if="schema(line).autoColour" class="lot-entry__fact"><span>Màu dây</span><strong>{{data.ribbon?.label||'Chưa có lịch màu dây'}}</strong></div>
-     <LotusField v-if="schema(line).pickColour" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
+     <div v-if="schema(line).pickColour&&mobile" class="lot-entry__colour">
+      <span class="lot-entry__count-label">Màu dây <b aria-hidden="true">*</b></span>
+      <RibbonPicker v-if="colours(line,schema(line).stage).length" v-model="line.bunch_tag" label="Màu dây" :options="ribbonOptions(line,schema(line).stage)"
+       :class="{'is-disabled':!editable}" :inert="!editable||undefined"/>
+      <p v-if="check(line).error" class="lot-entry__colour-error" role="alert">{{check(line).error}}</p>
+      <p v-else class="lotus-form-note">{{!colours(line,schema(line).stage).length?'Lô này chưa có buồng cắt bắp còn lại.':check(line).hint}}</p>
+     </div>
+     <LotusField v-else-if="schema(line).pickColour" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
       :options="colours(line,schema(line).stage)" :mobile="mobile" :disabled="!editable"
       :hint="!colours(line,schema(line).stage).length?'Lô này chưa có buồng cắt bắp còn lại.':check(line).hint" :error="check(line).error"/>
      <LotusField v-if="schema(line).kg" v-model="line.weight_kg" label="Khối lượng thu (kg)" type="number" inputmode="decimal" required :mobile="mobile" :disabled="!editable"/>
      <template v-if="schema(line).reason">
       <LotusField v-model="line.reject_stage" label="Hủy trước hay sau cắt bắp" type="select" :searchable="false" :options="rejectStages" required :mobile="mobile" :disabled="!editable"/>
       <LotusField v-model="line.reason" label="Lý do" type="select" :searchable="false" :options="reasonOptions" required :mobile="mobile" :disabled="!editable"/>
-      <LotusField v-if="line.reject_stage===AFTER_CUT" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
+      <div v-if="line.reject_stage===AFTER_CUT&&mobile" class="lot-entry__colour">
+       <span class="lot-entry__count-label">Màu dây <b aria-hidden="true">*</b></span>
+       <RibbonPicker v-if="colours(line,'Reject').length" v-model="line.bunch_tag" label="Màu dây" :options="ribbonOptions(line,'Reject')" :inert="!editable||undefined"/>
+       <p v-if="check(line).error" class="lot-entry__colour-error" role="alert">{{check(line).error}}</p>
+       <p v-else-if="check(line).hint" class="lotus-form-note">{{check(line).hint}}</p>
+      </div>
+      <LotusField v-else-if="line.reject_stage===AFTER_CUT" v-model="line.bunch_tag" label="Màu dây" type="select" :searchable="false" required
        :options="colours(line,'Reject')" :mobile="mobile" :disabled="!editable" :hint="check(line).hint" :error="check(line).error"/>
      </template>
     </template>
@@ -226,4 +248,10 @@ async function save(){
 .lot-entry__locked h3{margin:0 0 4px;font-size:var(--lotus-text-sm);color:var(--lotus-muted);font-weight:600}
 .lot-entry__locked ul{margin:0;padding-left:18px;font-size:var(--lotus-text-sm);color:var(--lotus-muted)}
 .lot-entry-modal .lotus-pwa-field.van-cell{padding:6px 10px}
+.lot-entry__count,.lot-entry__colour{display:grid;gap:6px;min-width:0}
+.lot-entry__count-label{color:var(--lotus-text-secondary);font-size:var(--lotus-text-sm);font-weight:var(--lotus-weight-semibold)}
+.lot-entry__count-label b{color:var(--lotus-danger)}
+.lot-entry__colour .lotus-form-note{margin:0}
+.lot-entry__colour-error{margin:0;color:var(--lotus-danger);font-size:var(--lotus-text-sm);font-weight:var(--lotus-weight-semibold)}
+.lot-entry__colour .is-disabled{opacity:.6}
 </style>

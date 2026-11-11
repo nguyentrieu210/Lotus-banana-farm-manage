@@ -6,7 +6,7 @@ import {GridComponent,TooltipComponent,LegendComponent} from 'echarts/components
 import {CanvasRenderer} from 'echarts/renderers'
 import {Button as UiButton} from './ui/button'
 import DataTable from './DataTable.vue'
-import {dark} from '../workspace'
+import {uiMode} from '../ui-mode'
 useEcharts([BarChart,LineChart,PieChart,GridComponent,TooltipComponent,LegendComponent,CanvasRenderer])
 // Report chart: one value axis, at most 3 series in the fixed --lotus-chart-1..3 order, table view always available.
 const props=defineProps({
@@ -44,8 +44,9 @@ function render(){
  }
  // Canvas needs concrete colours: read the theme tokens at render time.
  const css=getComputedStyle(target.value),token=name=>css.getPropertyValue(name).trim()
- const ink=token('--lotus-muted'),line=token('--lotus-border'),surface=token('--lotus-surface')
- const colors=[1,2,3,4,5].map(i=>token('--lotus-chart-'+i)),other=token('--lotus-chart-other')
+ // Chart tokens (spec 004) per mode: axis text, grid lines, the 8 categorical steps checked against each surface.
+ const ink=token('--lotus-chart-axis')||token('--lotus-muted'),line=token('--lotus-chart-grid')||token('--lotus-border'),surface=token('--lotus-surface')
+ const colors=[1,2,3,4,5,6,7,8].map(i=>token('--lotus-chart-'+i)).filter(Boolean),other=token('--lotus-chart-other')
  // Numbers on the marks when asked for; a zero prints nothing, so empty columns stay clean.
  const valueLabel=position=>props.showValues?{show:true,position,fontSize:11,color:position==='inside'?'#fff':token('--lotus-text'),...(position==='inside'?{textBorderColor:'rgba(0,0,0,.6)',textBorderWidth:2}:{}),formatter:p=>Number(p.value)?number(p.value):''}:undefined
  const palette=shown.value.map((s,i)=>s.other?other:colors[i]||other)
@@ -71,7 +72,8 @@ function render(){
  },true)
 }
 onMounted(async()=>{await nextTick();render();if(typeof ResizeObserver!=='undefined'&&target.value){observer=new ResizeObserver(()=>chart?.resize());observer.observe(target.value)}})
-watch(()=>[props.categories,props.series,props.kind,dark.value],()=>nextTick(render),{deep:true})
+// Light, dark and outdoor repaint the canvas with that mode's tokens.
+watch(()=>[props.categories,props.series,props.kind,uiMode.value],()=>nextTick(render),{deep:true})
 onBeforeUnmount(()=>{observer?.disconnect();chart?.dispose();chart=null})
 </script>
 <template>
