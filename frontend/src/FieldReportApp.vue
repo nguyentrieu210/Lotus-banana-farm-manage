@@ -17,6 +17,7 @@ import CareDueList from './components/field/CareDueList.vue'
 import PackhouseShifts from './components/field/PackhouseShifts.vue'
 import FieldReports from './components/report/FieldReports.vue'
 import CareCycleSettings from './components/field/CareCycleSettings.vue'
+import MaterialRequests from './components/field/MaterialRequests.vue'
 import ListPage from './components/ListPage.vue'
 import LotusField from './components/form/LotusField.vue'
 import FormGrid from './components/form/FormGrid.vue'
@@ -41,6 +42,9 @@ const myCrews=computed(()=>crews.value.filter(c=>(setup.value?.my_crews||[]).inc
 const crewOptions=computed(()=>myCrews.value.map(c=>({value:c.name,label:c.team_name+(c.zones?.length?' (khu '+c.zones.join(', ')+')':'')})))
 const crewName=name=>crews.value.find(c=>c.name===name)?.team_name||name||''
 const workName=name=>(setup.value?.works||[]).find(w=>w.name===name)?.work_name||name||''
+// Spec 005: đội trưởng and quản lý vườn create and approve yêu cầu cấp vật tư; kỹ thuật vườn only looks.
+const supervises=computed(()=>(setup.value?.supervised_crews||[]).includes(crew.value)||!!setup.value?.manager)
+const requestParam=computed(()=>String(route?.query?.request||''))
 
 function query(extra={}){return {...(route?.query||{}),field_view:view.value,farm:farm.value||undefined,crew:crew.value||undefined,date:day.value||undefined,...extra}}
 async function go(next,extra={}){
@@ -168,17 +172,20 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
    <p v-if="notice" class="stock-success" role="status">{{notice}}</p>
    <p v-if="busy&&!session" class="lotus-form-note" role="status">Đang tải…</p>
    <template v-if="session&&setup">
-    <template v-if="['today','assign'].includes(view)">
+    <template v-if="['today','assign','materials'].includes(view)">
      <FormGrid :columns="4" class="field-report-scope">
       <LotusField v-if="farmOptions.length>1" :model-value="farm" label="Vườn" :options="farmOptions" @update:model-value="changeFarm"/>
       <LotusField v-model="crew" label="Đội" type="select" :searchable="false" :options="crewOptions" empty-option="Chưa có đội"/>
      </FormGrid>
      <p v-if="!crewOptions.length" class="lotus-form-note">Tài khoản chưa là đội trưởng hoặc tổ trưởng của đội nào. Vào <a href="/lotus/cong-viec?field_view=lots">Đội, tổ &amp; lô</a> để xếp.</p>
+     <MaterialRequests v-if="view==='today'&&crew&&supervises" :key="'mr-approve'+farm+crew" class="field-report-approve" :farm="farm" :crew="crew" :setup="setup" view="approve" compact/>
      <LotToday v-if="view==='today'&&crew" :key="crew" v-model:date="day" :farm="farm" :crew="crew" :setup="setup"/>
+     <MaterialRequests v-else-if="view==='materials'&&crew" :key="'mr'+farm+crew" :farm="farm" :crew="crew" :setup="setup" view="all" :initial-request="requestParam"/>
      <template v-else-if="view==='assign'&&crew">
       <CareDueList :key="'due'+crew+assignedKey" :farm="farm" :crew="crew" @assigned="assignedKey++"/>
       <h2 class="field-report-section">Phiếu đã giao</h2>
       <WorkAssign :key="'tickets'+crew+assignedKey" :farm="farm" :crew="crew" :setup="setup"/>
+      <template v-if="supervises||setup.inspector"><h2 class="field-report-section">Yêu cầu cấp vật tư</h2><MaterialRequests :key="'mr'+farm+crew" :farm="farm" :crew="crew" :setup="setup" compact show-all @all="go('materials')"/></template>
       <template v-if="setup.inspector"><h2 class="field-report-section">Chờ nghiệm thu khoán lô</h2><WorkInspect :farm="farm" :setup="setup"/></template>
      </template>
     </template>
@@ -274,5 +281,6 @@ defineExpose({hasChanges:()=>false,discardChanges:()=>{},scopeParams:()=>({farm:
 
 <style>
 .field-report-scope{margin-bottom:12px}
+.field-report-approve{margin-bottom:12px}
 .field-report-section{margin:20px 0 8px;font-size:var(--lotus-text-md);font-weight:600;color:var(--lotus-text-strong)}
 </style>

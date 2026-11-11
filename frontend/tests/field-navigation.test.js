@@ -15,9 +15,16 @@ test('the field area has at most 7 menu entries, setup counted as one',()=>{
 
 test('nghiệm thu and tiền khoán theo người stay reachable without a menu entry',()=>{
  const menu=visibleFieldNavigation(field).map(r=>r.id)
- for(const id of ['inspect','payable']){assert.ok(!menu.includes(id),id);assert.equal(normalizeFieldView(id),id)}
+ for(const id of ['inspect','payable','materials']){assert.ok(!menu.includes(id),id);assert.equal(normalizeFieldView(id),id)}
  assert.equal(normalizeFieldView('bunch'),'today','old links open Hôm nay')
  assert.equal(normalizeFieldView('board'),'today')
+})
+
+test('yêu cầu cấp vật tư (spec 005) is a hidden view: reachable by link, the menu keeps 7 entries',()=>{
+ assert.equal(normalizeFieldView('materials'),'materials')
+ assert.deepEqual(fieldQuery('materials'),{field_view:'materials'})
+ assert.equal(fieldNavigation.find(r=>r.id==='materials').label,'Yêu cầu cấp vật tư')
+ assert.ok(!visibleFieldNavigation(field).some(r=>r.id==='materials'))
 })
 
 test('Dự thu and the ribbon catalogue keep their pages; others without the field capability still see them',()=>{

@@ -17,7 +17,7 @@ globalThis.fetch=async(url,opts={})=>{
   method.endsWith('.employee_choices')?[{value:'EMP',label:'Người nhận thử'}]:
   method.endsWith('.block_codes')?[{code:'A01',label:'A01'}]:
   method.endsWith('.issue_sources')?{rows:[{name:'MR',date:'2026-10-31'}]}:
-  method.endsWith('.issue_lines')?{rows:[{item:'I',item_name:item.item_name,uom:'Kg',stock_uom:'Kg',uoms:units,qty:50,required_qty:50,allocated_qty:0,remaining_qty:50,area:'A01',material_request:'MR',material_request_item:'MRI'}]}:
+  method.endsWith('.issue_lines')?{rows:[{item:'I',item_name:item.item_name,uom:'Kg',stock_uom:'Kg',uoms:units,qty:50,required_qty:50,allocated_qty:0,remaining_qty:50,area:'A01',material_request:'MR',material_request_item:'MRI'}],header:{warehouse:'K',receiver:'EMP',requester_name:'Đội trưởng A',approver_name:'Quản lý vườn',crew_name:'Đội A + B',team_name:'Tổ 3',work_name:'Phun thuốc'}}:
   method.endsWith('.create_draft')?{doctype:'Stock Entry',name:'SE',docstatus:0}:
   method.endsWith('.document')?{doctype:'Stock Entry',name:'SE',items:[]}:
   method.endsWith('.receipt_options')?{enabled:true,reasons:[],suppliers:[]}:[]
@@ -55,6 +55,19 @@ test('desktop request issue converts default remaining quantity and input limit 
  await choose('Đơn vị xuất dòng 1','Bao')
  const qty=document.querySelector('input[aria-label="Số lượng dòng 1"]');assert.ok(qty);assert.equal(Number(qty.value),2);assert.equal(Number(qty.max),2)
  assert.match(document.body.textContent,/Còn 50 kg/);assert.match(document.body.textContent,/50 kg/)
+})
+test('openFromRequest (spec 005) opens a Request issue: kho xuất, người nhận, remaining lines, lô fixed',async()=>{
+ view=mount({render:()=>h(Form,{ref:handle,company:'C',warehouse:'',warehouses:[{name:'K2',warehouse_name:'Kho khác'},{name:'K',warehouse_name:'Kho thử'}],session:{today:'2026-10-31',companies:[{name:'C',default_currency:'VND'}]}})})
+ await handle.value.openFromRequest('MR');await tick();await tick()
+ assert.equal(control('Hình thức xuất kho').value,'Request')
+ assert.equal(control('Yêu cầu vật tư đã duyệt').value,'MR')
+ assert.equal(control('Kho xuất').value,'K')
+ assert.match(document.body.textContent,/Người đề nghị: Đội trưởng A · Duyệt bởi: Quản lý vườn · Đội A \+ B · Tổ 3 · Việc: Phun thuốc/)
+ const area=document.querySelector('input[aria-label="Khu vực / lô sử dụng dòng 1"]');assert.ok(area);assert.ok(area.readOnly,'the lô comes from the request')
+ document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));await tick();await tick()
+ const save=calls.find(c=>c.method.endsWith('.create_draft'));assert.ok(save)
+ assert.equal(save.args.issue_mode,'Request');assert.equal(save.args.source,'K');assert.equal(save.args.receiver_employee,'EMP')
+ assert.equal(save.args.lines[0].material_request_item,'MRI');assert.equal(Number(save.args.lines[0].qty),50);assert.equal(save.args.lines[0].area,'A01')
 })
 test('mobile issue enables configured units and previews the correct quantity to deduct',async()=>{
  view=mount(Warehouse);await tick();await tick()

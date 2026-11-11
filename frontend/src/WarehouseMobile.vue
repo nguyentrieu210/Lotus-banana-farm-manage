@@ -31,6 +31,7 @@ import {unitLabel} from './units'
 import {stockQuantity} from './stock-units'
 import MobileLinkField from './components/MobileLinkField.vue'
 import MobileLiveSearch from './components/MobileLiveSearch.vue'
+import MobileIssueFromRequest from './components/MobileIssueFromRequest.vue'
 import SigningPanel from './components/SigningPanel.vue'
 import {useMobileViewport} from './use-mobile-viewport'
 import {createTabSwipe} from './mobile-swipe'
@@ -72,7 +73,7 @@ const mobileTitle=computed(()=>({home:'Kho Lotus',history:'Lịch sử',inventor
  'stock-form':titles[kind.value], 'stock-review':'Kiểm tra phiếu',
  'request-form':proposalTitle.value,'buy-form':'Đơn mua hàng','supplier-form':'Nhà cung cấp',
  'choose-order':'Chọn đơn chờ hàng','receive-form':'Nhận hàng',
- 'history-detail':'Chi tiết phiếu',done:'Hoàn tất'})[screen.value]||'Kho Lotus')
+ 'history-detail':'Chi tiết phiếu',done:'Hoàn tất','issue-request':'Cấp theo yêu cầu'})[screen.value]||'Kho Lotus')
 
 const activeTab=computed(()=>screen.value==='history-detail'?'history':baseTabs.includes(screen.value)?screen.value:'home')
 const storeOptions=computed(()=>warehouses.value.map(w=>({value:w.name,label:w.warehouse_name})))
@@ -257,7 +258,19 @@ async function reloadSetup(){
  historyWarehouse.value=warehouse.value
  inventoryWarehouse.value=warehouse.value
  employees.value=await employeeAPI('employee_choices',{company:company.value}).catch(()=>[])
+ loadIssueQueue()
 }
+// Spec 005 (US5): "Cấp theo yêu cầu (N)", approved yêu cầu cấp vật tư still to issue; ?issue_request= opens one.
+const issueQueue=ref([]),issueRequestStart=ref(''),issueRequestKey=ref(0)
+async function loadIssueQueue(){
+ if(!allowed('Stock Entry')||!company.value){issueQueue.value=[];return}
+ try{const r=await stockAPI('issue_queue',{company:company.value});issueQueue.value=Array.isArray(r)?r:r?.rows||[]}catch{issueQueue.value=[]}
+}
+function startIssueRequest(name=''){
+ clear();lastPostedDocument.value=null;order.value=null;selectedOrder.value=null;form.value=null
+ issueRequestStart.value=name;issueRequestKey.value++;screen.value='issue-request'
+}
+function issueRequestDone(text){message.value=text;screen.value='done';loadIssueQueue()}
 async function changeCompany(next){
  if(!next||next===company.value||busy.value||saving.value||!await confirmLeave())return
  clear();busy.value=true
@@ -265,7 +278,7 @@ async function changeCompany(next){
  try{
   const data=await buyingAPI('setup',{company:next})
   const nextEmployees=await employeeAPI('employee_choices',{company:next}).catch(()=>[])
-  company.value=next;setup.value=data;employees.value=nextEmployees
+  company.value=next;setup.value=data;employees.value=nextEmployees;loadIssueQueue()
   warehouse.value=data.warehouses?.[0]?.name||''
   historyWarehouse.value=warehouse.value;inventoryWarehouse.value=warehouse.value
   historyRows.value=[];inventoryRows.value=[];movementRows.value=[];pending.value=[]
@@ -565,6 +578,7 @@ onMounted(()=>{
   const name=qs.get('doc'),doctype=qs.get('doctype')||'Purchase Order'
   if(session.value&&name&&['Stock Entry','Purchase Receipt','Purchase Order'].includes(doctype))
    inspectHistory({name,doctype})
+  else if(session.value&&qs.get('issue_request')&&allowed('Stock Entry'))startIssueRequest(qs.get('issue_request'))
  })
 })
 onUnmounted(()=>{
@@ -599,6 +613,7 @@ onUnmounted(()=>{
      <LotusMobileAction v-if="setup?.can_request" icon="notes-o" title="Đề xuất mua" @select="startRequest"/>
      <LotusMobileAction v-if="allowed('Purchase Receipt')" icon="logistics" title="Nhập theo đơn" :disabled="!setup" @select="startReceiving"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="upgrade" title="Xuất kho" :disabled="!setup" @select="start('issue')"/>
+     <LotusMobileAction v-if="allowed('Stock Entry')" icon="todo-list-o" :title="'Cấp theo yêu cầu ('+issueQueue.length+')'" :disabled="!setup" @select="startIssueRequest()"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="exchange" title="Chuyển kho" :disabled="!setup" @select="start('transfer')"/>
      <LotusMobileAction v-if="allowed('Stock Entry')" icon="down" title="Nhập không theo đơn" :disabled="!setup" @select="start('receipt')"/>
     </div>
@@ -628,6 +643,8 @@ onUnmounted(()=>{
      <LotusMobileButton type="submit" class="mobile-submit" :disabled="saving||!online">{{saving?'Đang lưu…':'Lưu phiếu →'}}</LotusMobileButton>
     </fieldset></form>
    </template>
+
+   <MobileIssueFromRequest v-if="screen==='issue-request'" :key="'issue-request'+issueRequestKey" :company="company" :rows="issueQueue" :employees="employees" :initial="issueRequestStart" :online="online" :today="today()" @busy="v=>saving=v" @done="issueRequestDone"/>
 
    <template v-if="screen==='stock-review'&&createdDocDetails">
     

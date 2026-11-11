@@ -89,17 +89,40 @@ watch(()=>[form.kind,form.source,open.value],async([kind,source,visible])=>{if(!
 async function loadAccounts(){accountsLoading.value=true;try{const result=await api('receipt_accounts',{company:props.company});accounts.value=result.accounts;defaultAccount.value=result.default_account||''}catch(e){error.value=e.message}finally{accountsLoading.value=false}}
 async function changeIssueMode(mode){
  const version=++issueVersion
- Object.assign(form,{issue_mode:mode,lines:mode==='Manual'?[newLine()]:[]});issueSource.value='';issueSources.value=[];issueNote.value='';error.value=''
+ Object.assign(form,{issue_mode:mode,lines:mode==='Manual'?[newLine()]:[]});issueSource.value='';issueSources.value=[];issueNote.value='';error.value='';issueHeader.value=null
  issueLoading.value=mode!=='Manual';if(mode==='Manual')return
  try{const result=await api('issue_sources',{company:props.company,mode});if(version===issueVersion){issueSources.value=result.rows;issueNote.value=result.note}}
  catch(e){if(version===issueVersion)error.value=e.message}finally{if(version===issueVersion)issueLoading.value=false}
 }
 async function selectIssueSource(name){
- const version=++issueVersion;issueSource.value=name;form.lines=[]
+ const version=++issueVersion;issueSource.value=name;form.lines=[];issueHeader.value=null
  if(!name)return
  issueLoading.value=true;error.value=''
- try{const result=await api('issue_lines',{company:props.company,mode:form.issue_mode,name});if(version===issueVersion){form.lines=result.rows.map(r=>({...r,qty:r.remaining_qty,fixed_area:!!r.area}));issueNote.value=result.note}}
+ try{const result=await api('issue_lines',{company:props.company,mode:form.issue_mode,name});if(version===issueVersion){form.lines=result.rows.map(r=>({...r,qty:r.remaining_qty,fixed_area:!!r.area}));issueNote.value=result.note;applyIssueHeader(result.header)}}
  catch(e){if(version===issueVersion)error.value=e.message}finally{if(version===issueVersion)issueLoading.value=false}
+}
+// Spec 005: the approved yêu cầu cấp vật tư gives the kho xuất and the người nhận; Kho can still change the người nhận.
+const issueHeader=ref(null)
+function applyIssueHeader(header){
+ issueHeader.value=header||null
+ if(!header)return
+ const source=header.warehouse||header.set_warehouse
+ if(source)form.source=source
+ const receiver=header.receiver||header.receiver_employee||header.lotus_issue_receiver
+ if(receiver&&!form.existing_name)form.receiver_employee=receiver
+}
+const issueHeaderText=computed(()=>{
+ const h=issueHeader.value
+ if(!h||form.issue_mode!=='Request')return ''
+ return [h.requester_name||h.owner_name?'Người đề nghị: '+(h.requester_name||h.owner_name):'',h.approver_name||h.approved_by_name?'Duyệt bởi: '+(h.approver_name||h.approved_by_name):'',
+  [h.crew_name,h.team_name].filter(Boolean).join(' · '),h.work_name?'Việc: '+h.work_name:'',h.needed?'Cần '+String(h.needed).split('-').reverse().join('/'):''].filter(Boolean).join(' · ')
+})
+// "Lập phiếu xuất" from Cấp theo yêu cầu, or an alert link: a new issue in "Theo yêu cầu đã duyệt" mode on that request.
+async function openFromRequest(name){
+ await openNew('issue')
+ await changeIssueMode('Request')
+ if(!issueSources.value.some(r=>r.name===name))issueSources.value=[{name,date:''},...issueSources.value]
+ await selectIssueSource(name)
 }
 const evidence=ref(null),pendingFiles=ref([]),aiNote=ref('')
 // AI-read delivery note / invoice: fill supplier and lines (item, quantity, unit, price); the read file is kept as evidence.
@@ -129,7 +152,7 @@ async function applyDocument(result,stored){
 }
 async function start(kind){
  pendingFiles.value=[]
- issueVersion++;error.value='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false
+ issueVersion++;error.value='';issueSource.value='';issueSources.value=[];issueNote.value='';issueLoading.value=false;issueHeader.value=null
  const first=props.warehouse||props.warehouses[0]?.name||''
  Object.assign(form,{kind,client_event_id:crypto.randomUUID(),receipt_reason:'',supplier:'',issue_mode:'Manual',issue_purpose:'Production',receiver:'',receiver_employee:'',count_purpose:'Stock Reconciliation',posting_date:props.session?.today||'',source:first,target:kind==='transfer'?'':first,notes:'',existing_name:'',base_modified:'',additional_costs:[],invoice_series:'',invoice_no:'',invoice_date:'',invoice_total:'',lines:[newLine()]})
  if(kind==='issue')employees.value=await call('lotus_farm.warehouse_masters.employee_choices',{company:props.company})
@@ -160,7 +183,7 @@ async function save(){
   open.value=false;emit('saved',{...result,form_kind:form.kind,quick:quick.value,warning})
  }catch(e){error.value=e.message}finally{saving.value=false}
 }
-defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChanges:()=>{open.value=false}})
+defineExpose({open:openNew,openQuick,edit,openFromRequest,hasChanges:()=>open.value,discardChanges:()=>{open.value=false}})
 </script>
 
 <template>
@@ -179,7 +202,7 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
    <FormGrid :columns="3">
     <LotusField v-if="form.kind==='issue'" :model-value="form.issue_purpose" label="Mục đích xuất" :options="issuePurposes" :searchable="false" :empty-option="null" :disabled="saving" @update:model-value="changeIssuePurpose"/>
     <LotusField v-if="form.kind==='issue'&&production" :model-value="form.issue_mode" label="Hình thức xuất kho" :options="Object.entries(issueModes).map(([value,label])=>({value,label}))" :searchable="false" :empty-option="null" :disabled="saving||!!form.existing_name" @update:model-value="changeIssueMode"/>
-    <LotusField v-if="form.kind==='issue'&&form.issue_mode!=='Manual'" :model-value="issueSource" label="Yêu cầu vật tư đã duyệt" :options="issueSources.map(r=>({value:r.name,label:r.name+' · '+r.date}))" :searchable="false" :empty-option="issueLoading?'Đang tải…':'Chọn yêu cầu'" :disabled="issueLoading||saving" required @update:model-value="selectIssueSource"/>
+    <LotusField v-if="form.kind==='issue'&&form.issue_mode!=='Manual'" :model-value="issueSource" label="Yêu cầu vật tư đã duyệt" :options="issueSources.map(r=>({value:r.name,label:r.label||[r.name,r.date].filter(Boolean).join(' · ')}))" :searchable="false" :empty-option="issueLoading?'Đang tải…':'Chọn yêu cầu'" :disabled="issueLoading||saving" required @update:model-value="selectIssueSource"/>
     <LotusField v-model="form.posting_date" label="Ngày" type="date" required/>
     <LotusField v-if="form.kind==='count'" v-model="form.count_purpose" label="Loại kiểm kê" :options="[{value:'Stock Reconciliation',label:'Kiểm kê định kỳ'},{value:'Opening Stock',label:'Tồn đầu kỳ khi bắt đầu'}]" :searchable="false" :empty-option="null"/>
     <LotusField v-if="needsSource" v-model="form.source" label="Kho xuất" :options="warehouseOptions" :searchable="false" empty-option="Chọn kho" required/>
@@ -187,6 +210,7 @@ defineExpose({open:openNew,openQuick,edit,hasChanges:()=>open.value,discardChang
     <LotusField v-if="form.kind==='issue'" v-model="form.receiver_employee" :label="production?'Người nhận vật tư (HRMS)':'Người chịu trách nhiệm (nếu có)'" :options="employeeOptions" empty-option="Chọn nhân viên đang làm việc" :required="production&&(!form.existing_name||!form.receiver)" :hint="form.existing_name&&form.receiver&&!form.receiver_employee?'Phiếu cũ: '+form.receiver+'. Chọn một nhân viên HRMS để cập nhật.':''"/>
    </FormGrid>
    <p v-if="form.kind==='issue'&&form.issue_mode!=='Manual'&&!issueLoading&&!issueSources.length" class="lotus-form-note">Chưa có yêu cầu cấp vật tư đã duyệt trong công ty này.</p>
+   <p v-if="issueHeaderText" class="lotus-form-note issue-source-header">{{issueHeaderText}}</p>
    <p v-if="issueNote" class="lotus-form-note">{{issueNote}}</p>
   </FormSection>
   <FormSection>

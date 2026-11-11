@@ -6,6 +6,7 @@ import FormGrid from '../form/FormGrid.vue'
 import FormSection from '../form/FormSection.vue'
 import ReasonDialog from '../form/ReasonDialog.vue'
 import WorkspaceSummaryStrip from '../WorkspaceSummaryStrip.vue'
+import MaterialRequests from './MaterialRequests.vue'
 import {Button as UiButton} from '../ui/button'
 import {useReasonDialog} from '../../use-reason-dialog'
 import {formatDate} from '../../format'
@@ -59,6 +60,9 @@ async function submitInspection(){
  if(!error.value)inspecting.value=null
 }
 const shares=computed(()=>t.value?.shares||[])
+// Spec 005 (US4): yêu cầu cấp vật tư of this phiếu; "Đề nghị cấp vật tư" starts one with việc, tổ, lô and phiếu filled.
+const materialPrefill=computed(()=>t.value?{work_type:t.value.work_type,team:t.value.work_team,blocks:[t.value.farm_block],assignments:{[t.value.farm_block]:t.value.name}}:null)
+const showMaterials=computed(()=>!!(t.value?.farm&&t.value?.crew&&t.value.state!=='Cancelled'))
 defineExpose({reload:load})
 </script>
 
@@ -108,6 +112,10 @@ defineExpose({reload:load})
       <small v-if="e.notes">{{e.notes}}</small>
      </li>
     </ul>
+   </FormSection>
+
+   <FormSection v-if="showMaterials" title="Vật tư cho phiếu này">
+    <MaterialRequests :farm="t.farm" :crew="t.crew" :setup="setup" view="all" :assignment="t.name" :prefill="materialPrefill" :mobile="mobile"/>
    </FormSection>
 
    <FormSection v-if="t.inspection_doc" title="Kết quả nghiệm thu">

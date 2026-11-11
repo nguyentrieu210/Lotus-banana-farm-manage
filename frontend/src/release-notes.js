@@ -1,6 +1,13 @@
 // What changed, newest first, written for the people who use the app. Add a new entry on top with each release.
 // Ids sort by date; a second update on one day takes a suffix (2026-11-09b).
 export const RELEASE_NOTES=[
+ {id:'2026-11-11c',title:'Yêu cầu cấp vật tư',items:[
+  {title:'Lập yêu cầu ở Công việc',text:'Đội trưởng bấm "Đề nghị cấp vật tư" ở Giao việc: chọn việc, kho cấp, ngày cần, các lô và vật tư. Nhập số mỗi lô, hoặc nhập tổng để máy chia theo diện tích lô (chai, gói, bao giữ số chẵn).'},
+  {title:'Duyệt',text:'Đội trưởng và quản lý vườn lưu và duyệt luôn. Người duyệt được giảm số có ghi lý do hoặc trả lại; đã duyệt thì không sửa, muốn đổi thì đóng phần còn lại rồi lập lại.'},
+  {title:'Kho cấp theo yêu cầu',text:'Kho › Xuất kho có nút "Cấp theo yêu cầu (N)". Bấm "Lập phiếu xuất" là phiếu xuất mở sẵn kho, người nhận và phần còn lại; chi phí vào đúng lô và đúng việc của yêu cầu. Trên điện thoại, Kho có thao tác "Cấp theo yêu cầu".'},
+  {title:'Theo dõi',text:'Mỗi yêu cầu ghi đã cấp, Kho đang lập phiếu, còn lại theo từng lô, các phiếu xuất và lịch sử. Yêu cầu quá ngày cần mà còn số có nhãn "Quá hạn chưa cấp".'},
+  {title:'Từ phiếu giao việc',text:'Trong phiếu giao việc có mục "Vật tư cho phiếu này" để đề nghị cấp với việc, tổ và lô đã điền sẵn.'},
+ ]},
  {id:'2026-11-11b',title:'Mua hàng và ký điện tử (cập nhật 11/11/2026)',items:[
   {title:'Chờ tôi ký',text:'Một danh sách các chứng từ đang chờ bạn ký, có trên điện thoại và máy tính. Mỗi lần ký đều hỏi lại số chứng từ và số tiền.'},
   {title:'Bản PDF đã ký',text:'Ký đủ thì hệ thống lưu một bản PDF cố định kèm chữ ký và mã QR. Tải lại lúc nào cũng ra đúng bản đó.'},
