@@ -17,7 +17,6 @@ import TkSetup from './components/timekeeping/TkSetup.vue'
 import TkCorrection from './components/timekeeping/TkCorrection.vue'
 import TkDailyDetails from './components/timekeeping/TkDailyDetails.vue'
 import {Button as UiButton} from './components/ui/button'
-import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuSeparator} from './components/ui/dropdown-menu'
 import {useNoticeToast} from './use-toast'
 import {call,setCSRF} from './api'
 import {sidebarCollapsed} from './workspace'
@@ -276,15 +275,10 @@ useNoticeToast(notice)
     <UiButton v-if="cap.Attendance?.submit&&!locked&&visibleMatching" variant="outline" :disabled="saving||busy||dirty" @click="askMatching"><LotusIcon name="tick"/>Duyệt khớp máy ({{visibleMatching}})</UiButton>
     <UiButton v-if="canEditStaff" :disabled="saving||busy||!dirty" @click="saveStaff">Lưu nháp</UiButton>
     <UiButton v-if="cap.Attendance?.submit&&!locked&&selected.length" variant="outline" :disabled="saving||busy||dirty" :title="dirty?'Lưu nháp trước khi duyệt':''" @click="askStaff('submit')"><LotusIcon name="tick"/>Duyệt đã chọn</UiButton>
-    <DropdownMenu v-if="!locked&&(cap.Attendance?.create||cap.Attendance?.cancel||cap.Attendance?.delete||dirty)">
-     <DropdownMenuTrigger as-child><UiButton variant="outline" aria-label="Thao tác khác"><LotusIcon name="more"/></UiButton></DropdownMenuTrigger>
-     <DropdownMenuContent align="end">
-      <DropdownMenuItem v-if="cap.Attendance?.create" @select="markPresent"><LotusIcon name="check"/>Có mặt cho người chưa chấm</DropdownMenuItem>
-      <DropdownMenuItem v-if="cap.Attendance?.cancel" @select="askStaff('cancel')"><LotusIcon name="x"/>Hủy phiếu đã duyệt</DropdownMenuItem>
-      <DropdownMenuItem v-if="cap.Attendance?.delete" @select="askStaff('delete')"><LotusIcon name="trash"/>Xóa phiếu nháp</DropdownMenuItem>
-      <template v-if="dirty"><DropdownMenuSeparator/><DropdownMenuItem @select="load"><LotusIcon name="refresh"/>Bỏ thay đổi chưa lưu</DropdownMenuItem></template>
-     </DropdownMenuContent>
-    </DropdownMenu>
+    <UiButton v-if="!locked&&cap.Attendance?.create" variant="outline" :disabled="saving||busy" title="Chấm có mặt cả ngày cho những người chưa chấm" @click="markPresent"><LotusIcon name="check"/>Có mặt cho người chưa chấm</UiButton>
+    <UiButton v-if="!locked&&cap.Attendance?.cancel&&selected.some(r=>r.name&&r.docstatus===1)" variant="outline" :disabled="saving||busy" @click="askStaff('cancel')"><LotusIcon name="x"/>Hủy phiếu đã duyệt ({{selected.length}})</UiButton>
+    <UiButton v-if="!locked&&cap.Attendance?.delete&&selected.some(r=>r.name&&r.docstatus===0)" variant="outline" :disabled="saving||busy" @click="askStaff('delete')"><LotusIcon name="trash"/>Xóa phiếu nháp ({{selected.length}})</UiButton>
+    <UiButton v-if="!locked&&dirty" variant="ghost" :disabled="saving||busy" @click="load"><LotusIcon name="refresh"/>Bỏ thay đổi chưa lưu</UiButton>
    </div>
    <section class="stock-panel attendance-roster tk-roster tk-daily-roster" aria-label="Bảng chấm công trong ngày">
     <DataTable selection-enabled :fill="24" :rows="shown" :columns="attendanceColumns" :loading="busy" row-key="row_key" storage-key="timekeeping-daily-simple-v1" :row-class="attendanceRowClass" :columns-menu="false" :exportable="false" :tools-target="attendanceTools" interactive @open="openDetails"
