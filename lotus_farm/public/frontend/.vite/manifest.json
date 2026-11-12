@@ -633,7 +633,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-Dka1Gqmy.js",
+    "file": "assets/index-DnMSJjHj.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -691,7 +691,7 @@
     ]
   },
   "src/BlockForecastApp.vue": {
-    "file": "assets/BlockForecastApp-CWLoT3YX.js",
+    "file": "assets/BlockForecastApp-6Es62cM1.js",
     "name": "BlockForecastApp",
     "src": "src/BlockForecastApp.vue",
     "isDynamicEntry": true,
@@ -725,7 +725,7 @@
     ]
   },
   "src/FarmLandApp.vue": {
-    "file": "assets/FarmLandApp-BA0ZKLOp.js",
+    "file": "assets/FarmLandApp-DIcIl5ea.js",
     "name": "FarmLandApp",
     "src": "src/FarmLandApp.vue",
     "isDynamicEntry": true,
@@ -748,7 +748,7 @@
     ]
   },
   "src/FieldReportApp.vue": {
-    "file": "assets/FieldReportApp-D9P3ry95.js",
+    "file": "assets/FieldReportApp-CGHtNrRO.js",
     "name": "FieldReportApp",
     "src": "src/FieldReportApp.vue",
     "isDynamicEntry": true,
@@ -773,7 +773,7 @@
     ]
   },
   "src/FinanceApp.vue": {
-    "file": "assets/FinanceApp-DrJWSfOv.js",
+    "file": "assets/FinanceApp-BSNtY5H7.js",
     "name": "FinanceApp",
     "src": "src/FinanceApp.vue",
     "isDynamicEntry": true,
@@ -802,7 +802,7 @@
     ]
   },
   "src/HrApp.vue": {
-    "file": "assets/HrApp-CJwGlbmM.js",
+    "file": "assets/HrApp-B0Fqd28r.js",
     "name": "HrApp",
     "src": "src/HrApp.vue",
     "isDynamicEntry": true,
@@ -830,7 +830,7 @@
     ]
   },
   "src/StockApp.vue": {
-    "file": "assets/StockApp-Rswp2jsr.js",
+    "file": "assets/StockApp-F7XdVn1I.js",
     "name": "StockApp",
     "src": "src/StockApp.vue",
     "isDynamicEntry": true,
@@ -858,7 +858,7 @@
     ]
   },
   "src/TimekeepingApp.vue": {
-    "file": "assets/TimekeepingApp-CoiNldC9.js",
+    "file": "assets/TimekeepingApp-CRTNSMOQ.js",
     "name": "TimekeepingApp",
     "src": "src/TimekeepingApp.vue",
     "isDynamicEntry": true,
@@ -895,7 +895,7 @@
     ]
   },
   "src/components/OpsList.vue": {
-    "file": "assets/OpsList-BWhKYNm8.js",
+    "file": "assets/OpsList-hKxKX0fd.js",
     "name": "OpsList",
     "src": "src/components/OpsList.vue",
     "isDynamicEntry": true,
