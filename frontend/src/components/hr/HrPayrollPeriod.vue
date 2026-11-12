@@ -110,8 +110,7 @@ const sheetCols=[
  pcol('group','Tổ / bộ phận',(_,r)=>r.group||r.department||''),pcol('payment_basis','Cơ chế',v=>bases[v]||'Chưa chọn'),
  pnum('workdays','Công'),pcol('daily_rate','Đơn giá công / lương CB',(_,r)=>r.payment_basis==='Daywork'?money(r.daily_rate):money(r.base)),
  pcol('wage','Tiền công',(_,r)=>money(r.wage??r.gross)+(r.khoan_sessions?' (trừ '+r.khoan_sessions+' buổi khoán)':'')),
- pmoney('piece','Tiền khoán'),pmoney('topup','Bù lương tối thiểu'),pmoney('allowance','Phụ cấp'),pmoney('employee_insurance','BH người LĐ'),
- pcol('pit','Thuế TNCN',(_,r)=>r.pit?money(r.pit)+(r.pit_method==='flat'?' (10%)':''):r.pit_method==='commitment'?'Cam kết 08':''),
+ pmoney('piece','Tiền khoán'),pmoney('allowance','Phụ cấp'),pmoney('employee_insurance','BH người LĐ'),
  pmoney('advance','Tạm ứng'),pcol('take_home','Thực lĩnh',(_,r)=>money(r.take_home??r.net)),
  pcol('issues','Ghi chú',(_,r)=>(r.via_crew?'Trả qua đội khoán; ':'')+(r.issues||[]).join('; '))
 ]
@@ -179,7 +178,6 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
   <div><span>Nhân viên</span><strong>{{sheet.totals.employees}}</strong></div>
   <div><span>Tổng thu nhập</span><strong>{{money(sheet.totals.gross)}}</strong><small v-if="sheet.totals.allowance">Phụ cấp {{money(sheet.totals.allowance)}}</small></div>
   <div><span>BH người lao động</span><strong>{{money(sheet.totals.employee_insurance)}}</strong></div>
-  <div><span>Thuế TNCN khấu trừ</span><strong>{{money(sheet.totals.pit||0)}}</strong></div>
   <div><span>Thực lĩnh</span><strong>{{money(sheet.totals.take_home??sheet.totals.net)}}</strong><small v-if="sheet.totals.advance">Đã trừ tạm ứng {{money(sheet.totals.advance)}}</small></div>
   <div><span>BH doanh nghiệp đóng</span><strong>{{money(sheet.totals.employer_insurance)}}</strong><small v-if="sheet.totals.union_fee">KPCĐ {{money(sheet.totals.union_fee)}}</small></div>
   <div><span>Phải trả đội khoán</span><strong>{{money(sheet.totals.crew_amount)}}</strong></div>
@@ -201,7 +199,7 @@ defineExpose({load,hasUnsavedChanges,isSaving:saving,discardChanges})
  </section>
 
  <section v-if="view==='slips'&&run" class="tk-card hr-pay__table" aria-label="Phiếu lương HRMS">
-  <header class="tk-card__head"><h3>Phiếu lương HRMS</h3><span class="tk-hint">Thuế TNCN chưa tự tính: nhập thuế, thưởng hoặc khấu trừ của kỳ ở <a href="/lotus/nhan-su?hr_view=erp-pay-changes&amp;erp_tab=Additional%20Salary">Thưởng &amp; khấu trừ</a> trước khi duyệt.</span></header>
+  <header class="tk-card__head"><h3>Phiếu lương HRMS</h3><span class="tk-hint">Nhập thưởng hoặc khấu trừ của kỳ ở <a href="/lotus/nhan-su?hr_view=erp-pay-changes&amp;erp_tab=Additional%20Salary">Thưởng &amp; khấu trừ</a> trước khi duyệt.</span></header>
   <div class="hr-pay__scroll"><DataTable v-if="run.slips.length" :rows="run.slips" :columns="slipCols" row-key="name" storage-key="payroll-slips"/>
    <p v-else class="tk-empty">{{run.structure?'Chưa có phiếu lương HRMS cho tháng này.':'Cài đặt lương HRMS ở bước 3 trước.'}}</p></div>
  </section>

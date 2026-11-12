@@ -13,6 +13,9 @@ from frappe.utils import cint, flt, getdate, now_datetime, nowdate
 
 from lotus_farm.payroll_rules import HOURS_BASE, STANDARD_DAYS, empty_summary, hour_summary, hourly_pay, params_on, tax_method, pay_base, salary_segments, segmented_pay
 from lotus_farm.units import label as unit_label
+# Chủ vườn 12/11/2026: "bên tao không dùng" bù lương tối thiểu cho tiền khoán và khấu trừ thuế TNCN trong bảng lương.
+USE_MIN_TOPUP = False
+USE_PIT = False
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
@@ -444,7 +447,8 @@ def _sheet(company, month, begin, end):
         if person.contract_end_date and person.date_of_joining:
             span = getdate(person.contract_end_date) - getdate(person.date_of_joining)
             months = span.days / 30.4
-        tax = dict(method=tax_method(person.lotus_worker_category, months), dependents=cint(person.lotus_dependents),
+        # Chủ vườn 12/11/2026: không khấu trừ thuế TNCN trong bảng lương (USE_PIT); hồ sơ người phụ thuộc vẫn giữ.
+        tax = dict(method=tax_method(person.lotus_worker_category, months) if USE_PIT else None, dependents=cint(person.lotus_dependents),
                    commitment=bool(cint(person.lotus_pit_commitment)))
         taxes[person.name] = tax
         fallback=dict(name='Employee:'+person.name,from_date=person.date_of_joining or begin,
@@ -475,7 +479,7 @@ def _sheet(company, month, begin, end):
         sessions = round(flt(p.get('khoan_sessions')), 4)  # buổi weights: a buổi shared with công nhật counts in part
         deduct = min(round(sessions * flt(e.get('daily_rate')) / 2), round(flt(e.get('regular_pay')))) if e['payment_basis'] == 'Daywork' else 0
         piece = round(flt(p.get('piece')))
-        topup = minimum_topup(piece, p.get('piece_sessions'), hourly_minimum) if piece or p.get('piece_sessions') else 0
+        topup = minimum_topup(piece, p.get('piece_sessions'), hourly_minimum) if USE_MIN_TOPUP and (piece or p.get('piece_sessions')) else 0
         # Whole numbers stay int: a sheet sent for signature before buổi could be shared must hash the same afterwards.
         whole = lambda v: int(v) if float(v).is_integer() else v
         e.update(wage=round(flt(e['gross'])) - deduct, khoan_sessions=whole(sessions), khoan_deduction=deduct, piece=piece,
@@ -581,28 +585,28 @@ def export_payroll(company, month):
     from lotus_farm.www.lotus_payroll_print import layout
     plan = layout(data)
     sheet(book.active, 'Công nhân',
-          ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Buổi khoán', 'Tiền khoán', 'Bù lương tối thiểu', 'Ngày phụ cấp',
-           'Phụ cấp', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
-          [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['khoan_sessions'], e['piece'], e['topup'],
+          ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Buổi khoán', 'Tiền khoán', 'Ngày phụ cấp',
+           'Phụ cấp', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+          [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['khoan_sessions'], e['piece'],
             e['allowance_days'], e['allowance'],
-            e['pit'], e['advance'], e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
+            e['advance'], e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
     sheet(book.create_sheet(), 'Lương tháng',
-          ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'BH người LĐ', 'Thuế TNCN', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+          ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'BH người LĐ', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
           [[e['group'], e['employee'], e['employee_name'], e['base'], e['workdays'], e['wage'], e['allowance'], e['employee_insurance'],
-            e['pit'], e['advance'], e['take_home'], ''] for e in plan['staff_rows']])
+            e['advance'], e['take_home'], ''] for e in plan['staff_rows']])
     sheet(book.create_sheet(), 'Chi tiết (kế toán)',
           ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Lương CB (26 công)', 'Đơn giá giờ',
            'Công', 'Giờ công thường', 'Giờ đêm', 'Giờ TC ngày thường', 'Giờ làm ngày nghỉ tuần', 'Giờ làm ngày lễ',
            'Phép có lương (ngày)', 'Lễ hưởng lương (ngày)', 'Nghỉ không lương', 'Vắng',
            'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Phụ cấp công việc', 'Tổng thu nhập',
-           'BHXH+BHYT+BHTN NLĐ', 'Người phụ thuộc', 'Thu nhập tính thuế', 'Thuế TNCN', 'Thực lĩnh',
+           'BHXH+BHYT+BHTN NLĐ', 'Thực lĩnh',
            'BH doanh nghiệp đóng', 'KPCĐ 2% (DN)', 'MST', 'Số BHXH', 'Ghi chú'],
           [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
             labels.get(e['payment_basis'], e['payment_basis']), e['base'], e['hour_rate'],
             e['workdays'], e['regular_hours'], e['night_hours'], e['ot_regular'], e['ot_weekly_off'], e['ot_holiday'],
             e['paid_leave_days'], e['paid_holiday_days'], e['unpaid_leave_days'], e['absent_days'],
             e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e.get('allowance') or 0, e['gross'],
-            e['employee_insurance'], e.get('dependents') or 0, e.get('taxable_income') or 0, e.get('pit') or 0, e['net'],
+            e['employee_insurance'], e['net'],
             e['employer_insurance'], e.get('union_fee') or 0, e['tax_code'], e['social_insurance_no'],
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
     sheet(book.create_sheet(), 'Đội khoán',
