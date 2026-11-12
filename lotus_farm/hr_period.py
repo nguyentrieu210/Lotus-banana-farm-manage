@@ -16,6 +16,9 @@ from lotus_farm.units import label as unit_label
 # Chủ vườn 12/11/2026: "bên tao không dùng" bù lương tối thiểu cho tiền khoán và khấu trừ thuế TNCN trong bảng lương.
 USE_MIN_TOPUP = False
 USE_PIT = False
+# 12/11/2026: cũng không dùng BHXH (bảo hiểm người lao động và doanh nghiệp) và tạm ứng lương.
+USE_INSURANCE = False
+USE_ADVANCE = False
 from lotus_farm.timekeeping_rules import WEEKDAYS, calendar_days, close_blockers, missing_attendance, month_range
 
 PERIOD = 'Lotus Timekeeping Period'
@@ -458,7 +461,7 @@ def _sheet(company, month, begin, end):
         intervals=salary_segments(rates.get(person.name,[]),rate_begin,rate_end,fallback)
         for interval in intervals:
             interval['summary']=summary if len(intervals)==1 else month_hours(company,interval['start'],interval['end'],[person])[0].get(person.name,empty_summary())
-        pay=segmented_pay(intervals,insured=bool(person.lotus_social_insurance_no),params=params,region=region,tax=tax)
+        pay=segmented_pay(intervals,insured=USE_INSURANCE and bool(person.lotus_social_insurance_no),params=params,region=region,tax=tax)
         employees.append(dict(employee=person.name, employee_name=person.employee_name, department=person.department,
                               designation=person.designation, work_team=person.lotus_work_team,
                               worker_category=person.lotus_worker_category, payment_basis=intervals[-1]['basis'],
@@ -493,7 +496,7 @@ def _sheet(company, month, begin, end):
             e['gross'], e['net'] = gross, gross - e['employee_insurance'] - (e.get('pit') or 0)
     # Phụ cấp công việc (not taxed, outside the insurance base) is added after the tax; tạm ứng is deducted from it.
     names = [e['employee'] for e in employees]
-    allowances, advances = month_allowance(company, begin, end, names), month_advances(company, month)
+    allowances, advances = month_allowance(company, begin, end, names), (month_advances(company, month) if USE_ADVANCE else {})
     team_names = {t.name: t.team_name for t in frappe.get_all('Work Team', filters={'name': ['in', list({e['work_team'] for e in employees if e['work_team']}) or ['']]},
                                                                fields=['name', 'team_name'])}
     for e in employees:
@@ -586,28 +589,26 @@ def export_payroll(company, month):
     plan = layout(data)
     sheet(book.active, 'Công nhân',
           ['Tổ', 'Mã NV', 'Họ tên', 'Công', 'Đơn giá công', 'Tiền công', 'Buổi khoán', 'Tiền khoán', 'Ngày phụ cấp',
-           'Phụ cấp', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
+           'Phụ cấp', 'Thực lĩnh', 'Ký nhận'],
           [[g.name, e['employee'], e['employee_name'], e['workdays'], e['daily_rate'], e['wage'], e['khoan_sessions'], e['piece'],
             e['allowance_days'], e['allowance'],
-            e['advance'], e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
+            e['take_home'], ''] for g in plan['worker_groups'] for e in g.rows])
     sheet(book.create_sheet(), 'Lương tháng',
-          ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'BH người LĐ', 'Tạm ứng', 'Thực lĩnh', 'Ký nhận'],
-          [[e['group'], e['employee'], e['employee_name'], e['base'], e['workdays'], e['wage'], e['allowance'], e['employee_insurance'],
-            e['advance'], e['take_home'], ''] for e in plan['staff_rows']])
+          ['Bộ phận', 'Mã NV', 'Họ tên', 'Lương CB (26 công)', 'Công', 'Lương theo công', 'Phụ cấp', 'Thực lĩnh', 'Ký nhận'],
+          [[e['group'], e['employee'], e['employee_name'], e['base'], e['workdays'], e['wage'], e['allowance'],
+            e['take_home'], ''] for e in plan['staff_rows']])
     sheet(book.create_sheet(), 'Chi tiết (kế toán)',
           ['Mã NV', 'Họ tên', 'Bộ phận', 'Tổ/đội', 'Loại lao động', 'Cơ chế lương', 'Lương CB (26 công)', 'Đơn giá giờ',
            'Công', 'Giờ công thường', 'Giờ đêm', 'Giờ TC ngày thường', 'Giờ làm ngày nghỉ tuần', 'Giờ làm ngày lễ',
            'Phép có lương (ngày)', 'Lễ hưởng lương (ngày)', 'Nghỉ không lương', 'Vắng',
            'Lương giờ công', 'Lương lễ, phép', 'Phụ cấp ca đêm', 'Tiền tăng ca', 'Phụ cấp công việc', 'Tổng thu nhập',
-           'BHXH+BHYT+BHTN NLĐ', 'Thực lĩnh',
-           'BH doanh nghiệp đóng', 'KPCĐ 2% (DN)', 'MST', 'Số BHXH', 'Ghi chú'],
+           'Thực lĩnh', 'MST', 'Ghi chú'],
           [[e['employee'], e['employee_name'], e['department'], e['work_team'], e['worker_category'],
             labels.get(e['payment_basis'], e['payment_basis']), e['base'], e['hour_rate'],
             e['workdays'], e['regular_hours'], e['night_hours'], e['ot_regular'], e['ot_weekly_off'], e['ot_holiday'],
             e['paid_leave_days'], e['paid_holiday_days'], e['unpaid_leave_days'], e['absent_days'],
             e['regular_pay'], e['paid_pay'], e['night_pay'], e['overtime_pay'], e.get('allowance') or 0, e['gross'],
-            e['employee_insurance'], e['net'],
-            e['employer_insurance'], e.get('union_fee') or 0, e['tax_code'], e['social_insurance_no'],
+            e['net'], e['tax_code'],
             'Trả qua đội khoán' if e['via_crew'] else '; '.join(e['issues'])] for e in data['employees']])
     sheet(book.create_sheet(), 'Đội khoán',
           ['Đội', 'Đầu câu', 'Điện thoại', 'Công việc', 'Khối lượng', 'Đơn vị', 'Đơn giá', 'Thành tiền', 'Tổng công', 'Người-ngày'],

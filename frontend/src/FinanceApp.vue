@@ -520,7 +520,7 @@ useNoticeToast(notice)
  </template>
 
  <template v-else-if="tab==='cash'&&cash">
-  <div v-if="overview?.can_post" class="fin-actions"><UiButton variant="outline" @click="openAdvance">Tạm ứng lương</UiButton><UiButton variant="outline" @click="openStatutory">Nộp BH, KPCĐ, thuế TNCN</UiButton></div>
+  <!-- Chủ vườn 12/11/2026: không dùng tạm ứng lương, BHXH, thuế TNCN — bỏ hai nút Tạm ứng lương và Nộp BH, KPCĐ, thuế TNCN. -->
   <FormSection v-if="mine.length" title="Chờ bạn ký">
    <article v-for="v in mine" :key="v.name" class="fin-voucher"><header><b>{{v.kind}} · {{v.party_name}}</b><strong>{{vnd(v.amount)}}</strong></header><small>{{v.name}} · {{vnDate(v.posting_date)}}</small>
     <div class="fin-actions"><UiButton v-if="v.signing.can_return" variant="outline" :disabled="saving" @click="openReturn(v)">Trả lại</UiButton><UiButton v-if="v.signing.can_sign" :disabled="saving" @click="sign(v)">Ký</UiButton></div></article>

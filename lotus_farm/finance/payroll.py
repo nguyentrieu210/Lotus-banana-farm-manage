@@ -127,7 +127,8 @@ def _advances(company, month, docstatus=1):
 def pay_list(doc):
     """What each person receives for the month: net pay of the frozen sheet less the advances already paid."""
     people = rules.snapshot_people(json.loads(doc.snapshot or '{}'))
-    advances = _advances(doc.company, doc.month)
+    from lotus_farm.hr_period import USE_ADVANCE
+    advances = _advances(doc.company, doc.month) if USE_ADVANCE else {}
     meta = frappe.get_meta('Employee')
     bank_fields = [f for f in ('bank_name', 'bank_ac_no', 'salary_mode') if meta.has_field(f)]
     banks = {e.name: e for e in frappe.get_all('Employee', filters={'name': ['in', [p.get('employee') for p in people] or ['']]},
