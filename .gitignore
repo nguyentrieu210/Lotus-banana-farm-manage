@@ -13,3 +13,8 @@ frontend/dist-showcase/
 # Local build/test output
 /*.log
 /.local/
+
+# Graphify (đồ thị mã, có thể chứa tên bảng/trường)
+graphify-out/
+
+.claude/settings.local.json

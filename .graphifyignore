@@ -1,0 +1,5 @@
+# Graphify: bỏ tệp build và dữ liệu lớn
+lotus_farm/public/frontend/
+**/*.min.js
+**/*.map
+downloads/
